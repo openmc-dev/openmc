@@ -135,6 +135,33 @@ assessing source convergence to relieve the burden on the user of having to look
 at plots of <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> and the Shannon entropy. A number of methods have
 been proposed (see e.g. <a class="reference internal" href="#romano">[Romano]</a>, <a class="reference internal" href="#ueki">[Ueki]</a>), but each of these is not without
 problems.</p>
+</div>
+</div>
+<div class="section" id="uniform-fission-site-method">
+<h2>7.3. Uniform Fission Site Method<a class="headerlink" href="#uniform-fission-site-method" title="Permalink to this headline">¶</a></h2>
+<p>Generally speaking, the variance of a Monte Carlo tally will be inversely
+proportional to the number of events that score to the tally. In a reactor
+problem, this implies that regions with low relative power density will have
+higher variance that regions with high relative power density. One method to
+circumvent the uneven distribution of relative errors is the uniform fission
+site (UFS) method introduced by <a class="reference internal" href="#sutton">[Sutton]</a>. In this method, the portion of the
+problem containing fissionable material is subdivided into a number of cells
+(typically using a structured mesh). Rather than producing</p>
+<div class="math">
+<p><img src="../_images/math/825c96dcbeb27ebc9e14257965efa983bc6b99ac.png" alt="m = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t}"/></p>
+</div><p>fission sites at each collision where <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> is the weight of the neutron,
+<img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> is the previous-generation estimate of the neutron multiplication
+factor, <img class="math" src="../_images/math/59fe8adcb949ed284a61f0e73d9ae158f3693592.png" alt="\nu\Sigma_f"/> is the neutron production cross section, and
+<img class="math" src="../_images/math/b5e850feb16eb83bd01af5524126befff31f202b.png" alt="\Sigma_t"/> is the total cross section, in the UFS method we produce</p>
+<div class="math">
+<p><img src="../_images/math/726296a60ed94af0d0692814ccdacc6339e0ced2.png" alt="m_{UFS} = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t} \frac{v_i}{s_i}"/></p>
+</div><p>fission sites at each collision where <img class="math" src="../_images/math/85ffd98b4eaea58a8db38fd0047e3a1d7c5661a0.png" alt="v_i"/> is the fraction of the total
+volume occupied by cell <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> and <img class="math" src="../_images/math/d3b63c17213f84d730e0de1f8c08597f7a648e37.png" alt="s_i"/> is the fraction of the fission
+source contained in cell <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>. To ensure that no bias is introduced, the
+weight of each fission site stored in the fission bank is <img class="math" src="../_images/math/5aac3b66c0da4612a56b68682465c9ed801b6276.png" alt="s_i/v_i"/> rather
+than unity. By ensuring that the expected number of fission sites in each mesh
+cell is constant, the collision density across all cells, and hence the variance
+of tallies, is more uniform than it would be otherwise.</p>
 <table class="docutils citation" frame="void" id="lieberoth" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
@@ -152,6 +179,14 @@ Source Convergence in Monte Carlo Criticality Calculations,&#8221;
 Reactor Physics</em>, Saratoga Springs, New York (2009).</td></tr>
 </tbody>
 </table>
+<table class="docutils citation" frame="void" id="sutton" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[Sutton]</a></td><td>Daniel J. Kelly, Thomas M. Sutton, and Stephen C. Wilson, &#8220;MC21
+Analysis of the Nuclear Energy Agency Monte Carlo Performance Benchmark
+Problem,&#8221; <em>Proc. PHYSOR 2012</em>, Knoxville, Tennessee, Apr. 15&#8211;20 (2012).</td></tr>
+</tbody>
+</table>
 <table class="docutils citation" frame="void" id="ueki" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
@@ -159,7 +194,6 @@ Reactor Physics</em>, Saratoga Springs, New York (2009).</td></tr>
 Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (2008).</td></tr>
 </tbody>
 </table>
-</div>
 </div>
 </div>
 
@@ -179,7 +213,7 @@ Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (20
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

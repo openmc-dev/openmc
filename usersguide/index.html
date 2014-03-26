@@ -74,9 +74,10 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#cross-section-configuration">2.3. Cross Section Configuration</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="install.html#using-jeff-cross-sections-from-oecd-nea">2.3.1. Using JEFF Cross Sections from OECD/NEA</a></li>
-<li class="toctree-l3"><a class="reference internal" href="install.html#using-cross-sections-from-mcnp">2.3.2. Using Cross Sections from MCNP</a></li>
-<li class="toctree-l3"><a class="reference internal" href="install.html#using-cross-sections-from-serpent">2.3.3. Using Cross Sections from Serpent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#using-endf-b-vii-1-cross-sections-from-nndc">2.3.1. Using ENDF/B-VII.1 Cross Sections from NNDC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#using-jeff-cross-sections-from-oecd-nea">2.3.2. Using JEFF Cross Sections from OECD/NEA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#using-cross-sections-from-mcnp">2.3.3. Using Cross Sections from MCNP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#using-cross-sections-from-serpent">2.3.4. Using Cross Sections from Serpent</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#running-openmc">2.4. Running OpenMC</a><ul>
@@ -104,12 +105,13 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l3"><a class="reference internal" href="input.html#seed-element">3.2.13. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.2.14. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.2.15. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#threads-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#track-element">3.2.19. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.20. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.21. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#source-point-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#threads-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.19. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#track-element">3.2.20. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.21. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.22. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="input.html#geometry-specification-geometry-xml">3.3. Geometry Specification &#8211; geometry.xml</a><ul>
@@ -167,23 +169,23 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="processing.html#particle-track-visualization">4.3. Particle Track Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#source-site-processing">4.4. Source Site Processing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshoot.html">5. Troubleshooting</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-compilation">5.1. Problems with Compilation</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#undefined-reference-to-vtab">5.1.1. undefined reference to `_vtab$...</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#fatal-error-wrong-module-version-4-expected-9-for-file-xml-data-cmfd-t-mod-opened-at-1">5.1.2. Fatal Error: Wrong module version &#8216;4&#8217; (expected &#8216;9&#8217;) for file &#8216;xml_data_cmfd_t.mod&#8217; opened at (1)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#fatal-error-file-xml-data-cmfd-t-mod-opened-at-1-is-not-a-gfortran-module-file">5.1.3. Fatal Error: File &#8216;xml_data_cmfd_t.mod&#8217; opened at (1) is not a GFORTRAN module file</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#gfortran-unrecognized-option-cpp">5.1.4. gfortran: unrecognized option &#8216;-cpp&#8217;</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#f951-error-unrecognized-command-line-option-fbacktrace">5.1.5. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-ifort-command-not-found">5.1.6. make[1]: ifort: Command not found</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-pgf90-command-not-found">5.1.7. make[1]: pgf90: Command not found</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#gfortran-unrecognized-option-cpp">5.1.2. gfortran: unrecognized option &#8216;-cpp&#8217;</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#f951-error-unrecognized-command-line-option-fbacktrace">5.1.3. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-ifort-command-not-found">5.1.4. make[1]: ifort: Command not found</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-pgf90-command-not-found">5.1.5. make[1]: pgf90: Command not found</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-simulations">5.2. Problems with Simulations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#segmentation-fault">5.2.1. Segmentation Fault</a></li>
 <li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#error-no-cross-sections-xml-file-was-specified-in-settings-xml-or-in-the-cross-sections-environment-variable">5.2.2. ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#geometry-debugging">5.2.3. Geometry Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#error-invalid-usage-of-l-i-in-ace-data-consider-using-more-recent-data-set">5.2.3. ERROR: Invalid usage of L(I) in ACE data; Consider using more recent data set.</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#geometry-debugging">5.2.4. Geometry Debugging</a></li>
 </ul>
 </li>
 </ul>
@@ -208,7 +210,7 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

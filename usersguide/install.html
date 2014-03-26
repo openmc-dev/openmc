@@ -117,7 +117,7 @@ to use <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</
 ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
             --enable-fortran2003 --enable-parallel</pre>
 </div>
-<p>You may omit &#8216;&#8211;enable-parallel&#8217; if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
+<p>You may omit <tt class="docutils literal"><span class="pre">--enable-parallel</span></tt> if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> for CMFD acceleration</p>
 <p>To enable CMFD acceleration, you will need to have <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> (3.4.2 or higher)
@@ -130,7 +130,7 @@ configuring <a class="reference external" href="http://www.mcs.anl.gov/petsc/">P
             --with-fortran-datatypes</pre>
 </div>
 <p>The BLAS/LAPACK library is not required to be downloaded and can be linked
-explicitly (e.g., Intel MLK library).</p>
+explicitly (e.g., Intel MKL library).</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://git-scm.com">git</a> version control software for obtaining source code</p>
 </li>
@@ -205,7 +205,13 @@ sudo make install
 </pre></div>
 </div>
 <p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt> and install it (by default in
-/usr/local/bin).</p>
+/usr/local/bin). If you do not have administrative privileges, you can install
+OpenMC locally by replacing the last command with:</p>
+<div class="highlight-sh"><div class="highlight"><pre>make install -e <span class="nv">prefix</span><span class="o">=</span><span class="nv">$HOME</span>/.local
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">prefix</span></tt> variable can be changed to any path for which you have
+write-access.</p>
 </div>
 <div class="section" id="compiling-on-windows">
 <h3>2.2.5. Compiling on Windows<a class="headerlink" href="#compiling-on-windows" title="Permalink to this headline">¶</a></h3>
@@ -267,11 +273,25 @@ make
 <h2>2.3. Cross Section Configuration<a class="headerlink" href="#cross-section-configuration" title="Permalink to this headline">¶</a></h2>
 <p>In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY, such as that distributed with
-<a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>. The TALYS-based evaluated nuclear data library, <a class="reference external" href="ftp://ftp.nrg.eu/pub/www/talys/tendl2012/tendl2012.html">TENDL</a>, is
+can use nuclear data that was processed with <a class="reference external" href="http://t2.lanl.gov/nis/codes.shtml">NJOY</a>, such as that distributed
+with <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>. Several sources provide free processed ACE data as
+described below. The TALYS-based evaluated nuclear data library, <a class="reference external" href="ftp://ftp.nrg.eu/pub/www/talys/tendl2012/tendl2012.html">TENDL</a>, is also
 openly available in ACE format.</p>
+<div class="section" id="using-endf-b-vii-1-cross-sections-from-nndc">
+<h3>2.3.1. Using ENDF/B-VII.1 Cross Sections from NNDC<a class="headerlink" href="#using-endf-b-vii-1-cross-sections-from-nndc" title="Permalink to this headline">¶</a></h3>
+<p>The <a class="reference external" href="http://www.nndc.bnl.gov/endf/b7.1/acefiles.html">NNDC</a> provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
+sublibraries at four temperatures processed using <a class="reference external" href="http://t2.lanl.gov/nis/codes.shtml">NJOY</a>. To use this data with
+OpenMC, a script is provided with OpenMC that will automatically download,
+extract, and set up a confiuration file:</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>openmc/data
+python get_nndc_data.py
+</pre></div>
+</div>
+<p>At this point, you should set the <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable
+to the absolute path of the file <tt class="docutils literal"><span class="pre">openmc/data/nndc/cross_sections.xml</span></tt>.</p>
+</div>
 <div class="section" id="using-jeff-cross-sections-from-oecd-nea">
-<h3>2.3.1. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.2. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
 <p>The <a class="reference external" href="http://www.oecd-nea.org">NEA</a> provides processed ACE data from the <a class="reference external" href="http://www.oecd-nea.org/dbdata/jeff/">JEFF</a> nuclear library upon
 request. A DVD of the data can be requested <a class="reference external" href="http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html">here</a>. To use this data with OpenMC,
 the following steps must be taken:</p>
@@ -295,25 +315,25 @@ actual ACE files.</p>
 within the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file to lower-case.</p>
 </li>
 <li><p class="first">Either set the <a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the
-<span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable to the absolute path of the
+<span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable to the absolute path of the
 <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file.</p>
 </li>
 </ol>
 </div>
 <div class="section" id="using-cross-sections-from-mcnp">
-<h3>2.3.2. Using Cross Sections from MCNP<a class="headerlink" href="#using-cross-sections-from-mcnp" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.3. Using Cross Sections from MCNP<a class="headerlink" href="#using-cross-sections-from-mcnp" title="Permalink to this headline">¶</a></h3>
 <p>To use cross sections distributed with MCNP, change the &lt;directory&gt; element in
 the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file in the root directory of the OpenMC distribution
 to the location of the MCNP cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
+<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
 environment variable to the absolute path of the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file.</p>
 </div>
 <div class="section" id="using-cross-sections-from-serpent">
-<h3>2.3.3. Using Cross Sections from Serpent<a class="headerlink" href="#using-cross-sections-from-serpent" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.4. Using Cross Sections from Serpent<a class="headerlink" href="#using-cross-sections-from-serpent" title="Permalink to this headline">¶</a></h3>
 <p>To use cross sections distributed with Serpent, change the &lt;directory&gt; element
 in the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></tt> file in the root directory of the OpenMC
 distribution to the location of the Serpent cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
+<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
 environment variable to the absolute path of the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></tt>
 file.</p>
 </div>
@@ -408,7 +428,7 @@ schemas.xml file in your own OpenMC source directory.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

@@ -590,7 +590,7 @@ outgoing angle is</p>
 <p><span class="eqno">(50)</span><img src="../_images/math/9375035003057c0d471bcf75f7ebc69ee5d489b0.png" alt="\mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right )."/></p>
 </div></div>
 <div class="section" id="ace-law-61-correlated-energy-and-angle-distribution">
-<h4>5.7.2.8. ACE Law 61 - Correlated Energy and Angle Distribution<a class="headerlink" href="#ace-law-61-correlated-energy-and-angle-distribution" title="Permalink to this headline">¶</a></h4>
+<span id="ace-law-61"></span><h4>5.7.2.8. ACE Law 61 - Correlated Energy and Angle Distribution<a class="headerlink" href="#ace-law-61-correlated-energy-and-angle-distribution" title="Permalink to this headline">¶</a></h4>
 <p>This law is very similar to ACE Law 44 in the sense that the outgoing angle of
 the neutron is correlated to the outgoing energy and is not sampled from a
 separate distribution. In this case though, rather than being determined from an
@@ -981,18 +981,22 @@ cosine is</p>
 </div></div>
 <div class="section" id="outgoing-energy-and-angle-for-inelastic-scattering">
 <h3>5.10.4. Outgoing Energy and Angle for Inelastic Scattering<a class="headerlink" href="#outgoing-energy-and-angle-for-inelastic-scattering" title="Permalink to this headline">¶</a></h3>
-<p>On each S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) table, there is a correlated angle-energy secondary distribution
-for neutron thermal inelastic scattering. While the documentation for the ACE
-format implies that there are a series of equiprobable outgoing energies, the
-outgoing energies may have non-uniform probability distribution. In particular,
-if the thermal data were processed with <img class="math" src="../_images/math/13cffe9eab467ebc7be1aed494e60a6af38b9cbb.png" alt="iwt = 0"/> in NJOY, then the first
-and last outgoing energies have a relative probability of 1, the second and
-second to last energies have a relative probability of 4, and all other energies
-have a relative probability of 10. The procedure to determine the outgoing
-energy and angle is as such. First, the interpolation factor is determined from
-equation <a href="#equation-sab-interpolation-factor">(85)</a>. Then, an outgoing energy bin is sampled
-either from a uniform distribution or from the aforementioned skewed
-distribution. The outgoing energy is then interpolated between values
+<p>Each S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) table provides a correlated angle-energy secondary distribution for
+neutron thermal inelastic scattering.  There are three representations used
+in the ACE thermal scattering data: equiprobable discrete outgoing
+energies, non-uniform yet still discrete outgoing energies, and continuous
+outgoing energies with corresponding probability and cumulative distribution
+functions provided in tabular format.  These three representations all
+represent the angular distribution in a common format, using a series of
+discrete equiprobable outgoing cosines.</p>
+<div class="section" id="equi-probable-outgoing-energies">
+<h4>5.10.4.1. Equi-Probable Outgoing Energies<a class="headerlink" href="#equi-probable-outgoing-energies" title="Permalink to this headline">¶</a></h4>
+<p>If the thermal data was processed with <img class="math" src="../_images/math/0e4dbd41ad8ab7a2650a4194ff59939e6d4f8abf.png" alt="iwt = 1"/> in NJOY, then the
+outgoing energy spectra is represented in the ACE data as a set of discrete and
+equiprobable outgoing energies.  The procedure to determine the outgoing energy
+and angle is as such. First, the interpolation factor is determined from
+equation <a href="#equation-sab-interpolation-factor">(85)</a>.  Then, an outgoing energy bin is
+sampled from a uniform distribution and then interpolated between values
 corresponding to neighboring incoming energies:</p>
 <div class="math" id="equation-inelastic-energy">
 <p><span class="eqno">(86)</span><img src="../_images/math/3f8f6da4aab67655ddac5d3b3027e44a2c23436f.png" alt="E = E_{i,j} + f (E_{i+1,j} - E_{i,j})"/></p>
@@ -1004,6 +1008,36 @@ uniformly and then the final cosine is interpolated on the incoming energy grid:
 <p><span class="eqno">(87)</span><img src="../_images/math/76f3fc4985d28bccf0b89a0d5773aab1497bf9b6.png" alt="\mu = \mu_{i,j,k} + f (\mu_{i+1,j,k} - \mu_{i,j,k})"/></p>
 </div><p>where <img class="math" src="../_images/math/2d7f45fa99693dbe2948e840fb6aaf916beb0c27.png" alt="\mu_{i,j,k}"/> is the k-th outgoing cosine corresponding to the j-th
 outgoing energy and the i-th incoming energy.</p>
+</div>
+<div class="section" id="skewed-equi-probable-outgoing-energies">
+<h4>5.10.4.2. Skewed Equi-Probable Outgoing Energies<a class="headerlink" href="#skewed-equi-probable-outgoing-energies" title="Permalink to this headline">¶</a></h4>
+<p>If the thermal data was processed with <img class="math" src="../_images/math/965401b23bcb1aa9e04b4500bcae95f290503c2a.png" alt="iwt=0"/> in NJOY, then the
+outgoing energy spectra is represented in the ACE data according to the
+following: the first and last outgoing energies have a relative probability of
+1, the second and second-to-last energies have a relative probability of 4, and
+all other energies have a relative probability of 10.  The procedure to
+determine the outgoing energy and angle is similar to the method discussed
+above, except that the sampled probability distribution is now skewed
+accordingly.</p>
+</div>
+<div class="section" id="continuous-outgoing-energies">
+<h4>5.10.4.3. Continuous Outgoing Energies<a class="headerlink" href="#continuous-outgoing-energies" title="Permalink to this headline">¶</a></h4>
+<p>If the thermal data was processed with <img class="math" src="../_images/math/ec4a657166917824fa53265e75eb1beaedf3450b.png" alt="iwt=2"/> in NJOY, then the
+outgoing energy spectra is represented by a continuous outgoing energy spectra
+in tabular form with linear-linear interpolation.  The sampling of the outgoing
+energy portion of this format is very similar to <a class="reference internal" href="#ace-law-61"><em>ACE Law 61</em></a>,
+but the sampling of the correlated angle is performed as it was in the other
+two representations discussed in this sub-section.  In the Law 61 algorithm,
+we found an interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>, statistically sampled an incoming
+energy bin <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> based on
+the tabulated cumulative distribution function. Once the outgoing energy has
+been determined with equation <a href="#equation-ace-law-4-energy">(38)</a>, we then need to decide
+which angular distribution data to use.  Like the linear-linear interpolation
+case in Law 61, the angular distribution closest to the sampled value of the
+cumulative distribution function for the outgoing energy is utilized.  The
+actual algorithm utilized to sample the outgoing angle is shown in equation
+<a href="#equation-inelastic-angle">(87)</a>.</p>
+</div>
 </div>
 </div>
 <div class="section" id="unresolved-resonance-region-probability-tables">
@@ -1179,7 +1213,7 @@ book can be obtained for free from the <a class="reference external" href="http:
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

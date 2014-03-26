@@ -55,11 +55,11 @@
   <div class="section" id="data-processing-and-visualization">
 <span id="usersguide-processing"></span><h1>4. Data Processing and Visualization<a class="headerlink" href="#data-processing-and-visualization" title="Permalink to this headline">¶</a></h1>
 <p>This section is intended to explain in detail the recommended procedures for
-carrying out common tasks with OpenMC. While several utilities of varying
-complexity are provided to help automate the process, in many cases it will be
-extremely beneficial to do some coding in Python to quickly obtain results.  In
-these cases, and for many of the provided utilities, it is necessary for your
-Python installation to contain:</p>
+carrying out common post-processing tasks with OpenMC. While several utilities
+of varying complexity are provided to help automate the process, in many cases
+it will be extremely beneficial to do some coding in Python to quickly obtain
+results. In these cases, and for many of the provided utilities, it is necessary
+for your Python installation to contain:</p>
 <ul class="simple">
 <li><a class="footnote-reference" href="#id8" id="id1">[1]</a> <a class="reference external" href="http://www.numpy.org/">Numpy</a></li>
 <li><a class="footnote-reference" href="#id8" id="id2">[1]</a> <a class="reference external" href="http://www.scipy.org/">Scipy</a></li>
@@ -103,6 +103,50 @@ running OpenMC with the -plot or -p command-line option (See
 <div class="section" id="plotting-in-2d">
 <h3>4.1.1. Plotting in 2D<a class="headerlink" href="#plotting-in-2d" title="Permalink to this headline">¶</a></h3>
 <img alt="../_images/atr.png" src="../_images/atr.png" style="height: 200px;" />
+<p>See below for a simple example of a plots xml file that demonstrates the
+capabilities of 2D slice plots. Here we assume that there is a <tt class="docutils literal"><span class="pre">geometry.xml</span></tt>
+file containing 7 cells.</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<span class="nt">&lt;plots&gt;</span>
+
+  <span class="nt">&lt;plot</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">type=</span><span class="s">&quot;slice&quot;</span> <span class="na">color=</span><span class="s">&quot;cell&quot;</span> <span class="na">basis=</span><span class="s">&quot;xy&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;filename&gt;</span> myplot <span class="nt">&lt;/filename&gt;</span>
+      <span class="nt">&lt;origin&gt;</span> 0 0 <span class="nt">&lt;/origin&gt;</span>
+      <span class="nt">&lt;width&gt;</span> 10 10 <span class="nt">&lt;/width&gt;</span>
+      <span class="nt">&lt;pixels&gt;</span> 2000 2000 <span class="nt">&lt;/pixels&gt;</span>
+      <span class="nt">&lt;background&gt;</span> 0 0 0 <span class="nt">&lt;/background&gt;</span>
+      <span class="nt">&lt;col_spec</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">rgb=</span><span class="s">&quot;198 226 255&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;col_spec</span> <span class="na">id=</span><span class="s">&quot;2&quot;</span> <span class="na">rgb=</span><span class="s">&quot;255 218 185&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;col_spec</span> <span class="na">id=</span><span class="s">&quot;3&quot;</span> <span class="na">rgb=</span><span class="s">&quot;255 255 255&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;col_spec</span> <span class="na">id=</span><span class="s">&quot;4&quot;</span> <span class="na">rgb=</span><span class="s">&quot;101 101 101&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;col_spec</span> <span class="na">id=</span><span class="s">&quot;7&quot;</span> <span class="na">rgb=</span><span class="s">&quot;123 123 231&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;mask</span> <span class="na">background=</span><span class="s">&quot;255 255 255&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;components&gt;</span> 1 3 4 5 6 <span class="nt">&lt;/components&gt;</span>
+      <span class="nt">&lt;/mask&gt;</span>
+  <span class="nt">&lt;/plot&gt;</span>
+
+<span class="nt">&lt;/plots&gt;</span>
+</pre></div>
+</div>
+<p>In this example, OpenMC will produce a plot named <tt class="docutils literal"><span class="pre">myplot.ppm</span></tt> when run in
+plotting mode. The picture will be on the xy-plane, depicting the rectangle
+between points (-5,-5) and (5,5) with 2000 pixels along each dimension. The
+color of each pixel is determined by placing a particle at the center of that
+pixel and using OpenMC&#8217;s internal <tt class="docutils literal"><span class="pre">find_cell</span></tt> routine (the same one used for
+particle tracking during simulation) to determine the cell and material at that
+location. In this example, pixels are 10/2000=0.005 cm wide, so points will be
+at (-4.9975,-4.9975), (-4.9950,-4.9975), (-4.9925,-4.9975), etc. This is pointed
+out to demonstrate that this plot may miss any features smaller than 0.005 cm,
+since they could exist between pixel centers. More pixels can be used to resolve
+finer features, but could result in larger files.</p>
+<p>The <tt class="docutils literal"><span class="pre">background</span></tt>, <tt class="docutils literal"><span class="pre">col_spec</span></tt>, and <tt class="docutils literal"><span class="pre">mask</span></tt> elements define how to set pixel
+colors based on the cell ids at each pixel center. In this example, RGB colors
+are specified for cells 1,2,3,4, and 7, a random color will be assigned to cells
+5 and 6, and a black background color (<tt class="docutils literal"><span class="pre">rgb=&quot;0</span> <span class="pre">0</span> <span class="pre">0&quot;</span></tt>) will be applied to
+locations where no cell is defined. However, the <tt class="docutils literal"><span class="pre">mask</span></tt> element here says that
+only cells 1,3,4,5, and 6 should be displayed, with other cells taking a white
+color (<tt class="docutils literal"><span class="pre">rgb=&quot;255</span> <span class="pre">255</span> <span class="pre">255&quot;</span></tt>), which overrides the <tt class="docutils literal"><span class="pre">col_spec</span></tt> for cell 2 and
+the random color assigned to cell 7.</p>
 <p>After running OpenMC to obtain PPM files, images should be saved to another
 format before using them elsewhere. This cuts down the size of the file by
 orders of magnitude.  Most image viewers and editors that can view PPM images
@@ -111,17 +155,41 @@ convert to another format on the command line.  This is easily accomplished with
 the <tt class="docutils literal"><span class="pre">convert</span></tt> command available on most linux distributions as part of the
 <a class="reference external" href="http://www.imagemagick.org/script/convert.php">ImageMagick</a> package. (On
 Ubuntu: <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">imagemagick</span></tt>).  Images are then converted like:</p>
-<div class="highlight-sh"><div class="highlight"><pre>convert plot.ppm plot.png
+<div class="highlight-sh"><div class="highlight"><pre>convert myplot.ppm myplot.png
 </pre></div>
 </div>
 </div>
 <div class="section" id="plotting-in-3d">
 <h3>4.1.2. Plotting in 3D<a class="headerlink" href="#plotting-in-3d" title="Permalink to this headline">¶</a></h3>
 <img alt="../_images/3dgeomplot.png" src="../_images/3dgeomplot.png" style="height: 200px;" />
+<p>See below for a simple example of a plots xml file that demonstrates the
+capabilities of 3D voxel plots.</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<span class="nt">&lt;plots&gt;</span>
+
+  <span class="nt">&lt;plot</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">type=</span><span class="s">&quot;voxel&quot;</span> <span class="na">color=</span><span class="s">&quot;mat&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;filename&gt;</span> myplot <span class="nt">&lt;/filename&gt;</span>
+      <span class="nt">&lt;origin&gt;</span> 0 0 0 <span class="nt">&lt;/origin&gt;</span>
+      <span class="nt">&lt;width&gt;</span> 10 10 10 <span class="nt">&lt;/width&gt;</span>
+      <span class="nt">&lt;pixels&gt;</span> 500 500 500 <span class="nt">&lt;/pixels&gt;</span>
+  <span class="nt">&lt;/plot&gt;</span>
+
+<span class="nt">&lt;/plots&gt;</span>
+</pre></div>
+</div>
+<p>Voxel plots are built the same way 2D slice plots are, by determining the cell
+or material id of a particle at the center of each voxel. In this example, the
+space covered is the cube between the points (-5,-5,-5) and (5,5,5), with voxel
+centers 10/500 = 0.02 cm apart. The binary VOXEL files that are produced do not
+specify any color - instead containing only material or cell ids (material id
+in this example) - and thus the <tt class="docutils literal"><span class="pre">background</span></tt>, <tt class="docutils literal"><span class="pre">col_spec</span></tt>, and <tt class="docutils literal"><span class="pre">mask</span></tt>
+elements are not used. If no cell is found at a voxel center, an id of -1 is
+stored.</p>
 <p>The binary VOXEL files output by OpenMC can not be viewed directly by any
 existing viewers. In order to view them, they must be converted into a standard
-mesh format that can be viewed in ParaView, Visit, etc. The provided utility
-voxel.py accomplishes this for SILO:</p>
+mesh format that can be viewed in ParaView, Visit, etc. This typically will
+compress the size of the file significantly. The provided utility voxel.py
+accomplishes this for SILO:</p>
 <div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/voxel.py myplot.voxel -o output.silo
 </pre></div>
 </div>
@@ -140,15 +208,20 @@ easily obtained with <tt class="docutils literal"><span class="pre">sudo</span> 
 </ul>
 <p>Users can process the binary into any other format if desired by following the
 example of voxel.py.  For the binary file structure, see <a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><em>Voxel Plot Binary File Specifications</em></a>.</p>
+<p>Once processed into a standard 3D file format, colors and masks can be defined
+using the stored id numbers to better explore the geometry. The process for
+doing this will depend on the 3D viewer, but should be straightforward.</p>
+<img alt="../_images/3dba.png" src="../_images/3dba.png" style="height: 200px;" />
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">3D voxel plotting can be very computer intensive for the viewing
 program (Visit, Paraview, etc.) if the number of voxels is large (&gt;10
 million or so).  Thus if you want an accurate picture that renders
 smoothly, consider using only one voxel in a certain direction. For
-instance, the 3D pin lattice figure above was generated with a
-500x500x1 voxel mesh, which allows for resolution of the cylinders
-without wasting too many voxels on the axial dimension.</p>
+instance, the 3D pin lattice figure at the beginning of this section
+was generated with a 500x500x1 voxel mesh, which allows for resolution
+of the cylinders without wasting too many voxels on the axial
+dimension.</p>
 </div>
 </div>
 </div>
@@ -411,6 +484,51 @@ binary track files in the directory to write a &#8220;track.pvtp&#8221; VTK outp
 The .pvtp file can then be read and plotted by 3d visualization programs such as
 Paraview.</p>
 </div>
+<div class="section" id="source-site-processing">
+<h2>4.4. Source Site Processing<a class="headerlink" href="#source-site-processing" title="Permalink to this headline">¶</a></h2>
+<p>For eigenvalue problems, OpenMC will store information on the fission source
+sites in the statepoint file by default. For each source site, the weight,
+position, sampled direction, and sampled energy are stored. To extract this data
+from a statepoint file, the statepoint.py Python module can be used. Below is an
+example of an interactive ipython session using the statepoint.py Python module:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">statepoint</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">sp</span> <span class="o">=</span> <span class="n">statepoint</span><span class="o">.</span><span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.100.h5&#39;</span><span class="p">)</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">sp</span><span class="o">.</span><span class="n">read_source</span><span class="p">()</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="nb">len</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="mi">1000</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">2.21980946</span>  <span class="o">-</span><span class="mf">8.92686048</span>  <span class="mf">87.93720485</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.932923263566</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">2.21980946</span>  <span class="o">-</span><span class="mf">8.92686048</span>  <span class="mf">87.93720485</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.349240220512</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">31.21542213</span> <span class="o">-</span><span class="mf">30.26762771</span>  <span class="mf">72.10845757</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">3.75843584486</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">31.21542213</span> <span class="o">-</span><span class="mf">30.26762771</span>  <span class="mf">72.10845757</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.80550137267</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>   <span class="mf">0.18805099</span>  <span class="o">-</span><span class="mf">69.13376508</span>  <span class="mf">103.67726838</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.67922461097</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>   <span class="mf">0.18805099</span>  <span class="o">-</span><span class="mf">69.13376508</span>  <span class="mf">103.67726838</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.16304110199</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span> <span class="o">-</span><span class="mf">50.42189115</span>   <span class="o">-</span><span class="mf">9.96571672</span>  <span class="mf">123.34077905</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.710937974074</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span> <span class="o">-</span><span class="mf">32.80427668</span>  <span class="o">-</span><span class="mf">15.49316628</span>  <span class="mf">125.26301151</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.61907104162</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">53.20376026</span>  <span class="o">-</span><span class="mf">15.38643708</span>  <span class="mf">120.58071044</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">3.33962024907</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">53.20376026</span>  <span class="o">-</span><span class="mf">15.38643708</span>  <span class="mf">120.58071044</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.90185680329</span><span class="o">&gt;</span><span class="p">]</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">site</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">weight</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="mf">1.0</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">xyz</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">array</span><span class="p">([</span>  <span class="mf">2.21980946</span><span class="p">,</span>  <span class="o">-</span><span class="mf">8.92686048</span><span class="p">,</span>  <span class="mf">87.93720485</span><span class="p">])</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">uvw</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">array</span><span class="p">([</span> <span class="mf">0.06740523</span><span class="p">,</span>  <span class="mf">0.50612814</span><span class="p">,</span>  <span class="mf">0.85982024</span><span class="p">])</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">E</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="mf">0.93292326356564159</span>
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -429,7 +547,7 @@ Paraview.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

@@ -251,20 +251,32 @@ tally data, this option can significantly improve the parallel efficiency.</p>
 <div class="section" id="output-element">
 <h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> element determines what output files should be written to disk
-during the run. This element has no attributes or sub-elements and should be set
-to a list of strings separated by spaces. Valid options are &#8220;summary&#8221;,
-&#8220;cross-sections&#8221;, and &#8220;tallies&#8221;. For example, if you want the summary and cross
-sections summary file to be written, this element should be given as:</p>
+during the run. The sub-elements are described below, where &#8220;true&#8221; will write
+out the file and &#8220;false&#8221; will not.</p>
 <blockquote>
-<div><div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;output&gt;</span>summary cross_sections<span class="nt">&lt;/output&gt;</span>
-</pre></div>
-</div>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">cross_sections:</th><td class="field-body"><p class="first">Writes out an ASCII summary file of the cross sections that were read in.</p>
+<p><em>Default</em>: false</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">summary:</th><td class="field-body"><p class="first">Writes out an ASCII summary file describing all of the user input files that
+were read in.</p>
+<p><em>Default</em>: false</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">tallies:</th><td class="field-body"><p class="first">Write out an ASCII file of tally results.</p>
+<p class="last"><em>Default</em>: true</p>
+</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The tally results will be written to a binary/HDF5 state point file by
-default.</p>
+<p class="last">The tally results will always be written to a binary/HDF5 state point file.</p>
 </div>
-<p><em>Default</em>: &#8220;tallies&#8221;</p>
 </div></blockquote>
 </div>
 <div class="section" id="output-path-element">
@@ -310,7 +322,9 @@ attributes/sub-elements:</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">file:</th><td class="field-body"><p class="first">If this attribute is given, it indicates that the source is to be read from
-a binary source file whose path is given by the value of this element</p>
+a binary source file whose path is given by the value of this element. Note,
+the number of source sites needs to be the same as the number of particles
+simulated in a fission source generation.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -404,8 +418,10 @@ c E e^{-E/a} dE"/>.</p>
 <h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
-tally results at any batch. This element has the following
-attributes/sub-elements:</p>
+tally results at any batch. The default behavior when using this tag is to
+write out the source bank in the state_point file. This behavior can be
+customized by using the <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> element. This element has the
+following attributes/sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -419,20 +435,59 @@ point file should be written.</p>
 <tr class="field-even field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
 every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing
 batches explicitly.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+<div class="section" id="source-point-element">
+<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element<a class="headerlink" href="#source-point-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> element indicates at what batches the source bank
+should be written. The source bank can be either written out within a state
+point file or separately in a source point file. This element has the following
+attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">A list of integers separated by spaces indicating at what batches a state
+point file should be written. It should be noted that if source_separate
+tag is not set to &#8220;true&#8221;, this list must be a subset of state point batches.</p>
+<p><em>Default</em>: Last batch only</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
+every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing
+batches explicitly. It should be noted that if source_separate tag is not
+set to &#8220;true&#8221;, this value should produce a list of batches that is a subset
+of state point batches.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name" colspan="2">source_separate:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source file will be
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source point file will be
 written. Otherwise, the source sites will be written in the state point
 directly.</p>
 <p><em>Default</em>: false</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">source_write:</th><td class="field-body"><p class="first">If this element is set to &#8220;false&#8221;, source sites are not written
-to the state point file. This can substantially reduce the size of state
-points if large numbers of particles per batch are used.</p>
-<p class="last"><em>Default</em>: true</p>
+to the state point or source point file. This can substantially reduce the
+size of state points if large numbers of particles per batch are used.</p>
+<p><em>Default</em>: true</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">overwrite_latest:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a source point file containing
+the source bank will be written out to a separate file named
+<tt class="docutils literal"><span class="pre">source.binary</span></tt> or <tt class="docutils literal"><span class="pre">source.h5</span></tt> depending on if HDF5 is enabled.
+This file will be overwritten at every single batch so that the latest
+source bank will be available. It should be noted that a user can set both
+this element to &#8220;true&#8221; and specify batches to write a permanent source bank.</p>
+<p class="last"><em>Default</em>: false</p>
 </td>
 </tr>
 </tbody>
@@ -440,7 +495,7 @@ points if large numbers of particles per batch are used.</p>
 </div></blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
 of &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.</p>
@@ -448,14 +503,14 @@ survival biasing, otherwise known as implicit capture or absorption.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="threads-element">
-<span id="trace"></span><h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.</p>
 <blockquote>
 <div><em>Default</em>: None (Determined by environment variable <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">OMP_NUM_THREADS</span></tt>)</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
@@ -463,13 +518,13 @@ integers: the batch number, generation number, and particle number.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="track-element">
-<span id="track"></span><h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
+<span id="track"></span><h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.</p>
 <blockquote>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -498,7 +553,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.22. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -1120,7 +1175,7 @@ the resulting file sizes can be quite large.  Saving the image in
 the PNG format can often times reduce the file size by orders of
 magnitude without any loss of image quality. Likewise,
 high-resolution voxel files produced by OpenMC can be quite large,
-but the equivalent SILO files will by significantly smaller.</p>
+but the equivalent SILO files will be significantly smaller.</p>
 </div>
 <p class="last"><em>Default</em>: &#8220;slice&#8221;</p>
 </td>
@@ -1435,7 +1490,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

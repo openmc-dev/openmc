@@ -200,11 +200,11 @@ dt:hover > a.headerlink {
     visibility: visible;
 }
 
-div.content p.caption {
+div.body p.caption {
     text-align: inherit;
 }
 
-div.content td {
+div.body td {
     text-align: left;
 }
 
@@ -301,7 +301,7 @@ p.admonition-title {
     font-weight: bold;
 }
 
-div.content p.centered {
+div.body p.centered {
     text-align: center;
     margin-top: 25px;
 }
@@ -513,7 +513,7 @@ img.math {
     vertical-align: middle;
 }
 
-div.content div.math p {
+div.body div.math p {
     text-align: center;
 }
 
@@ -526,7 +526,7 @@ span.eqno {
 @media print {
     div.document,
     div.documentwrapper,
-    div.contentwrapper {
+    div.bodywrapper {
         margin: 0 !important;
         width: 100%;
     }

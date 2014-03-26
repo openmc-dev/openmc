@@ -78,7 +78,7 @@ Prerequisites
            ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
                        --enable-fortran2003 --enable-parallel
 
-      You may omit '--enable-parallel' if you want to compile HDF5_ in serial.
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
     * PETSc_ for CMFD acceleration
 
@@ -93,7 +93,7 @@ Prerequisites
                        --with-fortran-datatypes
 
       The BLAS/LAPACK library is not required to be downloaded and can be linked
-      explicitly (e.g., Intel MLK library).
+      explicitly (e.g., Intel MKL library).
 
     * git_ version control software for obtaining source code
 
@@ -189,7 +189,15 @@ the root directory of the source code:
     sudo make install
 
 This will build an executable named ``openmc`` and install it (by default in
-/usr/local/bin).
+/usr/local/bin). If you do not have administrative privileges, you can install
+OpenMC locally by replacing the last command with:
+
+.. code-block:: sh
+
+    make install -e prefix=$HOME/.local
+
+The ``prefix`` variable can be changed to any path for which you have
+write-access.
 
 Compiling on Windows
 --------------------
@@ -264,9 +272,26 @@ Cross Section Configuration
 
 In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY, such as that distributed with
-MCNP_ or Serpent_. The TALYS-based evaluated nuclear data library, TENDL_, is
+can use nuclear data that was processed with NJOY_, such as that distributed
+with MCNP_ or Serpent_. Several sources provide free processed ACE data as
+described below. The TALYS-based evaluated nuclear data library, TENDL_, is also
 openly available in ACE format.
+
+Using ENDF/B-VII.1 Cross Sections from NNDC
+-------------------------------------------
+
+The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
+sublibraries at four temperatures processed using NJOY_. To use this data with
+OpenMC, a script is provided with OpenMC that will automatically download,
+extract, and set up a confiuration file:
+
+.. code-block:: sh
+
+    cd openmc/data
+    python get_nndc_data.py
+
+At this point, you should set the :envvar:`CROSS_SECTIONS` environment variable
+to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -314,6 +339,8 @@ distribution to the location of the Serpent cross sections. Then, either set the
 environment variable to the absolute path of the ``cross_sections_serpent.xml``
 file.
 
+.. _NJOY: http://t2.lanl.gov/nis/codes.shtml
+.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _NEA: http://www.oecd-nea.org
 .. _JEFF: http://www.oecd-nea.org/dbdata/jeff/
 .. _here: http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html

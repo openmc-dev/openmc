@@ -198,19 +198,26 @@ tally data, this option can significantly improve the parallel efficiency.
 --------------------
 
 The ``<output>`` element determines what output files should be written to disk
-during the run. This element has no attributes or sub-elements and should be set
-to a list of strings separated by spaces. Valid options are "summary",
-"cross-sections", and "tallies". For example, if you want the summary and cross
-sections summary file to be written, this element should be given as:
+during the run. The sub-elements are described below, where "true" will write
+out the file and "false" will not.
 
-  .. code-block:: xml
+  :cross_sections:
+    Writes out an ASCII summary file of the cross sections that were read in.
 
-      <output>summary cross_sections</output>
+    *Default*: false
 
-  .. note:: The tally results will be written to a binary/HDF5 state point file by
-            default.
+  :summary: 
+    Writes out an ASCII summary file describing all of the user input files that
+    were read in.
 
-  *Default*: "tallies"
+    *Default*: false
+
+  :tallies:
+    Write out an ASCII file of tally results.
+
+    *Default*: true
+
+  .. note:: The tally results will always be written to a binary/HDF5 state point file.
 
 ``<output_path>`` Element
 -------------------------
@@ -257,7 +264,9 @@ attributes/sub-elements:
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element
+    a binary source file whose path is given by the value of this element. Note,
+    the number of source sites needs to be the same as the number of particles
+    simulated in a fission source generation.
 
     *Default*: None
 
@@ -341,8 +350,10 @@ attributes/sub-elements:
 
 The ``<state_point>`` element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
-tally results at any batch. This element has the following
-attributes/sub-elements:
+tally results at any batch. The default behavior when using this tag is to 
+write out the source bank in the state_point file. This behavior can be 
+customized by using the ``<source_point>`` element. This element has the
+following attributes/sub-elements:
 
   :batches:
     A list of integers separated by spaces indicating at what batches a state
@@ -357,18 +368,53 @@ attributes/sub-elements:
 
     *Default*: None
 
+``<source_point>`` Element
+--------------------------
+
+The ``<source_point>`` element indicates at what batches the source bank 
+should be written. The source bank can be either written out within a state  
+point file or separately in a source point file. This element has the following
+attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written. It should be noted that if source_separate
+    tag is not set to "true", this list must be a subset of state point batches.
+
+    *Default*: Last batch only
+
+  :interval:
+    A single integer :math:`n` indicating that a state point should be written
+    every :math:`n` batches. This option can be given in lieu of listing
+    batches explicitly. It should be noted that if source_separate tag is not
+    set to "true", this value should produce a list of batches that is a subset
+    of state point batches.
+
+    *Default*: None
+
   :source_separate:
-    If this element is set to "true", a separate binary source file will be
+    If this element is set to "true", a separate binary source point file will be
     written. Otherwise, the source sites will be written in the state point
     directly.
 
     *Default*: false
 
-  :source_write: If this element is set to "false", source sites are not written
-    to the state point file. This can substantially reduce the size of state
-    points if large numbers of particles per batch are used.
+  :source_write:
+    If this element is set to "false", source sites are not written
+    to the state point or source point file. This can substantially reduce the 
+    size of state points if large numbers of particles per batch are used.
 
     *Default*: true
+
+  :overwrite_latest:
+    If this element is set to "true", a source point file containing
+    the source bank will be written out to a separate file named 
+    ``source.binary`` or ``source.h5`` depending on if HDF5 is enabled. 
+    This file will be overwritten at every single batch so that the latest
+    source bank will be available. It should be noted that a user can set both 
+    this element to "true" and specify batches to write a permanent source bank.
+
+    *Default*: false
 
 ``<survival_biasing>`` Element
 ------------------------------
@@ -1045,7 +1091,7 @@ sub-elements:
               the PNG format can often times reduce the file size by orders of
               magnitude without any loss of image quality. Likewise,
               high-resolution voxel files produced by OpenMC can be quite large,
-              but the equivalent SILO files will by significantly smaller.
+              but the equivalent SILO files will be significantly smaller.
 
     *Default*: "slice"
 

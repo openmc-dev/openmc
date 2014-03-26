@@ -65,41 +65,24 @@ you are using a compiler that does not support type-bound procedures from
 Fortran 2003. This affects any version of gfortran prior to 4.6. Downloading and
 installing the latest <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a> compiler should resolve this problem.</p>
 </div>
-<div class="section" id="fatal-error-wrong-module-version-4-expected-9-for-file-xml-data-cmfd-t-mod-opened-at-1">
-<h3>5.1.2. Fatal Error: Wrong module version &#8216;4&#8217; (expected &#8216;9&#8217;) for file &#8216;xml_data_cmfd_t.mod&#8217; opened at (1)<a class="headerlink" href="#fatal-error-wrong-module-version-4-expected-9-for-file-xml-data-cmfd-t-mod-opened-at-1" title="Permalink to this headline">¶</a></h3>
-<p>The <cite>.mod</cite> modules files that are created by gfortran are versioned and
-sometimes are usually not backwards compatible. If gfortran is upgraded and the
-modules files for xml-fortran source files are not deleted, this error may
-occur. To fix this, clear out all module and object files with <strong class="program">make
-distclean</strong> and then recompiling.</p>
-</div>
-<div class="section" id="fatal-error-file-xml-data-cmfd-t-mod-opened-at-1-is-not-a-gfortran-module-file">
-<h3>5.1.3. Fatal Error: File &#8216;xml_data_cmfd_t.mod&#8217; opened at (1) is not a GFORTRAN module file<a class="headerlink" href="#fatal-error-file-xml-data-cmfd-t-mod-opened-at-1-is-not-a-gfortran-module-file" title="Permalink to this headline">¶</a></h3>
-<p>When OpenMC compiles, the first thing it needs to do is compile source in the
-xml-fortran subdirectory. If you compiled everything with a compiler other than
-gfortran, performed a <strong class="program">make clean</strong>, and then tried to <strong class="program">make</strong>
-with gfortran, the xml-fortran modules would have been compiled with a different
-compiler. To fix this, try clearing out all module and object files with
-<strong class="program">make distclean</strong> and then recompiling.</p>
-</div>
 <div class="section" id="gfortran-unrecognized-option-cpp">
-<h3>5.1.4. gfortran: unrecognized option &#8216;-cpp&#8217;<a class="headerlink" href="#gfortran-unrecognized-option-cpp" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.2. gfortran: unrecognized option &#8216;-cpp&#8217;<a class="headerlink" href="#gfortran-unrecognized-option-cpp" title="Permalink to this headline">¶</a></h3>
 <p>You are probably using a version of the gfortran compiler that is too
 old. Download and install the latest version of <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>.</p>
 </div>
 <div class="section" id="f951-error-unrecognized-command-line-option-fbacktrace">
-<h3>5.1.5. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;<a class="headerlink" href="#f951-error-unrecognized-command-line-option-fbacktrace" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.3. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;<a class="headerlink" href="#f951-error-unrecognized-command-line-option-fbacktrace" title="Permalink to this headline">¶</a></h3>
 <p>You are probably using a version of the gfortran compiler that is too
 old. Download and install the latest version of <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>.</p>
 </div>
 <div class="section" id="make-1-ifort-command-not-found">
-<h3>5.1.6. make[1]: ifort: Command not found<a class="headerlink" href="#make-1-ifort-command-not-found" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.4. make[1]: ifort: Command not found<a class="headerlink" href="#make-1-ifort-command-not-found" title="Permalink to this headline">¶</a></h3>
 <p>You tried compiling with the Intel Fortran compiler and it was not found on your
 <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the Intel compiler installed, make sure the shell
 can locate it (this can be tested with <strong class="program">which ifort</strong>).</p>
 </div>
 <div class="section" id="make-1-pgf90-command-not-found">
-<h3>5.1.7. make[1]: pgf90: Command not found<a class="headerlink" href="#make-1-pgf90-command-not-found" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.5. make[1]: pgf90: Command not found<a class="headerlink" href="#make-1-pgf90-command-not-found" title="Permalink to this headline">¶</a></h3>
 <p>You tried compiling with the PGI Fortran compiler and it was not found on your
 <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the PGI compiler installed, make sure the shell can
 locate it (this can be tested with <strong class="program">which pgf90</strong>).</p>
@@ -132,10 +115,17 @@ with the <span class="target" id="index-2"></span><tt class="xref std std-envvar
 a line in your <tt class="docutils literal"><span class="pre">.profile</span></tt> or <tt class="docutils literal"><span class="pre">.bash_profile</span></tt> setting the
 <span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable.</p>
 </div>
+<div class="section" id="error-invalid-usage-of-l-i-in-ace-data-consider-using-more-recent-data-set">
+<h3>5.2.3. ERROR: Invalid usage of L(I) in ACE data; Consider using more recent data set.<a class="headerlink" href="#error-invalid-usage-of-l-i-in-ace-data-consider-using-more-recent-data-set" title="Permalink to this headline">¶</a></h3>
+<p>The cross-sections requested in <tt class="docutils literal"><span class="pre">materials.xml</span></tt> do not conform to the current
+standard format.  This typically happens with fissionable nuclides in a <tt class="docutils literal"><span class="pre">.6*c</span></tt>
+library as distributed with MCNP.  Please try a newer library such as any from
+the <tt class="docutils literal"><span class="pre">.7*c</span></tt> set.</p>
+</div>
 <div class="section" id="geometry-debugging">
-<h3>5.2.3. Geometry Debugging<a class="headerlink" href="#geometry-debugging" title="Permalink to this headline">¶</a></h3>
+<h3>5.2.4. Geometry Debugging<a class="headerlink" href="#geometry-debugging" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="overlapping-cells">
-<h4>5.2.3.1. Overlapping Cells<a class="headerlink" href="#overlapping-cells" title="Permalink to this headline">¶</a></h4>
+<h4>5.2.4.1. Overlapping Cells<a class="headerlink" href="#overlapping-cells" title="Permalink to this headline">¶</a></h4>
 <p>For fast run times, normal simulations do not check if the geometry is
 incorrectly defined to have overlapping cells.  This can lead to incorrect
 results that may or may not be obvious when there are errors in the geometry
@@ -160,7 +150,7 @@ cell, and then adjust the number of starting particles or starting source
 distributions accordingly to achieve good coverage.</p>
 </div>
 <div class="section" id="error-after-particle-crossed-surface-it-could-not-be-located-in-any-cell-and-it-did-not-leak">
-<h4>5.2.3.2. ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.<a class="headerlink" href="#error-after-particle-crossed-surface-it-could-not-be-located-in-any-cell-and-it-did-not-leak" title="Permalink to this headline">¶</a></h4>
+<h4>5.2.4.2. ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.<a class="headerlink" href="#error-after-particle-crossed-surface-it-could-not-be-located-in-any-cell-and-it-did-not-leak" title="Permalink to this headline">¶</a></h4>
 <p>This error can arise either if a problem is specified with no boundary
 conditions or if there is an error in the geometry itself. First check to ensure
 that all of the outer surfaces of your geometry have been given vacuum or
@@ -202,7 +192,7 @@ created when particles are lost with this error.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

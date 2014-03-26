@@ -264,7 +264,9 @@ attributes/sub-elements:
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element
+    a binary source file whose path is given by the value of this element. Note,
+    the number of source sites needs to be the same as the number of particles
+    simulated in a fission source generation.
 
     *Default*: None
 
@@ -411,6 +413,8 @@ attributes/sub-elements:
     This file will be overwritten at every single batch so that the latest
     source bank will be available. It should be noted that a user can set both 
     this element to "true" and specify batches to write a permanent source bank.
+
+    *Default*: false
 
 ``<survival_biasing>`` Element
 ------------------------------

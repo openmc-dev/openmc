@@ -362,7 +362,7 @@ module global
   logical :: cmfd_tally_on       = .true. 
 
   ! CMFD display info
-  character(len=25) :: cmfd_display
+  character(len=25) :: cmfd_display = 'balance'
 
   ! Information about state points to be written
   integer :: n_state_points = 0

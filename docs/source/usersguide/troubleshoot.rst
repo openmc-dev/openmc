@@ -19,25 +19,6 @@ you are using a compiler that does not support type-bound procedures from
 Fortran 2003. This affects any version of gfortran prior to 4.6. Downloading and
 installing the latest gfortran_ compiler should resolve this problem.
 
-Fatal Error: Wrong module version '4' (expected '9') for file 'xml_data_cmfd_t.mod' opened at (1)
-*************************************************************************************************
-
-The `.mod` modules files that are created by gfortran are versioned and
-sometimes are usually not backwards compatible. If gfortran is upgraded and the
-modules files for xml-fortran source files are not deleted, this error may
-occur. To fix this, clear out all module and object files with :program:`make
-distclean` and then recompiling.
-
-Fatal Error: File 'xml_data_cmfd_t.mod' opened at (1) is not a GFORTRAN module file
-***********************************************************************************
-
-When OpenMC compiles, the first thing it needs to do is compile source in the
-xml-fortran subdirectory. If you compiled everything with a compiler other than
-gfortran, performed a :program:`make clean`, and then tried to :program:`make`
-with gfortran, the xml-fortran modules would have been compiled with a different
-compiler. To fix this, try clearing out all module and object files with
-:program:`make distclean` and then recompiling.
-
 gfortran: unrecognized option '-cpp'
 ************************************
 
@@ -98,6 +79,14 @@ with the :envvar:`CROSS_SECTIONS` environment variable. It is recommended to add
 a line in your ``.profile`` or ``.bash_profile`` setting the
 :envvar:`CROSS_SECTIONS` environment variable.
 
+ERROR: Invalid usage of L(I) in ACE data; Consider using more recent data set.
+******************************************************************************
+
+The cross-sections requested in ``materials.xml`` do not conform to the current
+standard format.  This typically happens with fissionable nuclides in a ``.6*c``
+library as distributed with MCNP.  Please try a newer library such as any from
+the ``.7*c`` set.
+
 Geometry Debugging
 ******************
 
@@ -126,8 +115,8 @@ have many particles travelling through them there will not be many locations
 where overlaps are checked for in that region.  The user should refer to the
 output after a geometry debug run to see how many checks were performed in each
 cell, and then adjust the number of starting particles or starting source
-distributions accordingly to achieve good coverage. 
- 
+distributions accordingly to achieve good coverage.
+
 ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -1,4 +1,5 @@
 # Compiled objects and modules
+*.a
 *.o
 *.mod
 *.log
@@ -18,6 +19,7 @@ src/openmc
 
 # Documentation builds
 docs/build
+docs/source/_images/*.pdf
 
 # xml-fortran reader
 src/xml-fortran/xmlreader
@@ -27,3 +29,6 @@ src/templates/*.f90
 
 # Test results error file
 results_error.dat
+
+# HDF5 files
+*.h5

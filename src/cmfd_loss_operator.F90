@@ -396,7 +396,7 @@ contains
   end subroutine indices_to_matrix
 
 !===============================================================================
-! MATRIX_TO_INDICES converts a matrix index to spatial and group indicies
+! MATRIX_TO_INDICES converts a matrix index to spatial and group indices
 !===============================================================================
 
   subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)

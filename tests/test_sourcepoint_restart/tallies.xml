@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>rectangular</type>
+    <dimension>5 3 4</dimension>
+    <lower_left>-10. -5. 0.</lower_left>
+    <upper_right>10. 4. 9.</upper_right>
+  </mesh>
+
+  <tally id="10">
+    <filter type="mesh" bins="1" />
+    <filter type="energy" bins="0.0 5.0 10.0" />
+    <filter type="energyout" bins="0.0 5.0 10.0" />
+    <scores>scatter-P3 nu-fission</scores>
+  </tally>
+
+  <tally id="5">
+    <filter type="cell" bins="1" />
+    <scores>fission absorption total flux</scores>
+  </tally>
+
+</tallies>

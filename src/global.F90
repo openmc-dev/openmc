@@ -158,7 +158,7 @@ module global
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
-#ifdef OPENMP
+#ifdef _OPENMP
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
   integer(8) :: n_bank       ! # of sites in fission bank
@@ -189,6 +189,7 @@ module global
   ! Write source at end of simulation
   logical :: source_separate = .false.
   logical :: source_write = .true.
+  logical :: source_latest = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
@@ -205,7 +206,7 @@ module global
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 
-#ifdef OPENMP
+#ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
@@ -260,6 +261,7 @@ module global
   character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
   character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
+  character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
@@ -282,6 +284,10 @@ module global
   integer    :: trace_batch
   integer    :: trace_gen
   integer(8) :: trace_particle
+
+  ! Particle tracks
+  logical :: write_all_tracks = .false.
+  integer, allocatable :: track_identifiers(:,:)
 
   ! Particle restart run
   logical :: particle_restart_run = .false.
@@ -353,11 +359,15 @@ module global
   logical :: cmfd_tally_on       = .true. 
 
   ! CMFD display info
-  character(len=25) :: cmfd_display
+  character(len=25) :: cmfd_display = 'balance'
 
   ! Information about state points to be written
   integer :: n_state_points = 0
   type(SetInt) :: statepoint_batch
+
+  ! Information about source points to be written
+  integer :: n_source_points = 0
+  type(SetInt) :: sourcepoint_batch
 
   ! Various output options
   logical :: output_summary = .false.
@@ -434,7 +444,7 @@ contains
 !$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
 !$omp end parallel
-#ifdef OPENMP
+#ifdef _OPENMP
     if (allocated(master_fission_bank)) deallocate(master_fission_bank)
 #endif
     if (allocated(source_bank)) deallocate(source_bank)
@@ -451,6 +461,9 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
+
+    ! Deallocate track_identifiers
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
     
     ! Deallocate dictionaries
     call cell_dict % clear()

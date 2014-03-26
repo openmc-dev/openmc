@@ -20,7 +20,9 @@ contains
 
     use cmfd_header,  only: allocate_cmfd
 
+#ifdef PETSC
     integer :: new_comm ! new mpi communicator
+#endif
     integer :: color    ! color group of processor
 
     ! Read in cmfd input file
@@ -34,17 +36,17 @@ contains
     end if
 
     ! Split up procs
-# ifdef PETSC 
+#ifdef PETSC
     call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, 0, new_comm, mpi_err)
-# endif
+#endif
 
     ! assign to PETSc
-# ifdef PETSC
+#ifdef PETSC
     PETSC_COMM_WORLD = new_comm
 
     ! Initialize PETSc on all procs
     call PetscInitialize(PETSC_NULL_CHARACTER, mpi_err)
-# endif
+#endif
 
     ! Initialize timers
     call time_cmfd % reset()
@@ -61,16 +63,22 @@ contains
 !===============================================================================
 
   subroutine read_cmfd_xml()
-    
+
     use error,   only: fatal_error, warning
+    use global
     use output,  only: write_message
     use string,  only: lower_case
-    use xml_data_cmfd_t
+    use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer :: ng                       ! number of energy groups
-    logical :: file_exists              ! does cmfd.xml exist?
-    character(MAX_LINE_LEN) :: filename ! name of input file
+    integer :: ng
+    integer, allocatable :: iarray(:)
+    logical :: file_exists ! does cmfd.xml exist?
+    logical :: found
+    character(MAX_LINE_LEN) :: filename
+    character(MAX_LINE_LEN) :: temp_str
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_mesh => null()
 
     ! Read cmfd input file
     filename = trim(path_input) // "cmfd.xml"
@@ -91,16 +99,25 @@ contains
     end if
 
     ! Parse cmfd.xml file
-    call read_xml_file_cmfd_t(filename)
+    call open_xmldoc(doc, filename)
 
-    ! Set spatial dimensions in cmfd object (structed Cartesian mesh)
-    cmfd % indices(1:3) = mesh_ % dimension(1:3)
+    ! Get pointer to mesh XML node
+    call get_node_ptr(doc, "mesh", node_mesh, found = found)
 
-    ! Get number of energy groups or set to 1 group default
-    if (associated(mesh_ % energy)) then
-      ng = size(mesh_ % energy)
-      if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(ng))
-      cmfd % egrid = mesh_ % energy 
+    ! Check if mesh is there
+    if (.not.found) then
+      message = "No CMFD mesh specified in CMFD XML file."
+      call fatal_error()
+    end if
+
+    ! Set spatial dimensions in cmfd object
+    call get_node_array(node_mesh, "dimension", cmfd % indices(1:3))
+
+    ! Get number of energy groups
+    if (check_for_node(node_mesh, "energy")) then
+      ng = get_arraysize_double(node_mesh, "energy")
+      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
+      call get_node_array(node_mesh, "energy", cmfd%egrid)
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
@@ -108,90 +125,115 @@ contains
       cmfd % indices(4) = 1 ! one energy group
     end if
     
-    ! Set global albedo, these can be overwritten by coremap
-    if (associated(mesh_ % albedo)) then
-      cmfd % albedo = mesh_ % albedo
+    ! Set global albedo
+    if (check_for_node(node_mesh, "albedo")) then
+      call get_node_array(node_mesh, "albedo", cmfd % albedo)
     else
       cmfd % albedo = (/1.0, 1.0, 1.0, 1.0, 1.0, 1.0/)
     end if
 
-    ! Get core map overlay for a subset mesh for CMFD 
-    if (associated(mesh_ % map)) then
-
-      ! Allocate a core map with appropriate dimensions
+    ! Get acceleration map
+    if (check_for_node(node_mesh, "map")) then
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
-
-      ! Check and make sure it is of correct size
-      if (size(mesh_ % map) /= product(cmfd % indices(1:3))) then
-        message = 'CMFD coremap not to correct dimensions'
+      if (get_arraysize_integer(node_mesh, "map") /= &
+          product(cmfd % indices(1:3))) then
+        message = 'FATAL==>CMFD coremap not to correct dimensions'
         call fatal_error() 
       end if
-
-      ! Reshape core map vector into (x,y,z) array
-      cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
-
-      ! Indicate to cmfd that a core map overlay is active
+      allocate(iarray(get_arraysize_integer(node_mesh, "map")))
+      call get_node_array(node_mesh, "map", iarray)
+      cmfd % coremap = reshape(iarray,(cmfd % indices(1:3)))
       cmfd_coremap = .true.
-
-      ! Write to stdout that a core map overlay is active
-      message = "Core Map Overlay Activated"
-      call write_message(10)
-
+      deallocate(iarray)
     end if
 
-    ! Get normalization constant for source (default is 1.0 from XML) 
-    cmfd % norm = norm_
+    ! Check for normalization constant
+    if (check_for_node(doc, "norm")) then
+      call get_node_value(doc, "norm", cmfd % norm)
+    end if
 
     ! Set feedback logical
-    call lower_case(feedback_)
-    if (feedback_ == 'true' .or. feedback_ == '1') cmfd_feedback = .true.
+    if (check_for_node(doc, "feedback")) then
+      call get_node_value(doc, "feedback", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_feedback = .true.
+    end if
 
     ! Set downscatter logical
-    call lower_case(downscatter_)
-    if (downscatter_ == 'true' .or. downscatter_ == '1') &
-         cmfd_downscatter = .true.
+    if (check_for_node(doc, "downscatter")) then
+      call get_node_value(doc, "downscatter", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_downscatter = .true.
+    end if
 
-    ! Set the solver type (default power from XML)
-    cmfd_solver_type = solver_(1:10)
+    ! Set the solver type
+    if (check_for_node(doc, "solver")) &
+      call get_node_value(doc, "solver", cmfd_solver_type)
 
-    ! Set convergence monitoring 
-    call lower_case(snes_monitor_)
-    call lower_case(ksp_monitor_)
-    call lower_case(power_monitor_)
-    if (snes_monitor_ == 'true' .or. snes_monitor_ == '1') &
-         cmfd_snes_monitor = .true.
-    if (ksp_monitor_ == 'true' .or. ksp_monitor_ == '1') &
-         cmfd_ksp_monitor = .true.
-    if (power_monitor_ == 'true' .or. power_monitor_ == '1') &
-         cmfd_power_monitor = .true.
+    ! Set monitoring
+    if (check_for_node(doc, "snes_monitor")) then
+      call get_node_value(doc, "snes_monitor", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_snes_monitor = .true.
+    end if
+    if (check_for_node(doc, "ksp_monitor")) then
+      call get_node_value(doc, "ksp_monitor", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_ksp_monitor = .true.
+    end if
+    if (check_for_node(doc, "power_monitor")) then
+      call get_node_value(doc, "power_monitor", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_power_monitor = .true.
+    end if
 
     ! Output logicals
-    call lower_case(write_matrices_)
-    if (write_matrices_ == 'true' .or. write_matrices_ == '1') &
-         cmfd_write_matrices = .true.
+    if (check_for_node(doc, "write_matrices")) then
+      call get_node_value(doc, "write_matices", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_write_matrices = .true.
+    end if
 
     ! Run an adjoint calc
-    call lower_case(run_adjoint_)
-    if (run_adjoint_ == 'true' .or. run_adjoint_ == '1') &
-         cmfd_run_adjoint = .true.
+    if (check_for_node(doc, "run_adjoint")) then
+      call get_node_value(doc, "run_adjoint", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        cmfd_run_adjoint = .true.
+    end if
 
-    ! Batch to begin cmfd (default is 1 from XML)
-    cmfd_begin = begin_
+    ! Batch to begin cmfd
+    if (check_for_node(doc, "begin")) &
+      call get_node_value(doc, "begin", cmfd_begin) 
 
-    ! Tally during inactive batches (by default we will always tally from 1)
-    call lower_case(inactive_)
-    if (inactive_ == 'false' .or. inactive_ == '0') cmfd_tally_on = .false.
+    ! Tally during inactive batches
+    if (check_for_node(doc, "inactive")) then
+      call get_node_value(doc, "inactive", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
+        cmfd_tally_on = .false.
+    end if
 
     ! Inactive batch flush window
-    cmfd_inact_flush(1) = inactive_flush_ ! the interval of batches
-    cmfd_inact_flush(2) = num_flushes_    ! number of times to do this
+    if (check_for_node(doc, "inactive_flush")) &
+      call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
+    if (check_for_node(doc, "num_flushes")) &
+      call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
 
     ! Last flush before active batches
-    cmfd_act_flush = active_flush_
+    if (check_for_node(doc, "active_flush")) &
+      call get_node_value(doc, "active_flush", cmfd_act_flush)
 
     ! Get display
-    cmfd_display = display_
+    if (check_for_node(doc, "display")) &
+      call get_node_value(doc, "display", cmfd_display)
     if (trim(cmfd_display) == 'dominance' .and. &
         trim(cmfd_solver_type) /= 'power') then
       message = 'Dominance Ratio only aviable with power iteration solver'
@@ -200,7 +242,10 @@ contains
     end if
 
     ! Create tally objects
-    call create_cmfd_tally()
+    call create_cmfd_tally(doc)
+
+    ! Close CMFD XML file
+    call close_xmldoc(doc)
 
   end subroutine read_cmfd_xml
 
@@ -213,29 +258,31 @@ contains
 !   3: Surface current
 !===============================================================================
 
-  subroutine create_cmfd_tally()
+  subroutine create_cmfd_tally(doc)
 
+    use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
     use mesh_header,      only: StructuredMesh
     use string
     use tally,            only: setup_active_cmfdtallies
     use tally_header,     only: TallyObject, TallyFilter
     use tally_initialize, only: add_tallies
-    use xml_data_cmfd_t
+    use xml_interface
 
+    type(Node), pointer :: doc ! pointer to XML doc info
+
+    character(MAX_LINE_LEN) :: temp_str ! temp string
     integer :: i           ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
     integer :: i_filter_mesh ! index for mesh filter
-    character(MAX_LINE_LEN) :: filename ! name of cmfd file
+    integer :: iarray3(3) ! temp integer array
+    real(8) :: rarray3(3) ! temp double array
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
-
-    ! Parse cmfd.xml file
-     filename = trim(path_input) // "cmfd.xml"
-     call read_xml_file_cmfd_t(filename)
+    type(Node), pointer :: node_mesh => null()
 
     ! Set global variables if they are 0 (this can happen if there is no tally
     ! file)
@@ -251,8 +298,11 @@ contains
     ! Set mesh type to rectangular
     m % type = LATTICE_RECT
 
+    ! Get pointer to mesh XML node
+    call get_node_ptr(doc, "mesh", node_mesh)
+
     ! Determine number of dimensions for mesh
-    n = size(mesh_ % dimension)
+    n = get_arraysize_integer(node_mesh, "dimension")
     if (n /= 2 .and. n /= 3) then
        message = "Mesh must be two or three dimensions."
        call fatal_error()
@@ -266,75 +316,80 @@ contains
     allocate(m % upper_right(n))
 
     ! Check that dimensions are all greater than zero
-    if (any(mesh_ % dimension <= 0)) then
-       message = "All entries on the <dimension> element for a tally mesh &
-            &must be positive."
-       call fatal_error()
+    call get_node_array(node_mesh, "dimension", iarray3(1:n))
+    if (any(iarray3(1:n) <= 0)) then
+      message = "All entries on the <dimension> element for a tally mesh &
+           &must be positive."
+      call fatal_error()
     end if
 
     ! Read dimensions in each direction
-    m % dimension = mesh_ % dimension
+    m % dimension = iarray3(1:n)
 
     ! Read mesh lower-left corner location
-    if (m % n_dimension /= size(mesh_ % lower_left)) then
-       message = "Number of entries on <lower_left> must be the same as &
-            &the number of entries on <dimension>."
-       call fatal_error()
+    if (m % n_dimension /= get_arraysize_double(node_mesh, "lower_left")) then
+      message = "Number of entries on <lower_left> must be the same as &
+           &the number of entries on <dimension>."
+      call fatal_error()
     end if
-    m % lower_left = mesh_ % lower_left
+    call get_node_array(node_mesh, "lower_left", m % lower_left)
+
+    ! Make sure both upper-right or width were specified
+    if (check_for_node(node_mesh, "upper_right") .and. &
+        check_for_node(node_mesh, "width")) then
+      message = "Cannot specify both <upper_right> and <width> on a &
+           &tally mesh."
+      call fatal_error()
+    end if
 
     ! Make sure either upper-right or width was specified
-    if (associated(mesh_ % upper_right) .and. &
-         associated(mesh_ % width)) then
-       message = "Cannot specify both <upper_right> and <width> on a &
-             &tally mesh."
-       call fatal_error()
+    if (.not.check_for_node(node_mesh, "upper_right") .and. &
+        .not.check_for_node(node_mesh, "width")) then
+      message = "Must specify either <upper_right> and <width> on a &
+           &tally mesh."
+      call fatal_error()
     end if
 
-    ! Make sure either upper-right or width was specified
-    if (.not. associated(mesh_ % upper_right) .and. &
-         .not. associated(mesh_ % width)) then
-       message = "Must specify either <upper_right> and <width> on a &
-            &tally mesh."
-       call fatal_error()
-    end if
+    if (check_for_node(node_mesh, "width")) then
+      ! Check to ensure width has same dimensions
+      if (get_arraysize_double(node_mesh, "width") /= &
+          get_arraysize_double(node_mesh, "lower_left")) then
+        message = "Number of entries on <width> must be the same as the &
+             &number of entries on <lower_left>."
+        call fatal_error()
+      end if
 
-    if (associated(mesh_ % width)) then
-       ! Check to ensure width has same dimensions
-       if (size(mesh_ % width) /= size(mesh_ % lower_left)) then
-          message = "Number of entries on <width> must be the same as the &
-               &number of entries on <lower_left>."
-          call fatal_error()
-       end if
+      ! Check for negative widths
+      call get_node_array(node_mesh, "width", rarray3(1:n))
+      if (any(rarray3(1:n) < ZERO)) then
+        message = "Cannot have a negative <width> on a tally mesh."
+        call fatal_error()
+      end if
 
-       ! Check for negative widths
-       if (any(mesh_ % width < ZERO)) then
-          message = "Cannot have a negative <width> on a tally mesh."
-          call fatal_error()
-       end if
+      ! Set width and upper right coordinate
+      m % width = rarray3(1:n)
+      m % upper_right = m % lower_left + m % dimension * m % width
 
-       ! Set width and upper right coordinate
-       m % width = mesh_ % width
-       m % upper_right = m % lower_left + m % dimension * m % width
+    elseif (check_for_node(node_mesh, "upper_right")) then
+      ! Check to ensure width has same dimensions
+      if (get_arraysize_double(node_mesh, "upper_right") /= &
+          get_arraysize_double(node_mesh, "lower_left")) then
+        message = "Number of entries on <upper_right> must be the same as &
+             &the number of entries on <lower_left>."
+        call fatal_error()
+      end if
 
-    elseif (associated(mesh_ % upper_right)) then
-       ! Check to ensure width has same dimensions
-       if (size(mesh_ % upper_right) /= size(mesh_ % lower_left)) then
-          message = "Number of entries on <upper_right> must be the same as &
-               &the number of entries on <lower_left>."
-          call fatal_error()
-       end if
+      ! Check that upper-right is above lower-left
+      call get_node_array(node_mesh, "upper_right", rarray3(1:n))
+      if (any(rarray3(1:n) < m % lower_left)) then
+        message = "The <upper_right> coordinates must be greater than the &
+             &<lower_left> coordinates on a tally mesh."
+        call fatal_error()
+      end if
 
-       ! Check that upper-right is above lower-left
-       if (any(mesh_ % upper_right < mesh_ % lower_left)) then
-          message = "The <upper_right> coordinates must be greater than the &
-               &<lower_left> coordinates on a tally mesh."
-          call fatal_error()
-       end if
-
-       ! Set width and upper right coordinate
-       m % upper_right = mesh_ % upper_right
-       m % width = (m % upper_right - m % lower_left) / m % dimension
+      ! Set upper right coordinate and width
+      m % upper_right = rarray3(1:n)
+      m % width = (m % upper_right - m % lower_left) / real(m % dimension, 8)
     end if
 
     ! Set volume fraction
@@ -353,8 +408,12 @@ contains
       t => cmfd_tallies(i)
 
       ! Set reset property
-      call lower_case(reset_)
-      if (reset_ == 'true' .or. reset_ == '1') t % reset = .true.
+      if (check_for_node(doc, "reset")) then
+        call get_node_value(doc, "reset", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+          t % reset = .true.
+      end if
 
       ! Set up mesh filter
       n_filters = 1
@@ -365,13 +424,14 @@ contains
       t % find_filter(FILTER_MESH) = n_filters
 
       ! Read and set incoming energy mesh filter
-      if (associated(mesh_ % energy)) then
+      if (check_for_node(node_mesh, "energy")) then
         n_filters = n_filters + 1
         filters(n_filters) % type = FILTER_ENERGYIN
-        ng = size(mesh_ % energy)
+        ng = get_arraysize_double(node_mesh, "energy") 
         filters(n_filters) % n_bins = ng - 1
         allocate(filters(n_filters) % real_bins(ng))
-        filters(n_filters) % real_bins = mesh_ % energy
+        call get_node_array(node_mesh, "energy", &
+             filters(n_filters) % real_bins)
         t % find_filter(FILTER_ENERGYIN) = n_filters
       end if
 
@@ -425,14 +485,15 @@ contains
         ! Set tally type to volume
         t % type = TALLY_VOLUME
 
-        ! Read and set outgoing energy mesh filter
-        if (associated(mesh_ % energy)) then
+        ! read and set outgoing energy mesh filter
+        if (check_for_node(node_mesh, "energy")) then
           n_filters = n_filters + 1
           filters(n_filters) % type = FILTER_ENERGYOUT
-          ng = size(mesh_ % energy)
+          ng = get_arraysize_double(node_mesh, "energy")
           filters(n_filters) % n_bins = ng - 1
           allocate(filters(n_filters) % real_bins(ng))
-          filters(n_filters) % real_bins = mesh_ % energy
+          call get_node_array(node_mesh, "energy", &
+               filters(n_filters) % real_bins)
           t % find_filter(FILTER_ENERGYOUT) = n_filters
         end if
 
@@ -441,8 +502,8 @@ contains
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! Deallocate filters bins array
-        if (associated(mesh_ % energy)) &
+        ! deallocate filters bins array
+        if (check_for_node(node_mesh, "energy")) &
              deallocate(filters(n_filters) % real_bins)
 
         ! Allocate macro reactions
@@ -510,12 +571,15 @@ contains
 
       ! Deallocate filter bins
       deallocate(filters(1) % int_bins)
-      if (associated(mesh_ % energy)) deallocate(filters(2) % real_bins)
+      if (check_for_node(node_mesh, "energy")) &
+        deallocate(filters(2) % real_bins)
 
     end do
 
     ! Put cmfd tallies into active tally array and turn tallies on
+!$omp parallel
     call setup_active_cmfdtallies()
+!$omp end parallel
     tallies_on = .true.
 
   end subroutine create_cmfd_tally

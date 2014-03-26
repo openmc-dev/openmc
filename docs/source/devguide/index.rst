@@ -15,6 +15,6 @@ as debugging.
     structures
     styleguide
     workflow
-    xml-fortran
+    xml-parsing
     statepoint
     voxel

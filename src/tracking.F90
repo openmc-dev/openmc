@@ -13,6 +13,8 @@ module tracking
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_surface_current
+  use track_output,    only: initialize_particle_track, write_particle_track, &
+                             finalize_particle_track
 
 contains
 
@@ -67,7 +69,15 @@ contains
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO
 
+    ! Prepare to write out particle track.
+    if (p % write_track) then
+      call initialize_particle_track()
+    endif
+
     do while (p % alive)
+
+      ! Write particle track.
+      if (p % write_track) call write_particle_track(p)
 
       if (check_overlaps) call check_cell_overlap(p)
 
@@ -195,6 +205,12 @@ contains
       end if
 
     end do
+
+    ! Finish particle track output.
+    if (p % write_track) then
+      call write_particle_track(p)
+      call finalize_particle_track(p)
+    endif
 
   end subroutine transport
 

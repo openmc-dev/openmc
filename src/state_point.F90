@@ -37,7 +37,6 @@ contains
 
   subroutine write_state_point()
 
-
     character(MAX_FILE_LEN)    :: filename
     integer                    :: i, j, k, m
     integer                    :: n_x, n_y, n_z
@@ -414,7 +413,7 @@ contains
         call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
              group="tallies/tally" // to_str(i))
 
-      end do TALLY_METADATA      
+      end do TALLY_METADATA
 
     end if
 

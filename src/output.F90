@@ -1724,7 +1724,7 @@ contains
 
           ! Increment bin combination
           matching_bins(j) = matching_bins(j) + 1
-          
+
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 

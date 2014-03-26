@@ -6,9 +6,8 @@ module tracking
                              cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use mesh
   use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle, deallocate_coord
+  use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
   use random_lcg,      only: prn
   use string,          only: to_str
@@ -97,9 +96,10 @@ contains
       else
         d_collision = -log(prn()) / material_xs % total
       end if
-      
+
       ! Select smaller of the two distances
       distance = min(d_boundary, d_collision)
+
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))

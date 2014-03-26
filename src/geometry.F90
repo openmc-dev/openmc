@@ -146,6 +146,7 @@ contains
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
 !$omp threadprivate(c, lat, univ)
+
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
 
@@ -172,6 +173,7 @@ contains
 
       ! get pointer to cell
       c => cells(index_cell)
+
       if (simple_cell_contains(c, p)) then
         ! Set cell on this level
         p % coord % cell = index_cell
@@ -615,7 +617,7 @@ contains
       end if
       return
     end if
-    
+
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
@@ -824,6 +826,7 @@ contains
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
 !$omp threadprivate(cl, surf, lat, coord, final_coord)
+
     ! inialize distance to infinity (huge)
     dist = INFINITY
     lattice_crossed = NONE

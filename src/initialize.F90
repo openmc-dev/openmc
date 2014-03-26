@@ -47,7 +47,7 @@ contains
 !===============================================================================
 
   subroutine initialize_run()
-  
+
     ! Start total and initialization timer
     call time_total % start()
     call time_initialize % start()
@@ -79,7 +79,7 @@ contains
     ! number generator
 
     call initialize_prng()
-    
+
     ! Read plots.xml if it exists -- this has to be done separate from the other
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()

@@ -168,7 +168,6 @@ contains
       call fatal_error()
     end select
 
-
   end subroutine sample_external_source
 
 !===============================================================================

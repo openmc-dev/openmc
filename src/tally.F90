@@ -75,7 +75,7 @@ contains
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(p, i_tally, found_bin, .true.)
+      call get_scoring_bins(p, i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -438,7 +438,7 @@ contains
 
   subroutine score_tracklength_tally(p, distance)
 
-    type(Particle), intent(inout) :: p
+    type(Particle), intent(in) :: p
     real(8),        intent(in) :: distance
 
     integer :: i
@@ -460,8 +460,7 @@ contains
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
-    type(Reaction),    pointer, save :: rxn => null()
-    
+    type(Reaction),    pointer, save :: rxn => null()    
 !$omp threadprivate(t, mat, rxn)
 
     ! Determine track-length estimate of flux
@@ -707,7 +706,7 @@ contains
 
             ! Determine scoring bin index
             score_index = (k - 1)*t % n_score_bins + j
-              
+
             ! Add score to tally
 !$omp critical
             t % results(score_index, filter_index) % value = &
@@ -1287,12 +1286,11 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(p, i_tally, found_bin, analog)
+  subroutine get_scoring_bins(p, i_tally, found_bin)
 
     type(Particle), intent(in)  :: p
     integer,        intent(in)  :: i_tally
     logical,        intent(out) :: found_bin
-    logical, optional, intent(in) :: analog
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
@@ -1334,9 +1332,7 @@ contains
           position(FILTER_CELL) = 0
           matching_bins(i) = get_next_bin(FILTER_CELL, &
                coord % cell, i_tally)
-          if (matching_bins(i) /= NO_BIN_FOUND) then
-            exit
-          end if
+          if (matching_bins(i) /= NO_BIN_FOUND) exit
           coord => coord % next
         end do
         nullify(coord)

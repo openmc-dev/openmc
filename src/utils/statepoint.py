@@ -510,6 +510,7 @@ class StatePoint(object):
 
         # Read number of tallies
         n_tallies = self._get_int(path='tallies/n_tallies')[0]
+
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
             t = Tally()
@@ -527,6 +528,7 @@ class StatePoint(object):
 
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
+
             for j in range(n_filters):
                 # Create Filter object
                 f = Filter()
@@ -535,8 +537,10 @@ class StatePoint(object):
 
                 # Get type of filter
                 f.type = filter_types[self._get_int(path=base+'type')[0]]
+
                 # Get offset of filter
                 f.offset = self._get_int(path=base+'offset')[0]
+
                 # Add to filter dictionary
                 t.filters[f.type] = f
 
@@ -550,6 +554,7 @@ class StatePoint(object):
                 else:
                     f.bins = self._get_int(f.length, path=base+'bins')
             base = 'tallies/tally' + str(i+1) + '/'
+
 
             # Read nuclide bins
             n_nuclides = self._get_int(path=base+'n_nuclide_bins')[0]

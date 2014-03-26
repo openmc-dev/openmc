@@ -236,7 +236,6 @@ contains
     p % coord % xyz = src % xyz
     p % coord % uvw = src % uvw
     p % last_xyz    = src % xyz
-    p % track_xyz    = src % xyz
     p % E           = src % E
     p % last_E      = src % E
 

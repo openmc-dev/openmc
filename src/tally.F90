@@ -3,7 +3,6 @@ module tally
   use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
-  use geometry,         only: distribcell_offset, simple_cell_contains
   use geometry_header
   use global
   use math,             only: t_percentile, calc_pn
@@ -1297,10 +1296,8 @@ contains
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
-    logical :: found ! found a matching bin for distribcell
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
-    type(Particle)  :: p_fake ! fake particle for distrib cell
     type(TallyObject),    pointer, save :: t => null()
     type(StructuredMesh), pointer, save :: m => null()
     type(LocalCoord),     pointer, save :: coord => null()
@@ -1337,38 +1334,29 @@ contains
           position(FILTER_CELL) = 0
           matching_bins(i) = get_next_bin(FILTER_CELL, &
                coord % cell, i_tally)
-          if (matching_bins(i) /= NO_BIN_FOUND) exit
+          if (matching_bins(i) /= NO_BIN_FOUND) then
+            exit
+          end if
           coord => coord % next
         end do
         nullify(coord)
 
       case (FILTER_DISTRIBCELL)
         ! determine next distribcell bin
-        ! This is done by locating the particle from the base universe
-        ! And summing the offsets of all relevant cells in this filter
-        ! All the way down to the tallied cell
-        
-        ! So, in order:
-        ! Determine if the particle is in any of the cells listed for this filter
-        ! If it is, set BASE_UNIVERSE as the starting point, then enter a subroutine to determine the offset of this bin
-        ! Progress through the geometry, checking which cell/univ/lattice the particle is in
-        ! If it is in a given cell/univ/lattice, sum the offsets for all cells in the filter and enter that cell/univ/lattice
-        ! Quit once we can go no deeper
-  
-        if (present(analog) .and. analog) then
-          p_fake % coord => p_fake % coord0    
-        else 
-          call p_fake % initialize()
-          p_fake % coord % xyz = p % track_xyz 
-          p_fake % coord % uvw = p % coord % uvw    
-        end if         
-        offset = 0
-        found = .false.
         matching_bins(i) = NO_BIN_FOUND
-        call distribcell_offset(p_fake, t % filters(i) % int_bins(1), t % filters(i) % offset, found, offset)
-        if (found) then
-          matching_bins(i) = offset + 1
-        end if
+        coord => p % coord0
+        offset = 0
+        do while(associated(coord))
+          if (allocated(coord % mapping)) then
+            offset = offset + coord % mapping(t % filters(i) % offset)
+          end if
+          if (t % filters(i) % int_bins(1) == coord % cell) then
+            matching_bins(i) = offset + 1
+            exit
+          end if
+          coord => coord % next
+        end do
+        nullify(coord)
         
       case (FILTER_CELLBORN)
         ! determine next cellborn bin

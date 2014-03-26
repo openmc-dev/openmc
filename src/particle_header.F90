@@ -27,6 +27,9 @@ module particle_header
     ! Is this level rotated?
     logical :: rotated = .false.
 
+    ! Distributed Mapping Info
+    integer, allocatable :: mapping(:)
+
     ! Pointer to next (more local) set of coordinates
     type(LocalCoord), pointer :: next => null()
   end type LocalCoord
@@ -53,7 +56,6 @@ module particle_header
 
     ! Pre-collision physical data
     real(8)    :: last_xyz(3)   ! previous coordinates
-    real(8)    :: track_xyz(3)  ! coordinates for tracklength distribcell
     real(8)    :: last_wgt      ! pre-collision particle weight
     real(8)    :: last_E        ! pre-collision energy
     real(8)    :: absorb_wgt    ! weight absorbed for survival biasing

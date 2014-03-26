@@ -688,7 +688,10 @@ contains
         call get_node_value(node_sp, "overwrite_latest", temp_str)
         call lower_case(temp_str)
         if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') source_latest = .true.
+             trim(temp_str) == '1') then
+          source_latest = .true.
+          source_separate = .true.
+        end if
       end if
     else
       ! If no <source_point> tag was present, by default we keep source bank in

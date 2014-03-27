@@ -141,6 +141,7 @@ contains
           end if
         end if
       end do
+      call p % clear()
 
     case (SRC_SPACE_FISSION)
       ! Set particle defaults

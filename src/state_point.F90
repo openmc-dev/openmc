@@ -104,7 +104,7 @@ contains
         ! Write out CMFD info
         if (cmfd_on) then
           call sp % write_data(1, "cmfd_on")
-          call sp % write_data(cmfd % indices, "indicies", length=4, group="cmfd")
+          call sp % write_data(cmfd % indices, "indices", length=4, group="cmfd")
           call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
                group="cmfd")
           call sp % write_data(cmfd % cmfd_src, "cmfd_src", &
@@ -230,13 +230,13 @@ contains
 
       end do TALLY_METADATA
 
-    end if
+      ! Indicate where source bank is stored in statepoint
+      if (source_separate) then
+        call sp % write_data(0, "source_present")
+      else
+        call sp % write_data(1, "source_present")
+      end if
 
-    ! Indicate where source bank is stored in statepoint
-    if (source_separate) then
-      call sp % write_data(0, "source_present")
-    else
-      call sp % write_data(1, "source_present")
     end if
 
     ! Check for the no-tally-reduction method
@@ -517,7 +517,6 @@ contains
 
   subroutine load_state_point()
 
-    character(MAX_FILE_LEN) :: filename
     character(MAX_FILE_LEN) :: path_temp
     character(19)           :: current_time
     integer                 :: i
@@ -599,7 +598,7 @@ contains
 
       ! Write out CMFD info
       if (int_array(1) == 1) then
-        call sp % read_data(cmfd % indices, "indicies", length=4, group="cmfd")
+        call sp % read_data(cmfd % indices, "indices", length=4, group="cmfd")
         call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
              group="cmfd")
         length = cmfd % indices([4,1,2,3])
@@ -790,7 +789,7 @@ contains
         call sp % file_close()
 
         ! Write message
-        message = "Loading source file " // trim(filename) // "..."
+        message = "Loading source file " // trim(path_source_point) // "..."
         call write_message(1)
 
         ! Open source file 

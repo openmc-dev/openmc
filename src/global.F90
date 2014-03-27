@@ -361,7 +361,7 @@ module global
   logical :: cmfd_tally_on       = .true. 
 
   ! CMFD display info
-  character(len=25) :: cmfd_display
+  character(len=25) :: cmfd_display = 'balance'
 
   ! Estimate of spectral radius of CMFD matrices and tolerances
   real(8) :: cmfd_spectral = ZERO

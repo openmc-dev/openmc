@@ -83,8 +83,8 @@ Prerequisites
       OpenMC with. HDF5_ must be built with parallel I/O features if you intend
       to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
 
-           FC=/opt/mpich/3.0.4-gnu/bin/mpif90 CC=/opt/mpich/3.0.4-gnu/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
+           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
                        --enable-fortran2003 --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
@@ -97,8 +97,8 @@ Prerequisites
       requires PETSc_ to be configured with Fortran datatypes. An example of
       configuring PETSc_ is listed below::
 
-           ./configure --prefix=/opt/petsc/3.4.2-gnu --download-f-blas-lapack \
-                       --with-mpi-dir=/opt/mpich/3.0.4-gnu/ --with-shared-libraries=0 \
+           ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
+                       --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
                        --with-fortran-datatypes
 
       The BLAS/LAPACK library is not required to be downloaded and can be linked
@@ -194,8 +194,8 @@ should be used:
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, set the FC environment variable to the path to the MPI
-Fortran wrapper. For example, in a bash shell:
+To compile with MPI, set the :envvar:`FC` environment variable to the path to
+the MPI Fortran wrapper. For example, in a bash shell:
 
 .. code-block:: sh
 
@@ -212,8 +212,8 @@ command, i.e.
 Compiling with HDF5
 +++++++++++++++++++
 
-To compile with MPI, set the FC environment variable to the path to the HDF5
-Fortran wrapper. For example, in a bash shell:
+To compile with MPI, set the :envvar:`FC` environment variable to the path to
+the HDF5 Fortran wrapper. For example, in a bash shell:
 
 .. code-block:: sh
 

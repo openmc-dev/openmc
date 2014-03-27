@@ -1033,6 +1033,8 @@ contains
       call calc_offsets(univ_list(i),i,univ)
     end do
   end do
+
+  deallocate(univ_list)
   
 end subroutine prepare_distribcell
 
@@ -1068,12 +1070,12 @@ end subroutine prepare_distribcell
         tf => t % filters(j)
         
         ! Loop over only distribcell filters
-        if (tf % type == 9) then
+        if (tf % type == FILTER_DISTRIBCELL) then
         
-          if (cell_list % has_key(tf % int_bins(1))) then
-          
-          else
+          if (.not. cell_list % has_key(tf % int_bins(1))) then
+
             call cell_list % add_key(tf % int_bins(1),0)
+
           end if
         
         end if 
@@ -1121,7 +1123,7 @@ end subroutine prepare_distribcell
                 tf => t % filters(m)
                 
                 ! Loop over only distribcell filters
-                if (tf % type == 9) then
+                if (tf % type == FILTER_DISTRIBCELL) then
                   
                   ! If this filter points to the cell we just found, set the 
                   ! offset index
@@ -1150,9 +1152,10 @@ end subroutine prepare_distribcell
     
       lat => lattices(i)
       if (lat % n_dimension == 3) then
-        allocate(lat % offset(maps,lat%dimension(1),lat%dimension(2),lat%dimension(3)))
+        allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), &
+                 & lat % dimension(3)))
       else
-        allocate(lat % offset(maps,lat%dimension(1),lat%dimension(2),1))
+        allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), 1))
       end if
     
     end do

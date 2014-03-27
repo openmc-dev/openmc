@@ -460,7 +460,7 @@ contains
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
-    type(Reaction),    pointer, save :: rxn => null()    
+    type(Reaction),    pointer, save :: rxn => null()
 !$omp threadprivate(t, mat, rxn)
 
     ! Determine track-length estimate of flux

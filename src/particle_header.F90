@@ -104,6 +104,7 @@ contains
       if (associated(coord % next)) call deallocate_coord(coord%next)
 
       ! deallocate original coordinate
+      if (allocated(coord % mapping)) deallocate(coord % mapping)
       deallocate(coord)
     end if
 

@@ -171,7 +171,8 @@ endif()
 
 message("-- Initializing/Updating FoX XML submodule...")
 execute_process(COMMAND git submodule init
-                COMMAND git submodule update
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+execute_process(COMMAND git submodule update
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 file(GLOB_RECURSE source_fox xml/*.F90 xml/*.f90)
 add_library(fox STATIC ${source_fox})

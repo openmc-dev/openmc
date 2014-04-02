@@ -130,6 +130,7 @@ contains
           end if
         end if
       end do
+      call p % clear()
 
     case (SRC_SPACE_POINT)
       ! Point source

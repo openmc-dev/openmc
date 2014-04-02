@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import sys
 import shutil
+import re
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -152,37 +153,10 @@ add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
 add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
 add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 
-# Process command line arguments
+# Delete items of dictionary that don't match regular expression
 if opts.configs != None:
-    tests_ = opts.configs.split()
-
-    # Check for special subsets of tests
-    tests__ = []
-    for i in tests_:
-
-        # This checks for any subsets of tests. The string after
-        # all-XXXX will be used to search through all tests.
-        if i.startswith('all-'):
-            suffix = i.split('all-')[1]
-            for j in tests:
-                if j.rfind(suffix) != -1:
-                    try:
-                        tests__.index(j)
-                    except ValueError:
-                        tests__.append(j)
-
-        # Test name specified on command line
-        else:
-            try:
-                tests__.index(i)
-            except ValueError:
-                tests__.append(i)  # append specific test (e.g., mpi-debug)
-
-    # Delete items of dictionary that are not in tests__
     for key in iter(tests):
-        try:
-            tests__.index(key)
-        except ValueError:
+        if not re.search(opts.configs, key):
             del tests[key]
 
 # Begin testing

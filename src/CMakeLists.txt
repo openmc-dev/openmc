@@ -28,6 +28,7 @@ endif()
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
+set(HDF5_ENABLED FALSE)
 if($ENV{FC} MATCHES "mpi.*")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
@@ -35,10 +36,12 @@ if($ENV{FC} MATCHES "mpi.*")
 elseif($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
+  set(HDF5_ENABLED TRUE)
 elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
+  set(HDF5_ENABLED TRUE)
 endif()
 
 #===============================================================================
@@ -255,6 +258,7 @@ foreach(test ${TESTS})
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH) 
 
+  # Check for running standard tests (no valgrind, no gcov)
   if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
     # Check serial/parallel
@@ -275,12 +279,72 @@ foreach(test ${TESTS})
 
     endif(${MPI_ENABLED})
 
+  # Handle special case for valgrind and gcov (run openmc directly, no python)
   else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
-    # Perform serial valgrind test
-    add_test(NAME ${TEST_NAME}
-      WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+    # If a plot test is encountered, run with "-p"
+    if (${test} MATCHES "test_plot")
+
+      # Perform serial valgrind and coverage test with plot flag
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
+
+    # If a restart test is encounted, need to run with -r and restart file(s)
+    elseif(${test} MATCHES "restart")
+
+      # Set restart file names
+      if (${HDF5_ENABLED})
+
+        # Handle restart tests separately
+        if(${test} MATCHES "test_statepoint_restart")
+          set(RESTART_FILE statepoint.7.h5)
+        elseif(${test} MATCHES "test_sourcepoint_restart")
+          set(RESTART_FILE statepoint.7.h5 sourcepoint.7.h5)
+        elseif(${test} MATCHES "test_particle_restart")
+          set(RESTART_FILE particle_10_394.h5)
+        else(${test} MATCHES "test_statepoint_restart")
+          message(FATAL_ERROR "Restart test ${test} not recognized")
+        endif(${test} MATCHES "test_statepoint_restart")
+
+      else(${HDF5_ENABLED})
+
+        # Handle restart tests separately
+        if(${test} MATCHES "test_statepoint_restart")
+          set(RESTART_FILE statepoint.7.binary)
+        elseif(${test} MATCHES "test_sourcepoint_restart")
+          set(RESTART_FILE statepoint.7.binary source.7.binary)
+        elseif(${test} MATCHES "test_particle_restart")
+          set(RESTART_FILE particle_10_394.binary)
+        else(${test} MATCHES "test_statepoint_restart")
+          message(FATAL_ERROR "Restart test ${test} not recognized")
+        endif(${test} MATCHES "test_statepoint_restart")
+
+      endif(${HDF5_ENABLED})
+
+      # Perform serial valgrind and coverage test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+
+      # Perform serial valgrind and coverage restart test
+      add_test(NAME ${TEST_NAME}_restart
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
+
+      # Set test dependency
+      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
+
+
+    # Handle standard tests for valgrind and gcov
+    else(${test} MATCHES "test_plot")
+
+      # Perform serial valgrind and coverage test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+
+    endif(${test} MATCHES "test_plot")
 
   endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 

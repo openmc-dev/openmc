@@ -45,7 +45,7 @@ set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
-set(INCLUDED_TESTS "basic|cmfd_feed|confidence_intervals|density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|filter_cell|lattice_multiple|output|reflective_plane|rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|sourcepoint_batch|statepoint_interval|survival_biasing|tally_assumesep|translation|uniform_fs|universe|void")
+set(INCLUDED_TESTS "basic|cmfd_feed|confidence_intervals|density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|filter_cell|lattice_multiple|output|plot_background|reflective_plane|rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|sourcepoint_batch|statepoint_interval|survival_biasing|tally_assumesep|translation|uniform_fs|universe|void")
 
 ctest_start("{dashboard}")
 ctest_configure()

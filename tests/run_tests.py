@@ -7,6 +7,13 @@ import sys
 import shutil
 from subprocess import call 
 from collections import OrderedDict
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option('-j', '--parallel', dest='n_procs')
+parser.add_option('-R', '--tests-regex', dest='regex_tests')
+parser.add_option('-c', '--configure', dest='configs')
+(opts, args) = parser.parse_args()
 
 # Compiler paths
 FC_DEFAULT='gfortran'
@@ -68,7 +75,17 @@ class Test(object):
     def run_make(self):
         if not self.success:
             return
-        rc = call(['make','-j', '-s','-C','build'])
+
+        # Default make string
+        make_list = ['make','-s']
+
+        # Check for parallel
+        if opts.n_procs != None:
+            make_list.append('-j')
+            make_list.append(opts.n_procs)
+
+        # Run make
+        rc = call(make_list)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on make.'
@@ -76,7 +93,22 @@ class Test(object):
     def run_ctests(self):
         if not self.success:
             return
-        rc = call(['make','test','-C','build'])
+
+        # Default ctest string
+        ctest_list = ['ctest']
+
+        # Check for parallel
+        if opts.n_procs != None:
+            ctest_list.append('-j')
+            ctest_list.append(opts.n_procs)
+
+        # Check for subset of tests
+        if opts.regex_tests != None:
+            ctest_list.append('-R')
+            ctest_list.append(opts.regex_tests)
+
+        # Run ctests
+        rc = call(ctest_list)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on testing.'
@@ -121,9 +153,8 @@ add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, 
 add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 
 # Process command line arguments
-if len(sys.argv) > 1:
-    flags = [i for i in sys.argv[1:] if i.startswith('-')]
-    tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
+if opts.configs != None:
+    tests_ = opts.configs.split()
 
     # Check for special subsets of tests
     tests__ = []
@@ -161,15 +192,20 @@ for test in iter(tests):
     print(test + ' tests')
     print('-'*(len(test) + 6))
 
-
     # Run CMAKE to configure build
     tests[test].run_cmake()
+
+    # Go into build directory
+    os.chdir('build')
 
     # Build OpenMC
     tests[test].run_make()
 
     # Run tests
     tests[test].run_ctests()
+
+    # Leave build directory
+    os.chdir('..')
 
     # Copy test log file if failed
     if tests[test].msg == 'Failed on testing.':

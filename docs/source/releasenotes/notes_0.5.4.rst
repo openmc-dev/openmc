@@ -4,10 +4,6 @@
 Release Notes for OpenMC 0.5.4
 ==============================
 
-.. note::
-    These release notes are for an upcoming release of OpenMC and are still
-    subject to change.
-
 -------------------
 System Requirements
 -------------------
@@ -21,16 +17,17 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
-- New XML parsing backend (FoX)
+- Source sites outside geometry are resampled
+- XML-Fortran backend replaced by FoX XML
 - Ability to write particle track files
 - Handle lost particles more gracefully (via particle track files)
-- Source sites outside geometry are resampled
 - Multiple random number generator streams
-- plot_mesh_tally.py utility converted to use Tkinter rather than PyQt
+- Mesh tally plotting utility converted to use Tkinter rather than PyQt
 - Script added to download ACE data from NNDC
 - Mixed ASCII/binary cross_sections.xml now allowed
 - Expanded options for writing source bank
 - Re-enabled ability to use source file as starting source
+- S(a,b) recalculation avoided when same nuclide and S(a,b) table are accessed
 
 ---------
 Bug Fixes
@@ -41,12 +38,16 @@ Bug Fixes
 - 8884fb_: Check for all ZAIDs for S(a,b) tables
 - b38af0_: Fix XML reading on multiple levels of input
 - d28750_: Fix bug in convert_xsdir.py
+- cf567c_: ENDF/B-VI data checked for compatibility
+- 6b9461_: Fix p_valid sampling inside of sample_energy
 
 .. _32c03c: https://github.com/mit-crpg/openmc/commit/32c03c
 .. _c71ef5: https://github.com/mit-crpg/openmc/commit/c71ef5
 .. _8884fb: https://github.com/mit-crpg/openmc/commit/8884fb
 .. _b38af0: https://github.com/mit-crpg/openmc/commit/b38af0
 .. _d28750: https://github.com/mit-crpg/openmc/commit/d28750
+.. _cf567c: https://github.com/mit-crpg/openmc/commit/cf567c
+.. _6b9461: https://github.com/mit-crpg/openmc/commit/6b9461
 
 ------------
 Contributors

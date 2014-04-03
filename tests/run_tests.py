@@ -222,7 +222,7 @@ FAIL = '\033[91m'
 ENDC = '\033[0m'
 BOLD = '\033[1m'
 
-for test in iter(tests):
+for test in tests:
     print(test + '.'*(50 - len(test)), end='')
     if tests[test].success:
         print(BOLD + OK + '[OK]' + ENDC)

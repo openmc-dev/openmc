@@ -91,6 +91,8 @@ features and bug fixes. The general steps for contributing are as follows:
 6. After the pull request has been thoroughly vetted, it is merged back into the
    *develop* branch of mit-crpg/openmc.
 
+.. _test suite:
+
 OpenMC Test Suite
 -----------------
 
@@ -133,8 +135,6 @@ can run:
 
     python run_tests.py -p
 
-.. _ctest: http://www.cmake.org/cmake/help/v2.8.8/ctest.html
-
 Private Development
 -------------------
 
@@ -158,3 +158,4 @@ from your private repository into a public fork.
 .. _mit-crpg/openmc: https://github.com/mit-crpg/openmc
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.8/ctest.html

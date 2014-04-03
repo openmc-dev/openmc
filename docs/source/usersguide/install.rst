@@ -322,6 +322,29 @@ This will build an executable named ``openmc``.
 .. _MinGW: http://www.mingw.org
 .. _SourceForge: http://sourceforge.net/projects/mingw
 
+Testing Build
+-------------
+
+If you have ENDF/B-VII.0 cross sections from MCNP5/X you can test your build.
+There are two ways to run tests. The first is to use the Makefile present in
+the source directory and run the following:
+
+.. code-block:: sh
+
+    cd src
+    make test
+
+If you want more options for testing you can use ctest_ command. For example,
+if we wanted to run only the plot tests with 4 processors, we run:
+
+.. code-block:: sh
+
+    cd src/build
+    ctest -j 4 -R plot
+
+If you want to run the full test suite with different build options please
+refer to our :ref:`test suite` documentation.
+
 ---------------------------
 Cross Section Configuration
 ---------------------------
@@ -467,3 +490,4 @@ schemas.xml file in your own OpenMC source directory.
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.8/ctest.html

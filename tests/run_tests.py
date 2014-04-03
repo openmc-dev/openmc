@@ -11,9 +11,20 @@ from collections import OrderedDict
 from optparse import OptionParser
 
 parser = OptionParser()
-parser.add_option('-j', '--parallel', dest='n_procs')
-parser.add_option('-R', '--tests-regex', dest='regex_tests')
-parser.add_option('-c', '--configure', dest='configs')
+parser.add_option('-j', '--parallel', dest='n_procs',
+                  help="Number of parallel jobs.")
+parser.add_option('-R', '--tests-regex', dest='regex_tests',
+                  help="Run tests matching regular expression. \
+                  Test names are the directories present in tests folder.\
+                  This uses standard regex syntax to select tests.")
+parser.add_option('-C', '--build-config', dest='build_config',
+                  help="Build configurations matching regular expression. \
+                        Specific build configurations can be printed out with \
+                        optional argument -p, --print. This uses standard \
+                        regex syntax to select build configurations.")
+parser.add_option('-p', '--print', action="store_true", 
+                  dest="print_build_configs", default=False,
+                  help="Print out build configurations.")
 (opts, args) = parser.parse_args()
 
 # Compiler paths
@@ -150,13 +161,27 @@ add_test('phdf5-petsc-normal', mpi=True, hdf5=True, petsc=True)
 add_test('phdf5-petsc-debug', mpi=True, hdf5=True, petsc=True, debug=True)
 add_test('phdf5-petsc-optimize', mpi=True, hdf5=True, petsc=True, optimize=True)
 add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
-add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
+add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True,
+                                  debug=True)
+add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True,
+                                     optimize=True)
+
+# Check to see if we are to just print build configuratinos
+if opts.print_build_configs:
+    for key in iter(tests):
+        print('Configuration Name: {0}'.format(key))
+        print('  Debug Flags:..........{0}'.format(tests[key].debug))
+        print('  Optimization Flags:...{0}'.format(tests[key].optimize))
+        print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
+        print('  MPI Active:...........{0}'.format(tests[key].mpi))
+        print('  OpenMP Active:........{0}'.format(tests[key].openmp))
+        print('  PETSc Active:.........{0}\n'.format(tests[key].petsc))
+    exit()
 
 # Delete items of dictionary that don't match regular expression
-if opts.configs != None:
+if opts.build_config != None:
     for key in iter(tests):
-        if not re.search(opts.configs, key):
+        if not re.search(opts.build_config, key):
             del tests[key]
 
 # Begin testing

@@ -38,7 +38,7 @@ following criteria must be satisfied for all proposed changes:
 
 - Changes have a clear purpose and are useful.
 - Compiles under all conditions (MPI, OpenMP, HDF5, etc.).  This is checked as
-  part of the test suite (see `test_compile.py`_).
+  part of the test suite.
 - Passes the regression suite.
 - If appropriate, test cases are added to regression suite.
 - No memory leaks (checked with valgrind_).
@@ -152,7 +152,6 @@ from your private repository into a public fork.
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
-.. _test_compile.py: https://github.com/mit-crpg/openmc/blob/develop/tests/test_compile/test_compile.py
 .. _valgrind: http://valgrind.org/
 .. _style guide: http://mit-crpg.github.io/openmc/devguide/styleguide.html
 .. _pull request: https://help.github.com/articles/using-pull-requests

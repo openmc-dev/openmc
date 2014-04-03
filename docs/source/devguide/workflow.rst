@@ -152,9 +152,14 @@ a test you need to add the following files to your new test directory,
       take an argument to overwrite which statepoint file is processed,
       whether it is at a different batch or with an HDF5 extension. This
       script must output a results file that is named *results_test.dat*.
+      It is recommended that any real numbers reported use *12.6E* format.
     * **results_true.dat** - ASCII file that contains the expected results
       from the test. The file *results_test.dat* is compared to this file
-      during the execution of the python test driver script.
+      during the execution of the python test driver script. When the
+      above files have been created, generate a *results_test.dat* file and
+      copy it to this name and commit. It should be noted that this file
+      should be generated with basic compiler options during openmc
+      configuration and build (e.g., no MPI/HDF5, no debug/optimization).
 
 In addition to this description, please see the various types of tests that
 are already included in the test suite to see how to create them. If all is

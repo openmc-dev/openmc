@@ -135,6 +135,32 @@ can run:
 
     python run_tests.py -p
 
+Adding tests to test suite
+++++++++++++++++++++++++++
+
+To add a new test to the test suite, create a sub-directory in the tests
+directory that conforms to the regular expression *test_*. To configure
+a test you need to add the following files to your new test directory, 
+*test_name* for example:
+
+    * OpenMC input XML files
+    * **test_name.py** - python test driver script, please refer to other
+      tests to see how to construct. Any output files that are generated
+      during testing must be removed at the end of this script.
+    * **results.py** - python script that extracts results from statepoint
+      output files. By default it should look for a binary file, but can
+      take an argument to overwrite which statepoint file is processed,
+      whether it is at a different batch or with an HDF5 extension. This
+      script must output a results file that is named *results_test.dat*.
+    * **results_true.dat** - ASCII file that contains the expected results
+      from the test. The file *results_test.dat* is compared to this file
+      during the execution of the python test driver script.
+
+In addition to this description, please see the various types of tests that
+are already included in the test suite to see how to create them. If all is
+implemented correctly, the new test directory will automatically be added
+to the CTest framework.
+
 Private Development
 -------------------
 

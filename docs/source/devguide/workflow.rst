@@ -158,4 +158,4 @@ from your private repository into a public fork.
 .. _mit-crpg/openmc: https://github.com/mit-crpg/openmc
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
-.. _ctest: http://www.cmake.org/cmake/help/v2.8.8/ctest.html
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html

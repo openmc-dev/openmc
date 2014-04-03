@@ -41,4 +41,4 @@ can run:
 
     python run_tests.py -p
 
-.. _ctest: http://www.cmake.org/cmake/help/v2.8.8/ctest.html
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html

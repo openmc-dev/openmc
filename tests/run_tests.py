@@ -92,7 +92,7 @@ class Test(object):
         make_list = ['make','-s']
 
         # Check for parallel
-        if opts.n_procs != None:
+        if opts.n_procs is not None:
             make_list.append('-j')
             make_list.append(opts.n_procs)
 
@@ -110,12 +110,12 @@ class Test(object):
         ctest_list = ['ctest']
 
         # Check for parallel
-        if opts.n_procs != None:
+        if opts.n_procs is not None:
             ctest_list.append('-j')
             ctest_list.append(opts.n_procs)
 
         # Check for subset of tests
-        if opts.regex_tests != None:
+        if opts.regex_tests is not None:
             ctest_list.append('-R')
             ctest_list.append(opts.regex_tests)
 
@@ -179,14 +179,14 @@ if opts.print_build_configs:
     exit()
 
 # Delete items of dictionary that don't match regular expression
-if opts.build_config != None:
-    for key in iter(tests):
+if opts.build_config is not None:
+    for key in tests:
         if not re.search(opts.build_config, key):
             del tests[key]
 
 # Begin testing
-call(['rm','-rf','build'])
-for test in iter(tests):
+shutil.rmtree('build', ignore_errors=True)
+for test in tests:
     print('-'*(len(test) + 6))
     print(test + ' tests')
     print('-'*(len(test) + 6))
@@ -212,7 +212,7 @@ for test in iter(tests):
                     'LastTest_{0}.log'.format(test))
 
     # Clean up build
-    call(['rm','-rf','build'])
+    shutil.rmtree('build', ignore_errors=True)
 
 # Print out summary of results
 print('\n' + '='*54)

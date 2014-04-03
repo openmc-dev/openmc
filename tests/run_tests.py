@@ -168,7 +168,7 @@ add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=Tru
 
 # Check to see if we are to just print build configuratinos
 if opts.print_build_configs:
-    for key in iter(tests):
+    for key in tests:
         print('Configuration Name: {0}'.format(key))
         print('  Debug Flags:..........{0}'.format(tests[key].debug))
         print('  Optimization Flags:...{0}'.format(tests[key].optimize))

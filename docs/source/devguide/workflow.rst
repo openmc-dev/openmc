@@ -103,7 +103,9 @@ regression tests where different types of input files are configured and the
 full OpenMC code is executed. Results from simulations are compared with
 expected results. The test suite is comprised of many build configurations
 (e.g. debug, mpi, hdf5) and the actual tests which reside in sub-directories
-in the tests directory.
+in the tests directory. We recommend to developers to test their branches
+before submitting a formal pull request using gfortran and intel compilers
+if available.
 
 The test suite is designed to integrate with cmake using ctest_.
 The test suite can be run on an already existing build using:
@@ -126,9 +128,7 @@ more control over which tests are executed.
 Before running the test suite python script, the following environmental
 variables should be set if the default paths are incorrect:
 
-    * **FC_DEFAULT** - The command of the default Fortran compiler. It
-      should be noted that the test suite is only verified for the
-      *gfortran* compiler.
+    * **FC_DEFAULT** - The command of the default Fortran compiler.
 
         * Default - *gfortran*
 

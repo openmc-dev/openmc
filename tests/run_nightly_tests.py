@@ -199,7 +199,7 @@ if options.build_config is not None:
 if options.dash is None:
     dash = 'Experimental'
     submit = ''
-else
+else:
     dash = options.dash
     submit = 'ctest_submit()'
 

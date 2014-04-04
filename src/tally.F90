@@ -210,6 +210,42 @@ contains
             j = j + t % moment_order(j)
             cycle SCORE_LOOP
 
+          case (SCORE_NU_SCATTER_N)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+
+            ! Find the scattering order for a singly requested moment, and
+            ! store its moment contribution.
+
+            if (t % moment_order(j) == 1) then
+              score = wgt * mu ! avoid function call overhead
+            else
+              score = wgt * calc_pn(t % moment_order(j), mu)
+            endif
+
+          case (SCORE_NU_SCATTER_PN)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index = score_index - 1
+            ! Find the scattering order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + 1
+              ! get the score and tally it
+              score = wgt * calc_pn(n, mu)
+
+!$omp critical
+              t % results(score_index, filter_index) % value = &
+                t % results(score_index, filter_index) % value + score
+!$omp end critical
+            end do
+            j = j + t % moment_order(j)
+            cycle SCORE_LOOP
+
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP

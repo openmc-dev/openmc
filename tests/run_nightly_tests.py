@@ -34,7 +34,7 @@ parser.add_option('-p', '--print', action="store_true",
                   help="Print out build configurations.")
 parser.add_option("-b", "--branch", dest="branch", default="",
                   help="branch name for build")
-parser.add_option("-D", "--dashboard", dest="dash", default="Experimental",
+parser.add_option("-D", "--dashboard", dest="dash",
                   help="Dash name -- Experimental, Nightly, Continuous")
 (options, args) = parser.parse_args()
 
@@ -70,7 +70,7 @@ endif(MEM_CHECK)
 if(COVERAGE)
 ctest_coverage()
 endif(COVERAGE)
-ctest_submit()"""
+{submit}"""
 
 # Define test data structure
 tests = OrderedDict()
@@ -195,13 +195,22 @@ if options.build_config is not None:
         if not re.search(options.build_config, key):
             del tests[key]
 
+# Check for dashboard and determine whether to push results to server
+if options.dash is None:
+    dash = 'Experimental'
+    submit = ''
+else
+    dash = options.dash
+    submit = 'ctest_submit()'
+
 # Setup CTest vars
 pwd = os.environ['PWD']
 ctest_vars = {
 'source_dir' : pwd + '/../src',
 'build_dir' :  pwd + '/build',
 'host_name' : 'neutronbalance',
-'dashboard' : options.dash,
+'dashboard' : dash,
+'submit'    : submit,
 'n_procs'   : options.n_procs
 }
 

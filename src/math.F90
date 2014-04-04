@@ -181,7 +181,8 @@ contains
     if (uvw(1) == ZERO) then
       phi = ZERO
     else
-      phi = atan(uvw(2) / uvw(1))
+!       phi = atan(uvw(2) / uvw(1))
+      phi = atan2(uvw(2), uvw(1))
     end if
 
     w2m1 = (ONE - w**2)

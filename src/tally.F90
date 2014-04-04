@@ -43,7 +43,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: n                    ! loop index for legendre order
     integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: num_n                ! Number of N orders in harmonic
     integer :: l                    ! scoring bin loop index, allowing for changing
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
@@ -150,27 +149,26 @@ contains
 
             score_index = score_index - 1
 
-            ! Calculate the number of moments from t % moment_order
-            num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+            ! get the score
+            score = last_wgt / material_xs % total
+
             num_nm = 1
             ! Find the order for a collection of requested moments
             ! and store the moment contribution of each
-            do n = 0, num_n
+            do n = 0, t % moment_order(j)
               ! determine scoring bin index
               score_index = score_index + num_nm
               ! Update number of total n,m bins for this n (m = [-n: n])
               num_nm = 2 * n + 1
-              ! get the score
-              score = last_wgt / material_xs % total
 
               ! multiply score by the angular flux moments and store
 !$omp critical
-              t % results(score_index: score_index + num_nm, filter_index) % value = &
-                t % results(score_index: score_index + num_nm, filter_index) % value + &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
                 score * calc_rn(n, p % last_uvw)
 !$omp end critical
             end do
-            j = j + t % moment_order(j)
+            j = j + (t % moment_order(j) + 1)**2 - 1
             cycle SCORE_LOOP
 
           case (SCORE_TOTAL)
@@ -193,34 +191,32 @@ contains
 
             score_index = score_index - 1
 
-            ! Calculate the number of moments from t % moment_order
-            num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+            ! get the score
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
+
             num_nm = 1
             ! Find the order for a collection of requested moments
             ! and store the moment contribution of each
-            do n = 0, num_n
+            do n = 0, t % moment_order(j)
               ! determine scoring bin index
               score_index = score_index + num_nm
               ! Update number of total n,m bins for this n (m = [-n: n])
               num_nm = 2 * n + 1
 
-              ! get the score
-              if (survival_biasing) then
-                ! We need to account for the fact that some weight was already
-                ! absorbed
-                score = last_wgt + p % absorb_wgt
-              else
-                score = last_wgt
-              end if
-
               ! multiply score by the angular flux moments and store
 !$omp critical
-              t % results(score_index: score_index + num_nm, filter_index) % value = &
-                t % results(score_index: score_index + num_nm, filter_index) % value + &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
                 score * calc_rn(n, p % last_uvw)
 !$omp end critical
             end do
-            j = j + t % moment_order(j)
+            j = j + (t % moment_order(j) + 1)**2 - 1
             cycle SCORE_LOOP
 
           case (SCORE_SCATTER)
@@ -288,11 +284,10 @@ contains
             score_index = score_index - 1
 
             ! Calculate the number of moments from t % moment_order
-            num_n = int(sqrt(real(t % moment_order(j),8))) - 1
             num_nm = 1
             ! Find the order for a collection of requested moments
             ! and store the moment contribution of each
-            do n = 0, num_n
+            do n = 0, t % moment_order(j)
               ! determine scoring bin index
               score_index = score_index + num_nm
               ! Update number of total n,m bins for this n (m = [-n: n])
@@ -302,12 +297,12 @@ contains
 
               ! multiply score by the angular flux moments and store
 !$omp critical
-              t % results(score_index: score_index + num_nm, filter_index) % value = &
-                t % results(score_index: score_index + num_nm, filter_index) % value + &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
                 score * calc_rn(n, p % last_uvw)
 !$omp end critical
             end do
-            j = j + t % moment_order(j)
+            j = j + (t % moment_order(j) + 1)**2 - 1
             cycle SCORE_LOOP
 
           case (SCORE_NU_SCATTER_N)
@@ -355,11 +350,10 @@ contains
             score_index = score_index - 1
 
             ! Calculate the number of moments from t % moment_order
-            num_n = int(sqrt(real(t % moment_order(j),8))) - 1
             num_nm = 1
             ! Find the order for a collection of requested moments
             ! and store the moment contribution of each
-            do n = 0, num_n
+            do n = 0, t % moment_order(j)
               ! determine scoring bin index
               score_index = score_index + num_nm
               ! Update number of total n,m bins for this n (m = [-n: n])
@@ -369,12 +363,12 @@ contains
 
               ! multiply score by the angular flux moments and store
 !$omp critical
-              t % results(score_index: score_index + num_nm, filter_index) % value = &
-                t % results(score_index: score_index + num_nm, filter_index) % value + &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
                 score * calc_rn(n, p % last_uvw)
 !$omp end critical
             end do
-            j = j + t % moment_order(j)
+            j = j + (t % moment_order(j) + 1)**2 - 1
             cycle SCORE_LOOP
 
           case (SCORE_TRANSPORT)
@@ -615,7 +609,6 @@ contains
     integer :: m                    ! loop index for reactions
     integer :: n                    ! loop index for legendre order
     integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: num_n                ! Number of N orders in harmonic
     integer :: q                    ! loop index for scoring bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
@@ -718,28 +711,26 @@ contains
               case (SCORE_FLUX_YN)
                 score_index = score_index - 1
 
-                ! Calculate the number of moments from t % moment_order
-                num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                ! For flux, we need no cross section
+                score = flux
+
                 num_nm = 1
                 ! Find the order for a collection of requested moments
                 ! and store the moment contribution of each
-                do n = 0, num_n
+                do n = 0, t % moment_order(j)
                   ! determine scoring bin index
                   score_index = score_index + num_nm
                   ! Update number of total n,m bins for this n (m = [-n: n])
                   num_nm = 2 * n + 1
 
-                  ! For flux, we need no cross section
-                  score = flux
-
                   ! multiply score by the angular flux moments and store
-    !$omp critical
-                  t % results(score_index: score_index + num_nm, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-    !$omp end critical
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % last_uvw)
+!$omp end critical
                 end do
-                j = j + t % moment_order(j)
+                j = j + (t % moment_order(j) + 1)**2 - 1
                 cycle SCORE_LOOP
 
               case (SCORE_TOTAL)
@@ -750,29 +741,23 @@ contains
               case (SCORE_TOTAL_YN)
                 score_index = score_index - 1
 
-                ! Calculate the number of moments from t % moment_order
-                num_n = int(sqrt(real(t % moment_order(j),8))) - 1
                 num_nm = 1
                 ! Find the order for a collection of requested moments
                 ! and store the moment contribution of each
-                do n = 0, num_n
+                do n = 0, t % moment_order(j)
                   ! determine scoring bin index
                   score_index = score_index + num_nm
                   ! Update number of total n,m bins for this n (m = [-n: n])
                   num_nm = 2 * n + 1
 
-                  ! Total cross section is pre-calculated
-                  score = micro_xs(i_nuclide) % total * &
-                     atom_density * flux
-
                   ! multiply score by the angular flux moments and store
-    !$omp critical
-                  t % results(score_index: score_index + num_nm, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-    !$omp end critical
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % last_uvw)
+!$omp end critical
                 end do
-                j = j + t % moment_order(j)
+                j = j + (t % moment_order(j) + 1)**2 - 1
                 cycle SCORE_LOOP
 
               case (SCORE_SCATTER)
@@ -857,28 +842,26 @@ contains
               case (SCORE_FLUX_YN)
                 score_index = score_index - 1
 
-                ! Calculate the number of moments from t % moment_order
-                num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                ! For flux, we need no cross section
+                score = flux
+
                 num_nm = 1
                 ! Find the order for a collection of requested moments
                 ! and store the moment contribution of each
-                do n = 0, num_n
+                do n = 0, t % moment_order(j)
                   ! determine scoring bin index
                   score_index = score_index + num_nm
                   ! Update number of total n,m bins for this n (m = [-n: n])
                   num_nm = 2 * n + 1
 
-                  ! For flux, we need no cross section
-                  score = flux
-
                   ! multiply score by the angular flux moments and store
-    !$omp critical
-                  t % results(score_index: score_index + num_nm, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-    !$omp end critical
+!$omp critical
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                  score * calc_rn(n, p % last_uvw)
+!$omp end critical
                 end do
-                j = j + t % moment_order(j)
+                j = j + (t % moment_order(j) + 1)**2 - 1
                 cycle SCORE_LOOP
 
               case (SCORE_TOTAL)
@@ -888,28 +871,26 @@ contains
               case (SCORE_TOTAL_YN)
                 score_index = score_index - 1
 
-                ! Calculate the number of moments from t % moment_order
-                num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                ! Total cross section is pre-calculated
+                score = material_xs % total * flux
+
                 num_nm = 1
                 ! Find the order for a collection of requested moments
                 ! and store the moment contribution of each
-                do n = 0, num_n
+                do n = 0, t % moment_order(j)
                   ! determine scoring bin index
                   score_index = score_index + num_nm
                   ! Update number of total n,m bins for this n (m = [-n: n])
                   num_nm = 2 * n + 1
 
-                  ! Total cross section is pre-calculated
-                  score = material_xs % total * flux
-
                   ! multiply score by the angular flux moments and store
-    !$omp critical
-                  t % results(score_index: score_index + num_nm, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-    !$omp end critical
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % last_uvw)
+!$omp end critical
                 end do
-                j = j + t % moment_order(j)
+                j = j + (t % moment_order(j) + 1)**2 - 1
                 cycle SCORE_LOOP
 
               case (SCORE_SCATTER)
@@ -1030,7 +1011,6 @@ contains
     integer :: m             ! loop index for reactions in nuclide
     integer :: n             ! loop index for legendre order
     integer :: num_nm        ! Number of N,M orders in harmonic
-    integer :: num_n         ! Number of N orders in harmonic
     integer :: q             ! loop index for scoring bins
     integer :: i_nuclide     ! index in nuclides array
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
@@ -1080,28 +1060,26 @@ contains
         case (SCORE_FLUX_YN)
           score_index = score_index - 1
 
-          ! Calculate the number of moments from t % moment_order
-          num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+          ! For flux, we need no cross section
+          score = flux
+
           num_nm = 1
           ! Find the order for a collection of requested moments
           ! and store the moment contribution of each
-          do n = 0, num_n
+          do n = 0, t % moment_order(j)
             ! determine scoring bin index
             score_index = score_index + num_nm
             ! Update number of total n,m bins for this n (m = [-n: n])
             num_nm = 2 * n + 1
 
-            ! For flux, we need no cross section
-            score = flux
-
             ! multiply score by the angular flux moments and store
-  !$omp critical
-            t % results(score_index: score_index + num_nm, filter_index) % value = &
-              t % results(score_index: score_index + num_nm, filter_index) % value + &
-              score * calc_rn(n, p % coord0 % uvw)
-  !$omp end critical
+!$omp critical
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+              score * calc_rn(n, p % last_uvw)
+!$omp end critical
           end do
-          j = j + t % moment_order(j)
+          j = j + (t % moment_order(j) + 1)**2 - 1
           cycle SCORE_LOOP
 
         case (SCORE_TOTAL)
@@ -1110,27 +1088,25 @@ contains
         case (SCORE_TOTAL_YN)
           score_index = score_index - 1
 
-          ! Calculate the number of moments from t % moment_order
-          num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+          score = micro_xs(i_nuclide) % total * atom_density * flux
+
           num_nm = 1
           ! Find the order for a collection of requested moments
           ! and store the moment contribution of each
-          do n = 0, num_n
+          do n = 0, t % moment_order(j)
             ! determine scoring bin index
             score_index = score_index + num_nm
             ! Update number of total n,m bins for this n (m = [-n: n])
             num_nm = 2 * n + 1
 
-            score = micro_xs(i_nuclide) % total * atom_density * flux
-
             ! multiply score by the angular flux moments and store
-  !$omp critical
-            t % results(score_index: score_index + num_nm, filter_index) % value = &
-              t % results(score_index: score_index + num_nm, filter_index) % value + &
-              score * calc_rn(n, p % coord0 % uvw)
-  !$omp end critical
+!$omp critical
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+              score * calc_rn(n, p % last_uvw)
+!$omp end critical
           end do
-          j = j + t % moment_order(j)
+          j = j + (t % moment_order(j) + 1)**2 - 1
           cycle SCORE_LOOP
 
         case (SCORE_SCATTER)
@@ -1224,28 +1200,26 @@ contains
       case (SCORE_FLUX_YN)
         score_index = score_index - 1
 
-        ! Calculate the number of moments from t % moment_order
-        num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+        ! For flux, we need no cross section
+        score = flux
+
         num_nm = 1
         ! Find the order for a collection of requested moments
         ! and store the moment contribution of each
-        do n = 0, num_n
+        do n = 0, t % moment_order(j)
           ! determine scoring bin index
           score_index = score_index + num_nm
           ! Update number of total n,m bins for this n (m = [-n: n])
           num_nm = 2 * n + 1
 
-          ! For flux, we need no cross section
-          score = flux
-
           ! multiply score by the angular flux moments and store
 !$omp critical
-          t % results(score_index: score_index + num_nm, filter_index) % value = &
-            t % results(score_index: score_index + num_nm, filter_index) % value + &
-            score * calc_rn(n, p % coord0 % uvw)
+          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+            score * calc_rn(n, p % last_uvw)
 !$omp end critical
         end do
-        j = j + t % moment_order(j)
+        j = j + (t % moment_order(j) + 1)**2 - 1
         cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_TOTAL)
@@ -1254,28 +1228,26 @@ contains
       case (SCORE_TOTAL_YN)
         score_index = score_index - 1
 
-        ! Calculate the number of moments from t % moment_order
-        num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+        ! Total cross section is pre-calculated
+        score = material_xs % total * flux
+
         num_nm = 1
         ! Find the order for a collection of requested moments
         ! and store the moment contribution of each
-        do n = 0, num_n
+        do n = 0, t % moment_order(j)
           ! determine scoring bin index
           score_index = score_index + num_nm
           ! Update number of total n,m bins for this n (m = [-n: n])
           num_nm = 2 * n + 1
 
-          ! Total cross section is pre-calculated
-          score = material_xs % total * flux
-
           ! multiply score by the angular flux moments and store
 !$omp critical
-          t % results(score_index: score_index + num_nm, filter_index) % value = &
-            t % results(score_index: score_index + num_nm, filter_index) % value + &
-            score * calc_rn(n, p % coord0 % uvw)
+          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+            score * calc_rn(n, p % last_uvw)
 !$omp end critical
         end do
-        j = j + t % moment_order(j)
+        j = j + (t % moment_order(j) + 1)**2 - 1
         cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_SCATTER)
@@ -1376,7 +1348,6 @@ contains
     integer :: b                    ! loop index for nuclide bins
     integer :: n                    ! loop index for legendre order
     integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: num_n                ! Number of N orders in harmonic
     integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
@@ -1616,27 +1587,25 @@ contains
                 case (SCORE_FLUX_YN)
                   score_index = score_index - 1
 
-                  ! Calculate the number of moments from t % moment_order
-                  num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                  score = flux
+
                   num_nm = 1
                   ! Find the order for a collection of requested moments
                   ! and store the moment contribution of each
-                  do n = 0, num_n
+                  do n = 0, t % moment_order(j)
                     ! determine scoring bin index
                     score_index = score_index + num_nm
                     ! Update number of total n,m bins for this n (m = [-n: n])
                     num_nm = 2 * n + 1
 
-                    score = flux
-
                     ! multiply score by the angular flux moments and store
-      !$omp critical
-                    t % results(score_index: score_index + num_nm, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-      !$omp end critical
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % last_uvw)
+!$omp end critical
                   end do
-                  j = j + t % moment_order(j)
+                  j = j + (t % moment_order(j) + 1)**2 - 1
                   cycle SCORE_LOOP
 
                 case (SCORE_TOTAL)
@@ -1646,29 +1615,27 @@ contains
                 case (SCORE_TOTAL_YN)
                   score_index = score_index - 1
 
-                  ! Calculate the number of moments from t % moment_order
-                  num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                  ! Total cross section is pre-calculated
+                  score = micro_xs(i_nuclide) % total * &
+                    atom_density * flux
+
                   num_nm = 1
                   ! Find the order for a collection of requested moments
                   ! and store the moment contribution of each
-                  do n = 0, num_n
+                  do n = 0, t % moment_order(j)
                     ! determine scoring bin index
                     score_index = score_index + num_nm
                     ! Update number of total n,m bins for this n (m = [-n: n])
                     num_nm = 2 * n + 1
 
-                    ! Total cross section is pre-calculated
-                    score = micro_xs(i_nuclide) % total * &
-                       atom_density * flux
-
                     ! multiply score by the angular flux moments and store
-      !$omp critical
-                    t % results(score_index: score_index + num_nm, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-      !$omp end critical
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % last_uvw)
+!$omp end critical
                   end do
-                  j = j + t % moment_order(j)
+                  j = j + (t % moment_order(j) + 1)**2 - 1
                   cycle SCORE_LOOP
 
                 case (SCORE_SCATTER)
@@ -1703,27 +1670,25 @@ contains
                 case (SCORE_FLUX_YN)
                   score_index = score_index - 1
 
-                  ! Calculate the number of moments from t % moment_order
-                  num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                  score = flux
+
                   num_nm = 1
                   ! Find the order for a collection of requested moments
                   ! and store the moment contribution of each
-                  do n = 0, num_n
+                  do n = 0, t % moment_order(j)
                     ! determine scoring bin index
                     score_index = score_index + num_nm
                     ! Update number of total n,m bins for this n (m = [-n: n])
                     num_nm = 2 * n + 1
 
-                    score = flux
-
                     ! multiply score by the angular flux moments and store
-      !$omp critical
-                    t % results(score_index: score_index + num_nm, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-      !$omp end critical
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % last_uvw)
+!$omp end critical
                   end do
-                  j = j + t % moment_order(j)
+                  j = j + (t % moment_order(j) + 1)**2 - 1
                   cycle SCORE_LOOP
 
                 case (SCORE_TOTAL)
@@ -1732,28 +1697,26 @@ contains
                 case (SCORE_TOTAL_YN)
                   score_index = score_index - 1
 
-                  ! Calculate the number of moments from t % moment_order
-                  num_n = int(sqrt(real(t % moment_order(j),8))) - 1
+                  ! Total cross section is pre-calculated
+                  score = material_xs % total * flux
+
                   num_nm = 1
                   ! Find the order for a collection of requested moments
                   ! and store the moment contribution of each
-                  do n = 0, num_n
+                  do n = 0, t % moment_order(j)
                     ! determine scoring bin index
                     score_index = score_index + num_nm
                     ! Update number of total n,m bins for this n (m = [-n: n])
                     num_nm = 2 * n + 1
 
-                    ! Total cross section is pre-calculated
-                    score = material_xs % total * flux
-
                     ! multiply score by the angular flux moments and store
-      !$omp critical
-                    t % results(score_index: score_index + num_nm, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-      !$omp end critical
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % last_uvw)
+!$omp end critical
                   end do
-                  j = j + t % moment_order(j)
+                  j = j + (t % moment_order(j) + 1)**2 - 1
                   cycle SCORE_LOOP
 
                 case (SCORE_SCATTER)

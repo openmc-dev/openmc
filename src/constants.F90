@@ -302,6 +302,10 @@ module constants
        MOMENT_N_STRS(2)  = (/ "scatter-    ",   &
                               "nu-scatter- "/)
 
+  ! Location in MOMENT_STRS where the YN data begins
+  integer, parameter :: YN_LOC = 3
+
+
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
 

@@ -1708,9 +1708,10 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
-    integer :: n_new         ! number of new scores to add based on Pn tally
-    integer :: n_scores      ! number of tot scores after adjusting for Pn tally
-    integer :: n_order       ! Scattering order requested
+    integer :: n_new         ! number of new scores to add based on Yn/Pn tally
+    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
+    integer :: n_bins        ! Total new bins for this score
+    integer :: n_order       ! Moment order requested
     integer :: n_order_pos   ! Position of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
@@ -2265,7 +2266,7 @@ contains
         n_new = 0
         do j = 1, n_words
           call lower_case(sarray(j))
-          ! Find if scores(j) is of the form 'moment-p' present in
+          ! Find if scores(j) is of the form 'moment-p' or 'moment-y' present in
           ! MOMENT_STRS(:)
           ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
@@ -2286,7 +2287,14 @@ contains
                 sarray(j) = trim(MOMENT_STRS(imomstr)) // &
                   trim(to_str(MAX_ANG_ORDER))
               end if
-              n_new = n_new + n_order
+              ! Find total number of bins for this case
+              if (imomstr >= YN_LOC) then
+                n_bins = (n_order + 1)**2
+              else
+                n_bins = n_order + 1
+              end if
+              ! We subtract one since n_words already included
+              n_new = n_new + n_bins - 1
               exit
             end if
           end do
@@ -2320,28 +2328,37 @@ contains
                 n_order = MAX_ANG_ORDER
               end if
               score_name = trim(MOMENT_STRS(imomstr)) // "n"
-              exit
-            end if
-          end do
-          do imomstr = 1, size(MOMENT_N_STRS)
-            if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
-              n_order_pos = scan(score_name,'0123456789')
-              n_order = int(str_to_int( &
-                score_name(n_order_pos:(len_trim(score_name)))),4)
-              if (n_order > MAX_ANG_ORDER) then
-                ! User requested too many orders; throw a warning and set to the
-                ! maximum order.
-                ! The above scheme will essentially take the absolute value
-                message = "Invalid scattering order of " // trim(to_str(n_order)) // &
-                  " requested. Setting to the maximum permissible value, " // &
-                  trim(to_str(MAX_ANG_ORDER))
-                call warning()
-                n_order = MAX_ANG_ORDER
+              ! Find total number of bins for this case
+              if (imomstr >= YN_LOC) then
+                n_bins = (n_order + 1)**2
+              else
+                n_bins = n_order + 1
               end if
-              score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
               exit
             end if
           end do
+          ! Now check the Moment_N_Strs, but only if we werent successful above
+          if (imomstr > size(MOMENT_STRS)) then
+            do imomstr = 1, size(MOMENT_N_STRS)
+              if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
+                n_order_pos = scan(score_name,'0123456789')
+                n_order = int(str_to_int( &
+                  score_name(n_order_pos:(len_trim(score_name)))),4)
+                if (n_order > MAX_ANG_ORDER) then
+                  ! User requested too many orders; throw a warning and set to the
+                  ! maximum order.
+                  ! The above scheme will essentially take the absolute value
+                  message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                    " requested. Setting to the maximum permissible value, " // &
+                    trim(to_str(MAX_ANG_ORDER))
+                  call warning()
+                  n_order = MAX_ANG_ORDER
+                end if
+                score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
+                exit
+              end if
+            end do
+          end if
 
           select case (trim(score_name))
           case ('flux')
@@ -2370,9 +2387,9 @@ contains
               call fatal_error()
             end if
 
-            t % score_bins(j : j + n_order) = SCORE_FLUX_YN
-            t % moment_order(j : j + n_order) = (n_order + 1)**2
-            j = j + (n_order + 1)**2
+            t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins  - 1
 
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
@@ -2389,9 +2406,9 @@ contains
               call fatal_error()
             end if
 
-            t % score_bins(j : j + n_order) = SCORE_TOTAL_YN
-            t % moment_order(j : j + n_order) = (n_order + 1)**2
-            j = j + (n_order + 1)**2
+            t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
 
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
@@ -2424,30 +2441,30 @@ contains
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
 
           case ('nu-scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_NU_SCATTER_PN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
 
           case ('scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_SCATTER_YN
-            t % moment_order(j : j + n_order) = (n_order + 1)**2
-            j = j + (n_order + 1)**2
+            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
 
           case ('nu-scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_NU_SCATTER_YN
-            t % moment_order(j : j + n_order) = (n_order + 1)**2
-            j = j + (n_order + 1)**2
+            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
@@ -2558,14 +2575,14 @@ contains
                 t % score_bins(j) = MT
               else
                 message = "Invalid MT on <scores>: " // &
-                     trim(sarray(j))
+                     trim(sarray(l))
                 call fatal_error()
               end if
 
             else
               ! Specified score was not an integer
               message = "Unknown scoring function: " // &
-                   trim(sarray(j))
+                   trim(sarray(l))
               call fatal_error()
             end if
 

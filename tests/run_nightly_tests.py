@@ -217,7 +217,7 @@ valgrind_default_tests = "basic|cmfd_feed|confidence_intervals| \
     tally_assumesep|translation|uniform_fs|universe|void"
 
 # Begin testing
-shutils.rmtree('build', ignore_errors=True)
+shutil.rmtree('build', ignore_errors=True)
 os.remove('ctestscript.run')
 call(['./cleanup'])
 for key in iter(tests):
@@ -250,6 +250,6 @@ for key in iter(tests):
     test.run_ctest()
 
     # Clear build directory
-    shutils.rmtree('build', ignore_errors=True)
+    shutil.rmtree('build', ignore_errors=True)
     os.remove('ctestscript.run')
     call(['./cleanup'])

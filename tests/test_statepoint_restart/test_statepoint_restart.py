@@ -118,7 +118,7 @@ def teardown():
 if __name__ == '__main__':
 
     # test for openmc executable
-    if opts.exe == None:
+    if opts.exe is None:
         raise Exception('Must specify OpenMC executable from command line with --exe.')
 
     # run tests

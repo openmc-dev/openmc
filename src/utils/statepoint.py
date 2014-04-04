@@ -6,6 +6,8 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
+REVISION_STATEPOINT = 12
+
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
 
@@ -157,7 +159,7 @@ class StatePoint(object):
 
         # Read statepoint revision
         self.revision = self._get_int(path='revision')[0]
-        if self.revision != 11:
+        if self.revision != REVISION_STATEPOINT:
           raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version

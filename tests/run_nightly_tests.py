@@ -210,11 +210,11 @@ ctest_vars = {
 # Set up default valgrind tests
 # Currently takes too long to run all the tests with valgrind
 valgrind_default_tests = "basic|cmfd_feed|confidence_intervals| \
-    density_atombcm|eigenvalue_genperbatch|energy_grid|entropy| \
-    filter_cell|lattice_multiple|output|plot_background|reflective_plane| \
-    rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono| \
-    sourcepoint_batch|statepoint_interval|survival_biasing| \
-    tally_assumesep|translation|uniform_fs|universe|void"
+density_atombcm|eigenvalue_genperbatch|energy_grid|entropy| \
+filter_cell|lattice_multiple|output|plot_background|reflective_plane| \
+rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono| \
+sourcepoint_batch|statepoint_interval|survival_biasing| \
+tally_assumesep|translation|uniform_fs|universe|void"
 
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)

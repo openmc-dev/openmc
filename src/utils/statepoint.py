@@ -293,7 +293,7 @@ class StatePoint(object):
             t.n_scores = self._get_int(path=base+'n_score_bins')[0]
             t.scores = [score_types[j] for j in self._get_int(
                     t.n_scores, path=base+'score_bins')]
-            t.scatt_order = self._get_int(t.n_scores, path=base+'scatt_order')
+            t.moment_order = self._get_int(t.n_scores, path=base+'moment_order')
 
             # Read number of user score bins
             t.n_user_scores = self._get_int(path=base+'n_user_score_bins')[0]

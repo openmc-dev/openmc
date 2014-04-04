@@ -2295,8 +2295,8 @@ contains
 
         ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
-        allocate(t % scatt_order(n_scores))
-        t % scatt_order = 0
+        allocate(t % moment_order(n_scores))
+        t % moment_order = 0
         j = 0
         do l = 1, n_words
           j = j + 1
@@ -2371,7 +2371,7 @@ contains
             end if
 
             t % score_bins(j : j + n_order) = SCORE_FLUX_YN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case ('total')
@@ -2390,7 +2390,7 @@ contains
             end if
 
             t % score_bins(j : j + n_order) = SCORE_TOTAL_YN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case ('scatter')
@@ -2409,7 +2409,7 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
-            t % scatt_order(j) = n_order
+            t % moment_order(j) = n_order
 
           case ('nu-scatter-n')
             if (n_order == 0) then
@@ -2419,34 +2419,34 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
-            t % scatt_order(j) = n_order
+            t % moment_order(j) = n_order
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case ('nu-scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_NU_SCATTER_PN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case ('scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_SCATTER_YN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case ('nu-scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_NU_SCATTER_YN
-            t % scatt_order(j : j + n_order) = n_order
+            t % moment_order(j : j + n_order) = n_order
             j = j + n_order
 
           case('transport')

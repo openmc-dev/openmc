@@ -3,10 +3,28 @@
 from __future__ import print_function
 
 import os
-import sys
 import shutil
+import re
 from subprocess import call 
 from collections import OrderedDict
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option('-j', '--parallel', dest='n_procs',
+                  help="Number of parallel jobs.")
+parser.add_option('-R', '--tests-regex', dest='regex_tests',
+                  help="Run tests matching regular expression. \
+                  Test names are the directories present in tests folder.\
+                  This uses standard regex syntax to select tests.")
+parser.add_option('-C', '--build-config', dest='build_config',
+                  help="Build configurations matching regular expression. \
+                        Specific build configurations can be printed out with \
+                        optional argument -p, --print. This uses standard \
+                        regex syntax to select build configurations.")
+parser.add_option('-p', '--print', action="store_true", 
+                  dest="print_build_configs", default=False,
+                  help="Print out build configurations.")
+(opts, args) = parser.parse_args()
 
 # Compiler paths
 FC_DEFAULT='gfortran'
@@ -68,7 +86,17 @@ class Test(object):
     def run_make(self):
         if not self.success:
             return
-        rc = call(['make','-j', '-s','-C','build'])
+
+        # Default make string
+        make_list = ['make','-s']
+
+        # Check for parallel
+        if opts.n_procs is not None:
+            make_list.append('-j')
+            make_list.append(opts.n_procs)
+
+        # Run make
+        rc = call(make_list)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on make.'
@@ -76,7 +104,22 @@ class Test(object):
     def run_ctests(self):
         if not self.success:
             return
-        rc = call(['make','test','-C','build'])
+
+        # Default ctest string
+        ctest_list = ['ctest']
+
+        # Check for parallel
+        if opts.n_procs is not None:
+            ctest_list.append('-j')
+            ctest_list.append(opts.n_procs)
+
+        # Check for subset of tests
+        if opts.regex_tests is not None:
+            ctest_list.append('-R')
+            ctest_list.append(opts.regex_tests)
+
+        # Run ctests
+        rc = call(ctest_list)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on testing.'
@@ -117,53 +160,41 @@ add_test('phdf5-petsc-normal', mpi=True, hdf5=True, petsc=True)
 add_test('phdf5-petsc-debug', mpi=True, hdf5=True, petsc=True, debug=True)
 add_test('phdf5-petsc-optimize', mpi=True, hdf5=True, petsc=True, optimize=True)
 add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
-add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
+add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True,
+                                  debug=True)
+add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True,
+                                     optimize=True)
 
-# Process command line arguments
-if len(sys.argv) > 1:
-    flags = [i for i in sys.argv[1:] if i.startswith('-')]
-    tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
+# Check to see if we are to just print build configuratinos
+if opts.print_build_configs:
+    for key in tests:
+        print('Configuration Name: {0}'.format(key))
+        print('  Debug Flags:..........{0}'.format(tests[key].debug))
+        print('  Optimization Flags:...{0}'.format(tests[key].optimize))
+        print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
+        print('  MPI Active:...........{0}'.format(tests[key].mpi))
+        print('  OpenMP Active:........{0}'.format(tests[key].openmp))
+        print('  PETSc Active:.........{0}\n'.format(tests[key].petsc))
+    exit()
 
-    # Check for special subsets of tests
-    tests__ = []
-    for i in tests_:
-
-        # This checks for any subsets of tests. The string after
-        # all-XXXX will be used to search through all tests.
-        if i.startswith('all-'):
-            suffix = i.split('all-')[1]
-            for j in tests:
-                if j.rfind(suffix) != -1:
-                    try:
-                        tests__.index(j)
-                    except ValueError:
-                        tests__.append(j)
-
-        # Test name specified on command line
-        else:
-            try:
-                tests__.index(i)
-            except ValueError:
-                tests__.append(i)  # append specific test (e.g., mpi-debug)
-
-    # Delete items of dictionary that are not in tests__
-    for key in iter(tests):
-        try:
-            tests__.index(key)
-        except ValueError:
+# Delete items of dictionary that don't match regular expression
+if opts.build_config is not None:
+    for key in tests:
+        if not re.search(opts.build_config, key):
             del tests[key]
 
 # Begin testing
-call(['rm','-rf','build'])
-for test in iter(tests):
+shutil.rmtree('build', ignore_errors=True)
+for test in tests:
     print('-'*(len(test) + 6))
     print(test + ' tests')
     print('-'*(len(test) + 6))
 
-
     # Run CMAKE to configure build
     tests[test].run_cmake()
+
+    # Go into build directory
+    os.chdir('build')
 
     # Build OpenMC
     tests[test].run_make()
@@ -171,13 +202,16 @@ for test in iter(tests):
     # Run tests
     tests[test].run_ctests()
 
+    # Leave build directory
+    os.chdir('..')
+
     # Copy test log file if failed
     if tests[test].msg == 'Failed on testing.':
         shutil.copy('build/Testing/Temporary/LastTest.log',
                     'LastTest_{0}.log'.format(test))
 
     # Clean up build
-    call(['rm','-rf','build'])
+    shutil.rmtree('build', ignore_errors=True)
 
 # Print out summary of results
 print('\n' + '='*54)
@@ -188,7 +222,7 @@ FAIL = '\033[91m'
 ENDC = '\033[0m'
 BOLD = '\033[1m'
 
-for test in iter(tests):
+for test in tests:
     print(test + '.'*(50 - len(test)), end='')
     if tests[test].success:
         print(BOLD + OK + '[OK]' + ENDC)

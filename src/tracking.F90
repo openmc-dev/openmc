@@ -172,7 +172,6 @@ contains
 
         ! Save coordinates for tallying purposes
         p % last_xyz = p % coord0 % xyz
-        p % last_uvw = p % coord0 % uvw
 
         ! Set last material to none since cross sections will need to be
         ! re-evaluated

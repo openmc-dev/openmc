@@ -218,7 +218,6 @@ valgrind_default_tests = "basic|cmfd_feed|confidence_intervals| \
 
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)
-os.remove('ctestscript.run')
 call(['./cleanup'])
 for key in iter(tests):
     test = tests[key]

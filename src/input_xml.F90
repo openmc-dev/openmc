@@ -2371,8 +2371,8 @@ contains
             end if
 
             t % score_bins(j : j + n_order) = SCORE_FLUX_YN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % moment_order(j : j + n_order) = (n_order + 1)**2
+            j = j + (n_order + 1)**2
 
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
@@ -2390,8 +2390,8 @@ contains
             end if
 
             t % score_bins(j : j + n_order) = SCORE_TOTAL_YN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % moment_order(j : j + n_order) = (n_order + 1)**2
+            j = j + (n_order + 1)**2
 
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
@@ -2439,15 +2439,15 @@ contains
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_SCATTER_YN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % moment_order(j : j + n_order) = (n_order + 1)**2
+            j = j + (n_order + 1)**2
 
           case ('nu-scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_NU_SCATTER_YN
-            t % moment_order(j : j + n_order) = n_order
-            j = j + n_order
+            t % moment_order(j : j + n_order) = (n_order + 1)**2
+            j = j + (n_order + 1)**2
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT

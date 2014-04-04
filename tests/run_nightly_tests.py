@@ -3,8 +3,8 @@
 from __future__ import print_function
 
 import os
-import sys
 import shutil
+import re
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -18,6 +18,20 @@ PETSC_DIR='/opt/petsc/3.4.3-gnu'
 
 # Command line parsing
 parser = OptionParser()
+parser.add_option('-j', '--parallel', dest='n_procs', default='1',
+                  help="Number of parallel jobs.")
+parser.add_option('-R', '--tests-regex', dest='regex_tests',
+                  help="Run tests matching regular expression. \
+                  Test names are the directories present in tests folder.\
+                  This uses standard regex syntax to select tests.")
+parser.add_option('-C', '--build-config', dest='build_config',
+                  help="Build configurations matching regular expression. \
+                        Specific build configurations can be printed out with \
+                        optional argument -p, --print. This uses standard \
+                        regex syntax to select build configurations.")
+parser.add_option('-p', '--print', action="store_true", 
+                  dest="print_build_configs", default=False,
+                  help="Print out build configurations.")
 parser.add_option("-b", "--branch", dest="branch", default="",
                   help="branch name for build")
 parser.add_option("-D", "--dashboard", dest="dash", default="Experimental",
@@ -45,17 +59,15 @@ set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
-set(INCLUDED_TESTS "basic|cmfd_feed|confidence_intervals|density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|filter_cell|lattice_multiple|output|plot_background|reflective_plane|rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|sourcepoint_batch|statepoint_interval|survival_biasing|tally_assumesep|translation|uniform_fs|universe|void")
-
 ctest_start("{dashboard}")
 ctest_configure()
 ctest_update()
 ctest_build()
 if(MEM_CHECK)
-ctest_test(INCLUDE ${{INCLUDED_TESTS}} PARALLEL_LEVEL 4)
-ctest_memcheck(INCLUDE ${{INCLUDED_TESTS}})
+ctest_test({tests} PARALLEL_LEVEL {n_procs})
+ctest_memcheck({tests})
 else(MEM_CHECK)
-ctest_test(PARALLEL_LEVEL 4)
+ctest_test({tests} PARALLEL_LEVEL {n_procs})
 endif(MEM_CHECK)
 if(COVERAGE)
 ctest_coverage()
@@ -165,18 +177,48 @@ add_test('hdf5-debug_coverage', debug=True, hdf5=True, coverage=True)
 add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
 add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
 
+# Check to see if we are to just print build configuratinos
+if options.print_build_configs:
+    for key in tests:
+        print('Configuration Name: {0}'.format(key))
+        print('  Debug Flags:..........{0}'.format(tests[key].debug))
+        print('  Optimization Flags:...{0}'.format(tests[key].optimize))
+        print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
+        print('  MPI Active:...........{0}'.format(tests[key].mpi))
+        print('  OpenMP Active:........{0}'.format(tests[key].openmp))
+        print('  PETSc Active:.........{0}'.format(tests[key].petsc))
+        print('  Valgrind Test:........{0}'.format(tests[key].valgrind))
+        print('  Coverage Test:........{0}\n'.format(tests[key].coverage))
+    exit()
+
+# Delete items of dictionary that don't match regular expression
+if options.build_config is not None:
+    for key in tests:
+        if not re.search(options.build_config, key):
+            del tests[key]
+
 # Setup CTest vars
 pwd = os.environ['PWD']
 ctest_vars = {
 'source_dir' : pwd + '/../src',
 'build_dir' :  pwd + '/build',
 'host_name' : 'neutronbalance',
-'dashboard' : options.dash
+'dashboard' : options.dash,
+'n_procs'   : options.n_procs
 }
 
+# Set up default valgrind tests
+# Currently takes too long to run all the tests with valgrind
+valgrind_default_tests = "basic|cmfd_feed|confidence_intervals| \
+    density_atombcm|eigenvalue_genperbatch|energy_grid|entropy| \
+    filter_cell|lattice_multiple|output|plot_background|reflective_plane| \
+    rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono| \
+    sourcepoint_batch|statepoint_interval|survival_biasing| \
+    tally_assumesep|translation|uniform_fs|universe|void"
+
 # Begin testing
-call(['rm', '-rf', 'build'])
-call(['rm', '-rf', 'ctestscript.run'])
+shutils.rmtree('build', ignore_errors=True)
+os.remove('ctestscript.run')
 call(['./cleanup'])
 for key in iter(tests):
     test = tests[key]
@@ -187,6 +229,20 @@ for key in iter(tests):
     ctest_vars.update({'mem_check'  : test.valgrind})
     ctest_vars.update({'coverage'  : test.coverage})
 
+    # Check for user custom tests
+    # INCLUDE is a CTest command that allows for a subset
+    # of tests to be executed.
+    if options.regex_tests is None:
+        ctest_vars.update({'tests' : ''})
+
+        # No user tests, use default valgrind tests
+        if test.valgrind:
+            ctest_vars.update({'tests' : 'INCLUDE {0}'.
+                              format(valgrind_default_tests)})
+    else:
+        ctest_vars.update({'tests' : 'INCLUDE {0}'.
+                          format(options.regex_tests)})
+
     # Create ctest script
     test.create_ctest_script(ctest_vars)
 
@@ -194,6 +250,6 @@ for key in iter(tests):
     test.run_ctest()
 
     # Clear build directory
-    call(['rm', '-rf', 'build'])
-    call(['rm', '-rf', 'ctestscript.run'])
+    shutils.rmtree('build', ignore_errors=True)
+    os.remove('ctestscript.run')
     call(['./cleanup'])

@@ -27,16 +27,16 @@ parser.add_option('-p', '--print', action="store_true",
 (opts, args) = parser.parse_args()
 
 # Default compiler paths
-FC_DEFAULT='gfortran'
+FC='gfortran'
 MPI_DIR='/opt/mpich/3.0.4-gnu'
 HDF5_DIR='/opt/hdf5/1.8.12-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
 PETSC_DIR='/opt/petsc/3.4.3-gnu'
 
 # Override default compiler paths if environmental vars are found
-if os.environ.has_key('FC_DEFAULT'):
-    FC_DEFAULT = os.environ['FC_DEFAULT']
-    if FC_DEFAULT is not 'gfortran':
+if os.environ.has_key('FC'):
+    FC = os.environ['FC']
+    if FC is not 'gfortran':
         print('NOTE: Test suite only verifed for gfortran compiler.')
 if os.environ.has_key('MPI_DIR'):
     MPI_DIR = os.environ['MPI_DIR']
@@ -75,7 +75,7 @@ class Test(object):
         elif self.mpi and self.hdf5:
             self.fc = PHDF5_DIR+'/bin/h5pfc'
         else:
-            self.fc = FC_DEFAULT
+            self.fc = FC
 
         # Set rest of options
         if self.debug:

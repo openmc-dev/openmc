@@ -128,7 +128,7 @@ more control over which tests are executed.
 Before running the test suite python script, the following environmental
 variables should be set if the default paths are incorrect:
 
-    * **FC_DEFAULT** - The command of the default Fortran compiler.
+    * **FC** - The command of the Fortran compiler (e.g. gfotran, ifort).
 
         * Default - *gfortran*
 

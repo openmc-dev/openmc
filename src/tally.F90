@@ -727,7 +727,7 @@ contains
 !$omp critical
                   t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % last_uvw)
+                    score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                 end do
                 j = j + (t % moment_order(j) + 1)**2 - 1
@@ -754,7 +754,7 @@ contains
 !$omp critical
                   t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % last_uvw)
+                    score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                 end do
                 j = j + (t % moment_order(j) + 1)**2 - 1
@@ -858,7 +858,7 @@ contains
 !$omp critical
                 t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                   t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                  score * calc_rn(n, p % last_uvw)
+                  score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                 end do
                 j = j + (t % moment_order(j) + 1)**2 - 1
@@ -887,7 +887,7 @@ contains
 !$omp critical
                   t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % last_uvw)
+                    score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                 end do
                 j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1076,7 +1076,7 @@ contains
 !$omp critical
             t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
               t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-              score * calc_rn(n, p % last_uvw)
+              score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
           end do
           j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1103,7 +1103,7 @@ contains
 !$omp critical
             t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
               t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-              score * calc_rn(n, p % last_uvw)
+              score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
           end do
           j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1216,7 +1216,7 @@ contains
 !$omp critical
           t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
             t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_rn(n, p % last_uvw)
+            score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
         end do
         j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1244,7 +1244,7 @@ contains
 !$omp critical
           t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
             t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_rn(n, p % last_uvw)
+            score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
         end do
         j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1602,7 +1602,7 @@ contains
 !$omp critical
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                       t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % last_uvw)
+                      score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                   end do
                   j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1632,7 +1632,7 @@ contains
 !$omp critical
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                       t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % last_uvw)
+                      score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                   end do
                   j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1685,7 +1685,7 @@ contains
 !$omp critical
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                       t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % last_uvw)
+                      score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                   end do
                   j = j + (t % moment_order(j) + 1)**2 - 1
@@ -1713,7 +1713,7 @@ contains
 !$omp critical
                     t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
                       t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % last_uvw)
+                      score * calc_rn(n, p % coord0 % uvw)
 !$omp end critical
                   end do
                   j = j + (t % moment_order(j) + 1)**2 - 1

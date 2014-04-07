@@ -483,7 +483,7 @@ contains
 ! for a given nuclide at the trial relative energy used in resonance scattering
 !===============================================================================
 
-  function 0K_elastic_xs(E, nuc) result(xs_out)
+  function elastic_xs_0K(E, nuc) result(xs_out)
 
     type(Nuclide), pointer :: nuc    ! target nuclide at temperature
     integer                :: i_grid ! index on nuclide energy grid
@@ -524,6 +524,6 @@ contains
     ! Calculate microscopic nuclide elastic cross section
     xs_out = (ONE - f) * nuc % elastic_0K(i_grid) + f * nuc % elastic_0K(i_grid+1)
 
-  end function 0K_elastic_xs
+  end function elastic_xs_0K
 
 end module cross_section

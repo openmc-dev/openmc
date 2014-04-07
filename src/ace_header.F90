@@ -163,10 +163,10 @@ module ace_header
   type Nuclide0K
 
     character(10) :: nuclide            ! name of nuclide, e.g. U-238
-    character(16) :: scheme = 'dbrc'    ! target velocity sampling scheme
+    character(16) :: scheme = 'arts'    ! target velocity sampling scheme
     character(10) :: name               ! name of nuclide, e.g. 92235.03c
     character(10) :: name_0K            ! name of 0K nuclide, e.g. 92235.00c
-    real(8)       :: E_min = 0.1e-6     ! lower cutoff energy for res scattering
+    real(8)       :: E_min = 0.01e-6    ! lower cutoff energy for res scattering
     real(8)       :: E_max = 1000.0e-6  ! upper cutoff energy for res scattering
 
   end type Nuclide0K

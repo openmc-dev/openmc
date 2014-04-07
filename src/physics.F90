@@ -2,7 +2,7 @@ module physics
 
   use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section,          only: calculate_0K_elastic_xs, find_energy_index, &
+  use cross_section,          only: 0K_elastic_xs, find_energy_index, &
                                     union_grid_index
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
@@ -822,7 +822,7 @@ contains
 
       ! adjust weight as prescribed by the weight correction method (wcm)
       E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-      xs_0K = calculate_0K_elastic_xs(E_rel, nuc)
+      xs_0K = 0K_elastic_xs(E_rel, nuc)
       wcf = xs_0K / xs_eff
       wgt = wcf * wgt
 
@@ -861,7 +861,7 @@ contains
 
         ! perform Doppler broadening rejection correction (dbrc)
         E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-        xs_0K = calculate_0K_elastic_xs(E_rel, nuc)
+        xs_0K = 0K_elastic_xs(E_rel, nuc)
         R_dbrc = xs_0K / xs_max
         if (prn() < R_dbrc) reject = .false.
         if (.not. reject) exit

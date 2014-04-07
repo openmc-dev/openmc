@@ -250,15 +250,16 @@ attributes or sub-elements:
     ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
     of the nuclide to which a resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
-    that is to be applied to the ``nuclide``.  Acceptable inputs for the
-    ``method`` attribute are ``ARTS``, ``CXS``, ``WCM``, and ``DBRC``.  
-    Descriptions of each of these methods are documented here_.  The 
-    ``xs_label`` attribute gives the label for the cross section data of the
-    ``nuclide`` at a given temperature.  The ``xs_label_0K`` gives the label 
-    for the 0 K cross section data for the ``nuclide``.  The ``E_min`` attribute 
-    gives the minimum energy above which the ``method`` is applied.  The 
-    ``E_max`` attribute gives the maximum energy below which the ``method`` is 
-    applied.  One example would be as follows:
+    that is to be applied to the ``nuclide``.  Acceptable inputs - none of
+    which are case-sensitive - for the ``method`` attribute are ``ARTS``,
+    ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
+    are documented here_.  The ``xs_label`` attribute gives the label for the
+    cross section data of the ``nuclide`` at a given temperature.  The
+    ``xs_label_0K`` gives the label for the 0 K cross section data for the
+    ``nuclide``.  The ``E_min`` attribute gives the minimum energy above
+    which the ``method`` is applied.  The ``E_max`` attribute gives the
+    maximum energy below which the ``method`` is applied.  One example would
+    be as follows:
 
     .. _here: http://dx.doi.org/10.1016/j.anucene.2014.01.017
 
@@ -283,15 +284,17 @@ attributes or sub-elements:
           </scatterer>
         </resonance_scattering>
 
-    .. note:: The free gas, constant cross section (``cxs``) scattering model, 
-              which has historically been used by Monte Carlo codes to sample 
-              target velocities, is the default ``method``.  Below ``E_min``, 
-              the ``cxs`` default method is applied and above ``E_max``, the 
-              target-at-rest (asymptotic) kernel is used.  An arbitrary number of
-              ``scatterer`` elements may be specified, each corresponding to a 
-              single nuclide at a single material temperature.
+    .. note:: If the ``resonance_scattering`` element is not given, the free gas,
+              constant cross section (``cxs``) scattering model, which has
+              historically been used by Monte Carlo codes to sample target
+              velocities, is used to treat the target motion of all nuclides.  If
+              ``resonance_scattering`` is present, the ``cxs`` method is applied
+              below ``E_min`` and the target-at-rest (asymptotic) kernel is used
+              above ``E_max``.  An arbitrary number of ``scatterer`` elements may
+              be specified, each corresponding to a single nuclide at a single
+              temperature.
 
-    *Default*: None
+    *Defaults*: None (scatterer), ARTS (method), 0.01 eV (E_min), 1.0 keV (E_max)
 
 ``<run_cmfd>`` Element
 ----------------------

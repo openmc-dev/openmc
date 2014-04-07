@@ -376,6 +376,9 @@ module ace_header
           this % nu_fission, this % absorption)
 
       if (allocated(this % energy_0K)) &
+           deallocate(this % energy_0K)
+
+      if (allocated(this % elastic_0K)) &
            deallocate(this % elastic_0K)
 
       if (allocated(this % xs_cdf)) &

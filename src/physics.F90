@@ -786,7 +786,6 @@ contains
 
       ! sampling scheme to use
       sampling_scheme = nuc % scheme
-      sampling_scheme = trim(sampling_scheme)
 
       ! upper resonance scattering energy bound (target is at rest above this E)
       if (E > nuc % E_max) then
@@ -796,7 +795,6 @@ contains
       ! lower resonance scattering energy bound (should be no resonances below)
       else if (E < nuc % E_min) then
         sampling_scheme = 'cxs'
-        sampling_scheme = trim(sampling_scheme)
       end if
 
     ! otherwise, use free gas model  
@@ -806,7 +804,6 @@ contains
         return
       else
         sampling_scheme = 'cxs'
-        sampling_scheme = trim(sampling_scheme)
       end if
     end if
 

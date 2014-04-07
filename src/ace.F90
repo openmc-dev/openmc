@@ -222,6 +222,7 @@ contains
     real(8)       :: awrs(16)      ! list of atomic weight ratios (not used)
     real(8)       :: awr           ! atomic weight ratio for table
     logical       :: file_exists   ! does ACE library exist?
+    logical       :: data_0K       ! are we reading 0K data?
     character(7)  :: readable      ! is ACE library readable?
     character(10) :: name          ! name of ACE table
     character(10) :: date_         ! date ACE library was processed
@@ -328,7 +329,10 @@ contains
 
       ! only read in a resonant scatterers info once
       nuc => nuclides(i_table)
-      if (trim(adjustl(name)) /= nuc % name_0K) then
+      data_0K = .false.
+      if (trim(adjustl(name)) == nuc % name_0K) then
+        data_0K = .true.
+      else
         nuc % name = name
         nuc % awr  = awr
         nuc % kT   = kT
@@ -336,10 +340,12 @@ contains
       end if
 
       ! read all blocks
-      call read_esz(nuc)
+      call read_esz(nuc, data_0K)
 
       ! don't read unnecessary 0K data for resonant scatterers
-      if (.not. allocated(nuc % energy_0K)) then
+      if (data_0K) then
+        continue
+      else
         call read_nu_data(nuc)
         call read_reactions(nuc)
         call read_angular_dist(nuc)
@@ -360,7 +366,7 @@ contains
       ! cross section lookups (except if we're dealing w/ 0K data for resonant
       ! scatterers)
 
-      if (nuc % fissionable .and. .not. allocated(nuc % energy_0K)) then
+      if (nuc % fissionable .and. .not. data_0K) then
         call generate_nu_fission(nuc)
       end if
 
@@ -393,9 +399,11 @@ contains
 ! total xs, absorption xs, elastic scattering xs, and heating numbers.
 !===============================================================================
 
-  subroutine read_esz(nuc)
+  subroutine read_esz(nuc, data_0K)
 
     type(Nuclide), pointer :: nuc
+
+    logical :: data_0K ! are we reading 0K data?
 
     integer :: NE ! number of energy points for total and elastic cross sections
     integer :: i  ! index in 0K elastic xs array for this nuclide
@@ -408,7 +416,7 @@ contains
     ! allocate storage for energy grid and cross section arrays
 
     ! read in 0K data if we've already read in non-0K data
-    if (allocated(nuc % energy)) then
+    if (data_0K) then
       nuc % n_grid_0K = NE
       allocate(nuc % energy_0K(NE))
       allocate(nuc % elastic_0K(NE))

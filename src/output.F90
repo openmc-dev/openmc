@@ -672,7 +672,7 @@ contains
     integer :: j     ! index in filters array
     integer :: id    ! user-specified id
     integer :: unit_ ! unit to write to
-    integer :: n     ! scattering order to include in name
+    integer :: n     ! moment order to include in name
     character(MAX_LINE_LEN) :: string
     character(MAX_WORD_LEN) :: pn_string
     type(Cell),           pointer :: c => null()
@@ -1663,8 +1663,8 @@ contains
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(15)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
-    character(27)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
-    character(27)           :: score_name                  ! names of scoring function
+    character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
+    character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
     type(TallyObject), pointer :: t
 
@@ -1693,14 +1693,14 @@ contains
     score_names(abs(SCORE_NU_FISSION))    = "Nu-Fission Rate"
     score_names(abs(SCORE_KAPPA_FISSION)) = "Kappa-Fission Rate"
     score_names(abs(SCORE_EVENTS))        = "Events"
-    score_names(abs(SCORE_FLUX_YN))       = ""
-    score_names(abs(SCORE_TOTAL_YN))      = ""
-    score_names(abs(SCORE_SCATTER_N))     = ""
-    score_names(abs(SCORE_SCATTER_PN))    = ""
-    score_names(abs(SCORE_SCATTER_YN))    = ""
-    score_names(abs(SCORE_NU_SCATTER_N))  = ""
-    score_names(abs(SCORE_NU_SCATTER_PN)) = ""
-    score_names(abs(SCORE_NU_SCATTER_YN)) = ""
+    score_names(abs(SCORE_FLUX_YN))       = "Flux Moment"
+    score_names(abs(SCORE_TOTAL_YN))      = "Total Reaction Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_YN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_N))  = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_PN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_YN)) = "Scattering Prod. Rate Moment"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -1827,44 +1827,34 @@ contains
           do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
-            if (t % score_bins(k) == SCORE_SCATTER_N) then
-              if (t % moment_order(k) == 0) then
-                score_name = "Scattering Rate"
-              else
-                score_name = 'P' // trim(to_str(t % moment_order(k))) // &
-                  ' Scattering Moment'
-              end if
+            select case(t % score_bins(k))
+            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+              score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
+                score_names(abs(t % score_bins(k)))
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            else if (t % score_bins(k) == SCORE_SCATTER_PN) then
-              score_name = "Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
+            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Scattering Moment'
+                score_name = 'P' // trim(to_str(n_order)) //  " " //&
+                  score_names(abs(t % score_bins(k)))
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                   repeat(" ", indent), score_name, &
                   to_str(t % results(score_index,filter_index) % sum), &
                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
               end do
               k = k + t % moment_order(k)
-            else if (t % score_bins(k) == SCORE_SCATTER_YN) then
-              score_name = "Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
+            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                  SCORE_TOTAL_YN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
                 do nm_order = -n_order, n_order
                   score_index = score_index + 1
                   score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order)) // ' Scattering Moment'
+                    trim(to_str(nm_order)) // " " // score_names(abs(t % score_bins(k)))
                   write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                     repeat(" ", indent), score_name, &
                     to_str(t % results(score_index,filter_index) % sum), &
@@ -1872,88 +1862,7 @@ contains
                 end do
               end do
               k = k + (t % moment_order(k) + 1)**2 - 1
-            else if (t % score_bins(k) == SCORE_NU_SCATTER_N) then
-              if (t % moment_order(k) == 0) then
-                score_name = "Nu-Scattering Rate"
-              else
-                score_name = 'P' // trim(to_str(t % moment_order(k))) // &
-                  ' Nu-Scattering Moment'
-              end if
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            else if (t % score_bins(k) == SCORE_NU_SCATTER_PN) then
-              score_name = "Nu-Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
-                score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Nu-Scattering Moment'
-                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                  repeat(" ", indent), score_name, &
-                  to_str(t % results(score_index,filter_index) % sum), &
-                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              end do
-              k = k + t % moment_order(k)
-            else if (t % score_bins(k) == SCORE_NU_SCATTER_YN) then
-              score_name = "Nu-Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order)) // ' Nu-Scatter Moment'
-                  write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                    repeat(" ", indent), score_name, &
-                    to_str(t % results(score_index,filter_index) % sum), &
-                    trim(to_str(t % results(score_index,filter_index) % sum_sq))
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-            else if (t % score_bins(k) == SCORE_FLUX_YN) then
-              score_name = "Flux Moment"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order)) // ' Flux Moment'
-                  write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                    repeat(" ", indent), score_name, &
-                    to_str(t % results(score_index,filter_index) % sum), &
-                    trim(to_str(t % results(score_index,filter_index) % sum_sq))
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-            else if (t % score_bins(k) == SCORE_TOTAL_YN) then
-              score_name = "Total Reaction Moment"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order)) // ' Total Reaction Moment'
-                  write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                    repeat(" ", indent), score_name, &
-                    to_str(t % results(score_index,filter_index) % sum), &
-                    trim(to_str(t % results(score_index,filter_index) % sum_sq))
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-            else
+            case default
               if (t % score_bins(k) > 0) then
                 score_name = reaction_name(t % score_bins(k))
               else
@@ -1963,7 +1872,7 @@ contains
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            end if
+            end select
           end do
           indent = indent - 2
 

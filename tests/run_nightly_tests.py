@@ -281,7 +281,7 @@ for key in iter(tests):
     test.run_ctest()
 
     # Copy over log file
-    logfile = glob.glob('build/Testing/Temporary/LastTest*.log')
+    logfile = glob.glob('build/Testing/Temporary/LastTest_*.log')
     shutil.copy(logfile[0], 'LastTest_{0}.log'.format(test.name))
 
     # Clear build directory

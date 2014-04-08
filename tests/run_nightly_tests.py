@@ -9,13 +9,6 @@ from subprocess import call
 from collections import OrderedDict
 from optparse import OptionParser
 
-# Compiler paths
-FC_DEFAULT='gfortran'
-MPI_DIR='/opt/mpich/3.0.4-gnu'
-HDF5_DIR='/opt/hdf5/1.8.12-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
-PETSC_DIR='/opt/petsc/3.4.3-gnu'
-
 # Command line parsing
 parser = OptionParser()
 parser.add_option('-j', '--parallel', dest='n_procs', default='1',
@@ -37,6 +30,27 @@ parser.add_option("-b", "--branch", dest="branch", default="",
 parser.add_option("-D", "--dashboard", dest="dash",
                   help="Dash name -- Experimental, Nightly, Continuous")
 (options, args) = parser.parse_args()
+
+# Compiler paths
+FC_DEFAULT='gfortran'
+MPI_DIR='/opt/mpich/3.0.4-gnu'
+HDF5_DIR='/opt/hdf5/1.8.12-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
+PETSC_DIR='/opt/petsc/3.4.3-gnu'
+
+# Override default compiler paths if environmental vars are found
+if os.environ.has_key('FC'):
+    FC = os.environ['FC']
+    if FC is not 'gfortran':
+        print('NOTE: Test suite only verifed for gfortran compiler.')
+if os.environ.has_key('MPI_DIR'):
+    MPI_DIR = os.environ['MPI_DIR']
+if os.environ.has_key('HDF5_DIR'):
+    HDF5_DIR = os.environ['HDF5_DIR']
+if os.environ.has_key('PHDF5_DIR'):
+    PHDF5_DIR = os.environ['PHDF5_DIR']
+if os.environ.has_key('PETSC_DIR'):
+    PETSC_DIR = os.environ['PETSC_DIR']
 
 # CTest script template
 ctest_str = """set (CTEST_SOURCE_DIRECTORY "{source_dir}")

@@ -28,8 +28,8 @@
     <!-- O at 6.9041e-2 -->
     <nuclide name="O-16" ao="6.9015e-02" />
     <nuclide name="O-17" ao="2.6236e-05" />
-    <sab name="be/o" xs="10t" />
-    <sab name="o/be" xs="10t" />
+    <sab name="be/o" xs="71t" />
+    <sab name="o/be" xs="71t" />
   </material>
 
   <!-- Steel Cover -->
@@ -123,8 +123,8 @@
     <nuclide name="Zr-96"  ao="0.05" />
     <nuclide name="U-235"  ao="0.1" />
     <nuclide name="U-238"  ao="0.15" />
-    <sab name="h/zr" xs="10t" />
-    <sab name="zr/h" xs="10t" />
+    <sab name="h/zr" xs="71t" />
+    <sab name="zr/h" xs="71t" />
   </material>
 
 </materials>

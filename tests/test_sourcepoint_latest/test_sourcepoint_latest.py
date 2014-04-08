@@ -24,17 +24,17 @@ def test_run():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_statepoint_exists():
-    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
     assert len(statepoint) == 1, 'Either multiple or no statepoint file exists.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint file is not a binary or hdf5 file.'
-    source = glob.glob(os.path.join(cwd,'source.*'))
+    source = glob.glob(os.path.join(cwd, 'source.*'))
     assert len(source) == 1, 'Either multple or no source file exists.'
     assert source[0].endswith('binary') or source[0].endswith('h5'),\
         'Source file is not a binary or hdf5 file.'
 
 def test_results():
-    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
     call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
@@ -42,9 +42,9 @@ def test_results():
     assert compare, 'Results do not agree.'
 
 def teardown():
-    output = glob.glob(os.path.join(cwd,'statepoint.10.*'))
-    output += glob.glob(os.path.join(cwd,'source.*'))
-    output.append(os.path.join(cwd,'results_test.dat'))
+    output = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
+    output += glob.glob(os.path.join(cwd, 'source.*'))
+    output.append(os.path.join(cwd, 'results_test.dat'))
     for f in output:
         if os.path.exists(f):
             os.remove(f)

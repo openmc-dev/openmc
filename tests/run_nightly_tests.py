@@ -29,6 +29,9 @@ parser.add_option("-b", "--branch", dest="branch", default="",
                   help="branch name for build")
 parser.add_option("-D", "--dashboard", dest="dash",
                   help="Dash name -- Experimental, Nightly, Continuous")
+parser.add_option("-u", "--update", action="store_true", dest="update",
+                  help="Allow CTest to update repo. (WARNING: may overwrite\
+                        changes that were not pushed.")
 (options, args) = parser.parse_args()
 
 # Compiler paths
@@ -75,7 +78,7 @@ set(ENV{{COVERAGE}} ${{COVERAGE}})
 
 ctest_start("{dashboard}")
 ctest_configure()
-ctest_update()
+{update}
 ctest_build()
 ctest_test({tests} PARALLEL_LEVEL {n_procs})
 if(MEM_CHECK)
@@ -217,6 +220,12 @@ else:
     dash = options.dash
     submit = 'ctest_submit()'
 
+# Check for update command
+if options.update:
+    update = 'ctest_update()'
+else:
+    update = ''
+
 # Setup CTest vars
 pwd = os.environ['PWD']
 ctest_vars = {
@@ -225,6 +234,7 @@ ctest_vars = {
 'host_name' : 'neutronbalance',
 'dashboard' : dash,
 'submit'    : submit,
+'update'    : update,
 'n_procs'   : options.n_procs
 }
 

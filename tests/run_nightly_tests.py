@@ -282,7 +282,10 @@ for key in iter(tests):
 
     # Copy over log file
     logfile = glob.glob('build/Testing/Temporary/LastTest_*.log')
-    shutil.copy(logfile[0], 'LastTest_{0}.log'.format(test.name))
+    logfilename = os.path.split(logfile[0])[1]
+    logfilename = os.path.splitext(logfilename)[0]
+    logfilename = logfilename + '_{0}.log'.format(test.name)
+    shutil.copy(logfile[0], logfilename)
 
     # Clear build directory
     shutil.rmtree('build', ignore_errors=True)

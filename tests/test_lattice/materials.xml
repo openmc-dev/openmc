@@ -88,7 +88,7 @@
     <!-- Boron at 1.7 ppm -->
     <nuclide name="B-10" ao="1.8706e-08" />
     <nuclide name="B-11" ao="7.5770e-08" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
     
   <!-- 6061 Aluminum -->

@@ -8,7 +8,7 @@
     <nuclide name="O-16" xs="71c" ao="3.3369E-002" />
     <nuclide name="B-10" xs="71c" ao="1.6769E-005" />
     <nuclide name="B-11" xs="71c" ao="6.7497E-005" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
 <!-- material 2: Fuel (2.459 w/o with B-10 for impurities) -->

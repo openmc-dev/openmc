@@ -144,7 +144,7 @@ class Test(object):
         if os.path.isfile(self.fc):
             result = True
         for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(path + "/" + self.fc):
+            if os.path.isfile(os.path.join(path, self.fc)):
                 result = True
         if not result: 
             raise Exception("Compiler path '{0}' does not exist."

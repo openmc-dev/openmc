@@ -61,18 +61,18 @@ def test_run1():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_statepoint_exists():
-    statepoint = glob.glob(cwd + '/statepoint.10.*')
+    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
     assert len(statepoint) == 1, 'Either multiple or no statepoint files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint file is not a binary or hdf5 file.'
-    source = glob.glob(cwd + '/source.10.*')
+    source = glob.glob(os.path.join(cwd,'source.10.*'))
     assert len(statepoint) == 1, 'Either multple or no source files exist.'
     assert source[0].endswith('binary') or source[0].endswith('h5'),\
         'Source file is not a binary or hdf5 file.'
 
 def test_run2():
-    openmc_path = cwd + '/../../src/openmc'
-    source = glob.glob(cwd + '/source.10.*')
+    openmc_path = os.path.join(cwd, '../../src/openmc')
+    source = glob.glob(os.path.join(cwd,'source.10.*'))
     with open('settings.xml','w') as fh:
         fh.write(settings2.format(source[0].split('.')[2]))
     if opts.mpi_exec != '':
@@ -85,7 +85,7 @@ def test_run2():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_results():
-    statepoint = glob.glob(cwd + '/statepoint.10.*')
+    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
     call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
@@ -95,9 +95,9 @@ def test_results():
 def teardown():
     with open('settings.xml','w') as fh:
         fh.write(settings1)
-    output = glob.glob(cwd + '/statepoint.10.*')
-    output += glob.glob(cwd + '/source.10.*')
-    output.append(cwd + '/results_test.dat')
+    output = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    output += glob.glob(os.path.join(cwd,'source.10.*'))
+    output.append(os.path.join(cwd,'results_test.dat'))
     for f in output:
         if os.path.exists(f):
             os.remove(f)

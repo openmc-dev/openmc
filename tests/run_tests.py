@@ -26,12 +26,26 @@ parser.add_option('-p', '--print', action="store_true",
                   help="Print out build configurations.")
 (opts, args) = parser.parse_args()
 
-# Compiler paths
-FC_DEFAULT='gfortran'
-MPI_DIR='/opt/mpich/3.0.4-gnu'
+# Default compiler paths
+FC='gfortran'
+MPI_DIR='/opt/mpich/3.1-gnu'
 HDF5_DIR='/opt/hdf5/1.8.12-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
-PETSC_DIR='/opt/petsc/3.4.3-gnu'
+PETSC_DIR='/opt/petsc/3.4.4-gnu'
+
+# Override default compiler paths if environmental vars are found
+if os.environ.has_key('FC'):
+    FC = os.environ['FC']
+    if FC is not 'gfortran':
+        print('NOTE: Test suite only verifed for gfortran compiler.')
+if os.environ.has_key('MPI_DIR'):
+    MPI_DIR = os.environ['MPI_DIR']
+if os.environ.has_key('HDF5_DIR'):
+    HDF5_DIR = os.environ['HDF5_DIR']
+if os.environ.has_key('PHDF5_DIR'):
+    PHDF5_DIR = os.environ['PHDF5_DIR']
+if os.environ.has_key('PETSC_DIR'):
+    PETSC_DIR = os.environ['PETSC_DIR']
 
 # Define test data structure
 tests = OrderedDict()
@@ -61,7 +75,7 @@ class Test(object):
         elif self.mpi and self.hdf5:
             self.fc = PHDF5_DIR+'/bin/h5pfc'
         else:
-            self.fc = FC_DEFAULT
+            self.fc = FC
 
         # Set rest of options
         if self.debug:
@@ -123,6 +137,19 @@ class Test(object):
         if rc != 0:
             self.success = False
             self.msg = 'Failed on testing.'
+
+    # Checks to see if file exists in PWD or PATH
+    def check_compiler(self):
+        result = False
+        if os.path.isfile(self.fc):
+            result = True
+        for path in os.environ["PATH"].split(":"):
+            if os.path.isfile(path + "/" + self.fc):
+                result = True
+        if not result: 
+            raise Exception("Compiler path '{0}' does not exist."
+                           .format(self.fc)+
+                           "Please set appropriate environmental variable(s).")
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False):
@@ -189,6 +216,9 @@ for test in tests:
     print('-'*(len(test) + 6))
     print(test + ' tests')
     print('-'*(len(test) + 6))
+
+    # Verify fortran compiler exists
+    tests[test].check_compiler()
 
     # Run CMAKE to configure build
     tests[test].run_cmake()

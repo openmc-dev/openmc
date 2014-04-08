@@ -97,16 +97,59 @@ OpenMC Test Suite
 -----------------
 
 The purpose of this test suite is to ensure that OpenMC compiles using various
-combinations of compiler flags and options and that all user input options can
-be used successfully without breaking the code. The test suite is based on
-regression or integrated testing where different types of input files are
-configured and the full OpenMC code is executed. Results from simulations
-are compared with expected results. The test suite is comprised of many
-build configurations (e.g. debug, mpi, hdf5) and the actual tests which
-reside in sub-directories in the tests directory.
+combinations of compiler flags and options, and that all user input options can
+be used successfully without breaking the code. The test suite is comprised of 
+regression tests where different types of input files are configured and the
+full OpenMC code is executed. Results from simulations are compared with
+expected results. The test suite is comprised of many build configurations
+(e.g. debug, mpi, hdf5) and the actual tests which reside in sub-directories
+in the tests directory. We recommend to developers to test their branches
+before submitting a formal pull request using gfortran and intel compilers
+if available.
 
-The test suite is designed to integrate with cmake using ctest_. To run the
-full test suite run:
+The test suite is designed to integrate with cmake using ctest_.
+The test suite can be run on an already existing build using:
+
+.. code-block:: sh
+
+    cd build
+    make test
+
+or
+
+.. code-block:: sh
+
+    cd build
+    ctest
+
+There are numerous ctest_ command line options that can be set to have
+more control over which tests are executed.
+
+Before running the test suite python script, the following environmental
+variables should be set if the default paths are incorrect:
+
+    * **FC** - The command of the Fortran compiler (e.g. gfotran, ifort).
+
+        * Default - *gfortran*
+
+    * **MPI_DIR** - The path to the MPI directory.
+
+        * Default - */opt/mpich/3.1-gnu*
+
+    * **HDF5_DIR** - The path to the HDF5 directory.
+
+        * Default - */opt/hdf5/1.8.12-gnu*
+
+    * **PHDF5_DIR** - The path to the parallel HDF5 directory.
+
+        * Default - */opt/phdf5/1.8.12-gnu* 
+
+    * **PETSC_DIR** - The path to the PETSc directory.
+
+        * Default - */opt/petsc/3.4.4-gnu*
+
+To run the full test suite, the following command can be executed in the
+tests directory:
 
 .. code-block:: sh
 

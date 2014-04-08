@@ -41,13 +41,13 @@ def test_statepoints_exist():
     assert len(statepoint) == 1, 'Either multiple or no statepoint.8 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.8 file is not a binary or hdf5 file.'
-    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
     assert len(statepoint) == 1, 'Either multiple or no statepoint.10 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.10 file is not a binary or hdf5 file.'
 
 def test_results():
-    statepoint = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
     call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
@@ -56,7 +56,7 @@ def test_results():
 
 def teardown():
     output = glob.glob(os.path.join(cwd, 'statepoint.*'))
-    output.append(os.path.join(cwd,'results_test.dat'))
+    output.append(os.path.join(cwd, 'results_test.dat'))
     for f in output:
         if os.path.exists(f):
             os.remove(f)

@@ -46,7 +46,7 @@ def test_run_restart():
 def teardown():
     output = glob.glob(os.path.join(cwd, 'statepoint.*')) + \
              glob.glob(os.path.join(cwd, 'particle_*')) + \
-             [os.path.join(cwd,'results_test.dat')]
+             [os.path.join(cwd, 'results_test.dat')]
     for f in output:
         if os.path.exists(f):
             os.remove(f)

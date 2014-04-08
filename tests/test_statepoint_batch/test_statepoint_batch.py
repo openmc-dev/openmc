@@ -47,7 +47,7 @@ def test_results():
 
 def teardown():
     output = glob.glob(os.path.join(cwd, 'statepoint*'))
-    output.append(os.path.join(cwd,'results_test.dat'))
+    output.append(os.path.join(cwd, 'results_test.dat'))
     for f in output:
         if os.path.exists(f):
             os.remove(f)

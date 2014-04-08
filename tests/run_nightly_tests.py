@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import shutil
 import re
+import glob
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -278,6 +279,10 @@ for key in iter(tests):
 
     # Run test
     test.run_ctest()
+
+    # Copy over log file
+    logfile = glob.glob('build/Testing/Temporary/LastTest*.log')
+    shutil.copy(logfile[0], 'LastTest_{0}.log'.format(test.name))
 
     # Clear build directory
     shutil.rmtree('build', ignore_errors=True)

@@ -118,7 +118,7 @@
     <nuclide name="Cr-53" ao="5.9201e-06" />
     <nuclide name="Cr-54" ao="1.4736e-06" />
     <!-- Zn at 3.0967e-5 atom/b-cm -->
-    <nuclide name="Zn-Nat" ao="3.0967e-05" />
+    <nuclide name="Zn-66" ao="3.0967e-05" />
     <!-- Ti at 2.5375e-5 atom/b-cm -->
     <nuclide name="Ti-46" ao="2.0934e-06" />
     <nuclide name="Ti-47" ao="1.8879e-06" />

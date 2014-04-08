@@ -4,7 +4,7 @@
   <!-- pu-met-fast-021 case 2, modified to include Zr-H to exercise
        the capability to assign a single S(a,b) table to multiple nuclides -->
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <!-- Plutonium -->
   <material id="1">

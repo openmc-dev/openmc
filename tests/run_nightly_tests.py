@@ -35,7 +35,7 @@ parser.add_option("-u", "--update", action="store_true", dest="update",
 (options, args) = parser.parse_args()
 
 # Compiler paths
-FC_DEFAULT='gfortran'
+FC='gfortran'
 MPI_DIR='/opt/mpich/3.0.4-gnu'
 HDF5_DIR='/opt/hdf5/1.8.12-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
@@ -113,7 +113,7 @@ class Test(object):
         elif self.mpi and self.hdf5:
             self.fc = PHDF5_DIR+'/bin/h5pfc'
         else:
-            self.fc = FC_DEFAULT
+            self.fc = FC
 
     def get_build_name(self):
         self.build_name =  options.branch + '_' + self.name

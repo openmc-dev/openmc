@@ -24,13 +24,13 @@ def test_run():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_created_restart():
-    particle = glob.glob(cwd + '/particle_10_394.*')
+    particle = glob.glob(os.path.join(cwd, 'particle_10_394.*'))
     assert len(particle) == 1, 'Either multiple or no particle restart files exist.'
     assert particle[0].endswith('binary') or \
            particle[0].endswith('h5'), 'Particle restart file not a binary or hdf5 file.'
 
 def test_results():
-    particle = glob.glob(cwd + '/particle_10_394.*')
+    particle = glob.glob(os.path.join(cwd, 'particle_10_394.*'))
     call(['python', 'results.py', particle[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
@@ -38,15 +38,15 @@ def test_results():
     assert compare, 'Results do not agree.'
 
 def test_run_restart():
-    particle = glob.glob(cwd + '/particle_10_394.*')
+    particle = glob.glob(os.path.join(cwd, 'particle_10_394.*'))
     proc = Popen([opts.exe, '-r', particle[0], cwd], stderr=PIPE, stdout=PIPE)
     stdout, stderr = proc.communicate()
     assert stderr == '', 'Particle restart not successful.'
 
 def teardown():
-    output = glob.glob(cwd + '/statepoint.*') + \
-             glob.glob(cwd + '/particle_*') + \
-             [cwd + '/results_test.dat']
+    output = glob.glob(os.path.join(cwd, 'statepoint.*')) + \
+             glob.glob(os.path.join(cwd, 'particle_*')) + \
+             [os.path.join(cwd,'results_test.dat')]
     for f in output:
         if os.path.exists(f):
             os.remove(f)

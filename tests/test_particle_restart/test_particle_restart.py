@@ -39,9 +39,10 @@ def test_results():
 
 def test_run_restart():
     particle = glob.glob(cwd + '/particle_12_192.*')
-    proc = Popen([opts.exe, '-r', particle[0], cwd], stderr=PIPE, stdout=PIPE)
-    stdout, stderr = proc.communicate()
-    assert stderr == '', 'Particle restart not successful.'
+    proc = Popen([opts.exe, '-r', particle[0], cwd], stderr=STDOUT, stdout=PIPE)
+    print(proc.communicate()[0])
+    returncode = proc.returncode 
+    assert returncode == 0, 'Particle restart not successful.'
 
 def teardown():
     output = glob.glob(cwd + '/statepoint.*') + \

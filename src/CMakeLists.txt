@@ -175,16 +175,16 @@ execute_process(COMMAND git submodule init
 execute_process(COMMAND git submodule update
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 file(GLOB_RECURSE source_fox xml/*.F90 xml/*.f90)
-add_library(fox STATIC ${source_fox})
+add_subdirectory(xml/fox)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source *.F90)
+file(GLOB source *.F90 xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox)
+target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")

@@ -259,20 +259,21 @@ contains
 
               if (micro_xs(p % event_nuclide) % absorption > ZERO) then
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
-                     micro_xs(p % event_nuclide) % absorption
+                  micro_xs(p % event_nuclide) % absorption
               else
                 score = ZERO
               end if
 
             else
-              ! Skip any non-fission events
-              if (.not. p % fission) cycle SCORE_LOOP
+              ! Skip any non-absorption events
+              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for the
               ! fission reaction rate
 
-              score = last_wgt
+              score = last_wgt * micro_xs(p % event_nuclide) % fission / &
+                micro_xs(p % event_nuclide) % absorption
             end if
 
           case (SCORE_NU_FISSION)
@@ -335,23 +336,22 @@ contains
 
               if (micro_xs(p % event_nuclide) % absorption > ZERO) then
                 score = p % absorb_wgt * &
-                        micro_xs(p % event_nuclide) % kappa_fission / &
-                        micro_xs(p % event_nuclide) % absorption
+                  micro_xs(p % event_nuclide) % kappa_fission / &
+                  micro_xs(p % event_nuclide) % absorption
               else
                 score = ZERO
               end if
 
             else
-              ! Skip any non-fission events
-              if (.not. p % fission) cycle SCORE_LOOP
+              ! Skip any non-absorption events
+              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-
-              n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
-                nuclides(p % event_nuclide) % reactions(n) % Q_value
+                micro_xs(p % event_nuclide) % kappa_fission / &
+                micro_xs(p % event_nuclide) % absorption
             end if
           case (SCORE_EVENTS)
             ! Simply count number of scoring events

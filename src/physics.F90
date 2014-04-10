@@ -871,9 +871,9 @@ contains
     end if
 
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == 3*work) return
+    if (nu == 0 .or. n_bank == size(fission_bank)) return
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
+    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
       fission_bank(i) % xyz = p % coord0 % xyz
 
@@ -898,7 +898,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, 3*work)
+    n_bank = min(n_bank + nu, int(size(fission_bank),8))
 
     ! Store total weight banked for analog fission tallies
     p % n_bank   = nu
@@ -1335,19 +1335,17 @@ contains
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
 
     if (associated(edist % next)) then
-      if (edist % p_valid % n_regions > 0) then
-        p_valid = interpolate_tab1(edist % p_valid, E_in)
+      p_valid = interpolate_tab1(edist % p_valid, E_in)
 
-        if (prn() > p_valid) then
-          if (edist % law == 44 .or. edist % law == 61) then
-            call sample_energy(edist%next, E_in, E_out, mu_out)
-          elseif (edist % law == 66) then
-            call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
-          else
-            call sample_energy(edist%next, E_in, E_out)
-          end if
-          return
+      if (prn() > p_valid) then
+        if (edist % law == 44 .or. edist % law == 61) then
+          call sample_energy(edist%next, E_in, E_out, mu_out)
+        elseif (edist % law == 66) then
+          call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
+        else
+          call sample_energy(edist%next, E_in, E_out)
         end if
+        return
       end if
     end if
 

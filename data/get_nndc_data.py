@@ -78,6 +78,17 @@ for f in files:
         print('Extracting {0}...'.format(f))
         tgz.extractall(path='nndc/' + suffix)
 
+#===============================================================================
+# EDIT GRAPHITE ZAID (6012 to 6000)
+
+print('Changing graphite ZAID from 6012 to 6000')
+graphite = os.path.join('nndc', 'tsl', 'graphite.acer')
+with open(graphite) as fh:
+    text = fh.read()
+text = text.replace('6012', '6000')
+with open(graphite, 'w') as fh:
+    fh.write(text)
+
 # ==============================================================================
 # COPY CROSS_SECTIONS.XML
 

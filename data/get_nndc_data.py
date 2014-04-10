@@ -6,11 +6,16 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import glob
 
 try:
     from urllib.request import urlopen
 except ImportError:
     from urllib2 import urlopen
+
+cwd = os.getcwd()
+sys.path.append(os.path.join(cwd, '..', 'src', 'utils'))
+from convert_binary import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
@@ -94,3 +99,30 @@ if not response or response.lower().startswith('y'):
         if os.path.exists(f):
             print('Removing {0}...'.format(f))
             os.remove(f)
+
+# ==============================================================================
+# PROMPT USER TO CONVERT ASCII TO BINARY
+
+# Ask user to convert
+if sys.version_info[0] < 3:
+    response = raw_input('Convert ACE files to binary? ([y]/n) ')
+else:
+    response = input('Convert ACE files to binary? ([y]/n) ')
+
+# Convert files if requested
+if not response or response.lower().startswith('y'):
+
+    # get a list of directories
+    ace_dirs = glob.glob(os.path.join('nndc', '*K'))
+
+    # loop around ace directories
+    for d in ace_dirs:
+        print('Coverting {0}...'.format(d))
+
+        # get a list of files to convert
+        ace_files = glob.glob(os.path.join(d, '*.ace'))
+
+        # convert files
+        for f in ace_files:
+            print('    Coverting {0}...'.format(os.path.split(f)[1]))
+            ascii_to_binary(f, f)

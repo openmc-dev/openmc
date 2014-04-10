@@ -34,17 +34,17 @@ PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
 PETSC_DIR='/opt/petsc/3.4.4-gnu'
 
 # Override default compiler paths if environmental vars are found
-if os.environ.has_key('FC'):
+if 'FC' in os.environ:
     FC = os.environ['FC']
     if FC is not 'gfortran':
         print('NOTE: Test suite only verifed for gfortran compiler.')
-if os.environ.has_key('MPI_DIR'):
+if 'MPI_DIR' in os.environ:
     MPI_DIR = os.environ['MPI_DIR']
-if os.environ.has_key('HDF5_DIR'):
+if 'HDF5_DIR' in os.environ:
     HDF5_DIR = os.environ['HDF5_DIR']
-if os.environ.has_key('PHDF5_DIR'):
+if 'PHDF5_DIR' in os.environ:
     PHDF5_DIR = os.environ['PHDF5_DIR']
-if os.environ.has_key('PETSC_DIR'):
+if 'PETSC_DIR' in os.environ:
     PETSC_DIR = os.environ['PETSC_DIR']
 
 # Define test data structure

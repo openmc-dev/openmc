@@ -138,3 +138,15 @@ if not response or response.lower().startswith('y'):
         for f in ace_files:
             print('    Coverting {0}...'.format(os.path.split(f)[1]))
             ascii_to_binary(f, f)
+
+    # Change cross_sections.xml file
+    xs_file = os.path.join('nndc', 'cross_sections.xml')
+    asc_str = "<filetype>ascii</filetype>"
+    bin_str = "<filetype> binary </filetype>\n "
+    bin_str += "<record_length> 4096 </record_length>\n "
+    bin_str += "<entries> 512 </entries>"
+    with open(xs_file) as fh:
+        text = fh.read()
+    text = text.replace(asc_str, bin_str)
+    with open(xs_file, 'w') as fh:
+        fh.write(text)

@@ -114,13 +114,14 @@ if not response or response.lower().startswith('y'):
 
     # get a list of directories
     ace_dirs = glob.glob(os.path.join('nndc', '*K'))
+    ace_dirs += glob.glob(os.path.join('nndc', 'tsl'))
 
     # loop around ace directories
     for d in ace_dirs:
         print('Coverting {0}...'.format(d))
 
         # get a list of files to convert
-        ace_files = glob.glob(os.path.join(d, '*.ace'))
+        ace_files = glob.glob(os.path.join(d, '*.ace*'))
 
         # convert files
         for f in ace_files:

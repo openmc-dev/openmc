@@ -60,7 +60,7 @@ def test_results():
     assert compare, 'Results do not agree.'
 
 def teardown():
-    output = glob.glob(os.path.join(cwd,'statepoint.10.*'))
+    output = glob.glob(os.path.join(cwd,'statepoint.*.*'))
     output.append(logfile)
     output.append(os.path.join(cwd,'results_test.dat'))
     for f in output:

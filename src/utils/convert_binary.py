@@ -18,9 +18,8 @@ def ascii_to_binary(ascii_file, binary_file):
 
     """
 
-    # Open ASCII and binary files
+    # Open ASCII file
     ascii = open(ascii_file, 'r')
-    binary = open(binary_file, 'wb')
 
     # Set default record length
     record_length = 4096
@@ -28,6 +27,9 @@ def ascii_to_binary(ascii_file, binary_file):
     # Read data from ASCII file
     lines = ascii.readlines()
     ascii.close()
+
+    # Open binary file
+    binary = open(binary_file, 'wb')
 
     idx = 0
     while idx < len(lines):

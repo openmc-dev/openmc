@@ -6,6 +6,7 @@ import os
 import shutil
 import re
 import glob
+import socket
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -232,7 +233,7 @@ pwd = os.environ['PWD']
 ctest_vars = {
 'source_dir' : pwd + '/../src',
 'build_dir' :  pwd + '/build',
-'host_name' : 'neutronbalance',
+'host_name' : socket.gethostname(),
 'dashboard' : dash,
 'submit'    : submit,
 'update'    : update,

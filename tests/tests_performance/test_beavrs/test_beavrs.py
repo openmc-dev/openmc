@@ -2,9 +2,14 @@
 
 import os
 from subprocess import Popen, STDOUT, PIPE, call
-import filecmp
 import glob
 from optparse import OptionParser
+
+threshold = 0.2
+"""Max relative difference in timings that triggers test failure"""
+
+zero_cut = 10
+"""If the reference time is zero, this test time in seconds will trigger failure"""
 
 parser = OptionParser()
 parser.add_option('--mpi_exec', dest='mpi_exec', default='')
@@ -31,7 +36,25 @@ def test_run():
 
 def test_results():
     call(['python', 'results.py', logfile])
-    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+
+    with open('results_true.dat') as fh: reftimes = fh.readlines()
+    with open('results_test.dat') as fh: testtimes = fh.readlines()
+
+    compare = True
+    for ref,test in zip(reftimes,testtimes):
+      r = float(ref.split()[1])
+      t = float(test.split()[1])
+      
+      if r > 0.0:
+        reldiff = abs(t - r)/r
+        if reldiff > threshold:
+          compare = False
+      elif r < -1e-9 or t < -1e-9:
+        raise Exception('Negative time!')
+      else:
+        if t > zero_cut:
+          compare = False
+
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')
     assert compare, 'Results do not agree.'
@@ -53,4 +76,4 @@ if __name__ == '__main__':
     # run tests
     test_run()
     test_results()
-    #teardown()
+    teardown()

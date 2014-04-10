@@ -3,7 +3,7 @@
 import sys
 
 # import statepoint
-sys.path.append('../../src/utils')
+sys.path.append('../../../src/utils')
 import statepoint
 
 # read in statepoint file

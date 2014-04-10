@@ -139,7 +139,15 @@ contains
             ! estimator since there is no way to count 'events' exactly for
             ! the flux
 
-            score = last_wgt / material_xs % total
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
+
+            score = score / material_xs % total
 
           case (SCORE_TOTAL)
             ! All events will score to the total reaction rate. We can just

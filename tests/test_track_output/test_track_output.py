@@ -39,9 +39,11 @@ def test_outputs():
     assert compare, 'Results to not agree'
 
 def teardown():
-    temp_files = glob.glob(''.join((cwd, '/statepoint*')))
-    temp_files = temp_files + glob.glob(''.join((cwd, '/track*')))
-    temp_files = temp_files + glob.glob(''.join((cwd, '/poly*')))
+    temp_files = glob.glob('statepoint*')
+    temp_files += glob.glob('track*')
+    temp_files += glob.glob('*.vtp')
+    temp_files += glob.glob('*.pvtp')
+    temp_files = temp_files + ['results_test.dat']
     for f in temp_files:
         if os.path.exists(f):
             os.remove(f)

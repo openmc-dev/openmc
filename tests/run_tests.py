@@ -249,10 +249,16 @@ for test in tests:
 print('\n' + '='*54)
 print('Summary of Compilation Option Testing:\n')
 
-OK = '\033[92m'
-FAIL = '\033[91m'
-ENDC = '\033[0m'
-BOLD = '\033[1m'
+if sys.stdout.isatty():
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+else:
+    OK = ''
+    FAIL = ''
+    ENDC = ''
+    BOLD = ''
 
 for test in tests:
     print(test + '.'*(50 - len(test)), end='')

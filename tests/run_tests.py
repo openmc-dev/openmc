@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import shutil
 import re
+import sys
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -216,6 +217,7 @@ for test in tests:
     print('-'*(len(test) + 6))
     print(test + ' tests')
     print('-'*(len(test) + 6))
+    sys.stdout.flush()
 
     # Verify fortran compiler exists
     tests[test].check_compiler()

@@ -22,12 +22,12 @@ def test_run():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_plots_exists():
-    assert os.path.exists(cwd + '/1_plot.ppm'), 'Plot 1 result does not exist.'
-    assert os.path.exists(cwd + '/2_plot.ppm'), 'Plot 2 result does not exist.'
-    assert os.path.exists(cwd + '/3_plot.ppm'), 'Plot 3 result does not exist.' 
+    assert os.path.exists(os.path.join(cwd ,'1_plot.ppm')), 'Plot 1 result does not exist.'
+    assert os.path.exists(os.path.join(cwd ,'2_plot.ppm')), 'Plot 2 result does not exist.'
+    assert os.path.exists(os.path.join(cwd ,'3_plot.ppm')), 'Plot 3 result does not exist.' 
 
 def teardown():
-    output = [cwd + '/1_plot.ppm', cwd + '/2_plot.ppm', cwd + '/3_plot.ppm']
+    output = [os.path.join(cwd ,'1_plot.ppm'), os.path.join(cwd ,'2_plot.ppm'), os.path.join(cwd ,'3_plot.ppm')]
     for f in output:
         if os.path.exists(f):
             os.remove(f)

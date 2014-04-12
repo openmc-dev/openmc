@@ -353,6 +353,12 @@ module constants
        LEAKAGE       = 4
 
   ! ============================================================================
+  ! NDPP-BASED TALLY-RELATED CONSTANTS
+  integer, parameter :: &
+       SCATT_TYPE_LEGENDRE = 0, & ! Legendre moments
+       SCATT_TYPE_TABULAR  = 1 ! Tabular Representation
+
+  ! ============================================================================
   ! EXTERNAL SOURCE PARAMETERS
 
   ! Source spatial distribution types

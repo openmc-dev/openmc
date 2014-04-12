@@ -542,7 +542,7 @@ contains
 
               end if
             end if
-          
+
           case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
@@ -552,7 +552,7 @@ contains
               score = p % absorb_wgt * &
                       micro_xs(p % event_nuclide) % kappa_fission / &
                       micro_xs(p % event_nuclide) % absorption
-              
+
             else
               ! Skip any non-fission events
               if (.not. p % fission) cycle SCORE_LOOP
@@ -560,7 +560,7 @@ contains
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-              
+
               n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
                 nuclides(p % event_nuclide) % reactions(n) % Q_value
@@ -2847,5 +2847,471 @@ contains
     end do
 
   end subroutine setup_active_cmfdtallies
+
+!===============================================================================
+! TALLY_NDPP_N determines the scattering moments which were
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
+! this method applies to ndpp-scatter-n tally types
+!===============================================================================
+
+  subroutine tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+    mult, is_analog, Ein, results, nuscatt)
+
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: mult ! wgt or wgt * atom_density * flux
+    logical, intent(in) :: is_analog ! Is this an analog or TL event?
+    real(8), intent(in) :: Ein ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    integer :: g ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f ! interp factor on nuclide energy grid
+    real(8) :: one_f ! (ONE - f)
+    type(Nuclide), pointer, save :: nuc ! Working nuclide
+    type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
+
+    ! Find if this nuclide is in the range for S(a,b) treatment
+    ! cross_section % calculate_sab_xs(...) would have figured this out
+    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    if (micro_xs(i_nuclide) % index_sab /= 0) then
+      ! We have a collision in the S(a,b) range
+      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
+      ndpp_scatt => sab % ndpp_scatt
+      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
+        f = ONE
+      else
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
+
+      ! Calculate 1-f, and apply mult
+      one_f = (ONE - f) * mult
+      f = f * mult
+      ! Now apply sigS if we are in tracklength mode
+      if (.not. is_analog) then
+        f = f * micro_xs(i_nuclide) % elastic
+        one_f = one_f * micro_xs(i_nuclide) % elastic
+      end if
+    else
+      ! Normal scattering (non-S(a,b))
+      ! Set up pointers
+      nuc => nuclides(i_nuclide)
+      if (present(nuscatt)) then
+        if (nuscatt) then
+          ndpp_scatt => nuc % ndpp_nuscatt
+        else
+          ndpp_scatt => nuc % ndpp_scatt
+        end if
+      else
+        ndpp_scatt => nuc % ndpp_scatt
+      end if
+      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      i_grid = micro_xs(i_nuclide) % index_grid
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein) - 1
+        f = ONE
+      !else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
+      ! !i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
+      ! ! i_grid + ndpp_groups + 1), &
+      ! ! ndpp_groups + 2, Ein) + i_grid - 1
+      ! i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+      ! f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+      ! (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      else
+        !i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
+        ! size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
+        ! i_grid - 1
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
+
+      ! Calculate 1-f, and apply mult
+      one_f = (ONE - f) * mult
+      f = f * mult
+      ! Now apply sigS if we are in tracklength mode
+      if (.not. is_analog) then
+        f = f * (micro_xs(i_nuclide) % total - &
+                 micro_xs(i_nuclide) % absorption)
+        one_f = one_f * (micro_xs(i_nuclide) % total - &
+                         micro_xs(i_nuclide) % absorption)
+      end if
+    end if
+
+    ! Add the contribution from the lower score
+    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
+        g_filter = filter_index + g - 1
+!$omp atomic
+        results(score_index, g_filter) % value = &
+          results(score_index, g_filter) % value + &
+          ndpp_scatt(i_grid) % outgoing(t_order + 1, g) * one_f
+      end do
+    end if
+
+    ! Now add the contribution from the higher score
+    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
+        g_filter = filter_index + g - 1
+!$omp atomic
+        results(score_index, g_filter) % value = &
+          results(score_index, g_filter) % value + &
+          ndpp_scatt(i_grid + 1) % outgoing(t_order + 1, g) * f
+      end do
+    end if
+  end subroutine tally_ndpp_n
+
+!===============================================================================
+! TALLY_MACRO_NDPP_N determines the macroscopic scattering moments which were
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-n tally types
+!===============================================================================
+
+  subroutine tally_macro_ndpp_n(mat, score_index, filter_index, t_order, flux, &
+    Ein, results, nuscatt)
+
+    type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: flux ! flux
+    real(8), intent(in) :: Ein ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    integer :: i ! index in nuclide list of materials
+    integer :: i_nuclide ! index in nuclides array of our working nuclide
+    real(8) :: N_flux ! atom_density * flux
+
+    if (present(nuscatt)) then
+      do i = 1, mat % n_nuclides
+        i_nuclide = mat % nuclide(i)
+        N_flux = mat % atom_density(i) * flux
+        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+          N_flux, .false., Ein, results, nuscatt)
+      end do
+    else
+      do i = 1, mat % n_nuclides
+        i_nuclide = mat % nuclide(i)
+        N_flux = mat % atom_density(i) * flux
+        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+          N_flux, .false., Ein, results)
+      end do
+    end if
+  end subroutine tally_macro_ndpp_n
+
+!===============================================================================
+! TALLY_NDPP_PN determines the scattering moments which were
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
+! this method applies to ndpp-scatter-n tally types
+!===============================================================================
+
+  subroutine tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+    mult, is_analog, Ein, results, nuscatt)
+
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: mult ! wgt or wgt * atom_density * flux
+    logical, intent(in) :: is_analog ! Is this an analog or TL event?
+    real(8), intent(in) :: Ein ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    integer :: g ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f ! interp factor on nuclide energy grid
+    real(8) :: one_f ! (ONE - f)
+    integer :: i_score ! index of score dimension of results
+    integer :: l ! legendre moment index
+    type(Nuclide), pointer, save :: nuc ! Working nuclide
+    type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
+
+    ! Find if this nuclide is in the range for S(a,b) treatment
+    ! cross_section % calculate_sab_xs(...) would have figured this out
+    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    if (micro_xs(i_nuclide) % index_sab /= 0) then
+      ! We have a collision in the S(a,b) range
+      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
+      ndpp_scatt => sab % ndpp_scatt
+      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
+        f = ONE
+      else
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
+
+      ! Calculate 1-f, and apply mult
+      one_f = (ONE - f) * mult
+      f = f * mult
+      ! Now apply sigS if we are in tracklength mode
+      if (.not. is_analog) then
+        f = f * micro_xs(i_nuclide) % elastic
+        one_f = one_f * micro_xs(i_nuclide) % elastic
+      end if
+    else
+      ! Normal scattering (non-S(a,b))
+      ! Set up pointers
+      nuc => nuclides(i_nuclide)
+      if (present(nuscatt)) then
+        if (nuscatt) then
+          ndpp_scatt => nuc % ndpp_nuscatt
+        else
+          ndpp_scatt => nuc % ndpp_scatt
+        end if
+      else
+        ndpp_scatt => nuc % ndpp_scatt
+      end if
+      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      i_grid = micro_xs(i_nuclide) % index_grid
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
+        f = ONE
+      !else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
+      ! i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
+      ! i_grid + ndpp_groups + 1), &
+      ! ndpp_groups + 2, Ein) + i_grid - 1
+      ! f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+      ! (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      else
+      ! i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
+      ! size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
+      ! i_grid - 1
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
+
+      ! Calculate 1-f, and apply mult
+      one_f = (ONE - f) * mult
+      f = f * mult
+      ! Now apply sigS if we are in tracklength mode
+      if (.not. is_analog) then
+        f = f * (micro_xs(i_nuclide) % total - &
+                 micro_xs(i_nuclide) % absorption)
+        one_f = one_f * (micro_xs(i_nuclide) % total - &
+                         micro_xs(i_nuclide) % absorption)
+      end if
+    end if
+
+    ! Add the contribution from the lower score
+    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
+        g_filter = filter_index + g - 1
+        do l = 1, t_order + 1
+        i_score = score_index + l - 1
+          !$omp atomic
+          results(i_score, g_filter) % value = &
+            results(i_score, g_filter) % value + &
+            ndpp_scatt(i_grid) % outgoing(l, g) * one_f
+        end do
+      end do
+    end if
+
+    ! Now add the contribution from the higher score
+    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
+        g_filter = filter_index + g - 1
+        do l = 1, t_order + 1
+        i_score = score_index + l - 1
+          !$omp atomic
+          results(i_score, g_filter) % value = &
+            results(i_score, g_filter) % value + &
+            ndpp_scatt(i_grid + 1) % outgoing(l, g) * f
+        end do
+      end do
+    end if
+
+  end subroutine tally_ndpp_pn
+
+!===============================================================================
+! TALLY_MACRO_NDPP_PN determines the macroscopic scattering moments which were
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-pn tally types
+!===============================================================================
+
+  subroutine tally_macro_ndpp_pn(mat, score_index, filter_index, t_order, flux, &
+    Ein, results, nuscatt)
+
+    type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: flux ! flux
+    real(8), intent(in) :: Ein ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    integer :: i ! index in nuclide list of materials
+    integer :: i_nuclide ! index in nuclides array of our working nuclide
+    real(8) :: N_flux ! atom_density * flux
+
+    if (present(nuscatt)) then
+      do i = 1, mat % n_nuclides
+        i_nuclide = mat % nuclide(i)
+        N_flux = mat % atom_density(i) * flux
+        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+          N_flux, .false., Ein, results, nuscatt)
+      end do
+    else
+      do i = 1, mat % n_nuclides
+        i_nuclide = mat % nuclide(i)
+        N_flux = mat % atom_density(i) * flux
+        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+          N_flux, .false., Ein, results)
+      end do
+    end if
+
+  end subroutine tally_macro_ndpp_pn
+
+!===============================================================================
+! TALLY_NDPP_CHI determines the fission spectra which were
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
+! this method applies to ndpp-scatter-chi tally types
+!===============================================================================
+
+  subroutine tally_ndpp_chi(i_nuclide, score_index, filter_index, mult, &
+                            is_analog, Ein, score_type, results)
+
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    real(8), intent(in) :: mult ! wgt or wgt * atom_density * flux
+    logical, intent(in) :: is_analog ! Is this an analog or TL event?
+    real(8), intent(in) :: Ein ! Incoming energy
+    integer, intent(in) :: score_type ! Type of Chi score we are using
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+
+    integer :: g ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f ! interp factor on nuclide energy grid
+    real(8) :: one_f ! (ONE - f)
+    type(Nuclide), pointer, save :: nuc ! Working nuclide
+    real(8), pointer, save :: chi_Ein(:) ! Working Ein grid
+    real(8), pointer, save :: chi(:,:) ! Working chi data
+    !$omp threadprivate(nuc, chi_Ein, chi)
+
+    ! Set up pointers
+    nuc => nuclides(i_nuclide)
+    chi_Ein => nuc % ndpp_chi_Ein
+    if (score_type == SCORE_NDPP_CHI) then
+      chi => nuc % ndpp_chi
+    else if (score_type == SCORE_NDPP_CHI_P) then
+      chi => nuc % ndpp_chi_p
+    else if (score_type == SCORE_NDPP_CHI_D) then
+      message = "OpenMC does not yet support Chi-Delayed Tallying!"
+      call fatal_error()
+      !chi => nuc % ndpp_chi_d
+    end if
+
+    if (.not. nuc % fissionable) then
+    return
+    end if
+
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= chi_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= chi_Ein(size(chi_Ein))) then
+      i_grid = size(chi_Ein)
+      f = ONE
+    else
+      i_grid = binary_search(chi_Ein, size(chi_Ein), Ein)
+      f = (Ein - chi_Ein(i_grid)) / &
+        (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
+    end if
+
+    ! Calculate 1-f, apply mult, and weight by nu-fission
+    one_f = (ONE - f) * mult * micro_xs(i_nuclide) % nu_fission
+    f = f * mult * micro_xs(i_nuclide) % nu_fission
+    if (.not. is_analog) then ! Weight only by nu
+      f = f / micro_xs(i_nuclide) % fission
+      one_f = one_f / micro_xs(i_nuclide) % fission
+    end if
+
+    ! Add the contribution from NDPP data (with interpolation)
+    do g = 1, ubound(chi, dim=1)
+      g_filter = filter_index + g - 1
+      !$omp atomic
+      results(score_index, g_filter) % value = &
+        results(score_index, g_filter) % value + &
+        chi(g, i_grid) * one_f + &
+        chi(g, i_grid + 1) * f
+    end do
+
+  end subroutine tally_ndpp_chi
+
+!===============================================================================
+! TALLY_MACRO_NDPP_CHI determines the material-wise Chi spectra which were
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-pn tally types
+!===============================================================================
+
+  subroutine tally_macro_ndpp_chi(mat, score_index, filter_index, flux, Ein, &
+                                  score_type, results)
+
+    type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    real(8), intent(in) :: flux ! flux
+    real(8), intent(in) :: Ein ! Incoming energy
+    integer, intent(in) :: score_type ! Type of Chi score we are using
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+
+    integer :: i ! index in nuclide list of materials
+    integer :: i_nuclide ! index in nuclides array of our working nuclide
+    real(8) :: N_flux ! atom_density * flux
+
+    do i = 1, mat % n_nuclides
+      i_nuclide = mat % nuclide(i)
+      N_flux = mat % atom_density(i) * flux
+      call tally_ndpp_chi(i_nuclide, score_index, filter_index, N_flux, &
+        .false., Ein, score_type, results)
+    end do
+
+  end subroutine tally_macro_ndpp_chi
 
 end module tally

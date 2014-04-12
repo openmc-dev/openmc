@@ -151,7 +151,7 @@ contains
     order = 0
     if (check_for_node(doc, "scatt_order")) &
       call get_node_value(doc, "scatt_order", order)
-    if (order > SCATT_ORDER_MAX) then
+    if (order > MAX_ANG_ORDER) then
       message = "Invalid scattering order of " // trim(to_str(order)) // &
                 " requested."
       call fatal_error()
@@ -201,21 +201,21 @@ contains
         j = j + 1
         select case (t % score_bins(j))
           case (SCORE_SCATTER_PN)
-            j = j + t % scatt_order(j)
+            j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
           case (SCORE_NDPP_SCATT_N)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (order < t % scatt_order(j)) then
+            if (order < t % moment_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(t % scatt_order(j))) // " requested. Order " // &
+                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
             ! Find the maximum scattering order requested
-            if (t % scatt_order(j) > max_tally_order) &
-              max_tally_order = t % scatt_order(j)
+            if (t % moment_order(j) > max_tally_order) &
+              max_tally_order = t % moment_order(j)
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -250,16 +250,16 @@ contains
           case (SCORE_NDPP_SCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (order < t % scatt_order(j)) then
+            if (order < t % moment_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(t % scatt_order(j))) // " requested. Order " // &
+                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
             ! Find the maximum scattering order requested
-            if (t % scatt_order(j) > max_tally_order) &
-              max_tally_order = t % scatt_order(j)
+            if (t % moment_order(j) > max_tally_order) &
+              max_tally_order = t % moment_order(j)
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -292,21 +292,21 @@ contains
               call fatal_error()
             end if
 
-            j = j + t % scatt_order(j)
+            j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
           case (SCORE_NDPP_NU_SCATT_N)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (order < t % scatt_order(j)) then
+            if (order < t % moment_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(t % scatt_order(j))) // " requested. Order " // &
+                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
             ! Find the maximum scattering order requested
-            if (t % scatt_order(j) > max_tally_order_nu) &
-              max_tally_order_nu = t % scatt_order(j)
+            if (t % moment_order(j) > max_tally_order_nu) &
+              max_tally_order_nu = t % moment_order(j)
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -341,16 +341,16 @@ contains
           case (SCORE_NDPP_NU_SCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (order < t % scatt_order(j)) then
+            if (order < t % moment_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(t % scatt_order(j))) // " requested. Order " // &
+                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
             ! Find the maximum scattering order requested
-            if (t % scatt_order(j) > max_tally_order_nu) &
-              max_tally_order_nu = t % scatt_order(j)
+            if (t % moment_order(j) > max_tally_order_nu) &
+              max_tally_order_nu = t % moment_order(j)
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -383,7 +383,7 @@ contains
               call fatal_error()
             end if
 
-            j = j + t % scatt_order(j)
+            j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
           CASE (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
             ! Check that the group structure matches

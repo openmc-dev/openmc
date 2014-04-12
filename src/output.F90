@@ -1686,6 +1686,7 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_listing    ! index in xs_listings array
     integer :: n_order      ! loop index for scattering orders
+    integer :: nm_order     ! loop index for Ynm moment orders
     real(8) :: t_value      ! t-values for confidence intervals
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file

@@ -177,7 +177,7 @@ contains
 
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = temp_long 
+      if (n_particles == 0) n_particles = temp_long
 
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
@@ -270,10 +270,10 @@ contains
     else
 
       ! Spatial distribution for external source
-      if (check_for_node(node_source, "space")) then 
+      if (check_for_node(node_source, "space")) then
 
         ! Get pointer to spatial distribution
-        call get_node_ptr(node_source, "space", node_dist) 
+        call get_node_ptr(node_source, "space", node_dist)
 
         ! Check for type of spatial distribution
         type = ''
@@ -616,7 +616,7 @@ contains
       elseif (check_for_node(node_sp, "interval")) then
         ! User gave an interval for writing state points
         call get_node_value(node_sp, "interval", temp_int)
-        n_state_points = n_batches / temp_int 
+        n_state_points = n_batches / temp_int
         do i = 1, n_state_points
           call statepoint_batch % add(temp_int * i)
         end do
@@ -640,7 +640,7 @@ contains
 
       ! Determine number of batches at which to store source points
       if (check_for_node(node_sp, "batches")) then
-        n_source_points = get_arraysize_integer(node_sp, "batches") 
+        n_source_points = get_arraysize_integer(node_sp, "batches")
       else
         n_source_points = 0
       end if
@@ -692,7 +692,7 @@ contains
       end if
     else
       ! If no <source_point> tag was present, by default we keep source bank in
-      ! statepoint file and write it out at statepoints intervals 
+      ! statepoint file and write it out at statepoints intervals
       source_separate = .false.
       n_source_points = n_state_points
       do i = 1, n_state_points
@@ -909,7 +909,7 @@ contains
 
       ! Check to make sure that either material or fill was specified
       if (c % material == NONE .and. c % fill == NONE) then
-        message = "Neither material nor fill was specified for cell " // & 
+        message = "Neither material nor fill was specified for cell " // &
              trim(to_str(c % id))
         call fatal_error()
       end if
@@ -1104,7 +1104,7 @@ contains
 
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
-        message = "Not enough coefficients specified for surface: " // & 
+        message = "Not enough coefficients specified for surface: " // &
              trim(to_str(s % id))
         call fatal_error()
       elseif (n > coeffs_reqd) then
@@ -1578,7 +1578,7 @@ contains
         ! Check to make sure cross-section is continuous energy neutron table
         n = len_trim(name)
         if (name(n:n) /= 'c') then
-          message = "Cross-section table " // trim(name) // & 
+          message = "Cross-section table " // trim(name) // &
                " is not a continuous-energy neutron table."
           call fatal_error()
         end if
@@ -1607,7 +1607,7 @@ contains
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
-      if (.not. (all(mat % atom_density > ZERO) .or. & 
+      if (.not. (all(mat % atom_density > ZERO) .or. &
            all(mat % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
              to_str(mat % id)
@@ -2140,7 +2140,7 @@ contains
 
           case default
             ! Specified tally filter is invalid, raise error
-            message = "Unknown filter type '" // & 
+            message = "Unknown filter type '" // &
                  trim(temp_str) // "' on tally " // &
                  trim(to_str(t % id)) // "."
             call fatal_error()
@@ -2192,7 +2192,7 @@ contains
           t % all_nuclides = .true.
         else
           ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
-          n_words = get_arraysize_string(node_tal, "nuclides") 
+          n_words = get_arraysize_string(node_tal, "nuclides")
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
             ! Check if total material was specified
@@ -2214,7 +2214,7 @@ contains
                     word = pair_list % key(1:150)
                     exit
                   end if
-                  
+
                   ! Advance to next
                   pair_list => pair_list % next
                 end do
@@ -2390,7 +2390,7 @@ contains
             end if
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
-            
+
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
@@ -2737,14 +2737,14 @@ contains
                 t % score_bins(j) = MT
               else
                 message = "Invalid MT on <scores>: " // &
-                     trim(sarray(j))
+                     trim(sarray(l))
                 call fatal_error()
               end if
 
             else
               ! Specified score was not an integer
               message = "Unknown scoring function: " // &
-                   trim(sarray(j))
+                   trim(sarray(l))
               call fatal_error()
             end if
 
@@ -2893,7 +2893,7 @@ contains
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
              "_" // trim(filename) // ".voxel"
       end select
-      
+
       ! Copy plot pixel size
       if (pl % type == PLOT_TYPE_SLICE) then
         if (get_arraysize_integer(node_plot, "pixels") == 2) then
@@ -2916,7 +2916,7 @@ contains
       ! Copy plot background color
       if (check_for_node(node_plot, "background")) then
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Background color ignored in voxel plot " // & 
+          message = "Background color ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
@@ -2930,7 +2930,7 @@ contains
       else
         pl % not_found % rgb = (/ 255, 255, 255 /)
       end if
-      
+
       ! Copy plot basis
       if (pl % type == PLOT_TYPE_SLICE) then
         temp_str = 'xy'
@@ -2945,12 +2945,12 @@ contains
         case ("yz")
           pl % basis = PLOT_BASIS_YZ
         case default
-          message = "Unsupported plot basis '" // trim(temp_str) & 
+          message = "Unsupported plot basis '" // trim(temp_str) &
                // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
         end select
       end if
-      
+
       ! Copy plotting origin
       if (get_arraysize_double(node_plot, "origin") == 3) then
         call get_node_array(node_plot, "origin", pl % origin)
@@ -3017,13 +3017,13 @@ contains
 
       ! Copy user specified colors
       if (n_cols /= 0) then
-      
+
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Color specifications ignored in voxel plot " // & 
+          message = "Color specifications ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
-      
+
         do j = 1, n_cols
 
           ! Get pointer to color spec XML node
@@ -3033,7 +3033,7 @@ contains
           if (get_arraysize_double(node_col, "rgb") /= 3) then
             message = "Bad RGB " &
                  // "in plot " // trim(to_str(pl % id))
-            call fatal_error()          
+            call fatal_error()
           end if
 
           ! Ensure that there is an id for this color specification
@@ -3076,13 +3076,13 @@ contains
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)
       if (n_masks /= 0) then
-      
+
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Mask ignored in voxel plot " // & 
+          message = "Mask ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
-      
+
         select case(n_masks)
           case default
             message = "Mutliple masks" // &
@@ -3103,14 +3103,14 @@ contains
             end if
             allocate(iarray(n_comp))
             call get_node_array(node_mask, "components", iarray)
- 
+
             ! First we need to change the user-specified identifiers to indices
             ! in the cell and material arrays
             do j=1, n_comp
               col_id = iarray(j)
-            
+
               if (pl % color_by == PLOT_COLOR_CELLS) then
-              
+
                 if (cell_dict % has_key(col_id)) then
                   iarray(j) = cell_dict % get_key(col_id)
                 else
@@ -3118,9 +3118,9 @@ contains
                        " specified in the mask in plot " // trim(to_str(pl % id))
                   call fatal_error()
                 end if
-              
+
               else if (pl % color_by == PLOT_COLOR_MATS) then
-              
+
                 if (material_dict % has_key(col_id)) then
                   iarray(j) = material_dict % get_key(col_id)
                 else
@@ -3128,10 +3128,10 @@ contains
                        " specified in the mask in plot " // trim(to_str(pl % id))
                   call fatal_error()
                 end if
-                
-              end if  
+
+              end if
             end do
-          
+
             ! Alter colors based on mask information
             do j=1,size(pl % colors)
               if (.not. any(j .eq. iarray)) then
@@ -3146,9 +3146,9 @@ contains
             end do
 
             deallocate(iarray)
-            
+
         end select
-        
+
       end if
 
       ! Add plot to dictionary
@@ -3188,7 +3188,7 @@ contains
             "' does not exist!"
        call fatal_error()
     end if
-    
+
     message = "Reading cross sections XML file..."
     call write_message(5)
 

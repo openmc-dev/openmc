@@ -672,7 +672,7 @@ contains
     integer :: j     ! index in filters array
     integer :: id    ! user-specified id
     integer :: unit_ ! unit to write to
-    integer :: n     ! scattering order to include in name
+    integer :: n     ! moment order to include in name
     character(MAX_LINE_LEN) :: string
     character(MAX_WORD_LEN) :: pn_string
     type(Cell),           pointer :: c => null()
@@ -825,41 +825,84 @@ contains
       select case (t % score_bins(j))
       case (SCORE_FLUX)
         string = trim(string) // ' flux'
+      case (SCORE_FLUX_YN)
+        pn_string = ' flux'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' flux-y' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
       case (SCORE_TOTAL)
         string = trim(string) // ' total'
+      case (SCORE_TOTAL_YN)
+        pn_string = ' total'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' total-y' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
       case (SCORE_SCATTER)
         string = trim(string) // ' scatter'
       case (SCORE_NU_SCATTER)
         string = trim(string) // ' nu-scatter'
       case (SCORE_SCATTER_N)
-        pn_string = ' scatter-' // trim(to_str(t % scatt_order(j)))
+        pn_string = ' scatter-' // trim(to_str(t % moment_order(j)))
         string = trim(string) // pn_string
       case (SCORE_SCATTER_PN)
         pn_string = ' scatter'
         string = trim(string) // pn_string
-        do n = 1, t % scatt_order(j)
-          pn_string = ' scatter-' // trim(to_str(n))
+        do n = 1, t % moment_order(j)
+          pn_string = ' scatter-p' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_NU_SCATTER_N)
+        pn_string = ' nu-scatter-' // trim(to_str(t % moment_order(j)))
+        string = trim(string) // pn_string
+      case (SCORE_NU_SCATTER_PN)
+        pn_string = ' nu-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' nu-scatter-p' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_SCATTER_YN)
+        pn_string = ' scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' scatter-y' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_NU_SCATTER_YN)
+        pn_string = ' nu-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' nu-scatter-y' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
         j = j + n - 1
       case (SCORE_NDPP_SCATT_N)
-        pn_string = ' ndpp-scatter-' // trim(to_str(t % scatt_order(j)))
+        pn_string = ' ndpp-scatter-' // trim(to_str(t % moment_order(j)))
         string = trim(string) // pn_string
       case (SCORE_NDPP_SCATT_PN)
         pn_string = ' ndpp-scatter'
         string = trim(string) // pn_string
-        do n = 1, t % scatt_order(j)
+        do n = 1, t % moment_order(j)
           pn_string = ' ndpp-scatter-' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
         j = j + n - 1
       case (SCORE_NDPP_NU_SCATT_N)
-        pn_string = ' ndpp-nu-scatter-' // trim(to_str(t % scatt_order(j)))
+        pn_string = ' ndpp-nu-scatter-' // trim(to_str(t % moment_order(j)))
         string = trim(string) // pn_string
       case (SCORE_NDPP_NU_SCATT_PN)
         pn_string = ' ndpp-nu-scatter'
         string = trim(string) // pn_string
-        do n = 1, t % scatt_order(j)
+        do n = 1, t % moment_order(j)
           pn_string = ' ndpp-nu-scatter-' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
@@ -1670,15 +1713,6 @@ contains
     score_names(abs(SCORE_TOTAL))         = "Total Reaction Rate"
     score_names(abs(SCORE_SCATTER))       = "Scattering Rate"
     score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
-    score_names(abs(SCORE_SCATTER_N))     = ""
-    score_names(abs(SCORE_SCATTER_PN))    = ""
-    score_names(abs(SCORE_NDPP_SCATT_N))  = ""
-    score_names(abs(SCORE_NDPP_SCATT_PN)) = ""
-    score_names(abs(SCORE_NDPP_NU_SCATT_N))  = ""
-    score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = ""
-    score_names(abs(SCORE_NDPP_CHI))      = "Total Fission Prod. Rate"
-    score_names(abs(SCORE_NDPP_CHI_P))    = "Prompt Fission Prod. Rate"
-    score_names(abs(SCORE_NDPP_CHI_D))    = "Delayed Fission Prod. Rate"
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
@@ -1686,6 +1720,23 @@ contains
     score_names(abs(SCORE_NU_FISSION))    = "Nu-Fission Rate"
     score_names(abs(SCORE_KAPPA_FISSION)) = "Kappa-Fission Rate"
     score_names(abs(SCORE_EVENTS))        = "Events"
+    score_names(abs(SCORE_FLUX_YN))       = "Flux Moment"
+    score_names(abs(SCORE_TOTAL_YN))      = "Total Reaction Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_YN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_N))  = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_PN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_YN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_SCATT_N))  = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_SCATT_PN)) = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_NU_SCATT_N))  = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NDPP_CHI))      = "Total Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_P))    = "Prompt Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_D))    = "Delayed Fission Prod. Rate"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -1812,59 +1863,42 @@ contains
           do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
-            if ((t % score_bins(k) == SCORE_SCATTER_N) .or. &
-                (t % score_bins(k) == SCORE_NDPP_SCATT_N)) then
-              if (t % scatt_order(k) == 0) then
-                score_name = "Scattering Rate"
-              else
-                score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
-                  ' Scattering Moment'
-              end if
+            select case(t % score_bins(k))
+            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N, SCORE_NDPP_SCATT_N, SCORE_NDPP_NU_SCATT_N)
+              score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
+                score_names(abs(t % score_bins(k)))
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            else if ((t % score_bins(k) == SCORE_SCATTER_PN) .or. &
-                     (t % score_bins(k) == SCORE_NDPP_SCATT_PN)) then
-              score_name = "Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % scatt_order(k)
+            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN, SCORE_NDPP_SCATT_PN, SCORE_NDPP_NU_SCATT_PN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Scattering Moment'
+                score_name = 'P' // trim(to_str(n_order)) //  " " //&
+                  score_names(abs(t % score_bins(k)))
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                   repeat(" ", indent), score_name, &
                   to_str(t % results(score_index,filter_index) % sum), &
                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
               end do
-              k = k + n_order - 1
-            else if (t % score_bins(k) == SCORE_NDPP_NU_SCATT_N) then
-              if (t % scatt_order(k) == 0) then
-                score_name = "Scattering Production Rate"
-              else
-                score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
-                  ' Scattering Production Rate'
-              end if
-            else if (t % score_bins(k) == SCORE_NDPP_NU_SCATT_PN) then
-              score_name = "Scattering Production Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
-              do n_order = 1, t % scatt_order(k)
-                score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Scattering Production Rate'
-                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                  repeat(" ", indent), score_name, &
-                  to_str(t % results(score_index,filter_index) % sum), &
-                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
+              k = k + t % moment_order(k)
+            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                  SCORE_TOTAL_YN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
+                do nm_order = -n_order, n_order
+                  score_index = score_index + 1
+                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
+                    trim(to_str(nm_order)) // " " // score_names(abs(t % score_bins(k)))
+                  write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
+                    repeat(" ", indent), score_name, &
+                    to_str(t % results(score_index,filter_index) % sum), &
+                    trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                end do
               end do
-              k = k + n_order - 1
-            else
+              k = k + (t % moment_order(k) + 1)**2 - 1
+            case default
               if (t % score_bins(k) > 0) then
                 score_name = reaction_name(t % score_bins(k))
               else
@@ -1874,7 +1908,7 @@ contains
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            end if
+            end select
           end do
           indent = indent - 2
 

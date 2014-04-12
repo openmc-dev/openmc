@@ -36,6 +36,7 @@ contains
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
     p % last_E   = p % E
+    p % last_uvw = p % coord0 % uvw
 
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1

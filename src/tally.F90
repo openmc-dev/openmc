@@ -4,7 +4,7 @@ module tally
   use constants
   use error,            only: fatal_error
   use global
-  use math,             only: t_percentile, calc_pn
+  use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
@@ -41,7 +41,8 @@ contains
     integer :: i_tally
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
-    integer :: n                    ! loop index for scattering order
+    integer :: n                    ! loop index for legendre order
+    integer :: num_nm               ! Number of N,M orders in harmonic
     integer :: l                    ! scoring bin loop index, allowing for changing
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
@@ -141,6 +142,35 @@ contains
 
             score = last_wgt / material_xs % total
 
+          case (SCORE_FLUX_YN)
+            ! All events score to a flux bin. We actually use a collision
+            ! estimator since there is no way to count 'events' exactly for
+            ! the flux
+
+            score_index = score_index - 1
+
+            ! get the score
+            score = last_wgt / material_xs % total
+
+            num_nm = 1
+            ! Find the order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + num_nm
+              ! Update number of total n,m bins for this n (m = [-n: n])
+              num_nm = 2 * n + 1
+
+              ! multiply score by the angular flux moments and store
+!$omp critical
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                score * calc_rn(n, p % last_uvw)
+!$omp end critical
+            end do
+            j = j + (t % moment_order(j) + 1)**2 - 1
+            cycle SCORE_LOOP
+
           case (SCORE_TOTAL)
             ! All events will score to the total reaction rate. We can just
             ! use the weight of the particle entering the collision as the
@@ -153,6 +183,41 @@ contains
             else
               score = last_wgt
             end if
+
+          case (SCORE_TOTAL_YN)
+            ! All events will score to the total reaction rate. We can just
+            ! use the weight of the particle entering the collision as the
+            ! score
+
+            score_index = score_index - 1
+
+            ! get the score
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
+
+            num_nm = 1
+            ! Find the order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + num_nm
+              ! Update number of total n,m bins for this n (m = [-n: n])
+              num_nm = 2 * n + 1
+
+              ! multiply score by the angular flux moments and store
+!$omp critical
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                score * calc_rn(n, p % last_uvw)
+!$omp end critical
+            end do
+            j = j + (t % moment_order(j) + 1)**2 - 1
+            cycle SCORE_LOOP
 
           case (SCORE_SCATTER)
             ! Skip any event where the particle didn't scatter
@@ -180,31 +245,130 @@ contains
 
             ! Find the scattering order for a singly requested moment, and
             ! store its moment contribution.
-            if (t % scatt_order(j) == 1) then
+
+            if (t % moment_order(j) == 1) then
               score = last_wgt * mu ! avoid function call overhead
             else
-              score = last_wgt * calc_pn(t % scatt_order(j), mu)
+              score = last_wgt * calc_pn(t % moment_order(j), mu)
             endif
 
           case (SCORE_SCATTER_PN)
             ! Skip any event where the particle didn't scatter
-            if (p % event == EVENT_SCATTER) then
-              score_index = score_index - 1
-              ! Find the scattering order for a collection of requested moments
-              ! and store the moment contribution of each
-              do n = 0, t % scatt_order(j)
-                ! determine scoring bin index
-                score_index = score_index + 1
-                ! get the score and tally it
-                score = last_wgt * calc_pn(n, mu)
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index = score_index - 1
+            ! Find the scattering order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + 1
+              ! get the score and tally it
+              score = last_wgt * calc_pn(n, mu)
 
 !$omp critical
-                t % results(score_index, filter_index) % value = &
-                  t % results(score_index, filter_index) % value + score
+              t % results(score_index, filter_index) % value = &
+                t % results(score_index, filter_index) % value + score
 !$omp end critical
-              end do
+            end do
+            j = j + t % moment_order(j)
+            cycle SCORE_LOOP
+
+          case (SCORE_SCATTER_YN)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP
             end if
-            j = j + t % scatt_order(j)
+            score_index = score_index - 1
+
+            ! Calculate the number of moments from t % moment_order
+            num_nm = 1
+            ! Find the order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + num_nm
+              ! Update number of total n,m bins for this n (m = [-n: n])
+              num_nm = 2 * n + 1
+              ! get the score of the scattering moment
+              score = last_wgt * calc_pn(n, mu)
+
+              ! multiply score by the angular flux moments and store
+!$omp critical
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                score * calc_rn(n, p % last_uvw)
+!$omp end critical
+            end do
+            j = j + (t % moment_order(j) + 1)**2 - 1
+            cycle SCORE_LOOP
+
+          case (SCORE_NU_SCATTER_N)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+
+            ! Find the scattering order for a singly requested moment, and
+            ! store its moment contribution.
+
+            if (t % moment_order(j) == 1) then
+              score = wgt * mu ! avoid function call overhead
+            else
+              score = wgt * calc_pn(t % moment_order(j), mu)
+            endif
+
+          case (SCORE_NU_SCATTER_PN)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index = score_index - 1
+            ! Find the scattering order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + 1
+              ! get the score and tally it
+              score = wgt * calc_pn(n, mu)
+
+!$omp critical
+              t % results(score_index, filter_index) % value = &
+                t % results(score_index, filter_index) % value + score
+!$omp end critical
+            end do
+            j = j + t % moment_order(j)
+            cycle SCORE_LOOP
+
+          case (SCORE_NU_SCATTER_YN)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index = score_index - 1
+
+            ! Calculate the number of moments from t % moment_order
+            num_nm = 1
+            ! Find the order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % moment_order(j)
+              ! determine scoring bin index
+              score_index = score_index + num_nm
+              ! Update number of total n,m bins for this n (m = [-n: n])
+              num_nm = 2 * n + 1
+              ! get the score of the scattering moment
+              score = wgt * calc_pn(n, mu)
+
+              ! multiply score by the angular flux moments and store
+!$omp critical
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                score * calc_rn(n, p % last_uvw)
+!$omp end critical
+            end do
+            j = j + (t % moment_order(j) + 1)**2 - 1
             cycle SCORE_LOOP
 
           case (SCORE_NDPP_SCATT_N)
@@ -215,7 +379,7 @@ contains
             ! to be adjusted to point to the first energyout filter
             call tally_ndpp_n(p % event_nuclide, score_index, filter_index - &
               matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-              t % scatt_order(j), last_wgt, .true., p % last_E, t % results)
+              t % moment_order(j), last_wgt, .true., p % last_E, t % results)
 
             cycle SCORE_LOOP
 
@@ -226,10 +390,10 @@ contains
               ! to be adjusted to point to the first energyout filter
               call tally_ndpp_pn(p % event_nuclide, score_index, filter_index - &
                 matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                t % scatt_order(j), last_wgt, .true., p % last_E, t % results)
+                t % moment_order(j), last_wgt, .true., p % last_E, t % results)
             end if
 
-            j = j + t % scatt_order(j)
+            j = j + t % moment_order(j)
             cycle SCORE_LOOP
 
           case (SCORE_NDPP_NU_SCATT_N)
@@ -240,7 +404,7 @@ contains
             ! to be adjusted to point to the first energyout filter
             call tally_ndpp_n(p % event_nuclide, score_index, filter_index - &
               matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-              t % scatt_order(j), last_wgt, .true., p % last_E, t % results, .true.)
+              t % moment_order(j), last_wgt, .true., p % last_E, t % results, .true.)
 
             cycle SCORE_LOOP
 
@@ -251,10 +415,10 @@ contains
               ! to be adjusted to point to the first energyout filter
               call tally_ndpp_pn(p % event_nuclide, score_index, filter_index - &
                 matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                t % scatt_order(j), last_wgt, .true., p % last_E, t % results, .true.)
+                t % moment_order(j), last_wgt, .true., p % last_E, t % results, .true.)
             end if
 
-            j = j + t % scatt_order(j)
+            j = j + t % moment_order(j)
             cycle SCORE_LOOP
 
           case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
@@ -378,7 +542,7 @@ contains
 
               end if
             end if
-
+          
           case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
@@ -388,7 +552,7 @@ contains
               score = p % absorb_wgt * &
                       micro_xs(p % event_nuclide) % kappa_fission / &
                       micro_xs(p % event_nuclide) % absorption
-
+              
             else
               ! Skip any non-fission events
               if (.not. p % fission) cycle SCORE_LOOP
@@ -396,7 +560,7 @@ contains
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-
+              
               n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
                 nuclides(p % event_nuclide) % reactions(n) % Q_value
@@ -518,8 +682,10 @@ contains
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: l                    ! loop index for nuclides in material
-    integer :: u                    ! Loop index for user score bins
     integer :: m                    ! loop index for reactions
+    integer :: n                    ! loop index for legendre order
+    integer :: num_nm               ! Number of N,M orders in harmonic
+    integer :: q                    ! loop index for scoring bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
     integer :: i_nuc                ! index in nuclides array (from material)
@@ -601,7 +767,7 @@ contains
 
           ! Determine score for each bin
           j = 0
-          SCORE_LOOP: do u = 1, t % n_user_score_bins
+          SCORE_LOOP: do q = 1, t % n_user_score_bins
             j = j + 1
             ! determine what type of score bin
             score_bin = t % score_bins(j)
@@ -618,10 +784,57 @@ contains
                 ! For flux, we need no cross section
                 score = flux
 
+              case (SCORE_FLUX_YN)
+                score_index = score_index - 1
+
+                ! For flux, we need no cross section
+                score = flux
+
+                num_nm = 1
+                ! Find the order for a collection of requested moments
+                ! and store the moment contribution of each
+                do n = 0, t % moment_order(j)
+                  ! determine scoring bin index
+                  score_index = score_index + num_nm
+                  ! Update number of total n,m bins for this n (m = [-n: n])
+                  num_nm = 2 * n + 1
+
+                  ! multiply score by the angular flux moments and store
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                end do
+                j = j + (t % moment_order(j) + 1)**2 - 1
+                cycle SCORE_LOOP
+
               case (SCORE_TOTAL)
                 ! Total cross section is pre-calculated
                 score = micro_xs(i_nuclide) % total * &
                      atom_density * flux
+
+              case (SCORE_TOTAL_YN)
+                score_index = score_index - 1
+
+                num_nm = 1
+                ! Find the order for a collection of requested moments
+                ! and store the moment contribution of each
+                do n = 0, t % moment_order(j)
+                  ! determine scoring bin index
+                  score_index = score_index + num_nm
+                  ! Update number of total n,m bins for this n (m = [-n: n])
+                  num_nm = 2 * n + 1
+
+                  ! multiply score by the angular flux moments and store
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                end do
+                j = j + (t % moment_order(j) + 1)**2 - 1
+                cycle SCORE_LOOP
 
               case (SCORE_SCATTER)
                 ! Scattering cross section is pre-calculated
@@ -632,31 +845,31 @@ contains
               case (SCORE_NDPP_SCATT_N)
                 call tally_ndpp_n(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), atom_density * flux, .false., &
+                  t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_SCATT_PN)
                 call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), atom_density * flux, .false., &
+                  t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results)
-                j = j + t % scatt_order(j)
+                j = j + t % moment_order(j)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_NU_SCATT_N)
                 call tally_ndpp_n(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), atom_density * flux, .false., &
+                  t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results, .true.)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_NU_SCATT_PN)
                 call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), atom_density * flux, .false., &
+                  t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results, .true.)
-                j = j + t % scatt_order(j)
+                j = j + t % moment_order(j)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
@@ -739,9 +952,59 @@ contains
                 ! For flux, we need no cross section
                 score = flux
 
+              case (SCORE_FLUX_YN)
+                score_index = score_index - 1
+
+                ! For flux, we need no cross section
+                score = flux
+
+                num_nm = 1
+                ! Find the order for a collection of requested moments
+                ! and store the moment contribution of each
+                do n = 0, t % moment_order(j)
+                  ! determine scoring bin index
+                  score_index = score_index + num_nm
+                  ! Update number of total n,m bins for this n (m = [-n: n])
+                  num_nm = 2 * n + 1
+
+                  ! multiply score by the angular flux moments and store
+!$omp critical
+                t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                  score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                end do
+                j = j + (t % moment_order(j) + 1)**2 - 1
+                cycle SCORE_LOOP
+
               case (SCORE_TOTAL)
                 ! Total cross section is pre-calculated
                 score = material_xs % total * flux
+
+              case (SCORE_TOTAL_YN)
+                score_index = score_index - 1
+
+                ! Total cross section is pre-calculated
+                score = material_xs % total * flux
+
+                num_nm = 1
+                ! Find the order for a collection of requested moments
+                ! and store the moment contribution of each
+                do n = 0, t % moment_order(j)
+                  ! determine scoring bin index
+                  score_index = score_index + num_nm
+                  ! Update number of total n,m bins for this n (m = [-n: n])
+                  num_nm = 2 * n + 1
+
+                  ! multiply score by the angular flux moments and store
+!$omp critical
+                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                    score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                end do
+                j = j + (t % moment_order(j) + 1)**2 - 1
+                cycle SCORE_LOOP
 
               case (SCORE_SCATTER)
                 ! Scattering cross section is pre-calculated
@@ -751,7 +1014,7 @@ contains
                 mat => materials(p % material)
                 call tally_macro_ndpp_n(mat, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), flux, p % E, t % results)
+                  t % moment_order(j), flux, p % E, t % results)
 
                 cycle SCORE_LOOP
 
@@ -759,16 +1022,16 @@ contains
                 mat => materials(p % material)
                 call tally_macro_ndpp_pn(mat, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), flux, p % E, t % results)
+                  t % moment_order(j), flux, p % E, t % results)
 
-                j = j + t % scatt_order(j)
+                j = j + t % moment_order(j)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_NU_SCATT_N)
                 mat => materials(p % material)
                 call tally_macro_ndpp_n(mat, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), flux, p % E, t % results, .true.)
+                  t % moment_order(j), flux, p % E, t % results, .true.)
 
                 cycle SCORE_LOOP
 
@@ -776,9 +1039,9 @@ contains
                 mat => materials(p % material)
                 call tally_macro_ndpp_pn(mat, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), flux, p % E, t % results, .true.)
+                  t % moment_order(j), flux, p % E, t % results, .true.)
 
-                j = j + t % scatt_order(j)
+                j = j + t % moment_order(j)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
@@ -901,7 +1164,9 @@ contains
     integer :: i             ! loop index for nuclides in material
     integer :: j             ! loop index for scoring bin types
     integer :: m             ! loop index for reactions in nuclide
-    integer :: u             ! Loop index for user score bins
+    integer :: n             ! loop index for legendre order
+    integer :: num_nm        ! Number of N,M orders in harmonic
+    integer :: q             ! loop index for scoring bins
     integer :: i_nuclide     ! index in nuclides array
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
     integer :: score_index   ! scoring bin index
@@ -933,7 +1198,7 @@ contains
 
       ! Loop over score types for each bin
       j = 0
-      SCORE_LOOP: do u = 1, t % n_user_score_bins
+      SCORE_LOOP: do q = 1, t % n_user_score_bins
         j = j + 1
         ! determine what type of score bin
         score_bin = t % score_bins(j)
@@ -947,8 +1212,57 @@ contains
         case (SCORE_FLUX)
           score = flux
 
+        case (SCORE_FLUX_YN)
+          score_index = score_index - 1
+
+          ! For flux, we need no cross section
+          score = flux
+
+          num_nm = 1
+          ! Find the order for a collection of requested moments
+          ! and store the moment contribution of each
+          do n = 0, t % moment_order(j)
+            ! determine scoring bin index
+            score_index = score_index + num_nm
+            ! Update number of total n,m bins for this n (m = [-n: n])
+            num_nm = 2 * n + 1
+
+            ! multiply score by the angular flux moments and store
+!$omp critical
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+              score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+          end do
+          j = j + (t % moment_order(j) + 1)**2 - 1
+          cycle SCORE_LOOP
+
         case (SCORE_TOTAL)
           score = micro_xs(i_nuclide) % total * atom_density * flux
+
+        case (SCORE_TOTAL_YN)
+          score_index = score_index - 1
+
+          score = micro_xs(i_nuclide) % total * atom_density * flux
+
+          num_nm = 1
+          ! Find the order for a collection of requested moments
+          ! and store the moment contribution of each
+          do n = 0, t % moment_order(j)
+            ! determine scoring bin index
+            score_index = score_index + num_nm
+            ! Update number of total n,m bins for this n (m = [-n: n])
+            num_nm = 2 * n + 1
+
+            ! multiply score by the angular flux moments and store
+!$omp critical
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+              score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+          end do
+          j = j + (t % moment_order(j) + 1)**2 - 1
+          cycle SCORE_LOOP
 
         case (SCORE_SCATTER)
           score = (micro_xs(i_nuclide) % total - &
@@ -957,7 +1271,7 @@ contains
         case (SCORE_NDPP_SCATT_N)
           call tally_ndpp_n(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-            t % scatt_order(j), atom_density * flux, .false., p % E, &
+            t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results)
 
           cycle SCORE_LOOP
@@ -965,16 +1279,16 @@ contains
         case (SCORE_NDPP_SCATT_PN)
           call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-            t % scatt_order(j), atom_density * flux, .false., p % E, &
+            t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results)
 
-          j = j + t % scatt_order(j)
+          j = j + t % moment_order(j)
           cycle SCORE_LOOP
 
         case (SCORE_NDPP_NU_SCATT_N)
           call tally_ndpp_n(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-            t % scatt_order(j), atom_density * flux, .false., p % E, &
+            t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results, .true.)
 
           cycle SCORE_LOOP
@@ -982,10 +1296,10 @@ contains
         case (SCORE_NDPP_NU_SCATT_PN)
           call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-            t % scatt_order(j), atom_density * flux, .false., p % E, &
+            t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results, .true.)
 
-          j = j + t % scatt_order(j)
+          j = j + t % moment_order(j)
           cycle SCORE_LOOP
 
         case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
@@ -1065,7 +1379,7 @@ contains
 
     ! Loop over score types for each bin
     j = 0
-    MATERIAL_SCORE_LOOP: do u = 1, t % n_user_score_bins
+    MATERIAL_SCORE_LOOP: do q = 1, t % n_user_score_bins
       j = j + 1
       ! determine what type of score bin
       score_bin = t % score_bins(j)
@@ -1079,8 +1393,59 @@ contains
       case (SCORE_FLUX)
         score = flux
 
+      case (SCORE_FLUX_YN)
+        score_index = score_index - 1
+
+        ! For flux, we need no cross section
+        score = flux
+
+        num_nm = 1
+        ! Find the order for a collection of requested moments
+        ! and store the moment contribution of each
+        do n = 0, t % moment_order(j)
+          ! determine scoring bin index
+          score_index = score_index + num_nm
+          ! Update number of total n,m bins for this n (m = [-n: n])
+          num_nm = 2 * n + 1
+
+          ! multiply score by the angular flux moments and store
+!$omp critical
+          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+            score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+        end do
+        j = j + (t % moment_order(j) + 1)**2 - 1
+        cycle MATERIAL_SCORE_LOOP
+
       case (SCORE_TOTAL)
         score = material_xs % total * flux
+
+      case (SCORE_TOTAL_YN)
+        score_index = score_index - 1
+
+        ! Total cross section is pre-calculated
+        score = material_xs % total * flux
+
+        num_nm = 1
+        ! Find the order for a collection of requested moments
+        ! and store the moment contribution of each
+        do n = 0, t % moment_order(j)
+          ! determine scoring bin index
+          score_index = score_index + num_nm
+          ! Update number of total n,m bins for this n (m = [-n: n])
+          num_nm = 2 * n + 1
+
+          ! multiply score by the angular flux moments and store
+!$omp critical
+          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+            score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+        end do
+        j = j + (t % moment_order(j) + 1)**2 - 1
+        cycle MATERIAL_SCORE_LOOP
+
 
       case (SCORE_SCATTER)
         score = (material_xs % total - material_xs % absorption) * flux
@@ -1089,7 +1454,7 @@ contains
         mat => materials(p % material)
         call tally_macro_ndpp_n(mat, score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-          t % scatt_order(j), flux, p % E, t % results)
+          t % moment_order(j), flux, p % E, t % results)
 
         cycle MATERIAL_SCORE_LOOP
 
@@ -1097,16 +1462,16 @@ contains
         mat => materials(p % material)
         call tally_macro_ndpp_pn(mat, score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-          t % scatt_order(j), flux, p % E, t % results)
+          t % moment_order(j), flux, p % E, t % results)
 
-        j = j + t % scatt_order(j)
+        j = j + t % moment_order(j)
         cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_NDPP_NU_SCATT_N)
         mat => materials(p % material)
         call tally_macro_ndpp_n(mat, score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-          t % scatt_order(j), flux, p % E, t % results, .true.)
+          t % moment_order(j), flux, p % E, t % results, .true.)
 
         cycle MATERIAL_SCORE_LOOP
 
@@ -1114,9 +1479,9 @@ contains
         mat => materials(p % material)
         call tally_macro_ndpp_pn(mat, score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-          t % scatt_order(j), flux, p % E, t % results, .true.)
+          t % moment_order(j), flux, p % E, t % results, .true.)
 
-        j = j + t % scatt_order(j)
+        j = j + t % moment_order(j)
         cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
@@ -1220,7 +1585,9 @@ contains
     integer :: j                    ! loop index for direction
     integer :: k                    ! loop index for mesh cell crossings
     integer :: b                    ! loop index for nuclide bins
-    integer :: u                    ! Loop index for user score bins
+    integer :: n                    ! loop index for legendre order
+    integer :: num_nm               ! Number of N,M orders in harmonic
+    integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
@@ -1442,7 +1809,7 @@ contains
 
             ! Determine score for each bin
             j = 0
-            SCORE_LOOP: do u = 1, t % n_user_score_bins
+            SCORE_LOOP: do q = 1, t % n_user_score_bins
               j = j + 1
               ! determine what type of score bin
               score_bin = t % score_bins(j)
@@ -1455,9 +1822,61 @@ contains
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
+
+                case (SCORE_FLUX_YN)
+                  score_index = score_index - 1
+
+                  score = flux
+
+                  num_nm = 1
+                  ! Find the order for a collection of requested moments
+                  ! and store the moment contribution of each
+                  do n = 0, t % moment_order(j)
+                    ! determine scoring bin index
+                    score_index = score_index + num_nm
+                    ! Update number of total n,m bins for this n (m = [-n: n])
+                    num_nm = 2 * n + 1
+
+                    ! multiply score by the angular flux moments and store
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                  end do
+                  j = j + (t % moment_order(j) + 1)**2 - 1
+                  cycle SCORE_LOOP
+
                 case (SCORE_TOTAL)
                   score = micro_xs(i_nuclide) % total * &
                        atom_density * flux
+
+                case (SCORE_TOTAL_YN)
+                  score_index = score_index - 1
+
+                  ! Total cross section is pre-calculated
+                  score = micro_xs(i_nuclide) % total * &
+                    atom_density * flux
+
+                  num_nm = 1
+                  ! Find the order for a collection of requested moments
+                  ! and store the moment contribution of each
+                  do n = 0, t % moment_order(j)
+                    ! determine scoring bin index
+                    score_index = score_index + num_nm
+                    ! Update number of total n,m bins for this n (m = [-n: n])
+                    num_nm = 2 * n + 1
+
+                    ! multiply score by the angular flux moments and store
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                  end do
+                  j = j + (t % moment_order(j) + 1)**2 - 1
+                  cycle SCORE_LOOP
+
                 case (SCORE_SCATTER)
                   score = (micro_xs(i_nuclide) % total - &
                        micro_xs(i_nuclide) % absorption) * &
@@ -1465,28 +1884,28 @@ contains
                 case (SCORE_NDPP_SCATT_N)
                   call tally_ndpp_n(i_nuclide, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), atom_density * flux, .false., &
+                    t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_SCATT_PN)
                   call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), atom_density * flux, .false., &
+                    t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results)
-                  j = j + t % scatt_order(j)
+                  j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_N)
                   call tally_ndpp_n(i_nuclide, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), atom_density * flux, .false., &
+                    t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results, .true.)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_PN)
                   call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), atom_density * flux, .false., &
+                    t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results, .true.)
-                  j = j + t % scatt_order(j)
+                  j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                   call tally_ndpp_chi(i_nuclide, score_index, &
@@ -1519,42 +1938,92 @@ contains
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
+
+                case (SCORE_FLUX_YN)
+                  score_index = score_index - 1
+
+                  score = flux
+
+                  num_nm = 1
+                  ! Find the order for a collection of requested moments
+                  ! and store the moment contribution of each
+                  do n = 0, t % moment_order(j)
+                    ! determine scoring bin index
+                    score_index = score_index + num_nm
+                    ! Update number of total n,m bins for this n (m = [-n: n])
+                    num_nm = 2 * n + 1
+
+                    ! multiply score by the angular flux moments and store
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                  end do
+                  j = j + (t % moment_order(j) + 1)**2 - 1
+                  cycle SCORE_LOOP
+
                 case (SCORE_TOTAL)
                   score = material_xs % total * flux
+
+                case (SCORE_TOTAL_YN)
+                  score_index = score_index - 1
+
+                  ! Total cross section is pre-calculated
+                  score = material_xs % total * flux
+
+                  num_nm = 1
+                  ! Find the order for a collection of requested moments
+                  ! and store the moment contribution of each
+                  do n = 0, t % moment_order(j)
+                    ! determine scoring bin index
+                    score_index = score_index + num_nm
+                    ! Update number of total n,m bins for this n (m = [-n: n])
+                    num_nm = 2 * n + 1
+
+                    ! multiply score by the angular flux moments and store
+!$omp critical
+                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
+                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
+                      score * calc_rn(n, p % coord0 % uvw)
+!$omp end critical
+                  end do
+                  j = j + (t % moment_order(j) + 1)**2 - 1
+                  cycle SCORE_LOOP
+
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
                 case (SCORE_NDPP_SCATT_N)
                   mat => materials(p % material)
                   call tally_macro_ndpp_n(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), flux, p % E, t % results)
+                    t % moment_order(j), flux, p % E, t % results)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_SCATT_PN)
                   mat => materials(p % material)
                   call tally_macro_ndpp_pn(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), flux, p % E, t % results)
-                  j = j + t % scatt_order(j)
+                    t % moment_order(j), flux, p % E, t % results)
+                  j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_N)
                   mat => materials(p % material)
                   call tally_macro_ndpp_n(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), flux, p % E, t % results, .true.)
+                    t % moment_order(j), flux, p % E, t % results, .true.)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_PN)
                   mat => materials(p % material)
                   call tally_macro_ndpp_pn(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    t % scatt_order(j), flux, p % E, t % results, .true.)
-                  j = j + t % scatt_order(j)
+                    t % moment_order(j), flux, p % E, t % results, .true.)
+                  j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                   mat => materials(p % material)
                   call tally_macro_ndpp_chi(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
                     p % E, score_bin, t % results)
-
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
                   score = material_xs % absorption * flux
@@ -2378,471 +2847,5 @@ contains
     end do
 
   end subroutine setup_active_cmfdtallies
-
-!===============================================================================
-! TALLY_NDPP_N determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP;
-! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
-!===============================================================================
-
-  subroutine tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
-    mult, is_analog, Ein, results, nuscatt)
-
-    integer, intent(in) :: i_nuclide    ! index into nuclides array
-    integer, intent(in) :: score_index  ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
-    integer, intent(in) :: t_order      ! # of scattering orders to tally
-    real(8), intent(in) :: mult         ! wgt or wgt * atom_density * flux
-    logical, intent(in) :: is_analog    ! Is this an analog or TL event?
-    real(8), intent(in) :: Ein          ! Incoming energy
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-    logical, optional, intent(in)    :: nuscatt      ! Is this for nuscatter?
-
-    integer :: g        ! outgoing energy group index
-    integer :: g_filter ! outgoing energy group index
-    integer :: i_grid   ! index on nuclide energy grid
-    real(8) :: f        ! interp factor on nuclide energy grid
-    real(8) :: one_f    ! (ONE - f)
-    type(Nuclide), pointer, save     :: nuc ! Working nuclide
-    type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
-
-    ! Find if this nuclide is in the range for S(a,b) treatment
-    ! cross_section % calculate_sab_xs(...) would have figured this out
-    ! for us already, by placing i_sab in micro_xs(i) % index_sab
-    if (micro_xs(i_nuclide) % index_sab /= 0) then
-      ! We have a collision in the S(a,b) range
-      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_scatt => sab % ndpp_scatt
-      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * micro_xs(i_nuclide) % elastic
-        one_f = one_f * micro_xs(i_nuclide) % elastic
-      end if
-    else
-      ! Normal scattering (non-S(a,b))
-      ! Set up pointers
-      nuc => nuclides(i_nuclide)
-      if (present(nuscatt)) then
-        if (nuscatt) then
-          ndpp_scatt => nuc % ndpp_nuscatt
-        else
-          ndpp_scatt => nuc % ndpp_scatt
-        end if
-      else
-        ndpp_scatt => nuc % ndpp_scatt
-      end if
-      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
-      ! Find the grid index and interpolant of ndpp scattering data
-      i_grid = micro_xs(i_nuclide) % index_grid
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein) - 1
-        f = ONE
-      !else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
-      !  !i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
-      !  !                       i_grid + ndpp_groups + 1), &
-      !  !                       ndpp_groups + 2, Ein) + i_grid - 1
-      !  i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
-      !  f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-      !    (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      else
-        !i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
-        !                       size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
-        !         i_grid - 1
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * (micro_xs(i_nuclide) % total - &
-                 micro_xs(i_nuclide) % absorption)
-        one_f = one_f * (micro_xs(i_nuclide) % total - &
-                         micro_xs(i_nuclide) % absorption)
-      end if
-    end if
-
-    ! Add the contribution from the lower score
-    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-!$omp atomic
-        results(score_index, g_filter) % value = &
-          results(score_index, g_filter) % value + &
-          ndpp_scatt(i_grid) % outgoing(t_order + 1, g) * one_f
-      end do
-    end if
-
-    ! Now add the contribution from the higher score
-    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-!$omp atomic
-        results(score_index, g_filter) % value = &
-          results(score_index, g_filter) % value + &
-          ndpp_scatt(i_grid + 1) % outgoing(t_order + 1, g) * f
-      end do
-    end if
-  end subroutine tally_ndpp_n
-
-!===============================================================================
-! TALLY_MACRO_NDPP_N determines the macroscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP;
-! this method applies to ndpp-scatter-n tally types
-!===============================================================================
-
-  subroutine tally_macro_ndpp_n(mat, score_index, filter_index, t_order, flux, &
-    Ein, results, nuscatt)
-
-    type(Material), pointer, intent(in) :: mat ! Working material
-    integer, intent(in) :: score_index  ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
-    integer, intent(in) :: t_order      ! # of scattering orders to tally
-    real(8), intent(in) :: flux         ! flux
-    real(8), intent(in) :: Ein          ! Incoming energy
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-    logical, optional, intent(in)    :: nuscatt      ! Is this for nuscatter?
-
-    integer :: i      ! index in nuclide list of materials
-    integer :: i_nuclide ! index in nuclides array of our working nuclide
-    real(8) :: N_flux ! atom_density * flux
-
-    if (present(nuscatt)) then
-      do i = 1, mat % n_nuclides
-        i_nuclide = mat % nuclide(i)
-        N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
-          N_flux, .false., Ein, results, nuscatt)
-      end do
-    else
-      do i = 1, mat % n_nuclides
-        i_nuclide = mat % nuclide(i)
-        N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
-          N_flux, .false., Ein, results)
-      end do
-    end if
-  end subroutine tally_macro_ndpp_n
-
-!===============================================================================
-! TALLY_NDPP_PN determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP;
-! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
-!===============================================================================
-
-  subroutine tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
-    mult, is_analog, Ein, results, nuscatt)
-
-    integer, intent(in) :: i_nuclide        ! index into nuclides array
-    integer, intent(in) :: score_index      ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in) :: t_order          ! # of scattering orders to tally
-    real(8), intent(in) :: mult             ! wgt or wgt * atom_density * flux
-    logical, intent(in) :: is_analog        ! Is this an analog or TL event?
-    real(8), intent(in) :: Ein              ! Incoming energy
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-    logical, optional, intent(in)    :: nuscatt      ! Is this for nuscatter?
-
-    integer :: g        ! outgoing energy group index
-    integer :: g_filter ! outgoing energy group index
-    integer :: i_grid   ! index on nuclide energy grid
-    real(8) :: f        ! interp factor on nuclide energy grid
-    real(8) :: one_f    ! (ONE - f)
-    integer :: i_score  ! index of score dimension of results
-    integer :: l        ! legendre moment index
-    type(Nuclide), pointer, save     :: nuc ! Working nuclide
-    type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
-
-    ! Find if this nuclide is in the range for S(a,b) treatment
-    ! cross_section % calculate_sab_xs(...) would have figured this out
-    ! for us already, by placing i_sab in micro_xs(i) % index_sab
-    if (micro_xs(i_nuclide) % index_sab /= 0) then
-      ! We have a collision in the S(a,b) range
-      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_scatt => sab % ndpp_scatt
-      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * micro_xs(i_nuclide) % elastic
-        one_f = one_f * micro_xs(i_nuclide) % elastic
-      end if
-    else
-      ! Normal scattering (non-S(a,b))
-      ! Set up pointers
-      nuc => nuclides(i_nuclide)
-      if (present(nuscatt)) then
-        if (nuscatt) then
-          ndpp_scatt => nuc % ndpp_nuscatt
-        else
-          ndpp_scatt => nuc % ndpp_scatt
-        end if
-      else
-        ndpp_scatt => nuc % ndpp_scatt
-      end if
-      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
-      ! Find the grid index and interpolant of ndpp scattering data
-      i_grid = micro_xs(i_nuclide) % index_grid
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      !else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
-      !  i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
-      !                         i_grid + ndpp_groups + 1), &
-      !                         ndpp_groups + 2, Ein) + i_grid - 1
-      !  f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-      !    (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      else
-      !  i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
-      !                         size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
-      !           i_grid - 1
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * (micro_xs(i_nuclide) % total - &
-                 micro_xs(i_nuclide) % absorption)
-        one_f = one_f * (micro_xs(i_nuclide) % total - &
-                         micro_xs(i_nuclide) % absorption)
-      end if
-    end if
-
-    ! Add the contribution from the lower score
-    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-        do l = 1, t_order + 1
-        i_score = score_index + l - 1
-          !$omp atomic
-          results(i_score, g_filter) % value = &
-            results(i_score, g_filter) % value + &
-            ndpp_scatt(i_grid) % outgoing(l, g) * one_f
-        end do
-      end do
-    end if
-
-    ! Now add the contribution from the higher score
-    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-        do l = 1, t_order + 1
-        i_score = score_index + l - 1
-          !$omp atomic
-          results(i_score, g_filter) % value = &
-            results(i_score, g_filter) % value + &
-            ndpp_scatt(i_grid + 1) % outgoing(l, g) * f
-        end do
-      end do
-    end if
-
-  end subroutine tally_ndpp_pn
-
-!===============================================================================
-! TALLY_MACRO_NDPP_PN determines the macroscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP;
-! this method applies to ndpp-scatter-pn tally types
-!===============================================================================
-
-  subroutine tally_macro_ndpp_pn(mat, score_index, filter_index, t_order, flux, &
-    Ein, results, nuscatt)
-
-    type(Material), pointer, intent(in) :: mat ! Working material
-    integer, intent(in) :: score_index      ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in) :: t_order          ! # of scattering orders to tally
-    real(8), intent(in) :: flux             ! flux
-    real(8), intent(in) :: Ein              ! Incoming energy
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-    logical, optional, intent(in)    :: nuscatt      ! Is this for nuscatter?
-
-    integer :: i      ! index in nuclide list of materials
-    integer :: i_nuclide ! index in nuclides array of our working nuclide
-    real(8) :: N_flux ! atom_density * flux
-
-    if (present(nuscatt)) then
-      do i = 1, mat % n_nuclides
-        i_nuclide = mat % nuclide(i)
-        N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
-          N_flux, .false., Ein, results, nuscatt)
-      end do
-    else
-      do i = 1, mat % n_nuclides
-        i_nuclide = mat % nuclide(i)
-        N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
-          N_flux, .false., Ein, results)
-      end do
-    end if
-
-  end subroutine tally_macro_ndpp_pn
-
-!===============================================================================
-! TALLY_NDPP_CHI determines the fission spectra which were
-! previously calculated with a pre-processor such as NDPP;
-! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-chi tally types
-!===============================================================================
-
-  subroutine tally_ndpp_chi(i_nuclide, score_index, filter_index, mult, &
-                            is_analog, Ein, score_type, results)
-
-    integer, intent(in) :: i_nuclide        ! index into nuclides array
-    integer, intent(in) :: score_index      ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
-    real(8), intent(in) :: mult             ! wgt or wgt * atom_density * flux
-    logical, intent(in) :: is_analog        ! Is this an analog or TL event?
-    real(8), intent(in) :: Ein              ! Incoming energy
-    integer, intent(in) :: score_type       ! Type of Chi score we are using
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-
-    integer :: g        ! outgoing energy group index
-    integer :: g_filter ! outgoing energy group index
-    integer :: i_grid   ! index on nuclide energy grid
-    real(8) :: f        ! interp factor on nuclide energy grid
-    real(8) :: one_f    ! (ONE - f)
-    type(Nuclide), pointer, save :: nuc  ! Working nuclide
-    real(8), pointer, save :: chi_Ein(:) ! Working Ein grid
-    real(8), pointer, save :: chi(:,:)   ! Working chi data
-    !$omp threadprivate(nuc, chi_Ein, chi)
-
-    ! Set up pointers
-    nuc => nuclides(i_nuclide)
-    chi_Ein => nuc % ndpp_chi_Ein
-    if (score_type == SCORE_NDPP_CHI) then
-      chi => nuc % ndpp_chi
-    else if (score_type == SCORE_NDPP_CHI_P) then
-      chi => nuc % ndpp_chi_p
-    else if (score_type == SCORE_NDPP_CHI_D) then
-      message = "OpenMC does not yet support Chi-Delayed Tallying!"
-      call fatal_error()
-      !chi => nuc % ndpp_chi_d
-    end if
-
-    if (.not. nuc % fissionable) then
-      return
-    end if
-
-    ! Find the grid index and interpolant of ndpp scattering data
-    if (Ein <= chi_Ein(1)) then
-      i_grid = 1
-      f = ZERO
-    else if (Ein >= chi_Ein(size(chi_Ein))) then
-      i_grid = size(chi_Ein)
-      f = ONE
-    else
-      i_grid = binary_search(chi_Ein, size(chi_Ein), Ein)
-      f = (Ein - chi_Ein(i_grid)) / &
-        (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
-    end if
-
-    ! Calculate 1-f, apply mult, and weight by nu-fission
-    one_f = (ONE - f) * mult * micro_xs(i_nuclide) % nu_fission
-    f = f * mult * micro_xs(i_nuclide) % nu_fission
-    if (.not. is_analog) then  ! Weight only by nu
-      f = f / micro_xs(i_nuclide) % fission
-      one_f = one_f / micro_xs(i_nuclide) % fission
-    end if
-
-    ! Add the contribution from NDPP data (with interpolation)
-    do g = 1, ubound(chi, dim=1)
-      g_filter = filter_index + g - 1
-      !$omp atomic
-      results(score_index, g_filter) % value = &
-        results(score_index, g_filter) % value + &
-        chi(g, i_grid) * one_f + &
-        chi(g, i_grid + 1) * f
-    end do
-
-  end subroutine tally_ndpp_chi
-
-!===============================================================================
-! TALLY_MACRO_NDPP_CHI determines the material-wise Chi spectra which were
-! previously calculated with a pre-processor such as NDPP;
-! this method applies to ndpp-scatter-pn tally types
-!===============================================================================
-
-  subroutine tally_macro_ndpp_chi(mat, score_index, filter_index, flux, Ein, &
-                                  score_type, results)
-
-    type(Material), pointer, intent(in) :: mat ! Working material
-    integer, intent(in) :: score_index      ! dim = 1 starting index in results
-    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
-    real(8), intent(in) :: flux             ! flux
-    real(8), intent(in) :: Ein              ! Incoming energy
-    integer, intent(in) :: score_type       ! Type of Chi score we are using
-    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-
-    integer :: i      ! index in nuclide list of materials
-    integer :: i_nuclide ! index in nuclides array of our working nuclide
-    real(8) :: N_flux ! atom_density * flux
-
-    do i = 1, mat % n_nuclides
-      i_nuclide = mat % nuclide(i)
-      N_flux = mat % atom_density(i) * flux
-      call tally_ndpp_chi(i_nuclide, score_index, filter_index, N_flux, &
-        .false., Ein, score_type, results)
-    end do
-
-  end subroutine tally_macro_ndpp_chi
 
 end module tally

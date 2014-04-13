@@ -85,7 +85,7 @@ print('Changing graphite ZAID from 6012 to 6000')
 graphite = os.path.join('nndc', 'tsl', 'graphite.acer')
 with open(graphite) as fh:
     text = fh.read()
-text = text.replace('6012', '6000')
+text = text.replace('6012', '6000', 1)
 with open(graphite, 'w') as fh:
     fh.write(text)
 

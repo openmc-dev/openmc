@@ -183,7 +183,6 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
   execute_process(COMMAND git submodule update
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
-file(GLOB_RECURSE source_fox xml/*.F90 xml/*.f90)
 add_subdirectory(xml/fox)
 
 #===============================================================================

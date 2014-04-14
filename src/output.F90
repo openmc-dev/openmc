@@ -1691,8 +1691,8 @@ contains
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(15)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
-    character(27)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
-    character(27)           :: score_name                  ! names of scoring function
+    character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
+    character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
     type(TallyObject), pointer :: t
 
@@ -1710,34 +1710,34 @@ contains
     filter_name(FILTER_ENERGYOUT) = "Outgoing Energy"
 
     ! Initialize names for scores
-    score_names(abs(SCORE_FLUX))          = "Flux"
-    score_names(abs(SCORE_TOTAL))         = "Total Reaction Rate"
-    score_names(abs(SCORE_SCATTER))       = "Scattering Rate"
-    score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
-    score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
-    score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
-    score_names(abs(SCORE_FISSION))       = "Fission Rate"
-    score_names(abs(SCORE_NU_FISSION))    = "Nu-Fission Rate"
-    score_names(abs(SCORE_KAPPA_FISSION)) = "Kappa-Fission Rate"
-    score_names(abs(SCORE_EVENTS))        = "Events"
-    score_names(abs(SCORE_FLUX_YN))       = "Flux Moment"
-    score_names(abs(SCORE_TOTAL_YN))      = "Total Reaction Rate Moment"
-    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_YN))    = "Scattering Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_N))  = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_PN)) = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_YN)) = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
-    score_names(abs(SCORE_NDPP_SCATT_N))  = "Scattering Rate Moment"
-    score_names(abs(SCORE_NDPP_SCATT_PN)) = "Scattering Rate Moment"
+    score_names(abs(SCORE_FLUX))             = "Flux"
+    score_names(abs(SCORE_TOTAL))            = "Total Reaction Rate"
+    score_names(abs(SCORE_SCATTER))          = "Scattering Rate"
+    score_names(abs(SCORE_NU_SCATTER))       = "Scattering Production Rate"
+    score_names(abs(SCORE_TRANSPORT))        = "Transport Rate"
+    score_names(abs(SCORE_N_1N))             = "(n,1n) Rate"
+    score_names(abs(SCORE_ABSORPTION))       = "Absorption Rate"
+    score_names(abs(SCORE_FISSION))          = "Fission Rate"
+    score_names(abs(SCORE_NU_FISSION))       = "Nu-Fission Rate"
+    score_names(abs(SCORE_KAPPA_FISSION))    = "Kappa-Fission Rate"
+    score_names(abs(SCORE_EVENTS))           = "Events"
+    score_names(abs(SCORE_FLUX_YN))          = "Flux Moment"
+    score_names(abs(SCORE_TOTAL_YN))         = "Total Reaction Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))        = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))       = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_YN))       = "Scattering Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_N))     = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_PN))    = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_YN))    = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))        = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))       = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_SCATT_N))     = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_SCATT_PN))    = "Scattering Rate Moment"
     score_names(abs(SCORE_NDPP_NU_SCATT_N))  = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NDPP_CHI))      = "Total Fission Prod. Rate"
-    score_names(abs(SCORE_NDPP_CHI_P))    = "Prompt Fission Prod. Rate"
-    score_names(abs(SCORE_NDPP_CHI_D))    = "Delayed Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI))         = "Total Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_P))       = "Prompt Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_D))       = "Delayed Fission Prod. Rate"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"

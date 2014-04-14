@@ -4,7 +4,7 @@
   <!-- pu-met-fast-021 case 2, modified to include Zr-H to exercise
        the capability to assign a single S(a,b) table to multiple nuclides -->
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <!-- Plutonium -->
   <material id="1">
@@ -28,8 +28,8 @@
     <!-- O at 6.9041e-2 -->
     <nuclide name="O-16" ao="6.9015e-02" />
     <nuclide name="O-17" ao="2.6236e-05" />
-    <sab name="be/o" xs="10t" />
-    <sab name="o/be" xs="10t" />
+    <sab name="BeBeO" xs="71t" />
+    <sab name="OBeO" xs="71t" />
   </material>
 
   <!-- Steel Cover -->
@@ -123,8 +123,8 @@
     <nuclide name="Zr-96"  ao="0.05" />
     <nuclide name="U-235"  ao="0.1" />
     <nuclide name="U-238"  ao="0.15" />
-    <sab name="h/zr" xs="10t" />
-    <sab name="zr/h" xs="10t" />
+    <sab name="ZrZrH" xs="71t" />
+    <sab name="HZrH" xs="71t" />
   </material>
 
 </materials>

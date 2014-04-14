@@ -32,28 +32,18 @@ def test_created_outputs():
         'Track files not a binary or hdf5 file'
 
 def test_outputs():
-    # If vtk python module is not available, we can't run track.py so skip this
-    # test
-    try:
-        import vtk
-    except ImportError:
-        print('----------------Skipping test-------------')
-        return
-
-    call(['../../src/utils/track.py', '-o', 'poly'] +
-         glob.glob(''.join((cwd, '/track*'))))
-    poly = ''.join((cwd, '/poly.pvtp'))
-    assert os.path.isfile(poly), 'poly.pvtp file not found.'
-    metric = ''.join((cwd, '/true_poly.pvtp'))
-    compare = filecmp.cmp(poly, metric)
+    call(['python', 'results.py'])
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
-        os.rename('poly.pvtp', 'error_poly.pvtp')
+        os.rename('results_test.dat', 'results_error.dat')
     assert compare, 'Results to not agree'
 
 def teardown():
-    temp_files = glob.glob(''.join((cwd, '/statepoint*')))
-    temp_files = temp_files + glob.glob(''.join((cwd, '/track*')))
-    temp_files = temp_files + glob.glob(''.join((cwd, '/poly*')))
+    temp_files = glob.glob('statepoint*')
+    temp_files += glob.glob('track*')
+    temp_files += glob.glob('*.vtp')
+    temp_files += glob.glob('*.pvtp')
+    temp_files = temp_files + ['results_test.dat']
     for f in temp_files:
         if os.path.exists(f):
             os.remove(f)

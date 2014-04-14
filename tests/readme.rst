@@ -18,6 +18,19 @@ full test suite run:
 
     python run_tests.py
 
+The test suite is configured to run with cross sections from NNDC_. To
+download these cross sections please do the following:
+
+.. code-block:: sh
+
+    cd ../data
+    python get_nndc.py
+    export CROSS_SECTIONS=<path_to_data_folder>/nndc/cross_sections.xml
+
+The environmental variable **CROSS_SECTIONS** can be used to quickly switch
+between the cross sections  set for the test suite and cross section set for 
+your simulations.
+
 A subset of build configurations and/or tests can be run. To see how to use
 the script run:
 
@@ -42,3 +55,4 @@ can run:
     python run_tests.py -p
 
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

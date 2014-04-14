@@ -108,6 +108,15 @@ before submitting a formal pull request using gfortran and intel compilers
 if available.
 
 The test suite is designed to integrate with cmake using ctest_.
+It is configured to run with cross sections from NNDC_. To
+download these cross sections please do the following:
+
+.. code-block:: sh
+
+    cd ../data
+    python get_nndc.py
+    export CROSS_SECTIONS=<path_to_data_folder>/nndc/cross_sections.xml
+
 The test suite can be run on an already existing build using:
 
 .. code-block:: sh
@@ -233,3 +242,4 @@ from your private repository into a public fork.
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

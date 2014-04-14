@@ -325,7 +325,9 @@ This will build an executable named ``openmc``.
 Testing Build
 -------------
 
-If you have ENDF/B-VII.0 cross sections from MCNP5/X you can test your build.
+If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
+Make sure the **CROSS_SECTIONS** environmental variable is set to the 
+*cross_sections.xml* file in the *data/nndc* directory.
 There are two ways to run tests. The first is to use the Makefile present in
 the source directory and run the following:
 
@@ -370,7 +372,8 @@ extract, and set up a confiuration file:
     python get_nndc_data.py
 
 At this point, you should set the :envvar:`CROSS_SECTIONS` environment variable
-to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``.
+to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``. This
+cross section set is used by the test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -491,3 +494,4 @@ schemas.xml file in your own OpenMC source directory.
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

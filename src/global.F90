@@ -88,6 +88,9 @@ module global
   ! Default xs identifier (e.g. 70c)
   character(3):: default_xs
 
+  ! What to assume for expanding natural elements
+  integer :: default_expand = EXPAND_ENDF_BVII1
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 

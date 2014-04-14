@@ -13,13 +13,13 @@ With the FoX library, extending the user input files to include new tags is
 fairly straightforward. The steps for modifying/adding input are as follows:
 
 1. Add appropriate calls to procedures from the `xml_interface module`_, such as
-``check_for_node``, ``get_node_value``, and ``get_node_array``. All input
-reading is performed in the `input_xml module`_.
+   ``check_for_node``, ``get_node_value``, and ``get_node_array``. All input
+   reading is performed in the `input_xml module`_.
 
 2. Make sure that your input can be categorized as one of the datatypes from
-`XML Schema Part 2`_ and that parsing of the data appropriately reflects
-this. For example, for a boolean_ value, true can be represented either by "true"
-or by "1".
+   `XML Schema Part 2`_ and that parsing of the data appropriately reflects
+   this. For example, for a boolean_ value, true can be represented either by
+   "true" or by "1".
 
 3. Add code to check the variable for any possible errors.
 
@@ -97,8 +97,8 @@ making modification to FoX yourself. Once you have made changes to your FoX fork
 the new commit id to your OpenMC branch, you can pull request your changes in by peforming
 the following steps:
 
-1. Create a pull request from your fork of FoX to mit-crpg/fox and wait until it is merged
-into the openmc branch.
+1. Create a pull request from your fork of FoX to mit-crpg/fox and wait until it
+   is merged into the openmc branch.
 
 2. In your OpenMC repo, change your *.gitmodules* file back to point at mit-crpg/fox.
 

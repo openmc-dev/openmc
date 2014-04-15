@@ -38,6 +38,8 @@ element settings {
       attribute upper_right { list { xsd:double+ } })
   }? &
 
+  element natural_elements { xsd:string { maxLength = "20" } }? &
+
   element no_reduce { xsd:boolean }? &
 
   element output {

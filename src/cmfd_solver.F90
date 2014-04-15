@@ -132,7 +132,7 @@ contains
     guess = ONE
     phi_n % val = guess
     phi_o % val = guess
-    k_n = keff 
+    k_n = keff
     k_o = k_n
     dw = cmfd_shift
     k_s = k_o + dw
@@ -162,10 +162,9 @@ contains
       case(1)
         cmfd_linsolver => cmfd_linsolver_1g
       case(2)
-        cmfd_linsolver => cmfd_linsolver_2g
+        cmfd_linsolver => cmfd_linsolver_ng
       case default
-        message = 'Must use PETSc for more than 2 groups'
-        call fatal_error()
+        cmfd_linsolver => cmfd_linsolver_ng
     end select    
 
     ! Set tolerances
@@ -306,7 +305,7 @@ contains
 
   subroutine convergence(iter, innerits)
 
-    use constants,  only: ONE, TINY_BIT
+    use constants,  only: ONE, ZERO
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
@@ -320,7 +319,7 @@ contains
     kerr = abs(k_o - k_n)/k_n
 
     ! Calculate max error in source
-    where (s_n % val > TINY_BIT)
+    where (s_n % val > ZERO)
       serr_v % val = ((s_n % val - s_o % val)/s_n % val)**2
     end where
     serr = sqrt(ONE/dble(s_n % n) * sum(serr_v % val))
@@ -581,6 +580,100 @@ contains
     call tmpx % destroy()
 
   end subroutine cmfd_linsolver_2g
+
+!===============================================================================
+! CMFD_LINSOLVER_ng solves the CMFD linear system
+!===============================================================================
+
+  subroutine cmfd_linsolver_ng(A, b, x, tol, its)
+
+    use constants,  only: ONE, ZERO
+    use global,     only: cmfd, cmfd_spectral
+
+    type(Matrix) :: A ! coefficient matrix
+    type(Vector) :: b ! right hand side vector
+    type(Vector) :: x ! unknown vector
+    real(8)      :: tol ! tolerance on final error
+    integer      :: its ! number of inner iterations
+
+    integer :: g ! group index
+    integer :: i ! loop counter for x 
+    integer :: j ! loop counter for y
+    integer :: k ! loop counter for z
+    integer :: n  ! total size of vector
+    integer :: nx ! maximum dimension in x direction
+    integer :: ny ! maximum dimension in y direction
+    integer :: nz ! maximum dimension in z direction
+    integer :: ng ! number of energy groups
+    integer :: igs   ! Gauss-Seidel iteration counter
+    integer :: irow  ! row iteration
+    integer :: icol  ! iteration counter over columns
+    integer :: didx  ! index for diagonal component
+    logical :: found ! did we find col
+    real(8) :: tmp1 ! temporary sum g1
+    real(8) :: x1 ! new g1 value of x
+    real(8) :: err ! error in convergence of solution
+    real(8) :: w ! overrelaxation parameter
+    type(Vector) :: tmpx ! temporary solution vector
+
+    ! Set overrelaxation parameter
+    w = ONE
+
+    ! Dimensions
+    ng = 1
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    n = A % n
+
+    ! Perform Gauss Seidel iterations
+    GS: do igs = 1, 10000
+
+      ! Copy over x vector
+      call  tmpx % copy(x) 
+
+      ! Begin loop around matrix rows
+      ROWS: do irow = 1, n
+
+        ! Get spatial location
+        call  matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
+
+        ! Get the index of the diagonals for both rows
+        call A % search_indices(irow, irow, didx, found)
+
+        ! Perform temporary sums, first do left of diag block, then right of diag block
+        tmp1 = ZERO
+        do icol = A % get_row(irow), didx - 1
+          tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
+!         print *,A % val(icol),x % val(A % get_col(icol))
+        end do
+        do icol = didx + 1, A % get_row(irow + 1) - 1
+          tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
+!         print *,A % val(icol),x % val(A % get_col(icol))
+        end do
+
+        ! Solve for new x
+        x1 = (b % val(irow) - tmp1)/A % val(didx)
+!print *, irow, b % val(irow), tmp1, A % val(didx), x1
+        ! Perform overrelaxation
+        x % val(irow) = (ONE - w)*x % val(irow) + w*x1
+!stop
+      end do ROWS
+
+      ! Check convergence
+      err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
+      its = igs
+
+      if (err < tol) exit
+
+      ! Calculation new overrelaxation parameter
+      w = ONE/(ONE - 0.25_8*cmfd_spectral*w)
+
+    end do GS
+
+    call tmpx % destroy()
+
+  end subroutine cmfd_linsolver_ng
 
 !===============================================================================
 ! EXTRACT_RESULTS takes results and puts them in CMFD global data object

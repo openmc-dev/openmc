@@ -778,6 +778,27 @@ contains
       end if
     end if
 
+    ! Natural element expansion option
+    if (check_for_node(doc, "natural_elements")) then
+      call get_node_value(doc, "natural_elements", temp_str)
+      call lower_case(temp_str)
+      select case (temp_str)
+      case ('endf/b-vii.0')
+        default_expand = EXPAND_ENDF_BVII0
+      case ('endf/b-vii.1')
+        default_expand = EXPAND_ENDF_BVII1
+      case ('jeff-3.1.1')
+        default_expand = EXPAND_JEFF_311
+      case ('jeff-3.1.2')
+        default_expand = EXPAND_JEFF_312
+      case ('jeff-3.2')
+        default_expand = EXPAND_JEFF_32
+      case default
+        message = "Unknown natural element expansion option: " // trim(temp_str)
+        call fatal_error()
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 

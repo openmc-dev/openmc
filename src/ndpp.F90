@@ -213,9 +213,14 @@ contains
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
-            ! Find the maximum scattering order requested
-            if (t % moment_order(j) > max_tally_order) &
-              max_tally_order = t % moment_order(j)
+            ! Find the maximum order requested
+            if (t % score_bins(j) == SCORE_NDPP_SCATT_N) then
+              if (t % moment_order(j) > max_tally_order) &
+                max_tally_order = t % moment_order(j)
+            else if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_N) then
+              if (t % moment_order(j) > max_tally_order_nu) &
+                max_tally_order_nu = t % moment_order(j)
+            end if
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -257,9 +262,14 @@ contains
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
-            ! Find the maximum scattering order requested
-            if (t % moment_order(j) > max_tally_order) &
-              max_tally_order = t % moment_order(j)
+            ! Find the maximum order requested
+            if (t % score_bins(j) == SCORE_NDPP_SCATT_PN) then
+              if (t % moment_order(j) > max_tally_order) &
+                max_tally_order = t % moment_order(j)
+            else if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_PN) then
+              if (t % moment_order(j) > max_tally_order_nu) &
+                max_tally_order_nu = t % moment_order(j)
+            end if
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.

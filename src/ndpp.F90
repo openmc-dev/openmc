@@ -203,7 +203,7 @@ contains
           case (SCORE_SCATTER_PN)
             j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
-          case (SCORE_NDPP_SCATT_N)
+          case (SCORE_NDPP_SCATT_N, SCORE_NDPP_NU_SCATT_N)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % moment_order(j)) then
@@ -247,7 +247,7 @@ contains
                         "requested in tally!"
               call fatal_error()
             end if
-          case (SCORE_NDPP_SCATT_PN)
+          case (SCORE_NDPP_SCATT_PN, SCORE_NDPP_NU_SCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % moment_order(j)) then
@@ -294,97 +294,7 @@ contains
 
             j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
-          case (SCORE_NDPP_NU_SCATT_N)
-            ! We found the correct score, get comparing!
-            ! First check the scattering order
-            if (order < t % moment_order(j)) then
-              message = "Invalid scattering order of " // &
-                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
-                        "requested is larger than provided in the library (" // &
-                        trim(to_str(order)) // ")!"
-              call fatal_error()
-            end if
-            ! Find the maximum scattering order requested
-            if (t % moment_order(j) > max_tally_order_nu) &
-              max_tally_order_nu = t % moment_order(j)
 
-            ! Compare the energyin and energyout filters of this tally to the
-            ! energy_bins_ metadata of the NDPP library.
-            ! Check the energyin filter first.
-            i_filter = t % find_filter(FILTER_ENERGYIN)
-            ! We have already checked to ensure some energyin filter exists,
-            ! reducing the cases to check. First we check the size, so that we
-            ! can use the Fortran intrinsic ALL to check the actual values
-            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            ! Now we can check the actual group boundaries.
-            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            ! Repeat the same steps as above, but this time for the energyout filter
-            i_filter = t % find_filter(FILTER_ENERGYOUT)
-            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-          case (SCORE_NDPP_NU_SCATT_PN)
-            ! We found the correct score, get comparing!
-            ! First check the scattering order
-            if (order < t % moment_order(j)) then
-              message = "Invalid scattering order of " // &
-                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
-                        "requested is larger than provided in the library (" // &
-                        trim(to_str(order)) // ")!"
-              call fatal_error()
-            end if
-            ! Find the maximum scattering order requested
-            if (t % moment_order(j) > max_tally_order_nu) &
-              max_tally_order_nu = t % moment_order(j)
-
-            ! Compare the energyin and energyout filters of this tally to the
-            ! energy_bins_ metadata of the NDPP library.
-            ! Check the energyin filter first.
-            i_filter = t % find_filter(FILTER_ENERGYIN)
-            ! We have already checked to ensure some energyin filter exists,
-            ! reducing the cases to check. First we check the size, so that we
-            ! can use the Fortran intrinsic ALL to check the actual values
-            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            ! Now we can check the actual group boundaries.
-            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            ! Repeat the same steps as above, but this time for the energyout filter
-            i_filter = t % find_filter(FILTER_ENERGYOUT)
-            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
-            end if
-
-            j = j + t % moment_order(j)
-            cycle SCORE_LOOP ! Skip the others to save cycles
           CASE (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
             ! Check that the group structure matches
             i_filter = t % find_filter(FILTER_ENERGYOUT)

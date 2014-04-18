@@ -1520,7 +1520,9 @@ contains
         call get_node_value(node_ele, "name", name)
 
         ! Check for cross section
-        if (.not.check_for_node(node_ele, "xs")) then
+        if (check_for_node(node_ele, "xs")) then
+          call get_node_value(node_ele, "xs", temp_str)
+        else
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
                  // trim(to_str(mat % id))

@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import shutil
 import re
+import sys
 from subprocess import call 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -34,17 +35,17 @@ PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
 PETSC_DIR='/opt/petsc/3.4.4-gnu'
 
 # Override default compiler paths if environmental vars are found
-if os.environ.has_key('FC'):
+if 'FC' in os.environ:
     FC = os.environ['FC']
     if FC is not 'gfortran':
         print('NOTE: Test suite only verifed for gfortran compiler.')
-if os.environ.has_key('MPI_DIR'):
+if 'MPI_DIR' in os.environ:
     MPI_DIR = os.environ['MPI_DIR']
-if os.environ.has_key('HDF5_DIR'):
+if 'HDF5_DIR' in os.environ:
     HDF5_DIR = os.environ['HDF5_DIR']
-if os.environ.has_key('PHDF5_DIR'):
+if 'PHDF5_DIR' in os.environ:
     PHDF5_DIR = os.environ['PHDF5_DIR']
-if os.environ.has_key('PETSC_DIR'):
+if 'PETSC_DIR' in os.environ:
     PETSC_DIR = os.environ['PETSC_DIR']
 
 # Define test data structure
@@ -144,7 +145,7 @@ class Test(object):
         if os.path.isfile(self.fc):
             result = True
         for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(path + "/" + self.fc):
+            if os.path.isfile(os.path.join(path, self.fc)):
                 result = True
         if not result: 
             raise Exception("Compiler path '{0}' does not exist."
@@ -216,6 +217,7 @@ for test in tests:
     print('-'*(len(test) + 6))
     print(test + ' tests')
     print('-'*(len(test) + 6))
+    sys.stdout.flush()
 
     # Verify fortran compiler exists
     tests[test].check_compiler()
@@ -247,10 +249,16 @@ for test in tests:
 print('\n' + '='*54)
 print('Summary of Compilation Option Testing:\n')
 
-OK = '\033[92m'
-FAIL = '\033[91m'
-ENDC = '\033[0m'
-BOLD = '\033[1m'
+if sys.stdout.isatty():
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+else:
+    OK = ''
+    FAIL = ''
+    ENDC = ''
+    BOLD = ''
 
 for test in tests:
     print(test + '.'*(50 - len(test)), end='')

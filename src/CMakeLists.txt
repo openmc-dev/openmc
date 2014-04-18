@@ -182,17 +182,25 @@ endif()
 # FoX Fortran XML Library
 #===============================================================================
 
-file(GLOB_RECURSE source_fox xml/*.F90)
-add_library(fox STATIC ${source_fox})
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of fox xml submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
+  message("-- Initializing/Updating FoX XML submodule...")
+  execute_process(COMMAND git submodule init
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  execute_process(COMMAND git submodule update
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+endif()
+add_subdirectory(xml/fox)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source *.F90)
+file(GLOB source *.F90 xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox)
+target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")

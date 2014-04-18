@@ -22,10 +22,10 @@ def test_run():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_plot_exists():
-    assert os.path.exists(cwd + '/1_plot.ppm'), 'Plot ppm file does not exist.'
+    assert os.path.exists(os.path.join(cwd ,'1_plot.ppm')), 'Plot ppm file does not exist.'
 
 def teardown():
-    output = [cwd + '/1_plot.ppm']
+    output = [os.path.join(cwd ,'1_plot.ppm')]
     for f in output:
         if os.path.exists(f):
             os.remove(f)

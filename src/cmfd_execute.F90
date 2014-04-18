@@ -297,7 +297,6 @@ contains
     logical :: in_mesh  ! source site is inside mesh
 
     type(StructuredMesh), pointer :: m ! point to mesh
-    real(8), allocatable :: egrid(:)   ! energy grid
 
     ! Associate pointer
     m => meshes(n_user_meshes + 1)
@@ -318,19 +317,16 @@ contains
       cmfd % weightfactors = ONE
     end if
 
-    ! Allocate energy grid and reverse cmfd energy grid
-    if (.not. allocated(egrid)) allocate(egrid(ng + 1))
-    egrid = (/(cmfd % egrid(ng - i + 2), i = 1, ng + 1)/)
-
     ! Compute new weight factors
     if (new_weights) then
 
       ! Zero out weights
-      cmfd%weightfactors = ZERO
+      cmfd%weightfactors = ONE
 
-      ! Count bank sites in mesh
-      call count_bank_sites(m, source_bank, cmfd%sourcecounts, egrid, &
+      ! Count bank sites in mesh and reverse due to egrid structure
+      call count_bank_sites(m, source_bank, cmfd%sourcecounts, cmfd % egrid, &
            sites_outside=outside, size_bank=work)
+      cmfd % sourcecounts = cmfd%sourcecounts(ng:1:-1,:,:,:)
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then
@@ -344,25 +340,16 @@ contains
           cmfd % weightfactors = cmfd % cmfd_src/sum(cmfd % cmfd_src)* &
                                sum(cmfd % sourcecounts) / cmfd % sourcecounts
         end where
-#ifdef CMFD_DEBUG
-        open(file='source_bank_' // trim(to_str(current_batch)) // '.dat', unit=101)
-        do i = 1, nx
-          do j = 1,ny
-            write(101,*) cmfd % sourcecounts(1,i,j,1)
-          end do
-        end do
-        close(101) 
-#endif
       end if
 
-if (.not. cmfd_feedback) return
+      if (.not. cmfd_feedback) return
 
       ! Broadcast weight factors to all procs
 #ifdef MPI
       call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
            MPI_COMM_WORLD, mpi_err)
 #endif
-   end if
+    end if
 
     ! begin loop over source bank
     do i = 1, int(work,4)
@@ -398,9 +385,6 @@ if (.not. cmfd_feedback) return
              cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3))
 
     end do
-
-    ! Deallocate all
-    if (allocated(egrid)) deallocate(egrid)
 
   end subroutine cmfd_reweight
 

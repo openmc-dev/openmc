@@ -182,6 +182,29 @@ performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
+.. _natural_elements:
+
+``<natural_elements>`` Element
+------------------------------
+
+The ``<natural_elements>`` element indicates to OpenMC what nuclides are
+available in the cross section library when expanding an ``<element>`` into
+separate isotopes (see :ref:`material`). The accepted values are:
+
+  - ENDF/B-VII.0
+  - ENDF/B-VII.1
+  - JEFF-3.1.1
+  - JEFF-3.1.2
+  - JEFF-3.2
+  - JENDL-3.2
+  - JENDL-3.3
+  - JENDL-4.0
+
+Note that the value is case-insensitive, so "ENDF/B-VII.1" is equivalent to
+"endf/b-vii.1".
+
+  *Default*: ENDF/B-VII.1
+
 ``<no_reduce>`` Element
 -----------------------
 
@@ -741,6 +764,8 @@ sub-elements:
 Materials Specification -- materials.xml
 ----------------------------------------
 
+.. _material:
+
 ``<material>`` Element
 ----------------------
 
@@ -781,7 +806,7 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     Specifies that a natural element is present in the material. The natural
     element is split up into individual isotopes based on IUPAC Isotopic
-    Compositions of the Elements 1997. This element has attributes/sub-elements
+    Compositions of the Elements 2009. This element has attributes/sub-elements
     called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
     symbol of the element while the ``xs`` attribute is the cross-section
     identifier. Finally, the ``ao`` attribute specifies the atom percent of the
@@ -793,6 +818,10 @@ Each ``material`` element can have the following attributes or sub-elements:
         <element name="Mg" ao="1.5498e-04" />
         <element name="Mn" ao="2.7426e-05" />
         <element name="Cu" ao="1.6993e-04" />
+
+    In some cross section libraries, certain naturally occurring isotopes do not
+    have cross sections. The :ref:`natural_elements` option determines how a
+    natural element is split into isotopes in these cases.
 
     *Default*: None
 

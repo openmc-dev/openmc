@@ -244,13 +244,16 @@ module constants
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 
-  ! Natural element compositions
+  ! Major cross section libraries
   integer, parameter :: &
-       EXPAND_ENDF_BVII0 = 1, &
-       EXPAND_ENDF_BVII1 = 2, &
-       EXPAND_JEFF_311   = 3, &
-       EXPAND_JEFF_312   = 4, &
-       EXPAND_JEFF_32    = 5
+       ENDF_BVII0 = 1, &
+       ENDF_BVII1 = 2, &
+       JEFF_311   = 3, &
+       JEFF_312   = 4, &
+       JEFF_32    = 5, &
+       JENDL_32   = 6, &
+       JENDL_33   = 7, &
+       JENDL_40   = 8
 
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS

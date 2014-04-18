@@ -784,15 +784,21 @@ contains
       call lower_case(temp_str)
       select case (temp_str)
       case ('endf/b-vii.0')
-        default_expand = EXPAND_ENDF_BVII0
+        default_expand = ENDF_BVII0
       case ('endf/b-vii.1')
-        default_expand = EXPAND_ENDF_BVII1
+        default_expand = ENDF_BVII1
       case ('jeff-3.1.1')
-        default_expand = EXPAND_JEFF_311
+        default_expand = JEFF_311
       case ('jeff-3.1.2')
-        default_expand = EXPAND_JEFF_312
+        default_expand = JEFF_312
       case ('jeff-3.2')
-        default_expand = EXPAND_JEFF_32
+        default_expand = JEFF_32
+      case ('jendl-3.2')
+        default_expand = JENDL_32
+      case ('jendl-3.3')
+        default_expand = JENDL_33
+      case ('jendl-4.0')
+        default_expand = JENDL_40
       case default
         message = "Unknown natural element expansion option: " // trim(temp_str)
         call fatal_error()
@@ -3137,8 +3143,7 @@ contains
       call list_density % append(density * 0.801_8)
 
     case ('c')
-      ! The evaluation of Carbon in ENDF/B-VII.1 and JEFF 3.1.2 is a natural
-      ! element, i.e. it's not possible to split into C-12 and C-13.
+      ! No evaluations split up Carbon into isotopes yet
       call list_names % append('6000.' // xs)
       call list_density % append(density)
 
@@ -3149,14 +3154,16 @@ contains
       call list_density % append(density * 0.00364_8)
 
     case ('o')
-      ! Only JEFF 3.2 has O-18
-      if (default_expand == EXPAND_JEFF_32) then
+      if (default_expand == JEFF_32) then
         call list_names % append('8016.' // xs)
         call list_density % append(density * 0.99757_8)
         call list_names % append('8017.' // xs)
         call list_density % append(density * 0.00038_8)
         call list_names % append('8018.' // xs)
         call list_density % append(density * 0.00205_8)
+      elseif (default_expand >= JENDL_32 .and. default_expand <= JENDL_40) then
+        call list_names % append('8016.' // xs)
+        call list_density % append(density)
       else
         call list_names % append('8016.' // xs)
         call list_density % append(density * 0.99962_8)
@@ -3267,11 +3274,12 @@ contains
       call list_density % append(density * 0.0518_8)
 
     case ('v')
-      if (default_expand == EXPAND_ENDF_BVII0 .or. (default_expand >= &
-           EXPAND_JEFF_311 .and. default_expand <= EXPAND_JEFF_32)) then
+      if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
+           .or. default_expand == JEFF_32 .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
         call list_names % append('23000.' // xs)
         call list_density % append(density)
-      elseif (default_expand == EXPAND_ENDF_BVII1) then
+      else
         call list_names % append('23050.' // xs)
         call list_density % append(density * 0.0025_8)
         call list_names % append('23051.' // xs)
@@ -3325,8 +3333,8 @@ contains
       call list_density % append(density * 0.3085_8)
 
     case ('zn')
-      if (default_expand == EXPAND_ENDF_BVII0 .or. default_expand == &
-           EXPAND_JEFF_311 .or. default_expand == EXPAND_JEFF_312) then
+      if (default_expand == ENDF_BVII0 .or. default_expand == &
+           JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('30000.' // xs)
         call list_density % append(density)
       else
@@ -3343,8 +3351,7 @@ contains
       end if
 
     case ('ga')
-      if (default_expand == EXPAND_JEFF_311 .or. &
-           default_expand == EXPAND_JEFF_312) then
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('31000.' // xs)
         call list_density % append(density)
       else
@@ -3763,10 +3770,12 @@ contains
       call list_density % append(density * 0.3508_8)
 
     case ('ta')
-      if (default_expand == EXPAND_ENDF_BVII0) then
+      if (default_expand == ENDF_BVII0 .or. &
+           (default_expand >= JEFF_311 .and. default_expand <= JEFF_312) .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_40)) then
         call list_names % append('73181.' // xs)
         call list_density % append(density)
-      elseif (default_expand == EXPAND_ENDF_BVII1) then
+      else
         call list_names % append('73180.' // xs)
         call list_density % append(density * 0.0001201_8)
         call list_names % append('73181.' // xs)
@@ -3774,7 +3783,10 @@ contains
       end if
 
     case ('w')
-      if (default_expand == EXPAND_ENDF_BVII0) then
+      if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
+           .or. default_expand == JEFF_312 .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
+        ! Combine W-180 with W-182
         call list_names % append('74182.' // xs)
         call list_density % append(density * 0.2662_8)
         call list_names % append('74183.' // xs)
@@ -3783,7 +3795,7 @@ contains
         call list_density % append(density * 0.3064_8)
         call list_names % append('74186.' // xs)
         call list_density % append(density * 0.2843_8)
-      elseif (default_expand == EXPAND_ENDF_BVII1) then
+      else
         call list_names % append('74180.' // xs)
         call list_density % append(density * 0.0012_8)
         call list_names % append('74182.' // xs)
@@ -3803,8 +3815,7 @@ contains
       call list_density % append(density * 0.6260_8)
 
     case ('os')
-      if (default_expand == EXPAND_JEFF_311 .or. &
-           default_expand == EXPAND_JEFF_312) then
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('76000.' // xs)
         call list_density % append(density)
       else
@@ -3831,8 +3842,7 @@ contains
       call list_density % append(density * 0.627_8)
 
     case ('pt')
-      if (default_expand == EXPAND_JEFF_311 .or. &
-           default_expand == EXPAND_JEFF_312) then
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('78000.' // xs)
         call list_density % append(density)
       else
@@ -3871,8 +3881,7 @@ contains
       call list_density % append(density * 0.0687_8)
 
     case ('tl')
-      if (default_expand == EXPAND_JEFF_311 .or. &
-           default_expand == EXPAND_JEFF_312) then
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('81000.' // xs)
         call list_density % append(density)
       else

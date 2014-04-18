@@ -159,7 +159,7 @@ contains
       case(1)
         cmfd_linsolver => cmfd_linsolver_1g
       case(2)
-        cmfd_linsolver => cmfd_linsolver_ng
+        cmfd_linsolver => cmfd_linsolver_2g
       case default
         cmfd_linsolver => cmfd_linsolver_ng
     end select    

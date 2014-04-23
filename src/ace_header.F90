@@ -120,6 +120,7 @@ module ace_header
     ! NDPP pre-processed data for use only with
     ! integrated tallies (scatter, nu-scatter, and chi)
     real(8), allocatable :: ndpp_scatt_Ein(:)         ! Incoming energy grid
+    integer, allocatable :: ndpp_scatt_Ein_srch(:)    ! Incoming energy grid search bounds
     type(GrpTransfer), allocatable :: ndpp_scatt(:)   ! Dimension is # of Ein
     type(GrpTransfer), allocatable :: ndpp_nuscatt(:) ! Dimension is # of Ein
     real(8), allocatable :: ndpp_chi_Ein(:)         ! Ein grid for all chi
@@ -221,6 +222,7 @@ module ace_header
     ! NDPP scattering data for use only with
     ! integrated scattering tallies
     real(8), allocatable :: ndpp_scatt_Ein(:)       ! Ein grid for scatter
+    integer, allocatable :: ndpp_scatt_Ein_srch(:)  ! Incoming energy grid search bounds
     type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is # of Ein
   end type SAlphaBeta
 

@@ -377,7 +377,9 @@ contains
 
             ! For the case of analog NDPP scatter-n tallying, filter_index needs
             ! to be adjusted to point to the first energyout filter
-            call tally_ndpp_n(p % event_nuclide, score_index, filter_index - &
+            call tally_ndpp_n(p % event_nuclide, &
+              matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+              score_index, filter_index - &
               matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
               t % moment_order(j), last_wgt, .true., p % last_E, t % results)
 
@@ -388,7 +390,9 @@ contains
             if (p % event == EVENT_SCATTER) then
               ! For the case of analog NDPP scatter-pn tallying, filter_index needs
               ! to be adjusted to point to the first energyout filter
-              call tally_ndpp_pn(p % event_nuclide, score_index, filter_index - &
+              call tally_ndpp_pn(p % event_nuclide, &
+                matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                score_index, filter_index - &
                 matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                 t % moment_order(j), last_wgt, .true., p % last_E, t % results)
             end if
@@ -402,7 +406,9 @@ contains
 
             ! For the case of analog NDPP nu-scatter-n tallying, filter_index needs
             ! to be adjusted to point to the first energyout filter
-            call tally_ndpp_n(p % event_nuclide, score_index, filter_index - &
+            call tally_ndpp_n(p % event_nuclide, &
+              matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+              score_index, filter_index - &
               matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
               t % moment_order(j), last_wgt, .true., p % last_E, t % results, .true.)
 
@@ -413,7 +419,9 @@ contains
             if (p % event == EVENT_SCATTER) then
               ! For the case of analog NDPP nu-scatter-pn tallying, filter_index needs
               ! to be adjusted to point to the first energyout filter
-              call tally_ndpp_pn(p % event_nuclide, score_index, filter_index - &
+              call tally_ndpp_pn(p % event_nuclide, &
+                matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                score_index, filter_index - &
                 matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                 t % moment_order(j), last_wgt, .true., p % last_E, t % results, .true.)
             end if
@@ -843,14 +851,18 @@ contains
                      atom_density * flux
 
               case (SCORE_NDPP_SCATT_N)
-                call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+                call tally_ndpp_n(i_nuclide, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_SCATT_PN)
-                call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+                call tally_ndpp_pn(i_nuclide, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results)
@@ -858,14 +870,18 @@ contains
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_NU_SCATT_N)
-                call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+                call tally_ndpp_n(i_nuclide, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results, .true.)
                 cycle SCORE_LOOP
 
               case (SCORE_NDPP_NU_SCATT_PN)
-                call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+                call tally_ndpp_pn(i_nuclide, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), atom_density * flux, .false., &
                   p % E, t % results, .true.)
@@ -1012,7 +1028,9 @@ contains
 
               case (SCORE_NDPP_SCATT_N)
                 mat => materials(p % material)
-                call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                call tally_macro_ndpp_n(mat, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), flux, p % E, t % results)
 
@@ -1020,7 +1038,9 @@ contains
 
               case (SCORE_NDPP_SCATT_PN)
                 mat => materials(p % material)
-                call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                call tally_macro_ndpp_pn(mat, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), flux, p % E, t % results)
 
@@ -1029,7 +1049,9 @@ contains
 
               case (SCORE_NDPP_NU_SCATT_N)
                 mat => materials(p % material)
-                call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                call tally_macro_ndpp_n(mat, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), flux, p % E, t % results, .true.)
 
@@ -1037,7 +1059,9 @@ contains
 
               case (SCORE_NDPP_NU_SCATT_PN)
                 mat => materials(p % material)
-                call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                call tally_macro_ndpp_pn(mat, &
+                  matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                  score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % moment_order(j), flux, p % E, t % results, .true.)
 
@@ -1269,7 +1293,9 @@ contains
                micro_xs(i_nuclide) % absorption) * atom_density * flux
 
         case (SCORE_NDPP_SCATT_N)
-          call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+          call tally_ndpp_n(i_nuclide, &
+            matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+            score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
             t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results)
@@ -1277,7 +1303,9 @@ contains
           cycle SCORE_LOOP
 
         case (SCORE_NDPP_SCATT_PN)
-          call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+          call tally_ndpp_pn(i_nuclide, &
+            matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+            score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
             t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results)
@@ -1286,7 +1314,9 @@ contains
           cycle SCORE_LOOP
 
         case (SCORE_NDPP_NU_SCATT_N)
-          call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+          call tally_ndpp_n(i_nuclide, &
+            matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+            score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
             t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results, .true.)
@@ -1294,7 +1324,9 @@ contains
           cycle SCORE_LOOP
 
         case (SCORE_NDPP_NU_SCATT_PN)
-          call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+          call tally_ndpp_pn(i_nuclide, &
+            matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+            score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
             t % moment_order(j), atom_density * flux, .false., p % E, &
             t % results, .true.)
@@ -1452,7 +1484,9 @@ contains
 
       case (SCORE_NDPP_SCATT_N)
         mat => materials(p % material)
-        call tally_macro_ndpp_n(mat, score_index, filter_index - &
+        call tally_macro_ndpp_n(mat, &
+          matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+          score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
           t % moment_order(j), flux, p % E, t % results)
 
@@ -1460,7 +1494,9 @@ contains
 
       case (SCORE_NDPP_SCATT_PN)
         mat => materials(p % material)
-        call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+        call tally_macro_ndpp_pn(mat, &
+          matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+          score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
           t % moment_order(j), flux, p % E, t % results)
 
@@ -1469,7 +1505,9 @@ contains
 
       case (SCORE_NDPP_NU_SCATT_N)
         mat => materials(p % material)
-        call tally_macro_ndpp_n(mat, score_index, filter_index - &
+        call tally_macro_ndpp_n(mat, &
+          matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+          score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
           t % moment_order(j), flux, p % E, t % results, .true.)
 
@@ -1477,7 +1515,9 @@ contains
 
       case (SCORE_NDPP_NU_SCATT_PN)
         mat => materials(p % material)
-        call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+        call tally_macro_ndpp_pn(mat, &
+          matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+          score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
           t % moment_order(j), flux, p % E, t % results, .true.)
 
@@ -1882,26 +1922,34 @@ contains
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
                 case (SCORE_NDPP_SCATT_N)
-                  call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+                  call tally_ndpp_n(i_nuclide, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_SCATT_PN)
-                  call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+                  call tally_ndpp_pn(i_nuclide, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results)
                   j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_N)
-                  call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+                  call tally_ndpp_n(i_nuclide, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results, .true.)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_PN)
-                  call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+                  call tally_ndpp_pn(i_nuclide, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), atom_density * flux, .false., &
                     p % E, t % results, .true.)
@@ -1995,26 +2043,34 @@ contains
                   score = (material_xs % total - material_xs % absorption) * flux
                 case (SCORE_NDPP_SCATT_N)
                   mat => materials(p % material)
-                  call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                  call tally_macro_ndpp_n(mat, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), flux, p % E, t % results)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_SCATT_PN)
                   mat => materials(p % material)
-                  call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                  call tally_macro_ndpp_pn(mat, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), flux, p % E, t % results)
                   j = j + t % moment_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_N)
                   mat => materials(p % material)
-                  call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                  call tally_macro_ndpp_n(mat, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), flux, p % E, t % results, .true.)
                   cycle SCORE_LOOP
                 case (SCORE_NDPP_NU_SCATT_PN)
                   mat => materials(p % material)
-                  call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                  call tally_macro_ndpp_pn(mat, &
+                    matching_bins(t % find_filter(FILTER_ENERGYIN)), &
+                    score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % moment_order(j), flux, p % E, t % results, .true.)
                   j = j + t % moment_order(j)
@@ -2855,10 +2911,11 @@ contains
 ! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
-  subroutine tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+  subroutine tally_ndpp_n(i_nuclide, gin, score_index, filter_index, t_order, &
     mult, is_analog, Ein, results, nuscatt)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
     integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
     integer, intent(in) :: t_order ! # of scattering orders to tally
@@ -2868,6 +2925,7 @@ contains
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
+    integer :: srch_lo, srch_hi
     integer :: g ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
     integer :: i_grid ! index on nuclide energy grid
@@ -2877,7 +2935,8 @@ contains
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
     real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
+    integer, pointer :: ndpp_scatt_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
+!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein, ndpp_scatt_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2887,6 +2946,9 @@ contains
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       ndpp_scatt => sab % ndpp_scatt
       ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ndpp_scatt_Ein_srch => sab % ndpp_scatt_Ein_srch
+      srch_lo = ndpp_scatt_Ein_srch(gin)
+      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
       if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
@@ -2895,7 +2957,8 @@ contains
         i_grid = size(ndpp_scatt_Ein)
         f = ONE
       else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein)
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -2922,8 +2985,10 @@ contains
         ndpp_scatt => nuc % ndpp_scatt
       end if
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ndpp_scatt_Ein_srch => nuc % ndpp_scatt_Ein_srch
+      srch_lo = ndpp_scatt_Ein_srch(gin)
+      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
-      i_grid = micro_xs(i_nuclide) % index_grid
       if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
         f = ZERO
@@ -2931,7 +2996,8 @@ contains
         i_grid = size(ndpp_scatt_Ein) - 1
         f = ONE
       else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein)
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -2979,10 +3045,10 @@ contains
 ! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
-  subroutine tally_macro_ndpp_n(mat, score_index, filter_index, t_order, flux, &
+  subroutine tally_macro_ndpp_n(mat, gin, score_index, filter_index, t_order, flux, &
     Ein, results, nuscatt)
-
     type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
     integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
     integer, intent(in) :: t_order ! # of scattering orders to tally
@@ -2999,14 +3065,14 @@ contains
       do i = 1, mat % n_nuclides
         i_nuclide = mat % nuclide(i)
         N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+        call tally_ndpp_n(i_nuclide, gin, score_index, filter_index, t_order, &
           N_flux, .false., Ein, results, nuscatt)
       end do
     else
       do i = 1, mat % n_nuclides
         i_nuclide = mat % nuclide(i)
         N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_n(i_nuclide, score_index, filter_index, t_order, &
+        call tally_ndpp_n(i_nuclide, gin, score_index, filter_index, t_order, &
           N_flux, .false., Ein, results)
       end do
     end if
@@ -3019,10 +3085,11 @@ contains
 ! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
-  subroutine tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+  subroutine tally_ndpp_pn(i_nuclide, gin, score_index, filter_index, t_order, &
     mult, is_analog, Ein, results, nuscatt)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
     integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
     integer, intent(in) :: t_order ! # of scattering orders to tally
@@ -3032,6 +3099,7 @@ contains
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
+    integer :: srch_lo, srch_hi
     integer :: g ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
     integer :: i_grid ! index on nuclide energy grid
@@ -3043,7 +3111,8 @@ contains
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
     real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
+    integer, pointer :: ndpp_scatt_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
+    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein,ndpp_scatt_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3053,15 +3122,20 @@ contains
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       ndpp_scatt => sab % ndpp_scatt
       ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ndpp_scatt_Ein_srch => sab % ndpp_scatt_Ein_srch
+      srch_lo = ndpp_scatt_Ein_srch(gin)
+      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
       if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
         f = ZERO
       else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        !!! This should never happen - quit???
         i_grid = size(ndpp_scatt_Ein)
         f = ONE
       else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein)
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -3088,8 +3162,10 @@ contains
         ndpp_scatt => nuc % ndpp_scatt
       end if
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ndpp_scatt_Ein_srch => nuc % ndpp_scatt_Ein_srch
+      srch_lo = ndpp_scatt_Ein_srch(gin)
+      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
-      i_grid = micro_xs(i_nuclide) % index_grid
       if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
         f = ZERO
@@ -3097,7 +3173,8 @@ contains
         i_grid = size(ndpp_scatt_Ein)
         f = ONE
       else
-        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein)
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -3152,10 +3229,11 @@ contains
 ! this method applies to ndpp-scatter-pn tally types
 !===============================================================================
 
-  subroutine tally_macro_ndpp_pn(mat, score_index, filter_index, t_order, flux, &
+  subroutine tally_macro_ndpp_pn(mat, gin, score_index, filter_index, t_order, flux, &
     Ein, results, nuscatt)
 
     type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: gin         ! Incoming energy group
     integer, intent(in) :: score_index ! dim = 1 starting index in results
     integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
     integer, intent(in) :: t_order ! # of scattering orders to tally
@@ -3172,14 +3250,14 @@ contains
       do i = 1, mat % n_nuclides
         i_nuclide = mat % nuclide(i)
         N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+        call tally_ndpp_pn(i_nuclide, gin, score_index, filter_index, t_order, &
           N_flux, .false., Ein, results, nuscatt)
       end do
     else
       do i = 1, mat % n_nuclides
         i_nuclide = mat % nuclide(i)
         N_flux = mat % atom_density(i) * flux
-        call tally_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
+        call tally_ndpp_pn(i_nuclide, gin, score_index, filter_index, t_order, &
           N_flux, .false., Ein, results)
       end do
     end if

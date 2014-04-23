@@ -531,14 +531,23 @@ contains
 
       ! Start with \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
-      read(UNIT=in, FMT=*) NEin
       if (is_nuc) then
+        allocate(nuc % ndpp_scatt_Ein_srch(NG + 1))
+        do iE = 1, NG + 1
+          read(UNIT=in, FMT=*) nuc % ndpp_scatt_Ein_srch(iE)
+        end do
+        read(UNIT=in, FMT=*) NEin
         allocate(nuc % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
           read(UNIT=in, FMT=*) nuc % ndpp_scatt_Ein(iE)
         end do
         allocate(nuc % ndpp_scatt(NEin))
       else
+        allocate(sab % ndpp_scatt_Ein_srch(NG + 1))
+        do iE = 1, NG + 1
+          read(UNIT=in, FMT=*) sab % ndpp_scatt_Ein_srch(iE)
+        end do
+        read(UNIT=in, FMT=*) NEin
         allocate(sab % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
           read(UNIT=in, FMT=*) sab % ndpp_scatt_Ein(iE)
@@ -670,14 +679,23 @@ contains
 
       ! Get \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
-      read(UNIT=in) NEin
       if (is_nuc) then
+        allocate(nuc % ndpp_scatt_Ein_srch(NG + 1))
+        do iE = 1, NG + 1
+          read(UNIT=in) nuc % ndpp_scatt_Ein_srch(iE)
+        end do
+        read(UNIT=in) NEin
         allocate(nuc % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
           read(UNIT=in) nuc % ndpp_scatt_Ein(iE)
         end do
         allocate(nuc % ndpp_scatt(NEin))
       else
+        allocate(sab % ndpp_scatt_Ein_srch(NG + 1))
+        do iE = 1, NG + 1
+          read(UNIT=in) sab % ndpp_scatt_Ein_srch(iE)
+        end do
+        read(UNIT=in) NEin
         allocate(sab % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
           read(UNIT=in) sab % ndpp_scatt_Ein(iE)

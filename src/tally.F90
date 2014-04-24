@@ -2934,46 +2934,21 @@ contains
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-    integer, pointer :: ndpp_scatt_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein, ndpp_scatt_Ein_srch)
+    real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
+    integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
+!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_Ein, ndpp_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
-    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    ! for us already by placing i_sab in micro_xs(i) % index_sab
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       ndpp_scatt => sab % ndpp_scatt
-      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
-      ndpp_scatt_Ein_srch => sab % ndpp_scatt_Ein_srch
-      srch_lo = ndpp_scatt_Ein_srch(gin)
-      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * micro_xs(i_nuclide) % elastic
-        one_f = one_f * micro_xs(i_nuclide) % elastic
-      end if
+      ndpp_Ein => sab % ndpp_scatt_Ein
+      ndpp_Ein_srch => sab % ndpp_scatt_Ein_srch
     else
       ! Normal scattering (non-S(a,b))
-      ! Set up pointers
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
@@ -2984,34 +2959,35 @@ contains
       else
         ndpp_scatt => nuc % ndpp_scatt
       end if
-      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
-      ndpp_scatt_Ein_srch => nuc % ndpp_scatt_Ein_srch
-      srch_lo = ndpp_scatt_Ein_srch(gin)
-      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein) - 1
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
+      ndpp_Ein => nuc % ndpp_scatt_Ein
+      ndpp_Ein_srch => nuc % ndpp_scatt_Ein_srch
+    end if
 
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * (micro_xs(i_nuclide) % total - &
-                 micro_xs(i_nuclide) % absorption)
-        one_f = one_f * (micro_xs(i_nuclide) % total - &
-                         micro_xs(i_nuclide) % absorption)
-      end if
+    srch_lo = ndpp_Ein_srch(gin)
+    srch_hi = ndpp_Ein_srch(gin + 1)
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= ndpp_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= ndpp_Ein(size(ndpp_Ein))) then
+      i_grid = size(ndpp_Ein) - 1
+      f = ONE
+    else
+      i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
+                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+      f = (Ein - ndpp_Ein(i_grid)) / &
+        (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+    end if
+
+    ! Calculate 1-f, and apply mult
+    one_f = (ONE - f) * mult
+    f = f * mult
+    ! Now apply sigS if we are in tracklength mode
+    if (.not. is_analog) then
+      f = f * (micro_xs(i_nuclide) % total - &
+               micro_xs(i_nuclide) % absorption)
+      one_f = one_f * (micro_xs(i_nuclide) % total - &
+                       micro_xs(i_nuclide) % absorption)
     end if
 
     ! Add the contribution from the lower score
@@ -3110,9 +3086,9 @@ contains
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-    integer, pointer :: ndpp_scatt_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein,ndpp_scatt_Ein_srch)
+    real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
+    integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
+    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_Ein,ndpp_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3121,36 +3097,10 @@ contains
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       ndpp_scatt => sab % ndpp_scatt
-      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
-      ndpp_scatt_Ein_srch => sab % ndpp_scatt_Ein_srch
-      srch_lo = ndpp_scatt_Ein_srch(gin)
-      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        !!! This should never happen - quit???
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
-
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * micro_xs(i_nuclide) % elastic
-        one_f = one_f * micro_xs(i_nuclide) % elastic
-      end if
+      ndpp_Ein => sab % ndpp_scatt_Ein
+      ndpp_Ein_srch => sab % ndpp_scatt_Ein_srch
     else
       ! Normal scattering (non-S(a,b))
-      ! Set up pointers
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
@@ -3161,34 +3111,35 @@ contains
       else
         ndpp_scatt => nuc % ndpp_scatt
       end if
-      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
-      ndpp_scatt_Ein_srch => nuc % ndpp_scatt_Ein_srch
-      srch_lo = ndpp_scatt_Ein_srch(gin)
-      srch_hi = ndpp_scatt_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= ndpp_scatt_Ein(1)) then
-        i_grid = 1
-        f = ZERO
-      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
-        f = ONE
-      else
-        i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
-          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
-      end if
+      ndpp_Ein => nuc % ndpp_scatt_Ein
+      ndpp_Ein_srch => nuc % ndpp_scatt_Ein_srch
+    end if
 
-      ! Calculate 1-f, and apply mult
-      one_f = (ONE - f) * mult
-      f = f * mult
-      ! Now apply sigS if we are in tracklength mode
-      if (.not. is_analog) then
-        f = f * (micro_xs(i_nuclide) % total - &
-                 micro_xs(i_nuclide) % absorption)
-        one_f = one_f * (micro_xs(i_nuclide) % total - &
-                         micro_xs(i_nuclide) % absorption)
-      end if
+    srch_lo = ndpp_Ein_srch(gin)
+    srch_hi = ndpp_Ein_srch(gin + 1)
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= ndpp_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= ndpp_Ein(size(ndpp_Ein))) then
+      ! Should never happen as max(ndpp_Ein) is above filter range
+      return
+    else
+      i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
+                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+      f = (Ein - ndpp_Ein(i_grid)) / &
+        (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+    end if
+
+    ! Calculate 1-f, and apply mult
+    one_f = (ONE - f) * mult
+    f = f * mult
+    ! Now apply sigS if we are in tracklength mode
+    if (.not. is_analog) then
+      f = f * (micro_xs(i_nuclide) % total - &
+               micro_xs(i_nuclide) % absorption)
+      one_f = one_f * (micro_xs(i_nuclide) % total - &
+                       micro_xs(i_nuclide) % absorption)
     end if
 
     ! Add the contribution from the lower score
@@ -3315,8 +3266,8 @@ contains
       i_grid = 1
       f = ZERO
     else if (Ein >= chi_Ein(size(chi_Ein))) then
-      i_grid = size(chi_Ein)
-      f = ONE
+      ! Should never happen as max(ndpp_Ein) is above filter range
+      return
     else
       i_grid = binary_search(chi_Ein, size(chi_Ein), Ein)
       f = (Ein - chi_Ein(i_grid)) / &

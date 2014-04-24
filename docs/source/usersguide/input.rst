@@ -805,12 +805,13 @@ Each ``material`` element can have the following attributes or sub-elements:
   :element:
 
     Specifies that a natural element is present in the material. The natural
-    element is split up into individual isotopes based on IUPAC Isotopic
-    Compositions of the Elements 2009. This element has attributes/sub-elements
-    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
-    symbol of the element while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
-    element within the material, respectively. One example would be as follows:
+    element is split up into individual isotopes based on `IUPAC Isotopic
+    Compositions of the Elements 2009`_. This element has
+    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element while the ``xs`` attribute is
+    the cross-section identifier. Finally, the ``ao`` attribute specifies the
+    atom percent of the element within the material, respectively. One example
+    would be as follows:
 
     .. code-block:: xml
 
@@ -833,6 +834,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+.. _IUPAC Isotopic Compositions of the Elements 2009:
+    http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
 ``<default_xs>`` Element
 ------------------------

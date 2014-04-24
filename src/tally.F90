@@ -2975,8 +2975,10 @@ contains
     else
       i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = (Ein - ndpp_Ein(i_grid)) / &
-        (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+      !f = (Ein - ndpp_Ein(i_grid)) / &
+      !  (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+      f = log(Ein / ndpp_Ein(i_grid)) / &
+        log(ndpp_Ein(i_grid + 1) / ndpp_Ein(i_grid))
     end if
 
     ! Calculate 1-f, and apply mult
@@ -3127,8 +3129,10 @@ contains
     else
       i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = (Ein - ndpp_Ein(i_grid)) / &
-        (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+      !f = (Ein - ndpp_Ein(i_grid)) / &
+      !  (ndpp_Ein(i_grid + 1) - ndpp_Ein(i_grid))
+      f = log(Ein / ndpp_Ein(i_grid)) / &
+        log(ndpp_Ein(i_grid + 1) / ndpp_Ein(i_grid))
     end if
 
     ! Calculate 1-f, and apply mult

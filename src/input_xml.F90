@@ -3339,15 +3339,15 @@ contains
         call list_density % append(density)
       else
         call list_names % append('30064.' // xs)
-        call list_density % append(density * 0.4863_8)
+        call list_density % append(density * 0.4917_8)
         call list_names % append('30066.' // xs)
-        call list_density % append(density * 0.2790_8)
+        call list_density % append(density * 0.2773_8)
         call list_names % append('30067.' // xs)
-        call list_density % append(density * 0.0410_8)
+        call list_density % append(density * 0.0404_8)
         call list_names % append('30068.' // xs)
-        call list_density % append(density * 0.1875_8)
+        call list_density % append(density * 0.1845_8)
         call list_names % append('30070.' // xs)
-        call list_density % append(density * 0.0062_8)
+        call list_density % append(density * 0.0061_8)
       end if
 
     case ('ga')

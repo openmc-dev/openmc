@@ -2958,7 +2958,7 @@ contains
         f = ONE
       else
         i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein)
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -2997,7 +2997,7 @@ contains
         f = ONE
       else
         i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein)
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -3135,7 +3135,7 @@ contains
         f = ONE
       else
         i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein)
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
@@ -3174,7 +3174,7 @@ contains
         f = ONE
       else
         i_grid = binary_search(ndpp_scatt_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein)
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
         f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if

@@ -13,7 +13,7 @@ try:
     import vtk
 except ImportError:
     print('----------------Skipping test-------------')
-    shutils.copy('results_true.dat', 'results_test.dat')
+    shutil.copy('results_true.dat', 'results_test.dat')
     exit()
 
 # Run track processing script

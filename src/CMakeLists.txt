@@ -161,7 +161,7 @@ endif()
 # git SHA1 hash
 #===============================================================================
 
-execute_process(COMMAND git rev-parse -q HEAD
+execute_process(COMMAND git rev-parse HEAD
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 RESULT_VARIABLE GIT_SHA1_SUCCESS
                 OUTPUT_VARIABLE GIT_SHA1

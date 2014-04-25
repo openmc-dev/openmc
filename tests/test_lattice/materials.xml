@@ -10,7 +10,7 @@
   ===============================================================
   -->
 
-  <default_xs>70c</default_xs>  
+  <default_xs>71c</default_xs>  
 
   <!-- UO2-PuO2 Mixture -->
   <material id="1">
@@ -88,7 +88,7 @@
     <!-- Boron at 1.7 ppm -->
     <nuclide name="B-10" ao="1.8706e-08" />
     <nuclide name="B-11" ao="7.5770e-08" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
     
   <!-- 6061 Aluminum -->
@@ -118,7 +118,7 @@
     <nuclide name="Cr-53" ao="5.9201e-06" />
     <nuclide name="Cr-54" ao="1.4736e-06" />
     <!-- Zn at 3.0967e-5 atom/b-cm -->
-    <nuclide name="Zn-Nat" ao="3.0967e-05" />
+    <nuclide name="Zn-66" ao="3.0967e-05" />
     <!-- Ti at 2.5375e-5 atom/b-cm -->
     <nuclide name="Ti-46" ao="2.0934e-06" />
     <nuclide name="Ti-47" ao="1.8879e-06" />

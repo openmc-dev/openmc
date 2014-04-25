@@ -9,8 +9,8 @@
 
   <source>
     <space>
-      <type>box</type>
-      <parameters>-.6 -.6 5.17  .6  .6  6.17</parameters>
+      <type>point</type>
+      <parameters>0.0 0.0 0.0</parameters>
     </space>
   </source>
 

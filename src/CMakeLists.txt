@@ -26,15 +26,18 @@ endif()
 # MPI for distributed-memory parallelism / HDF5 for binary output
 #===============================================================================
 
+set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "mpi.*")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
+  set(MPI_ENABLED TRUE)
 elseif($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
 elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
+  set(MPI_ENABLED TRUE)
 endif()
 
 #===============================================================================
@@ -128,7 +131,9 @@ endif()
 # PETSc for CMFD functionality
 #===============================================================================
 
+set (PETSC_ENABLED FALSE)
 if(petsc)
+  set(PETSC_ENABLED TRUE)
   find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
   find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
 
@@ -156,7 +161,7 @@ endif()
 # git SHA1 hash
 #===============================================================================
 
-execute_process(COMMAND git rev-parse -q HEAD
+execute_process(COMMAND git rev-parse HEAD
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 RESULT_VARIABLE GIT_SHA1_SUCCESS
                 OUTPUT_VARIABLE GIT_SHA1
@@ -169,17 +174,25 @@ endif()
 # FoX Fortran XML Library
 #===============================================================================
 
-file(GLOB_RECURSE source_fox xml/*.F90)
-add_library(fox STATIC ${source_fox})
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of fox xml submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
+  message("-- Initializing/Updating FoX XML submodule...")
+  execute_process(COMMAND git submodule init
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  execute_process(COMMAND git submodule update
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+endif()
+add_subdirectory(xml/fox)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source *.F90)
+file(GLOB source *.F90 xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox)
+target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")
@@ -207,3 +220,48 @@ if(PYTHONINTERP_FOUND)
                   COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
 endif()
+
+#===============================================================================
+# Regression tests
+#===============================================================================
+
+# This allows mpi test to work
+enable_testing()
+
+# Get a list of all the tests to run
+file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
+
+# Check to see if PETSC is compiled for CMFD tests
+if (NOT ${PETSC_ENABLED})
+  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
+  foreach(cmfd_test in ${CMFD_TESTS})
+    list(REMOVE_ITEM TESTS ${cmfd_test})
+  endforeach(cmfd_test)
+endif(NOT ${PETSC_ENABLED})
+
+# Loop through all the tests
+foreach(test ${TESTS})
+
+  # Get test information
+  get_filename_component(TEST_NAME ${test} NAME)
+  get_filename_component(TEST_PATH ${test} PATH) 
+
+  # Check serial/parallel
+  if (${MPI_ENABLED})
+
+    # Preform a parallel test
+    add_test(NAME ${TEST_NAME} 
+      WORKING_DIRECTORY ${TEST_PATH} 
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+
+  else(${MPI_ENABLED})
+
+    # Perform a serial test
+    add_test(NAME ${TEST_NAME} 
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+
+  endif(${MPI_ENABLED})
+
+endforeach(test)

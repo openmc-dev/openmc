@@ -3270,8 +3270,8 @@ contains
       return
     else
       i_grid = binary_search(chi_Ein, size(chi_Ein), Ein)
-      f = log(Ein / chi_Ein(i_grid)) / &
-        log(chi_Ein(i_grid + 1) / chi_Ein(i_grid))
+      f = (Ein - chi_Ein(i_grid)) / &
+        (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
     end if
 
     ! Calculate 1-f, apply mult, and weight by nu-fission

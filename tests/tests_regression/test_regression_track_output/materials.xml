@@ -4,27 +4,27 @@
 <!-- material 1: Water with 1511 PPM -->
   <material id="1">
     <density value="0.99823" units="g/cc" />
-    <nuclide name="H-1"  xs="70c" ao="6.6737E-002" />
-    <nuclide name="O-16" xs="70c" ao="3.3369E-002" />
-    <nuclide name="B-10" xs="70c" ao="1.6769E-005" />
-    <nuclide name="B-11" xs="70c" ao="6.7497E-005" />
-    <sab name="lwtr" xs="10t" />
+    <nuclide name="H-1"  xs="71c" ao="6.6737E-002" />
+    <nuclide name="O-16" xs="71c" ao="3.3369E-002" />
+    <nuclide name="B-10" xs="71c" ao="1.6769E-005" />
+    <nuclide name="B-11" xs="71c" ao="6.7497E-005" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
 <!-- material 2: Fuel (2.459 w/o with B-10 for impurities) -->
   <material id="2">
     <density value="10.24" units="g/cc" />
-    <nuclide name="U-235" xs="70c" ao="5.6868E-004" />
-<!--    <nuclide name="U-234" xs="70c" ao="4.5689E-006" />  -->
-    <nuclide name="U-238" xs="70c" ao="2.2268E-002" />
-    <nuclide name="O-16"  xs="70c" ao="4.5683E-002" />
-    <nuclide name="B-10"  xs="70c" ao="2.6055E-007" />
+    <nuclide name="U-235" xs="71c" ao="5.6868E-004" />
+<!--    <nuclide name="U-234" xs="71c" ao="4.5689E-006" />  -->
+    <nuclide name="U-238" xs="71c" ao="2.2268E-002" />
+    <nuclide name="O-16"  xs="71c" ao="4.5683E-002" />
+    <nuclide name="B-10"  xs="71c" ao="2.6055E-007" />
   </material>
 
   <!--               Zircaloy-4               -->
   <material id="3">
     <density value="  6.55" units="g/cc" />
-    <nuclide name="O-16"  xs="70c" ao="3.0743e-04" />
+    <nuclide name="O-16"  xs="71c" ao="3.0743e-04" />
 <!--    <nuclide name="O-17"  xs="71c" ao="7.4887e-07" />-->
 <!--    <nuclide name="Cr-50"  xs="71c" ao="3.2962e-06" />-->
 <!--    <nuclide name="Cr-52"  xs="71c" ao="6.3564e-05" />-->
@@ -34,11 +34,11 @@
 <!--    <nuclide name="Fe-56"  xs="71c" ao="1.3610e-04" />-->
 <!--    <nuclide name="Fe-57"  xs="71c" ao="3.1431e-06" />-->
 <!--    <nuclide name="Fe-58"  xs="71c" ao="4.1829e-07" />-->
-    <nuclide name="Zr-90"  xs="70c" ao="2.1827e-02" />
-    <nuclide name="Zr-91"  xs="70c" ao="4.7600e-03" />
-    <nuclide name="Zr-92"  xs="70c" ao="7.2758e-03" />
-    <nuclide name="Zr-94"  xs="70c" ao="7.3734e-03" />
-    <nuclide name="Zr-96"  xs="70c" ao="1.1879e-03" />
+    <nuclide name="Zr-90"  xs="71c" ao="2.1827e-02" />
+    <nuclide name="Zr-91"  xs="71c" ao="4.7600e-03" />
+    <nuclide name="Zr-92"  xs="71c" ao="7.2758e-03" />
+    <nuclide name="Zr-94"  xs="71c" ao="7.3734e-03" />
+    <nuclide name="Zr-96"  xs="71c" ao="1.1879e-03" />
 <!--    <nuclide name="Sn-112"  xs="71c" ao="4.6735e-06" />-->
 <!--    <nuclide name="Sn-114"  xs="71c" ao="3.1799e-06" />-->
 <!--    <nuclide name="Sn-115"  xs="71c" ao="1.6381e-06" />-->
@@ -54,42 +54,42 @@
 <!-- material 3: Fuel Aluminum 6061 cladding -->
 <!--  <material id="3">-->
 <!--    <density value="2.5052" units="g/cc" />-->
-<!--    <nuclide name="Al-27" xs="70c" ao="5.3985e-02" />-->
-<!--    <nuclide name="Mn-55" xs="70c" ao="4.1191e-05" />-->
-<!--    <nuclide name="Mg-24" xs="70c" ao="4.9031e-04" />-->
-<!--    <nuclide name="Mg-25" xs="70c" ao="6.2072e-05" />-->
-<!--    <nuclide name="Mg-26" xs="70c" ao="6.8341e-05" />-->
-<!--    <nuclide name="Si-28" xs="70c" ao="2.9726e-04" />-->
-<!--    <nuclide name="Si-29" xs="70c" ao="1.5094e-05" />-->
-<!--    <nuclide name="Si-30" xs="70c" ao="9.9499e-06" />-->
-<!--    <nuclide name="Cr-50" xs="70c" ao="2.5214e-06" />-->
-<!--    <nuclide name="Cr-52" xs="70c" ao="4.8622e-05" />-->
-<!--    <nuclide name="Cr-53" xs="70c" ao="5.5133e-06" />-->
-<!--    <nuclide name="Cr-54" xs="70c" ao="1.3724e-06" />-->
-<!--    <nuclide name="Fe-54" xs="70c" ao="1.1053e-05" />-->
-<!--    <nuclide name="Fe-56" xs="70c" ao="1.7351e-04" />-->
-<!--    <nuclide name="Fe-57" xs="70c" ao="4.0070e-06" />-->
-<!--    <nuclide name="Fe-58" xs="70c" ao="5.3326e-07" />-->
-<!--    <nuclide name="Ti-46" xs="70c" ao="3.8992e-06" />-->
-<!--    <nuclide name="Ti-47" xs="70c" ao="3.5164e-06" />-->
-<!--    <nuclide name="Ti-48" xs="70c" ao="3.4842e-05" />-->
-<!--    <nuclide name="Ti-49" xs="70c" ao="2.5569e-06" />-->
-<!--    <nuclide name="Ti-50" xs="70c" ao="2.4482e-06" />-->
-<!--    <nuclide name="Cu-63" xs="70c" ao="4.1054e-05" />-->
-<!--    <nuclide name="Cu-65" xs="70c" ao="1.8299e-05" />-->
+<!--    <nuclide name="Al-27" xs="71c" ao="5.3985e-02" />-->
+<!--    <nuclide name="Mn-55" xs="71c" ao="4.1191e-05" />-->
+<!--    <nuclide name="Mg-24" xs="71c" ao="4.9031e-04" />-->
+<!--    <nuclide name="Mg-25" xs="71c" ao="6.2072e-05" />-->
+<!--    <nuclide name="Mg-26" xs="71c" ao="6.8341e-05" />-->
+<!--    <nuclide name="Si-28" xs="71c" ao="2.9726e-04" />-->
+<!--    <nuclide name="Si-29" xs="71c" ao="1.5094e-05" />-->
+<!--    <nuclide name="Si-30" xs="71c" ao="9.9499e-06" />-->
+<!--    <nuclide name="Cr-50" xs="71c" ao="2.5214e-06" />-->
+<!--    <nuclide name="Cr-52" xs="71c" ao="4.8622e-05" />-->
+<!--    <nuclide name="Cr-53" xs="71c" ao="5.5133e-06" />-->
+<!--    <nuclide name="Cr-54" xs="71c" ao="1.3724e-06" />-->
+<!--    <nuclide name="Fe-54" xs="71c" ao="1.1053e-05" />-->
+<!--    <nuclide name="Fe-56" xs="71c" ao="1.7351e-04" />-->
+<!--    <nuclide name="Fe-57" xs="71c" ao="4.0070e-06" />-->
+<!--    <nuclide name="Fe-58" xs="71c" ao="5.3326e-07" />-->
+<!--    <nuclide name="Ti-46" xs="71c" ao="3.8992e-06" />-->
+<!--    <nuclide name="Ti-47" xs="71c" ao="3.5164e-06" />-->
+<!--    <nuclide name="Ti-48" xs="71c" ao="3.4842e-05" />-->
+<!--    <nuclide name="Ti-49" xs="71c" ao="2.5569e-06" />-->
+<!--    <nuclide name="Ti-50" xs="71c" ao="2.4482e-06" />-->
+<!--    <nuclide name="Cu-63" xs="71c" ao="4.1054e-05" />-->
+<!--    <nuclide name="Cu-65" xs="71c" ao="1.8299e-05" />-->
 <!--  </material>-->
 
 <!-- material 4: Control Rod Material -->
   <material id="4">
     <density value="2.2442" units="g/cc" />
-    <nuclide name="B-10"  xs="70c" ao="9.7491e-4" />
-    <nuclide name="B-11"  xs="70c" ao="3.9241e-3" />
-    <nuclide name="O-16"  xs="70c" ao="4.4829e-2" />
-<!--    <nuclide name="Na-23" xs="70c" ao="1.7444e-3" />-->
-<!--    <nuclide name="Al-27" xs="70c" ao="1.0018e-3" />-->
-<!--    <nuclide name="Si-28" xs="70c" ao="1.6884e-02" />-->
-<!--    <nuclide name="Si-29" xs="70c" ao="8.5730e-04" />-->
-<!--    <nuclide name="Si-30" xs="70c" ao="5.6513e-04" />-->
+    <nuclide name="B-10"  xs="71c" ao="9.7491e-4" />
+    <nuclide name="B-11"  xs="71c" ao="3.9241e-3" />
+    <nuclide name="O-16"  xs="71c" ao="4.4829e-2" />
+<!--    <nuclide name="Na-23" xs="71c" ao="1.7444e-3" />-->
+<!--    <nuclide name="Al-27" xs="71c" ao="1.0018e-3" />-->
+<!--    <nuclide name="Si-28" xs="71c" ao="1.6884e-02" />-->
+<!--    <nuclide name="Si-29" xs="71c" ao="8.5730e-04" />-->
+<!--    <nuclide name="Si-30" xs="71c" ao="5.6513e-04" />-->
   </material>
   
 </materials>

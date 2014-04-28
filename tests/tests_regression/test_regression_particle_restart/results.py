@@ -10,7 +10,7 @@ import particle_restart as pr
 if len(sys.argv) > 1:
     p = pr.Particle(sys.argv[1])
 else:
-    p = pr.Particle('particle_10_394.binary')
+    p = pr.Particle('particle_12_192.binary')
 
 # set up output string
 outstr = ''

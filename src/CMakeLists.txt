@@ -169,7 +169,7 @@ endif()
 # git SHA1 hash
 #===============================================================================
 
-execute_process(COMMAND git rev-parse -q HEAD
+execute_process(COMMAND git rev-parse HEAD
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 RESULT_VARIABLE GIT_SHA1_SUCCESS
                 OUTPUT_VARIABLE GIT_SHA1
@@ -182,17 +182,25 @@ endif()
 # FoX Fortran XML Library
 #===============================================================================
 
-file(GLOB_RECURSE source_fox xml/*.F90)
-add_library(fox STATIC ${source_fox})
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of fox xml submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
+  message("-- Initializing/Updating FoX XML submodule...")
+  execute_process(COMMAND git submodule init
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  execute_process(COMMAND git submodule update
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+endif()
+add_subdirectory(xml/fox)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source *.F90)
+file(GLOB source *.F90 xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox)
+target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")
@@ -302,7 +310,7 @@ foreach(test ${TESTS})
         elseif(${test} MATCHES "test_regression_sourcepoint_restart")
           set(RESTART_FILE statepoint.7.h5 source.7.h5)
         elseif(${test} MATCHES "test_regression_particle_restart")
-          set(RESTART_FILE particle_10_394.h5)
+          set(RESTART_FILE particle_12_192.h5)
         else(${test} MATCHES "test_regression_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
         endif(${test} MATCHES "test_regression_statepoint_restart")
@@ -315,7 +323,7 @@ foreach(test ${TESTS})
         elseif(${test} MATCHES "test_regression_sourcepoint_restart")
           set(RESTART_FILE statepoint.7.binary source.7.binary)
         elseif(${test} MATCHES "test_regression_particle_restart")
-          set(RESTART_FILE particle_10_394.binary)
+          set(RESTART_FILE particle_12_192.binary)
         else(${test} MATCHES "test_regression_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
         endif(${test} MATCHES "test_regression_statepoint_restart")

@@ -9,6 +9,8 @@
     <particles>400</particles>
   </eigenvalue>
 
+  <natural_elements>endf/b-vii.1</natural_elements>
+
   <source>
     <space>
       <type>box</type>

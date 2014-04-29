@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import shutil
 import re
 import glob
@@ -34,6 +35,9 @@ parser.add_option("-D", "--dashboard", dest="dash",
 parser.add_option("-u", "--update", action="store_true", dest="update",
                   help="Allow CTest to update repo. (WARNING: may overwrite\
                         changes that were not pushed.")
+parser.add_option("-s", "--script", action="store_true", dest="script",
+                  help="Activate CTest scripting mode for coverage, valgrind\
+                        and dashboard capability.")
 (options, args) = parser.parse_args()
 
 # Compiler paths
@@ -42,6 +46,9 @@ MPI_DIR='/opt/mpich/3.0.4-gnu'
 HDF5_DIR='/opt/hdf5/1.8.12-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
 PETSC_DIR='/opt/petsc/3.4.3-gnu'
+
+# Script mode for extra capability
+script_mode = False
 
 # Override default compiler paths if environmental vars are found
 if os.environ.has_key('FC'):
@@ -106,6 +113,9 @@ class Test(object):
         self.petsc = petsc
         self.valgrind = valgrind
         self.coverage = coverage
+        self.success = True
+        self.msg = None
+        self.cmake = ['cmake', '-H../src', '-Bbuild']
 
         # Check for MPI/HDF5
         if self.mpi and not self.hdf5:
@@ -140,13 +150,79 @@ class Test(object):
         with open('ctestscript.run', 'w') as fh:
             fh.write(ctest_str.format(**ctest_vars))
 
-    def run_ctest(self):
+    def run_ctest_script(self):
         os.environ['FC'] = self.fc
         if self.petsc:
             os.environ['PETSC_DIR'] = PETSC_DIR
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
-        call(['ctest', '-S', 'ctestscript.run','-V'])
+        rc = call(['ctest', '-S', 'ctestscript.run','-V'])
+        if rc != 0:
+            self.success = False
+            self.msg = 'Failed on ctest script.'
+
+    def run_cmake(self):
+        os.environ['FC'] = self.fc
+        build_opts = self.build_opts.split()
+        self.cmake += build_opts
+        rc = call(self.cmake)
+        if rc != 0:
+            self.success = False
+            self.msg = 'Failed on cmake.'
+
+    def run_make(self):
+        if not self.success:
+            return
+
+        # Default make string
+        make_list = ['make','-s']
+
+        # Check for parallel
+        if options.n_procs is not None:
+            make_list.append('-j')
+            make_list.append(options.n_procs)
+
+        # Run make
+        rc = call(make_list)
+        if rc != 0:
+            self.success = False
+            self.msg = 'Failed on make.'
+
+    def run_ctests(self):
+        if not self.success:
+            return
+
+        # Default ctest string
+        ctest_list = ['ctest']
+
+        # Check for parallel
+        if options.n_procs is not None:
+            ctest_list.append('-j')
+            ctest_list.append(options.n_procs)
+
+        # Check for subset of tests
+        if options.regex_tests is not None:
+            ctest_list.append('-R')
+            ctest_list.append(options.regex_tests)
+
+        # Run ctests
+        rc = call(ctest_list)
+        if rc != 0:
+            self.success = False
+            self.msg = 'Failed on testing.'
+
+    # Checks to see if file exists in PWD or PATH
+    def check_compiler(self):
+        result = False
+        if os.path.isfile(self.fc):
+            result = True
+        for path in os.environ["PATH"].split(":"):
+            if os.path.isfile(os.path.join(path, self.fc)):
+                result = True
+        if not result: 
+            raise Exception("Compiler path '{0}' does not exist."
+                           .format(self.fc)+
+                           "Please set appropriate environmental variable(s).")
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False, valgrind=False, coverage=False):
@@ -228,6 +304,12 @@ if options.update:
 else:
     update = ''
 
+# Check for CTest scipts mode
+if not options.dash is None or options.script:
+    script_mode = True
+else:
+    script_mode = False
+
 # Setup CTest vars
 pwd = os.environ['PWD']
 ctest_vars = {
@@ -255,6 +337,23 @@ call(['./cleanup'])
 for key in iter(tests):
     test = tests[key]
 
+    # No valgrind or coverage if not in CTest script mode
+    if not script_mode:
+        if test.valgrind:
+            continue
+        if test.coverage:
+            continue
+
+    # Extra display if not in script mode
+    if not script_mode:
+        print('-'*(len(key) + 6))
+        print(key + ' tests')
+        print('-'*(len(key) + 6))
+        sys.stdout.flush()
+
+    # Verify fortran compiler exists
+    test.check_compiler()
+
     # Set test specific CTest vars
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
@@ -275,14 +374,37 @@ for key in iter(tests):
         ctest_vars.update({'tests' : 'INCLUDE {0}'.
                           format(options.regex_tests)})
 
-    # Create ctest script
-    test.create_ctest_script(ctest_vars)
+    # Script mode
+    if script_mode:
 
-    # Run test
-    test.run_ctest()
+        # Create ctest script
+        test.create_ctest_script(ctest_vars)
+
+        # Run test
+        test.run_ctest_script()
+
+    else:
+
+        # Run CMAKE to configure build
+        test.run_cmake()
+
+        # Go into build directory
+        os.chdir('build')
+
+        # Build OpenMC
+        test.run_make()
+
+        # Run tests
+        test.run_ctests()
+
+        # Leave build directory
+        os.chdir('..')
 
     # Copy over log file
-    logfile = glob.glob('build/Testing/Temporary/LastTest_*.log')
+    if script_mode:
+        logfile = glob.glob('build/Testing/Temporary/LastTest_*.log')
+    else:
+        logfile = glob.glob('build/Testing/Temporary/LastTest.log')
     logfilename = os.path.split(logfile[0])[1]
     logfilename = os.path.splitext(logfilename)[0]
     logfilename = logfilename + '_{0}.log'.format(test.name)
@@ -290,5 +412,29 @@ for key in iter(tests):
 
     # Clear build directory
     shutil.rmtree('build', ignore_errors=True)
-    os.remove('ctestscript.run')
+    if script_mode:
+        os.remove('ctestscript.run')
     call(['./cleanup'])
+
+# Print out summary of results
+print('\n' + '='*54)
+print('Summary of Compilation Option Testing:\n')
+
+if sys.stdout.isatty():
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+else:
+    OK = ''
+    FAIL = ''
+    ENDC = ''
+    BOLD = ''
+
+for test in tests:
+    print(test + '.'*(50 - len(test)), end='')
+    if tests[test].success:
+        print(BOLD + OK + '[OK]' + ENDC)
+    else:
+        print(BOLD + FAIL + '[FAILED]' + ENDC)
+        print(' '*len(test)+tests[test].msg)

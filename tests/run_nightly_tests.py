@@ -53,8 +53,6 @@ script_mode = False
 # Override default compiler paths if environmental vars are found
 if os.environ.has_key('FC'):
     FC = os.environ['FC']
-    if FC is not 'gfortran':
-        print('NOTE: Test suite only verifed for gfortran compiler.')
 if os.environ.has_key('MPI_DIR'):
     MPI_DIR = os.environ['MPI_DIR']
 if os.environ.has_key('HDF5_DIR'):
@@ -127,10 +125,13 @@ class Test(object):
         else:
             self.fc = FC
 
+    # Sets the build name that will show up on the CDash
     def get_build_name(self):
         self.build_name =  options.branch + '_' + self.name
         return self.build_name
 
+    # Sets up build options for various tests. It is used both
+    # in script and non-script modes
     def get_build_opts(self):
         build_str = ""
         if self.debug:
@@ -146,10 +147,12 @@ class Test(object):
         self.build_opts = build_str
         return self.build_opts
 
+    # Write out the ctest script to tests directory
     def create_ctest_script(self, ctest_vars):
         with open('ctestscript.run', 'w') as fh:
             fh.write(ctest_str.format(**ctest_vars))
 
+    # Runs the ctest script which performs all the cmake/ctest/cdash
     def run_ctest_script(self):
         os.environ['FC'] = self.fc
         if self.petsc:
@@ -161,6 +164,7 @@ class Test(object):
             self.success = False
             self.msg = 'Failed on ctest script.'
 
+    # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
         build_opts = self.build_opts.split()
@@ -170,6 +174,7 @@ class Test(object):
             self.success = False
             self.msg = 'Failed on cmake.'
 
+    # Runs make when in non-script mode
     def run_make(self):
         if not self.success:
             return
@@ -188,6 +193,7 @@ class Test(object):
             self.success = False
             self.msg = 'Failed on make.'
 
+    # Runs ctest when in non-script mode
     def run_ctests(self):
         if not self.success:
             return
@@ -224,11 +230,14 @@ class Test(object):
                            .format(self.fc)+
                            "Please set appropriate environmental variable(s).")
 
+# Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False, valgrind=False, coverage=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, valgrind, coverage)})
+    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, 
+    valgrind, coverage)})
 
-# List of tests
+# List of all tests that may be run. User can add -C to command line to specify
+# a subset of these configurations
 add_test('basic-normal')
 add_test('basic-debug', debug=True)
 add_test('basic-optimize', optimize=True)
@@ -270,7 +279,7 @@ add_test('hdf5-debug_coverage', debug=True, hdf5=True, coverage=True)
 add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
 add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
 
-# Check to see if we are to just print build configuratinos
+# Check to see if we should just print build configuration information to user
 if options.print_build_configs:
     for key in tests:
         print('Configuration Name: {0}'.format(key))
@@ -291,6 +300,10 @@ if options.build_config is not None:
             del tests[key]
 
 # Check for dashboard and determine whether to push results to server
+# Note that there are only 3 basic dashboards: 
+# Experimental, Nightly, Continuous. On the CDash end, these can be
+# reorganized into groups when a hostname, dashboard and build name
+# are matched.
 if options.dash is None:
     dash = 'Experimental'
     submit = ''
@@ -298,19 +311,22 @@ else:
     dash = options.dash
     submit = 'ctest_submit()'
 
-# Check for update command
+# Check for update command, which will run git fetch/merge and will delete
+# any changes to repo that were not pushed to remote origin
 if options.update:
     update = 'ctest_update()'
 else:
     update = ''
 
 # Check for CTest scipts mode
+# Sets up whether we should use just the basic ctest command or use 
+# CTest scripting to perform tests.
 if not options.dash is None or options.script:
     script_mode = True
 else:
     script_mode = False
 
-# Setup CTest vars
+# Setup CTest script vars. Not used in non-script mode
 pwd = os.environ['PWD']
 ctest_vars = {
 'source_dir' : pwd + '/../src',
@@ -322,8 +338,9 @@ ctest_vars = {
 'n_procs'   : options.n_procs
 }
 
-# Set up default valgrind tests
+# Set up default valgrind tests (subset of all tests)
 # Currently takes too long to run all the tests with valgrind
+# Only used in script mode
 valgrind_default_tests = "basic|cmfd_feed|confidence_intervals|\
 density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|\
 filter_cell|lattice_multiple|output|plot_background|reflective_plane|\
@@ -333,7 +350,7 @@ tally_assumesep|translation|uniform_fs|universe|void"
 
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)
-call(['./cleanup'])
+call(['./cleanup']) # removes all binary and hdf5 output files from tests
 for key in iter(tests):
     test = tests[key]
 
@@ -354,7 +371,7 @@ for key in iter(tests):
     # Verify fortran compiler exists
     test.check_compiler()
 
-    # Set test specific CTest vars
+    # Set test specific CTest script vars. Not used in non-script mode
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
     ctest_vars.update({'mem_check'  : test.valgrind})
@@ -362,7 +379,7 @@ for key in iter(tests):
 
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset
-    # of tests to be executed.
+    # of tests to be executed. Only used in script mode.
     if options.regex_tests is None:
         ctest_vars.update({'tests' : ''})
 
@@ -374,7 +391,8 @@ for key in iter(tests):
         ctest_vars.update({'tests' : 'INCLUDE {0}'.
                           format(options.regex_tests)})
 
-    # Script mode
+    # Main part of code that does the ctest execution.
+    # It is broken up by two modes, script and non-script
     if script_mode:
 
         # Create ctest script
@@ -405,12 +423,13 @@ for key in iter(tests):
         logfile = glob.glob('build/Testing/Temporary/LastTest_*.log')
     else:
         logfile = glob.glob('build/Testing/Temporary/LastTest.log')
-    logfilename = os.path.split(logfile[0])[1]
-    logfilename = os.path.splitext(logfilename)[0]
-    logfilename = logfilename + '_{0}.log'.format(test.name)
-    shutil.copy(logfile[0], logfilename)
+    if len(logfile) > 0:
+        logfilename = os.path.split(logfile[0])[1]
+        logfilename = os.path.splitext(logfilename)[0]
+        logfilename = logfilename + '_{0}.log'.format(test.name)
+        shutil.copy(logfile[0], logfilename)
 
-    # Clear build directory
+    # Clear build directory and remove binary and hdf5 files
     shutil.rmtree('build', ignore_errors=True)
     if script_mode:
         os.remove('ctestscript.run')

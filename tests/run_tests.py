@@ -25,11 +25,11 @@ parser.add_option('-C', '--build-config', dest='build_config',
                         Specific build configurations can be printed out with \
                         optional argument -p, --print. This uses standard \
                         regex syntax to select build configurations.")
-parser.add_option('-p', '--print', action="store_true", 
-                  dest="print_build_configs", default=False,
-                  help="Print out build configurations.")
-parser.add_option("-b", "--branch", dest="branch", default="",
-                  help="branch name for build")
+parser.add_option('-l', '--list', action="store_true", 
+                  dest="list_build_configs", default=False,
+                  help="List out build configurations.")
+parser.add_option("-p", "--project", dest="project", default="",
+                  help="project name for build")
 parser.add_option("-D", "--dashboard", dest="dash",
                   help="Dash name -- Experimental, Nightly, Continuous")
 parser.add_option("-u", "--update", action="store_true", dest="update",
@@ -83,6 +83,8 @@ set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
+{subproject}
+
 ctest_start("{dashboard}")
 ctest_configure()
 {update}
@@ -127,7 +129,7 @@ class Test(object):
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
-        self.build_name =  options.branch + '_' + self.name
+        self.build_name =  options.project + '_' + self.name
         return self.build_name
 
     # Sets up build options for various tests. It is used both
@@ -280,7 +282,7 @@ add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
 add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
 
 # Check to see if we should just print build configuration information to user
-if options.print_build_configs:
+if options.list_build_configs:
     for key in tests:
         print('Configuration Name: {0}'.format(key))
         print('  Debug Flags:..........{0}'.format(tests[key].debug))
@@ -337,6 +339,15 @@ ctest_vars = {
 'update'    : update,
 'n_procs'   : options.n_procs
 }
+
+# Check project name
+subprop = """set_property(GLOBAL PROPERTY SubProject {0})"""
+if options.project == "" :
+    ctest_vars.update({'subproject':''})
+elif options.project == 'develop':
+    ctest_vars.update({'subproject':''})
+else:
+    ctest_vars.update({'subproject':subprop.format(options.project)})
 
 # Set up default valgrind tests (subset of all tests)
 # Currently takes too long to run all the tests with valgrind

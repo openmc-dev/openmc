@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from sys import argv
 from math import sqrt
@@ -60,9 +60,9 @@ for t in sp.tallies:
     assert n_bins == nx*ny*nz*ns
 
     # Create lists for tallies
-    mean = np.zeros((nx,ny))
-    error = np.zeros((nx,ny))
-    criteria = np.zeros((nx,ny))
+    mean = np.zeros((nx, ny))
+    error = np.zeros((nx, ny))
+    criteria = np.zeros((nx, ny))
 
     # Determine starting position for data
     start = sp._f.tell() + (axial_level-1)*ns*16 + (score - 1)*16
@@ -75,19 +75,19 @@ for t in sp.tallies:
             # Read sum and sum-squared
             s, s2 = sp._get_double(2)
             s /= n
-            mean[x,y] = s
+            mean[x, y] = s
             if s != 0.0:
-                error[x,y] = t_value*sqrt((s2/n - s*s)/(n-1))/s
-                criteria[x,y] = 1.0 if error[x,y] < 0.05 else 0.0
+                error[x, y] = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                criteria[x, y] = 1.0 if error[x, y] < 0.05 else 0.0
 
     # Make figure
     print("Making colorplot...")
     plt.imshow(mean, interpolation="nearest")
     plt.colorbar()
-    plt.xlim((0,nx))
-    plt.ylim((0,ny))
-    plt.xticks(np.linspace(0,nx,5),
-               np.linspace(m.lower_left[0],m.upper_right[0],5))
-    plt.yticks(np.linspace(0,ny,5),
-               np.linspace(m.lower_left[1],m.upper_right[1],5))
+    plt.xlim((0, nx))
+    plt.ylim((0, ny))
+    plt.xticks(np.linspace(0, nx, 5),
+               np.linspace(m.lower_left[0], m.upper_right[0], 5))
+    plt.yticks(np.linspace(0, ny, 5),
+               np.linspace(m.lower_left[1], m.upper_right[1], 5))
     plt.show()

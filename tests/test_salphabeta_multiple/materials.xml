@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <materials>
 
-  <!-- pu-met-fast-021 case 2 -->
+  <!-- pu-met-fast-021 case 2, modified to include Zr-H to exercise
+       the capability to assign a single S(a,b) table to multiple nuclides -->
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <!-- Plutonium -->
   <material id="1">
@@ -27,8 +28,8 @@
     <!-- O at 6.9041e-2 -->
     <nuclide name="O-16" ao="6.9015e-02" />
     <nuclide name="O-17" ao="2.6236e-05" />
-    <sab name="be/o" xs="10t" />
-    <sab name="o/be" xs="10t" />
+    <sab name="BeBeO" xs="71t" />
+    <sab name="OBeO" xs="71t" />
   </material>
 
   <!-- Steel Cover -->
@@ -109,6 +110,21 @@
     <!-- Cu 7.3982e-4 atom/b-cm -->
     <nuclide name="Cu-63" ao="5.1173e-04" />
     <nuclide name="Cu-65" ao="2.2809e-04" />
+  </material>
+
+  <!-- Additional ZrH to replace one of the BeO reflectors -->
+  <material id="7">
+    <density value="5.90168" units="g/cm3" />
+    <nuclide name="H-1"    ao="0.3" />
+    <nuclide name="Zr-90"  ao="0.15" />
+    <nuclide name="Zr-91"  ao="0.1" />
+    <nuclide name="Zr-92"  ao="0.1" />
+    <nuclide name="Zr-94"  ao="0.05" />
+    <nuclide name="Zr-96"  ao="0.05" />
+    <nuclide name="U-235"  ao="0.1" />
+    <nuclide name="U-238"  ao="0.15" />
+    <sab name="ZrZrH" xs="71t" />
+    <sab name="HZrH" xs="71t" />
   </material>
 
 </materials>

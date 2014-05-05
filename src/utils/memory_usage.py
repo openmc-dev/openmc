@@ -1,11 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
-# This script reads a cross_sections.out file, adds up the memory usage for each
-# nuclide and S(a,b) table, and displays the total memory usage
+# This script reads a cross_sections.out file, adds up the memory usage for
+# each nuclide and S(a,b) table, and displays the total memory usage
 
 import sys
 import os
-import matplotlib.pyplot as pyplot
 
 if len(sys.argv) > 1:
     # Get path to cross_sections.out file from command line argument
@@ -56,8 +55,3 @@ print('  Secondary Energy Distributions = ' + str(sum(memory_energy)))
 print('  Probability Tables             = ' + str(sum(memory_urr)))
 print('  S(a,b) Tables                  = ' + str(sum(memory_sab)))
 print('  Total                          = ' + str(sum(memory_total)))
-
-# Histograms
-# pyplot.hist(memory_xs,100)
-# pyplot.title('Memory for Cross Sections')
-# pyplot.show()

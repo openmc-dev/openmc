@@ -1,11 +1,11 @@
 module geometry
 
   use constants
-  use error,                  only: fatal_error
+  use error,                  only: fatal_error, warning
   use geometry_header,        only: Cell, Surface, Universe, Lattice
   use global
   use output,                 only: write_message
-  use particle_header,        only: LocalCoord, deallocate_coord
+  use particle_header,        only: LocalCoord, deallocate_coord, Particle
   use particle_restart_write, only: write_particle_restart
   use string,                 only: to_str
   use tally,                  only: score_surface_current
@@ -19,16 +19,18 @@ contains
 ! particle are inside a cell defined as the intersection of a series of surfaces
 !===============================================================================
 
-  function simple_cell_contains(c) result(in_cell)
+  function simple_cell_contains(c, p) result(in_cell)
 
-    type(Cell), pointer :: c
-    logical             :: in_cell
+    type(Cell),     pointer       :: c
+    type(Particle), intent(inout) :: p
+    logical                       :: in_cell
 
     integer :: i               ! index of surfaces in cell
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
-    type(Surface), pointer :: s => null()
+    type(Surface), pointer, save :: s => null()
+!$omp threadprivate(s)
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface
@@ -47,7 +49,7 @@ contains
       ! Determine the specified sense of the surface in the cell and the actual
       ! sense of the particle with respect to the surface
       s => surfaces(abs(i_surface))
-      actual_sense = sense(s)
+      actual_sense = sense(p, s)
       specified_sense = (c % surfaces(i) > 0)
 
       ! Compare sense of point to specified sense
@@ -62,16 +64,72 @@ contains
 
   end function simple_cell_contains
 
+
+!===============================================================================
+! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
+! position using simple_cell_contains and the LocalCoord's built up by find_cell
+!===============================================================================
+
+  subroutine check_cell_overlap(p)
+
+    type(Particle), intent(inout) :: p
+
+    integer :: i                       ! cell loop index on a level
+    integer :: n                       ! number of cells to search on a level
+    integer :: index_cell              ! index in cells array
+    type(Cell),       pointer, save :: c => null()     ! pointer to cell
+    type(Universe),   pointer, save :: univ => null()  ! universe to search in
+    type(LocalCoord), pointer, save :: coord => null() ! particle coordinate to search on
+!$omp threadprivate(c, univ, coord)
+
+    coord => p % coord0
+
+    ! loop through each coordinate level
+    do while (associated(coord))
+
+      p % coord => coord
+
+      univ => universes(coord % universe)
+      n = univ % n_cells
+
+      ! loop through each cell on this level
+      do i = 1, n
+        index_cell = univ % cells(i)
+        c => cells(index_cell)
+
+        if (simple_cell_contains(c, p)) then
+          ! the particle should only be contained in one cell per level
+          if (index_cell /= coord % cell) then
+            message = "Overlapping cells detected: " //               &
+                      trim(to_str(cells(index_cell) % id)) // ", " // &
+                      trim(to_str(cells(coord % cell) % id)) //       &
+                      " on universe " // trim(to_str(univ % id))
+            call fatal_error()
+          end if
+
+          overlap_check_cnt(index_cell) = overlap_check_cnt(index_cell) + 1
+
+        end if
+
+      end do
+
+      coord => coord % next
+
+    end do
+
+  end subroutine check_cell_overlap
+
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular
 ! universe. If the base universe is passed, the particle should be found as long
 ! as it's within the geometry
 !===============================================================================
 
-  recursive subroutine find_cell(found, search_cells)
+  recursive subroutine find_cell(p, found, search_cells)
 
-    logical, intent(inout)   :: found
-    integer, optional        :: search_cells(:)
+    type(Particle), intent(inout) :: p
+    logical,        intent(inout) :: found
+    integer,        optional      :: search_cells(:)
 
     integer :: i                    ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
@@ -79,10 +137,14 @@ contains
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
     real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
     logical :: use_search_cells     ! use cells provided as argument
-    type(Cell),     pointer :: c    ! pointer to cell
-    type(Lattice),  pointer :: lat  ! pointer to lattice
-    type(Universe), pointer :: univ ! universe to search in
+    logical :: outside_lattice      ! if particle is not inside lattice bounds
+    logical :: lattice_edge         ! if particle is on a lattice edge
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ => null() ! universe to search in
+!$omp threadprivate(c, lat, univ)
 
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
@@ -111,7 +173,7 @@ contains
       ! get pointer to cell
       c => cells(index_cell)
 
-      if (simple_cell_contains(c)) then
+      if (simple_cell_contains(c, p)) then
         ! Set cell on this level
         p % coord % cell = index_cell
 
@@ -154,7 +216,7 @@ contains
             p % coord % rotated = .true.
           end if
 
-          call find_cell(found)
+          call find_cell(p, found)
           if (.not. found) exit
 
         elseif (c % type == CELL_LATTICE) then
@@ -163,6 +225,9 @@ contains
 
           ! Set current lattice
           lat => lattices(c % fill)
+
+          outside_lattice = .false.
+          lattice_edge = .false.
 
           ! determine lattice index based on position
           xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
@@ -182,20 +247,57 @@ contains
           if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
                i_z < 1 .or. i_z > n_z) then
 
-            ! This condition should only get hit in rare circumstances where a
-            ! neutron hits the corner of a lattice. In this case, the neutron
-            ! may need to be moved diagonally across the lattice. To do so, we
-            ! remove all lower coordinate levels and then search from universe
-            ! 0.
+            ! Check for when particle is on lattice edge
+            upper_right(1) = lat % lower_left(1) + &
+                             lat % width(1) * dble(lat % dimension(1))
+            upper_right(2) = lat % lower_left(2) + &
+                             lat % width(2) * dble(lat % dimension(2))
+            if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
+                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
+                 abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
+                 abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
+              lattice_edge = .true.
+            end if
+            if (lat % n_dimension == 3) then
+              upper_right(3) = lat % lower_left(3) + &
+                               lat % width(3) * dble(lat % dimension(3))
+              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
+                  abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
+                lattice_edge = .true.
+              end if
+            end if
+            
+            if (lattice_edge) then
+              
+              ! In this case the neutron is leaving the lattice, so we move it
+              ! out, remove all lower coordinate levels and then search from
+              ! universe 0.
+            
+              p % coord => p % coord0
+              call deallocate_coord(p % coord % next)
 
-            p % coord => p % coord0
-            call deallocate_coord(p % coord % next)
+              ! Reset surface and advance particle a tiny bit
+              p % surface = NONE
+              p % coord % xyz = xyz
 
-            ! Reset surface and advance particle a tiny bit
-            p % surface = NONE
-            p % coord % xyz = xyz
+            else
 
-          else
+              ! We're outside the lattice, so treat this as a normal cell with
+              ! the material specified for the outside
+
+              outside_lattice = .true.
+              p % last_material = p % material
+              p % material = c % material
+
+              ! We'll still make a new coordinate for the particle, as 
+              ! distance_to_boundary will still need to track through lattice
+              ! widths even though there's nothing in them but this material
+
+            end if
+
+          end if
+
+          if (.not. lattice_edge) then
 
             ! Create new level of coordinates
             allocate(p % coord % next)
@@ -213,19 +315,33 @@ contains
             end if
             p % coord % next % uvw = p % coord % uvw
 
+            ! set particle lattice indices
+            p % coord % next% lattice   = c % fill
+            p % coord % next% lattice_x = i_x
+            p % coord % next% lattice_y = i_y
+            p % coord % next% lattice_z = i_z
+            if (.not. outside_lattice) then
+              p % coord % next % universe = lat % universes(i_x,i_y,i_z)
+            else
+
+              ! Set universe as the same for subsequent calls to find_cell
+              p % coord % next % universe = p % coord % universe
+
+              ! Set coord cell for calls to distance_to_boundary
+              p % coord % next % cell = index_cell
+
+            end if
+
             ! Move particle to next level
             p % coord => p % coord % next
 
-            ! set particle lattice indices
-            p % coord % lattice   = c % fill
-            p % coord % lattice_x = i_x
-            p % coord % lattice_y = i_y
-            p % coord % lattice_z = i_z
-            p % coord % universe  = lat % universes(i_x,i_y,i_z)
           end if
 
-          call find_cell(found)
-          if (.not. found) exit
+          if (.not. outside_lattice) then
+            call find_cell(p, found)
+            if (.not. found) exit
+          end if
+
         end if
 
         ! Found cell so we can return
@@ -243,9 +359,10 @@ contains
 ! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================
 
-  subroutine cross_surface(last_cell)
+  subroutine cross_surface(p, last_cell)
 
-    integer, intent(in)     :: last_cell  ! last cell particle was in
+    type(Particle), intent(inout) :: p
+    integer,        intent(in)    :: last_cell  ! last cell particle was in
 
     real(8) :: x         ! x-x0 for sphere
     real(8) :: y         ! y-y0 for sphere
@@ -261,7 +378,8 @@ contains
     real(8) :: norm      ! "norm" of surface normal
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
-    type(Surface),  pointer :: surf => null()
+    type(Surface), pointer, save :: surf => null()
+!$omp threadprivate(surf)
 
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
@@ -286,12 +404,16 @@ contains
         ! physically moving the particle forward slightly
 
         p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-        call score_surface_current()
+        call score_surface_current(p)
       end if
 
       ! Score to global leakage tally
-      if (tallies_on) global_tallies(LEAKAGE) % value = &
+      if (tallies_on) then
+!$omp critical
+        global_tallies(LEAKAGE) % value = &
            global_tallies(LEAKAGE) % value + p % wgt
+!$omp end critical
+      end if
 
       ! Display message
       if (verbosity >= 10 .or. trace) then
@@ -306,10 +428,10 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (.not. associated(p % coord, p % coord0)) then
-        call write_particle_restart()
         message = "Cannot reflect particle " // trim(to_str(p % id)) // &
              " off surface in a lower universe."
-        call fatal_error()
+        call handle_lost_particle(p)
+        return
       end if
 
       ! Score surface currents since reflection causes the direction of the
@@ -318,7 +440,7 @@ contains
 
       if (active_current_tallies % size() > 0) then
         p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
-        call score_surface_current()
+        call score_surface_current(p)
         p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
       end if
 
@@ -440,14 +562,14 @@ contains
         w = w + 2*dot_prod*R*z
 
       case default
-        call write_particle_restart()
         message = "Reflection not supported for surface " // &
              trim(to_str(surf % id))
         call fatal_error()
       end select
 
       ! Set new particle direction
-      p % coord0 % uvw = (/ u, v, w /)
+      norm = sqrt(u*u + v*v + w*w)
+      p % coord0 % uvw = [u, v, w] / norm
 
       ! Reassign particle's cell and surface
       p % coord0 % cell = last_cell
@@ -459,11 +581,11 @@ contains
 
       if (associated(p % coord0 % next)) then
         call deallocate_coord(p % coord0 % next)
-        call find_cell(found)
+        call find_cell(p, found)
         if (.not. found) then
-          call write_particle_restart()
           message = "Couldn't find particle after reflecting from surface."
-          call fatal_error()
+          call handle_lost_particle(p)
+          return
         end if
       end if
 
@@ -485,14 +607,14 @@ contains
       ! If coming from negative side of surface, search all the neighboring
       ! cells on the positive side
 
-      call find_cell(found, surf % neighbor_pos)
+      call find_cell(p, found, surf % neighbor_pos)
       if (found) return
 
     elseif (p % surface < 0  .and. allocated(surf % neighbor_neg)) then
       ! If coming from positive side of surface, search all the neighboring
       ! cells on the negative side
 
-      call find_cell(found, surf % neighbor_neg)
+      call find_cell(p, found, surf % neighbor_neg)
       if (found) return
 
     end if
@@ -504,7 +626,7 @@ contains
     p % surface = NONE
     p % coord => p % coord0
     call deallocate_coord(p % coord % next)
-    call find_cell(found)
+    call find_cell(p, found)
 
     if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
       ! If a cell is still not found, there are two possible causes: 1) there is
@@ -515,17 +637,17 @@ contains
       p % coord => p % coord0
       call deallocate_coord(p % coord % next)
       p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-      call find_cell(found)
+      call find_cell(p, found)
 
       ! Couldn't find next cell anywhere! This probably means there is an actual
       ! undefined region in the geometry.
 
       if (.not. found) then
-        call write_particle_restart()
         message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
              // trim(to_str(surfaces(i_surface) % id)) // " it could not be &
              &located in any cell and it did not leak."
-        call fatal_error()
+        call handle_lost_particle(p)
+        return
       end if
     end if
        
@@ -535,15 +657,17 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(lattice_crossed)
+  subroutine cross_lattice(p, lattice_crossed)
 
-    integer, intent(in) :: lattice_crossed
+    type(Particle), intent(inout) :: p
+    integer,        intent(in)    :: lattice_crossed
 
     integer :: i_x, i_y, i_z ! indices in lattice
     integer :: n_x, n_y, n_z ! size of lattice
     real(8) :: x0, y0, z0    ! half width of lattice element
     logical :: found         ! particle found in cell?
-    type(Lattice), pointer :: lat => null()
+    type(Lattice), pointer, save :: lat => null()
+!$omp threadprivate(lat)
 
     lat => lattices(p % coord % lattice)
 
@@ -613,19 +737,19 @@ contains
       p % coord => p % coord0
 
       ! Search for particle
-      call find_cell(found)
+      call find_cell(p, found)
       if (.not. found) then
-        call write_particle_restart()
         message = "Could not locate particle " // trim(to_str(p % id)) // &
              " after crossing a lattice boundary."
-        call fatal_error()
+        call handle_lost_particle(p)
+        return
       end if
     else
       ! Find universe for next lattice element
       p % coord % universe = lat % universes(i_x, i_y, i_z)
 
       ! Find cell in next lattice element
-      call find_cell(found)
+      call find_cell(p, found)
       if (.not. found) then
         ! In some circumstances, a particle crossing the corner of a cell may not
         ! be able to be found in the next universe. In this scenario we cut off
@@ -636,12 +760,12 @@ contains
         p % coord => p % coord0
 
         ! Search for particle
-        call find_cell(found)
+        call find_cell(p, found)
         if (.not. found) then
-          call write_particle_restart()
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
-          call fatal_error()
+          call handle_lost_particle(p)
+          return
         end if
       end if
     end if
@@ -654,11 +778,12 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(dist, surface_crossed, lattice_crossed)
+  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_crossed)
 
-    real(8),        intent(out) :: dist
-    integer,        intent(out) :: surface_crossed
-    integer,        intent(out) :: lattice_crossed
+    type(Particle), intent(inout) :: p
+    real(8),        intent(out)   :: dist
+    integer,        intent(out)   :: surface_crossed
+    integer,        intent(out)   :: lattice_crossed
 
     integer :: i            ! index for surface in cell
     integer :: index_surf   ! index in surfaces array (with sign)
@@ -671,11 +796,12 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    type(Cell),       pointer :: cl => null()
-    type(Surface),    pointer :: surf => null()
-    type(Lattice),    pointer :: lat => null()
-    type(LocalCoord), pointer :: coord => null()
-    type(LocalCoord), pointer :: final_coord => null()
+    type(Cell),       pointer, save :: cl => null()
+    type(Surface),    pointer, save :: surf => null()
+    type(Lattice),    pointer, save :: lat => null()
+    type(LocalCoord), pointer, save :: coord => null()
+    type(LocalCoord), pointer, save :: final_coord => null()
+!$omp threadprivate(cl, surf, lat, coord, final_coord)
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
@@ -1233,10 +1359,11 @@ contains
 ! is in.
 !===============================================================================
 
-  recursive function sense(surf) result(s)
+  recursive function sense(p, surf) result(s)
 
-    type(Surface), pointer    :: surf   ! surface
-    logical                   :: s      ! sense of particle
+    type(Particle), intent(inout) :: p
+    type(Surface),  pointer       :: surf   ! surface
+    logical                       :: s      ! sense of particle
 
     real(8) :: x,y,z    ! coordinates of particle
     real(8) :: func     ! surface function evaluated at point
@@ -1342,7 +1469,7 @@ contains
       ! Particle may be coincident with this surface. Artifically move the
       ! particle forward a tiny bit.
       p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-      s = sense(surf)
+      s = sense(p, surf)
     elseif (func > 0) then
       s = .true.
     else
@@ -1430,5 +1557,32 @@ contains
     deallocate(count_negative)
 
   end subroutine neighbor_lists
+
+!===============================================================================
+! HANDLE_LOST_PARTICLE
+!===============================================================================
+
+  subroutine handle_lost_particle(p)
+
+    type(Particle), intent(inout) :: p
+
+    ! Print warning and write lost particle file
+    call warning(force = .true.)
+    call write_particle_restart(p)
+
+    ! Increment number of lost particles
+    p % alive = .false.
+!$omp critical
+    n_lost_particles = n_lost_particles + 1
+!$omp end critical
+
+    ! Abort the simulation if the maximum number of lost particles has been
+    ! reached
+    if (n_lost_particles == MAX_LOST_PARTICLES) then
+      message = "Maximum number of lost particles has been reached."
+      call fatal_error()
+    end if
+
+  end subroutine handle_lost_particle
 
 end module geometry

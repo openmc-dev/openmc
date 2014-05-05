@@ -1,28 +1,59 @@
 #!/usr/bin/env python
 
 import os
-from subprocess import Popen, STDOUT, PIPE
+from subprocess import Popen, STDOUT, PIPE, call
+import filecmp
+import glob
+from optparse import OptionParser
 
-pwd = os.path.dirname(__file__)
-
-def setup(): 
-    os.putenv('PWD', pwd)
-    os.chdir(pwd)
+parser = OptionParser()
+parser.add_option('--mpi_exec', dest='mpi_exec', default='')
+parser.add_option('--mpi_np', dest='mpi_np', default='3')
+parser.add_option('--exe', dest='exe')
+(opts, args) = parser.parse_args()
+cwd = os.getcwd()
 
 def test_run():
-    proc = Popen([pwd + '/../../src/openmc'], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
+    if opts.mpi_exec != '':
+        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
+               stderr=STDOUT, stdout=PIPE)
+    else:
+        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
     print(proc.communicate()[0])
-    assert returncode == 0
+    returncode = proc.returncode
+    assert returncode == 0, 'OpenMC did not exit successfully.'
 
-def test_statepoint_exists():
-    assert os.path.exists(pwd + '/statepoint.10.binary')
+def test_created_statepoint():
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
 
 def test_output_exists():
-    assert os.path.exists(pwd + '/tallies.out')
+    assert os.path.exists(os.path.join(cwd, 'tallies.out')), 'Tally output file does not exist.'
+
+def test_results():
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
+    call(['python', 'results.py', statepoint[0]])
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+    if not compare:
+      os.rename('results_test.dat', 'results_error.dat')
+    assert compare, 'Results do not agree.'
 
 def teardown():
-    output = [pwd + '/statepoint.10.binary', pwd + '/tallies.out']
+    output = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
+    output.append(os.path.join(cwd, 'tallies.out'))
+    output.append(os.path.join(cwd, 'results_test.dat'))
     for f in output:
         if os.path.exists(f):
             os.remove(f)
+
+if __name__ == '__main__':
+
+    # test for openmc executable
+    if opts.exe is None:
+        raise Exception('Must specify OpenMC executable from command line with --exe.')
+
+    # run tests
+    test_run()
+    test_created_statepoint()
+    test_output_exists()
+    test_results()
+    teardown()

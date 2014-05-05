@@ -2,16 +2,15 @@ module plot
 
   use constants
   use error,           only: fatal_error
-  use geometry,        only: find_cell
-  use geometry_header, only: Universe, BASE_UNIVERSE
+  use geometry,        only: find_cell, check_cell_overlap
+  use geometry_header, only: Cell, BASE_UNIVERSE
   use global
   use output,          only: write_message
-  use particle_header, only: deallocate_coord
+  use particle_header, only: deallocate_coord, Particle
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
   use progress_header, only: ProgressBar
-  use source,          only: initialize_particle
   use string,          only: to_str
 
   implicit none
@@ -50,8 +49,9 @@ contains
 ! current particle's position
 !===============================================================================
 
-  subroutine position_rgb(pl, rgb, id)
-  
+  subroutine position_rgb(p, pl, rgb, id)
+
+    type(Particle), intent(inout)         :: p
     type(ObjectPlot), pointer, intent(in) :: pl
     integer, intent(out)                  :: rgb(3)
     integer, intent(out)                  :: id
@@ -62,7 +62,8 @@ contains
     call deallocate_coord(p % coord0 % next)
     p % coord => p % coord0
 
-    call find_cell(found_cell)
+    call find_cell(p, found_cell)
+    if (check_overlaps) call check_cell_overlap(p)
 
     if (.not. found_cell) then
       ! If no cell, revert to default color
@@ -72,12 +73,13 @@ contains
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
         c => cells(p % coord % cell)
-        id = materials(c % material) % id
         if (c % material == MATERIAL_VOID) then
           ! By default, color void cells white
           rgb = 255
+          id = -1
         else
           rgb = pl % colors(c % material) % rgb
+          id = materials(c % material) % id
         end if
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
@@ -108,7 +110,8 @@ contains
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
-    type(Image) :: img
+    type(Image)       :: img
+    type(Particle)    :: p
     type(ProgressBar) :: progress
 
     ! Initialize and allocate space for image
@@ -142,8 +145,7 @@ contains
     end if
 
     ! allocate and initialize particle
-    allocate(p)
-    call initialize_particle()
+    call p % initialize()
     p % coord % xyz = xyz
     p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord % universe = BASE_UNIVERSE
@@ -153,7 +155,7 @@ contains
       do x = 1, img % width
 
         ! get pixel color
-        call position_rgb(pl, rgb, id)
+        call position_rgb(p, pl, rgb, id)
 
         ! Create a pixel at (x,y) with color (r,g,b)
         call set_pixel(img, x, y, rgb(1), rgb(2), rgb(3))
@@ -229,6 +231,7 @@ contains
     integer :: id           ! id of cell or material
     real(8) :: vox(3)       ! x, y, and z voxel widths
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
+    type(Particle)    :: p
     type(ProgressBar) :: progress
 
     ! compute voxel widths in each direction
@@ -238,8 +241,7 @@ contains
     ll = pl % origin - pl % width / 2.0
 
     ! allocate and initialize particle
-    allocate(p)
-    call initialize_particle()
+    call p % initialize()
     p % coord0 % xyz = ll
     p % coord0 % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord0 % universe = BASE_UNIVERSE
@@ -260,7 +262,7 @@ contains
         do z = 1, pl % pixels(3)
 
           ! get voxel color
-          call position_rgb(pl, rgb, id)
+          call position_rgb(p, pl, rgb, id)
 
           ! write to plot file
           write(UNIT_PLOT) id

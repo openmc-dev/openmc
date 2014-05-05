@@ -5,28 +5,34 @@ module initialize
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
-  use error,            only: fatal_error
+  use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, write_xs_summary, print_plot
+                              print_usage, write_xs_summary, print_plot,       &
+                              write_message
+  use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject
+  use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
   use mpi
 #endif
 
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary, &
-                              hdf5_load_state_point
+  use hdf5_interface
+  use hdf5_summary,     only: hdf5_write_summary
 #endif
 
   implicit none
@@ -121,11 +127,7 @@ contains
 
       ! If this is a restart run, load the state point data and binary source
       ! file
-#ifdef HDF5
-      if (restart_run) call hdf5_load_state_point()
-#else
       if (restart_run) call load_state_point()
-#endif
     end if
 
     if (master) then
@@ -145,8 +147,16 @@ contains
       end if
     end if
 
-    ! check for particle restart run
+    ! Check for particle restart run
     if (particle_restart_run) run_mode = MODE_PARTICLE
+
+    ! Warn if overlap checking is on
+    if (master .and. check_overlaps) then
+      message = ""
+      call write_message()
+      message = "Cell overlap checking is ON"
+      call warning()
+    end if
 
     ! Stop initialization timer
     call time_initialize % stop()
@@ -236,7 +246,56 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
+    ! Free temporary MPI type
+    call MPI_TYPE_FREE(temp_type, mpi_err)
+
   end subroutine initialize_mpi
+#endif
+
+#ifdef HDF5
+
+!===============================================================================
+! HDF5_INITIALIZE
+!===============================================================================
+
+  subroutine hdf5_initialize()
+
+    type(TallyResult), target :: tmp(2)          ! temporary TallyResult
+    type(Bank),        target :: tmpb(2)         ! temporary Bank
+    integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
+    integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
+
+    ! Initialize FORTRAN interface.
+    call h5open_f(hdf5_err)
+
+    ! Create the compound datatype for TallyResult
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(2))), hdf5_tallyresult_t, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Create compound type for xyz and uvw
+    call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
+
+    ! Create the compound datatype for Bank
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(2))), hdf5_bank_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "wgt", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%wgt)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "xyz", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%xyz)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "uvw", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Determine type for integer(8)
+    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
+
+  end subroutine hdf5_initialize
+
 #endif
 
 !===============================================================================
@@ -248,8 +307,10 @@ contains
     integer :: i         ! loop index
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
+    integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
+    type(BinaryOutput) :: sp
 
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
@@ -272,7 +333,9 @@ contains
         select case (argv(i))
         case ('-p', '-plot', '--plot')
           run_mode = MODE_PLOTTING
-        case ('-n', '-n_particles', '--n_particles')
+          check_overlaps = .true.
+
+        case ('-n', '-particles', '--particles')
           ! Read number of particles per cycle
           i = i + 1
           n_particles = str_to_int(argv(i))
@@ -284,18 +347,85 @@ contains
             call fatal_error()
           end if
         case ('-r', '-restart', '--restart')
-          ! Read path for state point
+          ! Read path for state point/particle restart
           i = i + 1
-          path_state_point = argv(i)
-          restart_run = .true.
 
-        case ('-t', '-tallies', '--tallies')
-          run_mode = MODE_TALLIES
+          ! Check what type of file this is
+          call sp % file_open(argv(i), 'r', serial = .false.)
+          call sp % read_data(filetype, 'filetype')
+          call sp % file_close()
 
-          ! Read path for state point
+          ! Set path and flag for type of run
+          select case (filetype)
+          case (FILETYPE_STATEPOINT)
+            path_state_point = argv(i)
+            restart_run = .true.
+          case (FILETYPE_PARTICLE_RESTART)
+            path_particle_restart = argv(i)
+            particle_restart_run = .true.
+          case default
+            message = "Unrecognized file after restart flag."
+            call fatal_error()
+          end select
+
+          ! If its a restart run check for additional source file
+          if (restart_run .and. i + 1 <= argc) then
+
+            ! Increment arg
+            i = i + 1
+
+            ! Check if it has extension we can read
+            if ((ends_with(argv(i), '.binary') .or. &
+                 ends_with(argv(i), '.h5'))) then
+
+              ! Check file type is a source file
+              call sp % file_open(argv(i), 'r', serial = .false.)
+              call sp % read_data(filetype, 'filetype')
+              call sp % file_close()
+              if (filetype /= FILETYPE_SOURCE) then
+                message = "Second file after restart flag must be a source file"
+                call fatal_error()
+              end if
+
+              ! It is a source file
+              path_source_point = argv(i)
+
+            else ! Different option is specified not a source file
+
+              ! Source is in statepoint file
+              path_source_point = path_state_point
+
+              ! Set argument back
+              i = i - 1
+
+            end if
+
+          else ! No command line arg after statepoint
+
+            ! Source is assumed to be in statepoint file
+            path_source_point = path_state_point
+
+          end if
+
+        case ('-g', '-geometry-debug', '--geometry-debug')
+          check_overlaps = .true.
+
+        case ('-s', '--threads')
+          ! Read number of threads
           i = i + 1
-          path_state_point = argv(i)
-          restart_run = .true.
+
+#ifdef _OPENMP          
+          ! Read and set number of OpenMP threads
+          n_threads = str_to_int(argv(i))
+          if (n_threads < 1) then
+            message = "Invalid number of threads specified on command line."
+            call fatal_error()
+          end if
+          call omp_set_num_threads(n_threads)
+#else
+          message = "Ignoring number of threads specified on command line."
+          call warning()
+#endif
 
         case ('-?', '-help', '--help')
           call print_usage()
@@ -306,11 +436,9 @@ contains
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
           i = i + 1
-        case ('-s','-particle','--particle')
-          ! Read in path for particle restart
+        case ('-t', '-track', '--track')
+          write_all_tracks = .true.
           i = i + 1
-          path_particle_restart = argv(i)
-          particle_restart_run = .true.
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()
@@ -359,6 +487,8 @@ contains
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
                                                   ! array for each universe
     type(ElemKeyValueII), pointer :: pair_list => null()
+    type(ElemKeyValueII), pointer :: current => null()
+    type(ElemKeyValueII), pointer :: next => null()
     type(Universe),       pointer :: univ => null()
     type(Cell),           pointer :: c => null()
 
@@ -370,24 +500,27 @@ contains
     ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
     pair_list => universe_dict % keys()
-    do while (associated(pair_list))
-      ! find index of universe in universes array
-      i_univ = pair_list % value
+    current => pair_list
+    do while (associated(current))
+      ! Find index of universe in universes array
+      i_univ = current % value
       univ => universes(i_univ)
-      univ % id = pair_list % key
+      univ % id = current % key
 
-      ! check for lowest level universe
+      ! Check for lowest level universe
       if (univ % id == 0) BASE_UNIVERSE = i_univ
 
-      ! find cell count for this universe
+      ! Find cell count for this universe
       n_cells_in_univ = cells_in_univ_dict % get_key(univ % id)
 
-      ! allocate cell list for universe
+      ! Allocate cell list for universe
       allocate(univ % cells(n_cells_in_univ))
       univ % n_cells = n_cells_in_univ
 
-      ! move to next universe
-      pair_list => pair_list % next
+      ! Move to next universe
+      next => current % next
+      deallocate(current)
+      current => next
     end do
 
     ! Also allocate a list for keeping track of where cells have been assigned
@@ -399,16 +532,19 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! get pointer to corresponding universe
+      ! Get pointer to corresponding universe
       i_univ = universe_dict % get_key(c % universe)
       univ => universes(i_univ)
 
-      ! increment the index for the cells array within the Universe object and
+      ! Increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
-    
+
+    ! Clear dictionary
+    call cells_in_univ_dict % clear()
+
   end subroutine prepare_universes
 
 !===============================================================================
@@ -425,6 +561,7 @@ contains
     integer :: j             ! index for various purposes
     integer :: k             ! loop index for lattices
     integer :: m             ! loop index for lattices
+    integer :: mid, lid      ! material and lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
     integer :: i_array       ! index in surfaces/materials array 
     integer :: id            ! user-specified id
@@ -484,8 +621,20 @@ contains
           c % type = CELL_FILL
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
+          lid = lattice_dict % get_key(id)
+          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
-          c % fill = lattice_dict % get_key(id)
+          c % fill = lid
+          if (mid == MATERIAL_VOID) then
+            c % material = mid
+          else if (material_dict % has_key(mid)) then
+            c % material = material_dict % get_key(mid)
+          else
+            message = "Could not find material " // trim(to_str(mid)) // &
+               " specified on lattice " // trim(to_str(lid))
+            call fatal_error()
+          end if
+          
         else
           message = "Specified fill " // trim(to_str(id)) // " on cell " // &
                trim(to_str(c % id)) // " is neither a universe nor a lattice."
@@ -672,15 +821,37 @@ contains
 
   subroutine calculate_work()
 
-    ! Determine maximum amount of particles to simulate on each processor
-    maxwork = ceiling(real(n_particles)/n_procs,8)
+    integer    :: i         ! loop index
+    integer    :: remainder ! Number of processors with one extra particle
+    integer(8) :: i_bank    ! Running count of number of particles
+    integer(8) :: min_work  ! Minimum number of particles on each proc
+    integer(8) :: work_i    ! Number of particles on rank i
 
-    ! ID's of first and last source particles
-    bank_first = rank*maxwork + 1
-    bank_last  = min((rank+1)*maxwork, n_particles)
+    allocate(work_index(0:n_procs))
 
-    ! number of particles for this processor
-    work = bank_last - bank_first + 1
+    ! Determine minimum amount of particles to simulate on each processor
+    min_work = n_particles/n_procs
+
+    ! Determine number of processors that have one extra particle
+    remainder = int(mod(n_particles, int(n_procs,8)), 4)
+
+    i_bank = 0
+    work_index(0) = 0
+    do i = 0, n_procs - 1
+      ! Number of particles for rank i
+      if (i < remainder) then
+        work_i = min_work + 1
+      else
+        work_i = min_work
+      end if
+
+      ! Set number of particles
+      if (rank == i) work = work_i
+
+      ! Set index into source bank for rank i
+      i_bank = i_bank + work_i
+      work_index(i+1) = i_bank
+    end do
 
   end subroutine calculate_work
 
@@ -690,10 +861,10 @@ contains
 
   subroutine allocate_banks()
 
-    integer    :: alloc_err  ! allocation error code
+    integer :: alloc_err  ! allocation error code
 
     ! Allocate source bank
-    allocate(source_bank(maxwork), STAT=alloc_err)
+    allocate(source_bank(work), STAT=alloc_err)
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
@@ -701,8 +872,27 @@ contains
       call fatal_error()
     end if
 
-    ! Allocate fission bank
-    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+#ifdef _OPENMP
+    ! If OpenMP is being used, each thread needs its own private fission
+    ! bank. Since the private fission banks need to be combined at the end of a
+    ! generation, there is also a 'master_fission_bank' that is used to collect
+    ! the sites from each thread.
+
+    n_threads = omp_get_max_threads()
+
+!$omp parallel
+    thread_id = omp_get_thread_num()
+
+    if (thread_id == 0) then
+       allocate(fission_bank(3*work))
+    else
+       allocate(fission_bank(3*work/n_threads))
+    end if
+!$omp end parallel
+    allocate(master_fission_bank(3*work), STAT=alloc_err)
+#else
+    allocate(fission_bank(3*work), STAT=alloc_err)
+#endif
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then

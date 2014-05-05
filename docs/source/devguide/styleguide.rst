@@ -35,17 +35,17 @@ Don't use ``print *`` or ``write(*,*)``. If writing to a file, use a specific
 unit. Writing to standard output or standard error should be handled by the
 ``write_message`` subroutine or functionality in the error module.
 
--------------------------
-Subroutines and Functions
--------------------------
+----------
+Procedures
+----------
 
-Above each subroutine/function, include a comment block giving a brief
-description of what the subroutine or function does.
+Above each procedure, include a comment block giving a brief description of what
+the procedure does.
 
-Arguments to subroutines/functions should be explicitly specified as intent(in),
-intent(out), or intent(inout).
+Nonpointer dummy arguments to procedures should be explicitly specified as
+intent(in), intent(out), or intent(inout).
 
-Include a comment describing what each argument to a subroutine/function is.
+Include a comment describing what each argument to a procedure is.
 
 ---------
 Variables
@@ -133,9 +133,11 @@ value of f90-continuation-indent in Emacs.
 Whitespace in Expressions
 -------------------------
 
+Use a single space between arguments to procedures. 
+
 Avoid extraneous whitespace in the following situations:
 
-- In subroutine/function calls::
+- In procedure calls::
 
     Yes: call somesub(x, y(2), z)
     No:  call somesub( x, y( 2 ), z )

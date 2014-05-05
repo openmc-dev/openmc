@@ -1,6 +1,6 @@
 module cmfd_slepc_solver
 
-#ifdef PETSC
+#ifdef SLEPC
   use cmfd_loss_operator, only: loss_operator, init_M_operator, &
                                 build_loss_matrix, destroy_M_operator
   use cmfd_prod_operator, only: prod_operator, init_F_operator, &
@@ -162,7 +162,8 @@ contains
     cmfd%phi = ZERO
 
     ! extract run information
-    call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL, phi, PETSC_NULL_OBJECT, ierr)
+    call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL_DOUBLE, phi, &
+	  PETSC_NULL_OBJECT, ierr)
 
     ! get ownership range
     call VecGetOwnershipRange(phi, row_start, row_end, ierr)

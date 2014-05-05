@@ -2,152 +2,97 @@ module particle_restart
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use bank_header,     only: Bank
+  use bank_header,      only: Bank
   use constants
-  use geometry_header, only: BASE_UNIVERSE
+  use geometry_header,  only: BASE_UNIVERSE
   use global
-  use particle_header, only: deallocate_coord
-  use output,          only: write_message
-  use physics,         only: transport
-  use random_lcg,      only: set_particle_seed
-  use source,          only: initialize_particle
-
-#ifdef HDF5
-  use hdf5_interface 
-#endif
+  use output,           only: write_message, print_particle
+  use output_interface, only: BinaryOutput
+  use particle_header,  only: Particle
+  use random_lcg,       only: set_particle_seed
+  use tracking,         only: transport
 
   implicit none
   private
   public ::  run_particle_restart
 
-#ifdef HDF5
-  integer(HID_T) :: hdf5_particle_file
-#endif
-
-  ! Short names for output and error units
-  integer :: ou = OUTPUT_UNIT
-  integer :: eu = ERROR_UNIT
+  ! Binary file
+  type(BinaryOutput) :: pr
 
 contains
 
-#ifdef HDF5
-
 !===============================================================================
-! READ_HDF5_PARTICLE_RESTART
-!===============================================================================
-
-  subroutine read_hdf5_particle_restart()
-
-    integer(HSIZE_T)        :: dims1(1)
-
-    ! write meessage
-    message = "Loading particle restart file " // trim(path_particle_restart) &
-              // "..."
-    call write_message(1)
-
-    ! open hdf5 file
-    call h5fopen_f(path_particle_restart, H5F_ACC_RDONLY_F, hdf5_particle_file,&
-                   hdf5_err)
-
-    ! read data from file
-    call hdf5_read_integer(hdf5_particle_file, 'current_batch', current_batch)
-    call hdf5_read_integer(hdf5_particle_file, 'gen_per_batch', gen_per_batch)
-    call hdf5_read_integer(hdf5_particle_file, 'current_gen', current_gen)
-    call hdf5_read_long(hdf5_particle_file, 'n_particles', n_particles)
-    call hdf5_read_long(hdf5_particle_file, 'id', p % id)
-    call hdf5_read_double(hdf5_particle_file, 'weight', p % wgt)
-    call hdf5_read_double(hdf5_particle_file, 'energy', p % E)
-    dims1 = (/3/)
-    call h5ltread_dataset_double_f(hdf5_particle_file, 'xyz', p % coord % xyz, &
-         dims1, hdf5_err)
-    call h5ltread_dataset_double_f(hdf5_particle_file, 'uvw', p % coord % uvw, &
-         dims1, hdf5_err)
-
-    ! set particle last attributes
-    p % last_wgt = p % wgt
-    p % last_xyz = p % coord % xyz
-    p % last_E   = p % E
-
-    ! close hdf5 file
-    call h5fclose_f(hdf5_particle_file, hdf5_err)
-
-  end subroutine read_hdf5_particle_restart
-
-#endif
-
-!===============================================================================
-! READ_BINARY_PARTICLE_RESTART
-!===============================================================================
-
-  subroutine read_binary_particle_restart()
-
-    ! write meessage
-    message = "Loading particle restart file " // trim(path_particle_restart) &
-              // "..."
-    call write_message(1)
-
-    ! open file
-    open(UNIT=UNIT_PARTICLE, FILE=path_particle_restart, STATUS='old', &
-         ACCESS='stream')
-
-    ! read data from file
-    read(UNIT_PARTICLE) current_batch
-    read(UNIT_PARTICLE) gen_per_batch
-    read(UNIT_PARTICLE) current_gen
-    read(UNIT_PARTICLE) n_particles
-    read(UNIT_PARTICLE) p % id
-    read(UNIT_PARTICLE) p % wgt
-    read(UNIT_PARTICLE) p % E
-    read(UNIT_PARTICLE) p % coord % xyz
-    read(UNIT_PARTICLE) p % coord % uvw
-
-    ! set particle last attributes
-    p % last_wgt = p % wgt
-    p % last_xyz = p % coord % xyz
-    p % last_E   = p % E
-
-    ! close hdf5 file
-    close(UNIT_PARTICLE)
-
-  end subroutine read_binary_particle_restart
-
-!===============================================================================
-! RUN_PARTICLE_RESTART
+! RUN_PARTICLE_RESTART is the main routine that runs the particle restart
 !===============================================================================
 
   subroutine run_particle_restart()
 
     integer(8) :: particle_seed
+    type(Particle) :: p
 
-    ! initialize the particle to be tracked
-    allocate(p)
-    call initialize_particle()
+    ! Set verbosity high
+    verbosity = 10
 
-    ! read in the restart information
-#ifdef HDF5
-    call read_hdf5_particle_restart()
-#else
-    call read_binary_particle_restart()
-#endif
+    ! Initialize the particle to be tracked
+    call p % initialize()
 
-    ! set all tallies to 0 for now (just tracking errors)
+    ! Read in the restart information
+    call read_particle_restart(p)
+
+    ! Set all tallies to 0 for now (just tracking errors)
     n_tallies = 0
 
-    ! compute random number seed
+    ! Compute random number seed
     particle_seed = ((current_batch - 1)*gen_per_batch + &
          current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
-    ! transport neutron
-    call transport()
+    ! Transport neutron
+    call transport(p)
 
-    ! write output if particle made it
-    write(ou,*) 'Particle Successfully Transport:'
-    write(ou,*) 'WEIGHT:', p % wgt
-    write(ou,*) 'ENERGY:', p % E
-    write(ou,*) 'LOCATION:', p % coord % xyz
-    write(ou,*) 'ANGLE:', p % coord % uvw
+    ! Write output if particle made it
+    call print_particle(p)
 
   end subroutine run_particle_restart
+
+!===============================================================================
+! READ_PARTICLE_RESTART reads the particle restart file
+!===============================================================================
+
+  subroutine read_particle_restart(p)
+
+    integer :: int_scalar
+    type(Particle), intent(inout) :: p
+
+    ! Write meessage
+    message = "Loading particle restart file " // trim(path_particle_restart) &
+              // "..."
+    call write_message(1)
+
+    ! Open file
+    call pr % file_open(path_particle_restart, 'r')
+
+    ! Read data from file
+    call pr % read_data(int_scalar, 'filetype')
+    call pr % read_data(int_scalar, 'revision')
+    call pr % read_data(current_batch, 'current_batch')
+    call pr % read_data(gen_per_batch, 'gen_per_batch')
+    call pr % read_data(current_gen, 'current_gen')
+    call pr % read_data(n_particles, 'n_particles')
+    call pr % read_data(p % id, 'id')
+    call pr % read_data(p % wgt, 'weight')
+    call pr % read_data(p % E, 'energy')
+    call pr % read_data(p % coord % xyz, 'xyz', length=3)
+    call pr % read_data(p % coord % uvw, 'uvw', length=3)
+
+    ! Set particle last attributes
+    p % last_wgt = p % wgt
+    p % last_xyz = p % coord % xyz
+    p % last_E   = p % E
+
+    ! Close hdf5 file
+    call pr % file_close()
+
+  end subroutine read_particle_restart
 
 end module particle_restart

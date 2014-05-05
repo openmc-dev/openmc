@@ -50,6 +50,15 @@ Prerequisites
 
           sudo apt-get install gfortran
 
+    * CMake_ cross-platform build system
+
+      The compiling and linking of source files is handled by CMake in a
+      platform-independent manner. If you are using Debian or a Debian
+      derivative such as Ubuntu, you can install CMake using the following
+      command::
+
+          sudo apt-get install cmake
+
 .. admonition:: Optional
 
     * An MPI implementation for distributed-memory parallel runs
@@ -71,17 +80,34 @@ Prerequisites
       To compile with support for HDF5_ output (highly recommended), you will
       need to have HDF5 installed on your computer. The installed version will
       need to have been compiled with the same compiler you intend to compile
-      OpenMC with.
+      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
+      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
+
+           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
+                       --enable-fortran2003 --enable-parallel
+
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
     * PETSc_ for CMFD acceleration
 
-      To enable CMFD acceleration, you will need to have PETSc_ installed on
-      your computer. The installed version will need to have been compiled with
-      the same compiler you intend to compile OpenMC with.
+      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
+      installed on your computer. The installed version will need to have been
+      compiled with the same compiler you intend to compile OpenMC with. OpenMC
+      requires PETSc_ to be configured with Fortran datatypes. An example of
+      configuring PETSc_ is listed below::
+
+           ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
+                       --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
+                       --with-fortran-datatypes
+
+      The BLAS/LAPACK library is not required to be downloaded and can be linked
+      explicitly (e.g., Intel MKL library).
 
     * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
+.. _CMake: http://www.cmake.org
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
@@ -102,6 +128,12 @@ repository::
 
     git clone git://github.com/mit-crpg/openmc.git
 
+By default, the cloned repository will be set to the development branch. To
+switch to the source of the latest stable release, run the following commands::
+
+    cd openmc/src
+    git checkout master
+
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
@@ -109,46 +141,95 @@ repository::
 Build Configuration
 -------------------
 
-All configuration for OpenMC is done within the Makefile located in
-``src/Makefile``. In the Makefile, you will see that there are a number of User
-Options which can be changed. It is recommended that you do not change anything
-else in the Makefile unless you are experienced with compiling and building
-software using Makefiles. The following parameters can be set from the User
-Options sections in the Makefile:
+Compiling OpenMC with CMake is carried out in two steps. First, ``cmake`` is run
+to determine the compiler, whether optional packages (MPI, HDF5, PETSc) are
+available, to generate a list of dependencies between source files so that they
+may be compiled in the correct order, and to generate a normal Makefile. The
+Makefile is then used by ``make`` to actually carry out the compile and linking
+commands. A typical out-of-source build would thus look something like the
+following
 
-COMPILER
-  This variable tells the Makefile which compiler to use. Valid options are
-  gnu, intel, pgi, ibm, and cray. The default is gnu (gfortran).
+.. code-block:: sh
 
-DEBUG
+    mkdir src/build
+    cd src/build
+    cmake ..
+    make
+
+Note that first a build directory is created as a subdirectory of the source
+directory. The Makefile in ``src/`` will automatically perform an out-of-source
+build with default options.
+
+CMakeLists.txt Options
+++++++++++++++++++++++
+
+The following options are available in the CMakeLists.txt file:
+
+debug
   Enables debugging when compiling. The flags added are dependent on which
   compiler is used.
 
-PROFILE
+profile
   Enables profiling using the GNU profiler, gprof.
 
-OPTIMIZE
+optimize
   Enables high-optimization using compiler-dependent flags. For gfortran and
   Intel Fortran, this compiles with -O3.
 
-MPI
-  Enables parallel runs using the Message Passing Interface. The MPI_DIR
-  variable should be set to the base directory of the MPI implementation.
+openmp
+  Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+  being used must support OpenMP.
 
-HDF5
-  Enables HDF5 output in addition to normal screen and text file output. The
-  HDF5_DIR variable should be set to the base directory of the HDF5
-  installation.
-
-PETSC
+petsc
   Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
   set to the base directory of the PETSc installation.
 
-It is also possible to change these options from the command line itself. For
-example, if you want to compile with DEBUG turned on without actually change the
-Makefile, you can enter the following from a terminal::
+To set any of these options (e.g. turning on debug mode), the following form
+should be used:
 
-    make DEBUG=yes
+.. code-block:: sh
+
+    cmake -Ddebug=on /path/to/src
+
+Compiling with MPI
+++++++++++++++++++
+
+To compile with MPI, set the :envvar:`FC` environment variable to the path to
+the MPI Fortran wrapper. For example, in a bash shell:
+
+.. code-block:: sh
+
+    export FC=mpif90
+    cmake /path/to/src
+
+Note that in many shells, an environment variable can be set for a single
+command, i.e.
+
+.. code-block:: sh
+
+    FC=mpif90 cmake /path/to/src
+
+Compiling with HDF5
++++++++++++++++++++
+
+To compile with MPI, set the :envvar:`FC` environment variable to the path to
+the HDF5 Fortran wrapper. For example, in a bash shell:
+
+.. code-block:: sh
+
+    export FC=h5fc
+    cmake /path/to/src
+
+As noted above, an environment variable can typically be set for a single
+command, i.e.
+
+.. code-block:: sh
+
+    FC=h5fc cmake /path/to/src
+
+To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
+``h5pfc`` instead. Note that this requires that your HDF5 installation be
+compiled with ``--enable-parallel``.
 
 Compiling on Linux and Mac OS X
 -------------------------------
@@ -163,7 +244,15 @@ the root directory of the source code:
     sudo make install
 
 This will build an executable named ``openmc`` and install it (by default in
-/usr/local/bin).
+/usr/local/bin). If you do not have administrative privileges, you can install
+OpenMC locally by replacing the last command with:
+
+.. code-block:: sh
+
+    make install -e prefix=$HOME/.local
+
+The ``prefix`` variable can be changed to any path for which you have
+write-access.
 
 Compiling on Windows
 --------------------
@@ -176,9 +265,10 @@ a Linux-like environment for Windows. You will need to first `install
 Cygwin`_. When you are asked to select packages, make sure the following are
 selected:
 
-* Devel: gcc4-core
-* Devel: gcc4-fortran
+* Devel: gcc-core
+* Devel: gcc-fortran
 * Devel: make
+* Devel: cmake
 
 If you plan on obtaining the source code directly using git, select the
 following packages:
@@ -232,14 +322,58 @@ This will build an executable named ``openmc``.
 .. _MinGW: http://www.mingw.org
 .. _SourceForge: http://sourceforge.net/projects/mingw
 
+Testing Build
+-------------
+
+If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
+Make sure the **CROSS_SECTIONS** environmental variable is set to the 
+*cross_sections.xml* file in the *data/nndc* directory.
+There are two ways to run tests. The first is to use the Makefile present in
+the source directory and run the following:
+
+.. code-block:: sh
+
+    cd src
+    make test
+
+If you want more options for testing you can use ctest_ command. For example,
+if we wanted to run only the plot tests with 4 processors, we run:
+
+.. code-block:: sh
+
+    cd src/build
+    ctest -j 4 -R plot
+
+If you want to run the full test suite with different build options please
+refer to our :ref:`test suite` documentation.
+
 ---------------------------
 Cross Section Configuration
 ---------------------------
 
 In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY, such as that distributed with
-MCNP_ or Serpent_.
+can use nuclear data that was processed with NJOY_, such as that distributed
+with MCNP_ or Serpent_. Several sources provide free processed ACE data as
+described below. The TALYS-based evaluated nuclear data library, TENDL_, is also
+openly available in ACE format.
+
+Using ENDF/B-VII.1 Cross Sections from NNDC
+-------------------------------------------
+
+The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
+sublibraries at four temperatures processed using NJOY_. To use this data with
+OpenMC, a script is provided with OpenMC that will automatically download,
+extract, and set up a confiuration file:
+
+.. code-block:: sh
+
+    cd openmc/data
+    python get_nndc_data.py
+
+At this point, you should set the :envvar:`CROSS_SECTIONS` environment variable
+to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``. This
+cross section set is used by the test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -287,11 +421,14 @@ distribution to the location of the Serpent cross sections. Then, either set the
 environment variable to the absolute path of the ``cross_sections_serpent.xml``
 file.
 
+.. _NJOY: http://t2.lanl.gov/nis/codes.shtml
+.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _NEA: http://www.oecd-nea.org
 .. _JEFF: http://www.oecd-nea.org/dbdata/jeff/
 .. _here: http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
+.. _TENDL: ftp://ftp.nrg.eu/pub/www/talys/tendl2012/tendl2012.html
 
 --------------
 Running OpenMC
@@ -318,6 +455,21 @@ Alternatively, you could run from any directory:
 Note that in the latter case, any output files will be placed in the present
 working directory which may be different from ``/home/username/somemodel``.
 
+Command-Line Flags
+------------------
+
+OpenMC accepts the following command line flags:
+
+-g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
+                       checked for after each move of a particle
+-n, --particles N      Use *N* particles per generation or batch
+-p, --plot             Run in plotting mode
+-r, --restart file     Restart a previous run from a state point or a particle
+                       restart file
+-s, --threads N        Run with *N* OpenMP threads
+-t, --track            Write tracks for all particles
+-v, --version          Show version information
+
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode
 -----------------------------------------------------
@@ -341,3 +493,5 @@ schemas.xml file in your own OpenMC source directory.
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

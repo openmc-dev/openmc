@@ -87,7 +87,7 @@ contains
        ! =======================================================================
        ! EXTEND CROSS SECTION TO 0 ASSUMING 1/V SHAPE
 
-       if (k == 1 .and. a >= 4.0) then
+       if (k == 1 .and. a >= -4.0) then
           ! Since x = 0, this implies that a = -y
           F_b = F_a
           a = -y
@@ -101,7 +101,7 @@ contains
        end if
 
        ! =======================================================================
-       ! EVALUATE FIRST TERM FROM x(k) - y = 0 to -4
+       ! EVALUATE FIRST TERM FROM x(k) - y = 0 to 4
 
        k = i
        b = ZERO

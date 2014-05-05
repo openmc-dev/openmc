@@ -19,16 +19,19 @@ module list_header
   type :: ListElemInt
     integer :: data
     type(ListElemInt), pointer :: next => null()
+    type(ListElemInt), pointer :: prev => null()
   end type ListElemInt
 
   type :: ListElemReal
     real(8) :: data
     type(ListElemReal), pointer :: next => null()
+    type(ListElemReal), pointer :: prev => null()
   end type ListElemReal
 
   type :: ListElemChar
     character(MAX_WORD_LEN) :: data
     type(ListElemChar), pointer :: next => null()
+    type(ListElemChar), pointer :: prev => null()
   end type ListElemChar
 
 !===============================================================================
@@ -128,6 +131,7 @@ contains
     else
       ! Otherwise append element at end of list
       this % tail % next => elem
+      elem % prev => this % tail
       this % tail => this % tail % next
     end if
 
@@ -152,6 +156,7 @@ contains
     else
       ! Otherwise append element at end of list
       this % tail % next => elem
+      elem % prev => this % tail
       this % tail => this % tail % next
     end if
 
@@ -176,6 +181,7 @@ contains
     else
       ! Otherwise append element at end of list
       this % tail % next => elem
+      elem % prev => this % tail
       this % tail => this % tail % next
     end if
 
@@ -499,8 +505,13 @@ contains
 
     else
       ! Default case with new element somewhere in middle of list
-      i = 0
-      elem => this % head
+      if (i_list >= this % last_index) then
+        i = this % last_index
+        elem => this % last_elem
+      else
+        i = 0
+        elem => this % head
+      end if
       do while (associated(elem))
         i = i + 1
         if (i == i_list - 1) then
@@ -509,11 +520,17 @@ contains
           new_elem % data = data
           
           ! Put it before the i-th element
-          new_elem % next => elem % next
-          elem % next => new_elem
+          new_elem % prev => elem % prev
+          new_elem % next => elem
+          new_elem % prev % next => new_elem
+          new_elem % next % prev => new_elem
           this % count = this % count + 1
+          this % last_index = i_list
+          this % last_elem => new_elem
           exit
         end if
+        i = i + 1
+        elem => elem % next
       end do
     end if
 
@@ -544,21 +561,31 @@ contains
 
     else
       ! Default case with new element somewhere in middle of list
-      i = 0
-      elem => this % head
+      if (i_list >= this % last_index) then
+        i = this % last_index
+        elem => this % last_elem
+      else
+        i = 0
+        elem => this % head
+      end if
       do while (associated(elem))
-        i = i + 1
-        if (i == i_list - 1) then
+        if (i == i_list) then
           ! Allocate new element
           allocate(new_elem)
           new_elem % data = data
           
           ! Put it before the i-th element
-          new_elem % next => elem % next
-          elem % next => new_elem
+          new_elem % prev => elem % prev
+          new_elem % next => elem
+          new_elem % prev % next => new_elem
+          new_elem % next % prev => new_elem
           this % count = this % count + 1
+          this % last_index = i_list
+          this % last_elem => new_elem
           exit
         end if
+        i = i + 1
+        elem => elem % next
       end do
     end if
 
@@ -589,21 +616,31 @@ contains
 
     else
       ! Default case with new element somewhere in middle of list
-      i = 0
-      elem => this % head
+      if (i_list >= this % last_index) then
+        i = this % last_index
+        elem => this % last_elem
+      else
+        i = 0
+        elem => this % head
+      end if
       do while (associated(elem))
-        i = i + 1
-        if (i == i_list - 1) then
+        if (i == i_list) then
           ! Allocate new element
           allocate(new_elem)
           new_elem % data = data
           
           ! Put it before the i-th element
-          new_elem % next => elem % next
-          elem % next => new_elem
+          new_elem % prev => elem % prev
+          new_elem % next => elem
+          new_elem % prev % next => new_elem
+          new_elem % next % prev => new_elem
           this % count = this % count + 1
+          this % last_index = i_list
+          this % last_elem => new_elem
           exit
         end if
+        i = i + 1
+        elem => elem % next
       end do
     end if
 
@@ -620,7 +657,6 @@ contains
     integer        :: data
 
     type(ListElemInt), pointer :: elem => null()
-    type(ListElemInt), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -632,12 +668,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -647,7 +685,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 
@@ -659,7 +696,6 @@ contains
     real(8)         :: data
 
     type(ListElemReal), pointer :: elem => null()
-    type(ListElemReal), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -671,12 +707,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -686,7 +724,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 
@@ -698,7 +735,6 @@ contains
     character(*)    :: data
 
     type(ListElemChar), pointer :: elem => null()
-    type(ListElemChar), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -710,12 +746,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -725,7 +763,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 

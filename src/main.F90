@@ -22,9 +22,6 @@ program main
     call run_eigenvalue()
   case (MODE_PLOTTING)
     call run_plot()
-  case (MODE_TALLIES)
-    ! For tallies-only mode, we just skip straight to finalize_run to write out
-    ! the tally results
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
   end select

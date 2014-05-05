@@ -227,10 +227,11 @@ class Test(object):
         for path in os.environ["PATH"].split(":"):
             if os.path.isfile(os.path.join(path, self.fc)):
                 result = True
-        if not result: 
-            raise Exception("Compiler path '{0}' does not exist."
-                           .format(self.fc)+
-                           "Please set appropriate environmental variable(s).")
+        if not result:
+            self.msg = 'Compiler not found: {0}'.\
+                       format((os.path.join(path, self.fc)))
+            self.success = False
+        return self.success
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
@@ -380,7 +381,8 @@ for key in iter(tests):
         sys.stdout.flush()
 
     # Verify fortran compiler exists
-    test.check_compiler()
+    if not test.check_compiler():
+        continue
 
     # Set test specific CTest script vars. Not used in non-script mode
     ctest_vars.update({'build_name' : test.get_build_name()})

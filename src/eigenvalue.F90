@@ -13,21 +13,21 @@ module eigenvalue
   use mesh_header,  only: StructuredMesh
   use output,       only: write_message, header, print_columns,              &
                           print_batch_keff, print_generation
-  use physics,      only: transport
+  use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
   use source,       only: get_source_particle
-  use state_point,  only: write_state_point, replay_batch_history
+  use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
-
-#ifdef HDF5
-  use hdf5_interface, only: hdf5_write_state_point
-#endif
+  use tracking,     only: transport
 
   private
   public :: run_eigenvalue
+
+  real(8) :: keff_generation ! Single-generation k on each processor
+  real(8) :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
 
 contains
 
@@ -38,13 +38,13 @@ contains
 
   subroutine run_eigenvalue()
 
+    type(Particle) :: p
+    integer        :: i_work
+
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
-    ! Allocate particle
-    allocate(p)
-
     ! Display column titles
-    call print_columns()
+    if(master) call print_columns()
 
     ! Turn on inactive timer
     call time_inactive % start()
@@ -72,29 +72,23 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-        PARTICLE_LOOP: do current_work = 1, work
+!$omp parallel do schedule(static) firstprivate(p)
+        PARTICLE_LOOP: do i_work = 1, work
+          current_work = i_work
 
           ! grab source particle from bank
-          call get_source_particle(current_work)
+          call get_source_particle(p, current_work)
 
           ! transport particle
-          call transport()
+          call transport(p)
 
         end do PARTICLE_LOOP
+!$omp end parallel do
 
         ! Accumulate time for transport
         call time_transport % stop()
 
-        ! Distribute fission bank across processors evenly
-        call time_bank % start()
-        call synchronize_bank()
-        call time_bank % stop()
-
-        ! Calculate shannon entropy
-        if (entropy_on) call shannon_entropy()
-
-        ! Write generation output
-        if (master .and. current_gen /= gen_per_batch) call print_generation()
+        call finalize_generation()
 
       end do GENERATION_LOOP
 
@@ -108,6 +102,9 @@ contains
     ! END OF RUN WRAPUP
 
     if (master) call header("SIMULATION FINISHED", level=1)
+    
+    ! Clear particle
+    call p % clear()
 
   end subroutine run_eigenvalue
 
@@ -133,7 +130,9 @@ contains
       tallies_on = .true.
 
       ! Add user tallies to active tallies list
+!$omp parallel
       call setup_active_usertallies()
+!$omp end parallel
     end if
 
     ! check CMFD initialize batch
@@ -147,13 +146,47 @@ contains
 
   subroutine initialize_generation()
 
+    ! set overall generation number
+    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
+
     ! Reset number of fission bank sites
     n_bank = 0
 
     ! Count source sites if using uniform fission source weighting
     if (ufs) call count_source_for_ufs()
 
+    ! Store current value of tracklength k
+    keff_generation = global_tallies(K_TRACKLENGTH) % value
+
   end subroutine initialize_generation
+
+!===============================================================================
+! FINALIZE_GENERATION
+!===============================================================================
+
+  subroutine finalize_generation()
+
+#ifdef _OPENMP
+    ! Join the fission bank from each thread into one global fission bank
+    call join_bank_from_threads()
+#endif
+
+    ! Distribute fission bank across processors evenly
+    call time_bank % start()
+    call synchronize_bank()
+    call time_bank % stop()
+
+    ! Calculate shannon entropy
+    if (entropy_on) call shannon_entropy()
+
+    ! Collect results and statistics
+    call calculate_generation_keff()
+    call calculate_average_keff()
+
+    ! Write generation output
+    if (master .and. current_gen /= gen_per_batch) call print_generation()
+
+  end subroutine finalize_generation
 
 !===============================================================================
 ! FINALIZE_BATCH handles synchronization and accumulation of tallies,
@@ -168,8 +201,11 @@ contains
     call synchronize_tallies()
     call time_tallies % stop()
 
-    ! Collect results and statistics
-    call calculate_keff()
+    ! Reset global tally results
+    if (.not. active_batches) then
+      call reset_result(global_tallies)
+      n_realizations = 0
+    end if
 
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
@@ -183,11 +219,13 @@ contains
       if (master) call calculate_combined_keff()
 
       ! Create state point file
-#ifdef HDF5
-      call hdf5_write_state_point()
-#else
       call write_state_point()
-#endif
+    end if
+
+    ! Write out source point if it's been specified for this batch
+    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+        source_write) then
+      call write_source_point()
     end if
 
     if (master .and. current_batch == n_batches) then
@@ -240,6 +278,12 @@ contains
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          MPI_COMM_WORLD, mpi_err)
+
+    ! While we would expect the value of start on rank 0 to be 0, the MPI
+    ! standard says that the receive buffer on rank 0 is undefined and not
+    ! significant
+    if (rank == 0) start = 0_8
+
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
@@ -351,7 +395,7 @@ contains
       end if
 
       ! the last processor should not be sending sites to right
-      finish = bank_last
+      finish = work_index(rank + 1)
     end if
 
     call time_bank_sample % stop()
@@ -364,37 +408,39 @@ contains
     index_local = 1
     n_request = 0
 
-    ! Determine the index of the processor which has the first part of the
-    ! source_bank for the local processor
-    neighbor = start / maxwork
+    if (start < n_particles) then
+      ! Determine the index of the processor which has the first part of the
+      ! source_bank for the local processor
+      neighbor = binary_search(work_index, n_procs + 1, start) - 1
 
-    SEND_SITES: do while (start < finish)
-      ! Determine the number of sites to send
-      n = min((neighbor + 1)*maxwork, finish) - start
+      SEND_SITES: do while (start < finish)
+        ! Determine the number of sites to send
+        n = min(work_index(neighbor + 1), finish) - start
 
-      ! Initiate an asynchronous send of source sites to the neighboring
-      ! process
-      if (neighbor /= rank) then
-        n_request = n_request + 1
-        call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
-             rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-      end if
+        ! Initiate an asynchronous send of source sites to the neighboring
+        ! process
+        if (neighbor /= rank) then
+          n_request = n_request + 1
+          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
+               rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+        end if
 
-      ! Increment all indices
-      start       = start       + n
-      index_local = index_local + n
-      neighbor    = neighbor    + 1
+        ! Increment all indices
+        start       = start       + n
+        index_local = index_local + n
+        neighbor    = neighbor    + 1
 
-      ! Check for sites out of bounds -- this only happens in the rare
-      ! circumstance that a processor close to the end has so many sites that
-      ! it would exceed the bank on the last processor
-      if (neighbor > n_procs - 1) exit
-    end do SEND_SITES
+        ! Check for sites out of bounds -- this only happens in the rare
+        ! circumstance that a processor close to the end has so many sites that
+        ! it would exceed the bank on the last processor
+        if (neighbor > n_procs - 1) exit
+      end do SEND_SITES
+    end if
 
     ! ==========================================================================
     ! RECEIVE BANK SITES FROM NEIGHBORS OR TEMPORARY BANK
 
-    start = bank_first - 1
+    start = work_index(rank)
     index_local = 1
 
     ! Determine what process has the source sites that will need to be stored at
@@ -406,13 +452,12 @@ contains
       neighbor = binary_search(bank_position, n_procs, start) - 1
     end if
 
-    RECV_SITES: do while (start < bank_last)
+    RECV_SITES: do while (start < work_index(rank + 1))
       ! Determine how many sites need to be received
       if (neighbor == n_procs - 1) then
-        n = min(n_particles, (rank+1)*maxwork) - start
+        n = work_index(rank + 1) - start
       else
-        n = min(bank_position(neighbor+2), min(n_particles, &
-             (rank+1)*maxwork)) - start
+        n = min(bank_position(neighbor + 2), work_index(rank + 1)) - start
       end if
 
       if (neighbor /= rank) then
@@ -534,109 +579,73 @@ contains
   end subroutine shannon_entropy
 
 !===============================================================================
-! CALCULATE_KEFF calculates the single batch estimate of keff as well as the
-! mean and standard deviation of the mean for active batches
+! CALCULATE_GENERATION_KEFF collects the single-processor tracklength k's onto
+! the master processor and normalizes them. This should work whether or not the
+! no-reduce method is being used.
 !===============================================================================
 
-  subroutine calculate_keff()
+  subroutine calculate_generation_keff()
 
-    real(8) :: temp(2) ! used to reduce sum and sum_sq
-    real(8) :: alpha   ! significance level for CI
-    real(8) :: t_value ! t-value for confidence intervals
-
-    message = "Calculate batch keff..."
-    call write_message(8)
-
-    ! =========================================================================
-    ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
+    ! Get keff for this generation by subtracting off the starting value
+    keff_generation = global_tallies(K_TRACKLENGTH) % value - keff_generation
 
 #ifdef MPI
-    if (.not. reduce_tallies) then
-      ! Reduce value of k_batch if running in parallel
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-      else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-      end if
-    end if
+    ! Combine values across all processors
+    call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
+         MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, mpi_err)
+#else
+    k_generation(overall_gen) = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
-    if (master) then
-      k_batch(current_batch) = k_batch(current_batch) / &
-           (n_particles * gen_per_batch)
-    end if
+    ! TODO: This should be normalized by total_weight, not by n_particles
+    k_generation(overall_gen) = k_generation(overall_gen) / n_particles
 
-    ! =========================================================================
-    ! ACCUMULATED K-EFFECTIVE AND ITS VARIANCE
+  end subroutine calculate_generation_keff
 
-    if (reduce_tallies) then
-      ! In this case, global_tallies has already been reduced, so we don't
-      ! need to perform any more reductions and just take the values from
-      ! global_tallies directly
+!===============================================================================
+! CALCULATE_AVERAGE_KEFF calculates the mean and standard deviation of the mean
+! of k-effective during active generations and broadcasts the mean to all
+! processors
+!===============================================================================
 
-      ! Sample mean of keff
-      keff = global_tallies(K_TRACKLENGTH) % sum / n_realizations
+  subroutine calculate_average_keff()
 
-      if (n_realizations > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-        else
-          t_value = ONE
-        end if
+    integer :: n        ! number of active generations
+    real(8) :: alpha    ! significance level for CI
+    real(8) :: t_value  ! t-value for confidence intervals
 
-        ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((global_tallies(K_TRACKLENGTH) % sum_sq / &
-             n_realizations - keff * keff) / (n_realizations - 1))
-      end if
+    ! Determine number of active generations
+    n = overall_gen - n_inactive*gen_per_batch
+
+    if (n <= 0) then
+      ! For inactive generations, use current generation k as estimate for next
+      ! generation
+      keff = k_generation(overall_gen)
+
     else
-      ! In this case, no reduce was ever done on global_tallies. Thus, we need
-      ! to reduce the values in sum and sum^2 to get the sample mean and its
-      ! standard deviation
+      ! Sample mean of keff
+      k_sum(1) = k_sum(1) + k_generation(overall_gen)
+      k_sum(2) = k_sum(2) + k_generation(overall_gen)**2
 
-#ifdef MPI
-      call MPI_REDUCE(global_tallies(K_TRACKLENGTH) % sum, temp, 2, &
-           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-#else
-      temp(1) = global_tallies(K_TRACKLENGTH) % sum
-      temp(2) = global_tallies(K_TRACKLENGTH) % sum_sq
-#endif
+      ! Determine mean
+      keff = k_sum(1) / n
 
-      ! Sample mean of k
-      keff = temp(1) / n_realizations
-
-      if (n_realizations > 1) then
+      if (n > 1) then
         if (confidence_intervals) then
           ! Calculate t-value for confidence intervals
           alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+          t_value = t_percentile(ONE - alpha/TWO, n - 1)
         else
           t_value = ONE
         end if
 
         ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
-             (n_realizations - 1))
+        keff_std = t_value * sqrt((k_sum(2)/n - keff**2) / (n - 1))
       end if
     end if
 
-#ifdef MPI
-    ! Broadcast new keff value to all processors
-    call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
-#endif
-
-    ! Reset global tally results
-    if (.not. active_batches) then
-      call reset_result(global_tallies)
-      n_realizations = 0
-    end if
-
-  end subroutine calculate_keff
+  end subroutine calculate_average_keff
 
 !===============================================================================
 ! CALCULATE_COMBINED_KEFF calculates a minimum variance estimate of k-effective
@@ -759,7 +768,7 @@ contains
     else
       ! count number of source sites in each ufs mesh cell
       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
-           sites_outside=sites_outside)
+           sites_outside=sites_outside, size_bank=work)
 
       ! Check for sites outside of the mesh
       if (master .and. sites_outside) then
@@ -784,5 +793,79 @@ contains
     end if
 
   end subroutine count_source_for_ufs
+
+!===============================================================================
+! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
+! batch using data read from a state point file
+!===============================================================================
+
+  subroutine replay_batch_history
+
+    ! Write message at beginning
+    if (current_batch == 1) then
+      message = "Replaying history from state point..."
+      call write_message(1)
+    end if
+
+    do current_gen = 1, gen_per_batch
+      overall_gen = overall_gen + 1
+      call calculate_average_keff()
+
+      ! print out batch keff
+      if (current_gen < gen_per_batch) then
+        if (master) call print_generation()
+      else
+        if (master) call print_batch_keff()
+      end if
+    end do
+
+    ! Write message at end
+    if (current_batch == restart_batch) then
+      message = "Resuming simulation..."
+      call write_message(1)
+    end if
+
+  end subroutine replay_batch_history
+
+#ifdef _OPENMP
+!===============================================================================
+! JOIN_BANK_FROM_THREADS
+!===============================================================================
+
+  subroutine join_bank_from_threads()
+
+    integer :: total ! total number of fission bank sites
+    integer :: i     ! loop index for threads
+
+    ! Initialize the total number of fission bank sites
+    total = 0
+
+!$omp parallel
+
+    ! Copy thread fission bank sites to one shared copy
+!$omp do ordered schedule(static)
+    do i = 1, n_threads
+!$omp ordered
+       master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+       total = total + n_bank
+!$omp end ordered
+    end do
+!$omp end do
+
+    ! Make sure all threads have made it to this point
+!$omp barrier
+
+    ! Now copy the shared fission bank sites back to the master thread's copy.
+    if (thread_id == 0) then
+       n_bank = total
+       fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+    else
+       n_bank = 0
+    end if
+
+!$omp end parallel
+
+  end subroutine join_bank_from_threads
+#endif
 
 end module eigenvalue

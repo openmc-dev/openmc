@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 import sys
@@ -15,6 +15,7 @@ elements = [None, "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",
             "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
             "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg",
             "Cn"]
+
 
 class Xsdir(object):
 
@@ -34,8 +35,12 @@ class Xsdir(object):
         words = line.split()
         if words:
             if words[0].lower().startswith('datapath'):
-                index = line.index('=')
-                self.datapath = line[index+1:].strip()
+                if '=' in words[0]:
+                    index = line.index('=')
+                    self.datapath = line[index+1:].strip()
+                else:
+                    if len(line.strip()) > 8:
+                        self.datapath = line[8:].strip()
             else:
                 self.f.seek(0)
 
@@ -54,14 +59,14 @@ class Xsdir(object):
             # Check for end of second section
             if len(words) % 2 != 0 or words[0] == 'directory':
                 break
-            
+
             for zaid, awr in zip(words[::2], words[1::2]):
                 self.awr[zaid] = awr
 
         # Read third section
         while words[0] != 'directory':
             words = self.f.readline().split()
-            
+
         while True:
             words = self.f.readline().split()
             if not words:
@@ -70,13 +75,13 @@ class Xsdir(object):
             # Handle continuation lines
             while words[-1] == '+':
                 extraWords = self.f.readline().split()
-                words = words + extraWords
+                words = words[:-1] + extraWords
             assert len(words) >= 7
 
             # Create XsdirTable object and add to line
             table = XsdirTable(self.directory)
             self.tables.append(table)
-            
+
             # All tables have at least 7 attributes
             table.name = words[0]
             table.awr = float(words[1])
@@ -115,7 +120,6 @@ class Xsdir(object):
             self.entries = list(self.entries)[0]
         else:
             self.recordlength = None
-            
 
     def to_xml(self):
         # Create XML document
@@ -154,7 +158,7 @@ class Xsdir(object):
 
         # Add a node for each table
         for table in self.tables:
-            if table.name[-1] in ['e', 'p', 'u', 'h', 'g' ,'m', 'd']:
+            if table.name[-1] in ['e', 'p', 'u', 'h', 'g', 'm', 'd']:
                 continue
             node = table.to_xml_node(doc)
             root.appendChild(node)
@@ -212,22 +216,25 @@ class XsdirTable(object):
     @property
     def alias(self):
         zaid = self.zaid
-        Z = int(zaid[:-3])
-        A = zaid[-3:]
+        if zaid:
+            Z = int(zaid[:-3])
+            A = zaid[-3:]
 
-        if A == '000':
-            s = 'Nat'
-        elif zaid == '95242':
-            s = '242m'
-        elif zaid == '95642':
-            s = '242'
-        elif int(A) > 300:
-            s = str(int(A) - 400) + "m"
+            if A == '000':
+                s = 'Nat'
+            elif zaid == '95242':
+                s = '242m'
+            elif zaid == '95642':
+                s = '242'
+            elif int(A) > 300:
+                s = str(int(A) - 400) + "m"
+            else:
+                s = str(int(A))
+
+            return "{0}-{1}.{2}".format(elements[Z], s, self.xs)
         else:
-            s = str(int(A))
+            return None
 
-        return "{0}-{1}.{2}".format(elements[Z], s, self.xs)
-        
     @property
     def zaid(self):
         if self.name.endswith('c'):
@@ -242,10 +249,10 @@ class XsdirTable(object):
     def to_xml_node(self, doc):
         node = doc.createElement("ace_table")
         node.setAttribute("name", self.name)
-        for attribute in ["alias", "zaid", "type", "metastable", "awr", 
+        for attribute in ["alias", "zaid", "type", "metastable", "awr",
                           "temperature", "path", "location"]:
             if hasattr(self, attribute):
-                string = str(getattr(self,attribute))
+                string = str(getattr(self, attribute))
 
                 # Skip metastable and binary if 0
                 if attribute == "metastable" and self.metastable == 0:
@@ -271,7 +278,7 @@ if __name__ == '__main__':
     # Read xsdata and create XML document object
     xsdirObject = Xsdir(xsdirFile)
     doc = xsdirObject.to_xml()
-    
+
     # Reduce number of lines
     lines = doc.toprettyxml(indent='  ')
 

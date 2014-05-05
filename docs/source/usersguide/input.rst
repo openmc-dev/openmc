@@ -182,6 +182,29 @@ performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
+.. _natural_elements:
+
+``<natural_elements>`` Element
+------------------------------
+
+The ``<natural_elements>`` element indicates to OpenMC what nuclides are
+available in the cross section library when expanding an ``<element>`` into
+separate isotopes (see :ref:`material`). The accepted values are:
+
+  - ENDF/B-VII.0
+  - ENDF/B-VII.1
+  - JEFF-3.1.1
+  - JEFF-3.1.2
+  - JEFF-3.2
+  - JENDL-3.2
+  - JENDL-3.3
+  - JENDL-4.0
+
+Note that the value is case-insensitive, so "ENDF/B-VII.1" is equivalent to
+"endf/b-vii.1".
+
+  *Default*: ENDF/B-VII.1
+
 ``<no_reduce>`` Element
 -----------------------
 
@@ -198,19 +221,26 @@ tally data, this option can significantly improve the parallel efficiency.
 --------------------
 
 The ``<output>`` element determines what output files should be written to disk
-during the run. This element has no attributes or sub-elements and should be set
-to a list of strings separated by spaces. Valid options are "summary",
-"cross-sections", and "tallies". For example, if you want the summary and cross
-sections summary file to be written, this element should be given as:
+during the run. The sub-elements are described below, where "true" will write
+out the file and "false" will not.
 
-  .. code-block:: xml
+  :cross_sections:
+    Writes out an ASCII summary file of the cross sections that were read in.
 
-      <output>summary cross_sections</output>
+    *Default*: false
 
-  .. note:: The tally results will be written to a binary/HDF5 state point file by
-            default.
+  :summary: 
+    Writes out an ASCII summary file describing all of the user input files that
+    were read in.
 
-  *Default*: "tallies"
+    *Default*: false
+
+  :tallies:
+    Write out an ASCII file of tally results.
+
+    *Default*: true
+
+  .. note:: The tally results will always be written to a binary/HDF5 state point file.
 
 ``<output_path>`` Element
 -------------------------
@@ -257,7 +287,9 @@ attributes/sub-elements:
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element
+    a binary source file whose path is given by the value of this element. Note,
+    the number of source sites needs to be the same as the number of particles
+    simulated in a fission source generation.
 
     *Default*: None
 
@@ -341,8 +373,10 @@ attributes/sub-elements:
 
 The ``<state_point>`` element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
-tally results at any batch. This element has the following
-attributes/sub-elements:
+tally results at any batch. The default behavior when using this tag is to 
+write out the source bank in the state_point file. This behavior can be 
+customized by using the ``<source_point>`` element. This element has the
+following attributes/sub-elements:
 
   :batches:
     A list of integers separated by spaces indicating at what batches a state
@@ -357,18 +391,53 @@ attributes/sub-elements:
 
     *Default*: None
 
+``<source_point>`` Element
+--------------------------
+
+The ``<source_point>`` element indicates at what batches the source bank 
+should be written. The source bank can be either written out within a state  
+point file or separately in a source point file. This element has the following
+attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written. It should be noted that if source_separate
+    tag is not set to "true", this list must be a subset of state point batches.
+
+    *Default*: Last batch only
+
+  :interval:
+    A single integer :math:`n` indicating that a state point should be written
+    every :math:`n` batches. This option can be given in lieu of listing
+    batches explicitly. It should be noted that if source_separate tag is not
+    set to "true", this value should produce a list of batches that is a subset
+    of state point batches.
+
+    *Default*: None
+
   :source_separate:
-    If this element is set to "true", a separate binary source file will be
+    If this element is set to "true", a separate binary source point file will be
     written. Otherwise, the source sites will be written in the state point
     directly.
 
     *Default*: false
 
-  :source_write: If this element is set to "false", source sites are not written
-    to the state point file. This can substantially reduce the size of state
-    points if large numbers of particles per batch are used.
+  :source_write:
+    If this element is set to "false", source sites are not written
+    to the state point or source point file. This can substantially reduce the 
+    size of state points if large numbers of particles per batch are used.
 
     *Default*: true
+
+  :overwrite_latest:
+    If this element is set to "true", a source point file containing
+    the source bank will be written out to a separate file named 
+    ``source.binary`` or ``source.h5`` depending on if HDF5 is enabled. 
+    This file will be overwritten at every single batch so that the latest
+    source bank will be available. It should be noted that a user can set both 
+    this element to "true" and specify batches to write a permanent source bank.
+
+    *Default*: false
 
 ``<survival_biasing>`` Element
 ------------------------------
@@ -381,12 +450,29 @@ survival biasing, otherwise known as implicit capture or absorption.
 
 .. _trace:
 
+``<threads>`` Element
+---------------------
+
+The ``<threads>`` element indicates the number of OpenMP threads to be used for
+a simulation. It has no attributes and accepts a positive integer value.
+
+  *Default*: None (Determined by environment variable :envvar:`OMP_NUM_THREADS`)
+
 ``<trace>`` Element
 -------------------
 
 The ``<trace>`` element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.
+
+  *Default*: None
+
+.. _track:
+
+``<track>`` Element
+-------------------
+
+The ``<track>`` element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.
 
   *Default*: None
 
@@ -628,9 +714,10 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 ---------------------
 
 The ``<lattice>`` can be used to represent repeating structures (e.g. fuel pins
-in an assembly) or other geometry which naturally fits into a two-dimensional
-structured mesh. Each cell within the lattice is filled with a specified
-universe. A ``<lattice>`` accepts the following attributes or sub-elements:
+in an assembly) or other geometry which naturally fits into a two- or
+three-dimensional structured mesh. Each cell within the lattice is filled with a
+specified universe. A ``<lattice>`` accepts the following attributes or
+sub-elements:
 
   :id:
     A unique integer that can be used to identify the surface.
@@ -642,20 +729,27 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
     *Default*: rectangular
 
   :dimension:
-    Two integers representing the number of lattice cells in the x- and y-
-    directions, respectively.
+    Two or three integers representing the number of lattice cells in the x- and
+    y- (and z-) directions, respectively.
 
     *Default*: None
 
   :lower_left:
-    The coordinates of the lower-left corner of the lattice.
+    The coordinates of the lower-left corner of the lattice. If the lattice is
+    two-dimensional, only the x- and y-coordinates are specified.
 
     *Default*: None
 
   :width:
-    The width of the lattice cell in the x- and y- directions.
+    The width of the lattice cell in the x- and y- (and z-) directions.
 
     *Default*: None
+
+  :outside:
+    The unique integer identifier of a material that is to be used to fill all
+    space outside of the lattice. This element is optional.
+
+    *Default*: The region outside the defined lattice is treated as void.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
@@ -669,6 +763,8 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
 ----------------------------------------
 Materials Specification -- materials.xml
 ----------------------------------------
+
+.. _material:
 
 ``<material>`` Element
 ----------------------
@@ -709,12 +805,13 @@ Each ``material`` element can have the following attributes or sub-elements:
   :element:
 
     Specifies that a natural element is present in the material. The natural
-    element is split up into individual isotopes based on IUPAC Isotopic
-    Compositions of the Elements 1997. This element has attributes/sub-elements
-    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
-    symbol of the element while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
-    element within the material, respectively. One example would be as follows:
+    element is split up into individual isotopes based on `IUPAC Isotopic
+    Compositions of the Elements 2009`_. This element has
+    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element while the ``xs`` attribute is
+    the cross-section identifier. Finally, the ``ao`` attribute specifies the
+    atom percent of the element within the material, respectively. One example
+    would be as follows:
 
     .. code-block:: xml
 
@@ -722,6 +819,10 @@ Each ``material`` element can have the following attributes or sub-elements:
         <element name="Mg" ao="1.5498e-04" />
         <element name="Mn" ao="2.7426e-05" />
         <element name="Cu" ao="1.6993e-04" />
+
+    In some cross section libraries, certain naturally occurring isotopes do not
+    have cross sections. The :ref:`natural_elements` option determines how a
+    natural element is split into isotopes in these cases.
 
     *Default*: None
 
@@ -733,6 +834,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+.. _IUPAC Isotopic Compositions of the Elements 2009:
+    http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
 ``<default_xs>`` Element
 ------------------------
@@ -1020,7 +1124,7 @@ sub-elements:
               the PNG format can often times reduce the file size by orders of
               magnitude without any loss of image quality. Likewise,
               high-resolution voxel files produced by OpenMC can be quite large,
-              but the equivalent SILO files will by significantly smaller.
+              but the equivalent SILO files will be significantly smaller.
 
     *Default*: "slice"
 
@@ -1125,6 +1229,22 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
   *Default*: 1
 
+``<display>`` Element
+---------------------
+
+The ``<display>`` element sets one additional CMFD output column. Options are:
+
+* "balance" - prints the RMS [%] of the resdiual from the neutron balance equation
+  on CMFD tallies.
+* "dominance" - prints the estimated dominance ratio from the CMFD iterations.
+  **This will only work for power iteration eigensolver**.
+* "entropy" - prints the *entropy* of the CMFD predicted fission source.
+  **Can only be used if OpenMC entropy is active as well**.
+* "source" - prints the RMS [%] between the OpenMC fission source and CMFD
+  fission source.
+
+  *Default*: None
+
 ``<feedback>`` Element
 ----------------------
 
@@ -1144,14 +1264,14 @@ with "true" and off with "false"
 
   *Default*: true
 
-``<keff_tol>`` Element
-----------------------
+``<inactive_flush>`` Element
+----------------------------
 
-The ``<keff_tol>`` element specifies acceptance criteria of a CMFD eigenvalue.
-If the CMFD eigenvalue and OpenMC batch eigenvalue are within this tolerance, 
-CMFD is allowed to modify source neutron weights. 
+The ``<inactive_flush>`` element controls when CMFD tallies are reset during
+inactive batches. The integer set here is the interval at which this reset
+occurs. The amout of resets is controlled with the ``<num_flushes>`` element.
 
-  *Default*: 0.005
+  *Defualt*: 9999
 
 ``<ksp_monitor>`` Element
 -------------------------
@@ -1166,12 +1286,8 @@ with "false".
 ``<mesh>`` Element
 ------------------
 
-If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name ``<mesh>``. This element has the following
+The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
-
-  :type:
-    The type of structured mesh. Only "rectangular" is currently supported.
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinate are
@@ -1235,14 +1351,13 @@ not impact the calculation.
 
   *Default*: 1.0
 
-``<n_procs_cmfd>`` Element
---------------------------
+``<num_flushes>`` Element
+-------------------------
 
-The ``<n_procs_cmfd>`` element is used to set the number of processors used 
-for CMFD calculation. It should be less than or equal to the number of 
-processors used during OpenMC. 
+The ``<num_flushes>`` element controls the number of CMFD tally resets that
+occur during inactive CMFD batches.
 
-  *Default*: 1
+  *Default*: 9999
 
 ``<power_monitor>`` Element
 ---------------------------
@@ -1250,26 +1365,33 @@ processors used during OpenMC.
 The ``<power_monitor>`` element is used to view the convergence of power iteration. 
 This option can be turned on with "true" and turned off with "false".
 
+  *Default*: false
+
+``<run_adjoint>`` Element
+-------------------------
+
+The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
+calculation be performed on the last batch when CMFD is active.
 
   *Default*: false
 
-``<write_balance>`` Element
----------------------------
+``<snes_monitor>`` Element
+--------------------------
 
-The ``<write_balance>`` element is used to view the balance of OpenMC tally
-residuals for every coarse mesh region and energy group. This option can be 
-turned on with "true" and off with "false". 
+The ``<snes_monitor>`` element is used to view the convergence of the nonlinear SNES
+function in PETSc. This option can be turned on with "true" and turned off with "false".
 
-
-  *Default*: false
-
-``<write_hdf5>`` Element
-------------------------
-
-The ``<write_hdf5>`` element can be turned on with "true" to get an 
-HDF5 output file of CMFD results. 
 
   *Default*: false
+
+``<solver>`` Element
+--------------------
+
+The ``<solver>`` element controls whether the CMFD eigenproblem is solved with
+standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK). 
+By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
+
+  *Default*: power
 
 ``<write_matrices>`` Element
 ----------------------------

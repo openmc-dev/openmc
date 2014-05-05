@@ -4,13 +4,13 @@ module progress_header
 
   implicit none
 
-#if !defined(_WIN32)
+#if (UNIX)
   interface
     function check_isatty(fd) bind(C, name = 'isatty')
       use, intrinsic :: ISO_C_BINDING, only: c_int
       integer(c_int)        :: check_isatty
       integer(c_int), value :: fd
-    end function
+    end function check_isatty
   end interface
 #endif
 
@@ -27,7 +27,26 @@ module progress_header
   end type ProgressBar
 
 contains
-  
+ 
+!===============================================================================
+! IS_TERMINAL checks if output is currently being output to a terminal.  Relies
+! on a POSIX implementation of isatty, and defaults to false if that is not
+! available
+!===============================================================================
+
+    function is_terminal() result(istty)
+      logical :: istty
+
+      istty = .true.
+
+#if (UNIX)
+      if (check_isatty(1) == 0) istty = .false.
+#else
+      istty = .false.
+#endif
+
+    end function is_terminal
+ 
 !===============================================================================
 ! BAR_SET_VALUE prints the progress bar without advancing.  The value is
 ! specified as percent completion, from 0 to 100.  If the value is ever set to
@@ -41,11 +60,7 @@ contains
     
     integer :: i
 
-#if !defined(_WIN32)
-    if (check_isatty(1) == 0) return
-#else
-    return
-#endif
+    if (.not. is_terminal()) return
 
     ! set the percentage
     if (val >= 100.) then

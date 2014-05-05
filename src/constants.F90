@@ -8,14 +8,20 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 5
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_RELEASE = 4
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_SOURCE     = 1
-  integer, parameter :: REVISION_STATEPOINT = 8
+  integer, parameter :: REVISION_STATEPOINT       = 11
+  integer, parameter :: REVISION_PARTICLE_RESTART = 1
+
+  ! Binary file types
+  integer, parameter :: &
+       FILETYPE_STATEPOINT       = -1, &
+       FILETYPE_PARTICLE_RESTART = -2, &
+       FILETYPE_SOURCE           = -3
 
   ! ============================================================================
-  ! ADJUSTABLE PARAMETERS 
+  ! ADJUSTABLE PARAMETERS
 
   ! NOTE: This is the only section of the constants module that should ever be
   ! adjusted. Modifying constants in other sections may cause the code to fail.
@@ -44,6 +50,10 @@ module constants
   integer, parameter :: MAX_LINE_LEN = 250
   integer, parameter :: MAX_WORD_LEN = 150
   integer, parameter :: MAX_FILE_LEN = 255
+
+  ! Maximum number of external source spatial resamples to encounter before an
+  ! error is thrown.
+  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -105,9 +115,9 @@ module constants
 
   ! Surface types
   integer, parameter ::  &
-       SURF_PX     =  1, & ! Plane parallel to x-plane 
-       SURF_PY     =  2, & ! Plane parallel to y-plane 
-       SURF_PZ     =  3, & ! Plane parallel to z-plane 
+       SURF_PX     =  1, & ! Plane parallel to x-plane
+       SURF_PY     =  2, & ! Plane parallel to y-plane
+       SURF_PZ     =  3, & ! Plane parallel to z-plane
        SURF_PLANE  =  4, & ! Arbitrary plane
        SURF_CYL_X  =  5, & ! Cylinder along x-axis
        SURF_CYL_Y  =  6, & ! Cylinder along y-axis
@@ -116,6 +126,9 @@ module constants
        SURF_CONE_X =  9, & ! Cone parallel to x-axis
        SURF_CONE_Y = 10, & ! Cone parallel to y-axis
        SURF_CONE_Z = 11    ! Cone parallel to z-axis
+
+  ! Maximum number of lost particles
+  integer, parameter :: MAX_LOST_PARTICLES = 10
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
@@ -135,7 +148,7 @@ module constants
        ELECTRON = 3
 
   ! Angular distribution type
-  integer, parameter :: & 
+  integer, parameter :: &
        ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
        ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
        ANGLE_TABULAR   = 3    ! Tabular angular distribution
@@ -143,7 +156,8 @@ module constants
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
        SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+       SAB_SECONDARY_SKEWED = 1, & ! Skewed outgoing energy bins
+       SAB_SECONDARY_CONT   = 2    ! Continuous, linear-linear interpolation
 
   ! Elastic mode for S(a,b) elastic scattering
   integer, parameter :: &
@@ -230,6 +244,17 @@ module constants
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 
+  ! Major cross section libraries
+  integer, parameter :: &
+       ENDF_BVII0 = 1, &
+       ENDF_BVII1 = 2, &
+       JEFF_311   = 3, &
+       JEFF_312   = 4, &
+       JEFF_32    = 5, &
+       JENDL_32   = 6, &
+       JENDL_33   = 7, &
+       JENDL_40   = 8
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
@@ -248,8 +273,7 @@ module constants
        EVENT_SURFACE = -2, &
        EVENT_LATTICE = -1, &
        EVENT_SCATTER =  1, &
-       EVENT_ABSORB  =  2, &
-       EVENT_FISSION =  3 
+       EVENT_ABSORB  =  2
 
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 14
@@ -268,7 +292,7 @@ module constants
        SCORE_KAPPA_FISSION = -12, & ! fission energy production rate
        SCORE_CURRENT       = -13, & ! partial current
        SCORE_EVENTS        = -14    ! number of events
-       
+
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10
   character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p10"
@@ -315,7 +339,7 @@ module constants
 
   ! Source angular distribution types
   integer, parameter :: &
-       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular 
+       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular
        SRC_ANGLE_MONO      = 2, & ! Monodirectional source
        SRC_ANGLE_TABULAR   = 3    ! Tabular distribution
 
@@ -325,7 +349,7 @@ module constants
        SRC_ENERGY_MAXWELL = 2, & ! Maxwell fission spectrum
        SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
        SRC_ENERGY_TABULAR = 4    ! Tabular distribution
-       
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
@@ -348,18 +372,15 @@ module constants
        MODE_FIXEDSOURCE = 1, & ! Fixed source mode
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
-       MODE_TALLIES     = 4, & ! Tally results mode
-       MODE_PARTICLE    = 5    ! Particle restart mode
+       MODE_PARTICLE    = 4    ! Particle restart mode
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: UNIT_SOURCE   = 15 ! unit # for writing source file
-  integer, parameter :: UNIT_STATE    = 16 ! unit # for writing state point
-  integer, parameter :: CMFD_BALANCE  = 17 ! unit # for writing cmfd balance file
-  integer, parameter :: UNIT_PARTICLE = 18 ! unit # for writing particle restart
+  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
+  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
   !=============================================================================
   ! CMFD CONSTANTS

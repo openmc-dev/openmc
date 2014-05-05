@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from sys import argv
 from math import sqrt
@@ -56,14 +56,15 @@ for i, t in enumerate(sp.tallies):
             relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
             uncertainties.append(relative_error)
 
-    # Display number of tallies with less than 1% CIs 
-    fraction = (sum([1.0 if re < 0.01 else 0.0 for re in uncertainties]) 
-                /n_bins)
+    # Display number of tallies with less than 1% CIs
+    fraction = (sum([1.0 if re < 0.01 else 0.0 for re in uncertainties])
+                / n_bins)
     print("Tally " + str(i+1))
     print("  Fraction under 1% = {0}".format(fraction))
     print("  Min relative error = {0}".format(min(uncertainties)))
     print("  Max relative error = {0}".format(max(uncertainties)))
-    print("  Non-scoring bins = {0}".format(1.0 - float(len(uncertainties))/n_bins))
+    print("  Non-scoring bins = {0}".format(
+          1.0 - float(len(uncertainties))/n_bins))
 
     # Plot histogram
     plt.hist(uncertainties, 100)

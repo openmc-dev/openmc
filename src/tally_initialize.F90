@@ -31,9 +31,10 @@ contains
 
   subroutine setup_tally_arrays()
 
-    integer :: i ! loop index for tallies
-    integer :: j ! loop index for filters
-    integer :: n ! temporary stride
+    integer :: i                 ! loop index for tallies
+    integer :: j                 ! loop index for filters
+    integer :: n                 ! temporary stride
+    integer :: max_n_filters = 0 ! maximum number of filters
     type(TallyObject), pointer :: t => null()
 
     TALLY_LOOP: do i = 1, n_tallies
@@ -42,7 +43,7 @@ contains
 
       ! Allocate stride and matching_bins arrays
       allocate(t % stride(t % n_filters))
-      allocate(t % matching_bins(t % n_filters))
+      max_n_filters = max(max_n_filters, t % n_filters)
 
       ! The filters are traversed in opposite order so that the last filter has
       ! the shortest stride in memory and the first filter has the largest
@@ -62,6 +63,11 @@ contains
       allocate(t % results(t % total_score_bins, t % total_filter_bins))
 
     end do TALLY_LOOP
+
+    ! Allocate array for matching filter bins
+!$omp parallel
+    allocate(matching_bins(max_n_filters))
+!$omp end parallel
 
   end subroutine setup_tally_arrays
 

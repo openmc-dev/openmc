@@ -1,29 +1,24 @@
 module state_point
 
 !===============================================================================
-! STATE_POINT -- This module handles writing and reading binary state point
+! STATE_POINT -- This module handles writing and reading state point
 ! files. State points are contain complete tally results, source sites, and
 ! various other data. They can be used to restart a run or to reconstruct
 ! confidence intervals for tallies (this requires post-processing via Python
 ! scripts).
 !
-! Modifications to this module should be made with care. There are essentially
-! three different ways to write or read state points: 1) normal Fortran file
-! I/O, 2) MPI-IO, and 3) HDF5. The HDF5 functionality is contained in the
-! hdf5_interface module. If you plan to change the state point, you will need to
-! change all methods. You should also increment REVISION_STATEPOINT in the
-! constants module.
-!
 ! State points can be written at any batch during a simulation, or at specified
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
-  use error,        only: warning, fatal_error
+
+  use constants
+  use error,              only: fatal_error, warning
   use global
-  use math,         only: t_percentile
-  use output,       only: write_message, print_batch_keff, time_stamp
-  use string,       only: to_str
-  use tally_header, only: TallyObject
+  use output,             only: write_message, time_stamp
+  use string,             only: to_str
+  use output_interface
+  use tally_header,       only: TallyObject
 
 #ifdef MPI
   use mpi
@@ -31,534 +26,429 @@ module state_point
 
   implicit none
 
+  type(BinaryOutput) :: sp ! statepoint/source output file
+
 contains
 
 !===============================================================================
-! WRITE_STATE_POINT creates a state point binary file that can be used for
-! restarting a run or for getting intermediate tally results
+! WRITE_STATE_POINT
 !===============================================================================
 
   subroutine write_state_point()
 
-    integer :: i                       ! loop index
-#ifdef MPI
-    integer :: fh                      ! file handle
-    integer :: n                       ! temporary array length
-    integer :: temp                    ! temporary variable
-    integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
-    integer :: size_bank               ! size of MPI_BANK type
-    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-#else
-    integer :: j, k                    ! loop indices
-#endif
     character(MAX_FILE_LEN) :: filename
+    integer                 :: i
+    integer                 :: j
+    integer, allocatable    :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
-    ! Set filename for binary state point
+    ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-         trim(to_str(current_batch)) // '.binary'
+               trim(to_str(current_batch))
+
+    ! Append appropriate extension
+#ifdef HDF5
+    filename = trim(filename) // '.h5'
+#else
+    filename = trim(filename) // '.binary'
+#endif
 
     ! Write message
     message = "Creating state point " // trim(filename) // "..."
     call write_message(1)
 
-#ifdef MPI
-    ! ==========================================================================
-    ! PARALLEL I/O USING MPI-2 ROUTINES
+    if (master) then
+      ! Create statepoint file 
+      call sp % file_create(filename)
 
-    ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
-         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+      ! Write file type
+      call sp % write_data(FILETYPE_STATEPOINT, "filetype")
 
-    ! ==========================================================================
-    ! RUN INFORMATION AND TALLY METADATA
+      ! Write revision number for state point file
+      call sp % write_data(REVISION_STATEPOINT, "revision")
 
-    if (master) call write_state_point_header(fh)
+      ! Write OpenMC version
+      call sp % write_data(VERSION_MAJOR, "version_major")
+      call sp % write_data(VERSION_MINOR, "version_minor")
+      call sp % write_data(VERSION_RELEASE, "version_release")
 
-    ! ==========================================================================
-    ! TALLY RESULTS
+      ! Write current date and time
+      call sp % write_data(time_stamp(), "date_and_time")
 
+      ! Write path to input
+      call sp % write_data(path_input, "path")
+
+      ! Write out random number seed
+      call sp % write_data(seed, "seed")
+
+      ! Write run information
+      call sp % write_data(run_mode, "run_mode")
+      call sp % write_data(n_particles, "n_particles")
+      call sp % write_data(n_batches, "n_batches")
+
+      ! Write out current batch number
+      call sp % write_data(current_batch, "current_batch")
+
+      ! Write out information for eigenvalue run
+      if (run_mode == MODE_EIGENVALUE) then
+        call sp % write_data(n_inactive, "n_inactive")
+        call sp % write_data(gen_per_batch, "gen_per_batch")
+        call sp % write_data(k_generation, "k_generation", &
+             length=current_batch*gen_per_batch)
+        call sp % write_data(entropy, "entropy", length=current_batch*gen_per_batch)
+        call sp % write_data(k_col_abs, "k_col_abs")
+        call sp % write_data(k_col_tra, "k_col_tra")
+        call sp % write_data(k_abs_tra, "k_abs_tra")
+        call sp % write_data(k_combined, "k_combined", length=2)
+
+        ! Write out CMFD info
+        if (cmfd_on) then
+          call sp % write_data(1, "cmfd_on")
+          call sp % write_data(cmfd % indices, "indices", length=4, group="cmfd")
+          call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
+               group="cmfd")
+          call sp % write_data(cmfd % cmfd_src, "cmfd_src", &
+               length=(/cmfd % indices(4), cmfd % indices(1), &
+               cmfd % indices(2), cmfd % indices(3)/), &
+               group="cmfd")
+          call sp % write_data(cmfd % entropy, "cmfd_entropy", &
+                          length=current_batch, group="cmfd")
+          call sp % write_data(cmfd % balance, "cmfd_balance", &
+               length=current_batch, group="cmfd")
+          call sp % write_data(cmfd % dom, "cmfd_dominance", &
+               length = current_batch, group="cmfd")
+          call sp % write_data(cmfd % src_cmp, "cmfd_srccmp", &
+               length = current_batch, group="cmfd")
+        else
+          call sp % write_data(0, "cmfd_on")
+        end if
+      end if
+
+      ! Write number of meshes
+      call sp % write_data(n_meshes, "n_meshes", group="tallies")
+
+      ! Write information for meshes
+      MESH_LOOP: do i = 1, n_meshes
+        call sp % write_data(meshes(i) % id, "id", &
+             group="tallies/mesh" // to_str(i))
+        call sp % write_data(meshes(i) % type, "type", &
+             group="tallies/mesh" // to_str(i))
+        call sp % write_data(meshes(i) % n_dimension, "n_dimension", &
+             group="tallies/mesh" // to_str(i))
+        call sp % write_data(meshes(i) % dimension, "dimension", &
+             group="tallies/mesh" // to_str(i), &
+             length=meshes(i) % n_dimension)
+        call sp % write_data(meshes(i) % lower_left, "lower_left", &
+             group="tallies/mesh" // to_str(i), &
+             length=meshes(i) % n_dimension)
+        call sp % write_data(meshes(i) % upper_right, "upper_right", &
+             group="tallies/mesh" // to_str(i), &
+             length=meshes(i) % n_dimension)
+        call sp % write_data(meshes(i) % width, "width", &
+             group="tallies/mesh" // to_str(i), &
+             length=meshes(i) % n_dimension)
+      end do MESH_LOOP
+
+      ! Write number of tallies
+      call sp % write_data(n_tallies, "n_tallies", group="tallies")
+
+      ! Write all tally information except results
+      TALLY_METADATA: do i = 1, n_tallies
+        !Get pointer to tally
+        t => tallies(i)
+
+        ! Write id
+        call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
+
+        ! Write number of realizations
+        call sp % write_data(t % n_realizations, "n_realizations", &
+             group="tallies/tally" // to_str(i))
+
+        ! Write size of each tally
+        call sp % write_data(t % total_score_bins, "total_score_bins", &
+             group="tallies/tally" // to_str(i))
+        call sp % write_data(t % total_filter_bins, "total_filter_bins", &
+             group="tallies/tally" // to_str(i))
+
+        ! Write number of filters
+        call sp % write_data(t % n_filters, "n_filters", &
+             group="tallies/tally" // to_str(i))
+
+        ! Write filter information
+        FILTER_LOOP: do j = 1, t % n_filters
+
+          ! Write type of filter
+          call sp % write_data(t % filters(j) % type, "type", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+
+          ! Write number of bins for this filter
+          call sp % write_data(t % filters(j) % n_bins, "n_bins", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+
+          ! Write bins
+          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+              t % filters(j) % type == FILTER_ENERGYOUT) then
+            call sp % write_data(t % filters(j) % real_bins, "bins", &
+                 group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+                 length=size(t % filters(j) % real_bins))
+          else
+            call sp % write_data(t % filters(j) % int_bins, "bins", &
+                 group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+                 length=size(t % filters(j) % int_bins))
+          end if
+
+        end do FILTER_LOOP
+
+        ! Write number of nuclide bins
+        call sp % write_data(t % n_nuclide_bins, "n_nuclide_bins", &
+             group="tallies/tally" // to_str(i))
+
+        ! Set up nuclide bin array and then write
+        allocate(temp_array(t % n_nuclide_bins))
+        NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+          if (t % nuclide_bins(j) > 0) then
+            temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
+          else
+            temp_array(j) = t % nuclide_bins(j)
+          end if
+        end do NUCLIDE_LOOP
+        call sp % write_data(temp_array, "nuclide_bins", &
+             group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
+        deallocate(temp_array)
+
+        ! Write number of score bins, score bins, and scatt order
+        call sp % write_data(t % n_score_bins, "n_score_bins", &
+             group="tallies/tally" // to_str(i))
+        call sp % write_data(t % score_bins, "score_bins", &
+             group="tallies/tally" // to_str(i), length=t % n_score_bins)
+        call sp % write_data(t % scatt_order, "scatt_order", &
+             group="tallies/tally" // to_str(i), length=t % n_score_bins)
+
+        ! Write number of user score bins
+        call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
+             group="tallies/tally" // to_str(i))
+
+      end do TALLY_METADATA
+
+      ! Indicate where source bank is stored in statepoint
+      if (source_separate) then
+        call sp % write_data(0, "source_present")
+      else
+        call sp % write_data(1, "source_present")
+      end if
+
+    end if
+
+    ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then
       ! If using the no-tally-reduction method, we need to collect tally
       ! results before writing them to the state point file.
 
-      call write_tally_results_nr(fh)
+      call write_tally_results_nr()
 
     elseif (master) then
-      ! Write number of realizations
-      call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
+
+      ! Write number of global realizations
+      call sp % write_data(n_realizations, "n_realizations")
 
       ! Write global tallies
-      call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
-           MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
+      call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
+      call sp % write_tally_result(global_tallies, "global_tallies", &
+           n1=N_GLOBAL_TALLIES, n2=1)
 
+      ! Write tallies
       if (tallies_on) then
+
         ! Indicate that tallies are on
-        temp = 1
-        call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+        call sp % write_data(1, "tallies_present", group="tallies")
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
+
+          ! Set point to current tally
           t => tallies(i)
 
-          n = size(t % results, 1) * size(t % results, 2)
-          call MPI_FILE_WRITE(fh, t % results, n, MPI_TALLYRESULT, &
-               MPI_STATUS_IGNORE, mpi_err)
+          ! Write sum and sum_sq for each bin
+          call sp % write_tally_result(t % results, "results", &
+               group="tallies/tally" // to_str(i), &
+               n1=size(t % results, 1), n2=size(t % results, 2))
+
         end do TALLY_RESULTS
+
       else
-        ! Indicate that tallies are off
-        temp = 0
-        call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+
+        ! Indicate tallies are off
+        call sp % write_data(0, "tallies_present", group="tallies")
+
       end if
+
+      ! Close the file for serial writing
+      call sp % file_close()
+
     end if
-
-    ! ==========================================================================
-    ! SOURCE BANK
-
-    if (run_mode == MODE_EIGENVALUE) then
-      if (source_separate) then
-        ! If the user has specified that the source sites should be written in
-        ! a separate file, we make a call to the appropriate subroutine to
-        ! write it separately
-
-        if (source_write) then
-          path_source = "source." // trim(to_str(current_batch)) // ".binary"
-          call write_source_binary()
-        end if
-      elseif (source_write) then
-        ! Otherwise, write the source sites in the state point file
-
-        ! Get current offset for master
-        if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
-
-        ! Determine offset on master process and broadcast to all processors
-        call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
-        select case (size_offset_kind)
-        case (4)
-          call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-        case (8)
-          call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
-        end select
-
-        ! Set proper offset for source data on this processor
-        call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-        offset = offset + size_bank*maxwork*rank
-
-        ! Write all source sites
-        call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-             MPI_STATUS_IGNORE, mpi_err)
-      end if
-    end if
-
-    ! Close binary source file
-    call MPI_FILE_CLOSE(fh, mpi_err)
-
-#else
-    ! Open binary state point file for writing
-    open(UNIT=UNIT_STATE, FILE=filename, STATUS='replace', &
-         ACCESS='stream')
-
-    ! Write revision number for state point file
-    write(UNIT_STATE) REVISION_STATEPOINT
-
-    ! Write OpenMC version
-    write(UNIT_STATE) VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-
-    ! Write current date and time
-    write(UNIT_STATE) time_stamp()
-
-    ! Write path to input
-    write(UNIT_STATE) path_input
-
-    ! Write out random number seed
-    write(UNIT_STATE) seed
-
-    ! Write run information
-    write(UNIT_STATE) run_mode, n_particles, n_batches
-
-    ! Write out current batch number
-    write(UNIT_STATE) current_batch
-
-    ! Write out information for eigenvalue run
-    if (run_mode == MODE_EIGENVALUE) then
-      write(UNIT_STATE) n_inactive, gen_per_batch
-      write(UNIT_STATE) k_batch(1:current_batch)
-      write(UNIT_STATE) entropy(1:current_batch*gen_per_batch)
-      write(UNIT_STATE) k_col_abs
-      write(UNIT_STATE) k_col_tra
-      write(UNIT_STATE) k_abs_tra
-      write(UNIT_STATE) k_combined
-    end if
-
-    ! Write number of meshes
-    write(UNIT_STATE) n_meshes
-
-    ! Write information for meshes
-    MESH_LOOP: do i = 1, n_meshes
-      write(UNIT_STATE) meshes(i) % id
-      write(UNIT_STATE) meshes(i) % type
-      write(UNIT_STATE) meshes(i) % n_dimension
-      write(UNIT_STATE) meshes(i) % dimension
-      write(UNIT_STATE) meshes(i) % lower_left
-      write(UNIT_STATE) meshes(i) % upper_right
-      write(UNIT_STATE) meshes(i) % width
-    end do MESH_LOOP
-
-    ! Write number of tallies
-    write(UNIT_STATE) n_tallies
-
-    TALLY_METADATA: do i = 1, n_tallies
-      ! Get pointer to tally
-      t => tallies(i)
-
-      ! Write id
-      write(UNIT_STATE) t % id
-
-      ! Number of realizations
-      write(UNIT_STATE) t % n_realizations
-
-      ! Write size of each dimension of tally results array
-      write(UNIT_STATE) t % total_score_bins
-      write(UNIT_STATE) t % total_filter_bins
-
-      ! Write number of filters
-      write(UNIT_STATE) t % n_filters
-
-      FILTER_LOOP: do j = 1, t % n_filters
-        ! Write type of filter
-        write(UNIT_STATE) t % filters(j) % type
-
-        ! Write number of bins for this filter
-        write(UNIT_STATE) t % filters(j) % n_bins
-
-        ! Write filter bins
-        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-             t % filters(j) % type == FILTER_ENERGYOUT) then
-          write(UNIT_STATE) t % filters(j) % real_bins
-        else
-          write(UNIT_STATE) t % filters(j) % int_bins
-        end if
-      end do FILTER_LOOP
-
-      ! Write number of nuclide bins
-      write(UNIT_STATE) t % n_nuclide_bins
-
-      ! Write nuclide bins
-      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-        if (t % nuclide_bins(j) > 0) then
-          write(UNIT_STATE) nuclides(t % nuclide_bins(j)) % zaid
-        else
-          write(UNIT_STATE) t % nuclide_bins(j)
-        end if
-      end do NUCLIDE_LOOP
-
-      ! Write number of score bins, score bins, and scatt order
-      write(UNIT_STATE) t % n_score_bins
-      write(UNIT_STATE) t % score_bins
-      write(UNIT_STATE) t % scatt_order
-
-      ! Write number of user score bins
-      write(UNIT_STATE) t % n_user_score_bins
-    end do TALLY_METADATA
-
-    ! Number of realizations for global tallies
-    write(UNIT_STATE) n_realizations
-
-    ! Write out global tallies sum and sum_sq
-    write(UNIT_STATE) N_GLOBAL_TALLIES
-    GLOBAL_TALLIES_LOOP: do i = 1, N_GLOBAL_TALLIES
-      write(UNIT_STATE) global_tallies(i) % sum
-      write(UNIT_STATE) global_tallies(i) % sum_sq
-    end do GLOBAL_TALLIES_LOOP
-
-    if (tallies_on) then
-      ! Indicate that tallies are on
-      write(UNIT_STATE) 1
-
-      TALLY_RESULTS: do i = 1, n_tallies
-        ! Get pointer to tally
-        t => tallies(i)
-
-        ! Write tally sum and sum_sq for each bin
-        do k = 1, size(t % results, 2)
-          do j = 1, size(t % results, 1)
-            write(UNIT_STATE) t % results(j,k) % sum
-            write(UNIT_STATE) t % results(j,k) % sum_sq
-          end do
-        end do
-      end do TALLY_RESULTS
-    else
-      ! Indicate that tallies are off
-      write(UNIT_STATE) 0
-    end if
-
-    ! Write out source bank 
-    if (run_mode == MODE_EIGENVALUE) then
-      if (source_separate) then
-        ! If the user has specified that the source sites should be written in
-        ! a separate file, we make a call to the appropriate subroutine to
-        ! write it separately
-
-        if (source_write) then
-          path_source = "source." // trim(to_str(current_batch)) // ".binary"
-          call write_source_binary()
-        end if
-      elseif (source_write) then
-        ! Otherwise, write the source sites in the state point file
-
-        write(UNIT_STATE) source_bank
-      end if
-    end if
-
-    ! Close binary state point file
-    close(UNIT_STATE)
-#endif
 
   end subroutine write_state_point
 
-#ifdef MPI
 !===============================================================================
-! WRITE_STATE_POINT_HEADER uses MPI-IO routines to write basic run information
-! and tally metadata
+! WRITE_SOURCE_POINT
 !===============================================================================
 
-  subroutine write_state_point_header(fh)
+  subroutine write_source_point()
 
-    integer, intent(inout) :: fh ! file handle
+    type(BinaryOutput) :: sp
+    character(MAX_FILE_LEN) :: filename
 
-    integer       :: i            ! loop index
-    integer       :: j            ! loop index
-    integer       :: n            ! temporary array length
-    type(TallyObject), pointer :: t => null()
+    ! Check to write out source for a specified batch
+    if (sourcepoint_batch % contains(current_batch)) then
 
-    ! Write revision number for state point file
-    call MPI_FILE_WRITE(fh, REVISION_STATEPOINT, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
+      ! Create or open up file
+      if (source_separate) then
 
-    ! Write OpenMC version
-    call MPI_FILE_WRITE(fh, VERSION_MAJOR, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_WRITE(fh, VERSION_MINOR, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_WRITE(fh, VERSION_RELEASE, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write current date and time
-    call MPI_FILE_WRITE(fh, time_stamp(), 19, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write path to input
-    call MPI_FILE_WRITE(fh, path_input, MAX_FILE_LEN, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write out random number seed
-    call MPI_FILE_WRITE(fh, seed, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write run information
-    call MPI_FILE_WRITE(fh, run_mode, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_WRITE(fh, n_particles, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_WRITE(fh, n_batches, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write out current batch number
-    call MPI_FILE_WRITE(fh, current_batch, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write out information for eigenvalue run
-    if (run_mode == MODE_EIGENVALUE) then
-      call MPI_FILE_WRITE(fh, n_inactive, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, gen_per_batch, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, k_batch, current_batch, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, entropy, current_batch*gen_per_batch, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, k_col_abs, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, k_col_tra, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, k_abs_tra, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, k_combined, 2, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-    end if
-
-    ! Write number of meshes
-    call MPI_FILE_WRITE(fh, n_meshes, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Write information for meshes
-    MESH_LOOP: do i = 1, n_meshes
-      call MPI_FILE_WRITE(fh, meshes(i) % id, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, meshes(i) % type, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, meshes(i) % n_dimension, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      n = meshes(i) % n_dimension
-      call MPI_FILE_WRITE(fh, meshes(i) % dimension, n, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, meshes(i) % lower_left, n, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, meshes(i) % upper_right, n, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, meshes(i) % width, n, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-    end do MESH_LOOP
-
-    ! Write number of tallies
-    call MPI_FILE_WRITE(fh, n_tallies, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    TALLY_METADATA: do i = 1, n_tallies
-      ! Get pointer to tally
-      t => tallies(i)
-
-      ! Write id
-      call MPI_FILE_WRITE(fh, t % id, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Write number of realizations
-      call MPI_FILE_WRITE(fh, t % n_realizations, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Write size of each tally
-      call MPI_FILE_WRITE(fh, t % total_score_bins, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, t % total_filter_bins, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Write number of filters
-      call MPI_FILE_WRITE(fh, t % n_filters, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      FILTER_LOOP: do j = 1, t % n_filters
-        ! Write type of filter
-        call MPI_FILE_WRITE(fh, t % filters(j) % type, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-
-        ! Write number of bins for this filter
-        call MPI_FILE_WRITE(fh, t % filters(j) % n_bins, &
-             1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-
-        ! Write bins
-        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-             t % filters(j) % type == FILTER_ENERGYOUT) then
-          n = size(t % filters(j) % real_bins)
-          call MPI_FILE_WRITE(fh, t % filters(j) % real_bins, n, &
-               MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
-        else
-          n = size(t % filters(j) % int_bins)
-          call MPI_FILE_WRITE(fh, t % filters(j) % int_bins, n, &
-               MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-        end if
-      end do FILTER_LOOP
-
-      ! Write number of nuclide bins
-      call MPI_FILE_WRITE(fh, t % n_nuclide_bins, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Write nuclide bins
-      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-        if (t % nuclide_bins(j) > 0) then
-          call MPI_FILE_WRITE(fh, nuclides(t % nuclide_bins(j)) % zaid, &
-               1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-        else
-          call MPI_FILE_WRITE(fh, t % nuclide_bins(j), 1, &
-               MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-        end if
-      end do NUCLIDE_LOOP
-
-      ! Write number of score bins, score bins, and scatt order
-      call MPI_FILE_WRITE(fh, t % n_score_bins, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, t % score_bins, t % n_score_bins, &
-           MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, t % scatt_order, t % n_score_bins, &
-           MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-
-      ! Write number of user score bins
-      call MPI_FILE_WRITE(fh, t % n_user_score_bins, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-    end do TALLY_METADATA
-
-  end subroutine write_state_point_header
+        ! Set filename
+        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
 #endif
 
-#ifdef MPI
+        ! Write message for new file creation
+        message = "Creating source file " // trim(filename) // "..."
+        call write_message(1)
+
+        ! Create separate source file
+        call sp % file_create(filename, serial = .false.)
+
+        ! Write file type
+        call sp % write_data(FILETYPE_SOURCE, "filetype")
+
+      else
+
+        ! Set filename for state point
+        filename = trim(path_output) // 'statepoint.' // &
+                   trim(to_str(current_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
+#endif
+
+        ! Reopen statepoint file in parallel
+        call sp % file_open(filename, 'w', serial = .false.)
+
+      end if
+
+      ! Write out source
+      call sp % write_source_bank()
+
+      ! Close file
+      call sp % file_close()
+
+    end if
+
+    ! Also check to write source separately in overwritten file
+    if (source_latest) then
+
+      ! Set filename
+      filename = trim(path_output) // 'source'
+#ifdef HDF5
+      filename = trim(filename) // '.h5'
+#else
+      filename = trim(filename) // '.binary'
+#endif
+
+      ! Write message for new file creation
+      message = "Creating source file " // trim(filename) // "..."
+      call write_message(1)
+
+      ! Always create this file because it will be overwritten
+      call sp % file_create(filename, serial = .false.)
+
+      ! Write file type
+      call sp % write_data(FILETYPE_SOURCE, "filetype")
+
+      ! Write out source
+      call sp % write_source_bank()
+
+      ! Close file
+      call sp % file_close()
+
+    end if
+
+  end subroutine write_source_point
+
 !===============================================================================
 ! WRITE_TALLY_RESULTS_NR
 !===============================================================================
 
-  subroutine write_tally_results_nr(fh)
-
-    integer, intent(in) :: fh ! file handle
+  subroutine write_tally_results_nr()
 
     integer :: i      ! loop index
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
-    integer :: temp   ! temporary variable
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
-    real(8) :: global_temp(2,N_GLOBAL_TALLIES)
+    real(8), target :: global_temp(2,N_GLOBAL_TALLIES)
+#ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
+#endif
     type(TallyObject), pointer :: t => null()
+    type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! ==========================================================================
     ! COLLECT AND WRITE GLOBAL TALLIES
 
     if (master) then
       ! Write number of realizations
-      call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
+      call sp % write_data(n_realizations, "n_realizations")
 
       ! Write number of global tallies
-      call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
+      call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
     end if
 
     ! Copy global tallies into temporary array for reducing
     n_bins = 2 * N_GLOBAL_TALLIES
     global_temp(1,:) = global_tallies(:) % sum
-    global_temp(2,:) = global_tallies(:) % sum_sq
+    global_temp(2,:) = global_tallies(:) % sum_sq 
 
     if (master) then
       ! The MPI_IN_PLACE specifier allows the master to copy values into a
       ! receive buffer without having a temporary variable
+#ifdef MPI
       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
-
-      ! Write out global tallies sum and sum_sq
-      call MPI_FILE_WRITE(fh, global_temp, n_bins, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Transfer values to value on master
       if (current_batch == n_batches) then
         global_tallies(:) % sum    = global_temp(1,:)
         global_tallies(:) % sum_sq = global_temp(2,:)
       end if
+
+      ! Put reduced value in temporary tally result
+      allocate(tallyresult_temp(N_GLOBAL_TALLIES, 1))
+      tallyresult_temp(:,1) % sum    = global_temp(1,:)
+      tallyresult_temp(:,1) % sum_sq = global_temp(2,:)
+
+   
+      ! Write out global tallies sum and sum_sq
+      call sp % write_tally_result(tallyresult_temp, "global_tallies", &
+           n1=N_GLOBAL_TALLIES, n2=1)
+
+      ! Deallocate temporary tally result
+      deallocate(tallyresult_temp)
     else
       ! Receive buffer not significant at other processors
+#ifdef MPI
       call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
+#endif
     end if
 
     if (tallies_on) then
       ! Indicate that tallies are on
       if (master) then
-        temp = 1
-        call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+        call sp % write_data(1, "tallies_present", group="tallies")
       end if
 
       ! Write all tally results
@@ -579,23 +469,34 @@ contains
         if (master) then
           ! The MPI_IN_PLACE specifier allows the master to copy values into
           ! a receive buffer without having a temporary variable
+#ifdef MPI
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-
-          ! Write reduced tally results to file
-          call MPI_FILE_WRITE(fh, tally_temp, n_bins, MPI_REAL8, &
-               MPI_STATUS_IGNORE, mpi_err)
-
+#endif
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
           if (current_batch == n_batches) then
             t % results(:,:) % sum = tally_temp(1,:,:)
             t % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if
+
+         ! Put in temporary tally result
+         allocate(tallyresult_temp(m,n))
+         tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
+         tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
+ 
+         ! Write reduced tally results to file
+          call sp % write_tally_result(t % results, "results", &
+               group="tallies/tally" // to_str(i), n1=m, n2=n)
+
+          ! Deallocate temporary tally result
+          deallocate(tallyresult_temp)
         else
           ! Receive buffer not significant at other processors
+#ifdef MPI
           call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
+#endif
         end if
 
         ! Deallocate temporary copy of tally results
@@ -604,684 +505,313 @@ contains
     else
       if (master) then
         ! Indicate that tallies are off
-        temp = 0
-        call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+        call sp % write_data(0, "tallies_present", group="tallies")
       end if
     end if
 
   end subroutine write_tally_results_nr
-#endif
 
 !===============================================================================
-! LOAD_STATE_POINT loads data from a state point file to either continue a run
-! or to print intermediate tally results
+! LOAD_STATE_POINT
 !===============================================================================
 
   subroutine load_state_point()
 
-    integer :: i, j    ! loop indices
-    integer :: mode    ! specified run mode
-    integer :: temp(3) ! temporary variable
-    integer, allocatable :: int_array(:)
-    real(8), allocatable :: real_array(:)
-    character(19)        :: current_time  ! current date and time
     character(MAX_FILE_LEN) :: path_temp
-
-#ifdef MPI
-    integer :: fh                      ! file handle
-    integer :: n                       ! temporary array size
-    integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
-    integer :: size_bank               ! size of MPI_BANK type
-    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-#else
-    integer :: k ! loop index
-#endif
+    character(19)           :: current_time
+    integer                 :: i
+    integer                 :: j
+    integer                 :: length(4)
+    integer                 :: int_array(3)
+    integer, allocatable    :: temp_array(:)
+    logical                 :: source_present
+    real(8)                 :: real_array(3) 
+    type(TallyObject), pointer :: t => null()
 
     ! Write message
     message = "Loading state point " // trim(path_state_point) // "..."
     call write_message(1)
 
-#ifdef MPI
-    ! Open binary state point file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_RDONLY, &
-         MPI_INFO_NULL, fh, mpi_err)
+    ! Open file for reading
+    call sp % file_open(path_state_point, 'r', serial = .false.)
 
-    ! ==========================================================================
-    ! RUN INFORMATION AND TALLY METADATA
+    ! Read filetype
+    call sp % read_data(int_array(1), "filetype")
 
-    ! Raad revision number for state point file and make sure it matches with
+    ! Read revision number for state point file and make sure it matches with
     ! current version
-    call MPI_FILE_READ_ALL(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-    if (temp(1) /= REVISION_STATEPOINT) then
-      message = "State point binary version does not match current version " &
-           // "in OpenMC."
+    call sp % read_data(int_array(1), "revision")
+    if (int_array(1) /= REVISION_STATEPOINT) then
+      message = "State point version does not match current version " &
+                // "in OpenMC."
       call fatal_error()
     end if
 
     ! Read OpenMC version
-    call MPI_FILE_READ_ALL(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-    if (temp(1) /= VERSION_MAJOR .or. temp(2) /= VERSION_MINOR &
-         .or. temp(3) /= VERSION_RELEASE) then
-      message = "State point file was created with a different version " // &
-           "of OpenMC."
+    call sp % read_data(int_array(1), "version_major")
+    call sp % read_data(int_array(2), "version_minor")
+    call sp % read_data(int_array(3), "version_release")
+    if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
+        .or. int_array(3) /= VERSION_RELEASE) then
+      message = "State point file was created with a different version " &
+                // "of OpenMC."
       call warning()
     end if
 
     ! Read date and time
-    call MPI_FILE_READ_ALL(fh, current_time, 19, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
+    call sp % read_data(current_time, "date_and_time")
 
     ! Read path to input
-    call MPI_FILE_READ_ALL(fh, path_temp, MAX_FILE_LEN, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
+    call sp % read_data(path_temp, "path")
 
     ! Read and overwrite random number seed
-    call MPI_FILE_READ_ALL(fh, seed, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
+    call sp % read_data(seed, "seed")
 
-    ! Read and overwrite run information
-    call MPI_FILE_READ_ALL(fh, mode, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_READ_ALL(fh, n_particles, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_READ_ALL(fh, n_batches, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
+    ! Read and overwrite run information except number of batches
+    call sp % read_data(run_mode, "run_mode")
+    call sp % read_data(n_particles, "n_particles")
+    call sp % read_data(int_array(1), "n_batches")
+
+    ! Take maximum of statepoint n_batches and input n_batches
+    n_batches = max(n_batches, int_array(1))
 
     ! Read batch number to restart at
-    call MPI_FILE_READ_ALL(fh, restart_batch, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
+    call sp % read_data(restart_batch, "current_batch")
 
     ! Read information specific to eigenvalue run
-    if (mode == MODE_EIGENVALUE) then
-      call MPI_FILE_READ_ALL(fh, n_inactive, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, gen_per_batch, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, k_batch, restart_batch, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, entropy, restart_batch*gen_per_batch, &
-           MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, k_col_abs, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, k_col_tra, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, k_abs_tra, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      allocate(real_array(2))
-      call MPI_FILE_READ_ALL(fh, real_array, 2, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
-      deallocate(real_array)
+    if (run_mode == MODE_EIGENVALUE) then
+      call sp % read_data(int_array(1), "n_inactive")
+      call sp % read_data(gen_per_batch, "gen_per_batch")
+      call sp % read_data(k_generation, "k_generation", &
+           length=restart_batch*gen_per_batch)
+      call sp % read_data(entropy, "entropy", length=restart_batch*gen_per_batch)
+      call sp % read_data(k_col_abs, "k_col_abs")
+      call sp % read_data(k_col_tra, "k_col_tra")
+      call sp % read_data(k_abs_tra, "k_abs_tra")
+      call sp % read_data(real_array(1:2), "k_combined", length=2)
+
+      ! Take maximum of statepoint n_inactive and input n_inactive
+      n_inactive = max(n_inactive, int_array(1))
+
+      ! Read in to see if CMFD was on
+      call sp % read_data(int_array(1), "cmfd_on")
+
+      ! Write out CMFD info
+      if (int_array(1) == 1) then
+        call sp % read_data(cmfd % indices, "indices", length=4, group="cmfd")
+        call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
+             group="cmfd")
+        length = cmfd % indices([4,1,2,3])
+        call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
+             length=length, group="cmfd")
+        call sp % read_data(cmfd % entropy, "cmfd_entropy", &
+                       length=restart_batch, group="cmfd")
+        call sp % read_data(cmfd % balance, "cmfd_balance", &
+             length=restart_batch, group="cmfd")
+        call sp % read_data(cmfd % dom, "cmfd_dominance", &
+             length = restart_batch, group="cmfd")
+        call sp % read_data(cmfd % src_cmp, "cmfd_srccmp", &
+             length = restart_batch, group="cmfd")
+      end if
     end if
 
-    if (master) then
-      ! Read number of meshes
-      call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-      if (temp(1) /= n_meshes) then
-        message = "Number of meshes does not match in state point."
+    ! Read number of meshes
+    call sp % read_data(n_meshes, "n_meshes", group="tallies")
+
+    ! Read and overwrite mesh information
+    MESH_LOOP: do i = 1, n_meshes
+      call sp % read_data(meshes(i) % id, "id", &
+           group="tallies/mesh" // to_str(i))
+      call sp % read_data(meshes(i) % type, "type", &
+           group="tallies/mesh" // to_str(i))
+      call sp % read_data(meshes(i) % n_dimension, "n_dimension", &
+           group="tallies/mesh" // to_str(i))
+      call sp % read_data(meshes(i) % dimension, "dimension", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call sp % read_data(meshes(i) % lower_left, "lower_left", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call sp % read_data(meshes(i) % upper_right, "upper_right", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call sp % read_data(meshes(i) % width, "width", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+    end do MESH_LOOP
+
+    ! Read and overwrite number of tallies
+    call sp % read_data(n_tallies, "n_tallies", group="tallies")
+
+    ! Read in tally metadata
+    TALLY_METADATA: do i = 1, n_tallies
+
+      ! Get pointer to tally
+      t => tallies(i)
+
+      ! Read tally id
+      call sp % read_data(t % id, "id", group="tallies/tally" // to_str(i))
+
+      ! Read number of realizations
+      call sp % read_data(t % n_realizations, "n_realizations", &
+           group="tallies/tally" // to_str(i))
+
+      ! Read size of tally results
+      call sp % read_data(int_array(1), "total_score_bins", &
+           group="tallies/tally" // to_str(i))
+      call sp % read_data(int_array(2), "total_filter_bins", &
+           group="tallies/tally" // to_str(i))
+
+      ! Check size of tally results array
+      if (int_array(1) /= t % total_score_bins .and. &
+          int_array(2) /= t % total_filter_bins) then
+        message = "Input file tally structure is different from restart."
         call fatal_error()
       end if
 
-      MESH_LOOP: do i = 1, n_meshes
-        ! Read id, mesh type, and dimension
-        call MPI_FILE_READ(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, &
-             mpi_err)
+      ! Read number of filters
+      call sp % read_data(t % n_filters, "n_filters", &
+           group="tallies/tally" // to_str(i))
 
-        ! Skip mesh data
-        call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
-        offset = offset + temp(3)*(4 + 3*8)
-        call MPI_FILE_SEEK(fh, offset, MPI_SEEK_SET, mpi_err)
-      end do MESH_LOOP
+      ! Read filter information
+      FILTER_LOOP: do j = 1, t % n_filters
 
-      ! Read number of tallies and make sure it matches
-      call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-      if (temp(1) /= n_tallies) then
-        message = "Number of tallies does not match in state point."
-        call fatal_error()
-      end if
+        ! Read type of filter
+        call sp % read_data(t % filters(j) % type, "type", &
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
 
-      TALLY_METADATA: do i = 1, n_tallies
-        ! Read tally id
-        call MPI_FILE_READ(fh, tallies(i) % id, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+        ! Read number of bins for this filter
+        call sp % read_data(t % filters(j) % n_bins, "n_bins", &
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
 
-        ! Read number of realizations for global tallies
-        call MPI_FILE_READ(fh, tallies(i) % n_realizations, 1, &
-             MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-
-        ! Read dimensions of tally filters and results and make sure they
-        ! match
-        call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-        if (temp(1) /= size(tallies(i) % results, 1) .or. &
-             temp(2) /= size(tallies(i) % results, 2)) then
-          message = "Tally dimensions do not match in state point."
-          call fatal_error()
+        ! Read bins
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+            t % filters(j) % type == FILTER_ENERGYOUT) then
+          call sp % read_data(t % filters(j) % real_bins, "bins", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+               length=size(t % filters(j) % real_bins))
+        else
+          call sp % read_data(t % filters(j) % int_bins, "bins", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+               length=size(t % filters(j) % int_bins))
         end if
 
-        ! Read number of filters
-        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+      end do FILTER_LOOP
 
-        FILTER_LOOP: do j = 1, temp(1)
-          ! Read filter type and number of bins
-          call MPI_FILE_READ(fh, temp(2), 2, MPI_INTEGER, &
-               MPI_STATUS_IGNORE, mpi_err)
+      ! Read number of nuclide bins
+      call sp % read_data(t % n_nuclide_bins, "n_nuclide_bins", &
+           group="tallies/tally" // to_str(i))
 
-          ! Read filter bins
-          select case (temp(2))
-          case (FILTER_MESH)
-            allocate(int_array(1))
-            call MPI_FILE_READ(fh, int_array, 1, MPI_INTEGER, &
-                 MPI_STATUS_IGNORE, mpi_err)
-            deallocate(int_array)
-          case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
-            allocate(real_array(temp(3) + 1))
-            call MPI_FILE_READ(fh, real_array, temp(3) + 1, MPI_REAL8, &
-                 MPI_STATUS_IGNORE, mpi_err)
-            deallocate(real_array)
-          case default
-            allocate(int_array(temp(3)))
-            call MPI_FILE_READ(fh, int_array, temp(3), MPI_INTEGER, &
-                 MPI_STATUS_IGNORE, mpi_err)
-            deallocate(int_array)
-          end select
-        end do FILTER_LOOP
+      ! Set up nuclide bin array and then write
+      allocate(temp_array(t % n_nuclide_bins))
+      call sp % read_data(temp_array, "nuclide_bins", &
+           group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
+      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+        if (temp_array(j) > 0) then
+          nuclides(t % nuclide_bins(j)) % zaid = temp_array(j)
+        else
+          t % nuclide_bins(j) = temp_array(j)
+        end if
+      end do NUCLIDE_LOOP
+      deallocate(temp_array)
 
-        ! Read number of nuclides
-        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
+      ! Write number of score bins, score bins, and scatt order
+      call sp % read_data(t % n_score_bins, "n_score_bins", &
+           group="tallies/tally" // to_str(i))
+      call sp % read_data(t % score_bins, "score_bins", &
+           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+      call sp % read_data(t % scatt_order, "scatt_order", &
+           group="tallies/tally" // to_str(i), length=t % n_score_bins)
 
-        ! Read nuclide bins
-        allocate(int_array(temp(1)))
-        call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-        deallocate(int_array)
+      ! Write number of user score bins
+      call sp % read_data(t % n_user_score_bins, "n_user_score_bins", &
+           group="tallies/tally" // to_str(i))
 
-        ! Read number of score bins, score bins, and scatt_order
-        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-        allocate(int_array(temp(1)))
-        call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-        call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-        deallocate(int_array)
-        
-        ! Read number of user score bins
-        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
-      end do TALLY_METADATA
+    end do TALLY_METADATA
+
+    ! Check for source in statepoint if needed
+    call sp % read_data(int_array(1), "source_present")
+    if (int_array(1) == 1) then
+      source_present = .true.
+    else
+      source_present = .false.
+    end if
+
+    ! Check to make sure source bank is present
+    if (path_source_point == path_state_point .and. .not. source_present) then
+      message = "Source bank must be contained in statepoint restart file"
+      call fatal_error()
+    end if 
+
+    ! Read tallies to master
+    if (master) then
 
       ! Read number of realizations for global tallies
-      call MPI_FILE_READ(fh, n_realizations, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpi_err)
+      call sp % read_data(n_realizations, "n_realizations", collect=.false.)
 
-      ! Read number of global tallies and make sure it matches
-      call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-      if (temp(1) /= N_GLOBAL_TALLIES) then
+      ! Read number of global tallies
+      call sp % read_data(int_array(1), "n_global_tallies", collect=.false.)
+      if (int_array(1) /= N_GLOBAL_TALLIES) then
         message = "Number of global tallies does not match in state point."
         call fatal_error()
       end if
 
       ! Read global tally data
-      call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
-           MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
+      call sp % read_tally_result(global_tallies, "global_tallies", &
+           n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
-      call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+      call sp % read_data(int_array(1), "tallies_present", group="tallies", collect=.false.)
 
-      ! =======================================================================
-      ! TALLY RESULTS
-
-      ! Read sum and sum squared
-      if (temp(1) == 1) then
+      ! Read in sum and sum squared
+      if (int_array(1) == 1) then
         TALLY_RESULTS: do i = 1, n_tallies
-          n = size(tallies(i) % results, 1) * size(tallies(i) % results, 2)
-          call MPI_FILE_READ(fh, tallies(i) % results, n, MPI_TALLYRESULT, &
-               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Set pointer to tally
+          t => tallies(i)
+
+          ! Read sum and sum_sq for each bin
+          call sp % read_tally_result(t % results, "results", &
+               group="tallies/tally" // to_str(i), &
+               n1=size(t % results, 1), n2=size(t % results, 2))
+
         end do TALLY_RESULTS
       end if
     end if
 
-    ! ==========================================================================
-    ! SOURCE BANK
-
+    ! Read source if in eigenvalue mode 
     if (run_mode == MODE_EIGENVALUE) then
-      ! Get current offset for master
-      if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
 
-      ! Determine offset on master process and broadcast to all processors
-      call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
-      select case (size_offset_kind)
-      case (4)
-        call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-      case (8)
-        call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
-      end select
+      ! Check if source was written out separately
+      if (.not. source_present) then
 
-      ! Set proper offset for source data on this processor
-      call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-      offset = offset + size_bank*maxwork*rank
+        ! Close statepoint file 
+        call sp % file_close()
 
-      ! Write all source sites
-      call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-           MPI_STATUS_IGNORE, mpi_err)
-    end if
+        ! Write message
+        message = "Loading source file " // trim(path_source_point) // "..."
+        call write_message(1)
 
-    ! Close binary state point file
-    call MPI_FILE_CLOSE(fh, mpi_err)
+        ! Open source file 
+        call sp % file_open(path_source_point, 'r', serial = .false.)
 
-#else
-    ! Open binary state point file for writing
-    open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='old', &
-         ACCESS='stream')
+        ! Read file type
+        call sp % read_data(int_array(1), "filetype")
 
-    ! Raad revision number for state point file and make sure it matches with
-    ! current version
-    read(UNIT_STATE) temp(1)
-    if (temp(1) /= REVISION_STATEPOINT) then
-      message = "State point binary version does not match current version " &
-           // "in OpenMC."
-      call fatal_error()
-    end if
-
-    ! Read OpenMC version
-    read(UNIT_STATE) temp(1:3)
-    if (temp(1) /= VERSION_MAJOR .or. temp(2) /= VERSION_MINOR &
-         .or. temp(3) /= VERSION_RELEASE) then
-      message = "State point file was created with a different version " // &
-           "of OpenMC."
-      call warning()
-    end if
-
-    ! Read date and time
-    read(UNIT_STATE) current_time
-
-    ! Read path
-    read(UNIT_STATE) path_temp
-
-    ! Read and overwrite random number seed
-    read(UNIT_STATE) seed
-
-    ! Read and overwrite run information
-    read(UNIT_STATE) mode, n_particles, n_batches
-
-    ! Read batch number to restart at
-    read(UNIT_STATE) restart_batch
-
-    ! Read information specific to eigenvalue run
-    if (mode == MODE_EIGENVALUE) then
-      read(UNIT_STATE) n_inactive, gen_per_batch
-      read(UNIT_STATE) k_batch(1:restart_batch)
-      read(UNIT_STATE) entropy(1:restart_batch*gen_per_batch)
-      read(UNIT_STATE) k_col_abs
-      read(UNIT_STATE) k_col_tra
-      read(UNIT_STATE) k_abs_tra
-      allocate(real_array(2))
-      read(UNIT_STATE) real_array
-      deallocate(real_array)
-    end if
-
-    if (master) then
-      ! Read number of meshes
-      read(UNIT_STATE) temp(1)
-      if (temp(1) /= n_meshes) then
-        message = "Number of meshes does not match in state point."
-        call fatal_error()
       end if
 
-      MESH_LOOP: do i = 1, n_meshes
-        ! Read id, mesh type, and dimension
-        read(UNIT_STATE) temp(1:3)
+      ! Write out source
+      call sp % read_source_bank()
 
-        ! Allocate temporary arrays
-        allocate(int_array(temp(3)))
-        allocate(real_array(temp(3)))
-
-        ! Read dimension, lower_left, upper_right, width
-        read(UNIT_STATE) int_array
-        read(UNIT_STATE) real_array
-        read(UNIT_STATE) real_array
-        read(UNIT_STATE) real_array
-
-        ! Deallocate temporary arrays
-        deallocate(int_array)
-        deallocate(real_array)
-      end do MESH_LOOP
-
-      ! Read number of tallies and make sure it matches
-      read(UNIT_STATE) temp(1)
-      if (temp(1) /= n_tallies) then
-        message = "Number of tallies does not match in state point."
-        call fatal_error()
-      end if
-
-      TALLY_METADATA: do i = 1, n_tallies
-        ! Read id
-        read(UNIT_STATE) temp(1)
-
-        ! Read number of realizations
-        read(UNIT_STATE) tallies(i) % n_realizations
-
-        ! Read dimensions of tally filters and results and make sure they
-        ! match
-        read(UNIT_STATE) temp(1:2)
-        if (temp(1) /= size(tallies(i) % results, 1) .or. &
-             temp(2) /= size(tallies(i) % results, 2)) then
-          message = "Tally dimensions do not match in state point."
-          call fatal_error()
-        end if
-
-        ! Read number of filters
-        read(UNIT_STATE) temp(1)
-
-        FILTER_LOOP: do j = 1, temp(1)
-          ! Read filter type and number of bins
-          read(UNIT_STATE) temp(2:3)
-
-          ! Read filter bins
-          select case (temp(2))
-          case (FILTER_MESH)
-            allocate(int_array(1))
-            read(UNIT_STATE) int_array
-            deallocate(int_array)
-          case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
-            allocate(real_array(temp(3) + 1))
-            read(UNIT_STATE) real_array
-            deallocate(real_array)
-          case default
-            allocate(int_array(temp(3)))
-            read(UNIT_STATE) int_array
-            deallocate(int_array)
-          end select
-        end do FILTER_LOOP
-
-        ! Read number of nuclides
-        read(UNIT_STATE) temp(1)
-
-        ! Read nuclide bins
-        allocate(int_array(temp(1)))
-        read(UNIT_STATE) int_array
-        deallocate(int_array)
-
-        ! Read number of results
-        read(UNIT_STATE) temp(1)
-
-        ! Read results bins and scatt_order
-        allocate(int_array(temp(1)))
-        read(UNIT_STATE) int_array
-        read(UNIT_STATE) int_array
-        deallocate(int_array)
-        
-        ! Read number of user bins
-        read(UNIT_STATE) temp(1)
-      end do TALLY_METADATA
-
-      ! Read number of realizations for global tallies
-      read(UNIT_STATE) n_realizations
-
-      ! Read number of global tallies and make sure it matches
-      read(UNIT_STATE) temp(1)
-      if (temp(1) /= N_GLOBAL_TALLIES) then
-        message = "Number of global tallies does not match in state point."
-        call fatal_error()
-      end if
-
-      ! Read global tally data
-      do i = 1, N_GLOBAL_TALLIES
-        read(UNIT_STATE) global_tallies(i) % sum
-        read(UNIT_STATE) global_tallies(i) % sum_sq
-      end do
-
-      ! Read sum and sum squared
-      read(UNIT_STATE) temp(1)
-      if (temp(1) == 1) then
-        TALLY_RESULTS: do i = 1, n_tallies
-          do k = 1, size(tallies(i) % results, 2)
-            do j = 1, size(tallies(i) % results, 1)
-              read(UNIT_STATE) tallies(i) % results(j,k) % sum
-              read(UNIT_STATE) tallies(i) % results(j,k) % sum_sq
-            end do
-          end do
-        end do TALLY_RESULTS
-      end if
-    end if
-    
-    ! Read source bank for eigenvalue run
-    if (mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
-      read(UNIT_STATE) source_bank
     end if
 
-    ! Close binary state point file
-    close(UNIT_STATE)
-#endif
+    ! Close file
+    call sp % file_close()
 
   end subroutine load_state_point
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays batch keff and entropy for each batch stored in
-! a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    integer       :: n = 0          ! number of realizations
-    real(8), save :: temp(2) = ZERO ! temporary values for keff
-    real(8)       :: alpha          ! significance level for CI
-    real(8)       :: t_value        ! t-value for confidence intervals
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      message = "Replaying history from state point..."
-      call write_message(1)
-    end if
-
-    ! Add to number of realizations
-    if (current_batch > n_inactive) then
-      n = n + 1
-
-      temp(1) = temp(1) + k_batch(current_batch)
-      temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
-
-      ! calculate mean keff
-      keff = temp(1) / n
-
-      if (n > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n - 1)
-        else
-          t_value = ONE
-        end if
-
-        keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
-      end if
-    else
-      keff = k_batch(current_batch)
-    end if
-
-    ! print out batch keff
-    if (master) call print_batch_keff()
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      message = "Resuming simulation..."
-      call write_message(1)
-    end if
-
-  end subroutine replay_batch_history
-
-!===============================================================================
-! WRITE_SOURCE writes out the final source distribution to a binary file that
-! can be used as a starting source in a new simulation
-!===============================================================================
-
-  subroutine write_source_binary()
-
-#ifdef MPI
-    integer                  :: fh     ! file handle
-    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-
-    ! ==========================================================================
-    ! PARALLEL I/O USING MPI-2 ROUTINES
-
-    ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_CREATE + &
-         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
-
-    if (master) then
-      offset = 0
-      call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
-           MPI_STATUS_IGNORE, mpi_err)
-    end if
-
-    ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*8)
-
-    ! Write all source sites
-    call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Close binary source file
-    call MPI_FILE_CLOSE(fh, mpi_err)
-
-#else
-    ! ==========================================================================
-    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
-
-    ! Open binary source file for writing
-    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='replace', &
-         ACCESS='stream')
-
-    ! Write the number of particles
-    write(UNIT=UNIT_SOURCE) n_particles
-
-    ! Write information from the source bank
-    write(UNIT=UNIT_SOURCE) source_bank(1:work)
-
-    ! Close binary source file
-    close(UNIT=UNIT_SOURCE)
-#endif
-
-  end subroutine write_source_binary
-
-!===============================================================================
-! READ_SOURCE_BINARY reads a source distribution from a source.binary file and
-! initializes the source bank
-!===============================================================================
-
-  subroutine read_source_binary()
-
-    integer    :: i        ! loop over repeating sites
-    integer(8) :: n_sites  ! number of sites in binary file
-    integer    :: n_repeat ! number of times to repeat a site
-#ifdef MPI
-    integer    :: fh       ! file handle
-    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-    integer    :: n_read   ! number of sites to read on a single process
-#endif
-
-#ifdef MPI
-    ! ==========================================================================
-    ! PARALLEL I/O USING MPI-2 ROUTINES
-
-    ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_RDONLY, &
-         MPI_INFO_NULL, fh, mpi_err)
-
-    ! Read number of source sites in file
-    offset = 0
-    call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    if (n_particles > n_sites) then
-      ! Determine number of sites to read and offset
-      if (rank <= mod(n_sites,int(n_procs,8)) - 1) then
-        n_read = int(n_sites/n_procs) + 1
-        offset = 8*(1 + rank*n_read*8)
-      else
-        n_read = int(n_sites/n_procs)
-        offset = 8*(1 + (rank*n_read + mod(n_sites,int(n_procs,8)))*8)
-      end if
-
-      ! Read source sites
-      call MPI_FILE_READ_AT(fh, offset, source_bank(1), n_read, MPI_BANK, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Let's say we have 30 sites and we need to fill in 200. This do loop
-      ! will fill in sites 31 - 180.
-
-      n_repeat = int(work / n_read)
-      do i = 1, n_repeat - 1
-        source_bank(i*n_read + 1:(i+1)*n_read) = &
-             source_bank((i-1)*n_read + 1:i*n_read)
-      end do
-
-      ! This final statement would fill sites 181 - 200 in the above example.
-
-      if (mod(work, int(n_repeat*n_read,8)) > 0) then
-        source_bank(n_repeat*n_read + 1:work) = &
-             source_bank(1:work - n_repeat * n_read)
-      end if
-
-    else
-      ! Set proper offset for source data on this processor
-      offset = 8*(1 + rank*maxwork*8)
-
-      ! Read all source sites
-      call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-           MPI_STATUS_IGNORE, mpi_err)
-
-      ! Close binary source file
-      call MPI_FILE_CLOSE(fh, mpi_err)
-    end if
-
-#else
-    ! ==========================================================================
-    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
-
-    ! Open binary source file for reading
-    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='old', &
-         ACCESS='stream')
-
-    ! Read number of source sites in file
-    read(UNIT=UNIT_SOURCE) n_sites
-
-    if (n_particles > n_sites) then
-      ! The size of the source file is smaller than the number of particles we
-      ! need. Thus, read all sites and then duplicate sites as necessary.
-
-      read(UNIT=UNIT_SOURCE) source_bank(1:n_sites)
-
-      ! Let's say we have 300 sites and we need to fill in 1000. This do loop
-      ! will fill in sites 301 - 900.
-
-      n_repeat = int(n_particles / n_sites)
-      do i = 1, n_repeat - 1
-        source_bank(i*n_sites + 1:(i+1)*n_sites) = &
-             source_bank((i-1)*n_sites + 1:i*n_sites)
-      end do
-
-      ! This final statement would fill sites 901 - 1000 in the above example.
-
-      source_bank(n_repeat*n_sites + 1:n_particles) = &
-           source_bank(1:n_particles - n_repeat * n_sites)
-
-    else
-      ! The size of the source file is bigger than or equal to the number of
-      ! particles we need for one generation. Thus, we can just read as many
-      ! sites as we need.
-
-      read(UNIT=UNIT_SOURCE) source_bank(1:n_particles)
-
-    end if
-
-    ! Close binary source file
-    close(UNIT=UNIT_SOURCE)
-#endif
-
-  end subroutine read_source_binary
-
+  subroutine read_source
+! TODO write this routine
+! TODO what if n_particles does not match source bank
+  end subroutine read_source
 end module state_point

@@ -1,12 +1,9 @@
 <?xml version="1.0"?>
 <geometry>
 
-  <!-- Nested Cylinders with Tracking Error -->
-  <surface id="1" type="z-cylinder" coeffs="0.0 0.0 10.0"                       />
-  <surface id="2" type="z-cylinder" coeffs="0.0 0.0 20.0" boundary="reflective" />
-  <surface id="3" type="z-plane"    coeffs="5.0"          boundary="reflective" />
-  <surface id="4" type="z-plane"    coeffs="-5.0"         boundary="reflective" />
-  <cell id="1" material="1" surfaces="-1 3 -4" />
-  <cell id="2" material="1" surfaces="1 -2"/>
-    
+  <!-- Sphere with no boundary condition -->
+  <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 80.0" />
+  <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 10000.0" boundary="vacuum" />
+  <cell id="1" material="1" surfaces="-1" />
+
 </geometry>

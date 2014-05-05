@@ -5,11 +5,11 @@ Data Processing and Visualization
 =================================
 
 This section is intended to explain in detail the recommended procedures for
-carrying out common tasks with OpenMC. While several utilities of varying
-complexity are provided to help automate the process, in many cases it will be
-extremely beneficial to do some coding in Python to quickly obtain results.  In
-these cases, and for many of the provided utilities, it is necessary for your
-Python installation to contain:
+carrying out common post-processing tasks with OpenMC. While several utilities
+of varying complexity are provided to help automate the process, in many cases
+it will be extremely beneficial to do some coding in Python to quickly obtain
+results. In these cases, and for many of the provided utilities, it is necessary
+for your Python installation to contain:
 
 * [1]_ `Numpy <http://www.numpy.org/>`_
 * [1]_ `Scipy <http://www.scipy.org/>`_
@@ -38,8 +38,57 @@ running OpenMC with the -plot or -p command-line option (See
 Plotting in 2D
 --------------
 
-.. image:: ../../img/atr.png
+.. image:: ../_images/atr.png
    :height: 200px
+
+See below for a simple example of a plots xml file that demonstrates the
+capabilities of 2D slice plots. Here we assume that there is a ``geometry.xml``
+file containing 7 cells.
+
+.. code-block:: xml
+
+        <?xml version="1.0" encoding="UTF-8"?>
+        <plots>
+
+          <plot id="1" type="slice" color="cell" basis="xy">
+              <filename> myplot </filename>
+              <origin> 0 0 </origin>
+              <width> 10 10 </width>
+              <pixels> 2000 2000 </pixels>
+              <background> 0 0 0 </background>
+              <col_spec id="1" rgb="198 226 255"/>
+              <col_spec id="2" rgb="255 218 185"/>
+              <col_spec id="3" rgb="255 255 255"/>
+              <col_spec id="4" rgb="101 101 101"/>
+              <col_spec id="7" rgb="123 123 231"/>
+              <mask background="255 255 255">
+                <components> 1 3 4 5 6 </components>
+              </mask>
+          </plot>
+
+        </plots>
+
+
+In this example, OpenMC will produce a plot named ``myplot.ppm`` when run in
+plotting mode. The picture will be on the xy-plane, depicting the rectangle
+between points (-5,-5) and (5,5) with 2000 pixels along each dimension. The
+color of each pixel is determined by placing a particle at the center of that
+pixel and using OpenMC's internal ``find_cell`` routine (the same one used for
+particle tracking during simulation) to determine the cell and material at that
+location. In this example, pixels are 10/2000=0.005 cm wide, so points will be
+at (-4.9975,-4.9975), (-4.9950,-4.9975), (-4.9925,-4.9975), etc. This is pointed
+out to demonstrate that this plot may miss any features smaller than 0.005 cm,
+since they could exist between pixel centers. More pixels can be used to resolve
+finer features, but could result in larger files.
+
+The ``background``, ``col_spec``, and ``mask`` elements define how to set pixel
+colors based on the cell ids at each pixel center. In this example, RGB colors
+are specified for cells 1,2,3,4, and 7, a random color will be assigned to cells
+5 and 6, and a black background color (``rgb="0 0 0"``) will be applied to
+locations where no cell is defined. However, the ``mask`` element here says that
+only cells 1,3,4,5, and 6 should be displayed, with other cells taking a white
+color (``rgb="255 255 255"``), which overrides the ``col_spec`` for cell 2 and
+the random color assigned to cell 7.
 
 After running OpenMC to obtain PPM files, images should be saved to another
 format before using them elsewhere. This cuts down the size of the file by
@@ -53,18 +102,45 @@ Ubuntu: ``sudo apt-get install imagemagick``).  Images are then converted like:
 
 .. code-block:: sh
 
-    convert plot.ppm plot.png
+    convert myplot.ppm myplot.png
 
 Plotting in 3D
 --------------
 
-.. image:: ../../img/3dgeomplot.png
+.. image:: ../_images/3dgeomplot.png
    :height: 200px
+
+See below for a simple example of a plots xml file that demonstrates the
+capabilities of 3D voxel plots.
+
+.. code-block:: xml
+
+        <?xml version="1.0" encoding="UTF-8"?>
+        <plots>
+
+          <plot id="1" type="voxel" color="mat">
+              <filename> myplot </filename>
+              <origin> 0 0 0 </origin>
+              <width> 10 10 10 </width>
+              <pixels> 500 500 500 </pixels>
+          </plot>
+
+        </plots>
+
+Voxel plots are built the same way 2D slice plots are, by determining the cell
+or material id of a particle at the center of each voxel. In this example, the
+space covered is the cube between the points (-5,-5,-5) and (5,5,5), with voxel
+centers 10/500 = 0.02 cm apart. The binary VOXEL files that are produced do not
+specify any color - instead containing only material or cell ids (material id
+in this example) - and thus the ``background``, ``col_spec``, and ``mask``
+elements are not used. If no cell is found at a voxel center, an id of -1 is
+stored.
 
 The binary VOXEL files output by OpenMC can not be viewed directly by any
 existing viewers. In order to view them, they must be converted into a standard
-mesh format that can be viewed in ParaView, Visit, etc. The provided utility
-voxel.py accomplishes this for SILO:
+mesh format that can be viewed in ParaView, Visit, etc. This typically will
+compress the size of the file significantly. The provided utility voxel.py
+accomplishes this for SILO:
 
 .. code-block:: sh
 
@@ -82,18 +158,27 @@ To use this utility you need either
 
 or
 
-* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are easily obtained with ``sudo apt-get install python-vtk``
+* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are
+  easily obtained with ``sudo apt-get install python-vtk``
 
 Users can process the binary into any other format if desired by following the
 example of voxel.py.  For the binary file structure, see :ref:`devguide_voxel`.
 
+Once processed into a standard 3D file format, colors and masks can be defined
+using the stored id numbers to better explore the geometry. The process for
+doing this will depend on the 3D viewer, but should be straightforward.
+
+.. image:: ../_images/3dba.png
+   :height: 200px
+
 .. note:: 3D voxel plotting can be very computer intensive for the viewing
-          program (Visit, Paraview, etc.) if the number of voxels is large
-          (>10million or so).  Thus if you want an accurate picture that
-          renders smoothly, consider using only one voxel in a certain
-          direction. For instance, the 3D pin lattice figure above was generated
-          with a 500x500x1 voxel mesh, which allows for resolution of the
-          cylinders without wasting too many voxels on the axial dimension.
+          program (Visit, Paraview, etc.) if the number of voxels is large (>10
+          million or so).  Thus if you want an accurate picture that renders
+          smoothly, consider using only one voxel in a certain direction. For
+          instance, the 3D pin lattice figure at the beginning of this section
+          was generated with a 500x500x1 voxel mesh, which allows for resolution
+          of the cylinders without wasting too many voxels on the axial
+          dimension.
 
 
 -------------------
@@ -161,7 +246,7 @@ tasks will be described here in the following sections.
 Plotting in 2D
 --------------
 
-.. image:: ../../img/plotmeshtally.png
+.. image:: ../_images/plotmeshtally.png
    :height: 200px
 
 For simple viewing of 2D slices of a mesh plot, the utility plot_mesh_tally.py
@@ -169,7 +254,7 @@ is provided.  This utility provides an interactive GUI to explore and plot
 mesh tallies for any scores and filter bins.  It requires statepoint.py, as well
 as `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_.
 
-.. image:: ../../img/fluxplot.png
+.. image:: ../_images/fluxplot.png
    :height: 200px
 
 Alternatively, the user can write their own Python script to manipulate the data
@@ -248,7 +333,7 @@ two heatmaps in the previous figure.
 Plotting in 3D
 --------------
 
-.. image:: ../../img/3dcore.png
+.. image:: ../_images/3dcore.png
    :height: 200px
 
 As with 3D plots of the geometry, meshtally data needs to be put into a standard
@@ -287,7 +372,7 @@ SILO file can be created with:
 
     import silomesh as sm
     sm.init_silo("fluxtally.silo")
-    sm.init_mesh('tally_mesh',*mesh.dimension, *mesh.lower_left, *mesh.upper_right)
+    sm.init_mesh('tally_mesh', *mesh.dimension, *mesh.lower_left, *mesh.upper_right)
     sm.init_var('flux_tally_thermal')
     for x in range(1,nx+1):
       for y in range(1,ny+1):
@@ -352,9 +437,89 @@ file. Note that the data contained in the output from
 ``StatePoint.extract_result`` is already in a Numpy array that can be reshaped
 and dumped to MATLAB in one step.
 
+----------------------------
+Particle Track Visualization
+----------------------------
 
+.. image:: ../_images/Tracks.png
+   :height: 200px
 
+OpenMC can dump particle tracks—the position of particles as they are
+transported through the geometry.  There are two ways to make OpenMC output
+tracks: all particle tracks through a commandline argument or specific particle
+tracks through settings.xml.
 
+Running OpenMC with the argument "-t", "-track", or "--track" will cause a track
+file to be created for every particle transported in the code.
 
+The settings.xml file can dictate that specific particle tracks are output.
+These particles are specified withen a ''track'' element.  The ''track'' element
+should contain triplets of integers specifying the batch, generation, and
+particle numbers, respectively.  For example, to output the tracks for particles
+3 and 4 of batch 1 and generation 2 the settings.xml file should contain:
 
+.. code-block:: xml
 
+      <track>
+        1 2 3
+        1 2 4
+      </track>
+
+After running OpenMC, the directory should contain a file of the form
+"track_(batch #)_(generation #)_(particle #).(binary or h5)" for each particle
+tracked.  These track files can be converted into VTK poly data files with the
+"track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN"
+where OUT is the optional output filename and IN is one or more filenames
+describing track files.  The default output name is "track.pvtp".  A common
+usage of track.py is "track.py track*.binary" which will use the data from all
+binary track files in the directory to write a "track.pvtp" VTK output file.
+The .pvtp file can then be read and plotted by 3d visualization programs such as
+Paraview.
+
+----------------------
+Source Site Processing
+----------------------
+
+For eigenvalue problems, OpenMC will store information on the fission source
+sites in the statepoint file by default. For each source site, the weight,
+position, sampled direction, and sampled energy are stored. To extract this data
+from a statepoint file, the statepoint.py Python module can be used. Below is an
+example of an interactive ipython session using the statepoint.py Python module:
+
+.. code-block:: python
+
+    In [1]: import statepoint
+    
+    In [2]: sp = statepoint.StatePoint('statepoint.100.h5')
+    
+    In [3]: sp.read_source()
+    
+    In [4]: len(sp.source)
+    Out[4]: 1000
+    
+    In [5]: sp.source[0:10]
+    Out[5]: 
+    [<SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.932923263566>,
+     <SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.349240220512>,
+     <SourceSite: xyz=[-31.21542213 -30.26762771  72.10845757] at E=3.75843584486>,
+     <SourceSite: xyz=[-31.21542213 -30.26762771  72.10845757] at E=0.80550137267>,
+     <SourceSite: xyz=[   0.18805099  -69.13376508  103.67726838] at E=1.67922461097>,
+     <SourceSite: xyz=[   0.18805099  -69.13376508  103.67726838] at E=1.16304110199>,
+     <SourceSite: xyz=[ -50.42189115   -9.96571672  123.34077905] at E=0.710937974074>,
+     <SourceSite: xyz=[ -32.80427668  -15.49316628  125.26301151] at E=1.61907104162>,
+     <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=3.33962024907>,
+     <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=1.90185680329>]
+    
+    In [6]: site = sp.source[0]
+    
+    In [7]: site.weight
+    Out[7]: 1.0
+    
+    In [8]: site.xyz
+    Out[8]: array([  2.21980946,  -8.92686048,  87.93720485])
+    
+    In [9]: site.uvw
+    Out[9]: array([ 0.06740523,  0.50612814,  0.85982024])
+    
+    In [10]: site.E
+    Out[10]: 0.93292326356564159

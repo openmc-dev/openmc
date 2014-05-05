@@ -86,7 +86,6 @@ module tally_header
     ! mapped onto one dimension in the results array, the stride attribute gives
     ! the stride for a given filter type within the results array
 
-    integer, allocatable :: matching_bins(:)
     integer, allocatable :: stride(:)
 
     ! This array provides a way to lookup what index in the filters array a
@@ -169,8 +168,6 @@ module tally_header
         deallocate(this % filters)
       end if
       
-      if (allocated(this % matching_bins)) &
-           deallocate(this % matching_bins)
       if (allocated(this % stride)) &
            deallocate(this % stride)
       

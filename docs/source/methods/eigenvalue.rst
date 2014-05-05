@@ -108,6 +108,40 @@ at plots of :math:`k_{eff}` and the Shannon entropy. A number of methods have
 been proposed (see e.g. [Romano]_, [Ueki]_), but each of these is not without
 problems.
 
+---------------------------
+Uniform Fission Site Method
+---------------------------
+
+Generally speaking, the variance of a Monte Carlo tally will be inversely
+proportional to the number of events that score to the tally. In a reactor
+problem, this implies that regions with low relative power density will have
+higher variance that regions with high relative power density. One method to
+circumvent the uneven distribution of relative errors is the uniform fission
+site (UFS) method introduced by [Sutton]_. In this method, the portion of the
+problem containing fissionable material is subdivided into a number of cells
+(typically using a structured mesh). Rather than producing
+
+.. math::
+
+    m = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t}
+
+fission sites at each collision where :math:`w` is the weight of the neutron,
+:math:`k` is the previous-generation estimate of the neutron multiplication
+factor, :math:`\nu\Sigma_f` is the neutron production cross section, and
+:math:`\Sigma_t` is the total cross section, in the UFS method we produce
+
+.. math::
+
+    m_{UFS} = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t} \frac{v_i}{s_i}
+
+fission sites at each collision where :math:`v_i` is the fraction of the total
+volume occupied by cell :math:`i` and :math:`s_i` is the fraction of the fission
+source contained in cell :math:`i`. To ensure that no bias is introduced, the
+weight of each fission site stored in the fission bank is :math:`s_i/v_i` rather
+than unity. By ensuring that the expected number of fission sites in each mesh
+cell is constant, the collision density across all cells, and hence the variance
+of tallies, is more uniform than it would be otherwise.
+
 .. _Shannon entropy: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-06-3737_entropy.pdf
 
 .. [Lieberoth] J. Lieberoth, "A Monte Carlo Technique to Solve the Static
@@ -118,6 +152,10 @@ problems.
    Source Convergence in Monte Carlo Criticality Calculations,"
    *Proc. International Conference on Mathematics, Computational Methods, and
    Reactor Physics*, Saratoga Springs, New York (2009).
+
+.. [Sutton] Daniel J. Kelly, Thomas M. Sutton, and Stephen C. Wilson, "MC21
+   Analysis of the Nuclear Energy Agency Monte Carlo Performance Benchmark
+   Problem," *Proc. PHYSOR 2012*, Knoxville, Tennessee, Apr. 15--20 (2012).
 
 .. [Ueki] Taro Ueki, "On-the-Fly Judgments of Monte Carlo Fission Source
    Convergence," *Trans. Am. Nucl. Soc.*, **98**, 512 (2008).

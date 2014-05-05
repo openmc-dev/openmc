@@ -17,7 +17,9 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning()
+  subroutine warning(force)
+
+    logical, optional :: force ! force write from proc other than master
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
@@ -26,10 +28,10 @@ contains
     integer :: indent    ! length of indentation
 
     ! Only allow master to print to screen
-    if (.not. master) return
+    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
-    write(OUTPUT_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
+    write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
 
     ! Set line wrapping and indentation
     line_wrap = 80
@@ -42,7 +44,7 @@ contains
     do
       if (length - i_start < line_wrap - indent + 1) then
         ! Remainder of message will fit on line
-        write(OUTPUT_UNIT, fmt='(A)') message(i_start+1:length)
+        write(ERROR_UNIT, fmt='(A)') message(i_start+1:length)
         exit
 
       else
@@ -58,7 +60,7 @@ contains
           i_end = i_end - 1
         else
           ! Write up to last space
-          write(OUTPUT_UNIT, fmt='(A/A)', advance='no') &
+          write(ERROR_UNIT, fmt='(A/A)', advance='no') &
                message(i_start+1:i_end-1), repeat(' ', indent)
         end if
 
@@ -139,9 +141,6 @@ contains
     if (current_batch > 0) then
       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-      write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Location:  ', p % coord0 % xyz
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
       write(ERROR_UNIT,*)
     end if
 

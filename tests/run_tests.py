@@ -115,6 +115,7 @@ class Test(object):
         self.coverage = coverage
         self.success = True
         self.msg = None
+        self.skipped = False
         self.cmake = ['cmake', '-H../src', '-Bbuild']
 
         # Check for MPI/HDF5
@@ -231,7 +232,6 @@ class Test(object):
             self.msg = 'Compiler not found: {0}'.\
                        format((os.path.join(path, self.fc)))
             self.success = False
-        return self.success
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
@@ -360,18 +360,22 @@ rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|\
 sourcepoint_batch|statepoint_interval|survival_biasing|\
 tally_assumesep|translation|uniform_fs|universe|void"
 
+# Delete items of dictionary if valgrind or coverage and not in script mode
+if not script_mode:
+    for key in tests:
+        if re.search('valgrind|coverage', key):
+            del tests[key]
+
+# Check if tests empty
+if len(tests.keys()) == 0:
+    print('No tests to run.')
+    exit()
+
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)
 call(['./cleanup']) # removes all binary and hdf5 output files from tests
 for key in iter(tests):
     test = tests[key]
-
-    # No valgrind or coverage if not in CTest script mode
-    if not script_mode:
-        if test.valgrind:
-            continue
-        if test.coverage:
-            continue
 
     # Extra display if not in script mode
     if not script_mode:
@@ -381,7 +385,8 @@ for key in iter(tests):
         sys.stdout.flush()
 
     # Verify fortran compiler exists
-    if not test.check_compiler():
+    test.check_compiler()
+    if not test.success:
         continue
 
     # Set test specific CTest script vars. Not used in non-script mode

@@ -21,6 +21,12 @@ src/openmc
 docs/build
 docs/source/_images/*.pdf
 
+# Source build
+src/build
+
+# build from src/utils/setup.py
+src/utils/build
+
 # xml-fortran reader
 src/xml-fortran/xmlreader
 
@@ -32,3 +38,6 @@ results_error.dat
 
 # HDF5 files
 *.h5
+
+# Data downloaded from NNDC
+data/nndc

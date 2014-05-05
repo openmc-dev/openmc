@@ -866,10 +866,18 @@ contains
       nu = int(nu_t) + 1
     end if
 
+    ! Check for fission bank size getting hit
+    if (n_bank + nu > size(fission_bank)) then
+      message = "Maximum number of sites in fission bank reached. This can &
+           &result in irreproducible results using different numbers of &
+           &processes/threads."
+      call warning()
+    end if
+
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == 3*work) return
+    if (nu == 0 .or. n_bank == size(fission_bank)) return
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
+    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
       fission_bank(i) % xyz = p % coord0 % xyz
 
@@ -894,7 +902,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, 3*work)
+    n_bank = min(n_bank + nu, int(size(fission_bank),8))
 
     ! Store total weight banked for analog fission tallies
     p % n_bank   = nu

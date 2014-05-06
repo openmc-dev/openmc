@@ -4,7 +4,7 @@ module progress_header
 
   implicit none
 
-#if (UNIX)
+#ifdef UNIX
   interface
     function check_isatty(fd) bind(C, name = 'isatty')
       use, intrinsic :: ISO_C_BINDING, only: c_int
@@ -39,7 +39,7 @@ contains
 
       istty = .true.
 
-#if (UNIX)
+#ifdef UNIX
       if (check_isatty(1) == 0) istty = .false.
 #else
       istty = .false.

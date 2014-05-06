@@ -25,6 +25,7 @@ option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
+option(coverage "Compile with flags"                             OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -35,6 +36,7 @@ endif()
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
+set(HDF5_ENABLED FALSE)
 if($ENV{FC} MATCHES "mpi.*")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
@@ -42,10 +44,12 @@ if($ENV{FC} MATCHES "mpi.*")
 elseif($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
+  set(HDF5_ENABLED TRUE)
 elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
+  set(HDF5_ENABLED TRUE)
 endif()
 
 #===============================================================================
@@ -69,6 +73,10 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   if(openmp)
     set(f90flags  "-fopenmp ${f90flags}")
     set(ldflags   "-fopenmp ${ldflags}")
+  endif()
+  if(coverage)
+    set(f90flags "-coverage ${f90flags}")
+    set(ldflags  "-coverage ${ldflags}")
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
@@ -233,8 +241,8 @@ endif()
 # Regression tests
 #===============================================================================
 
-# This allows mpi test to work
-enable_testing()
+# This allows for dashboard configuration
+include(CTest)
 
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
@@ -247,6 +255,18 @@ if (NOT ${PETSC_ENABLED})
   endforeach(cmfd_test)
 endif(NOT ${PETSC_ENABLED})
 
+# Check for MEM_CHECK and COVERAGE variables
+if (DEFINED ENV{MEM_CHECK})
+  set(MEM_CHECK $ENV{MEM_CHECK})
+else(DEFINED ENV{MEM_CHECK})
+  set(MEM_CHECK FALSE)
+endif(DEFINED ENV{MEM_CHECK})
+if (DEFINED ENV{COVERAGE})
+  set(COVERAGE $ENV{COVERAGE})
+else(DEFINED ENV{COVERAGE})
+  set(COVERAGE FALSE)
+endif(DEFINED ENV{COVERAGE})
+
 # Loop through all the tests
 foreach(test ${TESTS})
 
@@ -254,22 +274,94 @@ foreach(test ${TESTS})
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH) 
 
-  # Check serial/parallel
-  if (${MPI_ENABLED})
+  # Check for running standard tests (no valgrind, no gcov)
+  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
-    # Preform a parallel test
-    add_test(NAME ${TEST_NAME} 
-      WORKING_DIRECTORY ${TEST_PATH} 
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+    # Check serial/parallel
+    if (${MPI_ENABLED})
 
-  else(${MPI_ENABLED})
+      # Preform a parallel test
+      add_test(NAME ${TEST_NAME} 
+        WORKING_DIRECTORY ${TEST_PATH} 
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
-    # Perform a serial test
-    add_test(NAME ${TEST_NAME} 
-      WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+    else(${MPI_ENABLED})
 
-  endif(${MPI_ENABLED})
+      # Perform a serial test
+      add_test(NAME ${TEST_NAME} 
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+
+    endif(${MPI_ENABLED})
+
+  # Handle special case for valgrind and gcov (run openmc directly, no python)
+  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
+
+    # If a plot test is encountered, run with "-p"
+    if (${test} MATCHES "test_plot")
+
+      # Perform serial valgrind and coverage test with plot flag
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
+
+    # If a restart test is encounted, need to run with -r and restart file(s)
+    elseif(${test} MATCHES "restart")
+
+      # Set restart file names
+      if (${HDF5_ENABLED})
+
+        # Handle restart tests separately
+        if(${test} MATCHES "test_statepoint_restart")
+          set(RESTART_FILE statepoint.7.h5)
+        elseif(${test} MATCHES "test_sourcepoint_restart")
+          set(RESTART_FILE statepoint.7.h5 source.7.h5)
+        elseif(${test} MATCHES "test_particle_restart")
+          set(RESTART_FILE particle_12_192.h5)
+        else(${test} MATCHES "test_statepoint_restart")
+          message(FATAL_ERROR "Restart test ${test} not recognized")
+        endif(${test} MATCHES "test_statepoint_restart")
+
+      else(${HDF5_ENABLED})
+
+        # Handle restart tests separately
+        if(${test} MATCHES "test_statepoint_restart")
+          set(RESTART_FILE statepoint.7.binary)
+        elseif(${test} MATCHES "test_sourcepoint_restart")
+          set(RESTART_FILE statepoint.7.binary source.7.binary)
+        elseif(${test} MATCHES "test_particle_restart")
+          set(RESTART_FILE particle_12_192.binary)
+        else(${test} MATCHES "test_statepoint_restart")
+          message(FATAL_ERROR "Restart test ${test} not recognized")
+        endif(${test} MATCHES "test_statepoint_restart")
+
+      endif(${HDF5_ENABLED})
+
+      # Perform serial valgrind and coverage test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+
+      # Perform serial valgrind and coverage restart test
+      add_test(NAME ${TEST_NAME}_restart
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
+
+      # Set test dependency
+      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
+
+
+    # Handle standard tests for valgrind and gcov
+    else(${test} MATCHES "test_plot")
+
+      # Perform serial valgrind and coverage test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+
+    endif(${test} MATCHES "test_plot")
+
+  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
 endforeach(test)

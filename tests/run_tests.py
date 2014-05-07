@@ -74,12 +74,12 @@ set (CTEST_BUILD_OPTIONS "{build_opts}")
 set(CTEST_UPDATE_COMMAND "git")
 
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
-set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
+set(CTEST_MEMORYCHECK_COMMAND "{valgrind_cmd}")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes")
 set(MEM_CHECK {mem_check})
 set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
 
-set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
+set(CTEST_COVERAGE_COMMAND "{gcov_cmd}")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
@@ -116,6 +116,8 @@ class Test(object):
         self.success = True
         self.msg = None
         self.skipped = False
+        self.valgrind_cmd = "" 
+        self.gcov_cmd = ""
         self.cmake = ['cmake', '-H../src', '-Bbuild']
 
         # Check for MPI/HDF5
@@ -231,6 +233,30 @@ class Test(object):
         if not result:
             self.msg = 'Compiler not found: {0}'.\
                        format((os.path.join(path, self.fc)))
+            self.success = False
+
+    # Get valgrind command from user's environment
+    def find_valgrind(self):
+        result = False
+        for path in os.environ["PATH"].split(":"):
+            if os.path.isfile(os.path.join(path, 'valgrind')):
+                self.valgrind_cmd = os.path.join(path, 'valgrind')
+                result = True
+                break
+        if not result:
+            self.msg = 'valgrind not found.'
+            self.success = False
+
+    # Get coverage command from user's environment
+    def find_coverage(self):
+        result = False
+        for path in os.environ["PATH"].split(":"):
+            if os.path.isfile(os.path.join(path, 'gcov')):
+                self.gcov_cmd = os.path.join(path, 'gcov')
+                result = True
+                break
+        if not result:
+            self.msg = 'gcov not found.'
             self.success = False
 
 # Simple function to add a test to the global tests dictionary
@@ -389,11 +415,25 @@ for key in iter(tests):
     if not test.success:
         continue
 
+    # Get valgrind command 
+    if test.valgrind:
+        test.find_valgrind()
+    if not test.success:
+        continue
+
+    # Get coverage command
+    if test.coverage:
+        test.find_coverage()
+    if not test.success:
+        continue
+ 
     # Set test specific CTest script vars. Not used in non-script mode
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
     ctest_vars.update({'mem_check'  : test.valgrind})
     ctest_vars.update({'coverage'  : test.coverage})
+    ctest_vars.update({'valgrind_cmd'  : test.valgrind_cmd})
+    ctest_vars.update({'gcov_cmd'  : test.gcov_cmd})
 
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset

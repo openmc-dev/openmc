@@ -8,6 +8,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
 #===============================================================================
+# Architecture specific definitions
+#===============================================================================
+
+if (${UNIX})
+  add_definitions(-DUNIX)
+endif()
+
+#===============================================================================
 # Command line options
 #===============================================================================
 
@@ -159,6 +167,34 @@ if(petsc)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FLAPACK_LIB})
   endif()
 
+  # If libdl wasn't found, search /usr/lib64 
+  if(PETSC_DL_LIB STREQUAL "PETSC_DL_LIB-NOTFOUND")
+    find_library(PETSC_DL_LIB libdl.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_DL_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_DL_LIB})
+  endif()
+
+  # If libm wasn't found, search /usr/lib64 
+  if(PETSC_M_LIB STREQUAL "PETSC_M_LIB-NOTFOUND")
+    find_library(PETSC_M_LIB libm.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_M_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_M_LIB})
+  endif()
+
+  # If libpthread wasn't found, search /usr/lib64 
+  if(PETSC_PTHREAD_LIB STREQUAL "PETSC_PTHREAD_LIB-NOTFOUND")
+    find_library(PETSC_PTHREAD_LIB libpthread.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_PTHREAD_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_PTHREAD_LIB})
+  endif()
+
+  # If librt wasn't found, search /usr/lib64 
+  if(PETSC_RT_LIB STREQUAL "PETSC_RT_LIB-NOTFOUND")
+    find_library(PETSC_RT_LIB librt.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_RT_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_RT_LIB})
+  endif()
+
   message("-- Using PETSC: ${libpetsc}")
   add_definitions(-DPETSC)
   include_directories($ENV{PETSC_DIR}/include)
@@ -241,7 +277,7 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
 
 # Check to see if PETSC is compiled for CMFD tests
 if (NOT ${PETSC_ENABLED})
-  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
+  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*_cmfd*.py)
   foreach(cmfd_test in ${CMFD_TESTS})
     list(REMOVE_ITEM TESTS ${cmfd_test})
   endforeach(cmfd_test)
@@ -291,7 +327,7 @@ foreach(test ${TESTS})
   else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
     # If a plot test is encountered, run with "-p"
-    if (${test} MATCHES "test_plot")
+    if (${test} MATCHES "test_regression_plot")
 
       # Perform serial valgrind and coverage test with plot flag
       add_test(NAME ${TEST_NAME}
@@ -305,28 +341,28 @@ foreach(test ${TESTS})
       if (${HDF5_ENABLED})
 
         # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
+        if(${test} MATCHES "test_regression_statepoint_restart")
           set(RESTART_FILE statepoint.7.h5)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
+        elseif(${test} MATCHES "test_regression_sourcepoint_restart")
           set(RESTART_FILE statepoint.7.h5 source.7.h5)
-        elseif(${test} MATCHES "test_particle_restart")
+        elseif(${test} MATCHES "test_regression_particle_restart")
           set(RESTART_FILE particle_12_192.h5)
-        else(${test} MATCHES "test_statepoint_restart")
+        else(${test} MATCHES "test_regression_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
+        endif(${test} MATCHES "test_regression_statepoint_restart")
 
       else(${HDF5_ENABLED})
 
         # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
+        if(${test} MATCHES "test_regression_statepoint_restart")
           set(RESTART_FILE statepoint.7.binary)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
+        elseif(${test} MATCHES "test_regression_sourcepoint_restart")
           set(RESTART_FILE statepoint.7.binary source.7.binary)
-        elseif(${test} MATCHES "test_particle_restart")
+        elseif(${test} MATCHES "test_regression_particle_restart")
           set(RESTART_FILE particle_12_192.binary)
-        else(${test} MATCHES "test_statepoint_restart")
+        else(${test} MATCHES "test_regression_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
+        endif(${test} MATCHES "test_regression_statepoint_restart")
 
       endif(${HDF5_ENABLED})
 
@@ -345,14 +381,14 @@ foreach(test ${TESTS})
 
 
     # Handle standard tests for valgrind and gcov
-    else(${test} MATCHES "test_plot")
+    else(${test} MATCHES "test_regression_plot")
 
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
 
-    endif(${test} MATCHES "test_plot")
+    endif(${test} MATCHES "test_regression_plot")
 
   endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 

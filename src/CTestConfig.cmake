@@ -7,9 +7,9 @@
 
 # Generic information about CDASH site
 set(CTEST_PROJECT_NAME "OpenMC")
-set(CTEST_NIGHTLY_START_TIME "03:00:00 UTC")
+set(CTEST_NIGHTLY_START_TIME "01:00:00 UTC")
 set(CTEST_DROP_METHOD "http")
-set(CTEST_DROP_SITE "54.83.201.173")
+set(CTEST_DROP_SITE "openmc.mit.edu")
 set(CTEST_DROP_LOCATION "/cdash/submit.php?project=OpenMC")
 set(CTEST_DROP_SITE_CDASH TRUE)
 

@@ -3258,7 +3258,7 @@ contains
     end if
 
     if (.not. nuc % fissionable) then
-    return
+      return
     end if
 
     ! Find the grid index and interpolant of ndpp scattering data
@@ -3277,7 +3277,7 @@ contains
     ! Calculate 1-f, apply mult, and weight by nu-fission
     one_f = (ONE - f) * mult * micro_xs(i_nuclide) % nu_fission
     f = f * mult * micro_xs(i_nuclide) % nu_fission
-    if (.not. is_analog) then ! Weight only by nu
+    if (is_analog) then ! Weight only by nu
       f = f / micro_xs(i_nuclide) % fission
       one_f = one_f / micro_xs(i_nuclide) % fission
     end if

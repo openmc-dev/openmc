@@ -1,0 +1,3 @@
+[submodule "src/xml/fox"]
+	path = src/xml/fox
+	url = git@github.com:mit-crpg/fox

@@ -175,6 +175,9 @@ contains
     ! Free up space
     call deallocate_image(img)
 
+    ! Clear particle
+    call p % clear()
+
   end subroutine create_ppm
 
 !===============================================================================

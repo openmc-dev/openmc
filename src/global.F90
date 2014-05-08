@@ -303,6 +303,9 @@ module global
 
   ! Is CMFD active
   logical :: cmfd_run = .false.
+
+  ! CMFD communicator
+  integer :: cmfd_comm
  
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation

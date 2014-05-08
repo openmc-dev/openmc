@@ -325,9 +325,11 @@ contains
     ! Store the order as the maximum requested in tallies
     if (scatt_type == SCATT_TYPE_LEGENDRE) then
       ndpp_scatt_order = max_tally_order + 1
+      ndpp_nuscatt_order = max_tally_order_nu + 1
     else if (scatt_type == SCATT_TYPE_TABULAR) then
       ! This one uses scatt_order since there technically is no maximum here
       ndpp_scatt_order = order
+      ndpp_nuscatt_order = order
     end if
 
     ! Store the order as the maximum requested in tallies
@@ -725,17 +727,18 @@ contains
             nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
               temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
           else
-            allocate(sab % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
-              gmin : gmax))
+            allocate(sab % ndpp_scatt(iE) % outgoing(&
+                     max(ndpp_scatt_order, ndpp_nuscatt_order), gmin : gmax))
             sab % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
+              temp_outgoing(1 : max(ndpp_scatt_order, ndpp_nuscatt_order), &
+                            gmin : gmax)
           end if
           deallocate(temp_outgoing)
         end if
       end do
 
       ! Repeat for nu-scatter, if needed
-      if (is_nuc .and. nuscatter == 1) then
+      if (nuscatter == 1) then
         allocate(nuc % ndpp_nuscatt(NEin))
         do iE = 1, NEin
           ! get gmin and gmax

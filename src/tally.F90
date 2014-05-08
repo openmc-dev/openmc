@@ -3148,7 +3148,7 @@ contains
              ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
-        i_score = score_index + l - 1
+          i_score = score_index + l - 1
           !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
@@ -3163,7 +3163,7 @@ contains
              ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
-        i_score = score_index + l - 1
+          i_score = score_index + l - 1
           !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &

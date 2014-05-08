@@ -1878,7 +1878,9 @@ contains
     character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
 
 #ifndef HDF5
+# ifndef MPI
     integer :: j,k ! iteration counters
+# endif
 #endif
 
     ! Set name
@@ -1937,12 +1939,15 @@ contains
 
     class(BinaryOutput) :: self
 
-#ifdef HDF5
-    integer(8)               :: offset(1)        ! source data offset
-#elif MPI
+#ifdef MPI
+# ifndef HDF5
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to write
+# endif
+# ifdef HDF5
+    integer(8)               :: offset(1)        ! source data offset
+# endif
 #endif
 
 #ifdef HDF5
@@ -2054,12 +2059,14 @@ contains
 
     class(BinaryOutput) :: self
 
-#ifdef HDF5
-    integer(8)               :: offset(1)        ! offset of data
-#elif MPI
+#ifdef MPI
+# ifndef HDF5
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
-    integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to read
+# endif
+# ifdef HDF5
+    integer(8)               :: offset(1)        ! offset of data
+# endif
 #endif
 
 #ifdef HDF5

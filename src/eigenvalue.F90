@@ -256,7 +256,7 @@ contains
          & temp_sites(:)       ! local array of extra sites on each node
 
 #ifdef MPI
-    integer    :: n            ! number of sites to send/recv
+    integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
     integer    :: request(20)  ! communication request for send/recving sites
     integer    :: n_request    ! number of communication requests

@@ -39,7 +39,7 @@ contains
   subroutine run_eigenvalue()
 
     type(Particle) :: p
-    integer        :: i_work
+    integer(8)     :: i_work
 
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 

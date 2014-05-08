@@ -738,7 +738,7 @@ contains
       end do
 
       ! Repeat for nu-scatter, if needed
-      if (nuscatter == 1) then
+      if (is_nuc .and. (nuscatter == 1)) then
         allocate(nuc % ndpp_nuscatt(NEin))
         do iE = 1, NEin
           ! get gmin and gmax

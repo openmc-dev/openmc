@@ -76,6 +76,7 @@ set(CTEST_UPDATE_COMMAND "git")
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
 set(CTEST_MEMORYCHECK_COMMAND "{valgrind_cmd}")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes")
+set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE ${{CTEST_SOURCE_DIRECTORY}}/../tests/valgrind.supp)
 set(MEM_CHECK {mem_check})
 set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
 

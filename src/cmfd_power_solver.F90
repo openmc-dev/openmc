@@ -29,7 +29,9 @@ module cmfd_power_solver
   type(Vector) :: s_n             ! new source vector
   type(Vector) :: s_o             ! old flux vector
   type(Vector) :: serr_v          ! error in source
+#ifdef PETSC
   type(GMRESSolver) :: gmres      ! gmres solver
+#endif
 
 contains
 
@@ -169,13 +171,17 @@ contains
     use global,  only: cmfd_write_matrices
 
     ! Transpose matrices
+#ifdef PETSC
     call loss % transpose()
     call prod % transpose()
+#endif
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
+#ifdef PETSC
       call loss % write_petsc_binary('adj_lossmat.bin')
       call prod % write_petsc_binary('adj_prodmat.bin')
+#endif
     end if
 
   end subroutine compute_adjoint
@@ -320,7 +326,9 @@ contains
       else
         filename = 'fluxvec.bin'
       end if
+#ifdef PETSC
       call phi_n % write_petsc_binary(filename)
+#endif
     end if
 
   end subroutine extract_results

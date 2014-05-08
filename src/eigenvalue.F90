@@ -834,8 +834,8 @@ contains
 
   subroutine join_bank_from_threads()
 
-    integer :: total ! total number of fission bank sites
-    integer :: i     ! loop index for threads
+    integer(8) :: total ! total number of fission bank sites
+    integer    :: i     ! loop index for threads
 
     ! Initialize the total number of fission bank sites
     total = 0

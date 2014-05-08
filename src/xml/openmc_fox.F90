@@ -41,6 +41,8 @@ module openmc_fox
     logical :: doneChildren, doneAttributes, allElements
     integer :: i, i_tree
 
+    list => null()
+
     if (.not.associated(doc)) then
       if (getFoX_checks().or.FoX_NODE_IS_NULL<200) then
   call throw_exception(FoX_NODE_IS_NULL, "getElementsByTagName", ex)

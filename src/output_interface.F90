@@ -77,13 +77,15 @@ module output_interface
     procedure, public :: file_create => file_create
     procedure, public :: file_open => file_open
     procedure, public :: file_close => file_close
-    procedure, public :: write_attribute_string => write_attribute_string
     procedure, public :: write_tally_result => write_tally_result
     procedure, public :: read_tally_result => read_tally_result
     procedure, public :: write_source_bank => write_source_bank
     procedure, public :: read_source_bank => read_source_bank
+#ifdef HDF5
+    procedure, public :: write_attribute_string => write_attribute_string
     procedure, public :: open_group => open_group
     procedure, public :: close_group => close_group
+#endif
   end type BinaryOutput
 
 contains
@@ -133,11 +135,10 @@ contains
 ! FILE_OPEN opens an existing file for reading or read/writing
 !===============================================================================
 
-  subroutine file_open(self, filename, mode, serial, unit)
+  subroutine file_open(self, filename, mode, serial)
 
     character(*),      intent(in) :: filename ! name of file to be opened
     character(*),      intent(in) :: mode     ! file access mode 
-    integer, optional, intent(in) :: unit      ! optional unit number
     logical, optional, intent(in) :: serial    ! processor rank to write from
     class(BinaryOutput) :: self
 
@@ -214,30 +215,30 @@ contains
 ! OPEN_GROUP call hdf5 routine to open a group within binary output context
 !===============================================================================
 
+#ifdef HDF5
   subroutine open_group(self, group)
 
     character(*), intent(in) :: group ! HDF5 group name
     class(BinaryOutput) :: self
 
-#ifdef HDF5
     call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
-#endif
 
   end subroutine open_group
+#endif
 
 !===============================================================================
 ! CLOSE_GROUP call hdf5 routine to close a group within binary output context
 !===============================================================================
 
+#ifdef HDF5
   subroutine close_group(self)
 
     class(BinaryOutput) :: self
 
-#ifdef HDF5
     call hdf5_close_group(self % hdf5_grp)
-#endif
 
   end subroutine close_group
+#endif
 
 !===============================================================================
 ! WRITE_DOUBLE writes double precision scalar data
@@ -251,7 +252,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -263,18 +274,18 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double(self % hdf5_grp, name, buffer)
+      call hdf5_write_double(self % hdf5_grp, name_, buffer)
     else
-      call hdf5_write_double_parallel(self % hdf5_grp, name, buffer, collect_)
+      call hdf5_write_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
-    call hdf5_write_double(self % hdf5_grp, name, buffer)
+    call hdf5_write_double(self % hdf5_grp, name_, buffer)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -302,9 +313,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -314,18 +335,18 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double(self % hdf5_grp, name, buffer)
+      call hdf5_read_double(self % hdf5_grp, name_, buffer)
     else 
-      call hdf5_read_double_parallel(self % hdf5_grp, name, buffer, collect_)
+      call hdf5_read_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
-    call hdf5_read_double(self % hdf5_grp, name, buffer)
+    call hdf5_read_double(self % hdf5_grp, name_, buffer)
 # endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -354,7 +375,17 @@ contains
     logical,      intent(in), optional :: collect   ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -366,19 +397,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double_1Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_double_1Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -407,7 +438,17 @@ contains
     logical,        intent(in), optional :: collect   ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -419,19 +460,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_1Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name, buffer, &
+      call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
          length, collect_)
     end if
 # else
-    call hdf5_read_double_1Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -460,7 +501,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -472,19 +523,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double_2Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_2Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_double_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_double_2Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_double_2Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -513,7 +564,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -525,19 +586,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_2Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_double_2Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_double_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_double_2Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_double_2Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -566,7 +627,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -578,19 +649,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double_3Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
          collect_)
     end if
 # else
-    call hdf5_write_double_3Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -619,7 +690,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -631,19 +712,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_3Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_double_3Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_double_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_double_3Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_double_3Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -673,9 +754,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -685,20 +776,20 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double_4Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_4Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_double_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
     ! Write the data in serial
-    call hdf5_write_double_4Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_double_4Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -730,9 +821,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -742,19 +843,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_4Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_double_4Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_double_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_double_4Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_double_4Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -784,7 +885,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -796,18 +907,18 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_integer(self % hdf5_grp, name, buffer)
+      call hdf5_write_integer(self % hdf5_grp, name_, buffer)
     else
-      call hdf5_write_integer_parallel(self % hdf5_grp, name, buffer, collect_)
+      call hdf5_write_integer_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
-    call hdf5_write_integer(self % hdf5_grp, name, buffer)
+    call hdf5_write_integer(self % hdf5_grp, name_, buffer)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -835,9 +946,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -847,18 +968,18 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_integer(self % hdf5_grp, name, buffer)
+      call hdf5_read_integer(self % hdf5_grp, name_, buffer)
     else
-      call hdf5_read_integer_parallel(self % hdf5_grp, name, buffer, collect_)
+      call hdf5_read_integer_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
-    call hdf5_read_integer(self % hdf5_grp, name, buffer)
+    call hdf5_read_integer(self % hdf5_grp, name_, buffer)
 # endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -887,7 +1008,17 @@ contains
     logical,      intent(in), optional :: collect   ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -899,19 +1030,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_integer_1Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_integer_1Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_integer_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_integer_1Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_integer_1Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -940,7 +1071,17 @@ contains
     logical,        intent(in), optional :: collect   ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -952,20 +1093,20 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_integer_1Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_integer_1Darray_parallel(self % hdf5_grp, name, buffer, &
+      call hdf5_read_integer_1Darray_parallel(self % hdf5_grp, name_, buffer, &
            length, collect_)
     end if
 # else
     ! Read the data in serial
-    call hdf5_read_integer_1Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_integer_1Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -994,7 +1135,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1006,19 +1157,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_integer_2Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_integer_2Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_integer_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_integer_2Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_integer_2Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1047,7 +1198,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1059,19 +1220,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_integer_2Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_integer_2Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_integer_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_integer_2Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_integer_2Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1100,7 +1261,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1112,19 +1283,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_integer_3Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_integer_3Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_integer_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_integer_3Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_integer_3Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1153,7 +1324,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1165,19 +1346,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_integer_3Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_integer_3Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_integer_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_integer_3Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_integer_3Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1207,9 +1388,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -1219,19 +1410,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_integer_4Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_write_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_integer_4Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_write_integer_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_write_integer_4Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_write_integer_4Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1263,9 +1454,19 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
 
-    ! Set up collective vs. independent I/O 
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
     if (present(collect)) then
       collect_ = collect
     else
@@ -1275,19 +1476,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_integer_4Darray(self % hdf5_grp, name, buffer, length)
+      call hdf5_read_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_read_integer_4Darray_parallel(self % hdf5_grp, name, buffer, length, &
+      call hdf5_read_integer_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
 # else
-    call hdf5_read_integer_4Darray(self % hdf5_grp, name, buffer, length)
+    call hdf5_read_integer_4Darray(self % hdf5_grp, name_, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1317,7 +1518,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1329,19 +1540,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_long(self % hdf5_grp, name, buffer, hdf5_integer8_t)
+      call hdf5_write_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
-      call hdf5_write_long_parallel(self % hdf5_grp, name, buffer, &
+      call hdf5_write_long_parallel(self % hdf5_grp, name_, buffer, &
            hdf5_integer8_t, collect_)
     end if
 # else
-    call hdf5_write_long(self % hdf5_grp, name, buffer, hdf5_integer8_t)
+    call hdf5_write_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1369,7 +1580,17 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1381,19 +1602,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_long(self % hdf5_grp, name, buffer, hdf5_integer8_t)
+      call hdf5_read_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
-      call hdf5_read_long_parallel(self % hdf5_grp, name, buffer, &
+      call hdf5_read_long_parallel(self % hdf5_grp, name_, buffer, &
            hdf5_integer8_t, collect_)
     end if
 # else
-    call hdf5_read_long(self % hdf5_grp, name, buffer, hdf5_integer8_t)
+    call hdf5_read_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1421,11 +1642,21 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     integer :: n
     logical :: collect_
 
     ! Get string length
     n = len_trim(buffer)
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1437,19 +1668,19 @@ contains
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_string(self % hdf5_grp, name, buffer, n)
+      call hdf5_write_string(self % hdf5_grp, name_, buffer, n)
     else
-      call hdf5_write_string_parallel(self % hdf5_grp, name, buffer, n, collect_)
+      call hdf5_write_string_parallel(self % hdf5_grp, name_, buffer, n, collect_)
     end if
 # else
     ! Write the data
-    call hdf5_write_string(self % hdf5_grp, name, buffer, n)
+    call hdf5_write_string(self % hdf5_grp, name_, buffer, n)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1477,11 +1708,21 @@ contains
     logical,      intent(in), optional :: collect ! collective I/O
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
     integer :: n
     logical :: collect_
 
     ! Get string length
     n = len(buffer)
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then
@@ -1490,21 +1731,22 @@ contains
       collect_ = .true.
     end if
 
+
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_string(self % hdf5_grp, name, buffer, n)
+      call hdf5_read_string(self % hdf5_grp, name_, buffer, n)
     else
-      call hdf5_read_string_parallel(self % hdf5_grp, name, buffer, n, collect_)
+      call hdf5_read_string_parallel(self % hdf5_grp, name_, buffer, n, collect_)
     end if
 # else
-    call hdf5_read_string(self % hdf5_grp, name, buffer, n)
+    call hdf5_read_string(self % hdf5_grp, name_, buffer, n)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1524,6 +1766,7 @@ contains
 ! WRITE_ATTRIBUTE_STRING
 !===============================================================================
 
+#ifdef HDF5
   subroutine write_attribute_string(self, var, attr_type, attr_str, group)
 
     character(*), intent(in)           :: var       ! variable name for attr
@@ -1532,7 +1775,6 @@ contains
     character(*), intent(in), optional :: group     ! HDF5 group name
     class(BinaryOutput) :: self
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
@@ -1545,9 +1787,9 @@ contains
 
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#endif
 
   end subroutine write_attribute_string
+#endif
 
 !===============================================================================
 ! WRITE_TALLY_RESULT writes an OpenMC TallyResult type
@@ -1561,15 +1803,26 @@ contains
     type(TallyResult), intent(in), target   :: buffer(n1, n2) ! data to write
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+
 #ifndef HDF5
     integer :: j,k ! iteration counters
 #endif
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
 #ifdef HDF5
 
     ! Open up sub-group if present
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     end if
@@ -1581,7 +1834,7 @@ contains
     call h5screate_simple_f(1, dims1, dspace, hdf5_err)
 
     ! Create the dataset
-    call h5dcreate_f(self % hdf5_grp, name, hdf5_tallyresult_t, dspace, dset, &
+    call h5dcreate_f(self % hdf5_grp, name_, hdf5_tallyresult_t, dspace, dset, &
          hdf5_err)
 
     ! Set pointer to first value and write
@@ -1621,15 +1874,26 @@ contains
     type(TallyResult), intent(inout), target :: buffer(n1, n2) ! read data here
     class(BinaryOutput) :: self
 
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+
 #ifndef HDF5
     integer :: j,k ! iteration counters
 #endif
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
 
 #ifdef HDF5
 
     ! Open up sub-group if present
     if (present(group)) then
-      call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     end if

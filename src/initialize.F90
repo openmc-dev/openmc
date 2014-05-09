@@ -103,8 +103,9 @@ contains
       ! Read ACE-format cross sections
       call time_read_xs % start()
       call read_xs()
-      if (ndpp_scatt) then
-        ! Read NDPP-format integrated scattering data
+
+      ! Read NDPP-format integrated scattering data, if needed for tallies
+      if (use_ndpp_data) then
         call read_ndpp_data()
       end if
       call time_read_xs % stop()
@@ -216,13 +217,13 @@ contains
     call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
-    ! Adjust displacements 
+    ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
     bank_blocks = (/ 1, 3, 3, 1 /)
     bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -419,7 +420,7 @@ contains
           ! Read number of threads
           i = i + 1
 
-#ifdef _OPENMP          
+#ifdef _OPENMP
           ! Read and set number of OpenMP threads
           n_threads = str_to_int(argv(i))
           if (n_threads < 1) then
@@ -568,7 +569,7 @@ contains
     integer :: m             ! loop index for lattices
     integer :: mid, lid      ! material and lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array 
+    integer :: i_array       ! index in surfaces/materials array
     integer :: id            ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: lat => null()
@@ -639,7 +640,7 @@ contains
                " specified on lattice " // trim(to_str(lid))
             call fatal_error()
           end if
-          
+
         else
           message = "Specified fill " // trim(to_str(id)) // " on cell " // &
                trim(to_str(c % id)) // " is neither a universe nor a lattice."
@@ -810,7 +811,7 @@ contains
           sum_percent = sum_percent + x*awr
         end do
         sum_percent = ONE / sum_percent
-        mat % density = -mat % density * N_AVOGADRO & 
+        mat % density = -mat % density * N_AVOGADRO &
              / MASS_NEUTRON * sum_percent
       end if
 
@@ -871,7 +872,7 @@ contains
     ! Allocate source bank
     allocate(source_bank(work), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       message = "Failed to allocate source bank."
       call fatal_error()
@@ -899,7 +900,7 @@ contains
     allocate(fission_bank(3*work), STAT=alloc_err)
 #endif
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       message = "Failed to allocate fission bank."
       call fatal_error()

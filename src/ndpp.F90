@@ -12,6 +12,12 @@ module ndpp
 
   implicit none
 
+  ! Module global data:
+
+  ! ndpp_lib.xml preprocessed data listings and associated data.
+  type(XsListing),  allocatable, target :: ndpp_listings(:)
+  type(DictCharInt)                     :: ndpp_listing_dict
+
 contains
 
 !===============================================================================
@@ -23,12 +29,26 @@ contains
     type(Nuclide), pointer    :: nuc => null() ! Current working nuclide
     type(SAlphaBeta), pointer :: sab => null() ! Current working SAB table
     type(XsListing), pointer  :: ndpp_listing => null()
-    integer :: i_listing    ! index in ndpp_listings array
-    integer :: i_nuclide    ! index in nuclides
-    integer :: i_sab        ! index in sab_tables
+    integer :: i_listing   ! index in ndpp_listings array
+    integer :: i_nuclide   ! index in nuclides
+    integer :: i_sab       ! index in sab_tables
+    integer :: scatt_type  ! Whether or not legendre or tabular data
+    logical :: get_scatt   ! Flag for whether or not to get scatt data
+    logical :: get_nuscatt ! Flag for whether or not to get nuscatt data
+    logical :: get_chi_t   ! Flag for whether or not to get total chi data
+    logical :: get_chi_p   ! Flag for whether or not to get prompt chi data
+    logical :: get_chi_d   ! Flag for whether or not to get delayed chi data
+    integer :: scatt_order ! Number of moments requested in tallies for scatter
+    integer :: nuscatt_order ! Number of moments requested in tallies for nuscatter
+    integer :: sab_order   ! Number of moments requested in tallies for sab data
 
     ! First lets go read the ndpp_lib.xml file
-    call read_ndpp_xml()
+    call read_ndpp_xml(scatt_type)
+
+    ! Determine which data is required to be stored as well as the maximum orders
+    ! for scatt and nuscatt
+    call which_data(scatt_type, get_scatt, get_nuscatt, get_chi_t, get_chi_p, &
+                    get_chi_d, scatt_order, nuscatt_order, sab_order)
 
     ! Parse through each nuclide in the model and read in the corresponding
     ! NDPP data.
@@ -47,7 +67,9 @@ contains
       ! read_ndpp_table will read the NDPP data and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
-      call read_ndpp_table(ndpp_listing, NUC=nuc)
+      call read_ndpp_table(ndpp_listing, get_scatt, get_nuscatt, get_chi_t, &
+                           get_chi_p, get_chi_d, scatt_order, nuscatt_order, &
+                           sab_order, NUC=nuc)
     end do
 
     do i_sab = 1, n_sab_tables
@@ -62,17 +84,114 @@ contains
       ! read_ndpp_table will read the NDPP data and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
-      call read_ndpp_table(ndpp_listing, SAB=sab)
+      call read_ndpp_table(ndpp_listing, get_scatt, get_nuscatt, get_chi_t, &
+                           get_chi_p, get_chi_d, scatt_order, nuscatt_order, &
+                           sab_order, SAB=sab)
     end do
 
+    if (allocated(ndpp_listings)) then
+      deallocate(ndpp_listings)
+    end if
+    call ndpp_listing_dict % clear()
+
   end subroutine read_ndpp_data
+
+!===============================================================================
+! WHICH_DATA looks at the requested tallies and determines which data is needed
+! from the NDPP libraries so that memory utilization is kept to a minimum.
+!===============================================================================
+
+  subroutine which_data(scatt_type, get_scatt, get_nuscatt, get_chi_t, &
+                        get_chi_p, get_chi_d, scatt_order, nuscatt_order, &
+                        sab_order)
+    integer, intent(in)  :: scatt_type  ! Whether or not legendre or tabular data
+    logical, intent(out) :: get_scatt   ! Flag for whether or not to get scatt data
+    logical, intent(out) :: get_nuscatt ! Flag for whether or not to get nuscatt data
+    logical, intent(out) :: get_chi_t   ! Flag for whether or not to get total chi data
+    logical, intent(out) :: get_chi_p   ! Flag for whether or not to get prompt chi data
+    logical, intent(out) :: get_chi_d   ! Flag for whether or not to get delayed chi data
+    integer, intent(out) :: scatt_order ! Number of moments requested in tallies for scatter
+    integer, intent(out) :: nuscatt_order ! Number of moments requested in tallies for nuscatter
+    integer, intent(out) :: sab_order   ! Number of moments requested in tallies for sab data
+
+    type(TallyObject), pointer :: t => null()
+    integer :: i ! Tally index
+    integer :: j ! Score bin index
+    integer :: k ! User score bin index
+
+    ! Initialize the flags and orders
+    get_scatt = .false.
+    get_nuscatt = .false.
+    get_chi_t = .false.
+    get_chi_p = .false.
+    get_chi_d = .false.
+    scatt_order = 0
+    nuscatt_order = 0
+
+    ! Step through each tally and score and determine which types are present
+    ! and the orders for scatt and nuscatt
+    TALLY_LOOP: do i = 1, n_tallies
+      t => tallies(i)
+      j = 0
+      SCORE_LOOP: do k = 1, t % n_user_score_bins
+        j = j + 1
+        select case (t % score_bins(j))
+          case (SCORE_NDPP_SCATT_N, SCORE_NDPP_SCATT_PN)
+            get_scatt = .true.
+            if (t % moment_order(j) > scatt_order) then
+              scatt_order = t % moment_order(j)
+            end if
+
+            if (t % score_bins(j) == SCORE_NDPP_SCATT_PN) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP ! Skip the others to save cycles
+            end if
+
+          case (SCORE_NDPP_NU_SCATT_N, SCORE_NDPP_NU_SCATT_PN)
+            get_nuscatt = .true.
+            if (t % moment_order(j) > nuscatt_order) then
+              nuscatt_order = t % moment_order(j)
+            end if
+
+            if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_PN) then
+              j = j + t % moment_order(j)
+              cycle SCORE_LOOP ! Skip the others to save cycles
+            end if
+
+          case (SCORE_NDPP_CHI)
+            get_chi_t = .true.
+          case (SCORE_NDPP_CHI_P)
+            get_chi_p = .true.
+          case (SCORE_NDPP_CHI_D)
+            get_chi_d = .true.
+
+          ! Cycle through j if necessary
+          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN, SCORE_FLUX_YN, &
+                SCORE_TOTAL_YN, SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
+            j = j + t % moment_order(j)
+            cycle SCORE_LOOP ! Skip the others to save cycles
+        end select
+      end do SCORE_LOOP
+    end do TALLY_LOOP
+
+    ! Adjust the order so array sizing is correct
+    if (scatt_type == SCATT_TYPE_LEGENDRE) then
+      scatt_order = scatt_order + 1
+      nuscatt_order = nuscatt_order + 1
+    end if
+
+    sab_order = max(scatt_order, nuscatt_order)
+
+  end subroutine which_data
 
 !===============================================================================
 ! READ_NDPP_XML reads information from a cross_sections.xml file. This
 ! file contains a listing of the ACE cross sections that may be used.
 !===============================================================================
 
-  subroutine read_ndpp_xml()
+  subroutine read_ndpp_xml(scatt_type)
+
+    integer, intent(out)  :: scatt_type  ! Whether or not legendre or tabular data
 
     integer :: i, j, k     ! loop indices
     logical :: file_exists ! does ndpp_lib.xml exist?
@@ -86,13 +205,12 @@ contains
     ! We can use the same XSListing type for our ndpp data since the NDPP
     ! data is a subset of whats in cross_sections.xml
     type(XsListing), pointer :: listing => null()
-    integer :: scatt_type  ! type of scattering distribution (legendre/tabular)
     integer :: order       ! ndpp_lib.xml's scattering order
-    integer :: max_tally_order = 0
-    integer :: max_tally_order_nu = 0
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_ndpp => null()
     type(NodeList), pointer :: node_ndpp_list => null()
+    integer :: ndpp_groups
+    real(8), allocatable :: ndpp_energy_bins(:)
 
     ! Check if ndpp_lib.xml exists
     inquire(FILE=ndpp_lib, EXIST=file_exists)
@@ -213,14 +331,6 @@ contains
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
-            ! Find the maximum order requested
-            if (t % score_bins(j) == SCORE_NDPP_SCATT_N) then
-              if (t % moment_order(j) > max_tally_order) &
-                max_tally_order = t % moment_order(j)
-            else if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_N) then
-              if (t % moment_order(j) > max_tally_order_nu) &
-                max_tally_order_nu = t % moment_order(j)
-            end if
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -262,14 +372,6 @@ contains
                         trim(to_str(order)) // ")!"
               call fatal_error()
             end if
-            ! Find the maximum order requested
-            if (t % score_bins(j) == SCORE_NDPP_SCATT_PN) then
-              if (t % moment_order(j) > max_tally_order) &
-                max_tally_order = t % moment_order(j)
-            else if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_PN) then
-              if (t % moment_order(j) > max_tally_order_nu) &
-                max_tally_order_nu = t % moment_order(j)
-            end if
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -305,7 +407,7 @@ contains
             j = j + t % moment_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
 
-          CASE (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
+          case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
             ! Check that the group structure matches
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
@@ -321,24 +423,6 @@ contains
         end select
       end do SCORE_LOOP
     end do TALLY_LOOP
-
-    ! Store the order as the maximum requested in tallies
-    if (scatt_type == SCATT_TYPE_LEGENDRE) then
-      ndpp_scatt_order = max_tally_order + 1
-      ndpp_nuscatt_order = max_tally_order_nu + 1
-    else if (scatt_type == SCATT_TYPE_TABULAR) then
-      ! This one uses scatt_order since there technically is no maximum here
-      ndpp_scatt_order = order
-      ndpp_nuscatt_order = order
-    end if
-
-    ! Store the order as the maximum requested in tallies
-    if (scatt_type == SCATT_TYPE_LEGENDRE) then
-      ndpp_nuscatt_order = max_tally_order_nu + 1
-    else if (scatt_type == SCATT_TYPE_TABULAR) then
-      ! This one uses scatt_order since there technically is no maximum here
-      ndpp_nuscatt_order = order
-    end if
 
     ! Get node list of all <ndpp_table> entries
     call get_node_list(doc, "ndpp_table", node_ndpp_list)
@@ -435,8 +519,18 @@ contains
 ! future, nuc and sab will be extended types of a base type.
 !===============================================================================
 
-  subroutine read_ndpp_table(listing, nuc, sab)
-    type(XsListing),  pointer, intent(in)    :: listing    ! Current NDPP data
+  subroutine read_ndpp_table(listing, get_scatt, get_nuscatt, get_chi_t, &
+                             get_chi_p, get_chi_d, scatt_order, nuscatt_order, &
+                             sab_order, nuc, sab)
+    type(XsListing),  pointer, intent(in) :: listing    ! Current NDPP data
+    logical, intent(in) :: get_scatt   ! Whether or not to get scatt data
+    logical, intent(in) :: get_nuscatt ! Whether or not to get nuscatt data
+    logical, intent(in) :: get_chi_t   ! Whether or not to get total chi data
+    logical, intent(in) :: get_chi_p   ! Whether or not to get prompt chi data
+    logical, intent(in) :: get_chi_d   ! Whether or not to get delayed chi data
+    integer, intent(in) :: scatt_order ! Number of moments requested in tallies for scatter
+    integer, intent(in) :: nuscatt_order ! Number of moments requested in tallies for nuscatter
+    integer, intent(in) :: sab_order   ! Number of moments requested in tallies for sab data
     type(Nuclide),    pointer, optional, intent(inout) :: nuc ! Current nuclide
     type(SAlphaBeta), pointer, optional, intent(inout) :: sab ! Current Sab data
 
@@ -453,7 +547,7 @@ contains
     real(8), allocatable    :: energy_bins(:) ! Energy group structure
     integer       :: mu_bins       ! NUmber of angular points used
     integer       :: scatt_type    ! Type of scattering data, discarded
-    integer       :: scatt_order   ! Order of scattering data
+    integer       :: lib_order     ! Order of scattering data in library
     integer       :: nuscatter     ! Flag as to if nuscatter data is present
     integer       :: chi_present   ! Flag as to if chi data is present
     integer       :: gmin, gmax    ! Min and max possible group transfers
@@ -522,14 +616,14 @@ contains
       ! the right data set)
       allocate(energy_bins(NG + 1))
       read(UNIT=in, FMT=*) energy_bins
-      ! The next line is scatt_type, scatt_order, nuscatter, chi_present
-      read(UNIT=in, FMT='(I20,I20,I20,I20)') scatt_type, scatt_order, &
+      ! The next line is scatt_type, lib_order, nuscatter, chi_present
+      read(UNIT=in, FMT='(I20,I20,I20,I20)') scatt_type, lib_order, &
         nuscatter, chi_present
       ! Finally, mu_bins, thin_tol
       read(UNIT=in, FMT='(I20,1PE20.12)') mu_bins, thin_tol
 
-      ! set scatt_order to the right number for allocating the outgoing array
-      if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
+      ! set lib_order to the right number for allocating the outgoing array
+      if (scatt_type == SCATT_TYPE_LEGENDRE) lib_order = lib_order + 1
 
       ! Start with \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
@@ -544,6 +638,9 @@ contains
           read(UNIT=in, FMT=*) nuc % ndpp_scatt_Ein(iE)
         end do
         allocate(nuc % ndpp_scatt(NEin))
+        if (nuscatter == 1) then
+          allocate(nuc % ndpp_nuscatt(NEin))
+        end if
       else
         allocate(sab % ndpp_scatt_Ein_srch(NG + 1))
         do iE = 1, NG + 1
@@ -568,55 +665,53 @@ contains
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
           ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
-          allocate(temp_outgoing(scatt_order, gmin : gmax))
+          allocate(temp_outgoing(lib_order, gmin : gmax))
 
           ! Now we have a space to store the data, get it.
           read(UNIT=in, FMT=*) temp_outgoing
           ! And copy in to nuc/sab % ndpp_scatt
           if (is_nuc) then
-            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
-              gmin : gmax))
+            allocate(nuc % ndpp_scatt(iE) % outgoing(scatt_order, gmin : gmax))
             nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
+              temp_outgoing(1 : scatt_order, gmin : gmax)
           else
-            allocate(sab % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
-              gmin : gmax))
+            allocate(sab % ndpp_scatt(iE) % outgoing(sab_order, gmin : gmax))
             sab % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
+              temp_outgoing(1 : sab_order, gmin : gmax)
           end if
           deallocate(temp_outgoing)
         end if
       end do
 
-      ! Repeat for nuscatter, if provided
-      if (is_nuc .and. nuscatter == 1) then
-        allocate(nuc % ndpp_nuscatt(NEin))
-        do iE = 1, NEin
-          ! get gmin and gmax
-          read(UNIT=in, FMT=*) gmin, gmax
+      ! The remainder only apply to nuclides (nuscatter and chi data)
+      if (is_nuc) then
+        ! Get nu-scatter, if needed
+        if (nuscatter == 1) then
+          do iE = 1, NEin
+            ! get gmin and gmax
+            read(UNIT=in, FMT=*) gmin, gmax
 
-          if ((gmin > 0) .and. (gmax > 0)) then
-            ! Then we can allocate the space. Do it to ndpp_scatt_order
-            ! since this is the largest order requested in the tallies.
-            ! Since we only need to store up to the maximum, we also need to have
-            ! an array for reading the file which we can later truncate to fit
-            ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
-            allocate(temp_outgoing(scatt_order, gmin : gmax))
+            if ((gmin > 0) .and. (gmax > 0)) then
+              ! Then we can allocate the space. Do it to ndpp_scatt_order
+              ! since this is the largest order requested in the tallies.
+              ! Since we only need to store up to the maximum, we also need to have
+              ! an array for reading the file which we can later truncate to fit
+              ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
+              allocate(temp_outgoing(lib_order, gmin : gmax))
 
-            ! Now we have a space to store the data, get it.
-            read(UNIT=in, FMT=*) temp_outgoing
-            allocate(nuc % ndpp_nuscatt(iE) % outgoing(ndpp_nuscatt_order, &
-              gmin : gmax))
-            nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_nuscatt_order, gmin : gmax)
-            deallocate(temp_outgoing)
-          end if
-        end do
-      end if
+              ! Now we have a space to store the data, get it.
+              read(UNIT=in, FMT=*) temp_outgoing
+              allocate(nuc % ndpp_nuscatt(iE) % outgoing(nuscatt_order, &
+                gmin : gmax))
+              nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
+                temp_outgoing(1 : nuscatt_order, gmin : gmax)
+              deallocate(temp_outgoing)
+            end if
+          end do
+        end if
 
-      ! Get chi(E_{in}) data
-      if (is_nuc .and. chi_present == 1) then
-        if (nuc % fissionable) then
+        ! Get chi(E_{in}) data if provided
+        if (chi_present == 1) then
           ! Get Ein grid and number of precursors
           read(UNIT=in, FMT=*) NEin, NP
           allocate(nuc % ndpp_chi_Ein(NEin))
@@ -673,11 +768,11 @@ contains
       ! Get the energy bins (not checking, will assume from here on out we have
       ! the right data set), and the other meta information
       allocate(energy_bins(NG + 1))
-      read(UNIT=in) energy_bins, scatt_type, scatt_order, &
+      read(UNIT=in) energy_bins, scatt_type, lib_order, &
         nuscatter, chi_present, mu_bins, thin_tol
 
-      ! set scatt_order to the right number for allocating the outgoing array
-      if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
+      ! set lib_order to the right number for allocating the outgoing array
+      if (scatt_type == SCATT_TYPE_LEGENDRE) lib_order = lib_order + 1
 
       ! Get \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
@@ -692,6 +787,9 @@ contains
           read(UNIT=in) nuc % ndpp_scatt_Ein(iE)
         end do
         allocate(nuc % ndpp_scatt(NEin))
+        if (nuscatter == 1) then
+          allocate(nuc % ndpp_nuscatt(NEin))
+        end if
       else
         allocate(sab % ndpp_scatt_Ein_srch(NG + 1))
         do iE = 1, NG + 1
@@ -716,56 +814,54 @@ contains
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
           ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
-          allocate(temp_outgoing(scatt_order, gmin : gmax))
+          allocate(temp_outgoing(lib_order, gmin : gmax))
 
           ! Now we have a space to store the data, get it.
           read(UNIT=in) temp_outgoing
           ! And copy in to nuc/sab % ndpp_scatt
           if (is_nuc) then
-            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
-              gmin : gmax))
+            allocate(nuc % ndpp_scatt(iE) % outgoing(scatt_order, gmin : gmax))
             nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
+              temp_outgoing(1 : scatt_order, gmin : gmax)
           else
-            allocate(sab % ndpp_scatt(iE) % outgoing(&
-                     max(ndpp_scatt_order, ndpp_nuscatt_order), gmin : gmax))
+            allocate(sab % ndpp_scatt(iE) % outgoing(sab_order, gmin : gmax))
             sab % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : max(ndpp_scatt_order, ndpp_nuscatt_order), &
-                            gmin : gmax)
+              temp_outgoing(1 : sab_order, gmin : gmax)
           end if
           deallocate(temp_outgoing)
         end if
       end do
 
-      ! Repeat for nu-scatter, if needed
-      if (is_nuc .and. (nuscatter == 1)) then
-        allocate(nuc % ndpp_nuscatt(NEin))
-        do iE = 1, NEin
-          ! get gmin and gmax
-          read(UNIT=in) gmin, gmax
+      ! The remainder only apply to nuclides (nuscatter and chi data)
+      if (is_nuc) then
+        ! Get nu-scatter, if needed
+        if (nuscatter == 1) then
+          do iE = 1, NEin
+            ! get gmin and gmax
+            read(UNIT=in) gmin, gmax
 
-          if ((gmin > 0) .and. (gmax > 0)) then
-            ! Then we can allocate the space. Do it to ndpp_scatt_order
-            ! since this is the largest order requested in the tallies.
-            ! Since we only need to store up to the maximum, we also need to have
-            ! an array for reading the file which we can later truncate to fit
-            ! in to nuc/sab % ndpp_nuscatt(iE) % outgoing.
-            allocate(temp_outgoing(scatt_order, gmin : gmax))
+            if ((gmin > 0) .and. (gmax > 0)) then
+              ! Then we can allocate the space. Do it to ndpp_scatt_order
+              ! since this is the largest order requested in the tallies.
+              ! Since we only need to store up to the maximum, we also need to have
+              ! an array for reading the file which we can later truncate to fit
+              ! in to nuc/sab % ndpp_nuscatt(iE) % outgoing.
+              allocate(temp_outgoing(lib_order, gmin : gmax))
 
-            ! Now we have a space to store the data, get it.
-            read(UNIT=in) temp_outgoing
-            ! And copy in to nuc % ndpp_nuscatt
-            allocate(nuc % ndpp_nuscatt(iE) % outgoing(ndpp_nuscatt_order, &
-              gmin : gmax))
-            nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : ndpp_nuscatt_order, gmin : gmax)
-            deallocate(temp_outgoing)
-          end if
-        end do
-      end if
+              ! Now we have a space to store the data, get it.
+              read(UNIT=in) temp_outgoing
+              ! And copy in to nuc % ndpp_nuscatt
+              allocate(nuc % ndpp_nuscatt(iE) % outgoing(nuscatt_order, &
+                gmin : gmax))
+              nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
+                temp_outgoing(1 : nuscatt_order, gmin : gmax)
+              deallocate(temp_outgoing)
+            end if
+          end do
+        end if
 
-      if (is_nuc .and. chi_present == 1) then
-        if (nuc % fissionable) then
+        ! Get chi data, if provided
+        if (chi_present == 1) then
           ! Get Ein grid and Number of Precursors
           read(UNIT=in) NEin, NP
           allocate(nuc % ndpp_chi_Ein(NEin))
@@ -807,116 +903,63 @@ contains
       ! =======================================================================
       ! READ NDPP DATA IN HDF5 FORMAT
       !!! TBI
-    end if ! No error handling needed; read_ndpp_xml() already checked filetype
+    end if ! No default needed - read_ndpp_xml() already checked filetype
 
-    ! Finally, the above code read in all chi data even if it wasn't necessary
-    ! Go back and deallocate as needed
+    ! Finally, the above code read in all data since NDPP libs are sequential
+    ! access; now we can deallocate what we do not need
     if (is_nuc) then
-      if (.not. ndpp_chi) then
+      if (.not. get_scatt) then
+        if (allocated(nuc % ndpp_scatt)) then
+          deallocate(nuc % ndpp_scatt)
+        end if
+      end if
+      if (.not. get_nuscatt) then
+        if (allocated(nuc % ndpp_nuscatt)) then
+          deallocate(nuc % ndpp_nuscatt)
+        end if
+      end if
+      if ((.not. get_scatt) .and. (.not. get_nuscatt)) then
+        if (allocated(nuc % ndpp_scatt_Ein)) then
+          deallocate(nuc % ndpp_scatt_Ein)
+        end if
+        if (allocated(nuc % ndpp_scatt_Ein_srch)) then
+          deallocate(nuc % ndpp_scatt_Ein_srch)
+        end if
+      end if
+      if (.not. get_chi_t) then
         if (allocated(nuc % ndpp_chi)) then
           deallocate(nuc % ndpp_chi)
         end if
       end if
-      if (.not. ndpp_chi_p) then
+      if (.not. get_chi_p) then
         if (allocated(nuc % ndpp_chi_p)) then
           deallocate(nuc % ndpp_chi_p)
         end if
       end if
-      if (.not. ndpp_chi_d) then
+      if (.not. get_chi_d) then
         if (allocated(nuc % ndpp_chi_d)) then
           deallocate(nuc % ndpp_chi_d)
         end if
       end if
-      if ((.not. ndpp_chi) .and. (.not. ndpp_chi_p) .and. (.not. ndpp_chi_d)) then
+      if ((.not. get_chi_t) .and. (.not. get_chi_p) .and. (.not. get_chi_d)) then
         if (allocated(nuc % ndpp_chi_Ein)) then
           deallocate(nuc % ndpp_chi_Ein)
+        end if
+      end if
+    else ! Do similar for S(a,b) tables
+      if ((.not. get_scatt) .and. (.not. get_nuscatt)) then
+        if (allocated(sab % ndpp_scatt)) then
+          deallocate(sab % ndpp_scatt)
+        end if
+        if (allocated(sab % ndpp_scatt_Ein)) then
+          deallocate(sab % ndpp_scatt_Ein)
+        end if
+        if (allocated(sab % ndpp_scatt_Ein_srch)) then
+          deallocate(sab % ndpp_scatt_Ein_srch)
         end if
       end if
     end if
 
   end subroutine read_ndpp_table
-
-!===============================================================================
-! CONDENSE_GROUPS sums a fine-group data set in to coarse group results
-! according to the group structures given.  This change is done in place.
-!===============================================================================
-
-  subroutine condense_groups(fine, coarse, values)
-    real(8), allocatable, intent(in) :: fine(:)   ! The fine mesh to start with
-    real(8), allocatable, intent(in) :: coarse(:) ! The coarse mesh to end with
-    real(8), allocatable, intent(inout) :: values(:) ! The original (and final) result
-
-    integer :: fmin, fmax ! Group bounds of fine group
-    integer :: f, c       ! fine group and coarse group index
-    integer :: flo, fhi   ! Iteration bounds of fine groups for current coarse group
-    integer, allocatable :: fbounds(:) ! Iteration bounds of fine grps for each coarse group
-    integer :: Nf, Nc     ! Number of fine and coarse groups
-    real(8), allocatable :: temp_values(:)
-
-    Nf = size(fine)
-    Nc = size(coarse)
-    allocate(fbounds(Nc))
-    fmin = lbound(values, dim=1)
-    fmax = ubound(values, dim=1)
-    allocate(temp_values(Nc - 1))
-
-    ! Find the values of fbounds
-    do c = 1, Nc
-      do f = 1, Nf
-        if (approx_eq(fine(f), coarse(c), 1E-6_8)) then
-          exit
-        end if
-      end do
-      if (f > Nf) then
-        message = 'Error in comparing fine and coarse groups!'
-        call fatal_error()
-      else
-        fbounds(c) = f
-      end if
-    end do
-
-    ! Now we just go through values summing results according to fbounds
-    do c = 1, Nc - 1
-      temp_values(c) = ZERO
-      do f = max(fbounds(c), fmin), min(fbounds(c + 1) - 1, fmax)
-        temp_values(c) = temp_values(c) + values(f)
-      end do
-    end do
-
-    ! Now lets reallocate values accordingly
-    deallocate(values)
-    allocate(values(Nc - 1))
-    values = temp_values
-    deallocate(temp_values)
-  end subroutine condense_groups
-
-!===============================================================================
-! APPROX_EQ takes two real parameters, and compares them using relative error to
-! the given relative epsilon.  True is returned if they are close `enough' and
-! False is returned otherwise.
-!===============================================================================
-  pure function approx_eq(val1, val2, eps) result(test)
-    real(8), intent(in) :: val1
-    real(8), intent(in) :: val2
-    real(8), intent(in) :: eps
-    logical             :: test
-    real(8)             :: relErr
-
-    if (val1 == val2) then
-      test = .true.
-    else
-      if (abs(val2) > abs(val1)) then
-        relErr = abs((val1 - val2) / val2)
-      else
-        relErr = abs((val1 - val2) / val1)
-      end if
-
-      if (relErr <= eps) then
-        test = .true.
-      else
-        test = .false.
-      end if
-    end if
-  end function approx_eq
 
 end module ndpp

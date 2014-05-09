@@ -144,26 +144,10 @@ module global
   ! NDPP PREPROCESSED TALLY VARIABLES
 
   ! Flag to indicate need to store pre-processed data library
-  logical        :: ndpp_scatt = .false.
-  logical        :: ndpp_chi   = .false.
-  logical        :: ndpp_chi_p = .false.
-  logical        :: ndpp_chi_d = .false.
-
-  ! Total number of energy groups and data order in the pre-integrated scattering library
-  integer        :: ndpp_groups
-  integer        :: ndpp_scatt_order
-  integer        :: ndpp_nuscatt_order
-
-  ! Energy group structure of NDPP library
-  real(8), allocatable :: ndpp_energy_bins(:)
+  logical        :: use_ndpp_data = .false.
 
   ! File which stores ndpp library data.
   character(MAX_FILE_LEN) :: ndpp_lib
-
-  ! ndpp_lib.xml preprocessed data listings and associated data.
-  type(XsListing),  allocatable, target :: ndpp_listings(:)
-  type(DictCharInt)                     :: ndpp_listing_dict
-  integer                               :: n_ndpp_listings
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -502,12 +486,6 @@ contains
     call nuclide_dict % clear()
     call sab_dict % clear()
     call xs_listing_dict % clear()
-    call ndpp_listing_dict % clear()
-
-    ! Deallocate ndpp_energy_bins
-    if (allocated(ndpp_energy_bins)) then
-      deallocate(ndpp_energy_bins)
-    end if
 
     ! Clear statepoint batch set
     call statepoint_batch % clear()

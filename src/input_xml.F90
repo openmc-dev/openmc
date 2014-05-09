@@ -2468,9 +2468,8 @@ contains
               call fatal_error()
             end if
 
-            ! Set flag to read and allocate storage for advanced scattering
-            ! library
-            ndpp_scatt = .true.
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
@@ -2503,9 +2502,8 @@ contains
               call fatal_error()
             end if
 
-            ! Set flag to read and allocate storage for advanced scattering
-            ! library
-            ndpp_scatt = .true.
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
@@ -2539,9 +2537,8 @@ contains
               call fatal_error()
             end if
 
-            ! Set flag to read and allocate storage for advanced scattering
-            ! library
-            ndpp_scatt = .true.
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
@@ -2574,9 +2571,8 @@ contains
               call fatal_error()
             end if
 
-            ! Set flag to read and allocate storage for advanced scattering
-            ! library
-            ndpp_scatt = .true.
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
@@ -2587,8 +2583,10 @@ contains
             j = j + n_bins - 1
 
           case('ndpp-chi')
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
+
             t % score_bins(j) = SCORE_NDPP_CHI
-            ndpp_chi = .true.
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
               message = "Cannot tally NDPP Chi without an " // &
@@ -2600,8 +2598,10 @@ contains
             t % estimator = ESTIMATOR_TRACKLENGTH
 
           case('ndpp-chi-p')
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
+
             t % score_bins(j) = SCORE_NDPP_CHI_P
-            ndpp_chi_P = .true.
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
               message = "Cannot tally NDPP Chi-P without an " // &
@@ -2615,8 +2615,11 @@ contains
           case('ndpp-chi-d')
             message = "ndpp-chi-d tally score not yet enabled!"
             call fatal_error()
+
+            ! Set flag to read and allocate storage for pre-processed tally data
+            use_ndpp_data = .true.
+
             t % score_bins(j) = SCORE_NDPP_CHI_D
-            ndpp_chi_d = .true.
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
               message = "Cannot tally NDPP Chi-D without an " // &

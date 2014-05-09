@@ -442,10 +442,12 @@ contains
               ! Skip any non-fission events
               if (.not. p % fission) cycle SCORE_LOOP
 
-              ! All fission events will contribute, so again we can use
-              ! particle's weight entering the collision as the estimate for the
-              ! fission reaction rate
-              score = last_wgt
+              ! For the score to be 'analog', we need to
+              ! score the number of particles that were banked in the fission
+              ! bank. Since this was weighted by 1/keff, we multiply by keff
+              ! to get the proper score.
+
+              score = keff * p % wgt_bank
 
             end if
 
@@ -3244,6 +3246,11 @@ contains
     real(8), pointer, save :: chi(:,:) ! Working chi data
     !$omp threadprivate(nuc, chi_Ein, chi)
 
+    ! Quit before doing anything else if we have no chi data
+    if (.not. nuclides(i_nuclide) % fissionable) then
+      return
+    end if
+
     ! Set up pointers
     nuc => nuclides(i_nuclide)
     chi_Ein => nuc % ndpp_chi_Ein
@@ -3252,13 +3259,9 @@ contains
     else if (score_type == SCORE_NDPP_CHI_P) then
       chi => nuc % ndpp_chi_p
     else if (score_type == SCORE_NDPP_CHI_D) then
-      message = "OpenMC does not yet support Chi-Delayed Tallying!"
+      message = "OpenMC does not yet support Delayed Chi Tallying!"
       call fatal_error()
       !chi => nuc % ndpp_chi_d
-    end if
-
-    if (.not. nuc % fissionable) then
-      return
     end if
 
     ! Find the grid index and interpolant of ndpp scattering data
@@ -3274,12 +3277,14 @@ contains
         (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
     end if
 
-    ! Calculate 1-f, apply mult, and weight by nu-fission
-    one_f = (ONE - f) * mult * micro_xs(i_nuclide) % nu_fission
-    f = f * mult * micro_xs(i_nuclide) % nu_fission
-    if (is_analog) then ! Weight only by nu
-      f = f / micro_xs(i_nuclide) % fission
-      one_f = one_f / micro_xs(i_nuclide) % fission
+    ! Calculate 1-f, apply mult, and weight by nu-fission for TL
+    one_f = (ONE - f) * mult
+    f = f * mult
+    ! Weight only by nu for analog since the collision estimator process already
+    ! is effectively sampling the fission xs
+    if (.not. is_analog) then
+      f = f * micro_xs(i_nuclide) % nu_fission
+      one_f = one_f * micro_xs(i_nuclide) % nu_fission
     end if
 
     ! Add the contribution from NDPP data (with interpolation)

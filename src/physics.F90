@@ -882,6 +882,7 @@ contains
       m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
         & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
       cdf_low = nuc % xs_cdf(i_E_low - 1) + m * (E_low - nuc % energy_0K(i_E_low))
+      if (i_E_low == 1) cdf_low = ZERO
       m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
         & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       cdf_up = nuc % xs_cdf(i_E_up - 1) + m * (E_up - nuc % energy_0K(i_E_up))

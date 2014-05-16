@@ -498,7 +498,9 @@ contains
       filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(p, i_tally, flux, filter_index)
+        if (p % material /= MATERIAL_VOID) then
+          call score_all_nuclides(p, i_tally, flux, filter_index)
+        end if
       else
 
         NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -1167,9 +1169,10 @@ contains
         filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
         if (t % all_nuclides) then
-          ! Score reaction rates for each nuclide in material
-          call score_all_nuclides(p, i_tally, flux, filter_index)
-
+          if (p % material /= MATERIAL_VOID) then
+            ! Score reaction rates for each nuclide in material
+            call score_all_nuclides(p, i_tally, flux, filter_index)
+          end if
         else
           NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
             ! Get index of nuclide in nuclides array

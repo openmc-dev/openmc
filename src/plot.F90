@@ -158,7 +158,7 @@ contains
         call position_rgb(p, pl, rgb, id)
 
         ! Create a pixel at (x,y) with color (r,g,b)
-        call set_pixel(img, x, y, rgb(1), rgb(2), rgb(3))
+        call set_pixel(img, x-1, y-1, rgb(1), rgb(2), rgb(3))
 
         ! Advance pixel in first direction
         p % coord0 % xyz(in_i) = p % coord0 % xyz(in_i) + in_pixel
@@ -174,6 +174,9 @@ contains
 
     ! Free up space
     call deallocate_image(img)
+
+    ! Clear particle
+    call p % clear()
 
   end subroutine create_ppm
 

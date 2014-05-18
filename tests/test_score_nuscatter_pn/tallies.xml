@@ -3,12 +3,12 @@
 
   <tally id="1">
     <filter type="cell" bins="21" />
-    <scores>nuscatter-0 nuscatter-1 nuscatter-2 nuscatter-3 nuscatter-4</scores>
+    <scores>nu-scatter-0 nu-scatter-1 nu-scatter-2 nu-scatter-3 nu-scatter-4</scores>
   </tally>
 
   <tally id="2">
     <filter type="cell" bins="21" />
-    <scores>nuscatter-p4</scores>
+    <scores>nu-scatter-p4</scores>
   </tally>
 
 </tallies>

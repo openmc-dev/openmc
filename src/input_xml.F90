@@ -2458,12 +2458,12 @@ contains
             t % moment_order(j) = n_order
 
           case ('nu-scatter-n')
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
               t % score_bins(j) = SCORE_NU_SCATTER
             else
               t % score_bins(j) = SCORE_NU_SCATTER_N
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
             end if
             t % moment_order(j) = n_order
 

@@ -3,9 +3,9 @@
 
   <material id="1">
     <density value="4.5" units="g/cc" />
-    <nuclide name="U-235" xs="70c" ao="1.0" />
-    <nuclide name="H-1" xs="70c" ao="0.5" />
-    <nuclide name="C-Nat" xs="70c" ao="0.5" />
+    <nuclide name="U-235" xs="71c" ao="1.0" />
+    <nuclide name="H-1" xs="71c" ao="0.5" />
+    <nuclide name="C-Nat" xs="71c" ao="0.5" />
   </material>
 
 </materials>

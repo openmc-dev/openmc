@@ -88,6 +88,9 @@ module global
   ! Default xs identifier (e.g. 70c)
   character(3):: default_xs
 
+  ! What to assume for expanding natural elements
+  integer :: default_expand = ENDF_BVII1
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
@@ -310,6 +313,9 @@ module global
   ! Is CMFD active
   logical :: cmfd_run = .false.
 
+  ! CMFD communicator
+  integer :: cmfd_comm
+ 
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
   type(Timer) :: time_cmfdbuild ! timer for matrix build

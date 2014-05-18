@@ -1330,7 +1330,7 @@ contains
 
       ! Now we can fill the inelastic_data(i) attributes
       do i = 1, NE_in
-        XSS_index = LOCC(i)
+        XSS_index = int(LOCC(i))
         NE_out = table % inelastic_data(i) % n_e_out
         do j = 1, NE_out
           table % inelastic_data(i) % e_out(j) = XSS(XSS_index + 1)

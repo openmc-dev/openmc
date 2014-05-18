@@ -778,6 +778,33 @@ contains
       end if
     end if
 
+    ! Natural element expansion option
+    if (check_for_node(doc, "natural_elements")) then
+      call get_node_value(doc, "natural_elements", temp_str)
+      call lower_case(temp_str)
+      select case (temp_str)
+      case ('endf/b-vii.0')
+        default_expand = ENDF_BVII0
+      case ('endf/b-vii.1')
+        default_expand = ENDF_BVII1
+      case ('jeff-3.1.1')
+        default_expand = JEFF_311
+      case ('jeff-3.1.2')
+        default_expand = JEFF_312
+      case ('jeff-3.2')
+        default_expand = JEFF_32
+      case ('jendl-3.2')
+        default_expand = JENDL_32
+      case ('jendl-3.3')
+        default_expand = JENDL_33
+      case ('jendl-4.0')
+        default_expand = JENDL_40
+      case default
+        message = "Unknown natural element expansion option: " // trim(temp_str)
+        call fatal_error()
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 
@@ -1520,7 +1547,9 @@ contains
         call get_node_value(node_ele, "name", name)
 
         ! Check for cross section
-        if (.not.check_for_node(node_ele, "xs")) then
+        if (check_for_node(node_ele, "xs")) then
+          call get_node_value(node_ele, "xs", temp_str)
+        else
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
                  // trim(to_str(mat % id))
@@ -2407,12 +2436,12 @@ contains
             t % moment_order(j) = n_order
 
           case ('nu-scatter-n')
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
               t % score_bins(j) = SCORE_NU_SCATTER
             else
               t % score_bins(j) = SCORE_NU_SCATTER_N
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
             end if
             t % moment_order(j) = n_order
 
@@ -3372,8 +3401,7 @@ contains
       call list_density % append(density * 0.801_8)
 
     case ('c')
-      ! The evaluation of Carbon in ENDF/B-VII.1 and JEFF 3.1.2 is a natural
-      ! element, i.e. it's not possible to split into C-12 and C-13.
+      ! No evaluations split up Carbon into isotopes yet
       call list_names % append('6000.' // xs)
       call list_density % append(density)
 
@@ -3384,12 +3412,22 @@ contains
       call list_density % append(density * 0.00364_8)
 
     case ('o')
-      ! O-18 does not exist in ENDF/B-VII.1 or JEFF 3.1.2 so its 0.205% has been
-      ! added to O-16. The isotopic abundance for O-16 is ordinarily 99.757%.
-      call list_names % append('8016.' // xs)
-      call list_density % append(density * 0.99962_8)
-      call list_names % append('8017.' // xs)
-      call list_density % append(density * 0.00038_8)
+      if (default_expand == JEFF_32) then
+        call list_names % append('8016.' // xs)
+        call list_density % append(density * 0.99757_8)
+        call list_names % append('8017.' // xs)
+        call list_density % append(density * 0.00038_8)
+        call list_names % append('8018.' // xs)
+        call list_density % append(density * 0.00205_8)
+      elseif (default_expand >= JENDL_32 .and. default_expand <= JENDL_40) then
+        call list_names % append('8016.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('8016.' // xs)
+        call list_density % append(density * 0.99962_8)
+        call list_names % append('8017.' // xs)
+        call list_density % append(density * 0.00038_8)
+      end if
 
     case ('f')
       call list_names % append('9019.' // xs)
@@ -3494,13 +3532,17 @@ contains
       call list_density % append(density * 0.0518_8)
 
     case ('v')
-      ! The evaluation of Vanadium in ENDF/B-VII.1 and JEFF 3.1.2 is a natural
-      ! element. The IUPAC isotopic composition specifies the following
-      ! breakdown which is not used:
-      !   V-50 =  0.250%
-      !   V-51 = 99.750%
-      call list_names % append('23000.' // xs)
-      call list_density % append(density)
+      if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
+           .or. default_expand == JEFF_32 .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
+        call list_names % append('23000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('23050.' // xs)
+        call list_density % append(density * 0.0025_8)
+        call list_names % append('23051.' // xs)
+        call list_density % append(density * 0.9975_8)
+      end if
 
     case ('cr')
       call list_names % append('24050.' // xs)
@@ -3549,24 +3591,33 @@ contains
       call list_density % append(density * 0.3085_8)
 
     case ('zn')
-      ! The evaluation of Zinc in ENDF/B-VII.1 is a natural element. The IUPAC
-      ! isotopic composition specifies the following breakdown which is not used
-      ! here:
-      !   Zn-64 = 48.63%
-      !   Zn-66 = 27.90%
-      !   Zn-67 =  4.10%
-      !   Zn-68 = 18.75%
-      !   Zn-70 =  0.62%
-      call list_names % append('30000.' // xs)
-      call list_density % append(density)
+      if (default_expand == ENDF_BVII0 .or. default_expand == &
+           JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('30000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('30064.' // xs)
+        call list_density % append(density * 0.4917_8)
+        call list_names % append('30066.' // xs)
+        call list_density % append(density * 0.2773_8)
+        call list_names % append('30067.' // xs)
+        call list_density % append(density * 0.0404_8)
+        call list_names % append('30068.' // xs)
+        call list_density % append(density * 0.1845_8)
+        call list_names % append('30070.' // xs)
+        call list_density % append(density * 0.0061_8)
+      end if
 
     case ('ga')
-      ! JEFF 3.1.2 does not have evaluations for Ga-69 and Ga-71, only for
-      ! natural Gallium, so this may cause problems.
-      call list_names % append('31069.' // xs)
-      call list_density % append(density * 0.60108_8)
-      call list_names % append('31071.' // xs)
-      call list_density % append(density * 0.39892_8)
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('31000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('31069.' // xs)
+        call list_density % append(density * 0.60108_8)
+        call list_names % append('31071.' // xs)
+        call list_density % append(density * 0.39892_8)
+      end if
 
     case ('ge')
       call list_names % append('32070.' // xs)
@@ -3977,24 +4028,43 @@ contains
       call list_density % append(density * 0.3508_8)
 
     case ('ta')
-      call list_names % append('73180.' // xs)
-      call list_density % append(density * 0.0001201_8)
-      call list_names % append('73181.' // xs)
-      call list_density % append(density * 0.9998799_8)
+      if (default_expand == ENDF_BVII0 .or. &
+           (default_expand >= JEFF_311 .and. default_expand <= JEFF_312) .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_40)) then
+        call list_names % append('73181.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('73180.' // xs)
+        call list_density % append(density * 0.0001201_8)
+        call list_names % append('73181.' // xs)
+        call list_density % append(density * 0.9998799_8)
+      end if
 
     case ('w')
-      ! ENDF/B-VII.0 does not have W-180 so this may cause problems. However, it
-      ! has been added as of ENDF/B-VII.1
-      call list_names % append('74180.' // xs)
-      call list_density % append(density * 0.0012_8)
-      call list_names % append('74182.' // xs)
-      call list_density % append(density * 0.2650_8)
-      call list_names % append('74183.' // xs)
-      call list_density % append(density * 0.1431_8)
-      call list_names % append('74184.' // xs)
-      call list_density % append(density * 0.3064_8)
-      call list_names % append('74186.' // xs)
-      call list_density % append(density * 0.2843_8)
+      if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
+           .or. default_expand == JEFF_312 .or. &
+           (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
+        ! Combine W-180 with W-182
+        call list_names % append('74182.' // xs)
+        call list_density % append(density * 0.2662_8)
+        call list_names % append('74183.' // xs)
+        call list_density % append(density * 0.1431_8)
+        call list_names % append('74184.' // xs)
+        call list_density % append(density * 0.3064_8)
+        call list_names % append('74186.' // xs)
+        call list_density % append(density * 0.2843_8)
+      else
+        call list_names % append('74180.' // xs)
+        call list_density % append(density * 0.0012_8)
+        call list_names % append('74182.' // xs)
+        call list_density % append(density * 0.2650_8)
+        call list_names % append('74183.' // xs)
+        call list_density % append(density * 0.1431_8)
+        call list_names % append('74184.' // xs)
+        call list_density % append(density * 0.3064_8)
+        call list_names % append('74186.' // xs)
+        call list_density % append(density * 0.2843_8)
+      end if
 
     case ('re')
       call list_names % append('75185.' // xs)
@@ -4003,20 +4073,25 @@ contains
       call list_density % append(density * 0.6260_8)
 
     case ('os')
-      call list_names % append('76184.' // xs)
-      call list_density % append(density * 0.0002_8)
-      call list_names % append('76186.' // xs)
-      call list_density % append(density * 0.0159_8)
-      call list_names % append('76187.' // xs)
-      call list_density % append(density * 0.0196_8)
-      call list_names % append('76188.' // xs)
-      call list_density % append(density * 0.1324_8)
-      call list_names % append('76189.' // xs)
-      call list_density % append(density * 0.1615_8)
-      call list_names % append('76190.' // xs)
-      call list_density % append(density * 0.2626_8)
-      call list_names % append('76192.' // xs)
-      call list_density % append(density * 0.4078_8)
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('76000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('76184.' // xs)
+        call list_density % append(density * 0.0002_8)
+        call list_names % append('76186.' // xs)
+        call list_density % append(density * 0.0159_8)
+        call list_names % append('76187.' // xs)
+        call list_density % append(density * 0.0196_8)
+        call list_names % append('76188.' // xs)
+        call list_density % append(density * 0.1324_8)
+        call list_names % append('76189.' // xs)
+        call list_density % append(density * 0.1615_8)
+        call list_names % append('76190.' // xs)
+        call list_density % append(density * 0.2626_8)
+        call list_names % append('76192.' // xs)
+        call list_density % append(density * 0.4078_8)
+      end if
 
     case ('ir')
       call list_names % append('77191.' // xs)
@@ -4025,18 +4100,23 @@ contains
       call list_density % append(density * 0.627_8)
 
     case ('pt')
-      call list_names % append('78190.' // xs)
-      call list_density % append(density * 0.00012_8)
-      call list_names % append('78192.' // xs)
-      call list_density % append(density * 0.00782_8)
-      call list_names % append('78194.' // xs)
-      call list_density % append(density * 0.3286_8)
-      call list_names % append('78195.' // xs)
-      call list_density % append(density * 0.3378_8)
-      call list_names % append('78196.' // xs)
-      call list_density % append(density * 0.2521_8)
-      call list_names % append('78198.' // xs)
-      call list_density % append(density * 0.07356_8)
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('78000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('78190.' // xs)
+        call list_density % append(density * 0.00012_8)
+        call list_names % append('78192.' // xs)
+        call list_density % append(density * 0.00782_8)
+        call list_names % append('78194.' // xs)
+        call list_density % append(density * 0.3286_8)
+        call list_names % append('78195.' // xs)
+        call list_density % append(density * 0.3378_8)
+        call list_names % append('78196.' // xs)
+        call list_density % append(density * 0.2521_8)
+        call list_names % append('78198.' // xs)
+        call list_density % append(density * 0.07356_8)
+      end if
 
     case ('au')
       call list_names % append('79197.' // xs)
@@ -4059,10 +4139,15 @@ contains
       call list_density % append(density * 0.0687_8)
 
     case ('tl')
-      call list_names % append('81203.' // xs)
-      call list_density % append(density * 0.2952_8)
-      call list_names % append('81205.' // xs)
-      call list_density % append(density * 0.7048_8)
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('81000.' // xs)
+        call list_density % append(density)
+      else
+        call list_names % append('81203.' // xs)
+        call list_density % append(density * 0.2952_8)
+        call list_names % append('81205.' // xs)
+        call list_density % append(density * 0.7048_8)
+      end if
 
     case ('pb')
       call list_names % append('82204.' // xs)

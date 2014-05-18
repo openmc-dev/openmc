@@ -422,7 +422,7 @@ contains
 
 #ifdef _OPENMP
           ! Read and set number of OpenMP threads
-          n_threads = str_to_int(argv(i))
+          n_threads = int(str_to_int(argv(i)), 4)
           if (n_threads < 1) then
             message = "Invalid number of threads specified on command line."
             call fatal_error()

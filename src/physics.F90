@@ -867,6 +867,14 @@ contains
       nu = int(nu_t) + 1
     end if
 
+    ! Check for fission bank size getting hit
+    if (n_bank + nu > size(fission_bank)) then
+      message = "Maximum number of sites in fission bank reached. This can &
+           &result in irreproducible results using different numbers of &
+           &processes/threads."
+      call warning()
+    end if
+
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == size(fission_bank)) return
     p % fission = .true. ! Fission neutrons will be banked

@@ -789,14 +789,19 @@ contains
       ! read angular distribution -- currently this does not actually parse the
       ! angular distribution tables for each incoming energy, that must be done
       ! on-the-fly
-      LC = rxn % adist % location(1)
-      XSS_index = JXS9 + abs(LC) - 1
+      XSS_index = JXS9 + LOCB + 2 * NE
       rxn % adist % data = get_real(length)
 
       ! change location pointers since they are currently relative to JXS(9)
-      LC = abs(rxn % adist % location(1))
-      rxn % adist % location = abs(rxn % adist % location) - LC
-
+      LC = LOCB + 2 * NE + 1
+      do j = 1, NE
+        ! For consistency, leave location as 0 if type is isotropic.
+        ! This is not necessary for current correctness, but can avoid
+        ! future issues
+        if (rxn % adist % location(j) /= 0) then
+          rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
+        end if
+      end do
     end do
 
   end subroutine read_angular_dist

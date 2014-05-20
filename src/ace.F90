@@ -982,7 +982,7 @@ contains
         ! If this is the case, we should skip incrementing length when it is
         ! not needed.
         if (i < NE) then
-          if (L(i) == L(i + 1)) then
+          if (any(L(i) == L(i + 1: NE))) then
             ! adjust location for this block
             j = lc + 2 + 2*NR + NE + i
             XSS(j) = XSS(j) - LOCC - lid
@@ -1040,7 +1040,7 @@ contains
         ! If this is the case, we should skip incrementing length when it is
         ! not needed.
         if (i < NE) then
-          if (L(i) == L(i + 1)) then
+          if (any(L(i) == L(i + 1: NE))) then
             ! adjust location for this block
             j = lc + 2 + 2*NR + NE + i
             XSS(j) = XSS(j) - LOCC - lid
@@ -1070,7 +1070,7 @@ contains
         ! If this is the case, we should skip incrementing length when it is
         ! not needed.
         if (i < NE) then
-          if (L(i) == L(i + 1)) then
+          if (any(L(i) == L(i + 1: NE))) then
             ! adjust locators for energy distribution
             j = lc + 2 + 2*NR + NE + i
             XSS(j) = XSS(j) - LOCC - lid

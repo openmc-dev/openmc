@@ -159,7 +159,10 @@ contains
 
         ! Write id
         call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
-
+        
+        ! Write label                                                                      
+        call sp % write_data(t % label, "label", group="tallies/tally" // to_str(i))
+        
         ! Write number of realizations
         call sp % write_data(t % n_realizations, "n_realizations", &
              group="tallies/tally" // to_str(i))
@@ -652,6 +655,9 @@ contains
       ! Read tally id
       call sp % read_data(t % id, "id", group="tallies/tally" // to_str(i))
 
+      ! Read tally label
+      call sp % read_data(t % label, "label", group="tallies/tally" // to_str(i))
+                                  
       ! Read number of realizations
       call sp % read_data(t % n_realizations, "n_realizations", &
            group="tallies/tally" // to_str(i))

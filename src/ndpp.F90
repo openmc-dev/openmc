@@ -542,6 +542,7 @@ contains
     character(7)  :: readable      ! is NDPP library readable?
     character(10) :: name          ! name of NDPP table
     real(8)       :: kT            ! temperature of table
+    real(8)       :: dkT           ! difference in temperature of table
     integer       :: NG            ! Number of energy groups in library
     character(MAX_FILE_LEN) :: filename ! path to NDPP data library
     real(8), allocatable    :: energy_bins(:) ! Energy group structure
@@ -607,7 +608,8 @@ contains
 
       ! Read the header information to make sure this is the correct file
       read(UNIT=in, FMT='(A20,1PE20.12,I20,A20)') name, kT, NG
-      if ((adjustl(trim(name)) /= listing % name) .or. (kT /= listing % kT)) then
+      dkT = abs(kT - listing % kT) / kT
+      if ((adjustl(trim(name)) /= listing % name) .or. (dkT < 0.01_8)) then
         message = "NDPP library '" // trim(filename) // "' does not &
                   &contain the correct data set where expected!"
         call fatal_error()
@@ -760,7 +762,8 @@ contains
 
       ! Read the header information to make sure this is the correct file
       read(UNIT=in) name, kT, NG
-      if ((adjustl(trim(name)) /= listing % name) .or. (kT /= listing % kT)) then
+      dkT = abs(kT - listing % kT) / kT
+      if ((adjustl(trim(name)) /= listing % name) .or. (dkT > 0.001_8)) then
         message = "NDPP library '" // trim(filename) // "' does not &
                   &contain the correct data set where expected!"
         call fatal_error()

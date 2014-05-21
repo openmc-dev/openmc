@@ -74,7 +74,7 @@ def test_run2():
     openmc_path = os.path.join(cwd, '../../src/openmc')
     source = glob.glob(os.path.join(cwd, 'source.10.*'))
     with open('settings.xml','w') as fh:
-        fh.write(settings2.format(source[0].split('.')[2]))
+        fh.write(settings2.format(source[0].split('.')[-1]))
     if opts.mpi_exec != '':
         proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
                stderr=STDOUT, stdout=PIPE)

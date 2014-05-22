@@ -908,6 +908,20 @@ contains
       !!! TBI
     end if ! No default needed - read_ndpp_xml() already checked filetype
 
+! TEMPORARY: Force top value of ndpp_scatt_Ein_srch to be size(ndpp_scatt_Ein)
+if (is_nuc) then
+  if (allocated(nuc % ndpp_scatt_Ein_srch)) then
+    nuc % ndpp_scatt_Ein_srch(size(nuc % ndpp_scatt_Ein_srch)) = \
+      size(nuc % ndpp_scatt_Ein)
+  end if
+else
+  if (allocated(sab % ndpp_scatt_Ein_srch)) then
+    sab % ndpp_scatt_Ein_srch(size(sab % ndpp_scatt_Ein_srch)) = \
+      size(sab % ndpp_scatt_Ein)
+  end if
+end if
+
+
     ! Finally, the above code read in all data since NDPP libs are sequential
     ! access; now we can deallocate what we do not need
     if (is_nuc) then

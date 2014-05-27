@@ -3,9 +3,9 @@
 
   <material id="1">
     <density units="sum" />
-    <nuclide name="U-235" xs="70c" ao="0.3e-2" />
-    <nuclide name="U-238" xs="70c" ao="0.5e-1" />
-    <nuclide name="H-1" xs="70c" ao="0.1e-2" />
+    <nuclide name="U-235" xs="71c" ao="0.3e-2" />
+    <nuclide name="U-238" xs="71c" ao="0.5e-1" />
+    <nuclide name="H-1" xs="71c" ao="0.1e-2" />
   </material>
 
 </materials>

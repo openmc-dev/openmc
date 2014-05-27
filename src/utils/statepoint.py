@@ -515,9 +515,9 @@ class StatePoint(object):
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
 
         surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
-
+        print surfList
         matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
-
+        print matList
         # User Inputs  
         self.geom.cellKeys = self._get_int(self.geom.n_cells,path='geometry/cell_keys')
         # OpenMC IDs
@@ -599,7 +599,7 @@ class StatePoint(object):
             neg_n = self._get_int(n_neg_neigh,path=base + str(surfList[i])+'/neighbor_neg')
 
             self.geom.surf.append(Surface(surfList[i], s_type, coeffs, pos_n, neg_n, bc))
-
+            print(self.geom.surf[-1])
 	# Build list of materials
 	  base = 'geometry/materials/material '
 	  for i in range(self.geom.n_materials):
@@ -612,6 +612,7 @@ class StatePoint(object):
             sab_t = self._get_int(n_sab,path=base + str(surfList[i])+'/i_sab_tables')
 
             self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
+            print(self.geom.mat[-1])
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]

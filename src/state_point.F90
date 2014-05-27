@@ -46,6 +46,8 @@ contains
     type(Cell),     pointer    :: c => null()
     type(Universe), pointer    :: u => null()
     type(Lattice),  pointer    :: lat => null()
+    type(Surface),  pointer    :: s => null()
+    type(Material), pointer    :: m => null()
     type(TallyObject), pointer :: t => null()
     type(ElemKeyValueII), pointer :: current => null()
     type(ElemKeyValueII), pointer :: next => null()
@@ -136,6 +138,7 @@ contains
       call sp % write_data(n_cells, "n_cells", group="geometry")
       call sp % write_data(n_universes, "n_universes", group="geometry")
       call sp % write_data(n_lattices, "n_lattices", group="geometry")
+      call sp % write_data(n_surfaces, "n_surfaces", group="geometry")
       
       if (n_lattices > 0) then
         ! Print list of lattice IDs
@@ -153,10 +156,30 @@ contains
       allocate(temp_array(n_universes))
       do i = 1, n_universes        
         u => universes(i)
-        temp_array(i) = u % id
+        temp_array(i) = m % id
       end do
       call sp % write_data(temp_array, "universe_ids", &
            group="geometry", length=n_universes)
+      deallocate(temp_array)
+
+      ! Print list of surface IDs
+      allocate(temp_array(n_surfaces))
+      do i = 1, n_surfaces        
+        s => surfaces(i)
+        temp_array(i) = s % id
+      end do
+      call sp % write_data(temp_array, "surface_ids", &
+           group="geometry", length=n_surfaces)
+      deallocate(temp_array)
+
+      ! Print list of material IDs
+      allocate(temp_array(n_materials))
+      do i = 1, n_materials        
+        us => materials(i)
+        temp_array(i) = u % id
+      end do
+      call sp % write_data(temp_array, "material_ids", &
+           group="geometry", length=n_materials)
       deallocate(temp_array)
 
       ! Print list of cell keys-> IDs
@@ -305,6 +328,67 @@ contains
         deallocate(lattice_universes)
 
       end do LATTICE_LOOP
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON SURFACES
+
+      ! Create surfaces group (nothing directly written here) then close
+      call sp % open_group("geometry/surfaces")
+      call sp % close_group()
+
+      ! Write information on each surface
+      SURFACE_LOOP: do i = 1, n_surfaces
+        s => surfaces(i)
+        call sp % write_data(s % type, "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call sp % write_data(s % bc, "bc", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+        call sp % write_data(len(s % coeffs), "n_coeffs", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call sp % write_data(s % coeffs, "coeffs", length=len(s % coeffs), &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+        call sp % write_data(len(s % neighbor_pos), "n_neighbor_pos", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call sp % write_data(s % neighbor_pos, "neighbor_pos", length=len(s % neighbor_pos), &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+        call sp % write_data(len(s % neighbor_neg), "n_neighbor_neg", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call sp % write_data(s % neighbor_neg, "neighbor_neg", length=len(s % neighbor_neg), &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      end do SURFACE_LOOP
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON MATERIALS
+
+      ! Create materials group (nothing directly written here) then close
+      call sp % open_group("geometry/materials")
+      call sp % close_group()
+
+      ! Write information on each material
+      MATERIAL_LOOP: do i = 1, n_materials
+        m => materials(i)
+        call sp % write_data(m % n_nuclides, "n_nuclides", &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+        call sp % write_data(m % nuclide, "nuclide", length=n_nuclides, &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+
+        call sp % write_data(m % density, "density", &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+        call sp % write_data(m % atom_density, "atom_density", length=n_nuclides, &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+
+        call sp % write_data(m % n_sab, "n_sab", &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+        call sp % write_data(m % i_sab_nuclides, "i_sab_nuclides", length=n_sab, &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+        call sp % write_data(m % i_sab_tables, "i_sab_tables", length=n_sab, &
+             group="geometry/materials/material " // trim(to_str(m % id)))
+
+      end do MATERIAL_LOOP
 
       ! Write number of meshes
       call sp % write_data(n_meshes, "n_meshes", group="tallies")
@@ -835,6 +919,27 @@ contains
          group="geometry", length=n_universes)
     deallocate(temp_array)
 
+
+    ! Read list of surface IDs
+    allocate(temp_array(n_surfaces))
+    do i = 1, n_surfaces        
+      s => surfaces(i)
+      temp_array(i) = s % id
+    end do
+    call sp % write_data(temp_array, "surface_ids", &
+         group="geometry", length=n_surfaces)
+    deallocate(temp_array)
+
+    ! Read list of material IDs
+    allocate(temp_array(n_materials))
+    do i = 1, n_materials        
+      us => materials(i)
+      temp_array(i) = m % id
+    end do
+    call sp % write_data(temp_array, "material_ids", &
+         group="geometry", length=n_materials)
+    deallocate(temp_array)
+
     ! Read list of cell keys-> IDs
     allocate(temp_array(n_cells))
     call sp % read_data(temp_array, "cell_keys", &
@@ -931,8 +1036,64 @@ contains
            group="geometry/lattices/lattice ")
       deallocate(temp_array3D)
 
-    end do LATTICE_LOOP
+    end do LATTICE_LOOP   
+ 
+
+    ! ==========================================================================
+    ! READ INFORMATION ON SURFACES
+    
+    ! Write information on each surface
+    SURFACE_LOOP: do i = 1, n_surfaces
+      s => surfaces(i)
+      call sp % read_data(s % type, "type", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call sp % read_data(s % bc, "bc", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      call sp % read_data(len(s % coeffs), "n_coeffs", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call sp % read_data(s % coeffs, "coeffs", length=len(s % coeffs), &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      call sp % read_data(len(s % neighbor_pos), "n_neighbor_pos", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call sp % read_data(s % neighbor_pos, "neighbor_pos", length=len(s % neighbor_pos), &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      call sp % read_data(len(s % neighbor_neg), "n_neighbor_neg", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call sp % read_data(s % neighbor_neg, "neighbor_neg", length=len(s % neighbor_neg), &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+    end do SURFACE_LOOP
+
+    ! ==========================================================================
+    ! READ INFORMATION ON MATERIALS
+
+    ! Write information on each material
+    MATERIAL_LOOP: do i = 1, n_materials
+      m => materials(i)
+      call sp % read_data(m % n_nuclides, "n_nuclides", &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+      call sp % read_data(m % nuclide, "nuclide", length=n_nuclides, &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+
+      call sp % read_data(m % density, "density", &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+      call sp % read_data(m % atom_density, "atom_density", length=n_nuclides, &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+
+      call sp % read_data(m % n_sab, "n_sab", &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+      call sp % read_data(m % i_sab_nuclides, "i_sab_nuclides", length=n_sab, &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+      call sp % read_data(m % i_sab_tables, "i_sab_tables", length=n_sab, &
+           group="geometry/materials/material " // trim(to_str(m % id)))
+
+    end do MATERIAL_LOOP
 #endif
+
+
 
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies")

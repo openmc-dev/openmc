@@ -119,6 +119,8 @@ class Tally(object):
 
         self.filters = OrderedDict()
         self.id = None
+	self.label = None
+	self.estimator = None
         self.n_realizations = None
         self.total_score_bins = None
         self.total_filter_bins = None
@@ -645,6 +647,8 @@ class StatePoint(object):
 
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
+	    t.label = self._get_string(path=base+'id')
+	    t.estimator = self._get_int(path=base+'id')[0]
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies

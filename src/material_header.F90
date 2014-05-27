@@ -3,6 +3,26 @@ module material_header
   implicit none
 
 !===============================================================================
+! COMPOSITION describes a material by its constituent nuclide atom fractions
+!===============================================================================
+
+  type Composition
+    real(8),allocatable  :: atom_densities(:)
+
+  end type Composition
+
+
+!===============================================================================
+! DENSITY describes a material by its constituent nuclide densities
+!===============================================================================
+
+  type Density
+    real(8), allocatable :: density(:)       ! nuclide densities in X/Y
+    integer              :: num              ! size of density
+  end type Density
+
+
+!===============================================================================
 ! MATERIAL describes a material by its constituent nuclides
 !===============================================================================
 
@@ -23,28 +43,10 @@ module material_header
     character(12), allocatable :: sab_names(:) ! name of S(a,b) table
 
   contains
-    procedure :: density => get_density
+    procedure :: get_density => get_density
   end type Material
 
 
-!===============================================================================
-! COMPOSITION describes a material by its constituent nuclide atom fractions
-!===============================================================================
-
-  type Composition
-    real(8),allocatable  :: atom_densities(:)
-
-  end type Composition
-
-
-!===============================================================================
-! DENSITY describes a material by its constituent nuclide densities
-!===============================================================================
-
-  type Density
-    real(8), allocatable :: density(:)       ! nuclide densities in X/Y
-    integer              :: num              ! size of density
-  end type Density
 
 contains
 
@@ -56,7 +58,7 @@ contains
     integer, intent(in) :: j                ! j_th composition
     real(8)             :: density          ! density to be returned
 
-    density = this & comp(j) % atom_densities(i)
+    density = this % comp(j) % atom_densities(i)
 
   end function get_density
     

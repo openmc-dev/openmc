@@ -7,4 +7,4 @@
 # deleting left over binary files. This will
 # cause an assertion error in some of the 
 # tests.
-find . \( -name "*.binary" -o -name "*.h5" \) -exec rm -f {} \;
+find . \( -name "*.binary" -o -name "*.h5" -o -name "*.ppm" \) -exec rm -f {} \;

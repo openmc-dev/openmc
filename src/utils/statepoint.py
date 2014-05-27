@@ -586,33 +586,38 @@ class StatePoint(object):
               fill.shape = (dim[0], dim[1], dim[2]) 
           self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
 
+  	  print 'hi'
 	# Build list of surfaces
 	  base = 'geometry/surfaces/surface '
 	  for i in range(self.geom.n_surfaces):
-            s_type = self._get_int(path=base + str(surfList[i])+'/type')
-	    bc = self._get_int(path=base + str(surfList[i])+'/bc')
-	    n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')
+            s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
+	    bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
+	    n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
             coeffs = self._get_int(n_coeff,path=base + str(surfList[i])+'/coeffs')
-	    n_pos_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')
+	    n_pos_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
             pos_n = self._get_int(n_pos_neigh,path=base + str(surfList[i])+'/neighbor_pos')
-	    n_neg_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')
+	    n_neg_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')[0]
             neg_n = self._get_int(n_neg_neigh,path=base + str(surfList[i])+'/neighbor_neg')
 
+	    print Surface(surfList[i], s_type, coeffs, pos_n, neg_n, bc)
             self.geom.surf.append(Surface(surfList[i], s_type, coeffs, pos_n, neg_n, bc))
-            print(self.geom.surf[-1])
+            print(self.geom.surf)
+
+	
+  	  print 'hi'
 	# Build list of materials
 	  base = 'geometry/materials/material '
 	  for i in range(self.geom.n_materials):
-            n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')
+            n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
             nuclide = self._get_int(n_nuclide,path=base + str(surfList[i])+'/nuclide')
-	    dens = self._get_int(path=base + str(matList[i])+'/density')
+	    dens = self._get_int(path=base + str(matList[i])+'/density')[0]
             a_dens = self._get_int(n_nuclide,path=base + str(surfList[i])+'/atom_density')
-	    n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')
+	    n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
             sab_n = self._get_int(n_sab,path=base + str(surfList[i])+'/i_sab_nuclides')
             sab_t = self._get_int(n_sab,path=base + str(surfList[i])+'/i_sab_tables')
 
             self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
-            print(self.geom.mat[-1])
+            print(self.geom.mat)
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]

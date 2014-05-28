@@ -93,7 +93,7 @@ def test_results():
     assert compare
 
 def teardown():
-    #output = glob.glob(cwd + '/statepoint.*')
+    output = glob.glob(cwd + '/statepoint.*')
     output.append(cwd + '/geometry.xml')
     output.append(cwd + '/materials.xml')
     output.append(cwd + '/settings.xml')

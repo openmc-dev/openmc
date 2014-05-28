@@ -184,8 +184,10 @@ contains
       ! WRITE INFORMATION ON CELLS
 
       ! Create a cell group (nothing directly written in this group) then close
+#ifdef HDF5
       call sp % open_group("geometry/cells")
       call sp % close_group()
+#endif
 
       ! Write information on each cell
       CELL_LOOP: do i = 1, n_cells
@@ -222,8 +224,10 @@ contains
       ! WRITE INFORMATION ON UNIVERSES
 
       ! Create universes group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/universes")
       call sp % close_group()
+#endif
 
       ! Write information on each universe
       UNIVERSE_LOOP: do i = 1, n_universes
@@ -243,8 +247,10 @@ contains
       ! WRITE INFORMATION ON LATTICES
 
       ! Create lattices group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/lattices")
       call sp % close_group()
+#endif
 
       ! Write information on each lattice
       LATTICE_LOOP: do i = 1, n_lattices

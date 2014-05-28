@@ -59,8 +59,10 @@ if __name__ == '__main__':
         raise Exception('Must specify OpenMC executable from command line with --exe.')
 
     # run tests
-    test_run()
-    test_created_restart()
-    test_results()
-    test_run_restart()
-    teardown()
+    try:
+        test_run()
+        test_created_restart()
+        test_results()
+        test_run_restart()
+    finally:
+        teardown()

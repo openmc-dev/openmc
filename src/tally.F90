@@ -508,23 +508,27 @@ contains
           i_nuclide = t % nuclide_bins(k)
 
           if (i_nuclide > 0) then
-            ! Get pointer to current material
-            mat => materials(p % material)
+            if (p % material /= MATERIAL_VOID) then
+              ! Get pointer to current material
+              mat => materials(p % material)
 
-            ! Determine if nuclide is actually in material
-            NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-              ! If index of nuclide matches the j-th nuclide listed in the
-              ! material, break out of the loop
-              if (i_nuclide == mat % nuclide(j)) exit
+              ! Determine if nuclide is actually in material
+              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                ! If index of nuclide matches the j-th nuclide listed in the
+                ! material, break out of the loop
+                if (i_nuclide == mat % nuclide(j)) exit
 
-              ! If we've reached the last nuclide in the material, it means
-              ! the specified nuclide to be tallied is not in this material
-              if (j == mat % n_nuclides) then
-                cycle NUCLIDE_BIN_LOOP
-              end if
-            end do NUCLIDE_MAT_LOOP
+                ! If we've reached the last nuclide in the material, it means
+                ! the specified nuclide to be tallied is not in this material
+                if (j == mat % n_nuclides) then
+                  cycle NUCLIDE_BIN_LOOP
+                end if
+              end do NUCLIDE_MAT_LOOP
 
-            atom_density = mat % atom_density(j)
+              atom_density = mat % atom_density(j)
+            else
+              atom_density = ZERO
+            end if
           end if
 
           ! Determine score for each bin
@@ -1179,24 +1183,28 @@ contains
             i_nuclide = t % nuclide_bins(b)
 
             if (i_nuclide > 0) then
-              ! Get pointer to current material
-              mat => materials(p % material)
+              if (p % material /= MATERIAL_VOID) then
+                ! Get pointer to current material
+                mat => materials(p % material)
 
-              ! Determine if nuclide is actually in material
-              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                ! If index of nuclide matches the j-th nuclide listed in
-                ! the material, break out of the loop
-                if (i_nuclide == mat % nuclide(j)) exit
+                ! Determine if nuclide is actually in material
+                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                  ! If index of nuclide matches the j-th nuclide listed in
+                  ! the material, break out of the loop
+                  if (i_nuclide == mat % nuclide(j)) exit
 
-                ! If we've reached the last nuclide in the material, it
-                ! means the specified nuclide to be tallied is not in this
-                ! material
-                if (j == mat % n_nuclides) then
-                  cycle NUCLIDE_BIN_LOOP
-                end if
-              end do NUCLIDE_MAT_LOOP
+                  ! If we've reached the last nuclide in the material, it
+                  ! means the specified nuclide to be tallied is not in this
+                  ! material
+                  if (j == mat % n_nuclides) then
+                    cycle NUCLIDE_BIN_LOOP
+                  end if
+                end do NUCLIDE_MAT_LOOP
 
-              atom_density = mat % atom_density(j)
+                atom_density = mat % atom_density(j)
+              else
+                atom_density = ZERO
+              end if
             end if
 
             ! Determine score for each bin

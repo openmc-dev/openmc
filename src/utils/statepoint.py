@@ -160,11 +160,17 @@ class Geometry_Data(object):
         print 'n_lattices:',self.n_lattices
         print 'n_surfaces:',self.n_surfaces
         print 'n_materials:',self.n_materials
-
+	print ''
+	print 'Universes:'
+	print ''
         for i in self.univ:
           print 'Universe:',i.ID
           print '--Contains Cells:',i.cells
 
+	print ''
+	print ''	
+	print 'Cells:'
+	print ''
         for i in self.cell:
           print 'Cell:',i.ID
           print '--UserID:',i.userID
@@ -174,6 +180,10 @@ class Geometry_Data(object):
           print '--Offset:',i.offset
           print '--Material:',i.material
 
+	print ''
+	print ''	
+	print 'Lattices:'
+	print ''
         for i in self.lat:
           print 'Lattice:',i.ID
           print '--Fill:',i.fill
@@ -184,30 +194,41 @@ class Geometry_Data(object):
           print '--Offset:',np.squeeze(i.offset)
           print '--Dimenisions:',i.dim
 
+	print ''
+	print ''	
+	print 'Surfaces:'
+	print ''
         for i in self.surf:
           print 'Surface:',i.ID
           print '--Type:',i.s_type
-          print '--Offset:',i.offset
           print '--Coefficients:'
           print i.coeffs
+	  print '--# Positive Neighbors:',i.n_pos
           print '--Positive Neighbors:'
 	  print i.neighbor_pos
-          print '--Negative Neighbors:',
-	  print i.neighbor_pos
-          print 'Boundary Conditoin:',i.bc
+	  print '--# Negative Neighbors:',i.n_neg
+          print '--Negative Neighbors:'
+	  print i.neighbor_neg
+          print 'Boundary Condition:',i.bc
 
 
+	print ''
+	print ''	
+	print 'Materials:'
+	print ''
         for i in self.mat:
           print 'Material:',i.ID
           print '--# Nuclides:',i.n_nuclide
           print '--Nuclides:'
-	  print i.nuclides
+	  print i.nuclide
           print '--Density:',i.density
+          print '--Atom Densities:'
+	  print i.atom_density
           print '--# Sab Tables:',i.n_sab
           print '--Sab Nuclides:'
-	  print i_sab_nuclides
+	  print i.i_sab_nuclides
           print '--Tables:'
-	  print i_sab_tables
+	  print i.i_sab_tables
 
     def _get_offset(self, path, filter_offset):
         """
@@ -375,13 +396,14 @@ class Lattice(object):
 
 class Surface(object):
 
-    def __init__(self, ID, s_type, coeffs, neighbor_pos, neighbor_neg, bc):
+    def __init__(self, ID, s_type, coeffs, n_pos, neighbor_pos, n_neg, neighbor_neg, bc):
 
         self.ID = ID
         self.s_type = s_type
-        self.offset = offset
         self.coeffs = coeffs
+        self.n_pos = n_pos
         self.neighbor_pos = neighbor_pos
+        self.n_neg = n_neg
         self.neighbor_neg = neighbor_neg
         self.bc = bc
 
@@ -515,9 +537,9 @@ class StatePoint(object):
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
 
         surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
-        print surfList
+
         matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
-        print matList
+
         # User Inputs  
         self.geom.cellKeys = self._get_int(self.geom.n_cells,path='geometry/cell_keys')
         # OpenMC IDs
@@ -586,38 +608,37 @@ class StatePoint(object):
               fill.shape = (dim[0], dim[1], dim[2]) 
           self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
 
-  	  print 'hi'
 	# Build list of surfaces
-	  base = 'geometry/surfaces/surface '
-	  for i in range(self.geom.n_surfaces):
-            s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
-	    bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
-	    n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
-            coeffs = self._get_int(n_coeff,path=base + str(surfList[i])+'/coeffs')
-	    n_pos_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
-            pos_n = self._get_int(n_pos_neigh,path=base + str(surfList[i])+'/neighbor_pos')
-	    n_neg_neigh = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')[0]
-            neg_n = self._get_int(n_neg_neigh,path=base + str(surfList[i])+'/neighbor_neg')
+	base = 'geometry/surfaces/surface '
+	for i in range(self.geom.n_surfaces):
+          s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
+	  bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
+	  n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
+          coeffs = self._get_int(n_coeff,path=base + str(surfList[i])+'/coeffs')
+	  n_pos = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
+	  if n_pos > 0:
+            pos_n = self._get_int(n_pos,path=base + str(surfList[i])+'/neighbor_pos')
+	  else:
+	    pos_n = None
+	  n_neg = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')[0]
+	  if n_neg > 0:
+            neg_n = self._get_int(n_neg,path=base + str(surfList[i])+'/neighbor_neg')
+	  else:
+	    neg_n = None
+          self.geom.surf.append(Surface(surfList[i], s_type, coeffs, n_pos, pos_n, n_neg, neg_n, bc))
 
-	    print Surface(surfList[i], s_type, coeffs, pos_n, neg_n, bc)
-            self.geom.surf.append(Surface(surfList[i], s_type, coeffs, pos_n, neg_n, bc))
-            print(self.geom.surf)
-
-	
-  	  print 'hi'
 	# Build list of materials
-	  base = 'geometry/materials/material '
-	  for i in range(self.geom.n_materials):
-            n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
-            nuclide = self._get_int(n_nuclide,path=base + str(surfList[i])+'/nuclide')
-	    dens = self._get_int(path=base + str(matList[i])+'/density')[0]
-            a_dens = self._get_int(n_nuclide,path=base + str(surfList[i])+'/atom_density')
-	    n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
-            sab_n = self._get_int(n_sab,path=base + str(surfList[i])+'/i_sab_nuclides')
-            sab_t = self._get_int(n_sab,path=base + str(surfList[i])+'/i_sab_tables')
+	base = 'geometry/materials/material '
+	for i in range(self.geom.n_materials):
+          n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
+          nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
+	  dens = self._get_double(path=base + str(matList[i])+'/density')[0]
+          a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
+	  n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
+          sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
+          sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
 
-            self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
-            print(self.geom.mat)
+          self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
@@ -724,6 +745,7 @@ class StatePoint(object):
 
         # Set flag indicating metadata has already been read
         self._metadata = True
+	self.geom._print_all()
 
     def read_results(self):
         # Check whether metadata has been read

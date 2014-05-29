@@ -82,6 +82,9 @@ module particle_header
     ! Track output
     logical    :: write_track = .false.
 
+    ! Offset for material distribution
+    integer, allocatable    :: offset_comp(:)  ! Mappings for compositions
+    integer, allocatable    :: offset_dens(:)  ! Mappings for Densities
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle

@@ -7,7 +7,7 @@ module material_header
 !===============================================================================
 
   type Composition
-    real(8),allocatable  :: atom_densities(:)
+    real(8),allocatable  :: atom_density(:)
 
   end type Composition
 
@@ -42,6 +42,9 @@ module material_header
     character(12), allocatable :: names(:)     ! isotope names
     character(12), allocatable :: sab_names(:) ! name of S(a,b) table
 
+    ! Distribution Variables
+    logical                        :: distrib_dens ! distributed densities
+    logical                        :: distrib_comp ! distributed compositions
   contains
     procedure :: get_density => get_density
   end type Material
@@ -58,7 +61,7 @@ contains
     integer, intent(in) :: j                ! j_th composition
     real(8)             :: density          ! density to be returned
 
-    density = this % comp(j) % atom_densities(i)
+    density = this % comp(j) % atom_density(i)
 
   end function get_density
     

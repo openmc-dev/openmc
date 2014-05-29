@@ -38,3 +38,6 @@ results_error.dat
 
 # HDF5 files
 *.h5
+
+# Data downloaded from NNDC
+data/nndc

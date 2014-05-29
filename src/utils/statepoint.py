@@ -523,6 +523,8 @@ class StatePoint(object):
                 self.cmfd_srccmp = self._get_double(self.current_batch,
                                    path='cmfd/cmfd_srccmp')
 
+	#for i in xrange(300):
+	#  print i,':',self._get_int(path='geometry')
 
         # Read geometry information
         self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
@@ -614,7 +616,7 @@ class StatePoint(object):
           s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
 	  bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
 	  n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
-          coeffs = self._get_int(n_coeff,path=base + str(surfList[i])+'/coeffs')
+          coeffs = self._get_double(n_coeff,path=base + str(surfList[i])+'/coeffs')
 	  n_pos = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
 	  if n_pos > 0:
             pos_n = self._get_int(n_pos,path=base + str(surfList[i])+'/neighbor_pos')
@@ -688,7 +690,6 @@ class StatePoint(object):
 
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
-
             for j in range(n_filters):
                 # Create Filter object
                 f = Filter()
@@ -745,7 +746,6 @@ class StatePoint(object):
 
         # Set flag indicating metadata has already been read
         self._metadata = True
-	self.geom._print_all()
 
     def read_results(self):
         # Check whether metadata has been read

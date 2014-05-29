@@ -208,8 +208,10 @@ contains
       ! WRITE INFORMATION ON CELLS
 
       ! Create a cell group (nothing directly written in this group) then close
+#ifdef HDF5
       call sp % open_group("geometry/cells")
       call sp % close_group()
+#endif
 
       ! Write information on each cell
       CELL_LOOP: do i = 1, n_cells
@@ -246,8 +248,10 @@ contains
       ! WRITE INFORMATION ON UNIVERSES
 
       ! Create universes group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/universes")
       call sp % close_group()
+#endif
 
       ! Write information on each universe
       UNIVERSE_LOOP: do i = 1, n_universes
@@ -267,8 +271,10 @@ contains
       ! WRITE INFORMATION ON LATTICES
 
       ! Create lattices group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/lattices")
       call sp % close_group()
+#endif
 
       ! Write information on each lattice
       LATTICE_LOOP: do i = 1, n_lattices
@@ -334,8 +340,10 @@ contains
       ! WRITE INFORMATION ON SURFACES
 
       ! Create surfaces group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/surfaces")
       call sp % close_group()
+#endif
 
       ! Write information on each surface
       SURFACE_LOOP: do i = 1, n_surfaces
@@ -344,30 +352,43 @@ contains
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
         call sp % write_data(s % bc, "bc", &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
-
+        
         call sp % write_data(size(s % coeffs), "n_coeffs", &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
         call sp % write_data(s % coeffs, "coeffs", length=size(s % coeffs), &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
-
-        call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
-        call sp % write_data(s % neighbor_pos, "neighbor_pos", length=size(s % neighbor_pos), &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
-
-        call sp % write_data(size(s % neighbor_neg), "n_neighbor_neg", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
-        call sp % write_data(s % neighbor_neg, "neighbor_neg", length=size(s % neighbor_neg), &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
-
+        
+        if (allocated(s % neighbor_pos)) then
+          call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+          call sp % write_data(s % neighbor_pos, "neighbor_pos", length=size(s % neighbor_pos), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        else
+          j = 0
+          call sp % write_data(j, "n_neighbor_pos", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        endif
+        
+        if (allocated(s % neighbor_neg)) then
+          call sp % write_data(size(s % neighbor_neg), "n_neighbor_neg", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+          call sp % write_data(s % neighbor_neg, "neighbor_neg", length=size(s % neighbor_neg), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        else
+          j = 0
+          call sp % write_data(j, "n_neighbor_neg", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        endif
       end do SURFACE_LOOP
 
       ! ==========================================================================
       ! WRITE INFORMATION ON MATERIALS
 
       ! Create materials group (nothing directly written here) then close
+#ifdef HDF5
       call sp % open_group("geometry/materials")
       call sp % close_group()
+#endif
 
       ! Write information on each material
       MATERIAL_LOOP: do i = 1, n_materials

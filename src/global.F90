@@ -295,6 +295,9 @@ module global
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
+  ! Number of distribution maps
+  integer :: n_maps
+
   ! ============================================================================
   ! CMFD VARIABLES 
 

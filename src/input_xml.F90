@@ -4,7 +4,7 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice
+  use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
   use global
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: StructuredMesh
@@ -2042,7 +2042,19 @@ contains
           end if
 
           ! Determine type of filter
-          select case (temp_str)
+          select case (temp_str)          
+
+          case ('distribcell')
+
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DISTRIBCELL
+            
+            ! Going to add new filters to this tally if n_words > 1
+            
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL

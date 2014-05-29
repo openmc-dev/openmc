@@ -633,28 +633,36 @@ contains
     ! Write identifier for material
     write(unit_,*) 'Material ' // to_str(mat % id)
 
-    ! Write total atom density in atom/b-cm
-    write(unit_,*) '    Atom Density = ' // trim(to_str(mat % density)) &
-         // ' atom/b-cm'
+    if (size(mat % comp) > 1 .OR. size(mat % density % density) > 1) then
+      ! Material is distributed. No current support for material outputs.
+      write(unit_,*) 'Material is distributed. No current support for ' & 
+          // ' distributed material outputs.'
 
-    ! Write atom density for each nuclide in material
-    write(unit_,*) '    Nuclides:'
-    do i = 1, mat % n_nuclides
-      nuc => nuclides(mat % nuclide(i))
-      density = mat % atom_density(i)
-      string = '        ' // trim(nuc % name) // ' = ' // &
-           trim(to_str(density)) // ' atom/b-cm'
-      write(unit_,*) trim(string)
-    end do
+    else
+        
+      ! Write total atom density in atom/b-cm
+      write(unit_,*) '    Atom Density = ' // trim(to_str(mat % density % density(1))) &
+           // ' atom/b-cm'
 
-    ! Write information on S(a,b) table
-    if (mat % n_sab > 0) then
-        write(unit_,*) '    S(a,b) tables:'
-      do i = 1, mat % n_sab
-        write(unit_,*) '      ' // trim(&
-             sab_tables(mat % i_sab_tables(i)) % name)
+      ! Write atom density for each nuclide in material
+      write(unit_,*) '    Nuclides:'
+      do i = 1, mat % n_nuclides
+        nuc => nuclides(mat % nuclide(i))
+        density = mat % comp(1) % atom_density(i)
+        string = '        ' // trim(nuc % name) // ' = ' // &
+             trim(to_str(density)) // ' atom/b-cm'
+        write(unit_,*) trim(string)
       end do
-    end if
+
+      ! Write information on S(a,b) table
+      if (mat % n_sab > 0) then
+          write(unit_,*) '    S(a,b) tables:'
+        do i = 1, mat % n_sab
+          write(unit_,*) '      ' // trim(&
+               sab_tables(mat % i_sab_tables(i)) % name)
+        end do
+      end if
+    endif
     write(unit_,*)
 
   end subroutine print_material

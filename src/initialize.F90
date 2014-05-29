@@ -92,6 +92,9 @@ contains
 
     ! Initialize distribcell_filters
     call prepare_distribcell()
+
+    ! Initialize distributed materials
+    call prepare_distribmats()
     
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -1027,7 +1030,7 @@ contains
   
   call allocate_offsets(univ_list)
   
-  do i = 1, n_maps
+  do i = 1, n_tally_maps
     do j = 1, n_universes  
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
@@ -1170,8 +1173,18 @@ end subroutine prepare_distribcell
     end do
     
     ! Store the number of maps to global
-    n_maps = maps
+    n_tally_maps = maps
     
   end subroutine allocate_offsets
+
+!===============================================================================
+! PREPARE_DISTRIBMATS initializes the mappings for distributed materials
+!===============================================================================
+
+  subroutine prepare_distribmats()
+  
+    
+  
+end subroutine prepare_distribmats
 
 end module initialize

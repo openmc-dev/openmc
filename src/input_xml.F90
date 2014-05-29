@@ -1380,6 +1380,10 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
+      ! Currently disable distribution
+      mat % distrib_dens = .false.
+      mat % distrib_comp = .false.
+
       ! Get pointer to i-th material node
       call get_list_item(node_mat_list, i, node_mat)
 
@@ -1593,7 +1597,11 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
-      allocate(mat % atom_density(n))
+      ! Enforce no distribution
+      allocate(mat % comp(1))
+      allocate(mat % comp(1) % atom_density(n))
+      allocate(mat % density % density(1))
+      mat % density % num = 1
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -1631,20 +1639,20 @@ contains
 
         ! Copy name and atom/weight percent
         mat % names(j) = name
-        mat % atom_density(j) = list_density % get_item(j)
+        mat % comp(1) % atom_density(j) = list_density % get_item(j)
       end do ALL_NUCLIDES
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
-      if (.not. (all(mat % atom_density > ZERO) .or. & 
-           all(mat % atom_density < ZERO))) then
+      if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
+           all(mat % comp(1) % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
              to_str(mat % id)
         call fatal_error()
       end if
 
       ! Determine density if it is a sum value
-      if (sum_density) mat % density = sum(mat % atom_density)
+      if (sum_density) mat % density % density(1) = sum(mat % atom_density)
 
       ! Clear lists
       call list_names % clear()

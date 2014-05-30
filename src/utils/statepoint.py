@@ -684,9 +684,7 @@ class StatePoint(object):
 
             # Read sizes of tallies
             t.total_score_bins = self._get_int(path=base+'total_score_bins')[0]
-            print 't.total_score_bins:',t.total_score_bins
             t.total_filter_bins = self._get_int(path=base+'total_filter_bins')[0]
-            print 't.total_filter_bins:',t.total_filter_bins
 
             # Add tally to dictionary
             self.tallyID[t.id] = i

@@ -637,8 +637,12 @@ class StatePoint(object):
 	  dens = self._get_double(path=base + str(matList[i])+'/density')[0]
 	  a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
 	  n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
-	  sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
-	  sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
+          if n_sab > 0:
+            sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
+	    sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
+          else:
+            sab_n = None
+            sab_t = None
 	
           self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
 

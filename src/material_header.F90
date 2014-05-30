@@ -45,6 +45,8 @@ module material_header
     ! Distribution Variables
     logical                        :: distrib_dens ! distributed densities
     logical                        :: distrib_comp ! distributed compositions
+    integer                        :: comp_map     ! composition map ID
+    integer                        :: dens_map     ! density map ID
   contains
     procedure :: get_density => get_density
   end type Material
@@ -57,11 +59,11 @@ contains
   function get_density(this, i, j) result(density)
 
     class(Material)     :: this
-    integer, intent(in) :: i                ! i_th nuclide in the composition
-    integer, intent(in) :: j                ! j_th composition
+    integer, intent(in) :: i                ! i_th composition
+    integer, intent(in) :: j                ! j_th nuclide in the composition
     real(8)             :: density          ! density to be returned
 
-    density = this % comp(j) % atom_density(i)
+    density = this % comp(i) % atom_density(j)
 
   end function get_density
     

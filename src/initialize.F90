@@ -789,8 +789,8 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
-      percent_in_atom = (mat % atom_density(1) > ZERO)
-      density_in_atom = (mat % density > ZERO)
+      percent_in_atom = (mat % comp(1) % atom_density(1) > ZERO)
+      density_in_atom = (mat % density % density(1) > ZERO)
 
       sum_percent = ZERO
       do j = 1, mat % n_nuclides
@@ -802,15 +802,15 @@ contains
         ! by awr. thus, when a sum is done over the values, it's actually
         ! sum(w/awr)
         if (.not. percent_in_atom) then
-          mat % atom_density(j) = -mat % atom_density(j) / awr
+          mat % comp(1) % atom_density(j) = -mat % comp(1) % atom_density(j) / awr
         end if
       end do
 
       ! determine normalized atom percents. if given atom percents, this is
       ! straightforward. if given weight percents, the value is w/awr and is
       ! divided by sum(w/awr)
-      sum_percent = sum(mat % atom_density)
-      mat % atom_density = mat % atom_density / sum_percent
+      sum_percent = sum(mat % comp(1) % atom_density)
+      mat % comp(1) % atom_density = mat % comp(1) % atom_density / sum_percent
 
       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
@@ -819,16 +819,16 @@ contains
         do j = 1, mat % n_nuclides
           index_list = xs_listing_dict % get_key(mat % names(j))
           awr = xs_listings(index_list) % awr
-          x = mat % atom_density(j)
+          x = mat % comp(1) % atom_density(j)
           sum_percent = sum_percent + x*awr
         end do
         sum_percent = ONE / sum_percent
-        mat % density = -mat % density * N_AVOGADRO & 
+        mat % density % density(1) = -mat % density % density(1) * N_AVOGADRO & 
              / MASS_NEUTRON * sum_percent
       end if
 
       ! Calculate nuclide atom densities
-      mat % atom_density = mat % density * mat % atom_density
+      mat % comp(1) % atom_density = mat % density % density(1) * mat % comp(1) % atom_density
     end do
 
   end subroutine normalize_ao

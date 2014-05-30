@@ -6,7 +6,7 @@ module cross_section
   use fission,         only: nu_total
   use global
   use material_header, only: Material
-  use particle_header, only: Particle
+  use particle_header, only: LocalCoord, Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
 
@@ -33,7 +33,7 @@ contains
     integer :: j             ! index in mat % i_sab_nuclides
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
-    type(Material), pointer, save :: mat => null() ! current material
+    type(Material), pointer, save   :: mat => null()   ! current material
 !$omp threadprivate(mat)
 
     ! Set all material macroscopic cross sections to zero
@@ -101,7 +101,12 @@ contains
       ! ADD TO MACROSCOPIC CROSS SECTION
 
       ! Copy atom density of nuclide in material
-      atom_density = mat % atom_density(i)
+      if (mat % distrib_comp) then
+        write (*,*) "SOMEHOW GOT HERE"
+        atom_density = mat % get_density(p % offset_comp,i)
+      else
+        atom_density = mat % get_density(1,i)
+      endif
 
       ! Add contributions to material macroscopic total cross section
       material_xs % total = material_xs % total + &

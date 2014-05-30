@@ -1380,6 +1380,8 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
+      allocate(mat % density % density(1))
+
       ! Currently disable distribution
       mat % distrib_dens = .false.
       mat % distrib_comp = .false.
@@ -1449,13 +1451,13 @@ contains
         call lower_case(units)
         select case(trim(units))
         case ('g/cc', 'g/cm3')
-          mat % density = -val
+          mat % density % density(1) = -val
         case ('kg/m3')
-          mat % density = -0.001 * val
+          mat % density % density(1) = -0.001 * val
         case ('atom/b-cm')
-          mat % density = val
+          mat % density % density(1) = val
         case ('atom/cm3', 'atom/cc')
-          mat % density = 1.0e-24 * val
+          mat % density % density(1) = 1.0e-24 * val
         case default
           message = "Unkwown units '" // trim(units) &
                // "' specified on material " // trim(to_str(mat % id))
@@ -1600,7 +1602,6 @@ contains
       ! Enforce no distribution
       allocate(mat % comp(1))
       allocate(mat % comp(1) % atom_density(n))
-      allocate(mat % density % density(1))
       mat % density % num = 1
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
@@ -1652,7 +1653,7 @@ contains
       end if
 
       ! Determine density if it is a sum value
-      if (sum_density) mat % density % density(1) = sum(mat % atom_density)
+      if (sum_density) mat % density % density(1) = sum(mat % comp(1) % atom_density)
 
       ! Clear lists
       call list_names % clear()

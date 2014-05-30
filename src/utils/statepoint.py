@@ -635,11 +635,11 @@ class StatePoint(object):
           n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
           nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
 	  dens = self._get_double(path=base + str(matList[i])+'/density')[0]
-          a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
+	  a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
 	  n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
-          sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
-          sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
-
+	  sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
+	  sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
+	
           self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
 
         # Read number of meshes
@@ -667,6 +667,7 @@ class StatePoint(object):
         # Read number of tallies
         n_tallies = self._get_int(path='tallies/n_tallies')[0]
 
+	#print 'PRINTING'
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
             t = Tally()
@@ -676,13 +677,16 @@ class StatePoint(object):
 
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
-	    t.label = self._get_string(path=base+'id')
+            labelsize = self._get_int(path=base+'id')[0]
+	    t.label = self._get_string(labelsize,path=base+'id')
 	    t.estimator = self._get_int(path=base+'id')[0]
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies
             t.total_score_bins = self._get_int(path=base+'total_score_bins')[0]
+            print 't.total_score_bins:',t.total_score_bins
             t.total_filter_bins = self._get_int(path=base+'total_filter_bins')[0]
+            print 't.total_filter_bins:',t.total_filter_bins
 
             # Add tally to dictionary
             self.tallyID[t.id] = i

@@ -355,8 +355,10 @@ contains
         
         call sp % write_data(size(s % coeffs), "n_coeffs", &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
-        call sp % write_data(s % coeffs, "coeffs", length=size(s % coeffs), &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        if (size(s % coeffs) > 0) then
+          call sp % write_data(s % coeffs, "coeffs", length=size(s % coeffs), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        end if
         
         if (allocated(s % neighbor_pos)) then
           call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
@@ -405,10 +407,12 @@ contains
 
         call sp % write_data(mat % n_sab, "n_sab", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
-        call sp % write_data(mat % i_sab_nuclides, "i_sab_nuclides", length=mat % n_sab, &
-             group="geometry/materials/material " // trim(to_str(mat % id)))
-        call sp % write_data(mat % i_sab_tables, "i_sab_tables", length=mat % n_sab, &
-             group="geometry/materials/material " // trim(to_str(mat % id)))
+        if (mat % n_sab > 0) then
+          call sp % write_data(mat % i_sab_nuclides, "i_sab_nuclides", length=mat % n_sab, &
+               group="geometry/materials/material " // trim(to_str(mat % id)))
+          call sp % write_data(mat % i_sab_tables, "i_sab_tables", length=mat % n_sab, &
+               group="geometry/materials/material " // trim(to_str(mat % id)))
+        endif
 
       end do MATERIAL_LOOP
 
@@ -448,8 +452,11 @@ contains
         ! Write id
         call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
         
-        ! Write label                                                                      
-        call sp % write_data(t % label, "label", group="tallies/tally" // to_str(i))
+        ! Write label                       
+        call sp % write_data(len(t % label), "labellen", group="tallies/tally" // to_str(i))
+        if (len(t % label) > 0) then
+          call sp % write_data(t % label, "label", group="tallies/tally" // to_str(i))
+        endif
         
         ! Write estimator type                                                                      
         call sp % write_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
@@ -816,6 +823,7 @@ contains
 
     character(MAX_FILE_LEN) :: path_temp
     character(19)           :: current_time
+    character(52)           :: label
     integer                 :: i
     integer                 :: j
     integer                 :: k
@@ -830,7 +838,9 @@ contains
     integer, allocatable    :: temp_array3D(:,:,:)
     integer, allocatable    :: temp_array4D(:,:,:,:)
     logical                 :: source_present
+    real(8)                 :: l
     real(8)                 :: real_array(3) 
+    real(8), allocatable    :: temp_real_array(:)
     type(TallyObject), pointer :: t => null()
 
     ! Write message
@@ -947,13 +957,13 @@ contains
 
     ! Read list of surface IDs
     allocate(temp_array(n_surf))
-    call sp % write_data(temp_array, "surface_ids", &
+    call sp % read_data(temp_array, "surface_ids", &
          group="geometry", length=n_surf)
     deallocate(temp_array)
 
     ! Read list of material IDs
     allocate(temp_array(n_mat))
-    call sp % write_data(temp_array, "material_ids", &
+    call sp % read_data(temp_array, "material_ids", &
          group="geometry", length=n_mat)
     deallocate(temp_array)
 
@@ -1054,8 +1064,7 @@ contains
       deallocate(temp_array3D)
 
     end do LATTICE_LOOP   
- 
-
+    
     ! ==========================================================================
     ! READ INFORMATION ON SURFACES
     
@@ -1069,10 +1078,10 @@ contains
       call sp % read_data(j, "n_coeffs", &
            group="geometry/surfaces/surface ")
       if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "coeffs", length=j, &
+        allocate(temp_real_array(j))
+        call sp % read_data(temp_real_array, "coeffs", length=j, &
              group="geometry/surfaces/surface ")
-        deallocate(temp_array)
+        deallocate(temp_real_array)
       end if
 
       call sp % read_data(j, "n_neighbor_pos", &
@@ -1110,13 +1119,13 @@ contains
       end if
       
 
-      call sp % read_data(k, "density", &
+      call sp % read_data(l, "density", &
            group="geometry/materials/material ")
-     if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "atom_density", length=j, &
+      if (j > 0) then
+        allocate(temp_real_array(j))
+        call sp % read_data(temp_real_array, "atom_density", length=j, &
              group="geometry/materials/material ")
-        deallocate(temp_array)
+        deallocate(temp_real_array)
       end if
       
 
@@ -1133,8 +1142,6 @@ contains
 
     end do MATERIAL_LOOP
 #endif
-
-
 
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies")
@@ -1169,12 +1176,17 @@ contains
 
       ! Get pointer to tally
       t => tallies(i)
-
+       
       ! Read tally id
       call sp % read_data(t % id, "id", group="tallies/tally" // to_str(i))
 
+      ! Read tally label length
+      call sp % read_data(j, "labellen", group="tallies/tally" // to_str(i))
+
       ! Read tally label
-      call sp % read_data(t % label, "label", group="tallies/tally" // to_str(i))
+      if (j > 0) then
+        call sp % read_data(label, "label", group="tallies/tally" // to_str(i))
+      end if
         
       ! Read estimator type                                                                      
       call sp % read_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
@@ -1186,12 +1198,13 @@ contains
       ! Read size of tally results
       call sp % read_data(int_array(1), "total_score_bins", &
            group="tallies/tally" // to_str(i))
+       
       call sp % read_data(int_array(2), "total_filter_bins", &
            group="tallies/tally" // to_str(i))
 
       ! Check size of tally results array
       if (int_array(1) /= t % total_score_bins .and. &
-          int_array(2) /= t % total_filter_bins) then
+          int_array(2) /= t % total_filter_bins) then        
         message = "Input file tally structure is different from restart."
         call fatal_error()
       end if

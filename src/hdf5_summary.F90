@@ -341,7 +341,10 @@ contains
       m => materials(i)
 
       ! Write atom density with units
-      call su % write_data(m % density, "atom_density", &
+      call su % write_data(m % density % num, "num_density", &
+           group="materials/material " // trim(to_str(m % id)))
+      call su % write_data(m % density % density, "density", &
+           length=m % density % num, &
            group="materials/material " // trim(to_str(m % id)))
       call su % write_attribute_string("atom_density", "units", "atom/b-cm", &
            group="materials/material " // trim(to_str(m % id)))
@@ -360,9 +363,16 @@ contains
       deallocate(zaids)
 
       ! Write atom densities
-      call su % write_data(m % atom_density, "nuclide_densities", &
-           length=m % n_nuclides, &
+      call su % write_data(size(m % comp), "num_comp", &
            group="materials/material " // trim(to_str(m % id)))
+      COMPOSITION_LOOP: do j = 1, size(m % comp)
+        call su % write_data(m % comp(j) % atom_density, "atom_density " &
+             // trim(to_str(j)), length=m % density % num, & 
+             group="materials/material " &
+             // trim(to_str(m % id)) // "/compositions")
+      end do COMPOSITION_LOOP
+
+
 
       ! Write S(a,b) information if present
       if (m % n_sab > 0) then

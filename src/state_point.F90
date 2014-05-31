@@ -204,7 +204,7 @@ contains
       deallocate(temp_array)
       deallocate(temp_array2)
 
-      ! ==========================================================================
+      ! =======================================================================
       ! WRITE INFORMATION ON CELLS
 
       ! Create a cell group (nothing directly written in this group) then close
@@ -234,7 +234,7 @@ contains
           call sp % write_data(size(c % offset), "maps", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
           if (size(c % offset) > 0) then
-            call sp % write_data(c % offset, "offset", length= size(c%offset), &
+            call sp % write_data(c % offset, "offset", length=size(c%offset), &
                  group="geometry/cells/cell " // trim(to_str(c % id)))
           end if
         case (CELL_LATTICE)
@@ -244,7 +244,7 @@ contains
 
       end do CELL_LOOP
 
-      ! ==========================================================================
+      ! =======================================================================
       ! WRITE INFORMATION ON UNIVERSES
 
       ! Create universes group (nothing directly written here) then close
@@ -267,7 +267,7 @@ contains
 
       end do UNIVERSE_LOOP
 
-      ! ==========================================================================
+      ! =======================================================================
       ! WRITE INFORMATION ON LATTICES
 
       ! Create lattices group (nothing directly written here) then close
@@ -292,8 +292,8 @@ contains
 
         ! Write lattice dimensions, number of offset maps, and offsets
         if (lat % n_dimension == 2) then
-          call sp % write_data((/lat % dimension(1),lat % dimension(2),1/), "dimension", &
-               length=3, &
+          call sp % write_data((/lat % dimension(1),lat % dimension(2),1/), & 
+               "dimension", length=3, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         else          
          call sp % write_data(lat % dimension, "dimension", &
@@ -336,7 +336,7 @@ contains
 
       end do LATTICE_LOOP
 
-      ! ==========================================================================
+      ! =======================================================================
       ! WRITE INFORMATION ON SURFACES
 
       ! Create surfaces group (nothing directly written here) then close
@@ -363,7 +363,8 @@ contains
         if (allocated(s % neighbor_pos)) then
           call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
-          call sp % write_data(s % neighbor_pos, "neighbor_pos", length=size(s % neighbor_pos), &
+          call sp % write_data(s % neighbor_pos, "neighbor_pos",  &
+               length=size(s % neighbor_pos), &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
         else
           j = 0
@@ -374,7 +375,8 @@ contains
         if (allocated(s % neighbor_neg)) then
           call sp % write_data(size(s % neighbor_neg), "n_neighbor_neg", &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
-          call sp % write_data(s % neighbor_neg, "neighbor_neg", length=size(s % neighbor_neg), &
+          call sp % write_data(s % neighbor_neg, "neighbor_neg", &
+               length=size(s % neighbor_neg), &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
         else
           j = 0
@@ -383,7 +385,7 @@ contains
         endif
       end do SURFACE_LOOP
 
-      ! ==========================================================================
+      ! =======================================================================
       ! WRITE INFORMATION ON MATERIALS
 
       ! Create materials group (nothing directly written here) then close
@@ -397,13 +399,34 @@ contains
         mat => materials(i)
         call sp % write_data(mat % n_nuclides, "n_nuclides", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
-        call sp % write_data(mat % nuclide, "nuclide", length=mat % n_nuclides, &
+        call sp % write_data(mat % nuclide, "nuclide", & 
+             length=mat % n_nuclides, &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        call sp % write_data(mat % density, "density", &
+        !call sp % write_data(mat % distrib_dens, "distrib_dens", &
+        !     group="geometry/materials/material " // trim(to_str(mat % id)))
+        !call sp % write_data(mat % distrib_comp, "distrib_comp", &
+        !     group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        call sp % write_data(mat % dens_map, "dens_map", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
-        call sp % write_data(mat % atom_density, "atom_density", length=mat % n_nuclides, &
+        call sp % write_data(mat % comp_map, "comp_map", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        call sp % write_data(mat % density % num, "num_density", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+        call sp % write_data(mat % density % density, "density", &
+             length=mat % density % num, &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        call sp % write_data(size(mat % comp), "num_comp", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+        COMPOSITION_LOOP: do j = 1, size(mat % comp)
+          call sp % write_data(mat % comp(j) % atom_density, "atom_density " &
+               // trim(to_str(j)), length=mat % density % num, & 
+               group="geometry/materials/material " &
+               // trim(to_str(mat % id)) // "/compositions")
+        end do COMPOSITION_LOOP
 
         call sp % write_data(mat % n_sab, "n_sab", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
@@ -975,7 +998,7 @@ contains
          group="geometry", length=n_cell)
     deallocate(temp_array)
 
-    ! ==========================================================================
+    ! =========================================================================
     ! READ INFORMATION ON CELLS
 
     ! Read information on each cell
@@ -1005,7 +1028,7 @@ contains
 
     end do CELL_LOOP
 
-    ! ==========================================================================
+    ! =========================================================================
     ! Read INFORMATION ON UNIVERSES
 
     ! Read information on each universe
@@ -1024,7 +1047,7 @@ contains
 
     end do UNIVERSE_LOOP
 
-    ! ==========================================================================
+    ! =========================================================================
     ! READ INFORMATION ON LATTICES
 
 
@@ -1065,7 +1088,7 @@ contains
 
     end do LATTICE_LOOP   
     
-    ! ==========================================================================
+    ! =========================================================================
     ! READ INFORMATION ON SURFACES
     
     ! Read information on each surface
@@ -1104,34 +1127,48 @@ contains
 
     end do SURFACE_LOOP
 
-    ! ==========================================================================
+    ! =========================================================================
     ! READ INFORMATION ON MATERIALS
 
     ! Read information on each material
     MATERIAL_LOOP: do i = 1, n_mat
-      call sp % read_data(j, "n_nuclides", &
+      call sp % read_data(k, "n_nuclides", &
            group="geometry/materials/material ")
-      if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "nuclide", length=j, &
-             group="geometry/materials/material ")
-        deallocate(temp_array)
-      end if
-      
+      allocate(temp_array(k))
+      call sp % read_data(temp_array, "nuclide", length=k, &
+           group="geometry/materials/material ")
+      deallocate(temp_array)
 
-      call sp % read_data(l, "density", &
+      !call sp % read_data(logic, "distrib_dens", &
+      !     group="geometry/materials/material ")
+      !call sp % read_data(logic, "distrib_comp", &
+      !     group="geometry/materials/material ")
+
+      call sp % read_data(j, "dens_map", &
            group="geometry/materials/material ")
-      if (j > 0) then
-        allocate(temp_real_array(j))
-        call sp % read_data(temp_real_array, "atom_density", length=j, &
+      call sp % read_data(j, "comp_map", &
+           group="geometry/materials/material ")
+
+      call sp % read_data(j, "num_density", &
+           group="geometry/materials/material ")
+      allocate(temp_real_array(j))
+      call sp % read_data(temp_real_array, "density", length=j, &
+           group="geometry/materials/material ")
+      deallocate(temp_real_array)
+
+      allocate(temp_real_array(k))
+      call sp % read_data(k, "num_comp", &
              group="geometry/materials/material ")
-        deallocate(temp_real_array)
-      end if
-      
+      COMPOSITION_LOOP: do j = 1, k
+        call sp % read_data(temp_real_array, "atom_density " &
+             // trim(to_str(j)), length=size(temp_real_array), & 
+             group="geometry/materials/material ")
+      end do COMPOSITION_LOOP
+      deallocate(temp_real_array)
 
       call sp % read_data(j, "n_sab", &
            group="geometry/materials/material ")
-     if (j > 0) then
+      if (j > 0) then
         allocate(temp_array(j))
         call sp % read_data(temp_array, "i_sab_nuclides", length=j, &
              group="geometry/materials/material ")
@@ -1189,7 +1226,8 @@ contains
       end if
         
       ! Read estimator type                                                                      
-      call sp % read_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
+      call sp % read_data(t % estimator, "estimator", & 
+           group="tallies/tally" // to_str(i))
                                   
       ! Read number of realizations
       call sp % read_data(t % n_realizations, "n_realizations", &
@@ -1218,26 +1256,29 @@ contains
 
         ! Read type of filter
         call sp % read_data(t % filters(j) % type, "type", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+             group="tallies/tally" // trim(to_str(i)) & 
+             // "/filter" // to_str(j))
 
           ! Write offset for this filter
           call sp % read_data(t % filters(j) % offset, "offset", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+               group="tallies/tally" // trim(to_str(i)) &
+               // "/filter" // to_str(j))
 
         ! Read number of bins for this filter
         call sp % read_data(t % filters(j) % n_bins, "n_bins", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+             group="tallies/tally" // trim(to_str(i)) &
+             // "/filter" // to_str(j))
 
         ! Read bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
             t % filters(j) % type == FILTER_ENERGYOUT) then
           call sp % read_data(t % filters(j) % real_bins, "bins", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % real_bins))
+               group="tallies/tally" // trim(to_str(i)) // "/filter" & 
+               // to_str(j), length=size(t % filters(j) % real_bins))
         else
           call sp % read_data(t % filters(j) % int_bins, "bins", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % int_bins))
+               group="tallies/tally" // trim(to_str(i)) // "/filter" & 
+               // to_str(j), length=size(t % filters(j) % int_bins))
         end if
 
       end do FILTER_LOOP

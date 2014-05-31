@@ -179,6 +179,8 @@ class Geometry_Data(object):
           print i.fill
           print '--Offset:',i.offset
           print '--Material:',i.material
+          print '--Surfaces:'
+          print i.surf
 
 	print ''
 	print ''	
@@ -368,6 +370,8 @@ class Cell(object):
         self.offset = []
         self.material = -1
         self.fill = -1
+        self.n_surf = 0
+        self.surf = []
 
 
     def _set_material(self, material):
@@ -380,6 +384,10 @@ class Cell(object):
 
     def _set_offset(self, offset):
         self.offset = offset
+
+    def _set_surf(self,n_surf,surf):
+        self.n_surf = n_surf
+        self.surf = surf
 
 
 class Lattice(object):
@@ -523,9 +531,6 @@ class StatePoint(object):
                 self.cmfd_srccmp = self._get_double(self.current_batch,
                                    path='cmfd/cmfd_srccmp')
 
-	#for i in xrange(300):
-	#  print i,':',self._get_int(path='geometry')
-
         # Read geometry information
         self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
         self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
@@ -551,6 +556,8 @@ class StatePoint(object):
         base = 'geometry/cells/cell '
         for i in range(self.geom.n_cells):
           filltypeInt = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill_type')[0]
+          n_surf = self._get_int(path=base + str(self.geom.cellKeys[i])+'/n_surfaces')[0]
+          surf = self._get_int(n_surf,path=base + str(self.geom.cellKeys[i])+'/surfaces')
           if filltypeInt == 1:
             filltype = "normal"
           elif filltypeInt == 2:
@@ -571,6 +578,7 @@ class StatePoint(object):
                 offset = self._get_int(path=base + str(self.geom.cellKeys[i])+'/offset')
                 self.geom.cell[-1]._set_offset(offset)
             self.geom.cell[-1]._set_fill(fill)
+          self.geom.cell[-1]._set_surf(n_surf,surf)
 
         # Build list of universes
         base = 'geometry/universes/universe '

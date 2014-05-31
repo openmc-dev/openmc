@@ -219,6 +219,13 @@ contains
         ! Write information on what fills this cell
         call sp % write_data(c % type, "fill_type", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
+
+        call sp % write_data(c % n_surfaces, "n_surfaces", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        call sp % write_data(c % surfaces, "surfaces", & 
+               length= c % n_surfaces, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+
         select case (c % type)
         case (CELL_NORMAL)          
           if (c % material == MATERIAL_VOID) then
@@ -983,6 +990,16 @@ contains
       ! Write information on what fills this cell
       call sp % read_data(j, "fill_type", &
              group="geometry/cells/cell ")
+
+      call sp % read_data(k, "n_surfaces", &
+             group="geometry/cells/cell ")
+      if (k > 0) then
+        allocate(temp_array(k))
+        call sp % read_data(temp_array, "surfaces", &
+               group="geometry/cells/cell ", length=k)
+        deallocate(temp_array)
+      endif
+
       select case (j)
       case (CELL_NORMAL)          
           call sp % read_data(k, "material", &

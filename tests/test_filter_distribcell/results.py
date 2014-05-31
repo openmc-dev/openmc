@@ -16,32 +16,32 @@ sp3.read_results()
 
 # analyze sp1
 # compare distrib sum to cell
-sp1_t1_c1 = sp1.get_value(0,[('distribcell',0)],0)[0]
-sp1_t1_c2 = sp1.get_value(0,[('distribcell',1)],0)[0]
-sp1_t1_c3 = sp1.get_value(0,[('distribcell',2)],0)[0]
-sp1_t1_c4 = sp1.get_value(0,[('distribcell',3)],0)[0]
+sp1_t1_c1 = sp1.get_value(1,[('distribcell',0)],0)[0]
+sp1_t1_c2 = sp1.get_value(1,[('distribcell',1)],0)[0]
+sp1_t1_c3 = sp1.get_value(1,[('distribcell',2)],0)[0]
+sp1_t1_c4 = sp1.get_value(1,[('distribcell',3)],0)[0]
 sp1_t1 = sp1_t1_c1 + sp1_t1_c2 + sp1_t1_c3 + sp1_t1_c4
-sp1_t2 =  sp1.get_value(1,[('cell',0)],0)[0]
+sp1_t2 =  sp1.get_value(2,[('cell',0)],0)[0]
    
 # analyze sp2
-sp2_t1_c1 =  sp2.get_value(0,[('cell',0)],0)[0]
-sp2_t1_c2 =  sp2.get_value(0,[('cell',1)],0)[0]
-sp2_t1_c3 =  sp2.get_value(0,[('cell',2)],0)[0]
-sp2_t1_c4 =  sp2.get_value(0,[('cell',3)],0)[0]
+sp2_t1_c1 =  sp2.get_value(1,[('cell',0)],0)[0]
+sp2_t1_c2 =  sp2.get_value(1,[('cell',1)],0)[0]
+sp2_t1_c3 =  sp2.get_value(1,[('cell',2)],0)[0]
+sp2_t1_c4 =  sp2.get_value(1,[('cell',3)],0)[0]
 
 # analyze sp3
-sp3_t1 = sp3.get_value(0,[('cell',0)],0)[0]
-sp3_t2 = sp3.get_value(1,[('distribcell',0)],0)[0]
+sp3_t1 = sp3.get_value(1,[('cell',0)],0)[0]
+sp3_t2 = sp3.get_value(2,[('distribcell',0)],0)[0]
 
-sp3_t3 = sp3.get_value(2,[('cell',0)],0)[0]
+sp3_t3 = sp3.get_value(3,[('cell',0)],0)[0]
 sp3_t4 = 0
 for i in range(241):
-  sp3_t4 += sp3.get_value(3,[('distribcell',i)],0)[0]
+  sp3_t4 += sp3.get_value(4,[('distribcell',i)],0)[0]
 
-sp3_t5 = sp3.get_value(4,[('cell',0)],0)[0]
+sp3_t5 = sp3.get_value(5,[('cell',0)],0)[0]
 sp3_t6 = 0
 for i in range(63624):
-  sp3_t6 += sp3.get_value(5,[('distribcell',i)],0)[0]
+  sp3_t6 += sp3.get_value(6,[('distribcell',i)],0)[0]
 
 
 
@@ -52,7 +52,7 @@ path = [0,1,(200,4,6,1),6,60]
 
 # So we have the path to our cell now.
 # Lets get that specific value
-sp3_t4_c60 = sp3.get_value(3,[('distribcell',path)],0)[0]
+sp3_t4_c60 = sp3.get_value(4,[('distribcell',path)],0)[0]
 
 # set up output string
 outstr = ''

@@ -7,8 +7,8 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
-filter_types = {1: 'universe', 2: 'material', 3: 'cell', 
-                4: 'cellborn', 5: 'surface', 6: 'mesh', 
+filter_types = {1: 'universe', 2: 'material', 3: 'cell',
+                4: 'cellborn', 5: 'surface', 6: 'mesh',
                 7: 'energyin', 8: 'energyout', 9: 'distribcell'}
 
 score_types = {-1: 'flux',
@@ -91,6 +91,7 @@ score_types.update({MT: '(n,3He' + str(MT-750) + ')' for MT in range(750,649)})
 score_types.update({MT: '(n,a' + str(MT-800) + ')' for MT in range(800,849)})
 
 class Mesh(object):
+
     def __init__(self):
         pass
 
@@ -100,7 +101,9 @@ class Mesh(object):
         else:
             return "<Mesh>"
 
+
 class Filter(object):
+
     def __init__(self):
         self.type = 0
         self.bins = []
@@ -109,9 +112,21 @@ class Filter(object):
     def __repr__(self):
         return "<Filter: {0}>".format(self.type)
 
+
 class Tally(object):
+
     def __init__(self):
+
         self.filters = OrderedDict()
+        self.id = None
+	self.label = None
+	self.estimator = None
+        self.n_realizations = None
+        self.total_score_bins = None
+        self.total_filter_bins = None
+
+    def getScoreIndex(self, score):
+        return self.scores.index(score)
 
 
 class SourceSite(object):
@@ -129,9 +144,13 @@ class Geometry_Data(object):
         self.univ = []
         self.cell = []
         self.lat  = []
+        self.surf = []
+        self.mat  = []
         self.n_cells = 0
         self.n_lattices = 0
         self.n_universes = 0
+        self.n_surfaces = 0
+        self.n_materials = 0
 
     def _print_all(self):
 
@@ -139,11 +158,19 @@ class Geometry_Data(object):
         print 'n_cells:',self.n_cells
         print 'n_universes:',self.n_universes
         print 'n_lattices:',self.n_lattices
-
+        print 'n_surfaces:',self.n_surfaces
+        print 'n_materials:',self.n_materials
+	print ''
+	print 'Universes:'
+	print ''
         for i in self.univ:
           print 'Universe:',i.ID
           print '--Contains Cells:',i.cells
 
+	print ''
+	print ''	
+	print 'Cells:'
+	print ''
         for i in self.cell:
           print 'Cell:',i.ID
           print '--UserID:',i.userID
@@ -153,6 +180,10 @@ class Geometry_Data(object):
           print '--Offset:',i.offset
           print '--Material:',i.material
 
+	print ''
+	print ''	
+	print 'Lattices:'
+	print ''
         for i in self.lat:
           print 'Lattice:',i.ID
           print '--Fill:',i.fill
@@ -162,9 +193,45 @@ class Geometry_Data(object):
             print '--Offset Dimensions:',i.offset.shape
           print '--Offset:',np.squeeze(i.offset)
           print '--Dimenisions:',i.dim
-    
+
+	print ''
+	print ''	
+	print 'Surfaces:'
+	print ''
+        for i in self.surf:
+          print 'Surface:',i.ID
+          print '--Type:',i.s_type
+          print '--Coefficients:'
+          print i.coeffs
+	  print '--# Positive Neighbors:',i.n_pos
+          print '--Positive Neighbors:'
+	  print i.neighbor_pos
+	  print '--# Negative Neighbors:',i.n_neg
+          print '--Negative Neighbors:'
+	  print i.neighbor_neg
+          print 'Boundary Condition:',i.bc
+
+
+	print ''
+	print ''	
+	print 'Materials:'
+	print ''
+        for i in self.mat:
+          print 'Material:',i.ID
+          print '--# Nuclides:',i.n_nuclide
+          print '--Nuclides:'
+	  print i.nuclide
+          print '--Density:',i.density
+          print '--Atom Densities:'
+	  print i.atom_density
+          print '--# Sab Tables:',i.n_sab
+          print '--Sab Nuclides:'
+	  print i.i_sab_nuclides
+          print '--Tables:'
+	  print i.i_sab_tables
+
     def _get_offset(self, path, filter_offset):
-        """ 
+        """
         Returns the corresponding location in the results array for a given
         path and filter number.
 
@@ -204,7 +271,9 @@ class Geometry_Data(object):
               if len(i) != 4:
                 error = "ERROR: Tuple " + str(i) + " does not have exactly 4 elements."
                 exit(error)
-              if i[0] != self.cell[prev-1].fill:
+
+              # WILL'S CHANGE
+              if i[0] != self.cell[self.cellKeys.index(prev)].fill:
                 error = "ERROR: Previous cell did not contain lattice " + str(i[0]) + "."
                 exit(error)
 
@@ -217,7 +286,6 @@ class Geometry_Data(object):
                     error = "Bad lattice index specified for lattice "+str(i[0])+"."
                     exit(error)
                   offset += j.offset[i[3]-1,i[2]-1,i[1]-1,filter_offset-1]
-#                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
                   prev = i[0]
                   prevtype = 'L'
                   break
@@ -239,9 +307,7 @@ class Geometry_Data(object):
                   if u.ID == prev:                    
                     break
                   l += 1
-                #print "This universe contains:",self.univ[l].cells
                 if jTrue not in self.univ[l].cells:
-                    print self.univ[l].cells
                     error = "ERROR: Requested cell " + str(i) + " from universe ",str(prev)," was not found."
                     exit(error)
                 # Get key index
@@ -252,7 +318,8 @@ class Geometry_Data(object):
                 # Check if the previous cell was a normal cell
                 # Throw Exception if it was, there's no deeper cells
                 for c in self.cell:
-                  if (prev == c.userID and c.filltype == "normal").any():
+#                  if (prev == c.userID and c.filltype == "normal").any():
+                  if prev == c.userID and c.filltype == 'normal':
                     error = "ERROR: Cell " + str(c.userID)  + " is normal cell, cannot contain any lower levels."
                     exit(error)
                 # Else check if fill or lattice
@@ -282,14 +349,19 @@ class Geometry_Data(object):
                 prev = i  
         return offset
 
+
 class Universe(object):
+
     def __init__(self, ID, cells):
+
         self.ID = ID
         self.cells = cells
-        
+
 
 class Cell(object):
+
     def __init__(self, ID, userID, filltype):
+
         self.ID = ID
         self.userID = userID
         self.filltype = filltype
@@ -297,26 +369,66 @@ class Cell(object):
         self.material = -1
         self.fill = -1
 
+
     def _set_material(self, material):
         self.material = material
+
 
     def _set_fill(self, fill):
         self.fill = fill
 
+
     def _set_offset(self, offset):
         self.offset = offset
 
+
 class Lattice(object):
+
     def __init__(self, ID, fill, offset, dim):
+
         self.ID = ID
         self.fill = fill
         self.offset = offset
         self.dim = dim
         if len(self.dim) == 2:
-          self.dim.append(1)
+            self.dim.append(1)
+
+
+class Surface(object):
+
+    def __init__(self, ID, s_type, coeffs, n_pos, neighbor_pos, n_neg, neighbor_neg, bc):
+
+        self.ID = ID
+        self.s_type = s_type
+        self.coeffs = coeffs
+        self.n_pos = n_pos
+        self.neighbor_pos = neighbor_pos
+        self.n_neg = n_neg
+        self.neighbor_neg = neighbor_neg
+        self.bc = bc
+
+
+class Material(object):
+
+    def __init__(self, ID, n_nuclide, nuclide, density, atom_density, n_sab, 
+                 i_sab_nuclides, i_sab_tables):
+
+        self.ID = ID
+        self.n_nuclide = n_nuclide
+        self.nuclide = nuclide
+        self.density = density
+        self.atom_density = atom_density
+        self.n_sab = n_sab
+        self.i_sab_nuclides = i_sab_nuclides
+        self.i_sab_tables = i_sab_tables
+
 
 class StatePoint(object):
+
     def __init__(self, filename):
+
+        self.tallies_present = False
+
         if filename.endswith('.h5'):
             import h5py
             self._f = h5py.File(filename, 'r')
@@ -325,7 +437,10 @@ class StatePoint(object):
             self._f = open(filename, 'rb')
             self._hdf5 = False
 
-        # Set flags for what data  was read
+        # Tally ID -> Index Dictionary
+        self.tallyID = dict()
+
+        # Set flags for what data was read
         self._metadata = False
         self._results = False
         self._source = False
@@ -340,6 +455,7 @@ class StatePoint(object):
 
         # Read all metadata
         self._read_metadata()
+
 
     def _read_metadata(self):
         # Read filetype
@@ -407,16 +523,24 @@ class StatePoint(object):
                 self.cmfd_srccmp = self._get_double(self.current_batch,
                                    path='cmfd/cmfd_srccmp')
 
+	#for i in xrange(300):
+	#  print i,':',self._get_int(path='geometry')
 
         # Read geometry information
         self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
         self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
         self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
+        self.geom.n_surfaces = self._get_int(path='geometry/n_surfaces')[0]
+        self.geom.n_materials = self._get_int(path='geometry/n_materials')[0]
 
         if self.geom.n_lattices > 0:
           latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
 
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
+
+        surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
+
+        matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
 
         # User Inputs  
         self.geom.cellKeys = self._get_int(self.geom.n_cells,path='geometry/cell_keys')
@@ -486,6 +610,42 @@ class StatePoint(object):
               fill.shape = (dim[0], dim[1], dim[2]) 
           self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
 
+	# Build list of surfaces
+	base = 'geometry/surfaces/surface '
+	for i in range(self.geom.n_surfaces):
+          s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
+	  bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
+	  n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
+          coeffs = self._get_double(n_coeff,path=base + str(surfList[i])+'/coeffs')
+	  n_pos = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
+	  if n_pos > 0:
+            pos_n = self._get_int(n_pos,path=base + str(surfList[i])+'/neighbor_pos')
+	  else:
+	    pos_n = None
+	  n_neg = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')[0]
+	  if n_neg > 0:
+            neg_n = self._get_int(n_neg,path=base + str(surfList[i])+'/neighbor_neg')
+	  else:
+	    neg_n = None
+          self.geom.surf.append(Surface(surfList[i], s_type, coeffs, n_pos, pos_n, n_neg, neg_n, bc))
+
+	# Build list of materials
+	base = 'geometry/materials/material '
+	for i in range(self.geom.n_materials):
+          n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
+          nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
+	  dens = self._get_double(path=base + str(matList[i])+'/density')[0]
+	  a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
+	  n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
+          if n_sab > 0:
+            sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
+	    sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
+          else:
+            sab_n = None
+            sab_t = None
+	
+          self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
+
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
 
@@ -511,6 +671,7 @@ class StatePoint(object):
         # Read number of tallies
         n_tallies = self._get_int(path='tallies/n_tallies')[0]
 
+	#print 'PRINTING'
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
             t = Tally()
@@ -520,15 +681,21 @@ class StatePoint(object):
 
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
+            labelsize = self._get_int(path=base+'id')[0]
+	    t.label = self._get_string(labelsize,path=base+'id')
+	    t.estimator = self._get_int(path=base+'id')[0]
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies
             t.total_score_bins = self._get_int(path=base+'total_score_bins')[0]
             t.total_filter_bins = self._get_int(path=base+'total_filter_bins')[0]
 
+            # Add tally to dictionary
+            self.tallyID[t.id] = i
+#            self.tallyID[i] = t.id
+
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
-
             for j in range(n_filters):
                 # Create Filter object
                 f = Filter()
@@ -604,10 +771,10 @@ class StatePoint(object):
             self.global_tallies.shape = (n_global_tallies, 2)
 
         # Flag indicating if tallies are present
-        tallies_present = self._get_int(path='tallies/tallies_present')[0]
+        self.tallies_present = self._get_int(path='tallies/tallies_present')[0]
 
         # Read tally results
-        if tallies_present:
+        if self.tallies_present:
             for i, t in enumerate(self.tallies):
                 n = t.total_score_bins * t.total_filter_bins
                 if self._hdf5:
@@ -700,13 +867,13 @@ class StatePoint(object):
                     if s != 0.0:
                         t.results[i,j,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
-    def get_value(self, tally_index, spec_list, score_index):
+    def get_value(self, tally_ID, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
 
         Parameters
         ----------
-        tally_index : int
-            Index for tally in StatePoint.tallies list
+        tally_ID : int
+            The ID of the tally as specified in the openMC input file
 
         spec_list : list
             A list of tuples where the first value in each tuple is the filter
@@ -724,7 +891,7 @@ class StatePoint(object):
         """
 
         # Get Tally object given the index
-        t = self.tallies[tally_index]
+        t = self.tallies[self.tallyID[tally_ID]]
 
         # Initialize index for filter in Tally.results[:,:,:]
         filter_index = 0
@@ -767,7 +934,7 @@ class StatePoint(object):
            Parameters
            ----------
            tally_id : int
-               Index for the tally in StatePoint.tallies list
+               The ID of the tally as specified in the openMC input file
 
            score_str : string
                Corresponds to the string entered for a score in tallies.xml.
@@ -777,7 +944,7 @@ class StatePoint(object):
 
         # get tally
         try:
-            tally = self.tallies[tally_id-1]
+            tally = self.tallies[self.tallyID[tally_id]]
         except:
             print 'Tally does not exist'
             return
@@ -787,7 +954,6 @@ class StatePoint(object):
             idx = tally.scores.index(score_str)
         except ValueError:
             print 'Score does not exist'
-            print tally.scores
             return
 
         # create numpy array for mean and 95% CI

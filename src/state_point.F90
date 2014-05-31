@@ -46,6 +46,8 @@ contains
     type(Cell),     pointer    :: c => null()
     type(Universe), pointer    :: u => null()
     type(Lattice),  pointer    :: lat => null()
+    type(Surface),  pointer    :: s => null()
+    type(Material), pointer    :: mat => null()
     type(TallyObject), pointer :: t => null()
     type(ElemKeyValueII), pointer :: current => null()
     type(ElemKeyValueII), pointer :: next => null()
@@ -132,10 +134,12 @@ contains
         end if
       end if
 
-      ! Begin writing geometry information
+      ! Begin writing geometry/material information
       call sp % write_data(n_cells, "n_cells", group="geometry")
       call sp % write_data(n_universes, "n_universes", group="geometry")
       call sp % write_data(n_lattices, "n_lattices", group="geometry")
+      call sp % write_data(n_surfaces, "n_surfaces", group="geometry")
+      call sp % write_data(n_materials, "n_materials", group="geometry")
       
       if (n_lattices > 0) then
         ! Print list of lattice IDs
@@ -157,6 +161,26 @@ contains
       end do
       call sp % write_data(temp_array, "universe_ids", &
            group="geometry", length=n_universes)
+      deallocate(temp_array)
+
+      ! Print list of surface IDs
+      allocate(temp_array(n_surfaces))
+      do i = 1, n_surfaces        
+        s => surfaces(i)
+        temp_array(i) = s % id
+      end do
+      call sp % write_data(temp_array, "surface_ids", &
+           group="geometry", length=n_surfaces)
+      deallocate(temp_array)
+
+      ! Print list of material IDs
+      allocate(temp_array(n_materials))
+      do i = 1, n_materials        
+        mat => materials(i)
+        temp_array(i) = mat % id
+      end do
+      call sp % write_data(temp_array, "material_ids", &
+           group="geometry", length=n_materials)
       deallocate(temp_array)
 
       ! Print list of cell keys-> IDs
@@ -312,6 +336,86 @@ contains
 
       end do LATTICE_LOOP
 
+      ! ==========================================================================
+      ! WRITE INFORMATION ON SURFACES
+
+      ! Create surfaces group (nothing directly written here) then close
+#ifdef HDF5
+      call sp % open_group("geometry/surfaces")
+      call sp % close_group()
+#endif
+
+      ! Write information on each surface
+      SURFACE_LOOP: do i = 1, n_surfaces
+        s => surfaces(i)
+        call sp % write_data(s % type, "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call sp % write_data(s % bc, "bc", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        
+        call sp % write_data(size(s % coeffs), "n_coeffs", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        if (size(s % coeffs) > 0) then
+          call sp % write_data(s % coeffs, "coeffs", length=size(s % coeffs), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        end if
+        
+        if (allocated(s % neighbor_pos)) then
+          call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+          call sp % write_data(s % neighbor_pos, "neighbor_pos", length=size(s % neighbor_pos), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        else
+          j = 0
+          call sp % write_data(j, "n_neighbor_pos", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        endif
+        
+        if (allocated(s % neighbor_neg)) then
+          call sp % write_data(size(s % neighbor_neg), "n_neighbor_neg", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+          call sp % write_data(s % neighbor_neg, "neighbor_neg", length=size(s % neighbor_neg), &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        else
+          j = 0
+          call sp % write_data(j, "n_neighbor_neg", &
+               group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        endif
+      end do SURFACE_LOOP
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON MATERIALS
+
+      ! Create materials group (nothing directly written here) then close
+#ifdef HDF5
+      call sp % open_group("geometry/materials")
+      call sp % close_group()
+#endif
+
+      ! Write information on each material
+      MATERIAL_LOOP: do i = 1, n_materials
+        mat => materials(i)
+        call sp % write_data(mat % n_nuclides, "n_nuclides", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+        call sp % write_data(mat % nuclide, "nuclide", length=mat % n_nuclides, &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        call sp % write_data(mat % density, "density", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+        call sp % write_data(mat % atom_density, "atom_density", length=mat % n_nuclides, &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        call sp % write_data(mat % n_sab, "n_sab", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+        if (mat % n_sab > 0) then
+          call sp % write_data(mat % i_sab_nuclides, "i_sab_nuclides", length=mat % n_sab, &
+               group="geometry/materials/material " // trim(to_str(mat % id)))
+          call sp % write_data(mat % i_sab_tables, "i_sab_tables", length=mat % n_sab, &
+               group="geometry/materials/material " // trim(to_str(mat % id)))
+        endif
+
+      end do MATERIAL_LOOP
+
       ! Write number of meshes
       call sp % write_data(n_meshes, "n_meshes", group="tallies")
 
@@ -347,7 +451,16 @@ contains
 
         ! Write id
         call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
-
+        
+        ! Write label                       
+        call sp % write_data(len(t % label), "labellen", group="tallies/tally" // to_str(i))
+        if (len(t % label) > 0) then
+          call sp % write_data(t % label, "label", group="tallies/tally" // to_str(i))
+        endif
+        
+        ! Write estimator type                                                                      
+        call sp % write_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
+        
         ! Write number of realizations
         call sp % write_data(t % n_realizations, "n_realizations", &
              group="tallies/tally" // to_str(i))
@@ -710,19 +823,24 @@ contains
 
     character(MAX_FILE_LEN) :: path_temp
     character(19)           :: current_time
+    character(52)           :: label
     integer                 :: i
     integer                 :: j
     integer                 :: k
     integer                 :: n_univ
     integer                 :: n_cell
     integer                 :: n_lat
+    integer                 :: n_surf
+    integer                 :: n_mat
     integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     integer, allocatable    :: temp_array3D(:,:,:)
     integer, allocatable    :: temp_array4D(:,:,:,:)
     logical                 :: source_present
+    real(8)                 :: l
     real(8)                 :: real_array(3) 
+    real(8), allocatable    :: temp_real_array(:)
     type(TallyObject), pointer :: t => null()
 
     ! Write message
@@ -820,27 +938,41 @@ contains
     call sp % read_data(n_cell, "n_cells", group="geometry")
     call sp % read_data(n_univ, "n_universes", group="geometry")
     call sp % read_data(n_lat, "n_lattices", group="geometry")
+    call sp % read_data(n_surf, "n_surfaces", group="geometry")
+    call sp % read_data(n_mat, "n_materials", group="geometry")
 
     if (n_lat > 0) then
       ! Read list of lattice IDs
-      allocate(temp_array(n_lattices))
+      allocate(temp_array(n_lat))
       call sp % read_data(temp_array, "lattice_ids", &
-           group="geometry", length=n_lattices)
+           group="geometry", length=n_lat)
       deallocate(temp_array)
     end if
 
     ! Read list of universe IDs
-    allocate(temp_array(n_universes))
+    allocate(temp_array(n_univ))
     call sp % read_data(temp_array, "universe_ids", &
-         group="geometry", length=n_universes)
+         group="geometry", length=n_univ)
+    deallocate(temp_array)
+
+    ! Read list of surface IDs
+    allocate(temp_array(n_surf))
+    call sp % read_data(temp_array, "surface_ids", &
+         group="geometry", length=n_surf)
+    deallocate(temp_array)
+
+    ! Read list of material IDs
+    allocate(temp_array(n_mat))
+    call sp % read_data(temp_array, "material_ids", &
+         group="geometry", length=n_mat)
     deallocate(temp_array)
 
     ! Read list of cell keys-> IDs
-    allocate(temp_array(n_cells))
+    allocate(temp_array(n_cell))
     call sp % read_data(temp_array, "cell_keys", &
-         group="geometry", length=n_cells)
+         group="geometry", length=n_cell)
     call sp % read_data(temp_array, "cell_ids", &
-         group="geometry", length=n_cells)
+         group="geometry", length=n_cell)
     deallocate(temp_array)
 
     ! ==========================================================================
@@ -931,7 +1063,84 @@ contains
            group="geometry/lattices/lattice ")
       deallocate(temp_array3D)
 
-    end do LATTICE_LOOP
+    end do LATTICE_LOOP   
+    
+    ! ==========================================================================
+    ! READ INFORMATION ON SURFACES
+    
+    ! Read information on each surface
+    SURFACE_LOOP: do i = 1, n_surf
+      call sp % read_data(j, "type", &
+           group="geometry/surfaces/surface ")
+      call sp % read_data(j, "bc", &
+           group="geometry/surfaces/surface ")
+
+      call sp % read_data(j, "n_coeffs", &
+           group="geometry/surfaces/surface ")
+      if (j > 0) then
+        allocate(temp_real_array(j))
+        call sp % read_data(temp_real_array, "coeffs", length=j, &
+             group="geometry/surfaces/surface ")
+        deallocate(temp_real_array)
+      end if
+
+      call sp % read_data(j, "n_neighbor_pos", &
+           group="geometry/surfaces/surface ")
+      if (j > 0) then
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "neighbor_pos", length=j, &
+             group="geometry/surfaces/surface ")
+        deallocate(temp_array)
+      end if
+
+      call sp % read_data(j, "n_neighbor_neg", &
+           group="geometry/surfaces/surface ")
+      if (j > 0) then
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "neighbor_neg", length=j, &
+             group="geometry/surfaces/surface ")
+        deallocate(temp_array)
+      end if
+
+    end do SURFACE_LOOP
+
+    ! ==========================================================================
+    ! READ INFORMATION ON MATERIALS
+
+    ! Read information on each material
+    MATERIAL_LOOP: do i = 1, n_mat
+      call sp % read_data(j, "n_nuclides", &
+           group="geometry/materials/material ")
+      if (j > 0) then
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "nuclide", length=j, &
+             group="geometry/materials/material ")
+        deallocate(temp_array)
+      end if
+      
+
+      call sp % read_data(l, "density", &
+           group="geometry/materials/material ")
+      if (j > 0) then
+        allocate(temp_real_array(j))
+        call sp % read_data(temp_real_array, "atom_density", length=j, &
+             group="geometry/materials/material ")
+        deallocate(temp_real_array)
+      end if
+      
+
+      call sp % read_data(j, "n_sab", &
+           group="geometry/materials/material ")
+     if (j > 0) then
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "i_sab_nuclides", length=j, &
+             group="geometry/materials/material ")
+        call sp % read_data(temp_array, "i_sab_tables", length=j, &
+             group="geometry/materials/material ")
+        deallocate(temp_array)
+      end if
+
+    end do MATERIAL_LOOP
 #endif
 
     ! Read number of meshes
@@ -967,10 +1176,21 @@ contains
 
       ! Get pointer to tally
       t => tallies(i)
-
+       
       ! Read tally id
       call sp % read_data(t % id, "id", group="tallies/tally" // to_str(i))
 
+      ! Read tally label length
+      call sp % read_data(j, "labellen", group="tallies/tally" // to_str(i))
+
+      ! Read tally label
+      if (j > 0) then
+        call sp % read_data(label, "label", group="tallies/tally" // to_str(i))
+      end if
+        
+      ! Read estimator type                                                                      
+      call sp % read_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
+                                  
       ! Read number of realizations
       call sp % read_data(t % n_realizations, "n_realizations", &
            group="tallies/tally" // to_str(i))
@@ -978,12 +1198,13 @@ contains
       ! Read size of tally results
       call sp % read_data(int_array(1), "total_score_bins", &
            group="tallies/tally" // to_str(i))
+       
       call sp % read_data(int_array(2), "total_filter_bins", &
            group="tallies/tally" // to_str(i))
 
       ! Check size of tally results array
       if (int_array(1) /= t % total_score_bins .and. &
-          int_array(2) /= t % total_filter_bins) then
+          int_array(2) /= t % total_filter_bins) then        
         message = "Input file tally structure is different from restart."
         call fatal_error()
       end if

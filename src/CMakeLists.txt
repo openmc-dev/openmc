@@ -8,6 +8,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
 #===============================================================================
+# Architecture specific definitions
+#===============================================================================
+
+if (${UNIX})
+  add_definitions(-DUNIX)
+endif()
+
+#===============================================================================
 # Command line options
 #===============================================================================
 
@@ -157,6 +165,34 @@ if(petsc)
     find_library(PETSC_FLAPACK_LIB flapack $ENV{PETSC_DIR}/lib)
     list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_FLAPACK_LIB-NOTFOUND)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FLAPACK_LIB})
+  endif()
+
+  # If libdl wasn't found, search /usr/lib64 
+  if(PETSC_DL_LIB STREQUAL "PETSC_DL_LIB-NOTFOUND")
+    find_library(PETSC_DL_LIB libdl.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_DL_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_DL_LIB})
+  endif()
+
+  # If libm wasn't found, search /usr/lib64 
+  if(PETSC_M_LIB STREQUAL "PETSC_M_LIB-NOTFOUND")
+    find_library(PETSC_M_LIB libm.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_M_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_M_LIB})
+  endif()
+
+  # If libpthread wasn't found, search /usr/lib64 
+  if(PETSC_PTHREAD_LIB STREQUAL "PETSC_PTHREAD_LIB-NOTFOUND")
+    find_library(PETSC_PTHREAD_LIB libpthread.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_PTHREAD_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_PTHREAD_LIB})
+  endif()
+
+  # If librt wasn't found, search /usr/lib64 
+  if(PETSC_RT_LIB STREQUAL "PETSC_RT_LIB-NOTFOUND")
+    find_library(PETSC_RT_LIB librt.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_RT_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_RT_LIB})
   endif()
 
   message("-- Using PETSC: ${libpetsc}")

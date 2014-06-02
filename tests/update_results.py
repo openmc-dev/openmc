@@ -10,7 +10,7 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('--type', dest='type', default=None,
-                  help="Required argument. Which test suite to update (regression, unit, performance)")
+                  help="Required argument. Which test suite to update (regression, performance)")
 parser.add_option('--exe', dest='exe',
                   help="Path to openmc executable with basic \
                         configuration options (no HDF5, no MPI, etc.)")
@@ -20,10 +20,15 @@ parser.add_option('-R', '--tests-regex', dest='regex_tests',
                   This uses standard regex syntax to select tests.")
 (opts, args) = parser.parse_args()
 if not opts.type:
-  print('Must specify which test suite to update')
+  print('Must specify which test suite to update with --type')
   parser.print_help()
   exit()
-os.chdir('tests_{0}'.format(opts.type))
+try:
+  os.chdir('tests_{0}'.format(opts.type))
+except OSError:
+  print('Invalid test suite type {0} (regression, performance)'.format(opts.type))
+  parser.print_help()
+  exit()
 cwd = os.getcwd()
 
 # Terminal color configurations

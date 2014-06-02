@@ -3,9 +3,13 @@
 import os
 import glob
 
-dirs = glob.glob('test_*')
+for suite in ['regression, performance']:
 
-for adir in dirs:
+  os.chdir('tests_{0}'.format(suite))
+
+  dirs = glob.glob('test_*')
+
+  for adir in dirs:
 
     os.chdir(adir)
 
@@ -15,9 +19,10 @@ for adir in dirs:
 
         files = files[0]
         with open(files, 'r') as fh:
-            intxt = fh.read()
+          intxt = fh.read()
         intxt = intxt.replace('14.8E', '12.6E')
         with open(files, 'w') as fh:
-            fh.write(intxt)
+          fh.write(intxt)
 
     os.chdir('..')
+  os.chdir('..')

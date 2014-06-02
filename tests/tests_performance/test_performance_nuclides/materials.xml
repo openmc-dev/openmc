@@ -10,7 +10,7 @@
     <nuclide name="H-2"  xs="71c" ao="7.4196e-06" />
     <nuclide name="O-16"  xs="71c" ao="2.4672e-02" />
     <nuclide name="O-17"  xs="71c" ao="6.0099e-05" />
-    <sab     name="lwtr" xs="15t" />
+    <sab     name="HH2O" xs="71t" />
     <!-- begin fake nuclides-->
 <!--    <nuclide name="H-1" xs="71c" ao="1e-50" />-->
 <!--    <nuclide name="H-2" xs="71c" ao="1e-50" />-->
@@ -62,7 +62,7 @@
     <nuclide name="Ti-48" xs="71c" ao="1e-50" />
     <nuclide name="Ti-49" xs="71c" ao="1e-50" />
     <nuclide name="Ti-50" xs="71c" ao="1e-50" />
-    <nuclide name="V-Nat" xs="71c" ao="1e-50" />
+<!--    <nuclide name="V-Nat" xs="71c" ao="1e-50" />-->
     <nuclide name="Cr-50" xs="71c" ao="1e-50" />
     <nuclide name="Cr-52" xs="71c" ao="1e-50" />
     <nuclide name="Cr-53" xs="71c" ao="1e-50" />
@@ -73,7 +73,7 @@
     <nuclide name="Fe-57" xs="71c" ao="1e-50" />
     <nuclide name="Fe-58" xs="71c" ao="1e-50" />
     <nuclide name="Co-58" xs="71c" ao="1e-50" />
-    <nuclide name="Co-58m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Co-58m" xs="71c" ao="1e-50" />-->
     <nuclide name="Co-59" xs="71c" ao="1e-50" />
     <nuclide name="Ni-58" xs="71c" ao="1e-50" />
     <nuclide name="Ni-59" xs="71c" ao="1e-50" />
@@ -83,7 +83,7 @@
     <nuclide name="Ni-64" xs="71c" ao="1e-50" />
     <nuclide name="Cu-63" xs="71c" ao="1e-50" />
     <nuclide name="Cu-65" xs="71c" ao="1e-50" />
-    <nuclide name="Zn-Nat" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Zn-Nat" xs="71c" ao="1e-50" />-->
     <nuclide name="Ga-69" xs="71c" ao="1e-50" />
     <nuclide name="Ga-71" xs="71c" ao="1e-50" />
     <nuclide name="Ge-70" xs="71c" ao="1e-50" />
@@ -161,7 +161,7 @@
     <nuclide name="Pd-110" xs="71c" ao="1e-50" />
     <nuclide name="Ag-107" xs="71c" ao="1e-50" />
     <nuclide name="Ag-109" xs="71c" ao="1e-50" />
-    <nuclide name="Ag-110m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Ag-110m" xs="71c" ao="1e-50" />-->
     <nuclide name="Ag-111" xs="71c" ao="1e-50" />
     <nuclide name="Cd-106" xs="71c" ao="1e-50" />
     <nuclide name="Cd-108" xs="71c" ao="1e-50" />
@@ -170,7 +170,7 @@
     <nuclide name="Cd-112" xs="71c" ao="1e-50" />
     <nuclide name="Cd-113" xs="71c" ao="1e-50" />
     <nuclide name="Cd-114" xs="71c" ao="1e-50" />
-    <nuclide name="Cd-115m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Cd-115m" xs="71c" ao="1e-50" />-->
     <nuclide name="Cd-116" xs="71c" ao="1e-50" />
     <nuclide name="In-113" xs="71c" ao="1e-50" />
     <nuclide name="In-115" xs="71c" ao="1e-50" />
@@ -199,9 +199,9 @@
     <nuclide name="Te-124" xs="71c" ao="1e-50" />
     <nuclide name="Te-125" xs="71c" ao="1e-50" />
     <nuclide name="Te-126" xs="71c" ao="1e-50" />
-    <nuclide name="Te-127m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Te-127m" xs="71c" ao="1e-50" />-->
     <nuclide name="Te-128" xs="71c" ao="1e-50" />
-    <nuclide name="Te-129m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Te-129m" xs="71c" ao="1e-50" />-->
     <nuclide name="Te-130" xs="71c" ao="1e-50" />
     <nuclide name="Te-132" xs="71c" ao="1e-50" />
     <nuclide name="I-127" xs="71c" ao="1e-50" />
@@ -259,7 +259,7 @@
     <nuclide name="Nd-150" xs="71c" ao="1e-50" />
     <nuclide name="Pm-147" xs="71c" ao="1e-50" />
     <nuclide name="Pm-148" xs="71c" ao="1e-50" />
-    <nuclide name="Pm-148m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Pm-148m" xs="71c" ao="1e-50" />-->
     <nuclide name="Pm-149" xs="71c" ao="1e-50" />
     <nuclide name="Pm-151" xs="71c" ao="1e-50" />
     <nuclide name="Sm-144" xs="71c" ao="1e-50" />
@@ -296,7 +296,7 @@
     <nuclide name="Dy-163" xs="71c" ao="1e-50" />
     <nuclide name="Dy-164" xs="71c" ao="1e-50" />
     <nuclide name="Ho-165" xs="71c" ao="1e-50" />
-    <nuclide name="Ho-166m" xs="71c" ao="1e-50" />
+<!--    <nuclide name="Ho-166m" xs="71c" ao="1e-50" />-->
     <nuclide name="Er-162" xs="71c" ao="1e-50" />
     <nuclide name="Er-164" xs="71c" ao="1e-50" />
     <nuclide name="Er-166" xs="71c" ao="1e-50" />

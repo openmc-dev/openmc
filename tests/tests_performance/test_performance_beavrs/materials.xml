@@ -12,7 +12,7 @@
     <nuclide name="H-2"  xs="71c" ao="7.4196e-06" />
     <nuclide name="O-16"  xs="71c" ao="2.4672e-02" />
     <nuclide name="O-17"  xs="71c" ao="6.0099e-05" />
-    <sab     name="lwtr" xs="15t" />
+    <sab     name="HH2O" xs="71t" />
   </material>
 
   <!--             Helium for gap             -->

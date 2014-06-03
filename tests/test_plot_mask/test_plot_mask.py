@@ -39,6 +39,8 @@ if __name__ == '__main__':
         raise Exception('Must specify OpenMC executable from command line with --exe.')
 
     # run tests
-    test_run()
-    test_plots_exists()
-    teardown()
+    try:
+        test_run()
+        test_plots_exists()
+    finally:
+        teardown()

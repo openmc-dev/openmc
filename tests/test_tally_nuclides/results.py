@@ -15,10 +15,9 @@ else:
 sp.read_results()
 
 # extract tally results and convert to vector
-results = sp.tallies[0].results
-shape = results.shape
-size = (np.product(shape))
-results = np.reshape(results, size)
+results0 = sp.tallies[0].results
+results1 = sp.tallies[1].results
+results = np.concatenate((results0.flatten(), results1.flatten()))
 
 # set up output string
 outstr = ''

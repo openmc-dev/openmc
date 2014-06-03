@@ -1165,7 +1165,7 @@ contains
       ! calculate cosine
       mu0 = rxn % adist % data(lc + k)
       mu1 = rxn % adist % data(lc + k+1)
-      mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
+      mu = mu0 + (32.0_8 * xi - k + ONE) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
       interp = int(rxn % adist % data(lc + 1))

@@ -202,6 +202,7 @@ class Geometry_Data(object):
 	print ''
         for i in self.surf:
           print 'Surface:',i.ID
+          print 'User ID:',i.userID
           print '--Type:',i.s_type
           print '--Coefficients:'
           print i.coeffs
@@ -404,9 +405,11 @@ class Lattice(object):
 
 class Surface(object):
 
-    def __init__(self, ID, s_type, coeffs, n_pos, neighbor_pos, n_neg, neighbor_neg, bc):
+    def __init__(self, ID, userID, s_type, coeffs, n_pos, neighbor_pos, 
+                 n_neg, neighbor_neg, bc):
 
         self.ID = ID
+        self.userID = userID
         self.s_type = s_type
         self.coeffs = coeffs
         self.n_pos = n_pos
@@ -543,7 +546,12 @@ class StatePoint(object):
 
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
 
-        surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
+        
+        # User Inputs  
+        self.geom.surfKeys = self._get_int(self.geom.n_surfaces,path='geometry/surface_keys')
+        # OpenMC IDs
+        self.geom.surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
+
 
         matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
 
@@ -621,21 +629,23 @@ class StatePoint(object):
 	# Build list of surfaces
 	base = 'geometry/surfaces/surface '
 	for i in range(self.geom.n_surfaces):
-          s_type = self._get_int(path=base + str(surfList[i])+'/type')[0]
-	  bc = self._get_int(path=base + str(surfList[i])+'/bc')[0]
-	  n_coeff = self._get_int(path=base + str(surfList[i])+'/n_coeffs')[0]
-          coeffs = self._get_double(n_coeff,path=base + str(surfList[i])+'/coeffs')
-	  n_pos = self._get_int(path=base + str(surfList[i])+'/n_neighbor_pos')[0]
+          s_type = self._get_int(path=base + str(self.geom.surfKeys[i])+'/type')[0]
+	  bc = self._get_int(path=base + str(self.geom.surfKeys[i])+'/bc')[0]
+	  n_coeff = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_coeffs')[0]
+          coeffs = self._get_double(n_coeff,path=base + str(self.geom.surfKeys[i])+'/coeffs')
+	  n_pos = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_neighbor_pos')[0]
 	  if n_pos > 0:
-            pos_n = self._get_int(n_pos,path=base + str(surfList[i])+'/neighbor_pos')
+            pos_n = self._get_int(n_pos,path=base + str(self.geom.surfKeys[i])+'/neighbor_pos')
 	  else:
 	    pos_n = None
-	  n_neg = self._get_int(path=base + str(surfList[i])+'/n_neighbor_neg')[0]
+	  n_neg = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_neighbor_neg')[0]
 	  if n_neg > 0:
-            neg_n = self._get_int(n_neg,path=base + str(surfList[i])+'/neighbor_neg')
+            neg_n = self._get_int(n_neg,path=base + str(self.geom.surfKeys[i])+'/neighbor_neg')
 	  else:
 	    neg_n = None
-          self.geom.surf.append(Surface(surfList[i], s_type, coeffs, n_pos, pos_n, n_neg, neg_n, bc))
+          self.geom.surf.append(Surface(self.geom.surfList[i], 
+                                        self.geom.surfKeys[i], s_type, coeffs, 
+                                        n_pos, pos_n, n_neg, neg_n, bc))
 
 	# Build list of materials
 	base = 'geometry/materials/material '
@@ -652,7 +662,8 @@ class StatePoint(object):
             sab_n = None
             sab_t = None
 	
-          self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, a_dens, n_sab, sab_n, sab_t))
+          self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, 
+                               a_dens, n_sab, sab_n, sab_t))
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]

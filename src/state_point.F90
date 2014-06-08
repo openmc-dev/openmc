@@ -164,14 +164,25 @@ contains
       deallocate(temp_array)
 
       ! Print list of surface IDs
+      current => surface_dict % keys()
+      i = 1
       allocate(temp_array(n_surfaces))
-      do i = 1, n_surfaces        
-        s => surfaces(i)
-        temp_array(i) = s % id
+      allocate(temp_array2(n_surfaces))
+      do while (associated(current))
+        temp_array(i) = current % key
+        temp_array2(i) = current % value
+        ! Move to next surface
+        next => current % next
+        deallocate(current)
+        current => next
+        i = i + 1
       end do
-      call sp % write_data(temp_array, "surface_ids", &
+      call sp % write_data(temp_array, "surface_keys", &
+           group="geometry", length=n_surfaces)
+      call sp % write_data(temp_array2, "surface_ids", &
            group="geometry", length=n_surfaces)
       deallocate(temp_array)
+      deallocate(temp_array2)
 
       ! Print list of material IDs
       allocate(temp_array(n_materials))
@@ -184,7 +195,7 @@ contains
       deallocate(temp_array)
 
       ! Print list of cell keys-> IDs
-      current  => cell_dict % keys()
+      current => cell_dict % keys()
       i = 1
       allocate(temp_array(n_cells))
       allocate(temp_array2(n_cells))
@@ -219,6 +230,13 @@ contains
         ! Write information on what fills this cell
         call sp % write_data(c % type, "fill_type", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
+
+        call sp % write_data(c % n_surfaces, "n_surfaces", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        call sp % write_data(c % surfaces, "surfaces", & 
+               length= c % n_surfaces, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+
         select case (c % type)
         case (CELL_NORMAL)          
           if (c % material == MATERIAL_VOID) then
@@ -283,10 +301,10 @@ contains
         ! Write lattice type
         select case(lat % type)
         case (LATTICE_RECT)
-          call sp % write_data(0, "type", &
+          call sp % write_data(1, "type", &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         case (LATTICE_HEX)
-          call sp % write_data(1, "type", &
+          call sp % write_data(2, "type", &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         end select
 
@@ -980,6 +998,8 @@ contains
 
     ! Read list of surface IDs
     allocate(temp_array(n_surf))
+    call sp % read_data(temp_array, "surface_keys", &
+         group="geometry", length=n_surf)
     call sp % read_data(temp_array, "surface_ids", &
          group="geometry", length=n_surf)
     deallocate(temp_array)
@@ -1006,6 +1026,16 @@ contains
       ! Write information on what fills this cell
       call sp % read_data(j, "fill_type", &
              group="geometry/cells/cell ")
+
+      call sp % read_data(k, "n_surfaces", &
+             group="geometry/cells/cell ")
+      if (k > 0) then
+        allocate(temp_array(k))
+        call sp % read_data(temp_array, "surfaces", &
+               group="geometry/cells/cell ", length=k)
+        deallocate(temp_array)
+      endif
+
       select case (j)
       case (CELL_NORMAL)          
           call sp % read_data(k, "material", &

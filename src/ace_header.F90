@@ -241,6 +241,7 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+    real(8) :: last_prn
   end type NuclideMicroXS
 
 !===============================================================================

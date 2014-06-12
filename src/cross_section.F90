@@ -384,6 +384,7 @@ contains
         & - E),1)) % last_prn
     else
       r = prn()
+      micro_xs(i_nuclide) % last_prn = r
     end if
 
     i_table = 1

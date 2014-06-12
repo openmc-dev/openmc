@@ -92,9 +92,9 @@ contains
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E)
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, mat % first_E)
       else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E)
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, mat % first_E)
       end if
 
       ! ========================================================================
@@ -135,11 +135,12 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E)
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, first_E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
+    real(8), intent(in) :: first_E   ! particle energy when it entered this mat
 
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
@@ -184,6 +185,8 @@ contains
     ! Initialize sab treatment to false
     micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
+
+    ! Initialize URR probability table treatment to false
     micro_xs(i_nuclide) % use_ptable  = .false.
 
     ! Initialize nuclide cross-sections to zero
@@ -233,7 +236,7 @@ contains
     if (urr_ptables_on .and. nuc % urr_present) then
       if (E > nuc % urr_data % energy(1) .and. &
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-        call calculate_urr_xs(i_nuclide, E)
+        call calculate_urr_xs(i_nuclide, E, first_E)
       end if
     end if
 
@@ -334,10 +337,11 @@ contains
 ! from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(i_nuclide, E)
+  subroutine calculate_urr_xs(i_nuclide, E, first_E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
+    real(8), intent(in) :: first_E   ! particle energy when it entered this mat
 
     integer :: i_energy   ! index for energy
     integer :: i_table    ! index for table
@@ -370,8 +374,20 @@ contains
          (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
     ! sample probability table using the cumulative distribution
-    r = prn()
+    ! (if we're dealing with an isotope that we've previously encountered at
+    ! this energy but a different temperature, use the original random number to    ! preserve correlation of temperature in probability tables)
+    if (E /= ZERO .and. E == first_E .and. &
+      & minval(dble(abs(nuclides(:) % zaid - nuclides(i_nuclide) % zaid)) &
+      & + abs(micro_xs(:) % last_E - E)) == ZERO) then
+      r = micro_xs(minloc(dble(abs(nuclides(:) % zaid &
+        & - nuclides(i_nuclide) % zaid)) + abs(micro_xs(:) % last_E &
+        & - E),1)) % last_prn
+    else
+      r = prn()
+    end if
+
     i_table = 1
+
     do
       if (urr % prob(i_energy, URR_CUM_PROB, i_table) > r) exit
       i_table = i_table + 1

@@ -10,6 +10,7 @@ module plot
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
+  use progress_header, only: ProgressBar
   use string,          only: to_str
 
   implicit none
@@ -109,8 +110,9 @@ contains
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
-    type(Image) :: img
-    type(Particle) :: p
+    type(Image)       :: img
+    type(Particle)    :: p
+    type(ProgressBar) :: progress
 
     ! Initialize and allocate space for image
     call init_image(img)
@@ -149,13 +151,14 @@ contains
     p % coord % universe = BASE_UNIVERSE
 
     do y = 1, img % height
+      call progress % set_value(dble(y)/dble(img % height)*100.)
       do x = 1, img % width
 
         ! get pixel color
         call position_rgb(p, pl, rgb, id)
 
         ! Create a pixel at (x,y) with color (r,g,b)
-        call set_pixel(img, x, y, rgb(1), rgb(2), rgb(3))
+        call set_pixel(img, x-1, y-1, rgb(1), rgb(2), rgb(3))
 
         ! Advance pixel in first direction
         p % coord0 % xyz(in_i) = p % coord0 % xyz(in_i) + in_pixel
@@ -171,6 +174,9 @@ contains
 
     ! Free up space
     call deallocate_image(img)
+
+    ! Clear particle
+    call p % clear()
 
   end subroutine create_ppm
 
@@ -228,7 +234,8 @@ contains
     integer :: id           ! id of cell or material
     real(8) :: vox(3)       ! x, y, and z voxel widths
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
-    type(Particle) :: p
+    type(Particle)    :: p
+    type(ProgressBar) :: progress
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)
@@ -253,6 +260,7 @@ contains
     ll = ll + vox / 2.0
 
     do x = 1, pl % pixels(1)
+      call progress % set_value(dble(x)/dble(pl % pixels(1))*100.)
       do y = 1, pl % pixels(2)
         do z = 1, pl % pixels(3)
 

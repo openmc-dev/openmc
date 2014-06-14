@@ -39,7 +39,7 @@ contains
   subroutine run_eigenvalue()
 
     type(Particle) :: p
-    integer        :: i_work
+    integer(8)     :: i_work
 
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
@@ -256,7 +256,7 @@ contains
          & temp_sites(:)       ! local array of extra sites on each node
 
 #ifdef MPI
-    integer    :: n            ! number of sites to send/recv
+    integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
     integer    :: request(20)  ! communication request for send/recving sites
     integer    :: n_request    ! number of communication requests
@@ -834,8 +834,8 @@ contains
 
   subroutine join_bank_from_threads()
 
-    integer :: total ! total number of fission bank sites
-    integer :: i     ! loop index for threads
+    integer(8) :: total ! total number of fission bank sites
+    integer    :: i     ! loop index for threads
 
     ! Initialize the total number of fission bank sites
     total = 0

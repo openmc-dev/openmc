@@ -427,7 +427,7 @@ contains
           call warning()
 #endif
 
-        case ('-?', '-help', '--help')
+        case ('-?', '-h', '-help', '--help')
           call print_usage()
           stop
         case ('-v', '-version', '--version')

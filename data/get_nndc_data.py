@@ -19,9 +19,6 @@ from convert_binary import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
-         'ENDF-B-VII.1-neutron-300K.tar.gz',
-         'ENDF-B-VII.1-neutron-900K.tar.gz',
-         'ENDF-B-VII.1-neutron-1500K.tar.gz',
          'ENDF-B-VII.1-tsl.tar.gz']
 block_size = 16384
 

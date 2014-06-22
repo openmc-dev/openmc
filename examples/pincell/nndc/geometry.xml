@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!--
+      This is a simple pin cell model based on dimensions from the MIT BEAVRS
+      (Benchmarking for Evaluation and Validation of Reactor Simulations)
+      benchmark.
+  -->
+
+  <!-- Surfaces for fuel, gap, cladding. Dimensions from Figure 2 in BEAVRS -->
+  <surface id="1" type="z-cylinder" coeffs="0. 0. 0.39218" /> <!-- Fuel OR -->
+  <surface id="2" type="z-cylinder" coeffs="0. 0. 0.40005" /> <!-- Clad IR -->
+  <surface id="3" type="z-cylinder" coeffs="0. 0. 0.45720" /> <!-- Clad OR -->
+
+  <!-- Reflective surfaces on outside of pin-cell. The lattice pitch is 1.25984
+       cm (taken from Table 2 in BEAVRS). -->
+  <surface id="4" type="x-plane" coeffs="-0.62992" boundary="reflective" />
+  <surface id="5" type="x-plane" coeffs=" 0.62992" boundary="reflective" />
+  <surface id="6" type="y-plane" coeffs="-0.62992" boundary="reflective" />
+  <surface id="7" type="y-plane" coeffs=" 0.62992" boundary="reflective" />
+
+  <cell id="1" material="1" surfaces="  -1" />        <!-- UO2 Fuel -->
+  <cell id="2" material="2" surfaces="1 -2" />        <!-- Helium gap -->
+  <cell id="3" material="3" surfaces="2 -3" />        <!-- Zircaloy cladding -->
+  <cell id="4" material="4" surfaces="3 4 -5 6 -7" /> <!-- Borated water -->
+
+</geometry>

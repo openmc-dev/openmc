@@ -2907,6 +2907,268 @@ contains
   end subroutine setup_active_cmfdtallies
 
 !===============================================================================
+! GENERATE_NDPP_DISTRIB_N combines the elastic and inelastic portions of the
+! NDPP scattering data such that a single number can be readily tallied.
+! This includes performing all the interpolation necessary.  The *_N version of
+! this function provides this capability for score-ndpp-*scatter-n tallies only.
+!===============================================================================
+  subroutine generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                     el_Ein, el_Ein_srch, el, &
+                                     inel_Ein, inel_Ein_srch, inel, inel_norm, &
+                                     el_distrib, inel_distrib, norm)
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: gin       ! Incoming group index
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: Ein ! Incoming energy
+    real(8), pointer, intent(in) :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, intent(in) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, intent(in) :: el(:)   ! Elastic data to tally
+    real(8), pointer, intent(in) :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
+    real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
+    type(GrpTransfer), intent(inout) :: el_distrib   ! Our elastic return value
+    type(GrpTransfer), intent(inout) :: inel_distrib ! Our inelastic return value
+    real(8), intent(inout) :: norm                                ! Total normalization
+
+    integer :: srch_lo, srch_hi, i_grid
+    integer :: gmin, gmax, g
+    real(8) :: f, one_f
+
+    ! Create distribution for elastic scattering
+    ! First perform the binary search to find where our incoming E points is
+    srch_lo = el_Ein_srch(gin)
+    srch_hi = el_Ein_srch(gin + 1)
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= el_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= el_Ein(size(el_Ein))) then
+      i_grid = size(el_Ein) - 1
+      f = ONE
+    else
+      i_grid = binary_search(el_Ein(srch_lo: srch_hi), &
+                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+      f = log(Ein / el_Ein(i_grid)) / &
+        log(el_Ein(i_grid + 1) / el_Ein(i_grid))
+    end if
+    one_f = ONE - f
+
+    ! Now find our gmin and gmax terms so we can allocate el_distrib
+    gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+               lbound(el(i_grid + 1) % outgoing, dim=2))
+    gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+               ubound(el(i_grid + 1) % outgoing, dim=2))
+
+    ! set up distrib
+    allocate(el_distrib % outgoing(1, gmin: gmax))
+    el_distrib % outgoing = ZERO
+
+    ! Now we can interpolate on the elastic data and put it in el_distrib
+    ! Do lower point
+    do g = lbound(el(i_grid) % outgoing, dim=2), &
+           ubound(el(i_grid) % outgoing, dim=2)
+      el_distrib % outgoing(1, g) = micro_xs(i_nuclide) % elastic * &
+        el(i_grid) % outgoing(t_order + 1, g) * one_f
+    end do
+    ! Do upper point
+    do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
+           ubound(el(i_grid + 1) % outgoing, dim=2)
+      el_distrib % outgoing(1, g) = el_distrib % outgoing(1, g) + &
+        micro_xs(i_nuclide) % elastic * &
+        el(i_grid + 1) % outgoing(t_order + 1, g) * f
+    end do
+
+    norm = micro_xs(i_nuclide) % elastic
+
+    ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
+    ! We can tell if we are s(a,b) because then the inel* pointers will be null
+
+    if (associated(inel)) then
+      ! Perform same steps as above, but with inelastic.
+      ! Also, we will get our normalization constants from the NDPP data itself.
+      ! First perform the binary search to find where our incoming E points is
+      srch_lo = inel_Ein_srch(gin)
+      srch_hi = inel_Ein_srch(gin + 1)
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= inel_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= inel_Ein(size(inel_Ein))) then
+        i_grid = size(inel_Ein) - 1
+        f = ONE
+      else
+        i_grid = binary_search(inel_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+        f = log(Ein / inel_Ein(i_grid)) / &
+          log(inel_Ein(i_grid + 1) / inel_Ein(i_grid))
+      end if
+      one_f = ONE - f
+
+      ! Now find our gmin and gmax terms so we can allocate inel_distrib
+      gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+                 lbound(inel(i_grid + 1) % outgoing, dim=2))
+      gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+                 ubound(inel(i_grid + 1) % outgoing, dim=2))
+
+      ! set up distrib
+      allocate(inel_distrib % outgoing(1, gmin: gmax))
+      inel_distrib % outgoing = ZERO
+
+      ! Now we can interpolate on the elastic data and put it in inel_distrib
+      ! Do lower point
+      do g = lbound(inel(i_grid) % outgoing, dim=2), &
+             ubound(inel(i_grid) % outgoing, dim=2)
+        inel_distrib % outgoing(1, g) = &
+          inel(i_grid) % outgoing(t_order + 1, g) * one_f
+      end do
+      ! Do upper point
+      do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
+             ubound(inel(i_grid + 1) % outgoing, dim=2)
+        inel_distrib % outgoing(1, g) = inel_distrib % outgoing(1, g) + &
+          inel(i_grid + 1) % outgoing(t_order + 1, g) * f
+      end do
+
+      norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+    end if
+
+    ! Take inverse of norm for later usage as normalization constant
+    norm = ONE / norm
+
+  end subroutine generate_ndpp_distrib_n
+
+!===============================================================================
+! GENERATE_NDPP_DISTRIB_PN combines the elastic and inelastic portions of the
+! NDPP scattering data such that a single number can be readily tallied.
+! This includes performing all the interpolation necessary.  The *_PN version of
+! this function provides this capability for score-ndpp-*scatter-pn tallies only.
+!===============================================================================
+  subroutine generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
+                                      el_Ein, el_Ein_srch, el, &
+                                      inel_Ein, inel_Ein_srch, inel, inel_norm, &
+                                      el_distrib, inel_distrib, norm)
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: gin       ! Incoming group index
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: Ein ! Incoming energy
+    real(8), pointer, intent(in) :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, intent(in) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, intent(in) :: el(:)   ! Elastic data to tally
+    real(8), pointer, intent(in) :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
+    real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
+    type(GrpTransfer), intent(inout) :: el_distrib   ! Our elastic return value
+    type(GrpTransfer), intent(inout) :: inel_distrib ! Our inelastic return value
+    real(8), intent(inout) :: norm                                ! Total normalization
+
+    integer :: srch_lo, srch_hi, i_grid
+    integer :: gmin, gmax, g
+    real(8) :: f, one_f
+
+    ! Create distribution for elastic scattering
+    ! First perform the binary search to find where our incoming E points is
+    srch_lo = el_Ein_srch(gin)
+    srch_hi = el_Ein_srch(gin + 1)
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= el_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= el_Ein(size(el_Ein))) then
+      i_grid = size(el_Ein) - 1
+      f = ONE
+    else
+      i_grid = binary_search(el_Ein(srch_lo: srch_hi), &
+                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+      f = log(Ein / el_Ein(i_grid)) / &
+        log(el_Ein(i_grid + 1) / el_Ein(i_grid))
+    end if
+    one_f = ONE - f
+
+    ! Now find our gmin and gmax terms so we can allocate el_distrib
+    gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+               lbound(el(i_grid + 1) % outgoing, dim=2))
+    gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+               ubound(el(i_grid + 1) % outgoing, dim=2))
+
+    ! set up distrib
+    allocate(el_distrib % outgoing(t_order + 1, gmin: gmax))
+    el_distrib % outgoing = ZERO
+
+    ! Now we can interpolate on the elastic data and put it in el_distrib
+    ! Do lower point
+    do g = lbound(el(i_grid) % outgoing, dim=2), &
+           ubound(el(i_grid) % outgoing, dim=2)
+      el_distrib % outgoing(1, g) = micro_xs(i_nuclide) % elastic * &
+        el(i_grid) % outgoing(t_order + 1, g) * one_f
+    end do
+    ! Do upper point
+    do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
+           ubound(el(i_grid + 1) % outgoing, dim=2)
+      el_distrib % outgoing(1, g) = el_distrib % outgoing(1, g) + &
+        micro_xs(i_nuclide) % elastic * &
+        el(i_grid + 1) % outgoing(t_order + 1, g) * f
+    end do
+
+    norm = micro_xs(i_nuclide) % elastic
+
+    ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
+    ! We can tell if we are s(a,b) because then the inel* pointers will be null
+
+    if (associated(inel)) then
+      ! Perform same steps as above, but with inelastic.
+      ! Also, we will get our normalization constants from the NDPP data itself.
+      ! First perform the binary search to find where our incoming E points is
+      srch_lo = inel_Ein_srch(gin)
+      srch_hi = inel_Ein_srch(gin + 1)
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= inel_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= inel_Ein(size(inel_Ein))) then
+        i_grid = size(inel_Ein) - 1
+        f = ONE
+      else
+        i_grid = binary_search(inel_Ein(srch_lo: srch_hi), &
+                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+        f = log(Ein / inel_Ein(i_grid)) / &
+          log(inel_Ein(i_grid + 1) / inel_Ein(i_grid))
+      end if
+      one_f = ONE - f
+
+      ! Now find our gmin and gmax terms so we can allocate inel_distrib
+      gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+                 lbound(inel(i_grid + 1) % outgoing, dim=2))
+      gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+                 ubound(inel(i_grid + 1) % outgoing, dim=2))
+
+      ! set up distrib
+      allocate(inel_distrib % outgoing(t_order + 1, gmin: gmax))
+      inel_distrib % outgoing = ZERO
+
+      ! Now we can interpolate on the elastic data and put it in inel_distrib
+      ! Do lower point
+      do g = lbound(inel(i_grid) % outgoing, dim=2), &
+             ubound(inel(i_grid) % outgoing, dim=2)
+        inel_distrib % outgoing(:, g) = &
+          inel(i_grid) % outgoing(:, g) * one_f
+      end do
+      ! Do upper point
+      do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
+             ubound(inel(i_grid + 1) % outgoing, dim=2)
+        inel_distrib % outgoing(:, g) = inel_distrib % outgoing(:, g) + &
+          inel(i_grid + 1) % outgoing(:, g) * f
+      end do
+
+      norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+    end if
+
+    ! Take inverse of norm for later usage as normalization constant
+    norm = ONE / norm
+
+  end subroutine generate_ndpp_distrib_pn
+
+!===============================================================================
 ! TALLY_NDPP_N determines the scattering moments which were
 ! previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
@@ -2927,18 +3189,14 @@ contains
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer :: srch_lo, srch_hi
     integer :: g ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f ! interp factor on nuclide energy grid
-    real(8) :: one_f ! (ONE - f)
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_el(:) => null() ! data to tally
-    real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
-    integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-!$omp threadprivate(nuc,sab,ndpp_el,ndpp_Ein, ndpp_Ein_srch)
+    type(GrpTransfer), save :: elastic   ! Combined elastic data
+    type(GrpTransfer), save :: inelastic ! Combined inelastic data
+    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+!$omp threadprivate(nuc,sab,elastic,inelastic,norm)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2946,73 +3204,65 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_el => sab % ndpp_el
-      ndpp_Ein => sab % ndpp_el_Ein
-      ndpp_Ein_srch => sab % ndpp_el_Ein_srch
+      call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                   sab % ndpp_el_Ein, sab % ndpp_el_Ein_srch, &
+                                   sab % ndpp_el, NULL(), NULL(), NULL(), &
+                                   NULL(), elastic, inelastic, norm)
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
-          ndpp_el => nuc % ndpp_nuinel
+          call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                       nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                       nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                       nuc % ndpp_inel_Ein_srch, nuc % ndpp_nuinel, &
+                                       nuc % ndpp_inel_norm, elastic, inelastic, norm)
         else
-          ndpp_el => nuc % ndpp_el
+          call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                       nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                       nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                       nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
+                                       nuc % ndpp_inel_norm, elastic, inelastic, norm)
         end if
       else
-        ndpp_el => nuc % ndpp_el
+        call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                     nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                     nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                     nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
+                                     nuc % ndpp_inel_norm, elastic, inelastic, norm)
       end if
-      ndpp_Ein => nuc % ndpp_el_Ein
-      ndpp_Ein_srch => nuc % ndpp_el_Ein_srch
     end if
 
-    srch_lo = ndpp_Ein_srch(gin)
-    srch_hi = ndpp_Ein_srch(gin + 1)
-    ! Find the grid index and interpolant of ndpp scattering data
-    if (Ein <= ndpp_Ein(1)) then
-      i_grid = 1
-      f = ZERO
-    else if (Ein >= ndpp_Ein(size(ndpp_Ein))) then
-      i_grid = size(ndpp_Ein) - 1
-      f = ONE
-    else
-      i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
-                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / ndpp_Ein(i_grid)) / &
-        log(ndpp_Ein(i_grid + 1) / ndpp_Ein(i_grid))
-    end if
-
-    ! Calculate 1-f, and apply mult
-    one_f = (ONE - f) * mult
-    f = f * mult
+    ! Apply mult to the normalization constant, norm
+    norm = norm * mult
     ! Now apply sigS if we are in tracklength mode
     if (.not. is_analog) then
-      f = f * (micro_xs(i_nuclide) % total - &
+      norm = norm * (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption)
-      one_f = one_f * (micro_xs(i_nuclide) % total - &
-                       micro_xs(i_nuclide) % absorption)
     end if
 
-    ! Add the contribution from the lower score
-    if (allocated(ndpp_el(i_grid) % outgoing)) then
-      do g = lbound(ndpp_el(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_el(i_grid) % outgoing, dim=2)
+    ! Add the contribution from the elastic score
+    if (allocated(elastic % outgoing)) then
+      do g = lbound(elastic % outgoing, dim=2), &
+             ubound(elastic % outgoing, dim=2)
         g_filter = filter_index + g - 1
 !$omp atomic
         results(score_index, g_filter) % value = &
           results(score_index, g_filter) % value + &
-          ndpp_el(i_grid) % outgoing(t_order + 1, g) * one_f
+          elastic % outgoing(t_order + 1, g) * norm
       end do
     end if
 
-    ! Now add the contribution from the higher score
-    if (allocated(ndpp_el(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_el(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_el(i_grid + 1) % outgoing, dim=2)
+    ! Now add the contribution from the inelastic score
+    if (allocated(inelastic % outgoing)) then
+      do g = lbound(inelastic % outgoing, dim=2), &
+             ubound(inelastic % outgoing, dim=2)
         g_filter = filter_index + g - 1
 !$omp atomic
         results(score_index, g_filter) % value = &
           results(score_index, g_filter) % value + &
-          ndpp_el(i_grid + 1) % outgoing(t_order + 1, g) * f
+          inelastic % outgoing(t_order + 1, g) * norm
       end do
     end if
   end subroutine tally_ndpp_n
@@ -3080,100 +3330,88 @@ contains
     integer :: srch_lo, srch_hi
     integer :: g ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f ! interp factor on nuclide energy grid
-    real(8) :: one_f ! (ONE - f)
-    integer :: i_score ! index of score dimension of results
-    integer :: l ! legendre moment index
+    integer, save :: i_score ! index of score dimension of results
+    integer, save :: l ! legendre moment index
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_el(:) => null() ! data to tally
-    real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
-    integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-    !$omp threadprivate(nuc,sab,ndpp_el,ndpp_Ein,ndpp_Ein_srch)
+    type(GrpTransfer), save :: elastic   ! Combined elastic data
+    type(GrpTransfer), save :: inelastic ! Combined inelastic data
+    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+!$omp threadprivate(nuc,sab,elastic,inelastic,norm,i_score,l)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
-    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    ! for us already by placing i_sab in micro_xs(i) % index_sab
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_el => sab % ndpp_el
-      ndpp_Ein => sab % ndpp_el_Ein
-      ndpp_Ein_srch => sab % ndpp_el_Ein_srch
+      call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+                                   sab % ndpp_el_Ein, sab % ndpp_el_Ein_srch, &
+                                   sab % ndpp_el, NULL(), NULL(), NULL(), &
+                                   NULL(), elastic, inelastic, norm)
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
-          ndpp_el => nuc % ndpp_nuinel
+          call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
+                                        nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                        nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                        nuc % ndpp_inel_Ein_srch, nuc % ndpp_nuinel, &
+                                        nuc % ndpp_inel_norm, elastic, inelastic, norm)
         else
-          ndpp_el => nuc % ndpp_el
+          call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
+                                        nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                        nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                        nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
+                                        nuc % ndpp_inel_norm, elastic, inelastic, norm)
         end if
       else
-        ndpp_el => nuc % ndpp_el
+        call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
+                                      nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
+                                      nuc % ndpp_el, nuc % ndpp_inel_Ein, &
+                                      nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
+                                      nuc % ndpp_inel_norm, elastic, inelastic, norm)
       end if
-      ndpp_Ein => nuc % ndpp_el_Ein
-      ndpp_Ein_srch => nuc % ndpp_el_Ein_srch
     end if
 
-    srch_lo = ndpp_Ein_srch(gin)
-    srch_hi = ndpp_Ein_srch(gin + 1)
-    ! Find the grid index and interpolant of ndpp scattering data
-    if (Ein <= ndpp_Ein(1)) then
-      i_grid = 1
-      f = ZERO
-    else if (Ein >= ndpp_Ein(size(ndpp_Ein))) then
-      ! Should never happen as max(ndpp_Ein) is above filter range
-      return
-    else
-      i_grid = binary_search(ndpp_Ein(srch_lo: srch_hi), &
-                             srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / ndpp_Ein(i_grid)) / &
-        log(ndpp_Ein(i_grid + 1) / ndpp_Ein(i_grid))
-    end if
-
-    ! Calculate 1-f, and apply mult
-    one_f = (ONE - f) * mult
-    f = f * mult
+    ! Apply mult to the normalization constant, norm
+    norm = norm * mult
     ! Now apply sigS if we are in tracklength mode
     if (.not. is_analog) then
-      f = f * (micro_xs(i_nuclide) % total - &
+      norm = norm * (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption)
-      one_f = one_f * (micro_xs(i_nuclide) % total - &
-                       micro_xs(i_nuclide) % absorption)
     end if
 
-    ! Add the contribution from the lower score
-    if (allocated(ndpp_el(i_grid) % outgoing)) then
-      do g = lbound(ndpp_el(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_el(i_grid) % outgoing, dim=2)
+    ! Add the contribution from the elastic score
+    if (allocated(elastic % outgoing)) then
+      do g = lbound(elastic % outgoing, dim=2), &
+             ubound(elastic % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
           !$omp atomic
-          results(i_score, g_filter) % value = &
-            results(i_score, g_filter) % value + &
-            ndpp_el(i_grid) % outgoing(l, g) * one_f
+          results(score_index, g_filter) % value = &
+            results(score_index, g_filter) % value + &
+            elastic % outgoing(l, g) * norm
         end do
       end do
     end if
 
-    ! Now add the contribution from the higher score
-    if (allocated(ndpp_el(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_el(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_el(i_grid + 1) % outgoing, dim=2)
+    ! Now add the contribution from the inelastic score
+    if (allocated(inelastic % outgoing)) then
+      do g = lbound(inelastic % outgoing, dim=2), &
+             ubound(inelastic % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
           !$omp atomic
-          results(i_score, g_filter) % value = &
-            results(i_score, g_filter) % value + &
-            ndpp_el(i_grid + 1) % outgoing(l, g) * f
+          results(score_index, g_filter) % value = &
+            results(score_index, g_filter) % value + &
+            inelastic % outgoing(l, g) * norm
         end do
       end do
     end if
-
   end subroutine tally_ndpp_pn
 
 !===============================================================================

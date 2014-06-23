@@ -119,16 +119,20 @@ module ace_header
 
     ! NDPP pre-processed data for use only with
     ! integrated tallies (scatter, nu-scatter, and chi)
-    real(8), allocatable :: ndpp_scatt_Ein(:)         ! Incoming energy grid
-    integer, allocatable :: ndpp_scatt_Ein_srch(:)    ! Incoming energy grid search bounds
-    type(GrpTransfer), allocatable :: ndpp_scatt(:)   ! Dimension is # of Ein
-    type(GrpTransfer), allocatable :: ndpp_nuscatt(:) ! Dimension is # of Ein
-    real(8), allocatable :: ndpp_chi_Ein(:)         ! Ein grid for all chi
-    real(8), allocatable :: ndpp_chi(:,:)           ! Data grid for ndpp chi data
-                                                    ! dimensions of chi: (g, Ein)
-    real(8), allocatable :: ndpp_chi_p(:,:)         ! Same for prompt only
-    real(8), allocatable :: ndpp_chi_d(:,:,:)       ! Same, but additional dimension
-                                                    ! for precursor group
+    real(8), allocatable :: ndpp_el_Ein(:)           ! Incoming elastic energy grid
+    integer, allocatable :: ndpp_el_Ein_srch(:)      ! Incoming elastic energy grid search bounds
+    type(GrpTransfer), allocatable :: ndpp_el(:)     ! Elastic Data, Dimension is # of Ein
+    real(8), allocatable :: ndpp_inel_Ein(:)         ! Incoming inelastic energy grid
+    integer, allocatable :: ndpp_inel_Ein_srch(:)    ! Incoming inelastic energy grid search bounds
+    real(8), allocatable :: ndpp_inel_norm(:)        ! Incoming inelastic energy grid
+    type(GrpTransfer), allocatable :: ndpp_inel(:)   ! Inelastic Data, Dimension is # of Ein
+    type(GrpTransfer), allocatable :: ndpp_nuinel(:) ! Inelastic Data, Dimension is # of Ein
+    real(8), allocatable :: ndpp_chi_Ein(:)          ! Ein grid for all chi
+    real(8), allocatable :: ndpp_chi(:,:)            ! Data grid for ndpp chi data
+                                                     ! dimensions of chi: (g, Ein)
+    real(8), allocatable :: ndpp_chi_p(:,:)          ! Same for prompt only
+    real(8), allocatable :: ndpp_chi_d(:,:,:)        ! Same, but additional dimension
+                                                     ! for precursor group
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -221,9 +225,9 @@ module ace_header
 
     ! NDPP scattering data for use only with
     ! integrated scattering tallies
-    real(8), allocatable :: ndpp_scatt_Ein(:)       ! Ein grid for scatter
-    integer, allocatable :: ndpp_scatt_Ein_srch(:)  ! Incoming energy grid search bounds
-    type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is # of Ein
+    real(8), allocatable :: ndpp_el_Ein(:)       ! Ein grid for scatter
+    integer, allocatable :: ndpp_el_Ein_srch(:)  ! Incoming energy grid search bounds
+    type(GrpTransfer), allocatable :: ndpp_el(:) ! Dimension is # of Ein
   end type SAlphaBeta
 
 !===============================================================================
@@ -403,12 +407,24 @@ module ace_header
         deallocate(this % urr_data)
       end if
 
-      if (allocated(this % ndpp_scatt_Ein)) then
-        deallocate(this % ndpp_scatt_Ein)
+      if (allocated(this % ndpp_el_Ein)) then
+        deallocate(this % ndpp_el_Ein)
       end if
 
-      if (allocated(this % ndpp_scatt)) then
-        deallocate(this % ndpp_scatt)
+      if (allocated(this % ndpp_el)) then
+        deallocate(this % ndpp_el)
+      end if
+
+      if (allocated(this % ndpp_inel_Ein)) then
+        deallocate(this % ndpp_inel_Ein)
+      end if
+
+      if (allocated(this % ndpp_inel)) then
+        deallocate(this % ndpp_inel)
+      end if
+
+      if (allocated(this % ndpp_nuinel)) then
+        deallocate(this % ndpp_nuinel)
       end if
 
       if (associated(this % reactions)) then

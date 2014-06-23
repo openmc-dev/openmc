@@ -2935,10 +2935,10 @@ contains
     real(8) :: one_f ! (ONE - f)
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    type(GrpTransfer), pointer :: ndpp_el(:) => null() ! data to tally
     real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
     integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_Ein, ndpp_Ein_srch)
+!$omp threadprivate(nuc,sab,ndpp_el,ndpp_Ein, ndpp_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2946,23 +2946,23 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_scatt => sab % ndpp_scatt
-      ndpp_Ein => sab % ndpp_scatt_Ein
-      ndpp_Ein_srch => sab % ndpp_scatt_Ein_srch
+      ndpp_el => sab % ndpp_el
+      ndpp_Ein => sab % ndpp_el_Ein
+      ndpp_Ein_srch => sab % ndpp_el_Ein_srch
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
-          ndpp_scatt => nuc % ndpp_nuscatt
+          ndpp_el => nuc % ndpp_nuinel
         else
-          ndpp_scatt => nuc % ndpp_scatt
+          ndpp_el => nuc % ndpp_el
         end if
       else
-        ndpp_scatt => nuc % ndpp_scatt
+        ndpp_el => nuc % ndpp_el
       end if
-      ndpp_Ein => nuc % ndpp_scatt_Ein
-      ndpp_Ein_srch => nuc % ndpp_scatt_Ein_srch
+      ndpp_Ein => nuc % ndpp_el_Ein
+      ndpp_Ein_srch => nuc % ndpp_el_Ein_srch
     end if
 
     srch_lo = ndpp_Ein_srch(gin)
@@ -2993,26 +2993,26 @@ contains
     end if
 
     ! Add the contribution from the lower score
-    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
+    if (allocated(ndpp_el(i_grid) % outgoing)) then
+      do g = lbound(ndpp_el(i_grid) % outgoing, dim=2), &
+             ubound(ndpp_el(i_grid) % outgoing, dim=2)
         g_filter = filter_index + g - 1
 !$omp atomic
         results(score_index, g_filter) % value = &
           results(score_index, g_filter) % value + &
-          ndpp_scatt(i_grid) % outgoing(t_order + 1, g) * one_f
+          ndpp_el(i_grid) % outgoing(t_order + 1, g) * one_f
       end do
     end if
 
     ! Now add the contribution from the higher score
-    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
+    if (allocated(ndpp_el(i_grid + 1) % outgoing)) then
+      do g = lbound(ndpp_el(i_grid + 1) % outgoing, dim=2), &
+             ubound(ndpp_el(i_grid + 1) % outgoing, dim=2)
         g_filter = filter_index + g - 1
 !$omp atomic
         results(score_index, g_filter) % value = &
           results(score_index, g_filter) % value + &
-          ndpp_scatt(i_grid + 1) % outgoing(t_order + 1, g) * f
+          ndpp_el(i_grid + 1) % outgoing(t_order + 1, g) * f
       end do
     end if
   end subroutine tally_ndpp_n
@@ -3087,10 +3087,10 @@ contains
     integer :: l ! legendre moment index
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    type(GrpTransfer), pointer :: ndpp_el(:) => null() ! data to tally
     real(8), pointer :: ndpp_Ein(:) => null() ! Energy grid of data to tally
     integer, pointer :: ndpp_Ein_srch(:) => null() ! Energy grid boundaries of data to tally
-    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_Ein,ndpp_Ein_srch)
+    !$omp threadprivate(nuc,sab,ndpp_el,ndpp_Ein,ndpp_Ein_srch)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3098,23 +3098,23 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      ndpp_scatt => sab % ndpp_scatt
-      ndpp_Ein => sab % ndpp_scatt_Ein
-      ndpp_Ein_srch => sab % ndpp_scatt_Ein_srch
+      ndpp_el => sab % ndpp_el
+      ndpp_Ein => sab % ndpp_el_Ein
+      ndpp_Ein_srch => sab % ndpp_el_Ein_srch
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
       if (present(nuscatt)) then
         if (nuscatt) then
-          ndpp_scatt => nuc % ndpp_nuscatt
+          ndpp_el => nuc % ndpp_nuinel
         else
-          ndpp_scatt => nuc % ndpp_scatt
+          ndpp_el => nuc % ndpp_el
         end if
       else
-        ndpp_scatt => nuc % ndpp_scatt
+        ndpp_el => nuc % ndpp_el
       end if
-      ndpp_Ein => nuc % ndpp_scatt_Ein
-      ndpp_Ein_srch => nuc % ndpp_scatt_Ein_srch
+      ndpp_Ein => nuc % ndpp_el_Ein
+      ndpp_Ein_srch => nuc % ndpp_el_Ein_srch
     end if
 
     srch_lo = ndpp_Ein_srch(gin)
@@ -3145,31 +3145,31 @@ contains
     end if
 
     ! Add the contribution from the lower score
-    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
+    if (allocated(ndpp_el(i_grid) % outgoing)) then
+      do g = lbound(ndpp_el(i_grid) % outgoing, dim=2), &
+             ubound(ndpp_el(i_grid) % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
           !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
-            ndpp_scatt(i_grid) % outgoing(l, g) * one_f
+            ndpp_el(i_grid) % outgoing(l, g) * one_f
         end do
       end do
     end if
 
     ! Now add the contribution from the higher score
-    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
-      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
-             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
+    if (allocated(ndpp_el(i_grid + 1) % outgoing)) then
+      do g = lbound(ndpp_el(i_grid + 1) % outgoing, dim=2), &
+             ubound(ndpp_el(i_grid + 1) % outgoing, dim=2)
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
           !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
-            ndpp_scatt(i_grid + 1) % outgoing(l, g) * f
+            ndpp_el(i_grid + 1) % outgoing(l, g) * f
         end do
       end do
     end if

@@ -421,10 +421,19 @@ contains
              length=mat % n_nuclides, &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        !call sp % write_data(mat % distrib_dens, "distrib_dens", &
-        !     group="geometry/materials/material " // trim(to_str(mat % id)))
-        !call sp % write_data(mat % distrib_comp, "distrib_comp", &
-        !     group="geometry/materials/material " // trim(to_str(mat % id)))
+        j = 0
+        if (mat % distrib_dens) then
+          j = 1
+        end if 
+        call sp % write_data(j, "distrib_dens", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        j = 0
+        if (mat % distrib_comp) then
+          j = 1
+        end if
+        call sp % write_data(j, "distrib_comp", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
 
         call sp % write_data(mat % dens_map, "dens_map", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
@@ -437,13 +446,19 @@ contains
              length=mat % density % num, &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        call sp % write_data(size(mat % comp), "num_comp", &
+        call sp % write_data(mat % n_comp, "num_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
-        COMPOSITION_LOOP: do j = 1, size(mat % comp)
+#ifdef HDF5
+        call sp % open_group("geometry/materials/material "&
+               // trim(to_str(mat % id)) // "/compositions/")
+        call sp % close_group()
+#endif
+        COMPOSITION_LOOP: do j = 1, mat % n_comp
           call sp % write_data(mat % comp(j) % atom_density, "atom_density " &
                // trim(to_str(j)), length=mat % density % num, & 
                group="geometry/materials/material " &
-               // trim(to_str(mat % id)) // "/compositions")
+               // trim(to_str(mat % id)) // "/compositions/" &
+               // trim(to_str(j)))
         end do COMPOSITION_LOOP
 
         call sp % write_data(mat % n_sab, "n_sab", &
@@ -873,6 +888,8 @@ contains
     integer                 :: n_lat
     integer                 :: n_surf
     integer                 :: n_mat
+    integer                 :: dist_dens
+    integer                 :: dist_comp
     integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
@@ -1169,10 +1186,10 @@ contains
            group="geometry/materials/material ")
       deallocate(temp_array)
 
-      !call sp % read_data(logic, "distrib_dens", &
-      !     group="geometry/materials/material ")
-      !call sp % read_data(logic, "distrib_comp", &
-      !     group="geometry/materials/material ")
+      call sp % read_data(dist_dens, "distrib_dens", &
+           group="geometry/materials/material ")
+      call sp % read_data(dist_comp, "distrib_comp", &
+           group="geometry/materials/material ")
 
       call sp % read_data(j, "dens_map", &
            group="geometry/materials/material ")

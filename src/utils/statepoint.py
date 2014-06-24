@@ -652,8 +652,16 @@ class StatePoint(object):
 	for i in range(self.geom.n_materials):
           n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
           nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
-	  dens = self._get_double(path=base + str(matList[i])+'/density')[0]
-	  a_dens = self._get_double(n_nuclide,path=base + str(matList[i])+'/atom_density')
+	  dist_dens = self._get_int(path=base + str(matList[i])+'/distrib_dens')[0]
+	  dist_comp = self._get_int(path=base + str(matList[i])+'/distrib_comp')[0]
+	  dens_map = self._get_int(path=base + str(matList[i])+'/dens_map')[0]
+	  comp_map = self._get_int(path=base + str(matList[i])+'/comp_map')[0]
+	  n_dens = self._get_int(path=base + str(matList[i])+'/num_density')[0]
+	  dens = self._get_double(n_dens, path=base + str(matList[i])+'/density')
+	  n_comp = self._get_int(path=base + str(matList[i])+'/num_comp')[0]
+          a_dens = []
+	  for j in range(1,n_comp):
+            a_dens.append(self._get_double(n_nuclide,path=base + str(matList[i])+'/compositions/'+str(j)))
 	  n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
           if n_sab > 0:
             sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')

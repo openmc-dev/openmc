@@ -6,13 +6,19 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = build
+IMAGEDIR      = source/_images
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
+# SVG to PDF conversion
+SVG2PDF = inkscape
+PDFS    = $(patsubst %.svg,%.pdf,$(wildcard $(IMAGEDIR)/*.svg))
+
+
+.PHONY: help images clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -33,8 +39,16 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
+# Pattern rule for converting SVG to PDF
+%.pdf: %.svg
+	$(SVG2PDF) -f $< -A $@
+
+# Rule to build PDFs
+images: $(PDFS)
+
 clean:
 	-rm -rf $(BUILDDIR)/*
+	-rm $(PDFS)
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
@@ -91,14 +105,14 @@ epub:
 	@echo
 	@echo "Build finished. The epub file is in $(BUILDDIR)/epub."
 
-latex:
+latex: images
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
 	@echo "Run \`make' in that directory to run these through (pdf)latex" \
 	      "(use \`make latexpdf' here to do that automatically)."
 
-latexpdf:
+latexpdf: images
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo "Running LaTeX files through pdflatex..."
 	make -C $(BUILDDIR)/latex all-pdf

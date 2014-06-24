@@ -16,7 +16,7 @@ module ace_header
     integer, allocatable :: type(:)     ! type of distribution
     integer, allocatable :: location(:) ! location of each table
     real(8), allocatable :: data(:)     ! angular distribution data
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => distangle_clear ! Deallocates DistAngle
@@ -32,10 +32,10 @@ module ace_header
     type(Tab1) :: p_valid             ! probability of law validity
     real(8), allocatable :: data(:)   ! energy distribution data
 
-    ! For reactions that may have multiple energy distributions such as (n.2n),
+    ! For reactions that may have multiple energy distributions such as (n,2n),
     ! this pointer allows multiple laws to be stored
     type(DistEnergy), pointer :: next => null()
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => distenergy_clear ! Deallocates DistEnergy
@@ -57,7 +57,7 @@ module ace_header
     logical :: has_energy_dist         ! Energy distribution present?
     type(DistAngle)           :: adist ! Secondary angular distribution
     type(DistEnergy), pointer :: edist => null() ! Secondary energy distribution
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => reaction_clear ! Deallocates Reaction
@@ -76,7 +76,7 @@ module ace_header
     logical :: multiply_smooth ! multiply by smooth cross section?
     real(8), allocatable :: energy(:)   ! incident energies
     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => urrdata_clear ! Deallocates UrrData
@@ -137,22 +137,37 @@ module ace_header
     ! Reactions
     integer :: n_reaction ! # of reactions
     type(Reaction), pointer :: reactions(:) => null()
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => nuclide_clear ! Deallocates Nuclide
   end type Nuclide
 
 !===============================================================================
+! DISTENERGYSAB contains the secondary energy/angle distributions for inelastic
+! thermal scattering collisions which utilize a continuous secondary energy
+! representation.
+!===============================================================================
+
+  type DistEnergySab
+    integer              :: n_e_out
+    real(8), allocatable :: e_out(:)
+    real(8), allocatable :: e_out_pdf(:)
+    real(8), allocatable :: e_out_cdf(:)
+    real(8), allocatable :: mu(:,:)
+  end type DistEnergySab
+
+!===============================================================================
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
 !===============================================================================
-     
+
   type SAlphaBeta
-    character(10) :: name ! name of table, e.g. lwtr.10t
-    integer       :: zaid ! Z and A identifier, e.g. 6012 for Carbon-12
-    real(8)       :: awr  ! weight of nucleus in neutron masses
-    real(8)       :: kT   ! temperature in MeV (k*T)
+    character(10) :: name     ! name of table, e.g. lwtr.10t
+    real(8)       :: awr      ! weight of nucleus in neutron masses
+    real(8)       :: kT       ! temperature in MeV (k*T)
+    integer       :: n_zaid   ! Number of valid zaids
+    integer, allocatable :: zaid(:) ! List of valid Z and A identifiers, e.g. 6012
 
     ! threshold for S(a,b) treatment (usually ~4 eV)
     real(8) :: threshold_inelastic
@@ -162,11 +177,17 @@ module ace_header
     integer :: n_inelastic_e_in  ! # of incoming E for inelastic
     integer :: n_inelastic_e_out ! # of outgoing E for inelastic
     integer :: n_inelastic_mu    ! # of outgoing angles for inelastic
-    integer :: secondary_mode    ! secondary mode (equal/skewed)
+    integer :: secondary_mode    ! secondary mode (equal/skewed/continuous)
     real(8), allocatable :: inelastic_e_in(:)
-    real(8), allocatable :: inelastic_sigma(:) 
+    real(8), allocatable :: inelastic_sigma(:)
+    ! The following are used only if secondary_mode is 0 or 1
     real(8), allocatable :: inelastic_e_out(:,:)
     real(8), allocatable :: inelastic_mu(:,:,:)
+    ! The following is used only if secondary_mode is 3
+    ! The different implementation is necessary because the continuous
+    ! representation has a variable number of outgoing energy points for each
+    ! incoming energy
+    type(DistEnergySab), allocatable :: inelastic_data(:) ! One for each Ein
 
     ! Elastic scattering data
     integer :: elastic_mode   ! elastic mode (discrete/exact)
@@ -240,125 +261,125 @@ module ace_header
 
 !===============================================================================
 ! DISTANGLE_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine distangle_clear(this)
-      
+
       class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
-      
+
       if (allocated(this % energy)) &
            deallocate(this % energy, this % type, this % location, this % data)
-      
-    end subroutine distangle_clear    
+
+    end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
-!===============================================================================    
-  
+!===============================================================================
+
     recursive subroutine distenergy_clear(this)
-      
+
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
-      
+
       ! Clear p_valid
       call this % p_valid % clear()
-      
+
       if (allocated(this % data)) &
            deallocate(this % data)
-        
+
       if (associated(this % next)) then
         ! recursively clear this item
         call this % next % clear()
         deallocate(this % next)
       end if
-      
+
     end subroutine distenergy_clear
-    
+
 !===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine reaction_clear(this)
-      
+
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
-      
+
       if (allocated(this % sigma)) &
            deallocate(this % sigma)
-      
+
       if (associated(this % edist)) then
         call this % edist % clear()
         deallocate(this % edist)
       end if
-        
+
       call this % adist % clear()
-      
-    end subroutine reaction_clear    
-    
+
+    end subroutine reaction_clear
+
 !===============================================================================
 ! URRDATA_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine urrdata_clear(this)
-      
+
       class(UrrData), intent(inout) :: this ! The UrrData object to clear
-      
+
       if (allocated(this % energy)) &
            deallocate(this % energy, this % prob)
-      
-    end subroutine urrdata_clear      
+
+    end subroutine urrdata_clear
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine nuclide_clear(this)
-      
+
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
-      
+
       integer :: i ! Loop counter
-      
+
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
-      
+
       if (allocated(this % energy)) &
            deallocate(this % total, this % elastic, this % fission,  &
           this % nu_fission, this % absorption)
       if (allocated(this % heating)) &
            deallocate(this % heating)
-      
+
       if (allocated(this % index_fission)) &
            deallocate(this % index_fission)
-        
+
       if (allocated(this % nu_t_data)) &
            deallocate(this % nu_t_data)
-        
+
       if (allocated(this % nu_p_data)) &
            deallocate(this % nu_p_data)
-        
+
       if (allocated(this % nu_d_data)) &
            deallocate(this % nu_d_data)
-        
+
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)
-        
+
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()
         end do
         deallocate(this % nu_d_edist)
       end if
-      
+
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
-      
+
       if (associated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do
         deallocate(this % reactions)
       end if
-      
-    end subroutine nuclide_clear    
+
+    end subroutine nuclide_clear
 
 end module ace_header

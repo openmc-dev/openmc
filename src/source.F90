@@ -1,15 +1,17 @@
 module source
 
-  use bank_header,     only: Bank
+  use bank_header,      only: Bank
   use constants
-  use error,           only: fatal_error
-  use geometry_header, only: BASE_UNIVERSE
+  use error,            only: fatal_error
+  use geometry,         only: find_cell
+  use geometry_header,  only: BASE_UNIVERSE
   use global
-  use math,            only: maxwell_spectrum, watt_spectrum
-  use output,          only: write_message
-  use particle_header, only: Particle
-  use random_lcg,      only: prn, set_particle_seed
-  use string,          only: to_str
+  use math,             only: maxwell_spectrum, watt_spectrum
+  use output,           only: write_message
+  use output_interface, only: BinaryOutput
+  use particle_header,  only: Particle
+  use random_lcg,       only: prn, set_particle_seed
+  use string,           only: to_str
 
 #ifdef MPI
   use mpi
@@ -27,8 +29,9 @@ contains
 
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
-
+    integer(4) :: itmp       ! temporary integer
     type(Bank), pointer :: src => null() ! source bank site
+    type(BinaryOutput) :: sp ! statepoint/source binary file
 
     message = "Initializing source particles..."
     call write_message(6)
@@ -37,8 +40,26 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      message = 'This feature is currently disabled and will be added back in.'
-      call fatal_error()
+      message = 'Reading source file from ' // trim(path_source) // '...'
+      call write_message(6)
+
+      ! Open the binary file
+      call sp % file_open(path_source, 'r', serial = .false.)
+
+      ! Read the file type
+      call sp % read_data(itmp, "filetype")
+
+      ! Check to make sure this is a source file
+      if (itmp /= FILETYPE_SOURCE) then
+        message = "Specified starting source file not a source file type."
+        call fatal_error()
+      end if
+
+      ! Read in the source bank
+      call sp % read_source_bank()
+
+      ! Close file
+      call sp % file_close()
 
     else
       ! Generation source sites from specified distribution in user input
@@ -73,6 +94,9 @@ contains
     real(8) :: p_max(3)   ! maximum coordinates of source
     real(8) :: a          ! Arbitrary parameter 'a'
     real(8) :: b          ! Arbitrary parameter 'b'
+    logical :: found      ! Does the source particle exist within geometry?
+    type(Particle) :: p   ! Temporary particle for using find_cell
+    integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default
     site % wgt = ONE
@@ -80,11 +104,33 @@ contains
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
-      ! Coordinates sampled uniformly over a box
-      p_min = external_source % params_space(1:3)
-      p_max = external_source % params_space(4:6)
-      r = (/ (prn(), i = 1,3) /)
-      site % xyz = p_min + r*(p_max - p_min)
+      ! Set particle defaults
+      call p % initialize()
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+        end if
+      end do
+      call p % clear()
 
     case (SRC_SPACE_POINT)
       ! Point source
@@ -146,7 +192,7 @@ contains
   end subroutine sample_external_source
 
 !===============================================================================
-! GET_SOURCE_PARTICLE returns the next source particle 
+! GET_SOURCE_PARTICLE returns the next source particle
 !===============================================================================
 
   subroutine get_source_particle(p, index_source)

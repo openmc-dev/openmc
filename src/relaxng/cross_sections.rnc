@@ -10,7 +10,9 @@ element cross_sections {
     (element temperature { xsd:double } | attribute temperature { xsd:double }) &
     (element path { xsd:string { maxLength = "255" } } |
       attribute path { xsd:string { maxLength = "255" } }) &
-    (element location { xsd:int } | attribute location { xsd:int })?
+    (element location { xsd:int } | attribute location { xsd:int })? &
+    (element filetype { ( "ascii" | "binary" ) } |
+      attribute filetype { ( "ascii" | "binary" ) })?
   }* &
 
   element directory { xsd:string { maxLength = "255" } }? &

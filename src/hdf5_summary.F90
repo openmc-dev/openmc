@@ -100,6 +100,7 @@ contains
 
     integer          :: i, j, k, m
     integer          :: n_x, n_y, n_z
+    integer          :: length(3)
     integer, allocatable :: lattice_universes(:,:,:)
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
@@ -312,8 +313,8 @@ contains
           end do
         end do
       end do
-      call su % write_data(lattice_universes, "universes", &
-           length=(/n_x, n_y, n_z/), &
+      length = [n_x, n_y, n_z]
+      call su % write_data(lattice_universes, "universes", length=length, &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       deallocate(lattice_universes)
 

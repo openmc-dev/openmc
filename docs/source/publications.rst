@@ -10,8 +10,8 @@ Publications
 
 - Andrew Siegel, Kord Smith, Kyle Felker, Paul Romano, Benoit Forget, and Peter
   Beckman, "Improved cache performance in Monte Carlo transport calculations
-  using energy banding," *Comput. Phys. Commun.*
-  (2013). `<http://dx.doi.org/10.1016/j.cpc.2013.10.008>`_
+  using energy banding," *Comput. Phys. Commun.*, **185** (4), 1195--1199
+  (2014). `<http://dx.doi.org/10.1016/j.cpc.2013.10.008>`_
 
 - Jonathan A. Walsh, Benoit Forget, and Kord S. Smith, "Validation of OpenMC
   Reactor Physics Simulations with the B&W 1810 Series Benchmarks,"
@@ -48,8 +48,8 @@ Publications
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "Multi-core performance studies of a Monte Carlo neutron transport code,"
-  *Int. J. High Perform. Comput. Appl.*
-  (2013). `<http://dx.doi.org/10.1177/1094342013492179>`_
+  *Int. J. High Perform. Comput. Appl.*, **28** (1), 87--96
+  (2014). `<http://dx.doi.org/10.1177/1094342013492179>`_
 
 - Paul K. Romano, Andrew R. Siegel, Benoit Forget, and Kord Smith, "Data
   decomposition of Monte Carlo particle transport simulations via tally

@@ -104,7 +104,7 @@ contains
         ! Write out CMFD info
         if (cmfd_on) then
           call sp % write_data(1, "cmfd_on")
-          call sp % write_data(cmfd % indices, "indicies", length=4, group="cmfd")
+          call sp % write_data(cmfd % indices, "indices", length=4, group="cmfd")
           call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
                group="cmfd")
           call sp % write_data(cmfd % cmfd_src, "cmfd_src", &
@@ -230,6 +230,13 @@ contains
 
       end do TALLY_METADATA
 
+      ! Indicate where source bank is stored in statepoint
+      if (source_separate) then
+        call sp % write_data(0, "source_present")
+      else
+        call sp % write_data(1, "source_present")
+      end if
+
     end if
 
     ! Check for the no-tally-reduction method
@@ -280,14 +287,45 @@ contains
 
     end if
 
-    ! Check for eigenvalue calculation
-    if (run_mode == MODE_EIGENVALUE .and. source_write) then
+  end subroutine write_state_point
 
-      ! Check for writing source out separately
+!===============================================================================
+! WRITE_SOURCE_POINT
+!===============================================================================
+
+  subroutine write_source_point()
+
+    type(BinaryOutput) :: sp
+    character(MAX_FILE_LEN) :: filename
+
+    ! Check to write out source for a specified batch
+    if (sourcepoint_batch % contains(current_batch)) then
+
+      ! Create or open up file
       if (source_separate) then
 
-        ! Set filename for source
-        filename = trim(path_output) // 'source.' // &
+        ! Set filename
+        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
+#endif
+
+        ! Write message for new file creation
+        message = "Creating source file " // trim(filename) // "..."
+        call write_message(1)
+
+        ! Create separate source file
+        call sp % file_create(filename, serial = .false.)
+
+        ! Write file type
+        call sp % write_data(FILETYPE_SOURCE, "filetype")
+
+      else
+
+        ! Set filename for state point
+        filename = trim(path_output) // 'statepoint.' // &
                    trim(to_str(current_batch))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
@@ -295,16 +333,7 @@ contains
         filename = trim(filename) // '.binary'
 #endif
 
-        ! Write message
-        message = "Creating source file " // trim(filename) // "..."
-        call write_message(1)
-
-        ! Create source file 
-        call sp % file_create(filename, serial = .false.)
-
-      else
-
-        ! Reopen state point file in parallel
+        ! Reopen statepoint file in parallel
         call sp % file_open(filename, 'w', serial = .false.)
 
       end if
@@ -317,7 +346,36 @@ contains
 
     end if
 
-  end subroutine write_state_point
+    ! Also check to write source separately in overwritten file
+    if (source_latest) then
+
+      ! Set filename
+      filename = trim(path_output) // 'source'
+#ifdef HDF5
+      filename = trim(filename) // '.h5'
+#else
+      filename = trim(filename) // '.binary'
+#endif
+
+      ! Write message for new file creation
+      message = "Creating source file " // trim(filename) // "..."
+      call write_message(1)
+
+      ! Always create this file because it will be overwritten
+      call sp % file_create(filename, serial = .false.)
+
+      ! Write file type
+      call sp % write_data(FILETYPE_SOURCE, "filetype")
+
+      ! Write out source
+      call sp % write_source_bank()
+
+      ! Close file
+      call sp % file_close()
+
+    end if
+
+  end subroutine write_source_point
 
 !===============================================================================
 ! WRITE_TALLY_RESULTS_NR
@@ -459,13 +517,14 @@ contains
 
   subroutine load_state_point()
 
-    character(MAX_FILE_LEN) :: filename
     character(MAX_FILE_LEN) :: path_temp
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
+    integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
+    logical                 :: source_present
     real(8)                 :: real_array(3) 
     type(TallyObject), pointer :: t => null()
 
@@ -539,13 +598,12 @@ contains
 
       ! Write out CMFD info
       if (int_array(1) == 1) then
-        call sp % read_data(cmfd % indices, "indicies", length=4, group="cmfd")
+        call sp % read_data(cmfd % indices, "indices", length=4, group="cmfd")
         call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
              group="cmfd")
+        length = cmfd % indices([4,1,2,3])
         call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
-             length=(/cmfd % indices(4), cmfd % indices(1), &
-             cmfd % indices(2), cmfd % indices(3)/), &
-             group="cmfd")
+             length=length, group="cmfd")
         call sp % read_data(cmfd % entropy, "cmfd_entropy", &
                        length=restart_batch, group="cmfd")
         call sp % read_data(cmfd % balance, "cmfd_balance", &
@@ -671,6 +729,20 @@ contains
 
     end do TALLY_METADATA
 
+    ! Check for source in statepoint if needed
+    call sp % read_data(int_array(1), "source_present")
+    if (int_array(1) == 1) then
+      source_present = .true.
+    else
+      source_present = .false.
+    end if
+
+    ! Check to make sure source bank is present
+    if (path_source_point == path_state_point .and. .not. source_present) then
+      message = "Source bank must be contained in statepoint restart file"
+      call fatal_error()
+    end if 
+
     ! Read tallies to master
     if (master) then
 
@@ -711,26 +783,20 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
 
       ! Check if source was written out separately
-      if (source_separate) then
+      if (.not. source_present) then
 
         ! Close statepoint file 
         call sp % file_close()
 
-        ! Set filename for source
-        filename = trim(path_output) // 'source.' // &
-                   trim(to_str(restart_batch))
-#ifdef HDF5
-        filename = trim(filename) // '.h5'
-#else
-        filename = trim(filename) // '.binary'
-#endif
-
         ! Write message
-        message = "Loading source file " // trim(filename) // "..."
+        message = "Loading source file " // trim(path_source_point) // "..."
         call write_message(1)
 
         ! Open source file 
-        call sp % file_open(filename, 'r', serial = .false.)
+        call sp % file_open(path_source_point, 'r', serial = .false.)
+
+        ! Read file type
+        call sp % read_data(int_array(1), "filetype")
 
       end if
 

@@ -3,7 +3,7 @@
 
   <material id="1">
     <density value="7.5" units="g/cc" />
-    <nuclide name="O-16" xs="70c" ao="1.0" />
+    <nuclide name="O-16" xs="71c" ao="1.0" />
   </material>
 
 </materials>

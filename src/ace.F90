@@ -115,9 +115,9 @@ contains
         ! search through the list of nuclides for one which has a matching zaid
         sab => sab_tables(mat % i_sab_tables(k))
 
-        ! Loop through nuclides and find  match
+        ! Loop through nuclides and find match
         FIND_NUCLIDE: do j = 1, mat % n_nuclides
-          if (nuclides(mat % nuclide(j)) % zaid == sab % zaid) then
+          if (any(sab % zaid == nuclides(mat % nuclide(j)) % zaid)) then
             mat % i_sab_nuclides(k) = j
             exit FIND_NUCLIDE
           end if
@@ -161,16 +161,16 @@ contains
           mat % i_sab_tables(m)   = temp_table
         end do SORT_SAB
       end if
-      
+
       ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
       if (allocated(mat % names)) deallocate(mat % names)
       if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
-    
+
     ! Avoid some valgrind leak errors
     call already_read % clear()
-    
+
   end subroutine read_xs
 
 !===============================================================================
@@ -253,7 +253,7 @@ contains
       end if
 
       ! Read more header and NXS and JXS
-      read(UNIT=in, FMT=100) comment, mat, & 
+      read(UNIT=in, FMT=100) comment, mat, &
            (zaids(i), awrs(i), i=1,16), NXS, JXS
 100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
            ,8I9/8I9/8I9/8I9/8I9/8I9)
@@ -277,7 +277,7 @@ contains
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information
-      read(UNIT=in, REC=location) name, awr, kT, date_, & 
+      read(UNIT=in, REC=location) name, awr, kT, date_, &
            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
       ! determine table length
@@ -333,7 +333,15 @@ contains
       sab % name = name
       sab % awr  = awr
       sab % kT   = kT
-      sab % zaid = zaids(1)
+      ! Find sab % n_zaid
+      do i = 1, 16
+        if (zaids(i) == 0) then
+          sab % n_zaid = i - 1
+          exit
+        end if
+      end do
+      allocate(sab % zaid(sab % n_zaid))
+      sab % zaid = zaids(1: sab % n_zaid)
 
       call read_thermal_data(sab)
     end select
@@ -406,7 +414,7 @@ contains
     integer :: LNU    ! type of nu data (polynomial or tabular)
     integer :: NC     ! number of polynomial coefficients
     integer :: NR     ! number of interpolation regions
-    integer :: NE     ! number of energies 
+    integer :: NE     ! number of energies
     integer :: NPCR   ! number of delayed neutron precursor groups
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
@@ -781,14 +789,19 @@ contains
       ! read angular distribution -- currently this does not actually parse the
       ! angular distribution tables for each incoming energy, that must be done
       ! on-the-fly
-      LC = rxn % adist % location(1)
-      XSS_index = JXS9 + abs(LC) - 1
+      XSS_index = JXS9 + LOCB + 2 * NE
       rxn % adist % data = get_real(length)
 
       ! change location pointers since they are currently relative to JXS(9)
-      LC = abs(rxn % adist % location(1))
-      rxn % adist % location = abs(rxn % adist % location) - LC
-
+      LC = LOCB + 2 * NE + 1
+      do j = 1, NE
+        ! For consistency, leave location as 0 if type is isotropic.
+        ! This is not necessary for current correctness, but can avoid
+        ! future issues
+        if (rxn % adist % location(j) /= 0) then
+          rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
+        end if
+      end do
     end do
 
   end subroutine read_angular_dist
@@ -809,7 +822,7 @@ contains
 
     LED  = JXS(10)
 
-    ! Loop over all reactions 
+    ! Loop over all reactions
     do i = 1, NXS(5)
       rxn => nuc % reactions(i+1) ! skip over elastic scattering
       rxn % has_energy_dist = .true.
@@ -840,7 +853,7 @@ contains
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law   
+    integer :: LAW    ! secondary energy distribution law
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of incoming energies
     integer :: IDAT   ! location of first energy distribution for given MT
@@ -934,6 +947,7 @@ contains
     integer :: NEa   ! number of energies for Watt 'a'
     integer :: NRb   ! number of interpolation regions for Watt 'b'
     integer :: NEb   ! number of energies for Watt 'b'
+    real(8), allocatable :: L(:)  ! locations of distributions for each Ein
 
     ! initialize length
     length = 0
@@ -958,8 +972,23 @@ contains
       ! Continuous tabular distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust location for this block
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
         ! determine length
         NP = int(XSS(lc + length + 2))
         length = length + 2 + 3*NP
@@ -968,6 +997,7 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
+      deallocate(L)
 
     case (5)
       ! General evaporation spectrum
@@ -1000,8 +1030,23 @@ contains
       ! Kalbach-Mann correlated scattering
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust location for this block
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
         NP = int(XSS(lc + length + 2))
         length = length + 2 + 5*NP
 
@@ -1009,13 +1054,30 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
+      deallocate(L)
 
     case (61)
       ! Correlated energy and angle distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust locators for energy distribution
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
+
         ! outgoing energy distribution
         NP = int(XSS(lc + length + 2))
 
@@ -1037,7 +1099,7 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
-
+      deallocate(L)
     case (66)
       ! N-body phase space distribution
       length = 2
@@ -1046,6 +1108,14 @@ contains
       ! Laboratory energy-angle law
       NR  = int(XSS(lc + 1))
       NE  = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      ! Don't currently do anything with L
+      deallocate(L)
+      ! Continue with finding data length
       NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
       length = 4 + 2*(NR + NE + NMU)
 
@@ -1187,15 +1257,10 @@ contains
     integer :: NE_out ! number of outgoing energies
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
+    integer(8), allocatable :: LOCC(:) ! Location of inelastic data
 
-    ! read secondary energy mode for inelastic scattering and check
+    ! read secondary energy mode for inelastic scattering
     table % secondary_mode = NXS(7)
-    if (table % secondary_mode /= SAB_SECONDARY_EQUAL .and. &
-         table % secondary_mode /= SAB_SECONDARY_SKEWED) then
-      message = "Unsupported secondary mode on S(a,b) table " // &
-           trim(adjustl(table % name)) // ": " // to_str(table % secondary_mode)
-      call fatal_error()
-    end if
 
     ! read number of inelastic energies and allocate arrays
     NE_in = int(XSS(JXS(1)))
@@ -1213,29 +1278,67 @@ contains
 
     ! allocate space for outgoing energy/angle for inelastic
     ! scattering
-    NE_out = NXS(4)
-    NMU = NXS(3) + 1
-    table % n_inelastic_e_out = NE_out
-    table % n_inelastic_mu = NMU
-    allocate(table % inelastic_e_out(NE_out, NE_in))
-    allocate(table % inelastic_mu(NMU, NE_out, NE_in))
+    if (table % secondary_mode == SAB_SECONDARY_EQUAL .or. &
+         table % secondary_mode == SAB_SECONDARY_SKEWED) then
+      NMU = NXS(3) + 1
+      table % n_inelastic_mu = NMU
+      NE_out = NXS(4)
+      table % n_inelastic_e_out = NE_out
+      allocate(table % inelastic_e_out(NE_out, NE_in))
+      allocate(table % inelastic_mu(NMU, NE_out, NE_in))
+    else if (table % secondary_mode == SAB_SECONDARY_CONT) then
+      NMU = NXS(3) - 1
+      table % n_inelastic_mu = NMU
+      allocate(table % inelastic_data(NE_in))
+      allocate(LOCC(NE_in))
+      ! NE_out will be determined later
+    end if
 
     ! read outgoing energy/angle distribution for inelastic scattering
-    lc = JXS(3) - 1
-    do i = 1, NE_in
-      do j = 1, NE_out
-        ! read outgoing energy
-        table % inelastic_e_out(j,i) = XSS(lc + 1)
+    if (table % secondary_mode == SAB_SECONDARY_EQUAL .or. &
+         table % secondary_mode == SAB_SECONDARY_SKEWED) then
+      lc = JXS(3) - 1
+      do i = 1, NE_in
+        do j = 1, NE_out
+          ! read outgoing energy
+          table % inelastic_e_out(j,i) = XSS(lc + 1)
 
-        ! read outgoing angles for this outgoing energy
-        do k = 1, NMU
-          table % inelastic_mu(k,j,i) = XSS(lc + 1 + k)
+          ! read outgoing angles for this outgoing energy
+          do k = 1, NMU
+            table % inelastic_mu(k,j,i) = XSS(lc + 1 + k)
+          end do
+
+          ! advance pointer
+          lc = lc + 1 + NMU
         end do
-
-        ! advance pointer
-        lc = lc + 1 + NMU
       end do
-    end do
+    else if (table % secondary_mode == SAB_SECONDARY_CONT) then
+      ! Get the location pointers to each Ein's DistEnergySAB data
+      LOCC = get_int(NE_in)
+      ! Get the number of outgoing energies and allocate space accordingly
+      do i = 1, NE_in
+        NE_out = int(XSS(XSS_index + i - 1))
+        table % inelastic_data(i) % n_e_out = NE_out
+        allocate(table % inelastic_data(i) % e_out (NE_out))
+        allocate(table % inelastic_data(i) % e_out_pdf (NE_out))
+        allocate(table % inelastic_data(i) % e_out_cdf (NE_out))
+        allocate(table % inelastic_data(i) % mu (NMU, NE_out))
+      end do
+
+      ! Now we can fill the inelastic_data(i) attributes
+      do i = 1, NE_in
+        XSS_index = int(LOCC(i))
+        NE_out = table % inelastic_data(i) % n_e_out
+        do j = 1, NE_out
+          table % inelastic_data(i) % e_out(j) = XSS(XSS_index + 1)
+          table % inelastic_data(i) % e_out_pdf(j) = XSS(XSS_index + 2)
+          table % inelastic_data(i) % e_out_cdf(j) = XSS(XSS_index + 3)
+          table % inelastic_data(i) % mu(:, j) = &
+            XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
+          XSS_index = XSS_index + 4 + NMU - 1
+        end do
+      end do
+    end if
 
     ! read number of elastic energies and allocate arrays
     JXS4 = JXS(4)

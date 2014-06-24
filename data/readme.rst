@@ -15,6 +15,9 @@ work with a few common cross section sources.
 - **cross_sections_ascii.xml** -- This file matches ENDF/B-VII.0 cross sections
     distributed with MCNP5 / MCNP6 beta.
 
+- **cross_sections_nndc.xml** -- This file matches ENDF/B-VII.1 cross sections
+    distributed from the `NNDC website`_.
+
 - **cross_sections_serpent.xml** -- This file matches ENDF/B-VII.0 cross
     sections distributed with Serpent 1.1.7.
 
@@ -31,3 +34,4 @@ element in your settings.xml, or set the CROSS_SECTIONS environment variable to
 the full path of the cross_sections.xml file.
 
 .. _user's guide: http://mit-crpg.github.io/openmc/usersguide/install.html#cross-section-configuration
+.. _NNDC website: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

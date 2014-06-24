@@ -393,7 +393,8 @@ contains
 
       ! Calculate elastic cross section/factor
       elastic = ZERO
-      if (urr % prob(i_energy, URR_ELASTIC, i_table) > ZERO) then
+      if (urr % prob(i_energy, URR_ELASTIC, i_table) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_ELASTIC, i_table) > ZERO) then
         elastic = exp((ONE - f) * log(urr % prob(i_energy, URR_ELASTIC, &
              i_table)) + f * log(urr % prob(i_energy + 1, URR_ELASTIC, &
              i_table)))
@@ -401,7 +402,8 @@ contains
 
       ! Calculate fission cross section/factor
       fission = ZERO
-      if (urr % prob(i_energy, URR_FISSION, i_table) > ZERO) then
+      if (urr % prob(i_energy, URR_FISSION, i_table) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_FISSION, i_table) > ZERO) then
         fission = exp((ONE - f) * log(urr % prob(i_energy, URR_FISSION, &
              i_table)) + f * log(urr % prob(i_energy + 1, URR_FISSION, &
              i_table)))
@@ -409,7 +411,8 @@ contains
 
       ! Calculate capture cross section/factor
       capture = ZERO
-      if (urr % prob(i_energy, URR_N_GAMMA, i_table) > ZERO) then
+      if (urr % prob(i_energy, URR_N_GAMMA, i_table) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_N_GAMMA, i_table) > ZERO) then
         capture = exp((ONE - f) * log(urr % prob(i_energy, URR_N_GAMMA, &
              i_table)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
              i_table)))

@@ -29,6 +29,7 @@ module material_header
   type Material
     integer                        :: id         ! unique identifier
     integer                        :: n_nuclides ! number of nuclides
+    integer                        :: n_comp     ! number of compositions
     integer, allocatable           :: nuclide(:) ! index in nuclides array
     type(Density)                  :: density    ! atom densities in atom/b-cm
     type(Composition), allocatable :: comp(:)    ! atom fractions via compositions

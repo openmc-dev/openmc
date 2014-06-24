@@ -809,8 +809,10 @@ contains
       ! determine normalized atom percents. if given atom percents, this is
       ! straightforward. if given weight percents, the value is w/awr and is
       ! divided by sum(w/awr)
-      sum_percent = sum(mat % comp(1) % atom_density)
-      mat % comp(1) % atom_density = mat % comp(1) % atom_density / sum_percent
+      do j = 1, mat % n_comp
+        sum_percent = sum(mat % comp(j) % atom_density)
+        mat % comp(j) % atom_density = mat % comp(j) % atom_density / sum_percent
+      end do
 
       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)

@@ -26,12 +26,14 @@ module geometry_header
      integer :: type        ! Type of lattice (rectangular, hex, etc)
      integer :: level       ! Level of lattice
      integer :: n_dimension ! Number of dimensions
-     integer, allocatable :: dimension(:)     ! number of cells in each direction
-     real(8), allocatable :: lower_left(:)    ! lower-left corner of lattice
-     real(8), allocatable :: width(:)         ! width of each lattice cell
-     integer, allocatable :: universes(:,:,:) ! specified universes
-     integer, allocatable :: offset(:,:,:,:)    ! offsets
-     integer              :: outside          ! material to fill area outside
+     integer, allocatable :: dimension(:)        ! number of cells in each direction
+     real(8), allocatable :: lower_left(:)       ! lower-left corner of lattice
+     real(8), allocatable :: width(:)            ! width of each lattice cell
+     integer, allocatable :: universes(:,:,:)    ! specified universes
+     integer, allocatable :: offset(:,:,:,:)     ! offsets
+     integer, allocatable :: densities(:,:,:)    ! distributed material indices
+     integer, allocatable :: compositions(:,:,:) ! distributed material indices
+     integer              :: outside             ! material to fill area outside
   end type Lattice
 
 !===============================================================================
@@ -54,17 +56,20 @@ module geometry_header
 !===============================================================================
 
   type Cell
-     integer :: id                          ! Unique ID
-     integer :: type                        ! Type of cell (normal, universe, lattice)
-     integer :: universe                    ! universe # this cell is in
-     integer :: fill                        ! universe # filling this cell
-     integer :: material                    ! Material within cell (0 for universe)
-     integer :: n_surfaces                  ! Number of surfaces within
-     integer, allocatable :: offset (:)     ! Offset for tally counter
+     integer :: id                      ! Unique ID
+     integer :: type                    ! Type of cell (normal, universe, lattice)
+     integer :: universe                ! universe # this cell is in
+     integer :: fill                    ! universe # filling this cell
+     integer :: dist_dens               ! material distribution number
+     integer :: dist_comp               ! material distribution number
+     logical :: distributed             ! distributed materials
+     integer :: material                ! Material within cell (0 for universe)
+     integer :: n_surfaces              ! Number of surfaces within
+     integer, allocatable :: offset (:) ! Offset for tally counter
      integer, allocatable :: & 
-          & surfaces(:)                     ! List of surfaces bounding cell -- note that
-                                            ! parentheses, union, etc operators will be listed
-                                            ! here too
+          & surfaces(:)                 ! List of surfaces bounding cell -- note that
+                                        ! parentheses, union, etc operators will be listed
+                                        ! here too
 
      ! Rotation matrix and translation vector
      real(8), allocatable :: rotation(:,:)

@@ -1473,29 +1473,36 @@ contains
       end if
 
       ! Check for distributed densities
+      write (*,*) "Distributed Density"
       if (check_for_node(node_mat, "distributed_density")) then
-        write (*,*) "Distributed Density"
+        write (*,*) "Distributed Density 1"
 
-        call get_node_ptr(node_mat, "density", node_dens)
+        sum_density = .false.
+        call get_node_ptr(node_mat, "distributed_density", node_dens)
 
         mat % distrib_dens = .true.
 
+        write (*,*) "Distributed Density 2"
         ! Get number of densities
         n = get_arraysize_double(node_dens, "values")
         allocate(mat % density % density(n))
         mat % density % num = n
 
+        write (*,*) "Distributed Density 3"
         ! Copy values
-        call get_node_array(node_mat, "values", &
+        call get_node_array(node_dens, "values", &
              mat % density % density)
 
+        write (*,*) "Distributed Density 4"
         ! Copy units
-        call get_node_value(node_mat, "units", units)
+        call get_node_value(node_dens, "units", units)
 
+        write (*,*) "Distributed Density 5"
         ! Adjust material density based on specified units
         call lower_case(units)
         select case(trim(units))
         case ('g/cc', 'g/cm3')
+          write (*,*) "Distributed Density 6"
           mat % density % density = -mat % density % density
         case ('kg/m3')
           mat % density % density = -0.001 * mat % density % density
@@ -1509,11 +1516,12 @@ contains
                // trim(to_str(mat % id))
           call fatal_error()
         end select
-
+        
       else
-
+        ! NOT USING DISTRIBUTED DENSITIES
         allocate(mat % density % density(1))
         mat % distrib_dens = .false.
+        mat % density % num = 1
       
         ! =======================================================================
         ! READ AND PARSE <density> TAG
@@ -1587,7 +1595,7 @@ contains
         end if
 
         ! Get pointer list of XML <nuclide>
-        call get_node_list(node_mat, "nuclide", node_nuc_list)
+        call get_node_list(node_comp, "nuclide", node_nuc_list)
 
         n = get_list_size(node_nuc_list)
         ! Create list of nuclides based on those specified plus natural elements
@@ -1670,18 +1678,22 @@ contains
         
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
-        if (mod(n_comp,n) /= 0) then
+        write (*,*) "n_comp:",n_comp
+        write (*,*) "n:",n
+        mat % n_comp = mod(n_comp,n)
+        if (mat % n_comp /= 0) then
           message = "Number of composition values not divisible by " // &
                     "number of nuclides." // &
                     trim(to_str(mat % id))
           call fatal_error()
         end if
 
+        mat % n_comp = n_comp / n
+
         allocate(temp_real_array(n_comp))
         call get_node_array(node_comp, "values", temp_real_array)
 
         ! Allocate distribution vectors
-        mat % n_comp = mod(n_comp,n)
         allocate(mat % comp(mat % n_comp))
         do j = 1, mat % n_comp
           allocate(mat % comp(j) % atom_density(n))
@@ -1695,7 +1707,7 @@ contains
         end do
 
       else
-
+        ! NOT USING DISTRIBUTED COMPOSITIONS
         mat % distrib_comp = .false.
 
         ! Enforce no distribution
@@ -1837,8 +1849,7 @@ contains
         allocate(mat % names(n))
         allocate(mat % nuclide(n))
         allocate(mat % comp(1) % atom_density(n))
-        mat % density % num = 1
-
+      
         ALL_NUCLIDES: do j = 1, mat % n_nuclides
           ! Check that this nuclide is listed in the cross_sections.xml file
           name = trim(list_names % get_item(j))
@@ -1957,7 +1968,8 @@ contains
 
       ! Add material to dictionary
       call material_dict % add_key(mat % id, i)
-      write (*,*) "mat % n_sab:",mat % n_sab
+      write (*,*) "Material:"
+      write (*,*) "",mat % density % density(1)
     end do
 
     ! Set total number of nuclides and S(a,b) tables

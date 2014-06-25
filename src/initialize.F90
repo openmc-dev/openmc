@@ -1184,7 +1184,10 @@ end subroutine prepare_distribcell
 !===============================================================================
 
   subroutine prepare_distribmats()
-  
+
+  ! Verify all information present
+
+  ! Determine which fill cells require specification
     
   
 end subroutine prepare_distribmats

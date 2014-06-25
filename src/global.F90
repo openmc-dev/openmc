@@ -152,6 +152,11 @@ module global
   ! File which stores ndpp library data.
   character(MAX_FILE_LEN) :: ndpp_lib
 
+  ! Storage for the combined elastic & inelastic data to be tallied for the
+  ! case of NDPP scattering.
+  ! Dimensions are: (Thread Id, Scattering Order, Incoming Energy)
+  real(8), allocatable :: ndpp_outgoing(:,:,:)
+
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
@@ -221,6 +226,9 @@ module global
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
+#else
+  integer :: n_threads = 1         ! number of OpenMP threads
+  integer :: thread_id = 0         ! ID of a given thread
 #endif
 
   ! No reduction at end of batch
@@ -315,7 +323,7 @@ module global
 
   ! CMFD communicator
   integer :: cmfd_comm
- 
+
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
   type(Timer) :: time_cmfdbuild ! timer for matrix build
@@ -451,6 +459,7 @@ contains
     end if
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
+    if (allocated(ndpp_outgoing)) deallocate(ndpp_outgoing)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)

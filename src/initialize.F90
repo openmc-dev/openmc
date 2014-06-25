@@ -103,11 +103,6 @@ contains
       ! Read ACE-format cross sections
       call time_read_xs % start()
       call read_xs()
-
-      ! Read NDPP-format integrated scattering data, if needed for tallies
-      if (use_ndpp_data) then
-        call read_ndpp_data()
-      end if
       call time_read_xs % stop()
 
       ! Construct unionized energy grid from cross-sections
@@ -134,6 +129,13 @@ contains
       ! If this is a restart run, load the state point data and binary source
       ! file
       if (restart_run) call load_state_point()
+
+      ! Read NDPP-format integrated scattering data, if needed for tallies
+      if (use_ndpp_data) then
+        call time_read_xs % start()
+        call read_ndpp_data()
+        call time_read_xs % stop()
+      end if
     end if
 
     if (master) then

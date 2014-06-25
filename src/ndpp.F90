@@ -29,21 +29,22 @@ contains
     type(Nuclide), pointer    :: nuc => null() ! Current working nuclide
     type(SAlphaBeta), pointer :: sab => null() ! Current working SAB table
     type(XsListing), pointer  :: ndpp_listing => null()
-    integer :: i_listing   ! index in ndpp_listings array
-    integer :: i_nuclide   ! index in nuclides
-    integer :: i_sab       ! index in sab_tables
-    integer :: scatt_type  ! Whether or not legendre or tabular data
-    logical :: get_scatt   ! Flag for whether or not to get scatt data
-    logical :: get_nuscatt ! Flag for whether or not to get nuscatt data
-    logical :: get_chi_t   ! Flag for whether or not to get total chi data
-    logical :: get_chi_p   ! Flag for whether or not to get prompt chi data
-    logical :: get_chi_d   ! Flag for whether or not to get delayed chi data
-    integer :: scatt_order ! Number of moments requested in tallies for scatter
+    integer :: i_listing     ! index in ndpp_listings array
+    integer :: i_nuclide     ! index in nuclides
+    integer :: i_sab         ! index in sab_tables
+    integer :: scatt_type    ! Whether or not legendre or tabular data
+    logical :: get_scatt     ! Flag for whether or not to get scatt data
+    logical :: get_nuscatt   ! Flag for whether or not to get nuscatt data
+    logical :: get_chi_t     ! Flag for whether or not to get total chi data
+    logical :: get_chi_p     ! Flag for whether or not to get prompt chi data
+    logical :: get_chi_d     ! Flag for whether or not to get delayed chi data
+    integer :: scatt_order   ! Number of moments requested in tallies for scatter
     integer :: nuscatt_order ! Number of moments requested in tallies for nuscatter
-    integer :: sab_order   ! Number of moments requested in tallies for sab data
+    integer :: sab_order     ! Number of moments requested in tallies for sab data
+    integer :: ndpp_groups   ! Number of groups in the NDPP library
 
     ! First lets go read the ndpp_lib.xml file
-    call read_ndpp_xml(scatt_type)
+    call read_ndpp_xml(scatt_type, ndpp_groups)
 
     ! Determine which data is required to be stored as well as the maximum orders
     ! for scatt and nuscatt
@@ -93,6 +94,12 @@ contains
       deallocate(ndpp_listings)
     end if
     call ndpp_listing_dict % clear()
+
+    ! Now allocate ndpp_outgoing, our `scratch` variable to store the combined
+    ! and interpolated elastic + inelastic data.  This is program global and has
+    ! been declared threadprivate.
+    allocate(ndpp_outgoing(0: n_threads, &
+             max(scatt_order, nuscatt_order, sab_order), ndpp_groups))
 
   end subroutine read_ndpp_data
 
@@ -189,9 +196,10 @@ contains
 ! file contains a listing of the ACE cross sections that may be used.
 !===============================================================================
 
-  subroutine read_ndpp_xml(scatt_type)
+  subroutine read_ndpp_xml(scatt_type, ndpp_groups)
 
     integer, intent(out)  :: scatt_type  ! Whether or not legendre or tabular data
+    integer, intent(out)  :: ndpp_groups ! number of groups in NDPP data
 
     integer :: i, j, k     ! loop indices
     logical :: file_exists ! does ndpp_lib.xml exist?
@@ -205,12 +213,11 @@ contains
     ! We can use the same XSListing type for our ndpp data since the NDPP
     ! data is a subset of whats in cross_sections.xml
     type(XsListing), pointer :: listing => null()
-    integer :: order       ! ndpp_lib.xml's scattering order
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: node_ndpp => null()
-    type(NodeList), pointer :: node_ndpp_list => null()
-    integer :: ndpp_groups
-    real(8), allocatable :: ndpp_energy_bins(:)
+    type(Node), pointer      :: doc => null()
+    type(Node), pointer      :: node_ndpp => null()
+    type(NodeList), pointer  :: node_ndpp_list => null()
+    real(8), allocatable     :: ndpp_energy_bins(:)
+    integer                  :: order       ! ndpp_lib.xml's scattering order
 
     ! Check if ndpp_lib.xml exists
     inquire(FILE=ndpp_lib, EXIST=file_exists)

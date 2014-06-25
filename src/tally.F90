@@ -2912,14 +2912,14 @@ contains
 ! This includes performing all the interpolation necessary.  The *_N version of
 ! this function provides this capability for score-ndpp-*scatter-n tallies only.
 !===============================================================================
-  subroutine generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
+  subroutine generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, &
                                      el_Ein, el_Ein_srch, el, &
                                      inel_Ein, inel_Ein_srch, inel, inel_norm, &
-                                     el_distrib, inel_distrib, norm)
+                                     norm, gmin, gmax)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
-    integer, intent(in) :: t_order ! # of scattering orders to tally
-    real(8), intent(in) :: Ein ! Incoming energy
+    integer, intent(in) :: l         ! Scattering order to tally
+    real(8), intent(in) :: Ein       ! Incoming energy
     real(8), pointer, intent(in) :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, intent(in) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
     type(GrpTransfer), pointer, intent(in) :: el(:)   ! Elastic data to tally
@@ -2927,12 +2927,12 @@ contains
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
     real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
-    type(GrpTransfer), intent(inout) :: el_distrib    ! Our elastic return value
-    type(GrpTransfer), intent(inout) :: inel_distrib  ! Our inelastic return value
-    real(8), intent(inout) :: norm                    ! Total normalization
+    real(8), intent(inout)       :: norm              ! Total normalization
+    integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
+    integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
 
     integer :: srch_lo, srch_hi, i_grid
-    integer :: gmin, gmax, g
+    integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
     real(8) :: f, one_f
 
     ! Create distribution for elastic scattering
@@ -2954,29 +2954,27 @@ contains
     end if
     one_f = ONE - f
 
-    ! Now find our gmin and gmax terms so we can allocate el_distrib
-    gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-               lbound(el(i_grid + 1) % outgoing, dim=2))
-    gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-               ubound(el(i_grid + 1) % outgoing, dim=2))
+    ! Now find our gmin and gmax terms
+    el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+                  lbound(el(i_grid + 1) % outgoing, dim=2))
+    el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+                  ubound(el(i_grid + 1) % outgoing, dim=2))
 
-    ! set up distrib
-    allocate(el_distrib % outgoing(1, gmin: gmax))
-    el_distrib % outgoing = ZERO
+    ! set up our distribution storage
+    ndpp_outgoing(thread_id, l, :) = ZERO
 
-    ! Now we can interpolate on the elastic data and put it in el_distrib
+    ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
     do g = lbound(el(i_grid) % outgoing, dim=2), &
            ubound(el(i_grid) % outgoing, dim=2)
-      el_distrib % outgoing(1, g) = micro_xs(i_nuclide) % elastic * &
-        el(i_grid) % outgoing(t_order + 1, g) * one_f
+      ndpp_outgoing(thread_id, l, g) = micro_xs(i_nuclide) % elastic * &
+        el(i_grid) % outgoing(l, g) * one_f
     end do
     ! Do upper point
     do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
            ubound(el(i_grid + 1) % outgoing, dim=2)
-      el_distrib % outgoing(1, g) = el_distrib % outgoing(1, g) + &
-        micro_xs(i_nuclide) % elastic * &
-        el(i_grid + 1) % outgoing(t_order + 1, g) * f
+      ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+        micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(l, g) * f
     end do
 
     norm = micro_xs(i_nuclide) % elastic
@@ -3007,31 +3005,34 @@ contains
       end if
       one_f = ONE - f
 
-      ! Now find our gmin and gmax terms so we can allocate inel_distrib
-      gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
-                 lbound(inel(i_grid + 1) % outgoing, dim=2))
-      gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
-                 ubound(inel(i_grid + 1) % outgoing, dim=2))
+      ! Now find our gmin and gmax terms
+      inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+                      lbound(inel(i_grid + 1) % outgoing, dim=2))
+      inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+                      ubound(inel(i_grid + 1) % outgoing, dim=2))
 
-      ! set up distrib
-      allocate(inel_distrib % outgoing(1, gmin: gmax))
-      inel_distrib % outgoing = ZERO
-
-      ! Now we can interpolate on the elastic data and put it in inel_distrib
+      ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
       ! Do lower point
       do g = lbound(inel(i_grid) % outgoing, dim=2), &
              ubound(inel(i_grid) % outgoing, dim=2)
-        inel_distrib % outgoing(1, g) = &
-          inel(i_grid) % outgoing(t_order + 1, g) * one_f
+        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+          inel(i_grid) % outgoing(l, g) * one_f
       end do
       ! Do upper point
       do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
              ubound(inel(i_grid + 1) % outgoing, dim=2)
-        inel_distrib % outgoing(1, g) = inel_distrib % outgoing(1, g) + &
-          inel(i_grid + 1) % outgoing(t_order + 1, g) * f
+        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+          inel(i_grid + 1) % outgoing(l, g) * f
       end do
 
+      ! Set our other outgoing data
       norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+      gmin = min(el_gmin, inel_gmin)
+      gmax = max(el_gmax, inel_gmax)
+    else
+      ! Set our other outgoing data
+      gmin = el_gmin
+      gmax = el_gmax
     end if
 
     ! Take inverse of norm for later usage as normalization constant
@@ -3045,14 +3046,13 @@ contains
 ! This includes performing all the interpolation necessary.  The *_PN version of
 ! this function provides this capability for score-ndpp-*scatter-pn tallies only.
 !===============================================================================
-  subroutine generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
+  subroutine generate_ndpp_distrib_pn(i_nuclide, gin, Ein, &
                                       el_Ein, el_Ein_srch, el, &
                                       inel_Ein, inel_Ein_srch, inel, inel_norm, &
-                                      el_distrib, inel_distrib, norm)
+                                      norm, gmin, gmax)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
-    integer, intent(in) :: t_order ! # of scattering orders to tally
-    real(8), intent(in) :: Ein ! Incoming energy
+    real(8), intent(in) :: Ein       ! Incoming energy
     real(8), pointer, intent(in) :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, intent(in) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
     type(GrpTransfer), pointer, intent(in) :: el(:)   ! Elastic data to tally
@@ -3060,12 +3060,12 @@ contains
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
     real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
-    type(GrpTransfer), intent(inout) :: el_distrib    ! Our elastic return value
-    type(GrpTransfer), intent(inout) :: inel_distrib  ! Our inelastic return value
-    real(8), intent(inout) :: norm                    ! Total normalization
+    real(8), intent(inout)       :: norm              ! Total normalization
+    integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
+    integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
 
     integer :: srch_lo, srch_hi, i_grid
-    integer :: gmin, gmax, g
+    integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
     real(8) :: f, one_f
 
     ! Create distribution for elastic scattering
@@ -3087,29 +3087,27 @@ contains
     end if
     one_f = ONE - f
 
-    ! Now find our gmin and gmax terms so we can allocate el_distrib
-    gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-               lbound(el(i_grid + 1) % outgoing, dim=2))
-    gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-               ubound(el(i_grid + 1) % outgoing, dim=2))
+    ! Now find our gmin and gmax terms
+    el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+                  lbound(el(i_grid + 1) % outgoing, dim=2))
+    el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+                  ubound(el(i_grid + 1) % outgoing, dim=2))
 
-    ! set up distrib
-    allocate(el_distrib % outgoing(t_order + 1, gmin: gmax))
-    el_distrib % outgoing = ZERO
+    ! set up our distribution storage
+    ndpp_outgoing = ZERO
 
-    ! Now we can interpolate on the elastic data and put it in el_distrib
+    ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
     do g = lbound(el(i_grid) % outgoing, dim=2), &
            ubound(el(i_grid) % outgoing, dim=2)
-      el_distrib % outgoing(1, g) = micro_xs(i_nuclide) % elastic * &
-        el(i_grid) % outgoing(t_order + 1, g) * one_f
+      ndpp_outgoing(thread_id, :, g) = micro_xs(i_nuclide) % elastic * &
+        el(i_grid) % outgoing(:, g) * one_f
     end do
     ! Do upper point
     do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
            ubound(el(i_grid + 1) % outgoing, dim=2)
-      el_distrib % outgoing(1, g) = el_distrib % outgoing(1, g) + &
-        micro_xs(i_nuclide) % elastic * &
-        el(i_grid + 1) % outgoing(t_order + 1, g) * f
+      ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
+        micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(:, g) * f
     end do
 
     norm = micro_xs(i_nuclide) % elastic
@@ -3140,31 +3138,34 @@ contains
       end if
       one_f = ONE - f
 
-      ! Now find our gmin and gmax terms so we can allocate inel_distrib
-      gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
-                 lbound(inel(i_grid + 1) % outgoing, dim=2))
-      gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
-                 ubound(inel(i_grid + 1) % outgoing, dim=2))
+      ! Now find our gmin and gmax terms
+      inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+                      lbound(inel(i_grid + 1) % outgoing, dim=2))
+      inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+                      ubound(inel(i_grid + 1) % outgoing, dim=2))
 
-      ! set up distrib
-      allocate(inel_distrib % outgoing(t_order + 1, gmin: gmax))
-      inel_distrib % outgoing = ZERO
-
-      ! Now we can interpolate on the elastic data and put it in inel_distrib
+      ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
       ! Do lower point
       do g = lbound(inel(i_grid) % outgoing, dim=2), &
              ubound(inel(i_grid) % outgoing, dim=2)
-        inel_distrib % outgoing(:, g) = &
+        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
           inel(i_grid) % outgoing(:, g) * one_f
       end do
       ! Do upper point
       do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
              ubound(inel(i_grid + 1) % outgoing, dim=2)
-        inel_distrib % outgoing(:, g) = inel_distrib % outgoing(:, g) + &
+        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
           inel(i_grid + 1) % outgoing(:, g) * f
       end do
 
+      ! Set our other outgoing data
       norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+      gmin = min(el_gmin, inel_gmin)
+      gmax = max(el_gmax, inel_gmax)
+    else
+      ! Set our other outgoing data
+      gmin = el_gmin
+      gmax = el_gmax
     end if
 
     ! Take inverse of norm for later usage as normalization constant
@@ -3193,12 +3194,11 @@ contains
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer :: g ! outgoing energy group index
-    integer :: g_filter ! outgoing energy group index
+    integer, save :: g ! outgoing energy group index
+    integer, save :: g_filter ! outgoing energy group index
+    integer, save :: l ! tally order index to score
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), save :: elastic   ! Combined elastic data
-    type(GrpTransfer), save :: inelastic ! Combined inelastic data
     real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
     real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
@@ -3207,8 +3207,13 @@ contains
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
     real(8), pointer, save :: inel_norm(:)      ! Inelastic normalization data from NDPP
+    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
+    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
 
-!$omp threadprivate(nuc,sab,elastic,inelastic,norm,el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel,inel_norm)
+!$omp threadprivate(g,g_filter,l,nuc,sab,norm,el_Ein,el_Ein_srch,el, &
+!$omp&              inel_Ein,inel_Ein_srch,inel,inel_norm)
+
+    l = t_order + 1
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3242,44 +3247,26 @@ contains
         inel => nuc % ndpp_inel
       end if
     end if
-    call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, el_Ein, &
+    call generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, el_Ein, &
                                  el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
-                                 inel, inel_norm, elastic, inelastic, norm)
+                                 inel, inel_norm, norm, gmin, gmax)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult
     ! Now apply sigS if we are in tracklength mode
     if (.not. is_analog) then
       norm = norm * (micro_xs(i_nuclide) % total - &
-               micro_xs(i_nuclide) % absorption)
+        micro_xs(i_nuclide) % absorption)
     end if
 
     ! Add the contribution from the elastic score
-    if (allocated(elastic % outgoing)) then
-      do g = lbound(elastic % outgoing, dim=2), &
-             ubound(elastic % outgoing, dim=2)
-        g_filter = filter_index + g - 1
+    do g = gmin, gmax
+      g_filter = filter_index + g - 1
 !$omp atomic
-        results(score_index, g_filter) % value = &
-          results(score_index, g_filter) % value + &
-          elastic % outgoing(t_order + 1, g) * norm
-      end do
-    end if
-
-    ! Now add the contribution from the inelastic score
-    if (allocated(inelastic % outgoing)) then
-      do g = lbound(inelastic % outgoing, dim=2), &
-             ubound(inelastic % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-!$omp atomic
-        results(score_index, g_filter) % value = &
-          results(score_index, g_filter) % value + &
-          inelastic % outgoing(t_order + 1, g) * norm
-      end do
-    end if
-
-    if (allocated(elastic % outgoing)) deallocate(elastic % outgoing)
-    if (allocated(inelastic % outgoing)) deallocate(inelastic % outgoing)
+      results(score_index, g_filter) % value = &
+        results(score_index, g_filter) % value + &
+        ndpp_outgoing(thread_id, l, g) * norm
+    end do
   end subroutine tally_ndpp_n
 
 !===============================================================================
@@ -3348,8 +3335,6 @@ contains
     integer, save :: l ! legendre moment index
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save :: sab ! The working s(a,b) table
-    type(GrpTransfer), save :: elastic   ! Combined elastic data
-    type(GrpTransfer), save :: inelastic ! Combined inelastic data
     real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
     real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
@@ -3358,8 +3343,11 @@ contains
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
     real(8), pointer, save :: inel_norm(:)      ! Inelastic normalization data from NDPP
+    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
+    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
 
-!$omp threadprivate(nuc,sab,elastic,inelastic,norm,el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel,inel_norm)
+!$omp threadprivate(i_score,l,nuc,sab,norm,el_Ein,el_Ein_srch,el, &
+!$omp&              inel_Ein,inel_Ein_srch,inel,inel_norm,gmin,gmax)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3393,49 +3381,28 @@ contains
         inel => nuc % ndpp_inel
       end if
     end if
-    call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, &
-                                  el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
-                                  inel, inel_norm, elastic, inelastic, norm)
+    call generate_ndpp_distrib_pn(i_nuclide, gin, Ein, el_Ein, el_Ein_srch, &
+                                  el, inel_Ein, inel_Ein_srch, inel, &
+                                  inel_norm, norm, gmin, gmax)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult
     ! Now apply sigS if we are in tracklength mode
     if (.not. is_analog) then
       norm = norm * (micro_xs(i_nuclide) % total - &
-               micro_xs(i_nuclide) % absorption)
+        micro_xs(i_nuclide) % absorption)
     end if
 
-    ! Add the contribution from the elastic score
-    if (allocated(elastic % outgoing)) then
-      do g = lbound(elastic % outgoing, dim=2), &
-             ubound(elastic % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-        do l = 1, t_order + 1
-          i_score = score_index + l - 1
+    ! Add the combined distribution to our tally
+    do g = gmin, gmax
+      g_filter = filter_index + g - 1
+      do l = 1, t_order + 1
+        i_score = score_index + l - 1
 !$omp atomic
-          results(score_index, g_filter) % value = &
-            results(score_index, g_filter) % value + &
-            elastic % outgoing(l, g) * norm
-        end do
+        results(i_score, g_filter) % value = &
+          results(i_score, g_filter) % value + ndpp_outgoing(thread_id, l, g) * norm
       end do
-    end if
-
-    ! Now add the contribution from the inelastic score
-    if (allocated(inelastic % outgoing)) then
-      do g = lbound(inelastic % outgoing, dim=2), &
-             ubound(inelastic % outgoing, dim=2)
-        g_filter = filter_index + g - 1
-        do l = 1, t_order + 1
-          i_score = score_index + l - 1
-!$omp atomic
-          results(score_index, g_filter) % value = &
-            results(score_index, g_filter) % value + &
-            inelastic % outgoing(l, g) * norm
-        end do
-      end do
-    end if
-    if (allocated(elastic % outgoing)) deallocate(elastic % outgoing)
-    if (allocated(inelastic % outgoing)) deallocate(inelastic % outgoing)
+    end do
   end subroutine tally_ndpp_pn
 
 !===============================================================================

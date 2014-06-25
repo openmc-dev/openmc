@@ -2927,9 +2927,9 @@ contains
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
     real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
-    type(GrpTransfer), intent(inout) :: el_distrib   ! Our elastic return value
-    type(GrpTransfer), intent(inout) :: inel_distrib ! Our inelastic return value
-    real(8), intent(inout) :: norm                                ! Total normalization
+    type(GrpTransfer), intent(inout) :: el_distrib    ! Our elastic return value
+    type(GrpTransfer), intent(inout) :: inel_distrib  ! Our inelastic return value
+    real(8), intent(inout) :: norm                    ! Total normalization
 
     integer :: srch_lo, srch_hi, i_grid
     integer :: gmin, gmax, g
@@ -2992,8 +2992,10 @@ contains
       srch_hi = inel_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
       if (Ein <= inel_Ein(1)) then
-        i_grid = 1
-        f = ZERO
+        ! Then our point is below the threshold: exit, leaving without
+        ! allocating inel
+        norm = ONE / norm
+        return
       else if (Ein >= inel_Ein(size(inel_Ein))) then
         i_grid = size(inel_Ein) - 1
         f = ONE
@@ -3058,9 +3060,9 @@ contains
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
     real(8), pointer, intent(in) :: inel_norm(:)      ! Inelastic normalization data from NDPP
-    type(GrpTransfer), intent(inout) :: el_distrib   ! Our elastic return value
-    type(GrpTransfer), intent(inout) :: inel_distrib ! Our inelastic return value
-    real(8), intent(inout) :: norm                                ! Total normalization
+    type(GrpTransfer), intent(inout) :: el_distrib    ! Our elastic return value
+    type(GrpTransfer), intent(inout) :: inel_distrib  ! Our inelastic return value
+    real(8), intent(inout) :: norm                    ! Total normalization
 
     integer :: srch_lo, srch_hi, i_grid
     integer :: gmin, gmax, g
@@ -3123,8 +3125,10 @@ contains
       srch_hi = inel_Ein_srch(gin + 1)
       ! Find the grid index and interpolant of ndpp scattering data
       if (Ein <= inel_Ein(1)) then
-        i_grid = 1
-        f = ZERO
+        ! Then our point is below the threshold: exit, leaving without
+        ! allocating inel
+        norm = ONE / norm
+        return
       else if (Ein >= inel_Ein(size(inel_Ein))) then
         i_grid = size(inel_Ein) - 1
         f = ONE
@@ -3196,7 +3200,15 @@ contains
     type(GrpTransfer), save :: elastic   ! Combined elastic data
     type(GrpTransfer), save :: inelastic ! Combined inelastic data
     real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
-!$omp threadprivate(nuc,sab,elastic,inelastic,norm)
+    real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
+    real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
+    real(8), pointer, save :: inel_norm(:)      ! Inelastic normalization data from NDPP
+
+!$omp threadprivate(nuc,sab,elastic,inelastic,norm,el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel,inel_norm)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3204,35 +3216,35 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
-                                   sab % ndpp_el_Ein, sab % ndpp_el_Ein_srch, &
-                                   sab % ndpp_el, NULL(), NULL(), NULL(), &
-                                   NULL(), elastic, inelastic, norm)
+      el_Ein => sab % ndpp_el_Ein
+      el_Ein_srch => sab % ndpp_el_Ein_srch
+      el => sab % ndpp_el
+      inel_Ein => null()
+      inel_Ein_srch => null()
+      inel => null()
+      inel_norm => null()
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
+      el_Ein => nuc % ndpp_el_Ein
+      el_Ein_srch => nuc % ndpp_el_Ein_srch
+      el => nuc % ndpp_el
+      inel_Ein => nuc % ndpp_inel_Ein
+      inel_Ein_srch => nuc % ndpp_inel_Ein_srch
+      inel_norm => nuc % ndpp_inel_norm
       if (present(nuscatt)) then
         if (nuscatt) then
-          call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
-                                       nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                       nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                       nuc % ndpp_inel_Ein_srch, nuc % ndpp_nuinel, &
-                                       nuc % ndpp_inel_norm, elastic, inelastic, norm)
+          inel => nuc % ndpp_nuinel
         else
-          call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
-                                       nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                       nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                       nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
-                                       nuc % ndpp_inel_norm, elastic, inelastic, norm)
+          inel => nuc % ndpp_inel
         end if
       else
-        call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
-                                     nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                     nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                     nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
-                                     nuc % ndpp_inel_norm, elastic, inelastic, norm)
+        inel => nuc % ndpp_inel
       end if
     end if
+    call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, el_Ein, &
+                                 el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
+                                 inel, inel_norm, elastic, inelastic, norm)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult
@@ -3265,6 +3277,9 @@ contains
           inelastic % outgoing(t_order + 1, g) * norm
       end do
     end if
+
+    if (allocated(elastic % outgoing)) deallocate(elastic % outgoing)
+    if (allocated(inelastic % outgoing)) deallocate(inelastic % outgoing)
   end subroutine tally_ndpp_n
 
 !===============================================================================
@@ -3327,7 +3342,6 @@ contains
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer :: srch_lo, srch_hi
     integer :: g ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
     integer, save :: i_score ! index of score dimension of results
@@ -3337,7 +3351,15 @@ contains
     type(GrpTransfer), save :: elastic   ! Combined elastic data
     type(GrpTransfer), save :: inelastic ! Combined inelastic data
     real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
-!$omp threadprivate(nuc,sab,elastic,inelastic,norm,i_score,l)
+    real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
+    real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
+    real(8), pointer, save :: inel_norm(:)      ! Inelastic normalization data from NDPP
+
+!$omp threadprivate(nuc,sab,elastic,inelastic,norm,el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel,inel_norm)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3345,35 +3367,35 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      call generate_ndpp_distrib_n(i_nuclide, gin, t_order, Ein, &
-                                   sab % ndpp_el_Ein, sab % ndpp_el_Ein_srch, &
-                                   sab % ndpp_el, NULL(), NULL(), NULL(), &
-                                   NULL(), elastic, inelastic, norm)
+      el_Ein => sab % ndpp_el_Ein
+      el_Ein_srch => sab % ndpp_el_Ein_srch
+      el => sab % ndpp_el
+      inel_Ein => null()
+      inel_Ein_srch => null()
+      inel => null()
+      inel_norm => null()
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
+      el_Ein => nuc % ndpp_el_Ein
+      el_Ein_srch => nuc % ndpp_el_Ein_srch
+      el => nuc % ndpp_el
+      inel_Ein => nuc % ndpp_inel_Ein
+      inel_Ein_srch => nuc % ndpp_inel_Ein_srch
+      inel_norm => nuc % ndpp_inel_norm
       if (present(nuscatt)) then
         if (nuscatt) then
-          call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
-                                        nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                        nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                        nuc % ndpp_inel_Ein_srch, nuc % ndpp_nuinel, &
-                                        nuc % ndpp_inel_norm, elastic, inelastic, norm)
+          inel => nuc % ndpp_nuinel
         else
-          call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
-                                        nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                        nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                        nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
-                                        nuc % ndpp_inel_norm, elastic, inelastic, norm)
+          inel => nuc % ndpp_inel
         end if
       else
-        call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, &
-                                      nuc % ndpp_el_Ein, nuc % ndpp_el_Ein_srch, &
-                                      nuc % ndpp_el, nuc % ndpp_inel_Ein, &
-                                      nuc % ndpp_inel_Ein_srch, nuc % ndpp_inel, &
-                                      nuc % ndpp_inel_norm, elastic, inelastic, norm)
+        inel => nuc % ndpp_inel
       end if
     end if
+    call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, &
+                                  el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
+                                  inel, inel_norm, elastic, inelastic, norm)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult
@@ -3390,7 +3412,7 @@ contains
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
-          !$omp atomic
+!$omp atomic
           results(score_index, g_filter) % value = &
             results(score_index, g_filter) % value + &
             elastic % outgoing(l, g) * norm
@@ -3405,13 +3427,15 @@ contains
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
           i_score = score_index + l - 1
-          !$omp atomic
+!$omp atomic
           results(score_index, g_filter) % value = &
             results(score_index, g_filter) % value + &
             inelastic % outgoing(l, g) * norm
         end do
       end do
     end if
+    if (allocated(elastic % outgoing)) deallocate(elastic % outgoing)
+    if (allocated(inelastic % outgoing)) deallocate(inelastic % outgoing)
   end subroutine tally_ndpp_pn
 
 !===============================================================================
@@ -3482,7 +3506,7 @@ contains
     type(Nuclide), pointer, save :: nuc ! Working nuclide
     real(8), pointer, save :: chi_Ein(:) ! Working Ein grid
     real(8), pointer, save :: chi(:,:) ! Working chi data
-    !$omp threadprivate(nuc, chi_Ein, chi)
+!$omp threadprivate(nuc, chi_Ein, chi)
 
     ! Quit before doing anything else if we have no chi data
     if (.not. nuclides(i_nuclide) % fissionable) then
@@ -3528,7 +3552,7 @@ contains
     ! Add the contribution from NDPP data (with interpolation)
     do g = 1, ubound(chi, dim=1)
       g_filter = filter_index + g - 1
-      !$omp atomic
+!$omp atomic
       results(score_index, g_filter) % value = &
         results(score_index, g_filter) % value + &
         chi(g, i_grid) * one_f + &

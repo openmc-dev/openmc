@@ -629,34 +629,34 @@ contains
 
       ! Start with elastic data
       ! Get Ein information
+
+      ! First find our data length, doesnt depend on nuc or sab
+      read(UNIT=in, FMT='(I20)') NEin
       if (is_nuc) then
-        read(UNIT=in, FMT=*) NEin
+        ! Now allocate all that will be filled
         allocate(nuc % ndpp_el_Ein(NEin))
         allocate(nuc % ndpp_el_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in, FMT=*) nuc % ndpp_el_Ein_srch(iE)
-        end do
-        do iE = 1, NEin
-          read(UNIT=in, FMT=*) nuc % ndpp_el_Ein(iE)
-        end do
         allocate(nuc % ndpp_el(NEin))
+
+        ! Now read in el_Ein and el_Ein_srch
+        read(UNIT=in, FMT=*) nuc % ndpp_el_Ein_srch
+        read(UNIT=in, FMT=*) nuc % ndpp_el_Ein
+
       else
-        allocate(sab % ndpp_el_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in, FMT=*) sab % ndpp_el_Ein_srch(iE)
-        end do
-        read(UNIT=in, FMT=*) NEin
+        ! Now allocate all that will be filled
         allocate(sab % ndpp_el_Ein(NEin))
-        do iE = 1, NEin
-          read(UNIT=in, FMT=*) sab % ndpp_el_Ein(iE)
-        end do
+        allocate(sab % ndpp_el_Ein_srch(NG + 1))
         allocate(sab % ndpp_el(NEin))
+
+        ! Now read in el_Ein and el_Ein_srch
+        read(UNIT=in, FMT=*) sab % ndpp_el_Ein
+        read(UNIT=in, FMT=*) sab % ndpp_el_Ein_srch
       end if
 
       ! Get the elastic moments themselves
       do iE = 1, NEin
         ! get gmin and gmax
-        read(UNIT=in, FMT=*) gmin, gmax
+        read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
         if ((gmin > 0) .and. (gmax > 0)) then
           ! Then we can allocate the space. Do it to ndpp_el_order
@@ -684,22 +684,22 @@ contains
 
       ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
-        ! Get inelastic data
-        read(UNIT=in, FMT=*) NEin
+        read(UNIT=in, FMT='(I20)') NEin
+        ! Now allocate all that will be filled
         allocate(nuc % ndpp_inel_Ein(NEin))
         allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein_srch(iE)
-        end do
-        do iE = 1, NEin
-          read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein(iE)
-        end do
+        allocate(nuc % ndpp_inel_norm(NEin))
         allocate(nuc % ndpp_inel(NEin))
+
+        ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+        read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein
+        read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein_srch
+        read(UNIT=in, FMT=*) nuc % ndpp_inel_norm
 
         ! Get the inelastic moments themselves
         do iE = 1, NEin
           ! get gmin and gmax
-          read(UNIT=in, FMT=*) gmin, gmax
+          read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
           if ((gmin > 0) .and. (gmax > 0)) then
             ! Then we can allocate the space. Do it to ndpp_el_order
@@ -724,7 +724,7 @@ contains
           allocate(nuc % ndpp_nuinel(NEin))
           do iE = 1, NEin
             ! get gmin and gmax
-            read(UNIT=in, FMT=*) gmin, gmax
+            read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
             if ((gmin > 0) .and. (gmax > 0)) then
               ! Then we can allocate the space. Do it to ndpp_el_order
@@ -748,30 +748,24 @@ contains
         ! Get chi(E_{in}) data if provided
         if (chi_present == 1) then
           ! Get Ein grid and number of precursors
-          read(UNIT=in, FMT=*) NEin, NP
+          read(UNIT=in, FMT='(I20,I20)') NEin, NP
+
+          ! Allocate data as needed
           allocate(nuc % ndpp_chi_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in, FMT=*) nuc % ndpp_chi_Ein(iE)
-          end do
+          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
+          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
+          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
+
+          ! Get Ein Grid
+          read(UNIT=in, FMT=*) nuc % ndpp_chi_Ein
 
           ! Get Chi-Total
-          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in, FMT=*) nuc % ndpp_chi(g, iE)
-            end do
-          end do
+          read(UNIT=in, FMT=*) nuc % ndpp_chi
 
           ! Get Chi-Prompt
-          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in, FMT=*) nuc % ndpp_chi_p(g, iE)
-            end do
-          end do
+          read(UNIT=in, FMT=*) nuc % ndpp_chi_p
 
           ! Get Chi-Delayed
-          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
           do i = 1, NP
             do iE = 1, NEin
               do g = 1, size(energy_bins) - 1
@@ -812,31 +806,32 @@ contains
 
       ! Get \sigma_{s,g'->g,l}(E_{in}) data
       ! Get elastic Ein information
+
+      ! First find our data length, doesnt depend on nuc or sab
+      read(UNIT=in) NEin
       if (is_nuc) then
-        allocate(nuc % ndpp_el_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in) nuc % ndpp_el_Ein_srch(iE)
-        end do
-        read(UNIT=in) NEin
+        ! Now allocate all that will be filled
         allocate(nuc % ndpp_el_Ein(NEin))
-        do iE = 1, NEin
-          read(UNIT=in) nuc % ndpp_el_Ein(iE)
-        end do
+        allocate(nuc % ndpp_el_Ein_srch(NG + 1))
         allocate(nuc % ndpp_el(NEin))
+
+        ! Now read in el_Ein and el_Ein_srch
+        read(UNIT=in) nuc % ndpp_el_Ein
+        read(UNIT=in) nuc % ndpp_el_Ein_srch
+
       else
-        allocate(sab % ndpp_el_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in) sab % ndpp_el_Ein_srch(iE)
-        end do
-        read(UNIT=in) NEin
+        ! Now allocate all that will be filled
         allocate(sab % ndpp_el_Ein(NEin))
-        do iE = 1, NEin
-          read(UNIT=in) sab % ndpp_el_Ein(iE)
-        end do
+        allocate(sab % ndpp_el_Ein_srch(NG + 1))
         allocate(sab % ndpp_el(NEin))
+
+        ! Now read in el_Ein and el_Ein_srch
+        read(UNIT=in) sab % ndpp_el_Ein
+        read(UNIT=in) sab % ndpp_el_Ein_srch
       end if
 
-      ! Get the elastic moments themselves
+      ! Now we can get the elastic moments themselves one-by-one due to sparse
+      ! storage nature.
       do iE = 1, NEin
         ! get gmin and gmax
         read(UNIT=in) gmin, gmax
@@ -867,18 +862,19 @@ contains
 
       ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
-        allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-        do iE = 1, NG + 1
-          read(UNIT=in) nuc % ndpp_inel_Ein_srch(iE)
-        end do
         read(UNIT=in) NEin
+        ! Now allocate all that will be filled
         allocate(nuc % ndpp_inel_Ein(NEin))
-        do iE = 1, NEin
-          read(UNIT=in) nuc % ndpp_inel_Ein(iE)
-        end do
+        allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
+        allocate(nuc % ndpp_inel_norm(NEin))
         allocate(nuc % ndpp_inel(NEin))
 
-        ! Get the elastic moments themselves
+        ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+        read(UNIT=in) nuc % ndpp_inel_Ein
+        read(UNIT=in) nuc % ndpp_inel_Ein_srch
+        read(UNIT=in) nuc % ndpp_inel_norm
+
+        ! Get the inelastic moments themselves
         do iE = 1, NEin
           ! get gmin and gmax
           read(UNIT=in) gmin, gmax
@@ -932,29 +928,23 @@ contains
         if (chi_present == 1) then
           ! Get Ein grid and Number of Precursors
           read(UNIT=in) NEin, NP
+
+          ! Allocate data as needed
           allocate(nuc % ndpp_chi_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in) nuc % ndpp_chi_Ein(iE)
-          end do
+          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
+          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
+          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
+
+          ! Get Ein Grid
+          read(UNIT=in) nuc % ndpp_chi_Ein
 
           ! Get Chi-Total
-          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in) nuc % ndpp_chi(g, iE)
-            end do
-          end do
+          read(UNIT=in) nuc % ndpp_chi
 
           ! Get Chi-Prompt
-          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in) nuc % ndpp_chi_p(g, iE)
-            end do
-          end do
+          read(UNIT=in) nuc % ndpp_chi_p
 
           ! Get Chi-Delayed
-          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
           do i = 1, NP
             do iE = 1, NEin
               do g = 1, size(energy_bins) - 1

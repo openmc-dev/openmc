@@ -4,9 +4,9 @@
 <!-- Definition of materials -->
   <material id="1">
     <density value="19" units="g/cc" />
-    <nuclide name="U-235" xs="70c" wo="0.21" />
-    <nuclide name="U-238" xs="70c" wo="0.68" />
-    <nuclide name="O-16" xs="70c" wo="0.11" />
+    <nuclide name="U-235" xs="71c" wo="0.21" />
+    <nuclide name="U-238" xs="71c" wo="0.68" />
+    <nuclide name="O-16" xs="71c" wo="0.11" />
   </material>
 
 </materials>

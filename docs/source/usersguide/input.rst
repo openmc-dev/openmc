@@ -182,6 +182,29 @@ performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
+.. _natural_elements:
+
+``<natural_elements>`` Element
+------------------------------
+
+The ``<natural_elements>`` element indicates to OpenMC what nuclides are
+available in the cross section library when expanding an ``<element>`` into
+separate isotopes (see :ref:`material`). The accepted values are:
+
+  - ENDF/B-VII.0
+  - ENDF/B-VII.1
+  - JEFF-3.1.1
+  - JEFF-3.1.2
+  - JEFF-3.2
+  - JENDL-3.2
+  - JENDL-3.3
+  - JENDL-4.0
+
+Note that the value is case-insensitive, so "ENDF/B-VII.1" is equivalent to
+"endf/b-vii.1".
+
+  *Default*: ENDF/B-VII.1
+
 ``<no_reduce>`` Element
 -----------------------
 
@@ -378,21 +401,22 @@ attributes/sub-elements:
 
   :batches:
     A list of integers separated by spaces indicating at what batches a state
-    point file should be written. It should be noted that if source_separate
-    tag is not set to "true", this list must be a subset of state point batches.
+    point file should be written. It should be noted that if the ``separate``
+    attribute is not set to "true", this list must be a subset of state point
+    batches.
 
     *Default*: Last batch only
 
   :interval:
     A single integer :math:`n` indicating that a state point should be written
-    every :math:`n` batches. This option can be given in lieu of listing
-    batches explicitly. It should be noted that if source_separate tag is not
-    set to "true", this value should produce a list of batches that is a subset
-    of state point batches.
+    every :math:`n` batches. This option can be given in lieu of listing batches
+    explicitly. It should be noted that if the ``separate`` attribute is not set
+    to "true", this value should produce a list of batches that is a subset of
+    state point batches.
 
     *Default*: None
 
-  :source_separate:
+  :separate:
     If this element is set to "true", a separate binary source point file will be
     written. Otherwise, the source sites will be written in the state point
     directly.
@@ -741,6 +765,8 @@ sub-elements:
 Materials Specification -- materials.xml
 ----------------------------------------
 
+.. _material:
+
 ``<material>`` Element
 ----------------------
 
@@ -780,12 +806,13 @@ Each ``material`` element can have the following attributes or sub-elements:
   :element:
 
     Specifies that a natural element is present in the material. The natural
-    element is split up into individual isotopes based on IUPAC Isotopic
-    Compositions of the Elements 1997. This element has attributes/sub-elements
-    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
-    symbol of the element while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
-    element within the material, respectively. One example would be as follows:
+    element is split up into individual isotopes based on `IUPAC Isotopic
+    Compositions of the Elements 2009`_. This element has
+    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element while the ``xs`` attribute is
+    the cross-section identifier. Finally, the ``ao`` attribute specifies the
+    atom percent of the element within the material, respectively. One example
+    would be as follows:
 
     .. code-block:: xml
 
@@ -793,6 +820,10 @@ Each ``material`` element can have the following attributes or sub-elements:
         <element name="Mg" ao="1.5498e-04" />
         <element name="Mn" ao="2.7426e-05" />
         <element name="Cu" ao="1.6993e-04" />
+
+    In some cross section libraries, certain naturally occurring isotopes do not
+    have cross sections. The :ref:`natural_elements` option determines how a
+    natural element is split into isotopes in these cases.
 
     *Default*: None
 
@@ -804,6 +835,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+.. _IUPAC Isotopic Compositions of the Elements 2009:
+    http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
 ``<default_xs>`` Element
 ------------------------

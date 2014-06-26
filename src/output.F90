@@ -184,7 +184,7 @@ contains
       write(OUTPUT_UNIT,*) '  -s, --threads          Number of OpenMP threads'
       write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
-      write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
+      write(OUTPUT_UNIT,*) '  -h, --help             Show this message'
     end if
 
   end subroutine print_usage

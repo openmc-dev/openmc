@@ -870,6 +870,14 @@ contains
       nu = int(nu_t) + 1
     end if
 
+    ! Check for fission bank size getting hit
+    if (n_bank + nu > size(fission_bank)) then
+      message = "Maximum number of sites in fission bank reached. This can &
+           &result in irreproducible results using different numbers of &
+           &processes/threads."
+      call warning()
+    end if
+
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == size(fission_bank)) return
     p % fission = .true. ! Fission neutrons will be banked
@@ -1160,7 +1168,7 @@ contains
       ! calculate cosine
       mu0 = rxn % adist % data(lc + k)
       mu1 = rxn % adist % data(lc + k+1)
-      mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
+      mu = mu0 + (32.0_8 * xi - k + ONE) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
       interp = int(rxn % adist % data(lc + 1))

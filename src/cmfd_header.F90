@@ -194,6 +194,7 @@ contains
     if (allocated(this % dom))           deallocate(this % dom)
     if (allocated(this % k_cmfd))        deallocate(this % k_cmfd)
     if (allocated(this % entropy))       deallocate(this % entropy)
+    if (allocated(this % resnb))         deallocate(this % resnb)
 
   end subroutine deallocate_cmfd
 

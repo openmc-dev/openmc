@@ -3148,7 +3148,7 @@ contains
       el_gmax = ubound(el(i_grid+1) % outgoing, dim=2)
     else
       el_gmin = huge(0)
-      el_gmax = huge(0)
+      el_gmax = 0
     end if
 
     ! set up our distribution storage
@@ -3221,7 +3221,7 @@ contains
         inel_gmax = ubound(inel(i_grid+1) % outgoing, dim=2)
       else
         inel_gmin = huge(0)
-        inel_gmax = huge(0)
+        inel_gmax = 0
       end if
 
       ! Now we can interpolate on the elastic data and put it in ndpp_outgoing

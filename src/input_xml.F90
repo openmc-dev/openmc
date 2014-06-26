@@ -3117,6 +3117,12 @@ contains
 
     select case (element_name)
 
+    ! The following 'case' code is automatically generated from the script
+    ! write_atomic_weights in the src/utils directory.  Running the script
+    ! will automatically delete and rewrite any code between the 'Start of...'
+    ! and 'End of...' comments.
+
+    ! Start of the natural element cases.
     case ('h')
       call list_names % append('1001.' // xs)
       call list_names % append('1002.' // xs)
@@ -4510,6 +4516,7 @@ contains
         call list_density % append(density * 0.99283324693309_8)
       end if
 
+    ! End of the natural element cases.
     case default
       message = "Cannot expand element: " // name
       call fatal_error()

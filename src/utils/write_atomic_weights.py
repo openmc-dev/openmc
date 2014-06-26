@@ -2,11 +2,6 @@
 """Write expand_natural_element subroutine using NIST atomic weight data.
 
 In order to use this program, follow these steps:
-*  Write an input_xml.F90 file without the element case statements in the
-   expand_natural_element subroutine.
-*  Add the '    !### CASES GO HERE ###' flag to the subroutine.  The subroutine
-   should now look like the element_template.F90 file in the openmc /src/utils
-   directory.
 *  Make a data file from the NIST Atomic Weights and Isotopic Compositions
    database <http://nist.gov/pml/data/comp.cfm>.  Check the 'Linearized ASCII
    Output' and 'All isotopes' options.  Please add access date and reference
@@ -25,7 +20,7 @@ Usage information can be obtained by running 'write_atomic_weights.py --help':
 
     positional arguments:
       DATA        Text file containing NIST atomic weight data.
-      TEMPLATE    .F90 file with the ' !### CASES GO HERE ###' flag
+      TEMPLATE    input_xml.F90 file.
       OUT         Name of .F90 file that will be written.
 
     optional arguments:
@@ -60,7 +55,7 @@ def _parse_args():
     parser.add_argument('data', metavar='DATA', type=str,
                         help='Text file containing NIST atomic weight data.')
     parser.add_argument('template', metavar='TEMPLATE', type=str,
-                    help=".F90 file with the '    !### CASES GO HERE ###' flag")
+                        help='input_xml.F90 file.')
     parser.add_argument('output', metavar='OUT', type=str,
                         help='Name of .F90 file that will be written.')
 
@@ -152,8 +147,10 @@ def write_code(elements, input_fname, output_fname):
     fin.close()
 
     # Find and remove the signal phrase.
-    ind = code.index('    !### CASES GO HERE ###\n')
-    del code[ind]
+    start_ind = code.index('    ! Start of the natural element cases.\n')
+    end_ind = code.index('    ! End of the natural element cases.\n')
+    del code[start_ind+1:end_ind]
+    ind = start_ind + 1
 
     # Insert atomic data inside case statements.
     for elem in elements:

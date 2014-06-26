@@ -105,17 +105,16 @@ contains
     end if
     if (.not. p % alive) return
 
+    ! Sample a scattering reaction and determine the secondary energy of the
+    ! exiting neutron
+    call scatter(p, i_nuclide)
+
     ! Play russian roulette if survival biasing is turned on
 
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
     end if
-
-    ! Sample a scattering reaction and determine the secondary energy of the
-    ! exiting neutron
-
-    call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
 
@@ -297,6 +296,7 @@ contains
         p % last_wgt = p % wgt
       else
         p % wgt = ZERO
+        p % last_wgt = ZERO
         p % alive = .false.
       end if
     end if

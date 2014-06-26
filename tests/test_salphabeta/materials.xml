@@ -1,20 +1,20 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <material id="1">
     <density value="4.5" units="g/cc" />
     <nuclide name="U-235" ao="1.0" />
     <nuclide name="H-1" ao="1.0" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <material id="2">
     <density value="4.5" units="g/cc" />
     <nuclide name="U-235" ao="1.0" />
     <nuclide name="C-Nat" ao="1.0" />
-    <sab name="grph" xs="10t" />
+    <sab name="Graph" xs="71t" />
   </material>
 
   <material id="3">
@@ -22,7 +22,7 @@
     <nuclide name="U-235" ao="1.0" />
     <nuclide name="Be-9" ao="1.0" />
     <nuclide name="O-16" ao="1.0" />
-    <sab name="be/o" xs="10t" />
+    <sab name="BeBeO" xs="71t" />
   </material>
 
 </materials>

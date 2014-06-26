@@ -4324,29 +4324,38 @@ contains
       end if
 
     case ('os')
-      call list_names % append('76184.' // xs)
-      call list_names % append('76186.' // xs)
-      call list_names % append('76187.' // xs)
-      call list_names % append('76188.' // xs)
-      call list_names % append('76189.' // xs)
-      call list_names % append('76190.' // xs)
-      call list_names % append('76192.' // xs)
-      if (density > 0.0) then
-        call list_density % append(density * 0.00020000000000_8)
-        call list_density % append(density * 0.01590000000000_8)
-        call list_density % append(density * 0.01960000000000_8)
-        call list_density % append(density * 0.13240000000000_8)
-        call list_density % append(density * 0.16150000000000_8)
-        call list_density % append(density * 0.26260000000000_8)
-        call list_density % append(density * 0.40780000000000_8)
+      if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
+        call list_names % append('76000.' // xs)
+        if (density > 0.0) then
+          call list_density % append(density * 1.00000000000000_8)
+        else
+          call list_density % append(density * 1.00000000000000_8)
+        end if
       else
-        call list_density % append(density * 0.00019340008316_8)
-        call list_density % append(density * 0.01554258543542_8)
-        call list_density % append(density * 0.01926264369342_8)
-        call list_density % append(density * 0.13081718434358_8)
-        call list_density % append(density * 0.16042023246202_8)
-        call list_density % append(density * 0.26222513894864_8)
-        call list_density % append(density * 0.41151181112054_8)
+        call list_names % append('76184.' // xs)
+        call list_names % append('76186.' // xs)
+        call list_names % append('76187.' // xs)
+        call list_names % append('76188.' // xs)
+        call list_names % append('76189.' // xs)
+        call list_names % append('76190.' // xs)
+        call list_names % append('76192.' // xs)
+        if (density > 0.0) then
+          call list_density % append(density * 0.00020000000000_8)
+          call list_density % append(density * 0.01590000000000_8)
+          call list_density % append(density * 0.01960000000000_8)
+          call list_density % append(density * 0.13240000000000_8)
+          call list_density % append(density * 0.16150000000000_8)
+          call list_density % append(density * 0.26260000000000_8)
+          call list_density % append(density * 0.40780000000000_8)
+        else
+          call list_density % append(density * 0.00019340008316_8)
+          call list_density % append(density * 0.01554258543542_8)
+          call list_density % append(density * 0.01926264369342_8)
+          call list_density % append(density * 0.13081718434358_8)
+          call list_density % append(density * 0.16042023246202_8)
+          call list_density % append(density * 0.26222513894864_8)
+          call list_density % append(density * 0.41151181112054_8)
+        end if
       end if
 
     case ('ir')

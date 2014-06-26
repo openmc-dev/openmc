@@ -350,6 +350,28 @@ def write_code(elements, input_fname, output_fname):
             code.insert(ind, st)
             ind += 1
 
+        elif elem.symbol == 'Os':
+            st = ''.join(['      if (default_expand == JEFF_311 .or. ',
+                          'default_expand == JEFF_312) then\n'])
+            code.insert(ind, st)
+            ind += 1
+            el = Element(elem.symbol, elem.z, elem.sam)
+            el.add_isotope(0, elem.sam, 1.0)
+            for line in code_lines(el):
+                code.insert(ind, ''.join(['  ', line]))
+                ind += 1
+
+            st = '      else\n'
+            code.insert(ind, st)
+            ind += 1
+            for line in code_lines(elem):
+                code.insert(ind, ''.join(['  ', line]))
+                ind += 1
+
+            st = '      end if\n'
+            code.insert(ind, st)
+            ind += 1
+
         elif elem.symbol == 'Pt':
             st = ''.join(['      if (default_expand == JEFF_311 .or. ',
                           'default_expand == JEFF_312) then\n'])

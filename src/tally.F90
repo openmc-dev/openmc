@@ -2955,27 +2955,44 @@ contains
     one_f = ONE - f
 
     ! Now find our gmin and gmax terms
-    el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-                  lbound(el(i_grid + 1) % outgoing, dim=2))
-    el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-                  ubound(el(i_grid + 1) % outgoing, dim=2))
+    ! Now find our gmin and gmax terms
+    if ((allocated(el(i_grid) % outgoing)) .and. &
+        (allocated(el(i_grid + 1) % outgoing))) then
+      el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+                    lbound(el(i_grid + 1) % outgoing, dim=2))
+      el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+                    ubound(el(i_grid + 1) % outgoing, dim=2))
+    else if (allocated(el(i_grid) % outgoing)) then
+      el_gmin = lbound(el(i_grid) % outgoing, dim=2)
+      el_gmax = ubound(el(i_grid) % outgoing, dim=2)
+    else if (allocated(el(i_grid + 1) % outgoing)) then
+      el_gmin = lbound(el(i_grid+1) % outgoing, dim=2)
+      el_gmax = ubound(el(i_grid+1) % outgoing, dim=2)
+    else
+      el_gmin = huge(0)
+      el_gmax = huge(0)
+    end if
 
     ! set up our distribution storage
     ndpp_outgoing(thread_id, l, :) = ZERO
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
-    do g = lbound(el(i_grid) % outgoing, dim=2), &
-           ubound(el(i_grid) % outgoing, dim=2)
-      ndpp_outgoing(thread_id, l, g) = micro_xs(i_nuclide) % elastic * &
-        el(i_grid) % outgoing(l, g) * one_f
-    end do
+    if (allocated(el(i_grid) % outgoing)) then
+      do g = lbound(el(i_grid) % outgoing, dim=2), &
+             ubound(el(i_grid) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = micro_xs(i_nuclide) % elastic * &
+          el(i_grid) % outgoing(l, g) * one_f
+      end do
+    end if
     ! Do upper point
-    do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
-           ubound(el(i_grid + 1) % outgoing, dim=2)
-      ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-        micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(l, g) * f
-    end do
+    if (allocated(el(i_grid + 1) % outgoing)) then
+      do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
+             ubound(el(i_grid + 1) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+          micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(l, g) * f
+      end do
+    end if
 
     norm = micro_xs(i_nuclide) % elastic
 
@@ -2993,6 +3010,12 @@ contains
         ! Then our point is below the threshold: exit, leaving without
         ! allocating inel
         norm = ONE / norm
+        gmin = el_gmin
+        gmax = el_gmax
+        if (gmin == huge(0)) then
+          gmin = 0
+          gmax = -1
+        end if
         return
       else if (Ein >= inel_Ein(size(inel_Ein))) then
         i_grid = size(inel_Ein) - 1
@@ -3006,33 +3029,56 @@ contains
       one_f = ONE - f
 
       ! Now find our gmin and gmax terms
-      inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+      if ((allocated(inel(i_grid) % outgoing)) .and. &
+          (allocated(inel(i_grid + 1) % outgoing))) then
+        inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
                       lbound(inel(i_grid + 1) % outgoing, dim=2))
-      inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+        inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
                       ubound(inel(i_grid + 1) % outgoing, dim=2))
+      else if (allocated(inel(i_grid) % outgoing)) then
+        inel_gmin = lbound(inel(i_grid) % outgoing, dim=2)
+        inel_gmax = ubound(inel(i_grid) % outgoing, dim=2)
+      else if (allocated(inel(i_grid + 1) % outgoing)) then
+        inel_gmin = lbound(inel(i_grid+1) % outgoing, dim=2)
+        inel_gmax = ubound(inel(i_grid+1) % outgoing, dim=2)
+      else
+        inel_gmin = huge(0)
+        inel_gmax = huge(0)
+      end if
 
       ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
       ! Do lower point
-      do g = lbound(inel(i_grid) % outgoing, dim=2), &
-             ubound(inel(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-          inel(i_grid) % outgoing(l, g) * one_f
-      end do
+      if (allocated(inel(i_grid) % outgoing)) then
+        do g = lbound(inel(i_grid) % outgoing, dim=2), &
+               ubound(inel(i_grid) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+            inel(i_grid) % outgoing(l, g) * one_f
+        end do
+      end if
       ! Do upper point
-      do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
-             ubound(inel(i_grid + 1) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-          inel(i_grid + 1) % outgoing(l, g) * f
-      end do
+      if (allocated(inel(i_grid + 1) % outgoing)) then
+        do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
+               ubound(inel(i_grid + 1) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+            inel(i_grid + 1) % outgoing(l, g) * f
+        end do
+      end if
 
       ! Set our other outgoing data
       norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+
+      ! Set our group boundaries
       gmin = min(el_gmin, inel_gmin)
       gmax = max(el_gmax, inel_gmax)
     else
       ! Set our other outgoing data
       gmin = el_gmin
       gmax = el_gmax
+    end if
+
+    if (gmin == huge(0)) then
+      gmin = 0
+      gmax = -1
     end if
 
     ! Take inverse of norm for later usage as normalization constant
@@ -3088,27 +3134,43 @@ contains
     one_f = ONE - f
 
     ! Now find our gmin and gmax terms
-    el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-                  lbound(el(i_grid + 1) % outgoing, dim=2))
-    el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-                  ubound(el(i_grid + 1) % outgoing, dim=2))
+    if ((allocated(el(i_grid) % outgoing)) .and. &
+        (allocated(el(i_grid + 1) % outgoing))) then
+      el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
+                    lbound(el(i_grid + 1) % outgoing, dim=2))
+      el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
+                    ubound(el(i_grid + 1) % outgoing, dim=2))
+    else if (allocated(el(i_grid) % outgoing)) then
+      el_gmin = lbound(el(i_grid) % outgoing, dim=2)
+      el_gmax = ubound(el(i_grid) % outgoing, dim=2)
+    else if (allocated(el(i_grid + 1) % outgoing)) then
+      el_gmin = lbound(el(i_grid+1) % outgoing, dim=2)
+      el_gmax = ubound(el(i_grid+1) % outgoing, dim=2)
+    else
+      el_gmin = huge(0)
+      el_gmax = huge(0)
+    end if
 
     ! set up our distribution storage
     ndpp_outgoing = ZERO
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
-    do g = lbound(el(i_grid) % outgoing, dim=2), &
-           ubound(el(i_grid) % outgoing, dim=2)
-      ndpp_outgoing(thread_id, :, g) = micro_xs(i_nuclide) % elastic * &
-        el(i_grid) % outgoing(:, g) * one_f
-    end do
+    if (allocated(el(i_grid) % outgoing)) then
+      do g = lbound(el(i_grid) % outgoing, dim=2), &
+             ubound(el(i_grid) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, :, g) = micro_xs(i_nuclide) % elastic * &
+          el(i_grid) % outgoing(:, g) * one_f
+      end do
+    end if
     ! Do upper point
-    do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
-           ubound(el(i_grid + 1) % outgoing, dim=2)
-      ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-        micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(:, g) * f
-    end do
+    if (allocated(el(i_grid + 1) % outgoing)) then
+      do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
+             ubound(el(i_grid + 1) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
+          micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(:, g) * f
+      end do
+    end if
 
     norm = micro_xs(i_nuclide) % elastic
 
@@ -3126,6 +3188,12 @@ contains
         ! Then our point is below the threshold: exit, leaving without
         ! allocating inel
         norm = ONE / norm
+        gmin = el_gmin
+        gmax = el_gmax
+        if (gmin == huge(0)) then
+          gmin = 0
+          gmax = -1
+        end if
         return
       else if (Ein >= inel_Ein(size(inel_Ein))) then
         i_grid = size(inel_Ein) - 1
@@ -3139,33 +3207,56 @@ contains
       one_f = ONE - f
 
       ! Now find our gmin and gmax terms
-      inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
+      if ((allocated(inel(i_grid) % outgoing)) .and. &
+          (allocated(inel(i_grid + 1) % outgoing))) then
+        inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
                       lbound(inel(i_grid + 1) % outgoing, dim=2))
-      inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
+        inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
                       ubound(inel(i_grid + 1) % outgoing, dim=2))
+      else if (allocated(inel(i_grid) % outgoing)) then
+        inel_gmin = lbound(inel(i_grid) % outgoing, dim=2)
+        inel_gmax = ubound(inel(i_grid) % outgoing, dim=2)
+      else if (allocated(inel(i_grid + 1) % outgoing)) then
+        inel_gmin = lbound(inel(i_grid+1) % outgoing, dim=2)
+        inel_gmax = ubound(inel(i_grid+1) % outgoing, dim=2)
+      else
+        inel_gmin = huge(0)
+        inel_gmax = huge(0)
+      end if
 
       ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
       ! Do lower point
-      do g = lbound(inel(i_grid) % outgoing, dim=2), &
-             ubound(inel(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-          inel(i_grid) % outgoing(:, g) * one_f
-      end do
+      if (allocated(inel(i_grid) % outgoing)) then
+        do g = lbound(inel(i_grid) % outgoing, dim=2), &
+               ubound(inel(i_grid) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
+            inel(i_grid) % outgoing(:, g) * one_f
+        end do
+      end if
       ! Do upper point
-      do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
-             ubound(inel(i_grid + 1) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-          inel(i_grid + 1) % outgoing(:, g) * f
-      end do
+      if (allocated(inel(i_grid + 1) % outgoing)) then
+        do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
+               ubound(inel(i_grid + 1) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
+            inel(i_grid + 1) % outgoing(:, g) * f
+        end do
+      end if
 
       ! Set our other outgoing data
       norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+
+      ! Set our group boundaries
       gmin = min(el_gmin, inel_gmin)
       gmax = max(el_gmax, inel_gmax)
     else
       ! Set our other outgoing data
       gmin = el_gmin
       gmax = el_gmax
+    end if
+
+    if (gmin == huge(0)) then
+      gmin = 0
+      gmax = -1
     end if
 
     ! Take inverse of norm for later usage as normalization constant

@@ -411,6 +411,10 @@ module ace_header
         deallocate(this % ndpp_el_Ein)
       end if
 
+      if (allocated(this % ndpp_el_Ein_srch)) then
+        deallocate(this % ndpp_el_Ein_srch)
+      end if
+
       if (allocated(this % ndpp_el)) then
         deallocate(this % ndpp_el)
       end if
@@ -419,12 +423,20 @@ module ace_header
         deallocate(this % ndpp_inel_Ein)
       end if
 
+      if (allocated(this % ndpp_inel_Ein_srch)) then
+        deallocate(this % ndpp_inel_Ein_srch)
+      end if
+
       if (allocated(this % ndpp_inel)) then
         deallocate(this % ndpp_inel)
       end if
 
       if (allocated(this % ndpp_nuinel)) then
         deallocate(this % ndpp_nuinel)
+      end if
+
+      if (allocated(this % ndpp_inel_norm)) then
+        deallocate(this % ndpp_inel_norm)
       end if
 
       if (associated(this % reactions)) then

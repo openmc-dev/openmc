@@ -42,7 +42,7 @@ contains
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: n                    ! loop index for scattering order
-    integer :: l                    ! scoring bin loop index, allowing for changing 
+    integer :: l                    ! scoring bin loop index, allowing for changing
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
@@ -164,7 +164,7 @@ contains
 
             score = last_wgt
 
-          case (SCORE_NU_SCATTER) 
+          case (SCORE_NU_SCATTER)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
@@ -173,7 +173,7 @@ contains
             ! reaction with neutrons in the exit channel
 
             score = wgt
-            
+
           case (SCORE_SCATTER_N)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -201,7 +201,7 @@ contains
               score_index = score_index + 1
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
-              
+
 !$omp critical
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
@@ -220,7 +220,7 @@ contains
 
             ! Score total rate - p1 scatter rate Note estimator needs to be
             ! adjusted since tallying is only occuring when a scatter has
-            ! happend. Effectively this means multiplying the estimator by
+            ! happened. Effectively this means multiplying the estimator by
             ! total/scatter macro
             score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
 
@@ -257,8 +257,12 @@ contains
               ! calculate fraction of absorptions that would have resulted in
               ! fission
 
-              score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
-                   micro_xs(p % event_nuclide) % absorption
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption
+              else
+                score = ZERO
+              end if
 
             else
               ! Skip any non-fission events
@@ -277,8 +281,25 @@ contains
               ! calculate fraction of absorptions that would have resulted in
               ! nu-fission
 
-              score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                   nu_fission / micro_xs(p % event_nuclide) % absorption
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_eout(p, t, score_index)
+                cycle SCORE_LOOP
+
+              else
+
+                if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                  score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                       nu_fission / micro_xs(p % event_nuclide) % absorption
+                else
+                  score = ZERO
+                end if
+              end if
 
             else
               ! Skip any non-fission events
@@ -305,17 +326,21 @@ contains
 
               end if
             end if
-          
+
           case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
               ! calculate fraction of absorptions that would have resulted in
               ! fission and multiply by Q
 
-              score = p % absorb_wgt * &
-                      micro_xs(p % event_nuclide) % kappa_fission / &
-                      micro_xs(p % event_nuclide) % absorption
-              
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                score = p % absorb_wgt * &
+                        micro_xs(p % event_nuclide) % kappa_fission / &
+                        micro_xs(p % event_nuclide) % absorption
+              else
+                score = ZERO
+              end if
+
             else
               ! Skip any non-fission events
               if (.not. p % fission) cycle SCORE_LOOP
@@ -323,7 +348,7 @@ contains
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-              
+
               n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
                 nuclides(p % event_nuclide) % reactions(n) % Q_value
@@ -383,7 +408,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
-    real(8) :: score         ! actualy score
+    real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index
@@ -671,7 +696,7 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     atom_density = mat % atom_density(l)
-                    
+
                     ! Get index in nuclides array
                     i_nuc = mat % nuclide(l)
 
@@ -786,7 +811,7 @@ contains
         ! determine what type of score bin
         score_bin = t % score_bins(j)
 
-        ! Determine macroscopic nuclide cross section 
+        ! Determine macroscopic nuclide cross section
         select case(score_bin)
         case (SCORE_FLUX)
           score = flux
@@ -818,7 +843,7 @@ contains
           ! sections that are used often (e.g. n2n, ngamma, etc. for depletion),
           ! it might make sense to optimize this section or pre-calculate cross
           ! sections
-          
+
           if (score_bin > 1) then
             ! Set default score
             score = ZERO
@@ -875,7 +900,7 @@ contains
       ! determine what type of score bin
       score_bin = t % score_bins(j)
 
-      ! Determine macroscopic material cross section 
+      ! Determine macroscopic material cross section
       select case(score_bin)
       case (SCORE_FLUX)
         score = flux
@@ -905,7 +930,7 @@ contains
         ! Any other cross section has to be calculated on-the-fly. This is
         ! somewhat costly since it requires a loop over each nuclide in a
         ! material and each reaction in the nuclide
-        
+
         if (score_bin > 1) then
           ! Set default score
           score = ZERO
@@ -1213,7 +1238,7 @@ contains
               score_bin = t % score_bins(j)
 
               if (i_nuclide > 0) then
-                ! Determine macroscopic nuclide cross section 
+                ! Determine macroscopic nuclide cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
@@ -1244,7 +1269,7 @@ contains
                 end select
 
               else
-                ! Determine macroscopic material cross section 
+                ! Determine macroscopic material cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux

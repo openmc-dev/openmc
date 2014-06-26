@@ -3117,7 +3117,7 @@ contains
 
     select case (element_name)
 
-    case('h')
+    case ('h')
       call list_names % append('1001.' // xs)
       call list_names % append('1002.' // xs)
       if (density > 0.0) then
@@ -3128,7 +3128,7 @@ contains
         call list_density % append(density * 0.00022979711535_8)
       end if
 
-    case('he')
+    case ('he')
       call list_names % append('2003.' // xs)
       call list_names % append('2004.' // xs)
       if (density > 0.0) then
@@ -3139,7 +3139,7 @@ contains
         call list_density % append(density * 0.99999897333326_8)
       end if
 
-    case('li')
+    case ('li')
       call list_names % append('3006.' // xs)
       call list_names % append('3007.' // xs)
       if (density > 0.0) then
@@ -3150,7 +3150,7 @@ contains
         call list_density % append(density * 0.93408583844619_8)
       end if
 
-    case('be')
+    case ('be')
       call list_names % append('4009.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3158,7 +3158,7 @@ contains
         call list_density % append(density * 1.00000002219218_8)
       end if
 
-    case('b')
+    case ('b')
       call list_names % append('5010.' // xs)
       call list_names % append('5011.' // xs)
       if (density > 0.0) then
@@ -3169,7 +3169,7 @@ contains
         call list_density % append(density * 0.81569268572750_8)
       end if
 
-    case('c')
+    case ('c')
       ! No evaluations split up Carbon into isotopes yet
       call list_names % append('6000.' // xs)
       if (density > 0.0) then
@@ -3178,7 +3178,7 @@ contains
         call list_density % append(density * 1.00000000000000_8)
       end if
 
-    case('n')
+    case ('n')
       call list_names % append('7014.' // xs)
       call list_names % append('7015.' // xs)
       if (density > 0.0) then
@@ -3189,7 +3189,7 @@ contains
         call list_density % append(density * 0.00389816276421_8)
       end if
 
-    case('o')
+    case ('o')
       if (default_expand == JEFF_32) then
         call list_names % append('8016.' // xs)
         call list_names % append('8017.' // xs)
@@ -3222,7 +3222,7 @@ contains
         end if
       end if
 
-    case('f')
+    case ('f')
       call list_names % append('9019.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3230,7 +3230,7 @@ contains
         call list_density % append(density * 1.00000000105272_8)
       end if
 
-    case('ne')
+    case ('ne')
       call list_names % append('10020.' // xs)
       call list_names % append('10021.' // xs)
       call list_names % append('10022.' // xs)
@@ -3244,7 +3244,7 @@ contains
         call list_density % append(density * 0.10080442836340_8)
       end if
 
-    case('na')
+    case ('na')
       call list_names % append('11023.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3252,7 +3252,7 @@ contains
         call list_density % append(density * 1.00000000003915_8)
       end if
 
-    case('mg')
+    case ('mg')
       call list_names % append('12024.' // xs)
       call list_names % append('12025.' // xs)
       call list_names % append('12026.' // xs)
@@ -3266,7 +3266,7 @@ contains
         call list_density % append(density * 0.11769938208117_8)
       end if
 
-    case('al')
+    case ('al')
       call list_names % append('13027.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3274,7 +3274,7 @@ contains
         call list_density % append(density * 1.00000000111187_8)
       end if
 
-    case('si')
+    case ('si')
       call list_names % append('14028.' // xs)
       call list_names % append('14029.' // xs)
       call list_names % append('14030.' // xs)
@@ -3288,7 +3288,7 @@ contains
         call list_density % append(density * 0.03299884188127_8)
       end if
 
-    case('p')
+    case ('p')
       call list_names % append('15031.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3296,7 +3296,7 @@ contains
         call list_density % append(density * 0.99999998805441_8)
       end if
 
-    case('s')
+    case ('s')
       call list_names % append('16032.' // xs)
       call list_names % append('16033.' // xs)
       call list_names % append('16034.' // xs)
@@ -3313,7 +3313,7 @@ contains
         call list_density % append(density * 0.00011216928352_8)
       end if
 
-    case('cl')
+    case ('cl')
       call list_names % append('17035.' // xs)
       call list_names % append('17037.' // xs)
       if (density > 0.0) then
@@ -3324,7 +3324,7 @@ contains
         call list_density % append(density * 0.25274404952517_8)
       end if
 
-    case('ar')
+    case ('ar')
       call list_names % append('18036.' // xs)
       call list_names % append('18038.' // xs)
       call list_names % append('18040.' // xs)
@@ -3338,7 +3338,7 @@ contains
         call list_density % append(density * 0.99636160701811_8)
       end if
 
-    case('k')
+    case ('k')
       call list_names % append('19039.' // xs)
       call list_names % append('19040.' // xs)
       call list_names % append('19041.' // xs)
@@ -3352,7 +3352,7 @@ contains
         call list_density % append(density * 0.07050978680146_8)
       end if
 
-    case('ca')
+    case ('ca')
       call list_names % append('20040.' // xs)
       call list_names % append('20042.' // xs)
       call list_names % append('20043.' // xs)
@@ -3375,7 +3375,7 @@ contains
         call list_density % append(density * 0.00223741799940_8)
       end if
 
-    case('sc')
+    case ('sc')
       call list_names % append('21045.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3383,7 +3383,7 @@ contains
         call list_density % append(density * 0.99999999777560_8)
       end if
 
-    case('ti')
+    case ('ti')
       call list_names % append('22046.' // xs)
       call list_names % append('22047.' // xs)
       call list_names % append('22048.' // xs)
@@ -3403,7 +3403,7 @@ contains
         call list_density % append(density * 0.05404851325882_8)
       end if
 
-    case('v')
+    case ('v')
       if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
            .or. default_expand == JEFF_32 .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
@@ -3425,7 +3425,7 @@ contains
         end if
       end if
 
-    case('cr')
+    case ('cr')
       call list_names % append('24050.' // xs)
       call list_names % append('24052.' // xs)
       call list_names % append('24053.' // xs)
@@ -3442,7 +3442,7 @@ contains
         call list_density % append(density * 0.02453365774472_8)
       end if
 
-    case('mn')
+    case ('mn')
       call list_names % append('25055.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3450,7 +3450,7 @@ contains
         call list_density % append(density * 1.00000000182023_8)
       end if
 
-    case('fe')
+    case ('fe')
       call list_names % append('26054.' // xs)
       call list_names % append('26056.' // xs)
       call list_names % append('26057.' // xs)
@@ -3467,7 +3467,7 @@ contains
         call list_density % append(density * 0.00292545146731_8)
       end if
 
-    case('co')
+    case ('co')
       call list_names % append('27059.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3475,7 +3475,7 @@ contains
         call list_density % append(density * 1.00000000000000_8)
       end if
 
-    case('ni')
+    case ('ni')
       call list_names % append('28058.' // xs)
       call list_names % append('28060.' // xs)
       call list_names % append('28061.' // xs)
@@ -3495,7 +3495,7 @@ contains
         call list_density % append(density * 0.01008149559058_8)
       end if
 
-    case('cu')
+    case ('cu')
       call list_names % append('29063.' // xs)
       call list_names % append('29065.' // xs)
       if (density > 0.0) then
@@ -3506,7 +3506,7 @@ contains
         call list_density % append(density * 0.31520824380370_8)
       end if
 
-    case('zn')
+    case ('zn')
       if (default_expand == ENDF_BVII0 .or. default_expand == &
            JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('30000.' // xs)
@@ -3536,7 +3536,7 @@ contains
         end if
       end if
 
-    case('ga')
+    case ('ga')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('31000.' // xs)
         if (density > 0.0) then
@@ -3556,7 +3556,7 @@ contains
         end if
       end if
 
-    case('ge')
+    case ('ge')
       call list_names % append('32070.' // xs)
       call list_names % append('32072.' // xs)
       call list_names % append('32073.' // xs)
@@ -3576,7 +3576,7 @@ contains
         call list_density % append(density * 0.08183708457572_8)
       end if
 
-    case('as')
+    case ('as')
       call list_names % append('33075.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3584,7 +3584,7 @@ contains
         call list_density % append(density * 0.99999995328450_8)
       end if
 
-    case('se')
+    case ('se')
       call list_names % append('34074.' // xs)
       call list_names % append('34076.' // xs)
       call list_names % append('34077.' // xs)
@@ -3607,7 +3607,7 @@ contains
         call list_density % append(density * 0.09056899515729_8)
       end if
 
-    case('br')
+    case ('br')
       call list_names % append('35079.' // xs)
       call list_names % append('35081.' // xs)
       if (density > 0.0) then
@@ -3618,7 +3618,7 @@ contains
         call list_density % append(density * 0.49934700258886_8)
       end if
 
-    case('kr')
+    case ('kr')
       call list_names % append('36078.' // xs)
       call list_names % append('36080.' // xs)
       call list_names % append('36082.' // xs)
@@ -3641,7 +3641,7 @@ contains
         call list_density % append(density * 0.17714616611419_8)
       end if
 
-    case('rb')
+    case ('rb')
       call list_names % append('37085.' // xs)
       call list_names % append('37087.' // xs)
       if (density > 0.0) then
@@ -3652,7 +3652,7 @@ contains
         call list_density % append(density * 0.28299341904980_8)
       end if
 
-    case('sr')
+    case ('sr')
       call list_names % append('38084.' // xs)
       call list_names % append('38086.' // xs)
       call list_names % append('38087.' // xs)
@@ -3669,7 +3669,7 @@ contains
         call list_density % append(density * 0.82849183373864_8)
       end if
 
-    case('y')
+    case ('y')
       call list_names % append('39089.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3677,7 +3677,7 @@ contains
         call list_density % append(density * 0.99999998087865_8)
       end if
 
-    case('zr')
+    case ('zr')
       call list_names % append('40090.' // xs)
       call list_names % append('40091.' // xs)
       call list_names % append('40092.' // xs)
@@ -3697,7 +3697,7 @@ contains
         call list_density % append(density * 0.02943777575200_8)
       end if
 
-    case('nb')
+    case ('nb')
       call list_names % append('41093.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3705,7 +3705,7 @@ contains
         call list_density % append(density * 0.99999997954931_8)
       end if
 
-    case('mo')
+    case ('mo')
       call list_names % append('42092.' // xs)
       call list_names % append('42094.' // xs)
       call list_names % append('42095.' // xs)
@@ -3731,7 +3731,7 @@ contains
         call list_density % append(density * 0.10067791815236_8)
       end if
 
-    case('ru')
+    case ('ru')
       call list_names % append('44096.' // xs)
       call list_names % append('44098.' // xs)
       call list_names % append('44099.' // xs)
@@ -3757,7 +3757,7 @@ contains
         call list_density % append(density * 0.19142368283962_8)
       end if
 
-    case('rh')
+    case ('rh')
       call list_names % append('45103.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3765,7 +3765,7 @@ contains
         call list_density % append(density * 1.00000003887061_8)
       end if
 
-    case('pd')
+    case ('pd')
       call list_names % append('46102.' // xs)
       call list_names % append('46104.' // xs)
       call list_names % append('46105.' // xs)
@@ -3788,7 +3788,7 @@ contains
         call list_density % append(density * 0.12103818766773_8)
       end if
 
-    case('ag')
+    case ('ag')
       call list_names % append('47107.' // xs)
       call list_names % append('47109.' // xs)
       if (density > 0.0) then
@@ -3799,7 +3799,7 @@ contains
         call list_density % append(density * 0.48623799795232_8)
       end if
 
-    case('cd')
+    case ('cd')
       call list_names % append('48106.' // xs)
       call list_names % append('48108.' // xs)
       call list_names % append('48110.' // xs)
@@ -3828,7 +3828,7 @@ contains
         call list_density % append(density * 0.07722790673866_8)
       end if
 
-    case('in')
+    case ('in')
       call list_names % append('49113.' // xs)
       call list_names % append('49115.' // xs)
       if (density > 0.0) then
@@ -3839,7 +3839,7 @@ contains
         call list_density % append(density * 0.95781586191886_8)
       end if
 
-    case('sn')
+    case ('sn')
       call list_names % append('50112.' // xs)
       call list_names % append('50114.' // xs)
       call list_names % append('50115.' // xs)
@@ -3874,7 +3874,7 @@ contains
         call list_density % append(density * 0.06043395972378_8)
       end if
 
-    case('sb')
+    case ('sb')
       call list_names % append('51121.' // xs)
       call list_names % append('51123.' // xs)
       if (density > 0.0) then
@@ -3885,7 +3885,7 @@ contains
         call list_density % append(density * 0.43192110028417_8)
       end if
 
-    case('te')
+    case ('te')
       call list_names % append('52120.' // xs)
       call list_names % append('52122.' // xs)
       call list_names % append('52123.' // xs)
@@ -3914,7 +3914,7 @@ contains
         call list_density % append(density * 0.34695957112476_8)
       end if
 
-    case('i')
+    case ('i')
       call list_names % append('53127.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3922,7 +3922,7 @@ contains
         call list_density % append(density * 1.00000002363983_8)
       end if
 
-    case('xe')
+    case ('xe')
       call list_names % append('54124.' // xs)
       call list_names % append('54126.' // xs)
       call list_names % append('54128.' // xs)
@@ -3954,7 +3954,7 @@ contains
         call list_density % append(density * 0.09168584851048_8)
       end if
 
-    case('cs')
+    case ('cs')
       call list_names % append('55133.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -3962,7 +3962,7 @@ contains
         call list_density % append(density * 1.00000000024830_8)
       end if
 
-    case('ba')
+    case ('ba')
       call list_names % append('56130.' // xs)
       call list_names % append('56132.' // xs)
       call list_names % append('56134.' // xs)
@@ -3988,7 +3988,7 @@ contains
         call list_density % append(density * 0.71999901066401_8)
       end if
 
-    case('la')
+    case ('la')
       call list_names % append('57138.' // xs)
       call list_names % append('57139.' // xs)
       if (density > 0.0) then
@@ -3999,7 +3999,7 @@ contains
         call list_density % append(density * 0.99910635327774_8)
       end if
 
-    case('ce')
+    case ('ce')
       call list_names % append('58136.' // xs)
       call list_names % append('58138.' // xs)
       call list_names % append('58140.' // xs)
@@ -4016,7 +4016,7 @@ contains
         call list_density % append(density * 0.11256240099746_8)
       end if
 
-    case('pr')
+    case ('pr')
       call list_names % append('59141.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4024,7 +4024,7 @@ contains
         call list_density % append(density * 1.00000001987117_8)
       end if
 
-    case('nd')
+    case ('nd')
       call list_names % append('60142.' // xs)
       call list_names % append('60143.' // xs)
       call list_names % append('60144.' // xs)
@@ -4050,7 +4050,7 @@ contains
         call list_density % append(density * 0.05820475240221_8)
       end if
 
-    case('sm')
+    case ('sm')
       call list_names % append('62144.' // xs)
       call list_names % append('62147.' // xs)
       call list_names % append('62148.' // xs)
@@ -4076,7 +4076,7 @@ contains
         call list_density % append(density * 0.23288974870810_8)
       end if
 
-    case('eu')
+    case ('eu')
       call list_names % append('63151.' // xs)
       call list_names % append('63153.' // xs)
       if (density > 0.0) then
@@ -4087,7 +4087,7 @@ contains
         call list_density % append(density * 0.52518747922909_8)
       end if
 
-    case('gd')
+    case ('gd')
       call list_names % append('64152.' // xs)
       call list_names % append('64154.' // xs)
       call list_names % append('64155.' // xs)
@@ -4113,7 +4113,7 @@ contains
         call list_density % append(density * 0.22232148824331_8)
       end if
 
-    case('tb')
+    case ('tb')
       call list_names % append('65159.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4121,7 +4121,7 @@ contains
         call list_density % append(density * 0.99999997986476_8)
       end if
 
-    case('dy')
+    case ('dy')
       call list_names % append('66156.' // xs)
       call list_names % append('66158.' // xs)
       call list_names % append('66160.' // xs)
@@ -4147,7 +4147,7 @@ contains
         call list_density % append(density * 0.28508544491372_8)
       end if
 
-    case('ho')
+    case ('ho')
       call list_names % append('67165.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4155,7 +4155,7 @@ contains
         call list_density % append(density * 1.00000001273265_8)
       end if
 
-    case('er')
+    case ('er')
       call list_names % append('68162.' // xs)
       call list_names % append('68164.' // xs)
       call list_names % append('68166.' // xs)
@@ -4178,7 +4178,7 @@ contains
         call list_density % append(density * 0.15148588552562_8)
       end if
 
-    case('tm')
+    case ('tm')
       call list_names % append('69169.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4186,7 +4186,7 @@ contains
         call list_density % append(density * 1.00000001953423_8)
       end if
 
-    case('yb')
+    case ('yb')
       call list_names % append('70168.' // xs)
       call list_names % append('70170.' // xs)
       call list_names % append('70171.' // xs)
@@ -4212,7 +4212,7 @@ contains
         call list_density % append(density * 0.12972986552706_8)
       end if
 
-    case('lu')
+    case ('lu')
       call list_names % append('71175.' // xs)
       call list_names % append('71176.' // xs)
       if (density > 0.0) then
@@ -4223,7 +4223,7 @@ contains
         call list_density % append(density * 0.02604445857826_8)
       end if
 
-    case('hf')
+    case ('hf')
       call list_names % append('72174.' // xs)
       call list_names % append('72176.' // xs)
       call list_names % append('72177.' // xs)
@@ -4246,7 +4246,7 @@ contains
         call list_density % append(density * 0.35366266872094_8)
       end if
 
-    case('ta')
+    case ('ta')
       if (default_expand == ENDF_BVII0 .or. &
            (default_expand >= JEFF_311 .and. default_expand <= JEFF_312) .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_40)) then
@@ -4268,7 +4268,7 @@ contains
         end if
       end if
 
-    case('w')
+    case ('w')
       if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
            .or. default_expand == JEFF_312 .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
@@ -4312,7 +4312,7 @@ contains
         end if
       end if
 
-    case('re')
+    case ('re')
       call list_names % append('75185.' // xs)
       call list_names % append('75187.' // xs)
       if (density > 0.0) then
@@ -4323,7 +4323,7 @@ contains
         call list_density % append(density * 0.62851719559737_8)
       end if
 
-    case('os')
+    case ('os')
       call list_names % append('76184.' // xs)
       call list_names % append('76186.' // xs)
       call list_names % append('76187.' // xs)
@@ -4349,7 +4349,7 @@ contains
         call list_density % append(density * 0.41151181112054_8)
       end if
 
-    case('ir')
+    case ('ir')
       call list_names % append('77191.' // xs)
       call list_names % append('77193.' // xs)
       if (density > 0.0) then
@@ -4360,7 +4360,7 @@ contains
         call list_density % append(density * 0.62943316591561_8)
       end if
 
-    case('pt')
+    case ('pt')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('78000.' // xs)
         if (density > 0.0) then
@@ -4392,7 +4392,7 @@ contains
         end if
       end if
 
-    case('au')
+    case ('au')
       call list_names % append('79197.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4400,7 +4400,7 @@ contains
         call list_density % append(density * 0.99999999847690_8)
       end if
 
-    case('hg')
+    case ('hg')
       call list_names % append('80196.' // xs)
       call list_names % append('80198.' // xs)
       call list_names % append('80199.' // xs)
@@ -4426,7 +4426,7 @@ contains
         call list_density % append(density * 0.06985881166025_8)
       end if
 
-    case('tl')
+    case ('tl')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
         call list_names % append('81000.' // xs)
         if (density > 0.0) then
@@ -4446,7 +4446,7 @@ contains
         end if
       end if
 
-    case('pb')
+    case ('pb')
       call list_names % append('82204.' // xs)
       call list_names % append('82206.' // xs)
       call list_names % append('82207.' // xs)
@@ -4463,7 +4463,7 @@ contains
         call list_density % append(density * 0.52596412017568_8)
       end if
 
-    case('bi')
+    case ('bi')
       call list_names % append('83209.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4471,7 +4471,7 @@ contains
         call list_density % append(density * 0.99999999377932_8)
       end if
 
-    case('th')
+    case ('th')
       call list_names % append('90232.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4479,7 +4479,7 @@ contains
         call list_density % append(density * 0.99999997974470_8)
       end if
 
-    case('pa')
+    case ('pa')
       call list_names % append('91231.' // xs)
       if (density > 0.0) then
         call list_density % append(density * 1.00000000000000_8)
@@ -4487,7 +4487,7 @@ contains
         call list_density % append(density * 1.00000001731333_8)
       end if
 
-    case('u')
+    case ('u')
       call list_names % append('92234.' // xs)
       call list_names % append('92235.' // xs)
       call list_names % append('92238.' // xs)

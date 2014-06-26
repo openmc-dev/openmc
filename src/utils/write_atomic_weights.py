@@ -158,7 +158,7 @@ def write_code(elements, input_fname, output_fname):
     # Insert atomic data inside case statements.
     for elem in elements:
         # Insert case statements ex: "case('h')", "case('he')", "case('li')"
-        code.insert(ind, "    case('{0}')\n".format(elem.symbol.lower()))
+        code.insert(ind, "    case ('{0}')\n".format(elem.symbol.lower()))
         ind += 1
 
         # Handle elements with incomplete cross section evaluations.

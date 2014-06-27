@@ -1,4 +1,4 @@
-module particle_restart 
+module particle_restart
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
@@ -88,6 +88,7 @@ contains
     ! Set particle last attributes
     p % last_wgt = p % wgt
     p % last_xyz = p % coord % xyz
+    p % last_uvw = p % coord % uvw
     p % last_E   = p % E
 
     ! Close hdf5 file

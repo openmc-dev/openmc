@@ -66,7 +66,7 @@ contains
     total_weight = total_weight + p % wgt
 !$omp end critical
 
-    ! Force calculation of cross-sections by setting last energy to zero 
+    ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO
 
     ! Prepare to write out particle track.

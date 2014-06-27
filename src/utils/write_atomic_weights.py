@@ -5,22 +5,26 @@ In order to use this program, follow these steps:
 *  Make a data file from the NIST Atomic Weights and Isotopic Compositions
    database <http://nist.gov/pml/data/comp.cfm>.  Check the 'Linearized ASCII
    Output' and 'All isotopes' options.  Please add access date and reference
-   information to the top of file.  The data file should look llike the
+   information to the top of file.  The data file should look like the
    NIST_weights.txt file in the openmc /src/utils directory.
 *  Run this program with the sytax 'write_atomic_weights.py DATA TEMPLATE OUT'.
-   Note that TEMPLATE and OUT can be the same file; in that case, the template
-   will be overwritten.  A typical invokation would be:
+   TEMPLATE should be an input_xml.F90 file with the 'Start of the natural
+   element cases' and 'End of the natural element cases' flags.  The OUT file
+   will be written exactly like the TEMPLATE file but with the inclusion of the
+   atomic weight data. Note that TEMPLATE and OUT can be the same file; in that
+   case, the template will be overwritten.  A typical invokation would be:
    ./write_atomic_weights.py NIST_weights.txt ../input_xml.F90 ../input_xml.F90
 
 Usage information can be obtained by running 'write_atomic_weights.py --help':
 
     usage: write_atomic_weights.py [-h] DATA TEMPLATE OUT
 
-    Write expand_natural_element subroutine with NIST data.
+    Rewrite an input_xml.F90 file with atomic weight data included in the
+    expand_natural_element subroutine.
 
     positional arguments:
       DATA        Text file containing NIST atomic weight data.
-      TEMPLATE    input_xml.F90 file.
+      TEMPLATE    input_xml.F90 file with 'Start of', 'End of...' flags.
       OUT         Name of .F90 file that will be written.
 
     optional arguments:
@@ -50,12 +54,13 @@ class Element():
 
 def _parse_args():
     # Create argument parser.
-    parser = argparse.ArgumentParser(
-        description='Write expand_natural_element subroutine with NIST data.')
+    parser = argparse.ArgumentParser(description=''.join(['Rewrite an ',
+        'input_xml.F90 file with atomic weight data included in the ',
+        'expand_natural_element subroutine.']))
     parser.add_argument('data', metavar='DATA', type=str,
                         help='Text file containing NIST atomic weight data.')
     parser.add_argument('template', metavar='TEMPLATE', type=str,
-                        help='input_xml.F90 file.')
+                  help="input_xml.F90 file with 'Start of', 'End of...' flags.")
     parser.add_argument('output', metavar='OUT', type=str,
                         help='Name of .F90 file that will be written.')
 

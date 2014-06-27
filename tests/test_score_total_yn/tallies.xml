@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>total</scores>
+  </tally>
+  
+  <tally id="2">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>total-y4</scores>
+  </tally>
+
+</tallies>

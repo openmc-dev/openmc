@@ -4,7 +4,7 @@ module tally
   use constants
   use error,            only: fatal_error
   use global
-  use math,             only: t_percentile, calc_pn
+  use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
@@ -244,7 +244,7 @@ contains
 
             score = last_wgt
 
-          case (SCORE_NU_SCATTER) 
+          case (SCORE_NU_SCATTER)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
@@ -253,7 +253,7 @@ contains
             ! reaction with neutrons in the exit channel
 
             score = wgt
-            
+
           case (SCORE_SCATTER_N)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -281,7 +281,7 @@ contains
               score_index = score_index + 1
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
-              
+
 !$omp critical
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
@@ -503,7 +503,7 @@ contains
 
               end if
             end if
-          
+
           case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
@@ -977,7 +977,7 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     atom_density = mat % atom_density(l)
-                    
+
                     ! Get index in nuclides array
                     i_nuc = mat % nuclide(l)
 
@@ -1179,7 +1179,7 @@ contains
           ! sections that are used often (e.g. n2n, ngamma, etc. for depletion),
           ! it might make sense to optimize this section or pre-calculate cross
           ! sections
-          
+
           if (score_bin > 1) then
             ! Set default score
             score = ZERO
@@ -1318,7 +1318,7 @@ contains
         ! Any other cross section has to be calculated on-the-fly. This is
         ! somewhat costly since it requires a loop over each nuclide in a
         ! material and each reaction in the nuclide
-        
+
         if (score_bin > 1) then
           ! Set default score
           score = ZERO
@@ -1630,7 +1630,7 @@ contains
               score_index = (b - 1)*t % n_score_bins + j
 
               if (i_nuclide > 0) then
-                ! Determine macroscopic nuclide cross section 
+                ! Determine macroscopic nuclide cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
@@ -1713,7 +1713,7 @@ contains
                 end select
 
               else
-                ! Determine macroscopic material cross section 
+                ! Determine macroscopic material cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux

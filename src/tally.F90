@@ -2976,13 +2976,16 @@ contains
     ! set up our distribution storage
     ndpp_outgoing(thread_id, l, :) = ZERO
 
+    ! Store our cross-section as norm
+    norm = micro_xs(i_nuclide) % elastic
+
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
     if (allocated(el(i_grid) % outgoing)) then
       do g = lbound(el(i_grid) % outgoing, dim=2), &
              ubound(el(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = micro_xs(i_nuclide) % elastic * &
-          el(i_grid) % outgoing(l, g) * one_f
+        ndpp_outgoing(thread_id, l, g) = norm * one_f * &
+          el(i_grid) % outgoing(l, g)
       end do
     end if
     ! Do upper point
@@ -2990,15 +2993,12 @@ contains
       do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
              ubound(el(i_grid + 1) % outgoing, dim=2)
         ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-          micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(l, g) * f
+          norm * f * el(i_grid + 1) % outgoing(l, g)
       end do
     end if
 
-    norm = micro_xs(i_nuclide) % elastic
-
     ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
     ! We can tell if we are s(a,b) because then the inel* pointers will be null
-
     if (associated(inel)) then
       ! Perform same steps as above, but with inelastic.
       ! Also, we will get our normalization constants from the NDPP data itself.
@@ -3154,13 +3154,16 @@ contains
     ! set up our distribution storage
     ndpp_outgoing = ZERO
 
+    ! Store our cross-section as norm
+    norm = micro_xs(i_nuclide) % elastic
+
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
     if (allocated(el(i_grid) % outgoing)) then
       do g = lbound(el(i_grid) % outgoing, dim=2), &
              ubound(el(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, :, g) = micro_xs(i_nuclide) % elastic * &
-          el(i_grid) % outgoing(:, g) * one_f
+        ndpp_outgoing(thread_id, :, g) = norm * one_f * &
+          el(i_grid) % outgoing(:, g)
       end do
     end if
     ! Do upper point
@@ -3168,15 +3171,12 @@ contains
       do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
              ubound(el(i_grid + 1) % outgoing, dim=2)
         ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-          micro_xs(i_nuclide) % elastic * el(i_grid + 1) % outgoing(:, g) * f
+          norm * f * el(i_grid + 1) % outgoing(:, g)
       end do
     end if
 
-    norm = micro_xs(i_nuclide) % elastic
-
     ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
     ! We can tell if we are s(a,b) because then the inel* pointers will be null
-
     if (associated(inel)) then
       ! Perform same steps as above, but with inelastic.
       ! Also, we will get our normalization constants from the NDPP data itself.

@@ -523,7 +523,12 @@ contains
               end if
             end do NUCLIDE_MAT_LOOP
 
-            atom_density = mat % comp(p % offset_comp) % atom_density(j)
+            if (mat % distrib_comp) then
+              atom_density = mat % get_density(p % comp_id,j)
+            else
+              atom_density = mat % get_density(1,j)
+            endif
+
           end if
 
           ! Determine score for each bin
@@ -666,10 +671,10 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     if (mat % distrib_comp) then
-                      atom_density = mat % comp(p % offset_comp) % atom_density(l)
+                      atom_density = mat % get_density(p % comp_id,l)
                     else
-                      atom_density = mat % comp(1) % atom_density(l)
-                   end if
+                      atom_density = mat % get_density(1,l)
+                    endif
                     
                     ! Get index in nuclides array
                     i_nuc = mat % nuclide(l)
@@ -777,9 +782,14 @@ contains
 
       ! Determine index in nuclides array and atom density for i-th nuclide in
       ! current material
-      i_nuclide = mat % nuclide(i)
-      atom_density = mat % comp(p % offset_comp) % atom_density(i)
+      i_nuclide = mat % nuclide(i)    
 
+      if (mat % distrib_comp) then
+        atom_density = mat % get_density(p % comp_id,i)
+      else
+        atom_density = mat % get_density(1,i)
+      endif
+      
       ! Loop over score types for each bin
       SCORE_LOOP: do j = 1, t % n_score_bins
         ! determine what type of score bin
@@ -913,9 +923,14 @@ contains
           mat => materials(p % material)
 
           do i = 1, mat % n_nuclides
-            ! Get atom density
-            atom_density = mat % comp(p % offset_comp) % atom_density(i)
+            ! Get atom density           
 
+            if (mat % distrib_comp) then
+              atom_density = mat % get_density(p % comp_id,i)
+            else
+              atom_density = mat % get_density(1,i)
+            endif
+            
             ! Get index in nuclides array
             i_nuclide = mat % nuclide(i)
 
@@ -1198,7 +1213,12 @@ contains
                 end if
               end do NUCLIDE_MAT_LOOP
 
-              atom_density = mat % comp(p % offset_comp) % atom_density(j)
+              if (mat % distrib_comp) then
+                atom_density = mat % get_density(p % comp_id,j)
+              else
+                atom_density = mat % get_density(1,j)
+              endif
+              
             end if
 
             ! Determine score for each bin

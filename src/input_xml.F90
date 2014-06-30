@@ -1628,54 +1628,11 @@ contains
           name = trim(temp_str) // "." // trim(name)
 
           ! save name and density to list
-          call list_names % append(name)
+          call list_names % append(name)        
 
         end do COMPOSITION_NUCLIDES
 
-        ! =======================================================================
-        ! READ AND PARSE <element> TAGS
-
-        ! Get pointer list of XML <element>
-!        call get_node_list(node_mat, "element", node_ele_list)
-!
-!        NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
-!          call get_list_item(node_ele_list, j, node_ele)
-!
-!          ! Check for empty name on natural element
-!          if (.not.check_for_node(node_ele, "name")) then
-!            message = "No name specified on nuclide in material " // &
-!                 trim(to_str(mat % id))
-!            call fatal_error()
-!          end if
-!          call get_node_value(node_ele, "name", name)
-!
-!          ! Check for cross section
-!          if (check_for_node(node_ele, "xs")) then
-!            call get_node_value(node_ele, "xs", temp_str)
-!          else
-!            if (default_xs == '') then
-!              message = "No cross section specified for nuclide in material " &
-!                   // trim(to_str(mat % id))
-!              call fatal_error()
-!            else
-!              temp_str = trim(default_xs)
-!            end if
-!          end if
-!
-!          ! Expand element into naturally-occurring isotopes
-!          if (check_for_node(node_ele, "ao")) then
-!            call get_node_value(node_ele, "ao", temp_dble)
-!            call expand_natural_element(name, temp_str, temp_dble, &
-!                 list_names, list_density)
-!          else
-!            message = "The ability to expand a natural element based on weight &
-!                 &percentage is not yet supported."
-!            call fatal_error()
-!          end if
-!        end do NATURAL_ELEMENTS
-
         ! Verify that the input matches the number of nuclides
-        
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
         write (*,*) "n_comp:",n_comp
@@ -1839,73 +1796,80 @@ contains
             call fatal_error()
           end if
         end do NATURAL_ELEMENTS
+      end if
+      ! ========================================================================
+      ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
-        ! ========================================================================
-        ! COPY NUCLIDES TO ARRAYS IN MATERIAL
-
-        ! allocate arrays in Material object
-        n = list_names % size()
-        mat % n_nuclides = n
-        allocate(mat % names(n))
-        allocate(mat % nuclide(n))
-        allocate(mat % comp(1) % atom_density(n))
-      
-        ALL_NUCLIDES: do j = 1, mat % n_nuclides
-          ! Check that this nuclide is listed in the cross_sections.xml file
-          name = trim(list_names % get_item(j))
-          if (.not. xs_listing_dict % has_key(name)) then
-            message = "Could not find nuclide " // trim(name) // &
-                 " in cross_sections.xml file!"
-            call fatal_error()
-          end if
-
-          ! Check to make sure cross-section is continuous energy neutron table
-          n = len_trim(name)
-          if (name(n:n) /= 'c') then
-            message = "Cross-section table " // trim(name) // & 
-                 " is not a continuous-energy neutron table."
-            call fatal_error()
-          end if
-
-          ! Find xs_listing and set the name/alias according to the listing
-          index_list = xs_listing_dict % get_key(name)
-          name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
-
-          ! If this nuclide hasn't been encountered yet, we need to add its name
-          ! and alias to the nuclide_dict
-          if (.not. nuclide_dict % has_key(name)) then
-            index_nuclide    = index_nuclide + 1
-            mat % nuclide(j) = index_nuclide
-
-            call nuclide_dict % add_key(name, index_nuclide)
-            call nuclide_dict % add_key(alias, index_nuclide)
-          else
-            mat % nuclide(j) = nuclide_dict % get_key(name)
-          end if
-
-          ! Copy name and atom/weight percent
-          mat % names(j) = name
-          mat % comp(1) % atom_density(j) = list_density % get_item(j)
-        end do ALL_NUCLIDES
-
-        ! Check to make sure either all atom percents or all weight percents are
-        ! given
-        if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
-             all(mat % comp(1) % atom_density < ZERO))) then
-          message = "Cannot mix atom and weight percents in material " // &
-               to_str(mat % id)
+      ! allocate arrays in Material object
+      n = list_names % size()
+      mat % n_nuclides = n
+      allocate(mat % names(n))
+      allocate(mat % nuclide(n))
+                                   
+      ALL_NUCLIDES: do j = 1, mat % n_nuclides
+        ! Check that this nuclide is listed in the cross_sections.xml file
+        name = trim(list_names % get_item(j))
+        if (.not. xs_listing_dict % has_key(name)) then
+          message = "Could not find nuclide " // trim(name) // &
+               " in cross_sections.xml file!"
           call fatal_error()
         end if
 
-        ! Determine density if it is a sum value
-        if (sum_density) mat % density % density(1) = sum(mat % comp(1) % atom_density)
+        ! Check to make sure cross-section is continuous energy neutron table
+        n = len_trim(name)
+        if (name(n:n) /= 'c') then
+          message = "Cross-section table " // trim(name) // & 
+               " is not a continuous-energy neutron table."
+          call fatal_error()
+        end if
 
-        ! Clear lists
-        call list_names % clear()
-        call list_density % clear()
+        ! Find xs_listing and set the name/alias according to the listing
+        index_list = xs_listing_dict % get_key(name)
+        name       = xs_listings(index_list) % name
+        alias      = xs_listings(index_list) % alias
 
+        ! If this nuclide hasn't been encountered yet, we need to add its name
+        ! and alias to the nuclide_dict
+        if (.not. nuclide_dict % has_key(name)) then
+          index_nuclide    = index_nuclide + 1
+          mat % nuclide(j) = index_nuclide
+
+          call nuclide_dict % add_key(name, index_nuclide)
+          call nuclide_dict % add_key(alias, index_nuclide)
+        else
+          mat % nuclide(j) = nuclide_dict % get_key(name)
+        end if
+
+        ! Copy name and atom/weight percent
+        mat % names(j) = name
+        if (mat % distrib_comp) then
+          ! Nothing to do, this was already done
+        else
+          mat % comp(1) % atom_density(j) = list_density % get_item(j) 
+          ! Check to make sure either all atom percents or all weight percents
+          ! are given
+          if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
+             all(mat % comp(1) % atom_density < ZERO))) then
+            message = "Cannot mix atom and weight percents in material " // &
+             to_str(mat % id)
+        call fatal_error()
       end if
+        end if
+      end do ALL_NUCLIDES          
+
+      ! Determine density if it is a sum value  
+      if (sum_density .and. mat % distrib_comp) then
+        message = "Distributed Compositions does not support " // &
+             " summed density " // to_str(mat % id)
+        call fatal_error()
+      end if
+      if (sum_density) then
+        mat % density % density(1) = sum(mat % comp(1) % atom_density)
+      end if
+
+      ! Clear lists
+      call list_names % clear()
+      call list_density % clear()
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
@@ -4201,4 +4165,4 @@ contains
 
   end subroutine expand_natural_element
 
-end module input_xml
+end module input_xml                                     

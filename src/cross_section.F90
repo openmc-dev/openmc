@@ -102,8 +102,7 @@ contains
 
       ! Copy atom density of nuclide in material
       if (mat % distrib_comp) then
-        write (*,*) "SOMEHOW GOT HERE"
-        atom_density = mat % get_density(p % offset_comp,i)
+        atom_density = mat % get_density(p % comp_id,i)
       else
         atom_density = mat % get_density(1,i)
       endif

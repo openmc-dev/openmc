@@ -203,6 +203,8 @@ contains
           do j = 1, n_tally_maps
             p % coord % mapping(j) = c % offset(j)
           end do
+          p % comp_id = c % dist_comp
+          p % dens_id = c % dist_dens
 
           ! Create new level of coordinates
           allocate(p % coord % next)
@@ -252,6 +254,13 @@ contains
             n_z = 1
           end if
 
+          if (allocated(lat % densities)) then
+            p % dens_id = lat % compositions(i_x,i_y,i_z) 
+          end if
+          if (allocated(lat % densities)) then
+            p % comp_id = lat % compositions(i_x,i_y,i_z) 
+          end if
+          
           ! Check if lattice coordinates are within bounds
           if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
                i_z < 1 .or. i_z > n_z) then

@@ -46,16 +46,12 @@ module material_header
     ! Distribution Variables
     logical                        :: distrib_dens ! distributed densities
     logical                        :: distrib_comp ! distributed compositions
-    integer                        :: comp_map     ! composition map ID
-    integer                        :: dens_map     ! density map ID
+
   contains
     procedure :: get_density => get_density
   end type Material
-
-
-
+  
 contains
-
 
   function get_density(this, i, j) result(density)
 

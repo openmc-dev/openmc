@@ -56,20 +56,21 @@ module geometry_header
 !===============================================================================
 
   type Cell
-     integer :: id                      ! Unique ID
-     integer :: type                    ! Type of cell (normal, universe, lattice)
-     integer :: universe                ! universe # this cell is in
-     integer :: fill                    ! universe # filling this cell
-     integer :: dist_dens               ! material distribution number - density
-     integer :: dist_comp               ! material distribution number - composition
-     logical :: distributed             ! distributed materials
-     integer :: material                ! Material within cell (0 for universe)
-     integer :: n_surfaces              ! Number of surfaces within
-     integer, allocatable :: offset (:) ! Offset for tally counter
+     integer :: id            ! Unique ID
+     integer :: type          ! Type of cell (normal, universe, lattice)
+     integer :: universe      ! universe # this cell is in
+     integer :: fill          ! universe # filling this cell
+     integer :: dist_dens     ! material distribution # - density
+     integer :: dist_comp     ! material distribution # - composition
+     logical :: distributed   ! distributed materials
+     integer :: material      ! Material within cell (0 for universe)
+     integer :: n_surfaces    ! Number of surfaces within
+     integer, allocatable :: &
+          & offset (:)        ! Offset for tally counter
      integer, allocatable :: & 
-          & surfaces(:)                 ! List of surfaces bounding cell -- note that
-                                        ! parentheses, union, etc operators will be listed
-                                        ! here too
+          & surfaces(:)       ! List of surfaces bounding cell -- note that
+                              ! parentheses, union, etc operators will be listed
+                              ! here too
 
      ! Rotation matrix and translation vector
      real(8), allocatable :: rotation(:,:)

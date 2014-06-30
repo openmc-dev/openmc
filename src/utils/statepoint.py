@@ -321,7 +321,6 @@ class Geometry_Data(object):
                 # Check if the previous cell was a normal cell
                 # Throw Exception if it was, there's no deeper cells
                 for c in self.cell:
-#                  if (prev == c.userID and c.filltype == "normal").any():
                   if prev == c.userID and c.filltype == 'normal':
                     error = "ERROR: Cell " + str(c.userID)  + " is normal cell, cannot contain any lower levels."
                     exit(error)
@@ -654,8 +653,6 @@ class StatePoint(object):
           nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
 	  dist_dens = self._get_int(path=base + str(matList[i])+'/distrib_dens')[0]
 	  dist_comp = self._get_int(path=base + str(matList[i])+'/distrib_comp')[0]
-	  dens_map = self._get_int(path=base + str(matList[i])+'/dens_map')[0]
-	  comp_map = self._get_int(path=base + str(matList[i])+'/comp_map')[0]
 	  n_dens = self._get_int(path=base + str(matList[i])+'/num_density')[0]
 	  dens = self._get_double(n_dens, path=base + str(matList[i])+'/density')
 	  n_comp = self._get_int(path=base + str(matList[i])+'/num_comp')[0]
@@ -698,7 +695,6 @@ class StatePoint(object):
         # Read number of tallies
         n_tallies = self._get_int(path='tallies/n_tallies')[0]
 
-	#print 'PRINTING'
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
             t = Tally()
@@ -719,7 +715,6 @@ class StatePoint(object):
 
             # Add tally to dictionary
             self.tallyID[t.id] = i
-#            self.tallyID[i] = t.id
 
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]

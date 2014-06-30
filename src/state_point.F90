@@ -435,11 +435,6 @@ contains
         call sp % write_data(j, "distrib_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        call sp % write_data(mat % dens_map, "dens_map", &
-             group="geometry/materials/material " // trim(to_str(mat % id)))
-        call sp % write_data(mat % comp_map, "comp_map", &
-             group="geometry/materials/material " // trim(to_str(mat % id)))
-
         call sp % write_data(mat % density % num, "num_density", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
         call sp % write_data(mat % density % density, "density", &
@@ -1189,11 +1184,6 @@ contains
       call sp % read_data(dist_dens, "distrib_dens", &
            group="geometry/materials/material ")
       call sp % read_data(dist_comp, "distrib_comp", &
-           group="geometry/materials/material ")
-
-      call sp % read_data(j, "dens_map", &
-           group="geometry/materials/material ")
-      call sp % read_data(j, "comp_map", &
            group="geometry/materials/material ")
 
       call sp % read_data(j, "num_density", &

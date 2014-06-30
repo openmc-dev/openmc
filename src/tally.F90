@@ -2976,8 +2976,16 @@ contains
     ! set up our distribution storage
     ndpp_outgoing(thread_id, l, :) = ZERO
 
-    ! Store our cross-section as norm
-    norm = micro_xs(i_nuclide) % elastic
+   ! Store our cross-section as norm
+    if (micro_xs(i_nuclide) % use_ptable) then
+      ! We have to get the non-URR elastic x/s which is the average
+      norm = (ONE - micro_xs(i_nuclide) % interp_factor) * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid) &
+        + micro_xs(i_nuclide) % interp_factor * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid+1)
+    else
+      norm = micro_xs(i_nuclide) % elastic
+    end if
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
@@ -3155,7 +3163,15 @@ contains
     ndpp_outgoing = ZERO
 
     ! Store our cross-section as norm
-    norm = micro_xs(i_nuclide) % elastic
+    if (micro_xs(i_nuclide) % use_ptable) then
+      ! We have to get the non-URR elastic x/s which is the average
+      norm = (ONE - micro_xs(i_nuclide) % interp_factor) * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid) &
+        + micro_xs(i_nuclide) % interp_factor * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid+1)
+    else
+      norm = micro_xs(i_nuclide) % elastic
+    end if
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point

@@ -2931,9 +2931,12 @@ contains
     integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
 
-    integer :: srch_lo, srch_hi, i_grid
+    integer :: srch_lo, srch_hi, el_igrid, inel_igrid
     integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
     real(8) :: f, one_f
+
+    inel_gmin = huge(0)
+    inel_gmax = 0
 
     ! Create distribution for elastic scattering
     ! First perform the binary search to find where our incoming E points is
@@ -2941,152 +2944,159 @@ contains
     srch_hi = el_Ein_srch(gin + 1)
     ! Find the grid index and interpolant of ndpp scattering data
     if (Ein <= el_Ein(1)) then
-      i_grid = 1
+      el_igrid = 1
       f = ZERO
     else if (Ein >= el_Ein(size(el_Ein))) then
-      i_grid = size(el_Ein) - 1
+      el_igrid = size(el_Ein) - 1
       f = ONE
     else
-      i_grid = binary_search(el_Ein(srch_lo: srch_hi), &
+      el_igrid = binary_search(el_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / el_Ein(i_grid)) / &
-        log(el_Ein(i_grid + 1) / el_Ein(i_grid))
+      f = log(Ein / el_Ein(el_igrid)) / &
+        log(el_Ein(el_igrid + 1) / el_Ein(el_igrid))
     end if
     one_f = ONE - f
 
     ! Now find our gmin and gmax terms
-    ! Now find our gmin and gmax terms
-    if ((allocated(el(i_grid) % outgoing)) .and. &
-        (allocated(el(i_grid + 1) % outgoing))) then
-      el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-                    lbound(el(i_grid + 1) % outgoing, dim=2))
-      el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-                    ubound(el(i_grid + 1) % outgoing, dim=2))
-    else if (allocated(el(i_grid) % outgoing)) then
-      el_gmin = lbound(el(i_grid) % outgoing, dim=2)
-      el_gmax = ubound(el(i_grid) % outgoing, dim=2)
-    else if (allocated(el(i_grid + 1) % outgoing)) then
-      el_gmin = lbound(el(i_grid+1) % outgoing, dim=2)
-      el_gmax = ubound(el(i_grid+1) % outgoing, dim=2)
+    if ((allocated(el(el_igrid) % outgoing)) .and. &
+        (allocated(el(el_igrid + 1) % outgoing))) then
+      el_gmin = min(lbound(el(el_igrid) % outgoing, dim=2), &
+                    lbound(el(el_igrid + 1) % outgoing, dim=2))
+      el_gmax = max(ubound(el(el_igrid) % outgoing, dim=2), &
+                    ubound(el(el_igrid + 1) % outgoing, dim=2))
+    else if (allocated(el(el_igrid) % outgoing)) then
+      el_gmin = lbound(el(el_igrid) % outgoing, dim=2)
+      el_gmax = ubound(el(el_igrid) % outgoing, dim=2)
+    else if (allocated(el(el_igrid + 1) % outgoing)) then
+      el_gmin = lbound(el(el_igrid+1) % outgoing, dim=2)
+      el_gmax = ubound(el(el_igrid+1) % outgoing, dim=2)
     else
       el_gmin = huge(0)
-      el_gmax = huge(0)
-    end if
-
-    ! set up our distribution storage
-    ndpp_outgoing(thread_id, l, :) = ZERO
-
-   ! Store our cross-section as norm
-    if (micro_xs(i_nuclide) % use_ptable) then
-      ! We have to get the non-URR elastic x/s which is the average
-      norm = (ONE - micro_xs(i_nuclide) % interp_factor) * &
-        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid) &
-        + micro_xs(i_nuclide) % interp_factor * &
-        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid+1)
-    else
-      norm = micro_xs(i_nuclide) % elastic
-    end if
-
-    ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
-    ! Do lower point
-    if (allocated(el(i_grid) % outgoing)) then
-      do g = lbound(el(i_grid) % outgoing, dim=2), &
-             ubound(el(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = norm * one_f * &
-          el(i_grid) % outgoing(l, g)
-      end do
-    end if
-    ! Do upper point
-    if (allocated(el(i_grid + 1) % outgoing)) then
-      do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
-             ubound(el(i_grid + 1) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-          norm * f * el(i_grid + 1) % outgoing(l, g)
-      end do
+      el_gmax = 0
     end if
 
     ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
     ! We can tell if we are s(a,b) because then the inel* pointers will be null
     if (associated(inel)) then
-      ! Perform same steps as above, but with inelastic.
-      ! Also, we will get our normalization constants from the NDPP data itself.
-      ! First perform the binary search to find where our incoming E points is
-      srch_lo = inel_Ein_srch(gin)
-      srch_hi = inel_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
       if (Ein <= inel_Ein(1)) then
-        ! Then our point is below the threshold: exit, leaving without
-        ! allocating inel
-        norm = ONE / norm
+        ! Then our point is below the threshold: break this conditional
+        ! without changing inel_gmin and inel_gmax
         gmin = el_gmin
         gmax = el_gmax
         if (gmin == huge(0)) then
           gmin = 0
           gmax = -1
         end if
-        return
-      else if (Ein >= inel_Ein(size(inel_Ein))) then
-        i_grid = size(inel_Ein) - 1
-        f = ONE
       else
-        i_grid = binary_search(inel_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = log(Ein / inel_Ein(i_grid)) / &
-          log(inel_Ein(i_grid + 1) / inel_Ein(i_grid))
-      end if
-      one_f = ONE - f
+        ! Perform same steps as above, but with inelastic.
+        ! Also, we will get our normalization constants from the NDPP data itself.
+        ! First perform the binary search to find where our incoming E points is
+        srch_lo = inel_Ein_srch(gin)
+        srch_hi = inel_Ein_srch(gin + 1)
+        ! Find the grid index and interpolant of ndpp scattering data
+        if (Ein >= inel_Ein(size(inel_Ein))) then
+          inel_igrid = size(inel_Ein) - 1
+          f = ONE
+        else
+          inel_igrid = binary_search(inel_Ein(srch_lo: srch_hi), &
+                                 srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+          f = log(Ein / inel_Ein(inel_igrid)) / &
+            log(inel_Ein(inel_igrid + 1) / inel_Ein(inel_igrid))
+        end if
+        one_f = ONE - f
 
-      ! Now find our gmin and gmax terms
-      if ((allocated(inel(i_grid) % outgoing)) .and. &
-          (allocated(inel(i_grid + 1) % outgoing))) then
-        inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
-                      lbound(inel(i_grid + 1) % outgoing, dim=2))
-        inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
-                      ubound(inel(i_grid + 1) % outgoing, dim=2))
-      else if (allocated(inel(i_grid) % outgoing)) then
-        inel_gmin = lbound(inel(i_grid) % outgoing, dim=2)
-        inel_gmax = ubound(inel(i_grid) % outgoing, dim=2)
-      else if (allocated(inel(i_grid + 1) % outgoing)) then
-        inel_gmin = lbound(inel(i_grid+1) % outgoing, dim=2)
-        inel_gmax = ubound(inel(i_grid+1) % outgoing, dim=2)
-      else
-        inel_gmin = huge(0)
-        inel_gmax = huge(0)
-      end if
+        ! Now find our gmin and gmax terms
+        if ((allocated(inel(inel_igrid) % outgoing)) .and. &
+            (allocated(inel(inel_igrid + 1) % outgoing))) then
+          inel_gmin = min(lbound(inel(inel_igrid) % outgoing, dim=2), &
+                        lbound(inel(inel_igrid + 1) % outgoing, dim=2))
+          inel_gmax = max(ubound(inel(inel_igrid) % outgoing, dim=2), &
+                        ubound(inel(inel_igrid + 1) % outgoing, dim=2))
+        else if (allocated(inel(inel_igrid) % outgoing)) then
+          inel_gmin = lbound(inel(inel_igrid) % outgoing, dim=2)
+          inel_gmax = ubound(inel(inel_igrid) % outgoing, dim=2)
+        else if (allocated(inel(inel_igrid + 1) % outgoing)) then
+          inel_gmin = lbound(inel(inel_igrid+1) % outgoing, dim=2)
+          inel_gmax = ubound(inel(inel_igrid+1) % outgoing, dim=2)
+        end if
 
-      ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
-      ! Do lower point
-      if (allocated(inel(i_grid) % outgoing)) then
-        do g = lbound(inel(i_grid) % outgoing, dim=2), &
-               ubound(inel(i_grid) % outgoing, dim=2)
-          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-            inel(i_grid) % outgoing(l, g) * one_f
-        end do
+        ! Set our group boundaries
+        gmin = min(el_gmin, inel_gmin)
+        gmax = max(el_gmax, inel_gmax)
       end if
-      ! Do upper point
-      if (allocated(inel(i_grid + 1) % outgoing)) then
-        do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
-               ubound(inel(i_grid + 1) % outgoing, dim=2)
-          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-            inel(i_grid + 1) % outgoing(l, g) * f
-        end do
-      end if
-
-      ! Set our other outgoing data
-      norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
-
-      ! Set our group boundaries
-      gmin = min(el_gmin, inel_gmin)
-      gmax = max(el_gmax, inel_gmax)
     else
       ! Set our other outgoing data
       gmin = el_gmin
       gmax = el_gmax
     end if
 
+    ! Fix up gmin and gmax if need be
     if (gmin == huge(0)) then
       gmin = 0
       gmax = -1
+    end if
+
+    ! set up our distribution storage so we can add the components up
+    ! We do elastic and inelastic separately (some may be twice) just to increase
+    ! efficiency somewhat over doign all the possible outgoing groups.
+    if (el_gmin /= huge(0)) then
+      ndpp_outgoing(thread_id, l, el_gmin: el_gmax) = ZERO
+    end if
+    if (inel_gmin /= huge(0)) then
+      ndpp_outgoing(thread_id, l, inel_gmin: inel_gmax) = ZERO
+    end if
+
+    ! Store our cross-section as norm
+    if (micro_xs(i_nuclide) % use_ptable) then
+      ! We have to get the non-URR elastic x/s which is the average
+      norm = (ONE - micro_xs(i_nuclide) % interp_factor) * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid) &
+        + micro_xs(i_nuclide) % interp_factor * &
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid + 1)
+    else
+      norm = micro_xs(i_nuclide) % elastic
+    end if
+
+    ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
+    ! Do lower point
+    if (allocated(el(el_igrid) % outgoing)) then
+      do g = lbound(el(el_igrid) % outgoing, dim=2), &
+             ubound(el(el_igrid) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = norm * one_f * &
+          el(el_igrid) % outgoing(l, g)
+      end do
+    end if
+    ! Do upper point
+    if (allocated(el(el_igrid + 1) % outgoing)) then
+      do g = lbound(el(el_igrid + 1) % outgoing, dim=2), &
+             ubound(el(el_igrid + 1) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+          norm * f * el(el_igrid + 1) % outgoing(l, g)
+      end do
+    end if
+
+    ! And do the same for inelastic
+    if (inel_gmin /= huge(0)) then
+      ! Do lower point
+      if (allocated(inel(inel_igrid) % outgoing)) then
+        do g = lbound(inel(inel_igrid) % outgoing, dim=2), &
+               ubound(inel(inel_igrid) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+            inel(inel_igrid) % outgoing(l, g) * one_f
+        end do
+      end if
+      ! Do upper point
+      if (allocated(inel(inel_igrid + 1) % outgoing)) then
+        do g = lbound(inel(inel_igrid + 1) % outgoing, dim=2), &
+               ubound(inel(inel_igrid + 1) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
+            inel(inel_igrid + 1) % outgoing(l, g) * f
+        end do
+      end if
+
+      ! Set our other outgoing data
+      norm = norm + (one_f * inel_norm(inel_igrid) + f * inel_norm(inel_igrid + 1))
+
     end if
 
     ! Take inverse of norm for later usage as normalization constant
@@ -3100,12 +3110,13 @@ contains
 ! This includes performing all the interpolation necessary.  The *_PN version of
 ! this function provides this capability for score-ndpp-*scatter-pn tallies only.
 !===============================================================================
-  subroutine generate_ndpp_distrib_pn(i_nuclide, gin, Ein, &
+  subroutine generate_ndpp_distrib_pn(i_nuclide, gin, l, Ein, &
                                       el_Ein, el_Ein_srch, el, &
                                       inel_Ein, inel_Ein_srch, inel, inel_norm, &
                                       norm, gmin, gmax)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
+    integer, intent(in) :: l         ! Legendre order to score up to
     real(8), intent(in) :: Ein       ! Incoming energy
     real(8), pointer, intent(in) :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, intent(in) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
@@ -3118,9 +3129,12 @@ contains
     integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
 
-    integer :: srch_lo, srch_hi, i_grid
+    integer :: srch_lo, srch_hi, el_igrid, inel_igrid
     integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
     real(8) :: f, one_f
+
+    inel_gmin = huge(0)
+    inel_gmax = 0
 
     ! Create distribution for elastic scattering
     ! First perform the binary search to find where our incoming E points is
@@ -3128,39 +3142,107 @@ contains
     srch_hi = el_Ein_srch(gin + 1)
     ! Find the grid index and interpolant of ndpp scattering data
     if (Ein <= el_Ein(1)) then
-      i_grid = 1
+      el_igrid = 1
       f = ZERO
     else if (Ein >= el_Ein(size(el_Ein))) then
-      i_grid = size(el_Ein) - 1
+      el_igrid = size(el_Ein) - 1
       f = ONE
     else
-      i_grid = binary_search(el_Ein(srch_lo: srch_hi), &
+      el_igrid = binary_search(el_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / el_Ein(i_grid)) / &
-        log(el_Ein(i_grid + 1) / el_Ein(i_grid))
+      f = log(Ein / el_Ein(el_igrid)) / &
+        log(el_Ein(el_igrid + 1) / el_Ein(el_igrid))
     end if
     one_f = ONE - f
 
     ! Now find our gmin and gmax terms
-    if ((allocated(el(i_grid) % outgoing)) .and. &
-        (allocated(el(i_grid + 1) % outgoing))) then
-      el_gmin = min(lbound(el(i_grid) % outgoing, dim=2), &
-                    lbound(el(i_grid + 1) % outgoing, dim=2))
-      el_gmax = max(ubound(el(i_grid) % outgoing, dim=2), &
-                    ubound(el(i_grid + 1) % outgoing, dim=2))
-    else if (allocated(el(i_grid) % outgoing)) then
-      el_gmin = lbound(el(i_grid) % outgoing, dim=2)
-      el_gmax = ubound(el(i_grid) % outgoing, dim=2)
-    else if (allocated(el(i_grid + 1) % outgoing)) then
-      el_gmin = lbound(el(i_grid+1) % outgoing, dim=2)
-      el_gmax = ubound(el(i_grid+1) % outgoing, dim=2)
+    if ((allocated(el(el_igrid) % outgoing)) .and. &
+        (allocated(el(el_igrid + 1) % outgoing))) then
+      el_gmin = min(lbound(el(el_igrid) % outgoing, dim=2), &
+                    lbound(el(el_igrid + 1) % outgoing, dim=2))
+      el_gmax = max(ubound(el(el_igrid) % outgoing, dim=2), &
+                    ubound(el(el_igrid + 1) % outgoing, dim=2))
+    else if (allocated(el(el_igrid) % outgoing)) then
+      el_gmin = lbound(el(el_igrid) % outgoing, dim=2)
+      el_gmax = ubound(el(el_igrid) % outgoing, dim=2)
+    else if (allocated(el(el_igrid + 1) % outgoing)) then
+      el_gmin = lbound(el(el_igrid+1) % outgoing, dim=2)
+      el_gmax = ubound(el(el_igrid+1) % outgoing, dim=2)
     else
       el_gmin = huge(0)
       el_gmax = 0
     end if
 
-    ! set up our distribution storage
-    ndpp_outgoing = ZERO
+    ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
+    ! We can tell if we are s(a,b) because then the inel* pointers will be null
+    if (associated(inel)) then
+      if (Ein <= inel_Ein(1)) then
+        ! Then our point is below the threshold: break this conditional
+        ! without changing inel_gmin and inel_gmax
+        gmin = el_gmin
+        gmax = el_gmax
+        if (gmin == huge(0)) then
+          gmin = 0
+          gmax = -1
+        end if
+      else
+        ! Perform same steps as above, but with inelastic.
+        ! Also, we will get our normalization constants from the NDPP data itself.
+        ! First perform the binary search to find where our incoming E points is
+        srch_lo = inel_Ein_srch(gin)
+        srch_hi = inel_Ein_srch(gin + 1)
+        ! Find the grid index and interpolant of ndpp scattering data
+        if (Ein >= inel_Ein(size(inel_Ein))) then
+          inel_igrid = size(inel_Ein) - 1
+          f = ONE
+        else
+          inel_igrid = binary_search(inel_Ein(srch_lo: srch_hi), &
+                                 srch_hi - srch_lo + 1, Ein) + srch_lo - 1
+          f = log(Ein / inel_Ein(inel_igrid)) / &
+            log(inel_Ein(inel_igrid + 1) / inel_Ein(inel_igrid))
+        end if
+        one_f = ONE - f
+
+        ! Now find our gmin and gmax terms
+        if ((allocated(inel(inel_igrid) % outgoing)) .and. &
+            (allocated(inel(inel_igrid + 1) % outgoing))) then
+          inel_gmin = min(lbound(inel(inel_igrid) % outgoing, dim=2), &
+                        lbound(inel(inel_igrid + 1) % outgoing, dim=2))
+          inel_gmax = max(ubound(inel(inel_igrid) % outgoing, dim=2), &
+                        ubound(inel(inel_igrid + 1) % outgoing, dim=2))
+        else if (allocated(inel(inel_igrid) % outgoing)) then
+          inel_gmin = lbound(inel(inel_igrid) % outgoing, dim=2)
+          inel_gmax = ubound(inel(inel_igrid) % outgoing, dim=2)
+        else if (allocated(inel(inel_igrid + 1) % outgoing)) then
+          inel_gmin = lbound(inel(inel_igrid+1) % outgoing, dim=2)
+          inel_gmax = ubound(inel(inel_igrid+1) % outgoing, dim=2)
+        end if
+
+        ! Set our group boundaries
+        gmin = min(el_gmin, inel_gmin)
+        gmax = max(el_gmax, inel_gmax)
+      end if
+    else
+      ! Set our other outgoing data
+      gmin = el_gmin
+      gmax = el_gmax
+    end if
+
+    ! Fix up gmin and gmax if need be
+    if (gmin == huge(0)) then
+      gmin = 0
+      gmax = -1
+    end if
+
+    ! set up our distribution storage so we can add the components up
+    ! We do elastic and inelastic separately (some may be twice) just to increase
+    ! efficiency somewhat over doign all the possible outgoing groups.
+    if (el_gmin /= huge(0)) then
+      ndpp_outgoing(thread_id, 1: l + 1, el_gmin: el_gmax) = ZERO
+    end if
+    if (inel_gmin /= huge(0)) then
+      ndpp_outgoing(thread_id, 1: l + 1, inel_gmin: inel_gmax) = ZERO
+    end if
 
     ! Store our cross-section as norm
     if (micro_xs(i_nuclide) % use_ptable) then
@@ -3168,111 +3250,55 @@ contains
       norm = (ONE - micro_xs(i_nuclide) % interp_factor) * &
         nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid) &
         + micro_xs(i_nuclide) % interp_factor * &
-        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid+1)
+        nuclides(i_nuclide) % elastic(micro_xs(i_nuclide) % index_grid + 1)
     else
       norm = micro_xs(i_nuclide) % elastic
     end if
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
-    if (allocated(el(i_grid) % outgoing)) then
-      do g = lbound(el(i_grid) % outgoing, dim=2), &
-             ubound(el(i_grid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, :, g) = norm * one_f * &
-          el(i_grid) % outgoing(:, g)
+    if (allocated(el(el_igrid) % outgoing)) then
+      do g = lbound(el(el_igrid) % outgoing, dim=2), &
+             ubound(el(el_igrid) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, 1: l + 1, g) = norm * one_f * &
+          el(el_igrid) % outgoing(1: l + 1, g)
       end do
     end if
     ! Do upper point
-    if (allocated(el(i_grid + 1) % outgoing)) then
-      do g = lbound(el(i_grid + 1) % outgoing, dim=2), &
-             ubound(el(i_grid + 1) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-          norm * f * el(i_grid + 1) % outgoing(:, g)
+    if (allocated(el(el_igrid + 1) % outgoing)) then
+      do g = lbound(el(el_igrid + 1) % outgoing, dim=2), &
+             ubound(el(el_igrid + 1) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, 1: l + 1, g) = &
+          ndpp_outgoing(thread_id, 1: l + 1, g) + &
+          norm * f * el(el_igrid + 1) % outgoing(1: l + 1, g)
       end do
     end if
 
-    ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
-    ! We can tell if we are s(a,b) because then the inel* pointers will be null
-    if (associated(inel)) then
-      ! Perform same steps as above, but with inelastic.
-      ! Also, we will get our normalization constants from the NDPP data itself.
-      ! First perform the binary search to find where our incoming E points is
-      srch_lo = inel_Ein_srch(gin)
-      srch_hi = inel_Ein_srch(gin + 1)
-      ! Find the grid index and interpolant of ndpp scattering data
-      if (Ein <= inel_Ein(1)) then
-        ! Then our point is below the threshold: exit, leaving without
-        ! allocating inel
-        norm = ONE / norm
-        gmin = el_gmin
-        gmax = el_gmax
-        if (gmin == huge(0)) then
-          gmin = 0
-          gmax = -1
-        end if
-        return
-      else if (Ein >= inel_Ein(size(inel_Ein))) then
-        i_grid = size(inel_Ein) - 1
-        f = ONE
-      else
-        i_grid = binary_search(inel_Ein(srch_lo: srch_hi), &
-                               srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-        f = log(Ein / inel_Ein(i_grid)) / &
-          log(inel_Ein(i_grid + 1) / inel_Ein(i_grid))
-      end if
-      one_f = ONE - f
-
-      ! Now find our gmin and gmax terms
-      if ((allocated(inel(i_grid) % outgoing)) .and. &
-          (allocated(inel(i_grid + 1) % outgoing))) then
-        inel_gmin = min(lbound(inel(i_grid) % outgoing, dim=2), &
-                      lbound(inel(i_grid + 1) % outgoing, dim=2))
-        inel_gmax = max(ubound(inel(i_grid) % outgoing, dim=2), &
-                      ubound(inel(i_grid + 1) % outgoing, dim=2))
-      else if (allocated(inel(i_grid) % outgoing)) then
-        inel_gmin = lbound(inel(i_grid) % outgoing, dim=2)
-        inel_gmax = ubound(inel(i_grid) % outgoing, dim=2)
-      else if (allocated(inel(i_grid + 1) % outgoing)) then
-        inel_gmin = lbound(inel(i_grid+1) % outgoing, dim=2)
-        inel_gmax = ubound(inel(i_grid+1) % outgoing, dim=2)
-      else
-        inel_gmin = huge(0)
-        inel_gmax = 0
-      end if
-
-      ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
+    ! And do the same for inelastic
+    if (inel_gmin /= huge(0)) then
       ! Do lower point
-      if (allocated(inel(i_grid) % outgoing)) then
-        do g = lbound(inel(i_grid) % outgoing, dim=2), &
-               ubound(inel(i_grid) % outgoing, dim=2)
-          ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-            inel(i_grid) % outgoing(:, g) * one_f
+      if (allocated(inel(inel_igrid) % outgoing)) then
+        do g = lbound(inel(inel_igrid) % outgoing, dim=2), &
+               ubound(inel(inel_igrid) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, 1: l + 1, g) = &
+            ndpp_outgoing(thread_id, 1: l + 1, g) + &
+            inel(inel_igrid) % outgoing(1: l + 1, g) * one_f
         end do
       end if
       ! Do upper point
-      if (allocated(inel(i_grid + 1) % outgoing)) then
-        do g = lbound(inel(i_grid + 1) % outgoing, dim=2), &
-               ubound(inel(i_grid + 1) % outgoing, dim=2)
-          ndpp_outgoing(thread_id, :, g) = ndpp_outgoing(thread_id, :, g) + &
-            inel(i_grid + 1) % outgoing(:, g) * f
+      if (allocated(inel(inel_igrid + 1) % outgoing)) then
+        do g = lbound(inel(inel_igrid + 1) % outgoing, dim=2), &
+               ubound(inel(inel_igrid + 1) % outgoing, dim=2)
+          ndpp_outgoing(thread_id, 1: l + 1, g) = &
+            ndpp_outgoing(thread_id, 1: l + 1, g) + &
+            inel(inel_igrid + 1) % outgoing(1: l + 1, g) * f
         end do
       end if
 
       ! Set our other outgoing data
-      norm = norm + (one_f * inel_norm(i_grid) + f * inel_norm(i_grid + 1))
+      norm = norm + (one_f * inel_norm(inel_igrid) + &
+        f * inel_norm(inel_igrid + 1))
 
-      ! Set our group boundaries
-      gmin = min(el_gmin, inel_gmin)
-      gmax = max(el_gmax, inel_gmax)
-    else
-      ! Set our other outgoing data
-      gmin = el_gmin
-      gmax = el_gmax
-    end if
-
-    if (gmin == huge(0)) then
-      gmin = 0
-      gmax = -1
     end if
 
     ! Take inverse of norm for later usage as normalization constant
@@ -3488,7 +3514,8 @@ contains
         inel => nuc % ndpp_inel
       end if
     end if
-    call generate_ndpp_distrib_pn(i_nuclide, gin, Ein, el_Ein, el_Ein_srch, &
+
+    call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, el_Ein_srch, &
                                   el, inel_Ein, inel_Ein_srch, inel, &
                                   inel_norm, norm, gmin, gmax)
 

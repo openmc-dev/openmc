@@ -203,8 +203,8 @@ contains
           do j = 1, n_tally_maps
             p % coord % mapping(j) = c % offset(j)
           end do
-          p % comp_id = c % dist_comp
-          p % dens_id = c % dist_dens
+          p % comp_id = c % distrib_comp
+          p % dens_id = c % distrib_dens
 
           ! Create new level of coordinates
           allocate(p % coord % next)

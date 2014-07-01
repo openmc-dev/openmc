@@ -904,13 +904,19 @@ contains
       end if
       if (check_for_node(node_cell, "fill")) then
         call get_node_value(node_cell, "fill", c % fill)
-        if (check_for_node(node_cell, "dist_dens")) then
+        if (check_for_node(node_cell, "distrib_dens")) then
           c % distributed = .true.
-          call get_node_value(node_cell, "dist_dens", c % dist_dens)
+          write(*,*) "distrib_dens:",c % distrib_dens
+          call get_node_value(node_cell, "distrib_dens", c % distrib_dens)
+          write(*,*) "distrib_dens:",c % distrib_dens
+        else
+          c % distrib_dens = 0
         end if
-        if (check_for_node(node_cell, "dist_comp")) then
+        if (check_for_node(node_cell, "distrib_comp")) then
           c % distributed = .true.
-          call get_node_value(node_cell, "dist_comp", c % dist_comp)
+          call get_node_value(node_cell, "distrib_comp", c % distrib_comp)
+        else
+          c % distrib_comp = 0
         end if
       else
         c % fill = NONE
@@ -1473,36 +1479,29 @@ contains
       end if
 
       ! Check for distributed densities
-      write (*,*) "Distributed Density"
       if (check_for_node(node_mat, "distributed_density")) then
-        write (*,*) "Distributed Density 1"
 
         sum_density = .false.
         call get_node_ptr(node_mat, "distributed_density", node_dens)
 
         mat % distrib_dens = .true.
 
-        write (*,*) "Distributed Density 2"
         ! Get number of densities
         n = get_arraysize_double(node_dens, "values")
         allocate(mat % density % density(n))
         mat % density % num = n
 
-        write (*,*) "Distributed Density 3"
         ! Copy values
         call get_node_array(node_dens, "values", &
              mat % density % density)
 
-        write (*,*) "Distributed Density 4"
         ! Copy units
         call get_node_value(node_dens, "units", units)
 
-        write (*,*) "Distributed Density 5"
         ! Adjust material density based on specified units
         call lower_case(units)
         select case(trim(units))
         case ('g/cc', 'g/cm3')
-          write (*,*) "Distributed Density 6"
           mat % density % density = -mat % density % density
         case ('kg/m3')
           mat % density % density = -0.001 * mat % density % density
@@ -1582,7 +1581,6 @@ contains
 
       ! Check for distributed compositions
       if (check_for_node(node_mat, "compositions")) then
-        write (*,*) "Distributed Comp"
         mat % distrib_comp = .true.
 
         call get_node_ptr(node_mat, "compositions", node_comp)
@@ -1635,8 +1633,6 @@ contains
         ! Verify that the input matches the number of nuclides
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
-        write (*,*) "n_comp:",n_comp
-        write (*,*) "n:",n
         mat % n_comp = mod(n_comp,n)
         if (mat % n_comp /= 0) then
           message = "Number of composition values not divisible by " // &

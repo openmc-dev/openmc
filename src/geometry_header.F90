@@ -60,8 +60,8 @@ module geometry_header
      integer :: type          ! Type of cell (normal, universe, lattice)
      integer :: universe      ! universe # this cell is in
      integer :: fill          ! universe # filling this cell
-     integer :: dist_dens     ! material distribution # - density
-     integer :: dist_comp     ! material distribution # - composition
+     integer :: distrib_dens     ! material distribution # - density
+     integer :: distrib_comp     ! material distribution # - composition
      logical :: distributed   ! distributed materials
      integer :: material      ! Material within cell (0 for universe)
      integer :: n_surfaces    ! Number of surfaces within

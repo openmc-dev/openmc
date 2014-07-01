@@ -677,43 +677,19 @@ contains
       ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
         read(UNIT=in, FMT='(I20)') NEin
-        ! Now allocate all that will be filled
-        allocate(nuc % ndpp_inel_Ein(NEin))
-        allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-        allocate(nuc % ndpp_inel_norm(NEin))
-        allocate(nuc % ndpp_inel(NEin))
+        if (NEin > 0) then
+          ! Now allocate all that will be filled
+          allocate(nuc % ndpp_inel_Ein(NEin))
+          allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
+          allocate(nuc % ndpp_inel_norm(NEin))
+          allocate(nuc % ndpp_inel(NEin))
 
-        ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
-        read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein
-        read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein_srch
-        read(UNIT=in, FMT=*) nuc % ndpp_inel_norm
+          ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+          read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein
+          read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein_srch
+          read(UNIT=in, FMT=*) nuc % ndpp_inel_norm
 
-        ! Get the inelastic moments themselves
-        do iE = 1, NEin
-          ! get gmin and gmax
-          read(UNIT=in, FMT='(I20,I20)') gmin, gmax
-
-          if ((gmin > 0) .and. (gmax > 0)) then
-            ! Then we can allocate the space. Do it to ndpp_el_order
-            ! since this is the largest order requested in the tallies.
-            ! Since we only need to store up to the maximum, we also need to have
-            ! an array for reading the file which we can later truncate to fit
-            ! in to nuc/sab % ndpp_el(iE) % outgoing.
-            allocate(temp_outgoing(lib_order, gmin : gmax))
-
-            ! Now we have a space to store the data, get it.
-            read(UNIT=in, FMT=*) temp_outgoing
-            ! And copy in to nuc % ndpp_el
-            allocate(nuc % ndpp_el(iE) % outgoing(scatt_order, gmin : gmax))
-            nuc % ndpp_el(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : scatt_order, gmin : gmax)
-            deallocate(temp_outgoing)
-          end if
-        end do
-
-        ! Get nu-scatter, if needed
-        if (nuscatter == 1) then
-          allocate(nuc % ndpp_nuinel(NEin))
+          ! Get the inelastic moments themselves
           do iE = 1, NEin
             ! get gmin and gmax
             read(UNIT=in, FMT='(I20,I20)') gmin, gmax
@@ -728,13 +704,39 @@ contains
 
               ! Now we have a space to store the data, get it.
               read(UNIT=in, FMT=*) temp_outgoing
-              allocate(nuc % ndpp_nuinel(iE) % outgoing(scatt_order, &
-                gmin : gmax))
-              nuc % ndpp_nuinel(iE) % outgoing(:, gmin : gmax) = &
+              ! And copy in to nuc % ndpp_el
+              allocate(nuc % ndpp_el(iE) % outgoing(scatt_order, gmin : gmax))
+              nuc % ndpp_el(iE) % outgoing(:, gmin : gmax) = &
                 temp_outgoing(1 : scatt_order, gmin : gmax)
               deallocate(temp_outgoing)
             end if
           end do
+
+          ! Get nu-scatter, if needed
+          if (nuscatter == 1) then
+            allocate(nuc % ndpp_nuinel(NEin))
+            do iE = 1, NEin
+              ! get gmin and gmax
+              read(UNIT=in, FMT='(I20,I20)') gmin, gmax
+
+              if ((gmin > 0) .and. (gmax > 0)) then
+                ! Then we can allocate the space. Do it to ndpp_el_order
+                ! since this is the largest order requested in the tallies.
+                ! Since we only need to store up to the maximum, we also need to have
+                ! an array for reading the file which we can later truncate to fit
+                ! in to nuc/sab % ndpp_el(iE) % outgoing.
+                allocate(temp_outgoing(lib_order, gmin : gmax))
+
+                ! Now we have a space to store the data, get it.
+                read(UNIT=in, FMT=*) temp_outgoing
+                allocate(nuc % ndpp_nuinel(iE) % outgoing(scatt_order, &
+                  gmin : gmax))
+                nuc % ndpp_nuinel(iE) % outgoing(:, gmin : gmax) = &
+                  temp_outgoing(1 : scatt_order, gmin : gmax)
+                deallocate(temp_outgoing)
+              end if
+            end do
+          end if
         end if
 
         ! Get chi(E_{in}) data if provided
@@ -855,65 +857,67 @@ contains
       ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
         read(UNIT=in) NEin
-        ! Now allocate all that will be filled
-        allocate(nuc % ndpp_inel_Ein(NEin))
-        allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-        allocate(nuc % ndpp_inel_norm(NEin))
-        allocate(nuc % ndpp_inel(NEin))
+        if (NEin > 0) then
+          ! Now allocate all that will be filled
+          allocate(nuc % ndpp_inel_Ein(NEin))
+          allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
+          allocate(nuc % ndpp_inel_norm(NEin))
+          allocate(nuc % ndpp_inel(NEin))
 
-        ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
-        read(UNIT=in) nuc % ndpp_inel_Ein
-        read(UNIT=in) nuc % ndpp_inel_Ein_srch
-        read(UNIT=in) nuc % ndpp_inel_norm
+          ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+          read(UNIT=in) nuc % ndpp_inel_Ein
+          read(UNIT=in) nuc % ndpp_inel_Ein_srch
+          read(UNIT=in) nuc % ndpp_inel_norm
 
-        ! Get the inelastic moments themselves
-        do iE = 1, NEin
-          ! get gmin and gmax
-          read(UNIT=in) gmin, gmax
-
-          if ((gmin > 0) .and. (gmax > 0)) then
-            ! Then we can allocate the space. Do it to ndpp_inel_order
-            ! since this is the largest order requested in the tallies.
-            ! Since we only need to store up to the maximum, we also need to have
-            ! an array for reading the file which we can later truncate to fit
-            ! in to nuc/sab % ndpp_inel(iE) % outgoing.
-            allocate(temp_outgoing(lib_order, gmin : gmax))
-
-            ! Now we have a space to store the data, get it.
-            read(UNIT=in) temp_outgoing
-            ! And copy in to nuc % ndpp_inel
-            allocate(nuc % ndpp_inel(iE) % outgoing(scatt_order, gmin : gmax))
-            nuc % ndpp_inel(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : scatt_order, gmin : gmax)
-            deallocate(temp_outgoing)
-          end if
-        end do
-
-        ! Get nu-scatter, if needed
-        if (nuscatter == 1) then
-          allocate(nuc % ndpp_nuinel(NEin))
+          ! Get the inelastic moments themselves
           do iE = 1, NEin
             ! get gmin and gmax
             read(UNIT=in) gmin, gmax
 
             if ((gmin > 0) .and. (gmax > 0)) then
-              ! Then we can allocate the space. Do it to ndpp_el_order
+              ! Then we can allocate the space. Do it to ndpp_inel_order
               ! since this is the largest order requested in the tallies.
               ! Since we only need to store up to the maximum, we also need to have
               ! an array for reading the file which we can later truncate to fit
-              ! in to nuc/sab % ndpp_nuinel(iE) % outgoing.
+              ! in to nuc/sab % ndpp_inel(iE) % outgoing.
               allocate(temp_outgoing(lib_order, gmin : gmax))
 
               ! Now we have a space to store the data, get it.
               read(UNIT=in) temp_outgoing
-              ! And copy in to nuc % ndpp_nuinel
-              allocate(nuc % ndpp_nuinel(iE) % outgoing(scatt_order, &
-                gmin : gmax))
-              nuc % ndpp_nuinel(iE) % outgoing(:, gmin : gmax) = &
+              ! And copy in to nuc % ndpp_inel
+              allocate(nuc % ndpp_inel(iE) % outgoing(scatt_order, gmin : gmax))
+              nuc % ndpp_inel(iE) % outgoing(:, gmin : gmax) = &
                 temp_outgoing(1 : scatt_order, gmin : gmax)
               deallocate(temp_outgoing)
             end if
           end do
+
+          ! Get nu-scatter, if needed
+          if (nuscatter == 1) then
+            allocate(nuc % ndpp_nuinel(NEin))
+            do iE = 1, NEin
+              ! get gmin and gmax
+              read(UNIT=in) gmin, gmax
+
+              if ((gmin > 0) .and. (gmax > 0)) then
+                ! Then we can allocate the space. Do it to ndpp_el_order
+                ! since this is the largest order requested in the tallies.
+                ! Since we only need to store up to the maximum, we also need to have
+                ! an array for reading the file which we can later truncate to fit
+                ! in to nuc/sab % ndpp_nuinel(iE) % outgoing.
+                allocate(temp_outgoing(lib_order, gmin : gmax))
+
+                ! Now we have a space to store the data, get it.
+                read(UNIT=in) temp_outgoing
+                ! And copy in to nuc % ndpp_nuinel
+                allocate(nuc % ndpp_nuinel(iE) % outgoing(scatt_order, &
+                  gmin : gmax))
+                nuc % ndpp_nuinel(iE) % outgoing(:, gmin : gmax) = &
+                  temp_outgoing(1 : scatt_order, gmin : gmax)
+                deallocate(temp_outgoing)
+              end if
+            end do
+          end if
         end if
 
         ! Get chi data, if provided

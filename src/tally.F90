@@ -3367,17 +3367,24 @@ contains
       el_Ein => nuc % ndpp_el_Ein
       el_Ein_srch => nuc % ndpp_el_Ein_srch
       el => nuc % ndpp_el
-      inel_Ein => nuc % ndpp_inel_Ein
-      inel_Ein_srch => nuc % ndpp_inel_Ein_srch
-      inel_norm => nuc % ndpp_inel_norm
-      if (present(nuscatt)) then
-        if (nuscatt) then
-          inel => nuc % ndpp_nuinel
+      if (allocated(nuc % ndpp_inel_Ein)) then
+        inel_Ein => nuc % ndpp_inel_Ein
+        inel_Ein_srch => nuc % ndpp_inel_Ein_srch
+        inel_norm => nuc % ndpp_inel_norm
+        if (present(nuscatt)) then
+          if (nuscatt) then
+            inel => nuc % ndpp_nuinel
+          else
+            inel => nuc % ndpp_inel
+          end if
         else
           inel => nuc % ndpp_inel
         end if
       else
-        inel => nuc % ndpp_inel
+        inel_Ein => null()
+        inel_Ein_srch => null()
+        inel => null()
+        inel_norm => null()
       end if
     end if
     call generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, el_Ein, &
@@ -3501,17 +3508,24 @@ contains
       el_Ein => nuc % ndpp_el_Ein
       el_Ein_srch => nuc % ndpp_el_Ein_srch
       el => nuc % ndpp_el
-      inel_Ein => nuc % ndpp_inel_Ein
-      inel_Ein_srch => nuc % ndpp_inel_Ein_srch
-      inel_norm => nuc % ndpp_inel_norm
-      if (present(nuscatt)) then
-        if (nuscatt) then
-          inel => nuc % ndpp_nuinel
+      if (allocated(nuc % ndpp_inel_Ein)) then
+        inel_Ein => nuc % ndpp_inel_Ein
+        inel_Ein_srch => nuc % ndpp_inel_Ein_srch
+        inel_norm => nuc % ndpp_inel_norm
+        if (present(nuscatt)) then
+          if (nuscatt) then
+            inel => nuc % ndpp_nuinel
+          else
+            inel => nuc % ndpp_inel
+          end if
         else
           inel => nuc % ndpp_inel
         end if
       else
-        inel => nuc % ndpp_inel
+        inel_Ein => null()
+        inel_Ein_srch => null()
+        inel => null()
+        inel_norm => null()
       end if
     end if
 

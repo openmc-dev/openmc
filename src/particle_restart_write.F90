@@ -56,6 +56,7 @@ contains
     call pr % write_data(gen_per_batch, 'gen_per_batch')
     call pr % write_data(current_gen, 'current_gen')
     call pr % write_data(n_particles, 'n_particles')
+    call pr % write_data(run_mode, 'run_mode')
     call pr % write_data(p % id, 'id')
     call pr % write_data(src % wgt, 'weight')
     call pr % write_data(src % E, 'energy')

@@ -30,6 +30,7 @@ class Particle(object):
         self.gen_per_batch = self._get_int(path='gen_per_batch')[0]
         self.current_gen = self._get_int(path='current_gen')[0]
         self.n_particles = self._get_long(path='n_particles')[0]
+        self.run_mode = self._get_int(path='run_mode')[0]
 
         # Read particle properties
         self.id = self._get_long(path='id')[0]

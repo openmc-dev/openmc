@@ -1870,12 +1870,10 @@ contains
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
-      write (*,*) "Sab stuff:"
       ! Get pointer list to XML <sab>
       call get_node_list(node_mat, "sab", node_sab_list)
 
       n_sab = get_list_size(node_sab_list)
-      write (*,*) "n_sab:",n_sab
       if (n_sab > 0) then
         ! Set number of S(a,b) tables
         mat % n_sab = n_sab
@@ -1929,8 +1927,6 @@ contains
 
       ! Add material to dictionary
       call material_dict % add_key(mat % id, i)
-      write (*,*) "Material:"
-      write (*,*) "",mat % density % density(1)
     end do
 
     ! Set total number of nuclides and S(a,b) tables

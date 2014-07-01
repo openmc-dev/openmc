@@ -95,7 +95,7 @@ contains
 
     ! Initialize distributed materials
     call prepare_distribmats()
-    
+        
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
@@ -136,6 +136,7 @@ contains
       if (restart_run) call load_state_point()
     end if
 
+    
     if (master) then
       if (run_mode == MODE_PLOTTING) then
         ! Display plotting information
@@ -1184,11 +1185,12 @@ end subroutine prepare_distribcell
 
   subroutine prepare_distribmats()
 
-    integer :: i ! Primary loop index
-    integer :: j ! Additional loop index
-    integer :: k ! Additional loop index
-    integer :: l ! Additional loop index
-    integer :: m ! Additional loop index
+    integer :: i   ! Primary loop index
+    integer :: j   ! Additional loop index
+    integer :: k   ! Additional loop index
+    integer :: l   ! Additional loop index
+    integer :: m   ! Additional loop index
+    integer :: n_z ! Lattice 3rd dimension
     
     logical :: dens ! Lattice densities allocated?
     logical :: comp ! Lattice compositions allocated?
@@ -1212,19 +1214,19 @@ end subroutine prepare_distribcell
 
         do j = 1, univ % n_cells
 
-          c2 => cells(cell_dict % get_key(univ % cells(j)))
+          c2 => cells(univ % cells(j))
           if (c2 % type == CELL_NORMAL) then
-            mat => materials(c2 % fill)
-            if (mat % distrib_dens .and. c % dist_dens < 1) then            
+            mat => materials(c2 % material)
+            if (mat % distrib_dens .and. c % distrib_dens < 1) then            
               message = "A fill cell containing a material with a " // &
-              " distributed density is missing the distrib_dens " // &
-              " tag in the geometry.xml input file."
+              "distributed density is missing the distrib_dens " // &
+              "tag in the geometry.xml input file."
               call fatal_error()
             end if
-            if (mat % distrib_comp .and. c % dist_comp < 1) then
+            if (mat % distrib_comp .and. c % distrib_comp < 1) then
               message = "A fill cell containing a material with a " // &
-              " distributed composition is missing the distrib_comp " // &
-              " tag in the geometry.xml input file."
+              "distributed composition is missing the distrib_comp " // &
+              "tag in the geometry.xml input file."
               call fatal_error()
             end if
           end if
@@ -1240,17 +1242,23 @@ end subroutine prepare_distribcell
       comp = allocated(lat % compositions)
       ! If everything is already allocated no need to check
       if (.not. dens .or. .not. comp) then
+        if (lat % n_dimension == 2) then
+          n_z = 1
+        else
+          n_z = lat % dimension(3)
+        end if
         do j = 1, lat % dimension(1)
           do k = 1, lat % dimension(2)
-            do l = 1, lat % dimension(3)
+            do l = 1, n_z
             
               univ => universes(lat % universes(j,k,l))
 
               do m = 1, univ % n_cells
-
-                c2 => cells(cell_dict % get_key(univ % cells(m)))
+              
+                c2 => cells(univ % cells(m))
+                
                 if (c2 % type == CELL_NORMAL) then
-                  mat => materials(c2 % fill)
+                  mat => materials(c2 % material)
                   if (mat % distrib_dens .and. .not. dens) then            
                     message = "A lattice containing a material with a " // &
                     " distributed density is missing the densities " // &

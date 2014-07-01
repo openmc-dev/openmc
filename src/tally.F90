@@ -2933,7 +2933,7 @@ contains
 
     integer :: srch_lo, srch_hi, el_igrid, inel_igrid
     integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
-    real(8) :: f, one_f
+    real(8) :: f_el, one_f_el, f_inel, one_f_inel
 
     inel_gmin = huge(0)
     inel_gmax = 0
@@ -2945,17 +2945,17 @@ contains
     ! Find the grid index and interpolant of ndpp scattering data
     if (Ein <= el_Ein(1)) then
       el_igrid = 1
-      f = ZERO
+      f_el = ZERO
     else if (Ein >= el_Ein(size(el_Ein))) then
       el_igrid = size(el_Ein) - 1
-      f = ONE
+      f_el = ONE
     else
       el_igrid = binary_search(el_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / el_Ein(el_igrid)) / &
+      f_el = log(Ein / el_Ein(el_igrid)) / &
         log(el_Ein(el_igrid + 1) / el_Ein(el_igrid))
     end if
-    one_f = ONE - f
+    one_f_el = ONE - f_el
 
     ! Now find our gmin and gmax terms
     if ((allocated(el(el_igrid) % outgoing)) .and. &
@@ -2996,14 +2996,14 @@ contains
         ! Find the grid index and interpolant of ndpp scattering data
         if (Ein >= inel_Ein(size(inel_Ein))) then
           inel_igrid = size(inel_Ein) - 1
-          f = ONE
+          f_inel = ONE
         else
           inel_igrid = binary_search(inel_Ein(srch_lo: srch_hi), &
                                  srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-          f = log(Ein / inel_Ein(inel_igrid)) / &
+          f_inel = log(Ein / inel_Ein(inel_igrid)) / &
             log(inel_Ein(inel_igrid + 1) / inel_Ein(inel_igrid))
         end if
-        one_f = ONE - f
+        one_f_inel = ONE - f_inel
 
         ! Now find our gmin and gmax terms
         if ((allocated(inel(inel_igrid) % outgoing)) .and. &
@@ -3062,7 +3062,7 @@ contains
     if (allocated(el(el_igrid) % outgoing)) then
       do g = lbound(el(el_igrid) % outgoing, dim=2), &
              ubound(el(el_igrid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, l, g) = norm * one_f * &
+        ndpp_outgoing(thread_id, l, g) = norm * one_f_el * &
           el(el_igrid) % outgoing(l, g)
       end do
     end if
@@ -3071,7 +3071,7 @@ contains
       do g = lbound(el(el_igrid + 1) % outgoing, dim=2), &
              ubound(el(el_igrid + 1) % outgoing, dim=2)
         ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-          norm * f * el(el_igrid + 1) % outgoing(l, g)
+          norm * f_el * el(el_igrid + 1) % outgoing(l, g)
       end do
     end if
 
@@ -3082,7 +3082,7 @@ contains
         do g = lbound(inel(inel_igrid) % outgoing, dim=2), &
                ubound(inel(inel_igrid) % outgoing, dim=2)
           ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-            inel(inel_igrid) % outgoing(l, g) * one_f
+            inel(inel_igrid) % outgoing(l, g) * one_f_inel
         end do
       end if
       ! Do upper point
@@ -3090,12 +3090,13 @@ contains
         do g = lbound(inel(inel_igrid + 1) % outgoing, dim=2), &
                ubound(inel(inel_igrid + 1) % outgoing, dim=2)
           ndpp_outgoing(thread_id, l, g) = ndpp_outgoing(thread_id, l, g) + &
-            inel(inel_igrid + 1) % outgoing(l, g) * f
+            inel(inel_igrid + 1) % outgoing(l, g) * f_inel
         end do
       end if
 
       ! Set our other outgoing data
-      norm = norm + (one_f * inel_norm(inel_igrid) + f * inel_norm(inel_igrid + 1))
+      norm = norm + (one_f_inel * inel_norm(inel_igrid) + &
+        f_inel * inel_norm(inel_igrid + 1))
 
     end if
 
@@ -3131,7 +3132,7 @@ contains
 
     integer :: srch_lo, srch_hi, el_igrid, inel_igrid
     integer :: el_gmin, el_gmax, inel_gmin, inel_gmax, g
-    real(8) :: f, one_f
+    real(8) :: f_el, one_f_el, f_inel, one_f_inel
 
     inel_gmin = huge(0)
     inel_gmax = 0
@@ -3143,17 +3144,17 @@ contains
     ! Find the grid index and interpolant of ndpp scattering data
     if (Ein <= el_Ein(1)) then
       el_igrid = 1
-      f = ZERO
+      f_el = ZERO
     else if (Ein >= el_Ein(size(el_Ein))) then
       el_igrid = size(el_Ein) - 1
-      f = ONE
+      f_el = ONE
     else
       el_igrid = binary_search(el_Ein(srch_lo: srch_hi), &
                              srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-      f = log(Ein / el_Ein(el_igrid)) / &
+      f_el = log(Ein / el_Ein(el_igrid)) / &
         log(el_Ein(el_igrid + 1) / el_Ein(el_igrid))
     end if
-    one_f = ONE - f
+    one_f_el = ONE - f_el
 
     ! Now find our gmin and gmax terms
     if ((allocated(el(el_igrid) % outgoing)) .and. &
@@ -3194,14 +3195,14 @@ contains
         ! Find the grid index and interpolant of ndpp scattering data
         if (Ein >= inel_Ein(size(inel_Ein))) then
           inel_igrid = size(inel_Ein) - 1
-          f = ONE
+          f_inel = ONE
         else
           inel_igrid = binary_search(inel_Ein(srch_lo: srch_hi), &
                                  srch_hi - srch_lo + 1, Ein) + srch_lo - 1
-          f = log(Ein / inel_Ein(inel_igrid)) / &
+          f_inel = log(Ein / inel_Ein(inel_igrid)) / &
             log(inel_Ein(inel_igrid + 1) / inel_Ein(inel_igrid))
         end if
-        one_f = ONE - f
+        one_f_inel = ONE - f_inel
 
         ! Now find our gmin and gmax terms
         if ((allocated(inel(inel_igrid) % outgoing)) .and. &
@@ -3260,7 +3261,7 @@ contains
     if (allocated(el(el_igrid) % outgoing)) then
       do g = lbound(el(el_igrid) % outgoing, dim=2), &
              ubound(el(el_igrid) % outgoing, dim=2)
-        ndpp_outgoing(thread_id, 1: l + 1, g) = norm * one_f * &
+        ndpp_outgoing(thread_id, 1: l + 1, g) = norm * one_f_el * &
           el(el_igrid) % outgoing(1: l + 1, g)
       end do
     end if
@@ -3270,7 +3271,7 @@ contains
              ubound(el(el_igrid + 1) % outgoing, dim=2)
         ndpp_outgoing(thread_id, 1: l + 1, g) = &
           ndpp_outgoing(thread_id, 1: l + 1, g) + &
-          norm * f * el(el_igrid + 1) % outgoing(1: l + 1, g)
+          norm * f_el * el(el_igrid + 1) % outgoing(1: l + 1, g)
       end do
     end if
 
@@ -3282,7 +3283,7 @@ contains
                ubound(inel(inel_igrid) % outgoing, dim=2)
           ndpp_outgoing(thread_id, 1: l + 1, g) = &
             ndpp_outgoing(thread_id, 1: l + 1, g) + &
-            inel(inel_igrid) % outgoing(1: l + 1, g) * one_f
+            inel(inel_igrid) % outgoing(1: l + 1, g) * one_f_inel
         end do
       end if
       ! Do upper point
@@ -3291,13 +3292,13 @@ contains
                ubound(inel(inel_igrid + 1) % outgoing, dim=2)
           ndpp_outgoing(thread_id, 1: l + 1, g) = &
             ndpp_outgoing(thread_id, 1: l + 1, g) + &
-            inel(inel_igrid + 1) % outgoing(1: l + 1, g) * f
+            inel(inel_igrid + 1) % outgoing(1: l + 1, g) * f_inel
         end do
       end if
 
       ! Set our other outgoing data
-      norm = norm + (one_f * inel_norm(inel_igrid) + &
-        f * inel_norm(inel_igrid + 1))
+      norm = norm + (one_f_inel * inel_norm(inel_igrid) + &
+        f_inel * inel_norm(inel_igrid + 1))
 
     end if
 

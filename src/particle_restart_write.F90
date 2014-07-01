@@ -42,7 +42,12 @@ contains
     call pr % file_create(filename)
 
     ! Get information about source particle
-    src => source_bank(current_work)
+    select case (run_mode)
+    case (MODE_EIGENVALUE)
+      src => source_bank(current_work)
+    case (MODE_FIXEDSOURCE)
+      src => source_site
+    end select
 
     ! Write data to file
     call pr % write_data(FILETYPE_PARTICLE_RESTART, 'filetype')

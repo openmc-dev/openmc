@@ -10,7 +10,7 @@ import particle_restart as pr
 if len(sys.argv) > 1:
     p = pr.Particle(sys.argv[1])
 else:
-    p = pr.Particle('particle_12_192.binary')
+    p = pr.Particle('particle_12_556.binary')
 
 # set up output string
 outstr = ''
@@ -22,6 +22,8 @@ outstr += 'current gen:\n'
 outstr += "{0:12.6E}\n".format(p.current_gen)
 outstr += 'particle id:\n'
 outstr += "{0:12.6E}\n".format(p.id)
+outstr += 'run mode:\n'
+outstr += "{0:12.6E}\n".format(p.run_mode)
 outstr += 'particle weight:\n'
 outstr += "{0:12.6E}\n".format(p.weight)
 outstr += 'particle energy:\n'

@@ -17,7 +17,6 @@ for your Python installation to contain:
 * [3]_ `Matplotlib <http://matplotlib.org/>`_
 * [3]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
 * [3]_ `VTK <http://www.vtk.org/>`_
-* [4]_ `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_
 
 Most of these are easily obtainable in Ubuntu through the package manager, or
 are easily installed with distutils.
@@ -25,7 +24,6 @@ are easily installed with distutils.
 .. [1] Required for tally data extraction from statepoints with statepoint.py
 .. [2] Required only if reading HDF5 statepoint files. 
 .. [3] Optional for plotting utilities
-.. [4] Optional for interactive GUIs
 
 ----------------------
 Geometry Visualization
@@ -251,8 +249,7 @@ Plotting in 2D
 
 For simple viewing of 2D slices of a mesh plot, the utility plot_mesh_tally.py
 is provided.  This utility provides an interactive GUI to explore and plot
-mesh tallies for any scores and filter bins.  It requires statepoint.py, as well
-as `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_.
+mesh tallies for any scores and filter bins.  It requires statepoint.py.
 
 .. image:: ../_images/fluxplot.png
    :height: 200px

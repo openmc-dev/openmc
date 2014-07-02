@@ -94,9 +94,9 @@ After running OpenMC to obtain PPM files, images should be saved to another
 format before using them elsewhere. This cuts down the size of the file by
 orders of magnitude.  Most image viewers and editors that can view PPM images
 can also save to other formats (e.g. `Gimp <http://www.gimp.org/>`_, `IrfanView
-<http://www.irfanview.com/>`_, etc.).  However, more likey the user will want to
+<http://www.irfanview.com/>`_, etc.).  However, more likely the user will want to
 convert to another format on the command line.  This is easily accomplished with
-the ``convert`` command available on most linux distributions as part of the
+the ``convert`` command available on most Linux distributions as part of the
 `ImageMagick <http://www.imagemagick.org/script/convert.php>`_ package. (On
 Ubuntu: ``sudo apt-get install imagemagick``).  Images are then converted like:
 
@@ -172,7 +172,7 @@ doing this will depend on the 3D viewer, but should be straightforward.
    :height: 200px
 
 .. note:: 3D voxel plotting can be very computer intensive for the viewing
-          program (Visit, Paraview, etc.) if the number of voxels is large (>10
+          program (Visit, ParaView, etc.) if the number of voxels is large (>10
           million or so).  Thus if you want an accurate picture that renders
           smoothly, consider using only one voxel in a certain direction. For
           instance, the 3D pin lattice figure at the beginning of this section
@@ -235,13 +235,13 @@ combination:
     filters = [('mesh', (1, 1, 5)), ('energyin', 0)]
     value, error = sp.get_value(tallyid, filters, score)
 
-In the future more documentaion may become available here for statepoint.py and
+In the future more documentation may become available here for statepoint.py and
 the data extraction functions of StatePoint objects. However, for now it is up
 to the user to explore the classes in statepoint.py to discover what data is
 available in StatePoint objects (we highly recommend interactively exploring
-with `IPython <http://ipython.org/>`_). Many exmaples can be found by looking
-through the other utilies that use statepoint.py, and a few common visualization
-tasks will be described here in the following sections.
+with `IPython <http://ipython.org/>`_). Many examples can be found by looking
+through the other utilities that use statepoint.py, and a few common
+visualization tasks will be described here in the following sections.
 
 Plotting in 2D
 --------------
@@ -446,14 +446,14 @@ Particle Track Visualization
 
 OpenMC can dump particle tracks—the position of particles as they are
 transported through the geometry.  There are two ways to make OpenMC output
-tracks: all particle tracks through a commandline argument or specific particle
+tracks: all particle tracks through a command line argument or specific particle
 tracks through settings.xml.
 
 Running OpenMC with the argument "-t", "-track", or "--track" will cause a track
 file to be created for every particle transported in the code.
 
 The settings.xml file can dictate that specific particle tracks are output.
-These particles are specified withen a ''track'' element.  The ''track'' element
+These particles are specified within a ''track'' element.  The ''track'' element
 should contain triplets of integers specifying the batch, generation, and
 particle numbers, respectively.  For example, to output the tracks for particles
 3 and 4 of batch 1 and generation 2 the settings.xml file should contain:
@@ -474,7 +474,7 @@ describing track files.  The default output name is "track.pvtp".  A common
 usage of track.py is "track.py track*.binary" which will use the data from all
 binary track files in the directory to write a "track.pvtp" VTK output file.
 The .pvtp file can then be read and plotted by 3d visualization programs such as
-Paraview.
+ParaView.
 
 ----------------------
 Source Site Processing

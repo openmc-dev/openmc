@@ -124,7 +124,7 @@ module ace_header
     type(GrpTransfer), allocatable :: ndpp_el(:)     ! Elastic Data, Dimension is # of Ein
     real(8), allocatable :: ndpp_inel_Ein(:)         ! Incoming inelastic energy grid
     integer, allocatable :: ndpp_inel_Ein_srch(:)    ! Incoming inelastic energy grid search bounds
-    real(8), allocatable :: ndpp_inel_norm(:)        ! Incoming inelastic energy grid
+    real(8), allocatable :: ndpp_sigma_inel(:)        ! Incoming inelastic energy grid
     type(GrpTransfer), allocatable :: ndpp_inel(:)   ! Inelastic Data, Dimension is # of Ein
     type(GrpTransfer), allocatable :: ndpp_nuinel(:) ! Inelastic Data, Dimension is # of Ein
     real(8), allocatable :: ndpp_chi_Ein(:)          ! Ein grid for all chi
@@ -435,8 +435,8 @@ module ace_header
         deallocate(this % ndpp_nuinel)
       end if
 
-      if (allocated(this % ndpp_inel_norm)) then
-        deallocate(this % ndpp_inel_norm)
+      if (allocated(this % ndpp_sigma_inel)) then
+        deallocate(this % ndpp_sigma_inel)
       end if
 
       if (associated(this % reactions)) then

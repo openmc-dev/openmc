@@ -681,13 +681,13 @@ contains
           ! Now allocate all that will be filled
           allocate(nuc % ndpp_inel_Ein(NEin))
           allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-          allocate(nuc % ndpp_inel_norm(NEin))
+          allocate(nuc % ndpp_sigma_inel(NEin))
           allocate(nuc % ndpp_inel(NEin))
 
-          ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+          ! Now read in inel_Ein, inel_Ein_srch, and sigma_inel
           read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein
           read(UNIT=in, FMT=*) nuc % ndpp_inel_Ein_srch
-          read(UNIT=in, FMT=*) nuc % ndpp_inel_norm
+          read(UNIT=in, FMT=*) nuc % ndpp_sigma_inel
 
           ! Get the inelastic moments themselves
           do iE = 1, NEin
@@ -861,13 +861,13 @@ contains
           ! Now allocate all that will be filled
           allocate(nuc % ndpp_inel_Ein(NEin))
           allocate(nuc % ndpp_inel_Ein_srch(NG + 1))
-          allocate(nuc % ndpp_inel_norm(NEin))
+          allocate(nuc % ndpp_sigma_inel(NEin))
           allocate(nuc % ndpp_inel(NEin))
 
-          ! Now read in inel_Ein, inel_Ein_srch, and inel_norm
+          ! Now read in inel_Ein, inel_Ein_srch, and sigma_inel
           read(UNIT=in) nuc % ndpp_inel_Ein
           read(UNIT=in) nuc % ndpp_inel_Ein_srch
-          read(UNIT=in) nuc % ndpp_inel_norm
+          read(UNIT=in) nuc % ndpp_sigma_inel
 
           ! Get the inelastic moments themselves
           do iE = 1, NEin
@@ -985,8 +985,8 @@ contains
         if (allocated(nuc % ndpp_inel_Ein_srch)) then
           deallocate(nuc % ndpp_inel_Ein_srch)
         end if
-        if (allocated(nuc % ndpp_inel_norm)) then
-          deallocate(nuc % ndpp_inel_norm)
+        if (allocated(nuc % ndpp_sigma_inel)) then
+          deallocate(nuc % ndpp_sigma_inel)
         end if
       end if
       if (.not. get_chi_t) then

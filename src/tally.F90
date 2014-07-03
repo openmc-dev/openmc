@@ -2964,24 +2964,10 @@ contains
     end if
 
     ! Now find our gmin and gmax terms
-!!!I would expect it to be impossible for there to be the needed pieces of
-!!! el not being allocated. Can I get rid of this???
-    if ((allocated(el(el_igrid) % outgoing)) .and. &
-        (allocated(el(el_igrid + 1) % outgoing))) then
-      el_gmin = min(lbound(el(el_igrid) % outgoing, dim=2), &
-                    lbound(el(el_igrid + 1) % outgoing, dim=2))
-      el_gmax = max(ubound(el(el_igrid) % outgoing, dim=2), &
-                    ubound(el(el_igrid + 1) % outgoing, dim=2))
-    else if (allocated(el(el_igrid) % outgoing)) then
-      el_gmin = lbound(el(el_igrid) % outgoing, dim=2)
-      el_gmax = ubound(el(el_igrid) % outgoing, dim=2)
-    else if (allocated(el(el_igrid + 1) % outgoing)) then
-      el_gmin = lbound(el(el_igrid + 1) % outgoing, dim=2)
-      el_gmax = ubound(el(el_igrid + 1) % outgoing, dim=2)
-    else
-      el_gmin = huge(0)
-      el_gmax = 0
-    end if
+    el_gmin = min(lbound(el(el_igrid) % outgoing, dim=2), &
+                  lbound(el(el_igrid + 1) % outgoing, dim=2))
+    el_gmax = max(ubound(el(el_igrid) % outgoing, dim=2), &
+                  ubound(el(el_igrid + 1) % outgoing, dim=2))
 
     ! Now do the same for inelastic, if it is necessary (i.e., if not s(a,b))
     ! We can tell if we are s(a,b) because then the inel* pointers will be null
@@ -3013,8 +2999,6 @@ contains
         end if
 
         ! Now find our gmin and gmax terms
-!!!I would expect it to be impossible for there to be the needed pieces of
-!!! inel not being allocated. Can I get rid of this???
         if ((allocated(inel(inel_igrid) % outgoing)) .and. &
             (allocated(inel(inel_igrid + 1) % outgoing))) then
           inel_gmin = min(lbound(inel(inel_igrid) % outgoing, dim=2), &
@@ -3077,8 +3061,8 @@ contains
 !===============================================================================
   subroutine generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, &
                                      el_Ein, el_Ein_srch, el, &
-                                     inel_Ein, inel_Ein_srch, inel, sigma_inel, &
-                                     norm, gmin, gmax)
+                                     inel_Ein, inel_Ein_srch, inel, norm, &
+                                     gmin, gmax)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: l         ! Scattering order to tally
@@ -3089,7 +3073,6 @@ contains
     real(8), pointer, intent(in) :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
-    real(8), pointer, intent(in) :: sigma_inel(:)      ! Inelastic normalization data from NDPP
     real(8), intent(inout)       :: norm              ! Total normalization
     integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
@@ -3143,8 +3126,8 @@ contains
 !===============================================================================
   subroutine generate_ndpp_distrib_pn(i_nuclide, gin, l, Ein, &
                                       el_Ein, el_Ein_srch, el, &
-                                      inel_Ein, inel_Ein_srch, inel, sigma_inel, &
-                                      norm, gmin, gmax)
+                                      inel_Ein, inel_Ein_srch, inel, norm, &
+                                      gmin, gmax)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: l         ! Legendre order to score up to
@@ -3155,7 +3138,6 @@ contains
     real(8), pointer, intent(in) :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, intent(in) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, intent(in) :: inel(:) ! Inelastic data to tally
-    real(8), pointer, intent(in) :: sigma_inel(:)      ! Inelastic normalization data from NDPP
     real(8), intent(inout)       :: norm              ! Total normalization
     integer, intent(inout)       :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, intent(inout)       :: gmax              ! Maximum group transfer in ndpp_outgoing
@@ -3257,12 +3239,11 @@ contains
     real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
-    real(8), pointer, save :: sigma_inel(:)      ! Inelastic normalization data from NDPP
     integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
 
 !$omp threadprivate(g,g_filter,l,nuc,sab,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,sigma_inel)
+!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax)
 
     l = t_order + 1
 
@@ -3278,7 +3259,6 @@ contains
       inel_Ein => null()
       inel_Ein_srch => null()
       inel => null()
-      sigma_inel => null()
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
@@ -3288,7 +3268,6 @@ contains
       if (allocated(nuc % ndpp_inel_Ein)) then
         inel_Ein => nuc % ndpp_inel_Ein
         inel_Ein_srch => nuc % ndpp_inel_Ein_srch
-        sigma_inel => nuc % ndpp_sigma_inel
         if (present(nuscatt)) then
           if (nuscatt) then
             inel => nuc % ndpp_nuinel
@@ -3302,12 +3281,11 @@ contains
         inel_Ein => null()
         inel_Ein_srch => null()
         inel => null()
-        sigma_inel => null()
       end if
     end if
     call generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, el_Ein, &
                                  el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
-                                 inel, sigma_inel, norm, gmin, gmax)
+                                 inel, norm, gmin, gmax)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult
@@ -3400,12 +3378,11 @@ contains
     real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
-    real(8), pointer, save :: sigma_inel(:)      ! Inelastic normalization data from NDPP
     integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
 
 !$omp threadprivate(i_score,l,nuc,sab,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,sigma_inel,gmin,gmax)
+!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -3419,7 +3396,6 @@ contains
       inel_Ein => null()
       inel_Ein_srch => null()
       inel => null()
-      sigma_inel => null()
     else
       ! Normal scattering (non-S(a,b))
       nuc => nuclides(i_nuclide)
@@ -3429,7 +3405,6 @@ contains
       if (allocated(nuc % ndpp_inel_Ein)) then
         inel_Ein => nuc % ndpp_inel_Ein
         inel_Ein_srch => nuc % ndpp_inel_Ein_srch
-        sigma_inel => nuc % ndpp_sigma_inel
         if (present(nuscatt)) then
           if (nuscatt) then
             inel => nuc % ndpp_nuinel
@@ -3443,13 +3418,12 @@ contains
         inel_Ein => null()
         inel_Ein_srch => null()
         inel => null()
-        sigma_inel => null()
       end if
     end if
 
     call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, el_Ein_srch, &
                                   el, inel_Ein, inel_Ein_srch, inel, &
-                                  sigma_inel, norm, gmin, gmax)
+                                  norm, gmin, gmax)
 
     ! Apply mult to the normalization constant, norm
     norm = norm * mult

@@ -3110,18 +3110,10 @@ contains
     inel_one_f = ONE - inel_f
     norm = ONE / (sigs_el + sigs_inel)
 
-    ! set up our distribution storage so we can add the components up
-    ! We do elastic and inelastic separately (some may be twice) just to increase
-    ! efficiency somewhat over doign all the possible outgoing groups.
-    !if (el_gmin /= huge(0)) then
-    !  ndpp_outgoing(thread_id, l, el_gmin: el_gmax) = ZERO
-    !end if
-    !if (inel_gmin /= huge(0)) then
-    !  ndpp_outgoing(thread_id, l, inel_gmin: inel_gmax) = ZERO
-    !end if
-    ndpp_outgoing = ZERO
+    ! Set up our distribution storage so we can add the components up
+    ndpp_outgoing(thread_id, l, gmin: gmax) = ZERO
 
-    ! And do the same for inelastic
+    ! And do the same for inelastic, if necessary
     if (inel_gmin /= huge(0)) then
       ! Do lower point
       if (allocated(inel(inel_igrid) % outgoing)) then
@@ -3184,16 +3176,8 @@ contains
     inel_one_f = ONE - inel_f
     norm = ONE / (sigs_el + sigs_inel)
 
-    ! set up our distribution storage so we can add the components up
-    ! We do elastic and inelastic separately (some may be twice) just to increase
-    ! efficiency somewhat over doign all the possible outgoing groups.
-    !if (el_gmin /= huge(0)) then
-    !  ndpp_outgoing(thread_id, 1: l + 1, el_gmin: el_gmax) = ZERO
-    !end if
-    !if (inel_gmin /= huge(0)) then
-    !  ndpp_outgoing(thread_id, 1: l + 1, inel_gmin: inel_gmax) = ZERO
-    !end if
-    ndpp_outgoing = ZERO
+    ! Set up our distribution storage so we can add the components up
+    ndpp_outgoing(thread_id, 1: l + 1, gmin: gmax) = ZERO
 
     ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
     ! Do lower point
@@ -3216,7 +3200,7 @@ contains
       end do
     end if
 
-    ! And do the same for inelastic
+    ! And do the same for inelastic, if necessary
     if (inel_gmin /= huge(0)) then
       ! Do lower point
       if (allocated(inel(inel_igrid) % outgoing)) then

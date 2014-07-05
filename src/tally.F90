@@ -140,8 +140,15 @@ contains
             ! estimator since there is no way to count 'events' exactly for
             ! the flux
 
-            score = last_wgt / material_xs % total
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
 
+            score = score / material_xs % total
           case (SCORE_FLUX_YN)
             ! All events score to a flux bin. We actually use a collision
             ! estimator since there is no way to count 'events' exactly for
@@ -150,7 +157,15 @@ contains
             score_index = score_index - 1
 
             ! get the score
-            score = last_wgt / material_xs % total
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
+
+            score = score / material_xs % total
 
             num_nm = 1
             ! Find the order for a collection of requested moments
@@ -467,7 +482,7 @@ contains
 
             ! Score total rate - p1 scatter rate Note estimator needs to be
             ! adjusted since tallying is only occuring when a scatter has
-            ! happend. Effectively this means multiplying the estimator by
+            ! happened. Effectively this means multiplying the estimator by
             ! total/scatter macro
             score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
 
@@ -504,18 +519,23 @@ contains
               ! calculate fraction of absorptions that would have resulted in
               ! fission
 
-              score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
-                   micro_xs(p % event_nuclide) % absorption
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
+                  micro_xs(p % event_nuclide) % absorption
+              else
+                score = ZERO
+              end if
 
             else
-              ! Skip any non-fission events
-              if (.not. p % fission) cycle SCORE_LOOP
+              ! Skip any non-absorption events
+              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for the
               ! fission reaction rate
 
-              score = last_wgt
+              score = last_wgt * micro_xs(p % event_nuclide) % fission / &
+                micro_xs(p % event_nuclide) % absorption
             end if
 
           case (SCORE_NU_FISSION)
@@ -524,8 +544,25 @@ contains
               ! calculate fraction of absorptions that would have resulted in
               ! nu-fission
 
-              score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                   nu_fission / micro_xs(p % event_nuclide) % absorption
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_eout(p, t, score_index)
+                cycle SCORE_LOOP
+
+              else
+
+                if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                  score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                       nu_fission / micro_xs(p % event_nuclide) % absorption
+                else
+                  score = ZERO
+                end if
+              end if
 
             else
               ! Skip any non-fission events
@@ -557,23 +594,26 @@ contains
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
               ! calculate fraction of absorptions that would have resulted in
-              ! fission and multiply by Q
+              ! fission scale by kappa-fission
 
-              score = p % absorb_wgt * &
-                      micro_xs(p % event_nuclide) % kappa_fission / &
-                      micro_xs(p % event_nuclide) % absorption
+              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                score = p % absorb_wgt * &
+                  micro_xs(p % event_nuclide) % kappa_fission / &
+                  micro_xs(p % event_nuclide) % absorption
+              else
+                score = ZERO
+              end if
 
             else
-              ! Skip any non-fission events
-              if (.not. p % fission) cycle SCORE_LOOP
+              ! Skip any non-absorption events
+              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-
-              n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
-                nuclides(p % event_nuclide) % reactions(n) % Q_value
+                micro_xs(p % event_nuclide) % kappa_fission / &
+                micro_xs(p % event_nuclide) % absorption
             end if
           case (SCORE_EVENTS)
             ! Simply count number of scoring events
@@ -630,7 +670,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
-    real(8) :: score         ! actualy score
+    real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index
@@ -748,7 +788,9 @@ contains
       filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(p, i_tally, flux, filter_index)
+        if (p % material /= MATERIAL_VOID) then
+          call score_all_nuclides(p, i_tally, flux, filter_index)
+        end if
       else
 
         NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -756,23 +798,27 @@ contains
           i_nuclide = t % nuclide_bins(k)
 
           if (i_nuclide > 0) then
-            ! Get pointer to current material
-            mat => materials(p % material)
+            if (p % material /= MATERIAL_VOID) then
+              ! Get pointer to current material
+              mat => materials(p % material)
 
-            ! Determine if nuclide is actually in material
-            NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-              ! If index of nuclide matches the j-th nuclide listed in the
-              ! material, break out of the loop
-              if (i_nuclide == mat % nuclide(j)) exit
+              ! Determine if nuclide is actually in material
+              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                ! If index of nuclide matches the j-th nuclide listed in the
+                ! material, break out of the loop
+                if (i_nuclide == mat % nuclide(j)) exit
 
-              ! If we've reached the last nuclide in the material, it means
-              ! the specified nuclide to be tallied is not in this material
-              if (j == mat % n_nuclides) then
-                cycle NUCLIDE_BIN_LOOP
-              end if
-            end do NUCLIDE_MAT_LOOP
+                ! If we've reached the last nuclide in the material, it means
+                ! the specified nuclide to be tallied is not in this material
+                if (j == mat % n_nuclides) then
+                  cycle NUCLIDE_BIN_LOOP
+                end if
+              end do NUCLIDE_MAT_LOOP
 
-            atom_density = mat % atom_density(j)
+              atom_density = mat % atom_density(j)
+            else
+              atom_density = ZERO
+            end if
           end if
 
           ! Determine score for each bin
@@ -1820,33 +1866,38 @@ contains
         filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
         if (t % all_nuclides) then
-          ! Score reaction rates for each nuclide in material
-          call score_all_nuclides(p, i_tally, flux, filter_index)
-
+          if (p % material /= MATERIAL_VOID) then
+            ! Score reaction rates for each nuclide in material
+            call score_all_nuclides(p, i_tally, flux, filter_index)
+          end if
         else
           NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
             ! Get index of nuclide in nuclides array
             i_nuclide = t % nuclide_bins(b)
 
             if (i_nuclide > 0) then
-              ! Get pointer to current material
-              mat => materials(p % material)
+              if (p % material /= MATERIAL_VOID) then
+                ! Get pointer to current material
+                mat => materials(p % material)
 
-              ! Determine if nuclide is actually in material
-              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                ! If index of nuclide matches the j-th nuclide listed in
-                ! the material, break out of the loop
-                if (i_nuclide == mat % nuclide(j)) exit
+                ! Determine if nuclide is actually in material
+                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                  ! If index of nuclide matches the j-th nuclide listed in
+                  ! the material, break out of the loop
+                  if (i_nuclide == mat % nuclide(j)) exit
 
-                ! If we've reached the last nuclide in the material, it
-                ! means the specified nuclide to be tallied is not in this
-                ! material
-                if (j == mat % n_nuclides) then
-                  cycle NUCLIDE_BIN_LOOP
-                end if
-              end do NUCLIDE_MAT_LOOP
+                  ! If we've reached the last nuclide in the material, it
+                  ! means the specified nuclide to be tallied is not in this
+                  ! material
+                  if (j == mat % n_nuclides) then
+                    cycle NUCLIDE_BIN_LOOP
+                  end if
+                end do NUCLIDE_MAT_LOOP
 
-              atom_density = mat % atom_density(j)
+                atom_density = mat % atom_density(j)
+              else
+                atom_density = ZERO
+              end if
             end if
 
             ! Determine score for each bin

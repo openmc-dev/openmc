@@ -3,9 +3,11 @@
 
   <default_xs>71c</default_xs>
 
+  <!-- Plutonium -->
   <material id="1">
-    <density value="4.5" units="g/cc" />
-    <nuclide name="U-235" ao="1.0" />
+    <density value="18.4757" units="g/cm3" />
+    <nuclide name="Pu-239" ao="1.0" />
   </material>
+
 
 </materials>

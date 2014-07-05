@@ -401,21 +401,22 @@ attributes/sub-elements:
 
   :batches:
     A list of integers separated by spaces indicating at what batches a state
-    point file should be written. It should be noted that if source_separate
-    tag is not set to "true", this list must be a subset of state point batches.
+    point file should be written. It should be noted that if the ``separate``
+    attribute is not set to "true", this list must be a subset of state point
+    batches.
 
     *Default*: Last batch only
 
   :interval:
     A single integer :math:`n` indicating that a state point should be written
-    every :math:`n` batches. This option can be given in lieu of listing
-    batches explicitly. It should be noted that if source_separate tag is not
-    set to "true", this value should produce a list of batches that is a subset
-    of state point batches.
+    every :math:`n` batches. This option can be given in lieu of listing batches
+    explicitly. It should be noted that if the ``separate`` attribute is not set
+    to "true", this value should produce a list of batches that is a subset of
+    state point batches.
 
     *Default*: None
 
-  :source_separate:
+  :separate:
     If this element is set to "true", a separate binary source point file will be
     written. Otherwise, the source sites will be written in the state point
     directly.

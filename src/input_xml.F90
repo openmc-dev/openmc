@@ -80,7 +80,11 @@ contains
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      message = "Settings XML file '" // trim(filename) // "' does not exist!"
+      message = "Settings XML file '" // trim(filename) // "' does not exist! &
+           &In order to run OpenMC, you first need a set of input files; at a &
+           &minimum, this includes settings.xml, geometry.xml, and &
+           &materials.xml. Please consult the user's guide at &
+           &http://mit-crpg.github.io/openmc for further information."
       call fatal_error()
     end if
 
@@ -98,7 +102,11 @@ contains
         call get_environment_variable("CROSS_SECTIONS", env_variable)
         if (len_trim(env_variable) == 0) then
           message = "No cross_sections.xml file was specified in settings.xml &
-               &or in the CROSS_SECTIONS environment variable."
+               &or in the CROSS_SECTIONS environment variable. OpenMC needs a &
+               &cross_sections.xml file to identify where to find ACE cross &
+               &section libraries. Please consult the user's guide at &
+               &http://mit-crpg.github.io/openmc for information on how to set &
+               &up ACE cross section libraries."
           call fatal_error()
         else
           path_cross_sections = trim(env_variable)

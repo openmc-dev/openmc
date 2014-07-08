@@ -435,13 +435,13 @@ contains
         call sp % write_data(j, "distrib_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        call sp % write_data(mat % density % num, "num_density", &
+        call sp % write_data(mat % density % num, "n_density", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
         call sp % write_data(mat % density % density, "density", &
              length=mat % density % num, &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        call sp % write_data(mat % n_comp, "num_comp", &
+        call sp % write_data(mat % n_comp, "n_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 #ifdef HDF5
         call sp % open_group("geometry/materials/material "&
@@ -1186,7 +1186,7 @@ contains
       call sp % read_data(dist_comp, "distrib_comp", &
            group="geometry/materials/material ")
 
-      call sp % read_data(j, "num_density", &
+      call sp % read_data(j, "n_density", &
            group="geometry/materials/material ")
       allocate(temp_real_array(j))
       call sp % read_data(temp_real_array, "density", length=j, &
@@ -1194,7 +1194,7 @@ contains
       deallocate(temp_real_array)
 
       allocate(temp_real_array(k))
-      call sp % read_data(k, "num_comp", &
+      call sp % read_data(k, "n_comp", &
              group="geometry/materials/material ")
       COMPOSITION_LOOP: do j = 1, k
         call sp % read_data(temp_real_array, "atom_density " &

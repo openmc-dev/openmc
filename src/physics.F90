@@ -161,9 +161,9 @@ contains
       ! Find atom density
       i_nuclide    = mat % nuclide(i)
       if (mat % distrib_comp) then
-        atom_density = mat % get_density(p % comp_id,i)
+        atom_density = mat % get_density(p % mapping(mat % map), i)
       else
-        atom_density = mat % get_density(1,i)
+        atom_density = mat % get_density(1, i)
       endif
 
       ! Determine microscopic cross section

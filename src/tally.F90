@@ -524,9 +524,9 @@ contains
             end do NUCLIDE_MAT_LOOP
 
             if (mat % distrib_comp) then
-              atom_density = mat % get_density(p % comp_id,j)
+              atom_density = mat % get_density(p % mapping(mat % map), j)
             else
-              atom_density = mat % get_density(1,j)
+              atom_density = mat % get_density(1, j)
             endif
 
           end if
@@ -671,9 +671,9 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     if (mat % distrib_comp) then
-                      atom_density = mat % get_density(p % comp_id,l)
+                      atom_density = mat % get_density(p % mapping(mat % map), l)
                     else
-                      atom_density = mat % get_density(1,l)
+                      atom_density = mat % get_density(1, l)
                     endif
                     
                     ! Get index in nuclides array
@@ -785,9 +785,9 @@ contains
       i_nuclide = mat % nuclide(i)    
 
       if (mat % distrib_comp) then
-        atom_density = mat % get_density(p % comp_id,i)
+        atom_density = mat % get_density(p % mapping(mat % map), i)
       else
-        atom_density = mat % get_density(1,i)
+        atom_density = mat % get_density(1, i)
       endif
       
       ! Loop over score types for each bin
@@ -926,9 +926,9 @@ contains
             ! Get atom density           
 
             if (mat % distrib_comp) then
-              atom_density = mat % get_density(p % comp_id,i)
+              atom_density = mat % get_density(p % mapping(mat % map), i)
             else
-              atom_density = mat % get_density(1,i)
+              atom_density = mat % get_density(1, i)
             endif
             
             ! Get index in nuclides array
@@ -1214,9 +1214,9 @@ contains
               end do NUCLIDE_MAT_LOOP
 
               if (mat % distrib_comp) then
-                atom_density = mat % get_density(p % comp_id,j)
+                atom_density = mat % get_density(p % mapping(mat % map), j)
               else
-                atom_density = mat % get_density(1,j)
+                atom_density = mat % get_density(1, j)
               endif
               
             end if

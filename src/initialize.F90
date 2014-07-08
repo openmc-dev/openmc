@@ -90,11 +90,8 @@ contains
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
 
-    ! Initialize distribcell_filters
-    call prepare_distribcell()
-
-    ! Initialize distributed materials
-    call prepare_distribmats()
+    ! Initialize distributed materials and cells
+    call prepare_distribution()
         
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -924,11 +921,10 @@ contains
   end subroutine allocate_banks
 
 !===============================================================================
-! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
-! offsets for the cells
+! PREPARE_DISTRIBUTION initializes any distributed cells and materials present
 !===============================================================================
 
-  subroutine prepare_distribcell()
+  subroutine prepare_distribution()
   
     integer :: i,j,k     ! loop counters
     integer :: l         ! cell instance counter
@@ -936,11 +932,12 @@ contains
     integer :: extra     ! number of extra filters to add
     integer :: n_filt    ! number of filters originally in tally
     integer, allocatable :: univ_list(:)
-    type(TallyObject),    pointer :: t => null()
     type(TallyFilter),    allocatable :: filters(:)   ! Filter data (type/bins)
+    type(TallyObject),    pointer :: t => null()
     type(Universe),       pointer :: univ
-  
-  
+    type(Cell),           pointer :: c
+    
+    ! begin with filters    
     ! Loop over tallies    
     do i = 1, n_tallies
     
@@ -1021,9 +1018,13 @@ contains
 
           ! sum the number of occurrences of all cells requested
           call count_instance(univ,t % filters(j) % int_bins(1),l)
-
+          
           ! Set number of bins      
           t % filters(j) % n_bins = l 
+          
+          ! Set the number of instances of this cell
+          c => cells(t % filters(j) % int_bins(1))
+          c % instances = l
 
         end if
     
@@ -1033,7 +1034,10 @@ contains
   
   call allocate_offsets(univ_list)
   
-  do i = 1, n_tally_maps
+  ! Verify correct xml input of distributed materials
+  call verify_distribmats()
+    
+  do i = 1, n_maps
     do j = 1, n_universes  
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
@@ -1042,7 +1046,7 @@ contains
 
   deallocate(univ_list)
   
-end subroutine prepare_distribcell
+end subroutine prepare_distribution
 
 
   
@@ -1050,7 +1054,7 @@ end subroutine prepare_distribcell
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates req memory
 !===============================================================================
 
-  recursive subroutine allocate_offsets(univ_list)
+  subroutine allocate_offsets(univ_list)
 
     integer, intent(out), allocatable :: univ_list(:)
     integer :: i,j,k,l,m
@@ -1060,6 +1064,7 @@ end subroutine prepare_distribcell
     type(Cell),        pointer :: c => null()         ! pointer to cell
     type(Lattice),     pointer :: lat => null()       ! pointer to lattice
     type(Universe),    pointer :: u => null()         ! pointer to universe
+    type(Material),    pointer :: mat => null()       ! pointer to material
     type(TallyObject), pointer :: t => null()         ! pointer to tally
     type(TallyFilter), pointer :: tf => null()        ! pointer to filter
     
@@ -1090,6 +1095,71 @@ end subroutine prepare_distribcell
     
     end do
     
+    ! Assign cell to distributed materials    
+    do i = 1, n_materials
+    
+      mat => materials(i)
+      
+      ! Only need to assign cell for distributed materials
+      if (mat % distrib_dens .or. mat % distrib_comp) then
+      
+        do j = 1, n_cells
+      
+          c => cells(j)
+        
+          if (c % material == mat % id) then
+
+            if (mat % cell == 0) then             
+              mat % cell = c % id
+            else
+              message = "Two cells share the same distributed material. &
+                  &This is forbidden."
+              call fatal_error()
+            end if
+
+          end if
+
+        end do
+
+      end if
+
+    end do
+    
+    ! Add targets from distributed materials
+    do i = 1, n_materials
+    
+      mat => materials(i)
+      
+      if (mat % distrib_dens .or. mat % distrib_comp) then
+        
+        if (.not. cell_list % has_key(mat % cell)) then
+
+            call cell_list % add_key(mat % cell,0)
+
+        end if
+        
+      end if  
+    
+    end do    
+    
+    ! Finish counting the instances of all target cells
+    do i = 1, n_cells
+      
+      c => cells(i)
+      
+      if (cell_list % has_key(c % id) .and. c % instances == 0) then
+
+          j = 0
+          u => universes(BASE_UNIVERSE)
+
+          ! sum the number of occurrences of all cells requested
+          call count_instance(u,c % id,j)
+          c % instances = j
+          
+      end if          
+          
+    end do
+    
     ! Determine the number of unique universes containing these cells
     do i = 1, n_universes
     
@@ -1104,8 +1174,7 @@ end subroutine prepare_distribcell
           
       end do
     
-    end do
-    
+    end do    
     
     ! Build the list of unique universes
     allocate(univ_list(maps))    
@@ -1141,7 +1210,17 @@ end subroutine prepare_distribcell
               end do
             
             end do          
+
+            ! Loop over all materials
+            do l = 1, n_materials
+            
+              mat => materials(l)
+            
+              if (mat % cell == u % cells(j)) then
+                mat % map = k
+              end if
           
+            end do
           univ_list(k) = u % id
           k = k + 1
           cycle
@@ -1175,113 +1254,97 @@ end subroutine prepare_distribcell
     end do
     
     ! Store the number of maps to global
-    n_tally_maps = maps
+    n_maps = maps
     
   end subroutine allocate_offsets
 
 !===============================================================================
-! PREPARE_DISTRIBMATS initializes the mappings for distributed materials
+! VERIFY_DISTRIBMATS initializes the mappings for distributed materials
 !===============================================================================
 
-  subroutine prepare_distribmats()
+  subroutine verify_distribmats()
 
-    integer :: i   ! Primary loop index
-    integer :: j   ! Additional loop index
-    integer :: k   ! Additional loop index
-    integer :: l   ! Additional loop index
-    integer :: m   ! Additional loop index
-    integer :: n_z ! Lattice 3rd dimension
-    
-    logical :: dens ! Lattice densities allocated?
-    logical :: comp ! Lattice compositions allocated?
-    
+    integer :: i                                    ! Primary loop index
+    integer :: j                                    ! Additional loop index
+    integer :: num                                  ! size storage
+    real(8) :: density                              ! density to use
+    real(8),allocatable  :: atom_density(:)         ! composition to use
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Cell),     pointer, save :: c2 => null()   ! pointer to second cell
-    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
-    type(Universe), pointer, save :: univ => null() ! pointer to universe
     type(Material), pointer, save :: mat => null()  ! pointer to material
+    
+    ! Verify that all distributed materials have a composition / density length
+    ! equal to either 1 or the number of instance
 
-
-    ! Verify all information present
-    ! All lattices and fill cells containing distributed materials within 2
-    ! geometry levels must specify an index.
-
-    do i = 1, n_cells
-      c => cells(i)
-      if (c % type == CELL_FILL) then
-
-        univ => universes(c % fill)
-
-        do j = 1, univ % n_cells
-
-          c2 => cells(univ % cells(j))
-          if (c2 % type == CELL_NORMAL) then
-            mat => materials(c2 % material)
-            if (mat % distrib_dens .and. c % distrib_dens < 1) then            
-              message = "A fill cell containing a material with a " // &
-              "distributed density is missing the distrib_dens " // &
-              "tag in the geometry.xml input file."
-              call fatal_error()
-            end if
-            if (mat % distrib_comp .and. c % distrib_comp < 1) then
-              message = "A fill cell containing a material with a " // &
-              "distributed composition is missing the distrib_comp " // &
-              "tag in the geometry.xml input file."
-              call fatal_error()
-            end if
-          end if
+    do i = 1, n_materials
+    
+      mat => materials(i)
+      
+      if (mat % distrib_dens) then
+      
+        c => cells(mat % cell)
+      
+        num = mat % density % num
+        if (.not.(num == 1 .or. num == c % instances)) then  
+                
+          message = "Invalid number of densities specified for material " & 
+          // to_str(mat % id)
+          call fatal_error()      
           
-        end do
+        end if
+        
+        ! If num == 1, set all densities equal to the one given
+        if (num == 1) then
+        
+          density = mat % density % density(1)
+          deallocate(mat % density % density)
+          allocate(mat % density % density(c % instances))
+          do j = 1, c % instances
+          
+            mat % density % density(j) = density
+          
+          end do
+          
+          mat % density % num = c % instances
+        end if
         
       end if
-    end do
-    
-    do i = 1, n_lattices
-      lat => lattices(i)
-      dens = allocated(lat % densities)
-      comp = allocated(lat % compositions)
-      ! If everything is already allocated no need to check
-      if (.not. dens .or. .not. comp) then
-        if (lat % n_dimension == 2) then
-          n_z = 1
-        else
-          n_z = lat % dimension(3)
+      
+      if (mat % distrib_comp) then
+      
+        c => cells(mat % cell)
+      
+        num = mat % n_comp
+        if (.not.(num == 1 .or. num == c % instances)) then 
+                 
+          message = "Invalid number of compositions specified for material " & 
+          // to_str(mat % id)
+          call fatal_error()    
+      
         end if
-        do j = 1, lat % dimension(1)
-          do k = 1, lat % dimension(2)
-            do l = 1, n_z
-            
-              univ => universes(lat % universes(j,k,l))
-
-              do m = 1, univ % n_cells
-              
-                c2 => cells(univ % cells(m))
-                
-                if (c2 % type == CELL_NORMAL) then
-                  mat => materials(c2 % material)
-                  if (mat % distrib_dens .and. .not. dens) then            
-                    message = "A lattice containing a material with a " // &
-                    " distributed density is missing the densities " // &
-                    " tag in the geometry.xml input file."
-                    call fatal_error()
-                  end if
-                  if (mat % distrib_comp .and. .not. comp) then
-                    message = "A fill cell containing a material with a " // &
-                    " distributed composition is missing the compositions " // &
-                    " tag in the geometry.xml input file."
-                    call fatal_error()
-                  end if
-                end if
-                
-              end do
-              
-            end do
+        
+        ! If num == 1, set all compositions equal to the one given
+        if (num == 1) then
+        
+          mat % n_comp = c % instances
+          allocate(atom_density(mat % n_nuclides))
+          atom_density = mat % comp(1) % atom_density
+          deallocate(mat % comp(1) % atom_density)
+          deallocate(mat % comp)
+          allocate(mat % comp(c % instances))
+          do j = 1, c % instances
+          
+            allocate(mat % comp(j) % atom_density(mat % n_nuclides))
+            mat % comp(j) % atom_density = atom_density
+          
           end do
-        end do
+          deallocate(atom_density)
+          
+        end if
+        
       end if
+      
     end do
-    
   
-end subroutine prepare_distribmats
+end subroutine verify_distribmats
 
 end module initialize

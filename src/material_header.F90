@@ -8,7 +8,6 @@ module material_header
 
   type Composition
     real(8),allocatable  :: atom_density(:)
-
   end type Composition
 
 
@@ -30,9 +29,13 @@ module material_header
     integer                        :: id         ! unique identifier
     integer                        :: n_nuclides ! number of nuclides
     integer                        :: n_comp     ! number of compositions
+    integer                        :: cell       ! assigned cell 
+                                                 ! only for distributed material
+    integer                        :: deplete    ! deplete the material
+    integer                        :: map        ! map number for this material
     integer, allocatable           :: nuclide(:) ! index in nuclides array
-    type(Density)                  :: density    ! atom densities in atom/b-cm
-    type(Composition), allocatable :: comp(:)    ! atom fractions via compositions
+    type(Density)                  :: density    ! material density in atom/b-cm
+    type(Composition), allocatable :: comp(:)    ! atom densities in atom/b-cm
 
     ! S(a,b) data references
     integer              :: n_sab = 0         ! number of S(a,b) tables

@@ -884,8 +884,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! default this value to false
+      ! default some values
       c % distributed = .false.
+      c % instances = 0
 
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)
@@ -903,21 +904,7 @@ contains
         c % universe = NONE
       end if
       if (check_for_node(node_cell, "fill")) then
-        call get_node_value(node_cell, "fill", c % fill)
-        if (check_for_node(node_cell, "distrib_dens")) then
-          c % distributed = .true.
-          write(*,*) "distrib_dens:",c % distrib_dens
-          call get_node_value(node_cell, "distrib_dens", c % distrib_dens)
-          write(*,*) "distrib_dens:",c % distrib_dens
-        else
-          c % distrib_dens = 0
-        end if
-        if (check_for_node(node_cell, "distrib_comp")) then
-          c % distributed = .true.
-          call get_node_value(node_cell, "distrib_comp", c % distrib_comp)
-        else
-          c % distrib_comp = 0
-        end if
+        call get_node_value(node_cell, "fill", c % fill)     
       else
         c % fill = NONE
       end if
@@ -1301,60 +1288,7 @@ contains
           end do
         end do
       end do
-      deallocate(temp_int_array)
-
-      ! Determine if using distributed densities
-      if (check_for_node(node_lat, "densities")) then
-
-        ! Check that number of densities matches size
-        n = get_arraysize_integer(node_lat, "densities")
-        if (n /= n_x*n_y*n_z) then
-          message = "Number of densities on <densities> does not match size of &
-               &lattice " // trim(to_str(lat % id)) // "."
-          call fatal_error()
-        end if
-
-        allocate(temp_int_array(n))
-        call get_node_array(node_lat, "densities", temp_int_array)
-        allocate(lat % densities(n_x,n_y,n_z))
-        ! Read universes
-        do m = 1, n_z
-          do k = 0, n_y - 1
-            do j = 1, n_x
-              lat % densities(j, n_y - k, m) = &
-                 temp_int_array(j + n_x*k + n_x*n_y*(m-1))
-            end do
-          end do
-        end do
-        deallocate(temp_int_array)
-      end if
-
-      ! Determine if using distributed compositions
-      if (check_for_node(node_lat, "compositions") )then
-
-        ! Check that number of compositions matches size
-        n = get_arraysize_integer(node_lat, "compositions")
-        allocate(lat % compositions(n_x,n_y,n_z))
-        if (n /= n_x*n_y*n_z) then
-          message = "Number of compositions on <compositions> does not match size of &
-               &lattice " // trim(to_str(lat % id)) // "."
-          call fatal_error()
-        end if
-
-        allocate(temp_int_array(n))
-        call get_node_array(node_lat, "compositions", temp_int_array)
-
-        ! Read compositions
-        do m = 1, n_z
-          do k = 0, n_y - 1
-            do j = 1, n_x
-              lat % compositions(j, n_y - k, m) = &
-                 temp_int_array(j + n_x*k + n_x*n_y*(m-1))
-            end do
-          end do
-        end do
-        deallocate(temp_int_array)
-      end if
+      deallocate(temp_int_array)      
 
       ! Read material for area outside lattice
       lat % outside = MATERIAL_VOID
@@ -1398,6 +1332,7 @@ contains
     real(8), allocatable :: temp_real_array(:) ! temporary array for composition
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
+    logical :: depletion     ! load depletion library isotopes?
     character(12) :: name    ! name of isotope, e.g. 92235.03c
     character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
@@ -1478,6 +1413,17 @@ contains
         cycle
       end if
 
+      ! Check if depleting this material
+      if (check_for_node(node_mat, "deplete")) then
+        call get_node_value(node_mat, "deplete", mat % deplete)
+        if (.not. depletion) then
+          call load_depletion_isotopes()
+          depletion = .true.
+        end if
+        
+        ! Add the depletion isotopes to this list
+      end if
+      
       ! Check for distributed densities
       if (check_for_node(node_mat, "distributed_density")) then
 
@@ -1582,6 +1528,12 @@ contains
       ! Check for distributed compositions
       if (check_for_node(node_mat, "compositions")) then
         mat % distrib_comp = .true.
+        
+        if (mat % distrib_dens) then
+          message = "Material " // trim(to_str(mat % id)) // &
+                    " cannot have distributed density and composition."
+          call fatal_error()
+        end if        
 
         call get_node_ptr(node_mat, "compositions", node_comp)
 
@@ -1842,18 +1794,19 @@ contains
         if (mat % distrib_comp) then
           ! Nothing to do, this was already done
         else
-          mat % comp(1) % atom_density(j) = list_density % get_item(j) 
-          ! Check to make sure either all atom percents or all weight percents
-          ! are given
-          if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
-             all(mat % comp(1) % atom_density < ZERO))) then
-            message = "Cannot mix atom and weight percents in material " // &
-             to_str(mat % id)
+          mat % comp(1) % atom_density(j) = list_density % get_item(j)           
+        end if
+      end do ALL_NUCLIDES     
+           
+      ! Check to make sure either all atom percents or all weight percents
+      ! are given
+      if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
+         all(mat % comp(1) % atom_density < ZERO))) then
+        message = "Cannot mix atom and weight percents in material " // &
+        to_str(mat % id)
         call fatal_error()
       end if
-        end if
-      end do ALL_NUCLIDES          
-
+        
       ! Determine density if it is a sum value  
       if (sum_density .and. mat % distrib_comp) then
         message = "Distributed Compositions does not support " // &
@@ -4157,5 +4110,13 @@ contains
     end select
 
   end subroutine expand_natural_element
+  
+!===============================================================================
+! LOAD_DEPLETION_ISOTOPES loads all isotopes from the specified depletion
+! libary for addition to materials with depletion on
+!===============================================================================
 
+  subroutine load_depletion_isotopes()
+
+  end subroutine load_depletion_isotopes
 end module input_xml                                     

@@ -31,8 +31,6 @@ module geometry_header
      real(8), allocatable :: width(:)            ! width of each lattice cell
      integer, allocatable :: universes(:,:,:)    ! specified universes
      integer, allocatable :: offset(:,:,:,:)     ! offsets
-     integer, allocatable :: densities(:,:,:)    ! distributed material indices
-     integer, allocatable :: compositions(:,:,:) ! distributed material indices
      integer              :: outside             ! material to fill area outside
   end type Lattice
 
@@ -60,9 +58,8 @@ module geometry_header
      integer :: type          ! Type of cell (normal, universe, lattice)
      integer :: universe      ! universe # this cell is in
      integer :: fill          ! universe # filling this cell
-     integer :: distrib_dens     ! material distribution # - density
-     integer :: distrib_comp     ! material distribution # - composition
-     logical :: distributed   ! distributed materials
+     integer :: instances     ! number of instances of this cell in the geom
+     logical :: distributed   ! distributed?     
      integer :: material      ! Material within cell (0 for universe)
      integer :: n_surfaces    ! Number of surfaces within
      integer, allocatable :: &

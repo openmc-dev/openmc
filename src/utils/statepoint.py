@@ -653,9 +653,9 @@ class StatePoint(object):
           nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
 	  dist_dens = self._get_int(path=base + str(matList[i])+'/distrib_dens')[0]
 	  dist_comp = self._get_int(path=base + str(matList[i])+'/distrib_comp')[0]
-	  n_dens = self._get_int(path=base + str(matList[i])+'/num_density')[0]
+	  n_dens = self._get_int(path=base + str(matList[i])+'/n_density')[0]
 	  dens = self._get_double(n_dens, path=base + str(matList[i])+'/density')
-	  n_comp = self._get_int(path=base + str(matList[i])+'/num_comp')[0]
+	  n_comp = self._get_int(path=base + str(matList[i])+'/n_comp')[0]
           a_dens = []
 	  for j in range(1,n_comp):
             a_dens.append(self._get_double(n_nuclide,path=base + str(matList[i])+'/compositions/'+str(j)))

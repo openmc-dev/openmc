@@ -198,13 +198,11 @@ contains
         
           ! Determine all offsets for this cell level
           if (.not. allocated(p % coord % mapping)) then
-            allocate(p % coord % mapping(n_tally_maps))
+            allocate(p % coord % mapping(n_maps))
           end if
-          do j = 1, n_tally_maps
+          do j = 1, n_maps
             p % coord % mapping(j) = c % offset(j)
           end do
-          p % comp_id = c % distrib_comp
-          p % dens_id = c % distrib_dens
 
           ! Create new level of coordinates
           allocate(p % coord % next)
@@ -252,13 +250,6 @@ contains
           else
             i_z = 1
             n_z = 1
-          end if
-
-          if (allocated(lat % densities)) then
-            p % dens_id = lat % compositions(i_x,i_y,i_z) 
-          end if
-          if (allocated(lat % densities)) then
-            p % comp_id = lat % compositions(i_x,i_y,i_z) 
           end if
           
           ! Check if lattice coordinates are within bounds
@@ -359,9 +350,9 @@ contains
 
             ! Determine all offsets for this cell level
             if (.not. allocated(p % coord % mapping)) then
-              allocate(p % coord % mapping(n_tally_maps))
+              allocate(p % coord % mapping(n_maps))
             end if
-            do j = 1, n_tally_maps
+            do j = 1, n_maps
               p % coord % mapping(j) = lat % offset(j,i_x,i_y,i_z)
             end do
 
@@ -373,6 +364,7 @@ contains
 
         ! Found cell so we can return
         found = .true.
+        call p % sum_maps()
         return
       end if
     end do
@@ -776,9 +768,9 @@ contains
       ! Find universe for next lattice element
       p % coord % universe = lat % universes(i_x, i_y, i_z)      
       if (.not. allocated(p % coord % mapping)) then
-        allocate(p % coord % mapping(n_tally_maps))
+        allocate(p % coord % mapping(n_maps))
       end if
-      do i = 1, n_tally_maps
+      do i = 1, n_maps
         p % coord % mapping(i) = lat % offset(i, i_x, i_y, i_z)
       end do
       ! Find cell in next lattice element

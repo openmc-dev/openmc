@@ -2,6 +2,7 @@ module particle_header
 
   use constants,       only: NEUTRON, ONE, NONE, ZERO
   use geometry_header, only: BASE_UNIVERSE
+  use global,          only: N_MAPS
 
   implicit none
 
@@ -81,14 +82,14 @@ module particle_header
 
     ! Track output
     logical    :: write_track = .false.
-
-    ! Offset for material distribution
-    integer    :: comp_id = 1  ! Current composition
-    integer    :: dens_id = 1  ! Current density
+    
+    ! Distributed Mapping Info
+    integer, allocatable :: mapping(:)
 
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
+    procedure :: sum_maps => sum_maps
   end type Particle
 
 contains
@@ -164,6 +165,38 @@ contains
     ! Make sure coord pointer is nullified
     nullify(this % coord)
 
-  end subroutine clear_particle
+  end subroutine clear_particle  
+ 
+!===============================================================================
+! SUM_MAPS
+!===============================================================================
+
+  subroutine sum_maps(this)
+
+    class(Particle) :: this
+    
+    integer :: i
+    type(LocalCoord), pointer, save :: coord => null()
+    
+    if (.not. allocated(this % mapping)) then
+      allocate(this % mapping(n_maps))
+    end if
+    
+    do i = 1, n_maps
+      this % mapping(i) = 1
+    end do
+    coord => this % coord0
+    do while(associated(coord))
+      if (allocated(coord % mapping)) then
+        
+    do i = 1, n_maps
+     this % mapping(i) = this % mapping(i) + coord % mapping(i)
+    end do
+      end if
+      coord => coord % next
+    end do
+    nullify(coord)
+
+  end subroutine sum_maps
 
 end module particle_header

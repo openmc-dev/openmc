@@ -1536,12 +1536,14 @@ contains
       if (check_for_node(node_mat, "compositions")) then
         mat % distrib_comp = .true.
         
+        ! Enforce only composition is distributed
         if (mat % distrib_dens) then
           message = "Material " // trim(to_str(mat % id)) // &
                     " cannot have distributed density and composition."
           call fatal_error()
         end if        
 
+        ! Get pointer to composition node
         call get_node_ptr(node_mat, "compositions", node_comp)
 
         if (.not. check_for_node(node_comp, "nuclide")) then
@@ -1600,6 +1602,7 @@ contains
           call fatal_error()
         end if
 
+        ! Store the number of actual compositions in the input
         mat % n_comp = n_comp / n
 
         allocate(temp_real_array(n_comp))

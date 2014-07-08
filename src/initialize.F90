@@ -1051,7 +1051,9 @@ end subroutine prepare_distribution
 
   
 !===============================================================================
-! ALLOCATE_OFFSETS determines the number of maps needed and allocates req memory
+! ALLOCATE_OFFSETS determines the number of maps needed and allocates the 
+! required memory, in addition to a few other pre-processing steps related
+! to distribution
 !===============================================================================
 
   subroutine allocate_offsets(univ_list)
@@ -1083,6 +1085,7 @@ end subroutine prepare_distribution
         ! Loop over only distribcell filters
         if (tf % type == FILTER_DISTRIBCELL) then
         
+          ! Add new targets to the list
           if (.not. cell_list % has_key(tf % int_bins(1))) then
 
             call cell_list % add_key(tf % int_bins(1),0)
@@ -1109,6 +1112,7 @@ end subroutine prepare_distribution
         
           if (c % material == mat % id) then
 
+            ! Enforce that two cells do not share a distributed material
             if (mat % cell == 0) then             
               mat % cell = c % id
             else
@@ -1132,6 +1136,8 @@ end subroutine prepare_distribution
       
       if (mat % distrib_dens .or. mat % distrib_comp) then
         
+        ! Add any cells which contain distributed materials. This will cause 
+        ! a map to be created for them
         if (.not. cell_list % has_key(mat % cell)) then
 
             call cell_list % add_key(mat % cell,0)
@@ -1215,7 +1221,8 @@ end subroutine prepare_distribution
             do l = 1, n_materials
             
               mat => materials(l)
-            
+              ! If this material is in the current cell, store its corresponding
+              ! map index
               if (mat % cell == u % cells(j)) then
                 mat % map = k
               end if
@@ -1259,7 +1266,8 @@ end subroutine prepare_distribution
   end subroutine allocate_offsets
 
 !===============================================================================
-! VERIFY_DISTRIBMATS initializes the mappings for distributed materials
+! VERIFY_DISTRIBMATS verifies that all inputs are correct and then initializes
+! the mappings for distributed materials
 !===============================================================================
 
   subroutine verify_distribmats()
@@ -1274,7 +1282,6 @@ end subroutine prepare_distribution
     
     ! Verify that all distributed materials have a composition / density length
     ! equal to either 1 or the number of instance
-
     do i = 1, n_materials
     
       mat => materials(i)
@@ -1284,6 +1291,7 @@ end subroutine prepare_distribution
         c => cells(mat % cell)
       
         num = mat % density % num
+        ! Ensure that there are a sensible number of densities specified
         if (.not.(num == 1 .or. num == c % instances)) then  
                 
           message = "Invalid number of densities specified for material " & 
@@ -1298,13 +1306,11 @@ end subroutine prepare_distribution
           density = mat % density % density(1)
           deallocate(mat % density % density)
           allocate(mat % density % density(c % instances))
-          do j = 1, c % instances
-          
-            mat % density % density(j) = density
-          
-          end do
-          
+          do j = 1, c % instances          
+            mat % density % density(j) = density          
+          end do          
           mat % density % num = c % instances
+          
         end if
         
       end if
@@ -1314,6 +1320,7 @@ end subroutine prepare_distribution
         c => cells(mat % cell)
       
         num = mat % n_comp
+        ! Ensure that there are a sensible number of compositions specified
         if (.not.(num == 1 .or. num == c % instances)) then 
                  
           message = "Invalid number of compositions specified for material " & 
@@ -1331,11 +1338,9 @@ end subroutine prepare_distribution
           deallocate(mat % comp(1) % atom_density)
           deallocate(mat % comp)
           allocate(mat % comp(c % instances))
-          do j = 1, c % instances
-          
+          do j = 1, c % instances          
             allocate(mat % comp(j) % atom_density(mat % n_nuclides))
-            mat % comp(j) % atom_density = atom_density
-          
+            mat % comp(j) % atom_density = atom_density          
           end do
           deallocate(atom_density)
           

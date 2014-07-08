@@ -364,7 +364,7 @@ contains
 
         ! Found cell so we can return
         found = .true.
-        call p % sum_maps()
+        call p % sum_maps(n_maps)
         return
       end if
     end do

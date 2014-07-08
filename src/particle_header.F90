@@ -2,7 +2,6 @@ module particle_header
 
   use constants,       only: NEUTRON, ONE, NONE, ZERO
   use geometry_header, only: BASE_UNIVERSE
-  use global,          only: N_MAPS
 
   implicit none
 
@@ -171,9 +170,10 @@ contains
 ! SUM_MAPS
 !===============================================================================
 
-  subroutine sum_maps(this)
+  subroutine sum_maps(this, n_maps)
 
     class(Particle) :: this
+    integer, intent(in) :: n_maps
     
     integer :: i
     type(LocalCoord), pointer, save :: coord => null()

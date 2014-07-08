@@ -370,10 +370,11 @@ module constants
 
   ! Running modes
   integer, parameter ::        &
-       MODE_FIXEDSOURCE = 1, & ! Fixed source mode
-       MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
-       MODE_PLOTTING    = 3, & ! Plotting mode
-       MODE_PARTICLE    = 4    ! Particle restart mode
+       MODE_FIXEDSOURCE  = 1, & ! Fixed source mode
+       MODE_EIGENVALUE   = 2, & ! K eigenvalue mode
+       MODE_PLOTTING     = 3, & ! Plotting mode
+       MODE_PARTICLE     = 4, & ! Particle restart mode
+       MODE_DISTRIBUTION = 5    ! Help with distribution indices
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
@@ -382,6 +383,7 @@ module constants
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
   integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
   integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
+  integer, parameter :: UNIT_HELP     = 17 ! unit # for writing distrib help
 
   !=============================================================================
   ! CMFD CONSTANTS

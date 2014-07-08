@@ -13,7 +13,7 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
-                              write_message
+                              write_message, find_offset
   use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
@@ -92,7 +92,17 @@ contains
 
     ! Initialize distributed materials and cells
     call prepare_distribution()
-        
+    
+    ! If distribution help mode is on, call the method to write the file
+    ! and then exit the run
+    if (run_mode == MODE_DISTRIBUTION) then
+      call distribution_help()
+      ! Stop initialization timer
+      call time_initialize % stop()
+      ! exit
+      return
+    end if
+    
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
@@ -443,6 +453,8 @@ contains
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
           i = i + 1
+        case ('-d', '-dist', '--distribution')
+          run_mode = MODE_DISTRIBUTION
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()
@@ -1351,5 +1363,56 @@ end subroutine prepare_distribution
     end do
   
 end subroutine verify_distribmats
+
+!===============================================================================
+! DISTRIBUTION_HELP prints the set of human readable paths for all distributed
+! materials.
+!===============================================================================
+
+  subroutine distribution_help()
+  
+    integer :: i      ! materials loop
+    integer :: j      ! instances loop
+    integer :: offset ! offset parameter for path generation
+    type(Material), pointer :: mat   ! pointer to material
+    type(Cell),     pointer :: c     ! pointer to cell
+    type(Universe), pointer :: univ  ! pointer to universe
+    character(MAX_FILE_LEN) :: path  ! path of summary file
+    character(100)          :: label ! user-specified identifier
+
+    ! Create filename for log file
+    path = trim(path_output) // "distribution.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_HELP, FILE=path, STATUS='replace', ACTION='write')
+    
+    do i = 1, n_materials
+    
+      mat => materials(i)
+      
+      if (mat % distrib_dens .or. mat % distrib_comp) then
+      
+        c => cells(mat % cell)
+        
+        write(UNIT_HELP,*) 'Distributed Material:', mat % id
+        write(UNIT_HELP,*) 'Number of Instances:', c % instances
+        
+        do j = 1, c % instances
+
+          offset = 0
+          label = ''
+          univ => universes(BASE_UNIVERSE)
+        
+          call find_offset(mat % map, mat % cell, univ, j - 1, offset, label, .true.)
+          write(UNIT_HELP,*) label
+        
+        end do
+        
+      
+      end if
+      
+    end do      
+  
+  end subroutine distribution_help
 
 end module initialize

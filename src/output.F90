@@ -2090,15 +2090,17 @@ contains
 ! with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(map, goal, univ, final, offset, path)
+  recursive subroutine find_offset(map, goal, univ, final, offset, path, mat)
 
     integer, intent(in) :: map                   ! index of the map in the
                                                  ! vector of maps
-    integer, intent(in) :: goal                  ! The target cell ID
+    integer, intent(in) :: goal                  ! The target cell / material ID
     type(Universe), pointer, intent(in) :: univ  ! universe to begin searching
     integer, intent(in) :: final                 ! target offset
     integer, intent(inout) :: offset             ! current offset, starts at 0
     character(100) :: path                       ! path to offset
+    logical, intent(in), optional :: mat         ! material instead of cell?
+    
     
     integer :: i,j                  ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
@@ -2109,10 +2111,13 @@ contains
     integer :: temp_offset          ! looped sum of offsets
     logical :: this_cell = .false.  ! advance in this cell?
     logical :: later_cell = .false. ! non-normal cells after this one?
+    logical :: material = .false.   ! material instead of cell         
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 !$omp threadprivate(c, lat, univ_next)
+
+    if (present(mat)) material = mat
 
     n = univ % n_cells
     
@@ -2130,11 +2135,20 @@ contains
       ! get pointer to cell
       c => cells(index_cell)
       
-      ! If the cell ID matches the goal and the offset matches final, we're done
-      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-        ! write to the geometry stack
-        path = trim(path) // "->" // to_str(c%id)
-        return
+      if (material) then
+        ! If the material matches the goal and the offset matches final, we're done
+        if (c % material == goal .AND. offset == final) then
+          ! write to the geometry stack
+          path = trim(path) // "->" // to_str(c%id)
+          return
+        end if
+      else 
+        ! If the cell ID matches the goal and the offset matches final, we're done
+        if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
+          ! write to the geometry stack
+          path = trim(path) // "->" // to_str(c%id)
+          return
+        end if
       end if
       
     end do
@@ -2202,7 +2216,7 @@ contains
           ! ====================================================================
           ! AT LOWEST UNIVERSE, TERMINATE SEARCH
           ! NOTE: THIS SHOULD NOT HAPPEN
-          message = "Unexpected end of search with normal cell."
+          message = "Unexpected end of search with normal cell: " // path
           call fatal_error()          
           
         elseif (c % type == CELL_FILL) then
@@ -2214,7 +2228,7 @@ contains
           offset = c % offset(map) + offset
           
           univ_next => universes(c % fill)
-          call find_offset(map, goal, univ_next, final, offset, path)
+          call find_offset(map, goal, univ_next, final, offset, path, material)
           return
           
         elseif (c % type == CELL_LATTICE) then
@@ -2267,7 +2281,7 @@ contains
                 univ_next => universes(lat % universes(i_x,i_y,i_z))  
                 path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
 
-                call find_offset(map, goal, univ_next, final, offset, path)
+                call find_offset(map, goal, univ_next, final, offset, path, material)
                 
                 return
                 

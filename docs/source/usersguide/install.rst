@@ -494,4 +494,3 @@ schemas.xml file in your own OpenMC source directory.
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
-.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

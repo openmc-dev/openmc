@@ -41,7 +41,7 @@ for the geometry, materials, and settings. Additionally, there are three optiona
 input files. The first is a tallies XML file that specifies physical quantities
 to be tallied. The second is a plots XML file that specifies regions of geometry
 which should be plotted. The third is a CMFD XML file that specifies coarse mesh
-acceleration geometry and execution parameters. OpenMC expects that these 
+acceleration geometry and execution parameters. OpenMC expects that these
 files are called:
 
 * ``geometry.xml``
@@ -105,7 +105,7 @@ default. This element has the following attributes/sub-elements:
 The ``<eigenvalue>`` element indicates that a :math:`k`-eigenvalue calculation
 should be performed. It has the following attributes/sub-elements:
 
-  :batches: 
+  :batches:
     The total number of batches, where each batch corresponds to multiple
     fission source iterations. Batching is done to eliminate correlation between
     realizations of random variables.
@@ -171,7 +171,7 @@ problem. It has the following attributes/sub-elements:
 The ``<fixed_source>`` element indicates that a fixed source calculation should be
 performed. It has the following attributes/sub-elements:
 
-  :batches: 
+  :batches:
     The total number of batches. For fixed source calculations, each batch
     represents a realization of random variables for tallies.
 
@@ -181,6 +181,29 @@ performed. It has the following attributes/sub-elements:
     The number of particles to simulate per batch.
 
     *Default*: None
+
+.. _natural_elements:
+
+``<natural_elements>`` Element
+------------------------------
+
+The ``<natural_elements>`` element indicates to OpenMC what nuclides are
+available in the cross section library when expanding an ``<element>`` into
+separate isotopes (see :ref:`material`). The accepted values are:
+
+  - ENDF/B-VII.0
+  - ENDF/B-VII.1
+  - JEFF-3.1.1
+  - JEFF-3.1.2
+  - JEFF-3.2
+  - JENDL-3.2
+  - JENDL-3.3
+  - JENDL-4.0
+
+Note that the value is case-insensitive, so "ENDF/B-VII.1" is equivalent to
+"endf/b-vii.1".
+
+  *Default*: ENDF/B-VII.1
 
 ``<no_reduce>`` Element
 -----------------------
@@ -206,7 +229,7 @@ out the file and "false" will not.
 
     *Default*: false
 
-  :summary: 
+  :summary:
     Writes out an ASCII summary file describing all of the user input files that
     were read in.
 
@@ -274,7 +297,7 @@ attributes/sub-elements:
     An element specifying the spatial distribution of source sites. This element
     has the following attributes:
 
-    :type: 
+    :type:
       The type of spatial distribution. Valid options are "box" and "point". A
       "box" spatial distribution has coordinates sampled uniformly in a
       parallelepiped. A "point" spatial distribution has coordinates specified
@@ -298,7 +321,7 @@ attributes/sub-elements:
     An element specifying the angular distribution of source sites. This element
     has the following attributes:
 
-    :type: 
+    :type:
       The type of angular distribution. Valid options are "isotropic" and
       "monodirectional". The angle of the particle emitted from a source site is
       isotropic if the "isotropic" option is given. The angle of the particle
@@ -321,7 +344,7 @@ attributes/sub-elements:
     An element specifying the energy distribution of source sites. This element
     has the following attributes:
 
-    :type: 
+    :type:
 
       The type of energy distribution. Valid options are "monoenergetic",
       "watt", and "maxwell". The "monoenergetic" option produces source sites at
@@ -350,8 +373,8 @@ attributes/sub-elements:
 
 The ``<state_point>`` element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
-tally results at any batch. The default behavior when using this tag is to 
-write out the source bank in the state_point file. This behavior can be 
+tally results at any batch. The default behavior when using this tag is to
+write out the source bank in the state_point file. This behavior can be
 customized by using the ``<source_point>`` element. This element has the
 following attributes/sub-elements:
 
@@ -371,28 +394,29 @@ following attributes/sub-elements:
 ``<source_point>`` Element
 --------------------------
 
-The ``<source_point>`` element indicates at what batches the source bank 
-should be written. The source bank can be either written out within a state  
+The ``<source_point>`` element indicates at what batches the source bank
+should be written. The source bank can be either written out within a state
 point file or separately in a source point file. This element has the following
 attributes/sub-elements:
 
   :batches:
     A list of integers separated by spaces indicating at what batches a state
-    point file should be written. It should be noted that if source_separate
-    tag is not set to "true", this list must be a subset of state point batches.
+    point file should be written. It should be noted that if the ``separate``
+    attribute is not set to "true", this list must be a subset of state point
+    batches.
 
     *Default*: Last batch only
 
   :interval:
     A single integer :math:`n` indicating that a state point should be written
-    every :math:`n` batches. This option can be given in lieu of listing
-    batches explicitly. It should be noted that if source_separate tag is not
-    set to "true", this value should produce a list of batches that is a subset
-    of state point batches.
+    every :math:`n` batches. This option can be given in lieu of listing batches
+    explicitly. It should be noted that if the ``separate`` attribute is not set
+    to "true", this value should produce a list of batches that is a subset of
+    state point batches.
 
     *Default*: None
 
-  :source_separate:
+  :separate:
     If this element is set to "true", a separate binary source point file will be
     written. Otherwise, the source sites will be written in the state point
     directly.
@@ -401,17 +425,17 @@ attributes/sub-elements:
 
   :source_write:
     If this element is set to "false", source sites are not written
-    to the state point or source point file. This can substantially reduce the 
+    to the state point or source point file. This can substantially reduce the
     size of state points if large numbers of particles per batch are used.
 
     *Default*: true
 
   :overwrite_latest:
     If this element is set to "true", a source point file containing
-    the source bank will be written out to a separate file named 
-    ``source.binary`` or ``source.h5`` depending on if HDF5 is enabled. 
+    the source bank will be written out to a separate file named
+    ``source.binary`` or ``source.h5`` depending on if HDF5 is enabled.
     This file will be overwritten at every single batch so that the latest
-    source bank will be available. It should be noted that a user can set both 
+    source bank will be available. It should be noted that a user can set both
     this element to "true" and specify batches to write a permanent source bank.
 
     *Default*: false
@@ -741,6 +765,8 @@ sub-elements:
 Materials Specification -- materials.xml
 ----------------------------------------
 
+.. _material:
+
 ``<material>`` Element
 ----------------------
 
@@ -780,12 +806,13 @@ Each ``material`` element can have the following attributes or sub-elements:
   :element:
 
     Specifies that a natural element is present in the material. The natural
-    element is split up into individual isotopes based on IUPAC Isotopic
-    Compositions of the Elements 1997. This element has attributes/sub-elements
-    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
-    symbol of the element while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
-    element within the material, respectively. One example would be as follows:
+    element is split up into individual isotopes based on `IUPAC Isotopic
+    Compositions of the Elements 2009`_. This element has
+    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element while the ``xs`` attribute is
+    the cross-section identifier. Finally, the ``ao`` attribute specifies the
+    atom percent of the element within the material, respectively. One example
+    would be as follows:
 
     .. code-block:: xml
 
@@ -793,6 +820,10 @@ Each ``material`` element can have the following attributes or sub-elements:
         <element name="Mg" ao="1.5498e-04" />
         <element name="Mn" ao="2.7426e-05" />
         <element name="Cu" ao="1.6993e-04" />
+
+    In some cross section libraries, certain naturally occurring isotopes do not
+    have cross sections. The :ref:`natural_elements` option determines how a
+    natural element is split into isotopes in these cases.
 
     *Default*: None
 
@@ -804,6 +835,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+.. _IUPAC Isotopic Compositions of the Elements 2009:
+    http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
 ``<default_xs>`` Element
 ------------------------
@@ -845,7 +879,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :label:
     This is an optional sub-element specifying the name of this tally to be used
-    for output purposes. This string is limited to 52 characters for formatting 
+    for output purposes. This string is limited to 52 characters for formatting
     purposes.
 
   :filter:
@@ -915,10 +949,11 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
-    options are "flux", "total", "scatter", "nu-scatter", "scatter-N",
-    "scatter-PN", "absorption", "fission", "nu-fission", "kappa-fission",
-    "current", and "events". These corresponding to the following physical
-    quantities.
+    options are "flux", "total", "scatter", "absorption", "fission",
+    "nu-fission", "kappa-fission", "nu-scatter", "scatter-N", "scatter-PN",
+    "scatter-YN", "nu-scatter-N", "nu-scatter-PN", "nu-scatter-YN", "flux-YN",
+    "total-YN", "current", and "events". These corresponding to the following
+    physical quantities:
 
     :flux:
       Total flux
@@ -930,24 +965,6 @@ The ``<tally>`` element accepts the following sub-elements:
       Total scattering rate. Can also be identified with the ``scatter-0``
       response type.
 
-    :nu-scatter:
-      Total production of neutrons due to scattering. This accounts for
-      multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
-      slightly higher than the scattering rate.
-
-    :scatter-N:
-      Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
-      expansion order.  N must be between 0 and 10. As an example, tallying the
-      2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
-      scatter-2 </scores>``.
-  
-    :scatter-PN:
-      Tally all of the scattering moments from order 0 to N, where N is the
-      Legendre expansion order.  That is, ``scatter-P1`` is equivalent to
-      requesting tallies of ``scatter-0`` and ``scatter-1``.  N must be between
-      0 and 10. As an example, tallying up to the 2\ :sup:`nd` \ scattering
-      moment would be specified as ``<scores> scatter-P2 </scores>``.
-    
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
       produce secondary neutrons.
@@ -957,7 +974,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :nu-fission:
       Total production of neutrons due to fission
-    
+
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable
       energy is defined as the fission product kinetic energy, prompt and
@@ -966,6 +983,47 @@ The ``<tally>`` element accepts the following sub-elements:
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
       locally.
+
+    :scatter-N:
+      Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
+      expansion order of the change in particle angle :math:`\left(\mu\right)`.
+      N must be between 0 and 10. As an example, tallying the
+      2\ :sup:`nd` \ scattering moment would be specified as
+      ``<scores> scatter-2 </scores>``.
+
+    :scatter-PN:
+      Tally all of the scattering moments from order 0 to N, where N is the
+      Legendre expansion order of the change in particle angle :math:`\left(\mu\right)`.
+      That is, ``scatter-P1`` is equivalent to requesting tallies of
+      ``scatter-0`` and ``scatter-1``.  Like for ``scatter-N``,
+      N must be between 0 and 10. As an example, tallying up to the
+      2\ :sup:`nd` \ scattering moment would be specified as
+      ``<scores> scatter-P2 </scores>``.
+
+    :scatter-YN:
+      ``scatter-YN`` is similar to ``scatter-PN`` except an additional
+      expansion is performed for the incoming particle direction
+      :math:`\left(\Omega\right)` using the real spherical harmonics.  This is useful
+      for performing angular flux moment weighting of the scattering moments.
+      Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments from
+      order 0 to N; N again must be between 0 and 10.
+
+    :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
+      These scores are similar in functionality to their ``scatter*``
+      equivalents except the total production of neutrons due to
+      scattering is scored vice simply the scattering rate. This accounts for
+      multiplicity from (n,2n), (n,3n), and (n,4n) reactions.
+
+    :flux-YN:
+      Spherical harmonic expansion of the direction of motion
+      :math:`\left(\Omega\right)` of the total flux.  This score will tally
+      all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
+
+    :total-YN:
+      Spherical harmonic expansion of the incoming particle's direction of
+      motion :math:`\left(\Omega\right)` of the total flux.  This score will
+      tally all of the harmonic moments of order 0 to N.  N must be between 0
+      and 10.
 
     :current:
       Partial currents on the boundaries of each cell in a mesh.
@@ -1137,7 +1195,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     Any number of this optional tag may be included in each ``<plot>`` element,
     which can override the default random colors for cells or materials. Each
     ``col_spec`` element must contain ``id`` and ``rgb`` sub-elements.
-  
+
     :id:
       Specifies the cell or material unique id for the color specification.
 
@@ -1174,20 +1232,20 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 ------------------------------
 CMFD Specification -- cmfd.xml
 ------------------------------
-    
+
 Coarse mesh finite difference acceleration method has been implemented in OpenMC.
-Currently, it allows users to accelerate fission source convergence during 
-inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in 
+Currently, it allows users to accelerate fission source convergence during
+inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
 
 ``<active_flush>`` Element
 --------------------------
 
 The ``<active_flush>`` element controls the batch where CMFD tallies should be
-reset. CMFD tallies should be reset before active batches so they are accumulated 
+reset. CMFD tallies should be reset before active batches so they are accumulated
 without bias.
 
-  *Default*: 0 
+  *Default*: 0
 
 ``<begin>`` Element
 -------------------
@@ -1224,9 +1282,9 @@ It can be turned on with "true" and off with "false".
 ``<inactive>`` Element
 ----------------------
 
-The ``<inactive>`` element controls if cmfd tallies should be accumulated 
-during inactive batches. For some applications, CMFD tallies may not be 
-needed until the start of active batches. This option can be turned on 
+The ``<inactive>`` element controls if cmfd tallies should be accumulated
+during inactive batches. For some applications, CMFD tallies may not be
+needed until the start of active batches. This option can be turned on
 with "true" and off with "false"
 
   *Default*: true
@@ -1243,12 +1301,12 @@ occurs. The amout of resets is controlled with the ``<num_flushes>`` element.
 ``<ksp_monitor>`` Element
 -------------------------
 
-The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES 
-iterations in PETSc. This option can be turned on with "true" and turned off 
+The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES
+iterations in PETSc. This option can be turned on with "true" and turned off
 with "false".
 
 
-  *Default*: false 
+  *Default*: false
 
 ``<mesh>`` Element
 ------------------
@@ -1261,7 +1319,7 @@ attributes/sub-elements:
     given, it is assumed that the mesh is an x-y mesh.
 
   :upper_right:
-    The upper-right corner of the structrued mesh. If only two coordinate are 
+    The upper-right corner of the structrued mesh. If only two coordinate are
     given, it is assumed that the mesh is an x-y mesh.
 
   :dimension:
@@ -1272,8 +1330,8 @@ attributes/sub-elements:
 
   :energy:
     Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
-    for CMFD tallies and acceleration. If no energy bins are listed, OpenMC 
-    automatically assumes a one energy group calculation over the entire 
+    for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
+    automatically assumes a one energy group calculation over the entire
     energy range.
 
   :albedo:
@@ -1283,10 +1341,10 @@ attributes/sub-elements:
     *Default*: 1.0 1.0 1.0 1.0 1.0 1.0
 
   :map:
-    An optional acceleration map can be specified to overlay on the coarse 
-    mesh spatial grid. If this option is used a ``1`` is used for a 
+    An optional acceleration map can be specified to overlay on the coarse
+    mesh spatial grid. If this option is used a ``1`` is used for a
     non-accelerated region and a ``2`` is used for an accelerated region.
-    For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by 
+    For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
     reflector, the map is:
 
       ``1 1 1 1``
@@ -1297,24 +1355,24 @@ attributes/sub-elements:
 
       ``1 1 1 1``
 
-    Therefore a 2x2 system of equations is solved rather than a 4x4. This 
-    is extremely important to use in reflectors as neutrons will not 
+    Therefore a 2x2 system of equations is solved rather than a 4x4. This
+    is extremely important to use in reflectors as neutrons will not
     contribute to any tallies far away from fission source neutron regions.
     A ``2`` must be used to identify any fission source region.
 
-    .. note:: Only two of the following three sub-elements are needed: 
-              ``lower_left``, ``upper_right`` and ``width``. Any combination 
+    .. note:: Only two of the following three sub-elements are needed:
+              ``lower_left``, ``upper_right`` and ``width``. Any combination
               of two of these will yield the third.
 
 ``<norm>`` Element
 ------------------
 
-The ``<norm>`` element is used to normalize the CMFD fission source distribution 
-to a particular value. For example, if a fission source is calculated for a 
-17 x 17 lattice of pins, the fission source may be normalized to the number of 
-fission source regions, in this case 289. This is useful when visualizing this 
-distribution as the average peaking factor will be unity. This parameter will 
-not impact the calculation. 
+The ``<norm>`` element is used to normalize the CMFD fission source distribution
+to a particular value. For example, if a fission source is calculated for a
+17 x 17 lattice of pins, the fission source may be normalized to the number of
+fission source regions, in this case 289. This is useful when visualizing this
+distribution as the average peaking factor will be unity. This parameter will
+not impact the calculation.
 
   *Default*: 1.0
 
@@ -1329,7 +1387,7 @@ occur during inactive CMFD batches.
 ``<power_monitor>`` Element
 ---------------------------
 
-The ``<power_monitor>`` element is used to view the convergence of power iteration. 
+The ``<power_monitor>`` element is used to view the convergence of power iteration.
 This option can be turned on with "true" and turned off with "false".
 
   *Default*: false
@@ -1355,7 +1413,7 @@ function in PETSc. This option can be turned on with "true" and turned off with 
 --------------------
 
 The ``<solver>`` element controls whether the CMFD eigenproblem is solved with
-standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK). 
+standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
 By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
 
   *Default*: power

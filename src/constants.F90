@@ -7,11 +7,11 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 5
-  integer, parameter :: VERSION_RELEASE = 4
+  integer, parameter :: VERSION_MINOR   = 6
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 11
+  integer, parameter :: REVISION_STATEPOINT       = 12
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -244,6 +244,17 @@ module constants
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 
+  ! Major cross section libraries
+  integer, parameter :: &
+       ENDF_BVII0 = 1, &
+       ENDF_BVII1 = 2, &
+       JEFF_311   = 3, &
+       JEFF_312   = 4, &
+       JEFF_32    = 5, &
+       JENDL_32   = 6, &
+       JENDL_33   = 7, &
+       JENDL_40   = 8
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
@@ -265,7 +276,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 14
+  integer, parameter :: N_SCORE_TYPES = 20
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -273,18 +284,37 @@ module constants
        SCORE_NU_SCATTER    = -4,  & ! scattering production rate
        SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_TRANSPORT     = -7,  & ! transport reaction rate
-       SCORE_N_1N          = -8,  & ! (n,1n) rate
-       SCORE_ABSORPTION    = -9,  & ! absorption rate
-       SCORE_FISSION       = -10, & ! fission rate
-       SCORE_NU_FISSION    = -11, & ! neutron production rate
-       SCORE_KAPPA_FISSION = -12, & ! fission energy production rate
-       SCORE_CURRENT       = -13, & ! partial current
-       SCORE_EVENTS        = -14    ! number of events
+       SCORE_NU_SCATTER_N  = -7,  & ! arbitrary nu-scattering moment
+       SCORE_NU_SCATTER_PN = -8,  & ! system for scoring 0th through nth nu-scatter moment
+       SCORE_TRANSPORT     = -9,  & ! transport reaction rate
+       SCORE_N_1N          = -10, & ! (n,1n) rate
+       SCORE_ABSORPTION    = -11, & ! absorption rate
+       SCORE_FISSION       = -12, & ! fission rate
+       SCORE_NU_FISSION    = -13, & ! neutron production rate
+       SCORE_KAPPA_FISSION = -14, & ! fission energy production rate
+       SCORE_CURRENT       = -15, & ! partial current
+       SCORE_FLUX_YN       = -16, & ! angular moment of flux
+       SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS        = -20    ! number of events
 
   ! Maximum scattering order supported
-  integer, parameter :: SCATT_ORDER_MAX = 10
-  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p10"
+  integer, parameter :: MAX_ANG_ORDER = 10
+
+  ! Names of *-PN & *-YN scores (MOMENT_STRS) and *-N moment scores
+  character(*), parameter :: &
+       MOMENT_STRS(6)    = (/ "scatter-p   ",   &
+                              "nu-scatter-p",   &
+                              "flux-y      ",   &
+                              "total-y     ",   &
+                              "scatter-y   ",   &
+                              "nu-scatter-y"/), &
+       MOMENT_N_STRS(2)  = (/ "scatter-    ",   &
+                              "nu-scatter- "/)
+
+  ! Location in MOMENT_STRS where the YN data begins
+  integer, parameter :: YN_LOC = 3
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

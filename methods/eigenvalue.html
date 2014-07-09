@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -69,7 +67,7 @@ calculations in a Monte Carlo code.</p>
 <span id="method-successive-generations"></span><h2>7.1. Method of Successive Generations<a class="headerlink" href="#method-of-successive-generations" title="Permalink to this headline">¶</a></h2>
 <p>The method used to converge on the fission source distribution in an eigenvalue
 calculation, known as the method of successive generations, was first introduced
-by <a class="reference internal" href="#lieberoth">[Lieberoth]</a>. In this method, a finite number of neutron histories,
+by <a class="reference internal" href="#lieberoth" id="id1">[Lieberoth]</a>. In this method, a finite number of neutron histories,
 <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>, are tracked through their lifetime iteratively. If fission occurs,
 rather than tracking the resulting fission neutrons, the spatial coordinates of
 the fission site, the sampled outgoing energy and direction of the fission
@@ -133,7 +131,7 @@ entropy versus the number of batches.</p>
 <p>In recent years, researchers have started looking at ways of automatically
 assessing source convergence to relieve the burden on the user of having to look
 at plots of <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> and the Shannon entropy. A number of methods have
-been proposed (see e.g. <a class="reference internal" href="#romano">[Romano]</a>, <a class="reference internal" href="#ueki">[Ueki]</a>), but each of these is not without
+been proposed (see e.g. <a class="reference internal" href="#romano" id="id2">[Romano]</a>, <a class="reference internal" href="#ueki" id="id3">[Ueki]</a>), but each of these is not without
 problems.</p>
 </div>
 </div>
@@ -144,7 +142,7 @@ proportional to the number of events that score to the tally. In a reactor
 problem, this implies that regions with low relative power density will have
 higher variance that regions with high relative power density. One method to
 circumvent the uneven distribution of relative errors is the uniform fission
-site (UFS) method introduced by <a class="reference internal" href="#sutton">[Sutton]</a>. In this method, the portion of the
+site (UFS) method introduced by <a class="reference internal" href="#sutton" id="id4">[Sutton]</a>. In this method, the portion of the
 problem containing fissionable material is subdivided into a number of cells
 (typically using a structured mesh). Rather than producing</p>
 <div class="math">
@@ -214,7 +212,7 @@ Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (20
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

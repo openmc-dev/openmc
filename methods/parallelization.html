@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -63,7 +61,7 @@ solving the Boltzmann equation did not offer such a natural means of
 parallelism. With the introduction of <a class="reference external" href="http://en.wikipedia.org/wiki/Vector_processor">vector computers</a> in the early 1970s,
 general-purpose parallel computing became a reality. In 1972, Troubetzkoy et
 al. designed a Monte Carlo code to be run on the first vector computer, the
-ILLIAC-IV <a class="reference internal" href="#troubetzkoy">[Troubetzkoy]</a>. The general principles from that work were later
+ILLIAC-IV <a class="reference internal" href="#troubetzkoy" id="id1">[Troubetzkoy]</a>. The general principles from that work were later
 refined and extended greatly through the <a class="reference external" href="http://hdl.handle.net/2027.42/24996">work of Forrest Brown</a> in the
 1980s. However, as Brown&#8217;s work shows, the <a class="reference external" href="http://en.wikipedia.org/wiki/SIMD">single-instruction multiple-data</a>
 (SIMD) parallel model inherent to vector processing does not lend itself to the
@@ -104,7 +102,7 @@ processes wait to receive work from the master, process the work, and then send
 their results to the master at the end of the simulation (or a source iteration
 in the case of an eigenvalue calculation). This idea is illustrated in
 <a class="reference internal" href="#figure-master-slave"><em>Figure 1</em></a>.</p>
-<div class="align-center figure align-center" id="figure-master-slave">
+<div class="align-center figure" id="figure-master-slave">
 <img alt="../_images/master-slave.png" src="../_images/master-slave.png" />
 <p class="caption"><strong>Figure 1</strong>: Communication pattern in master-slave algorithm.</p>
 </div>
@@ -150,7 +148,7 @@ codes.</p>
 algorithm, it is desirable to move away from the typical master-slave algorithm
 to an algorithm whereby the compute nodes communicate with one another only as
 needed. This concept is illustrated in <a class="reference internal" href="#figure-nearest-neighbor"><em>Figure 2</em></a>.</p>
-<div class="align-center figure align-center" id="figure-nearest-neighbor">
+<div class="align-center figure" id="figure-nearest-neighbor">
 <img alt="../_images/nearest-neighbor.png" src="../_images/nearest-neighbor.png" />
 <p class="caption"><strong>Figure 2</strong>: Communication pattern in nearest neighbor algorithm.</p>
 </div>
@@ -219,7 +217,7 @@ its left-most 25 sites to <img class="math" src="../_images/math/e01486dcc7cb255
 <img class="math" src="../_images/math/d05d6a0d3fdb2123690c1b35c922d1e082e810f1.png" alt="p_3"/>. A schematic of this example is shown in <a class="reference internal" href="#figure-neighbor-example"><em>Figure 3</em></a>. The data local to each node is given a different
 hatching, and the cross-hatched regions represent source sites that are
 communicated between adjacent nodes.</p>
-<div class="align-center figure align-center" id="figure-neighbor-example">
+<div class="align-center figure" id="figure-neighbor-example">
 <img alt="../_images/nearest-neighbor-example.png" src="../_images/nearest-neighbor-example.png" />
 <p class="caption"><strong>Figure 3</strong>: Example of nearest neighbor algorithm.</p>
 </div>
@@ -527,7 +525,7 @@ Radiation Penetration Calculations on a Parallel Computer,&#8221;
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

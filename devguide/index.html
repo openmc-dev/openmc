@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -73,7 +71,10 @@ as debugging.</p>
 <li class="toctree-l1"><a class="reference internal" href="styleguide.html">2. Style Guide for OpenMC</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="styleguide.html#general-rules">2.1. General Rules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="styleguide.html#procedures">2.2. Procedures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="styleguide.html#variables">2.3. Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="styleguide.html#variables">2.3. Variables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="styleguide.html#shared-module-variables">2.3.1. Shared/Module Variables</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="styleguide.html#derived-types-and-classes">2.4. Derived Types and Classes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="styleguide.html#indentation">2.5. Indentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="styleguide.html#whitespace-in-expressions">2.6. Whitespace in Expressions</a></li>
@@ -83,10 +84,18 @@ as debugging.</p>
 <li class="toctree-l2"><a class="reference internal" href="workflow.html#overview">3.1. Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflow.html#code-review-criteria">3.2. Code Review Criteria</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflow.html#contributing">3.3. Contributing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="workflow.html#private-development">3.4. Private Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#openmc-test-suite">3.4. OpenMC Test Suite</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflow.html#adding-tests-to-test-suite">3.4.1. Adding tests to test suite</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="xml-parsing.html">4. XML Input Parsing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#private-development">3.5. Private Development</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="xml-parsing.html">4. XML Input Parsing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="xml-parsing.html#working-with-the-fox-submodule">4.1. Working with the FoX Submodule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xml-parsing.html#editing-fox-on-personal-fork">4.2. Editing FoX on Personal Fork</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="statepoint.html">5. State Point Binary File Specifications</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="statepoint.html#revision-11">5.1. Revision 11</a></li>
 <li class="toctree-l2"><a class="reference internal" href="statepoint.html#revision-10">5.2. Revision 10</a></li>
@@ -126,7 +135,7 @@ as debugging.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

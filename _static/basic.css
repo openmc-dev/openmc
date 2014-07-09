@@ -4,7 +4,7 @@
  *
  * Sphinx stylesheet -- basic theme.
  *
- * :copyright: Copyright 2007-2011 by the Sphinx team, see AUTHORS.
+ * :copyright: Copyright 2007-2013 by the Sphinx team, see AUTHORS.
  * :license: BSD, see LICENSE for details.
  *
  */
@@ -200,11 +200,11 @@ dt:hover > a.headerlink {
     visibility: visible;
 }
 
-div.body p.caption {
+div.content p.caption {
     text-align: inherit;
 }
 
-div.body td {
+div.content td {
     text-align: left;
 }
 
@@ -301,7 +301,7 @@ p.admonition-title {
     font-weight: bold;
 }
 
-div.body p.centered {
+div.content p.centered {
     text-align: center;
     margin-top: 25px;
 }
@@ -399,10 +399,6 @@ dl.glossary dt {
 
 .field-list p {
     margin: 0;
-}
-
-.refcount {
-    color: #060;
 }
 
 .optional {
@@ -513,7 +509,7 @@ img.math {
     vertical-align: middle;
 }
 
-div.body div.math p {
+div.content div.math p {
     text-align: center;
 }
 
@@ -526,7 +522,7 @@ span.eqno {
 @media print {
     div.document,
     div.documentwrapper,
-    div.bodywrapper {
+    div.contentwrapper {
         margin: 0 !important;
         width: 100%;
     }

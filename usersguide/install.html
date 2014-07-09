@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -89,6 +87,14 @@ install the gfortran compiler using the following command:</p>
 <div class="highlight-python"><pre>sudo apt-get install gfortran</pre>
 </div>
 </li>
+<li><p class="first"><a class="reference external" href="http://www.cmake.org">CMake</a> cross-platform build system</p>
+<p>The compiling and linking of source files is handled by CMake in a
+platform-independent manner. If you are using Debian or a Debian
+derivative such as Ubuntu, you can install CMake using the following
+command:</p>
+<div class="highlight-python"><pre>sudo apt-get install cmake</pre>
+</div>
+</li>
 </ul>
 </div>
 <div class="admonition-optional admonition">
@@ -113,8 +119,8 @@ need to have HDF5 installed on your computer. The installed version will
 need to have been compiled with the same compiler you intend to compile
 OpenMC with. <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> must be built with parallel I/O features if you intend
 to use <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> with MPI. An example of configuring <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> is listed below:</p>
-<div class="highlight-python"><pre>FC=/opt/mpich/3.0.4-gnu/bin/mpif90 CC=/opt/mpich/3.0.4-gnu/bin/mpicc \
-./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
+<div class="highlight-python"><pre>FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
             --enable-fortran2003 --enable-parallel</pre>
 </div>
 <p>You may omit <tt class="docutils literal"><span class="pre">--enable-parallel</span></tt> if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
@@ -125,8 +131,8 @@ installed on your computer. The installed version will need to have been
 compiled with the same compiler you intend to compile OpenMC with. OpenMC
 requires <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> to be configured with Fortran datatypes. An example of
 configuring <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> is listed below:</p>
-<div class="highlight-python"><pre>./configure --prefix=/opt/petsc/3.4.2-gnu --download-f-blas-lapack \
-            --with-mpi-dir=/opt/mpich/3.0.4-gnu/ --with-shared-libraries=0 \
+<div class="highlight-python"><pre>./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
+            --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
             --with-fortran-datatypes</pre>
 </div>
 <p>The BLAS/LAPACK library is not required to be downloaded and can be linked
@@ -157,42 +163,77 @@ git checkout master</pre>
 </div>
 <div class="section" id="build-configuration">
 <h3>2.2.3. Build Configuration<a class="headerlink" href="#build-configuration" title="Permalink to this headline">¶</a></h3>
-<p>All configuration for OpenMC is done within the Makefile located in
-<tt class="docutils literal"><span class="pre">src/Makefile</span></tt>. In the Makefile, you will see that there are a number of User
-Options which can be changed. It is recommended that you do not change anything
-else in the Makefile unless you are experienced with compiling and building
-software using Makefiles. The following parameters can be set from the User
-Options sections in the Makefile:</p>
+<p>Compiling OpenMC with CMake is carried out in two steps. First, <tt class="docutils literal"><span class="pre">cmake</span></tt> is run
+to determine the compiler, whether optional packages (MPI, HDF5, PETSc) are
+available, to generate a list of dependencies between source files so that they
+may be compiled in the correct order, and to generate a normal Makefile. The
+Makefile is then used by <tt class="docutils literal"><span class="pre">make</span></tt> to actually carry out the compile and linking
+commands. A typical out-of-source build would thus look something like the
+following</p>
+<div class="highlight-sh"><div class="highlight"><pre>mkdir src/build
+<span class="nb">cd </span>src/build
+cmake ..
+make
+</pre></div>
+</div>
+<p>Note that first a build directory is created as a subdirectory of the source
+directory. The Makefile in <tt class="docutils literal"><span class="pre">src/</span></tt> will automatically perform an out-of-source
+build with default options.</p>
+<div class="section" id="cmakelists-txt-options">
+<h4>2.2.3.1. CMakeLists.txt Options<a class="headerlink" href="#cmakelists-txt-options" title="Permalink to this headline">¶</a></h4>
+<p>The following options are available in the CMakeLists.txt file:</p>
 <dl class="docutils">
-<dt>COMPILER</dt>
-<dd>This variable tells the Makefile which compiler to use. Valid options are
-gnu, intel, pgi, ibm, and cray. The default is gnu (gfortran).</dd>
-<dt>DEBUG</dt>
+<dt>debug</dt>
 <dd>Enables debugging when compiling. The flags added are dependent on which
 compiler is used.</dd>
-<dt>PROFILE</dt>
+<dt>profile</dt>
 <dd>Enables profiling using the GNU profiler, gprof.</dd>
-<dt>OPTIMIZE</dt>
+<dt>optimize</dt>
 <dd>Enables high-optimization using compiler-dependent flags. For gfortran and
 Intel Fortran, this compiles with -O3.</dd>
-<dt>MPI</dt>
-<dd>Enables parallel runs using the Message Passing Interface. The MPI_DIR
-variable should be set to the base directory of the MPI implementation.</dd>
-<dt>OPENMP</dt>
+<dt>openmp</dt>
 <dd>Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
 being used must support OpenMP.</dd>
-<dt>HDF5</dt>
-<dd>Enables HDF5 output in addition to normal screen and text file output. The
-HDF5_DIR variable should be set to the base directory of the HDF5
-installation.</dd>
-<dt>PETSC</dt>
+<dt>petsc</dt>
 <dd>Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
 set to the base directory of the PETSc installation.</dd>
 </dl>
-<p>It is also possible to change these options from the command line itself. For
-example, if you want to compile with DEBUG turned on without actually change the
-Makefile, you can enter the following from a terminal:</p>
-<div class="highlight-python"><pre>make DEBUG=yes</pre>
+<p>To set any of these options (e.g. turning on debug mode), the following form
+should be used:</p>
+<div class="highlight-sh"><div class="highlight"><pre>cmake -Ddebug<span class="o">=</span>on /path/to/src
+</pre></div>
+</div>
+</div>
+<div class="section" id="compiling-with-mpi">
+<h4>2.2.3.2. Compiling with MPI<a class="headerlink" href="#compiling-with-mpi" title="Permalink to this headline">¶</a></h4>
+<p>To compile with MPI, set the <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">FC</span></tt> environment variable to the path to
+the MPI Fortran wrapper. For example, in a bash shell:</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nb">export </span><span class="nv">FC</span><span class="o">=</span>mpif90
+cmake /path/to/src
+</pre></div>
+</div>
+<p>Note that in many shells, an environment variable can be set for a single
+command, i.e.</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nv">FC</span><span class="o">=</span>mpif90 cmake /path/to/src
+</pre></div>
+</div>
+</div>
+<div class="section" id="compiling-with-hdf5">
+<h4>2.2.3.3. Compiling with HDF5<a class="headerlink" href="#compiling-with-hdf5" title="Permalink to this headline">¶</a></h4>
+<p>To compile with MPI, set the <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">FC</span></tt> environment variable to the path to
+the HDF5 Fortran wrapper. For example, in a bash shell:</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nb">export </span><span class="nv">FC</span><span class="o">=</span>h5fc
+cmake /path/to/src
+</pre></div>
+</div>
+<p>As noted above, an environment variable can typically be set for a single
+command, i.e.</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nv">FC</span><span class="o">=</span>h5fc cmake /path/to/src
+</pre></div>
+</div>
+<p>To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
+<tt class="docutils literal"><span class="pre">h5pfc</span></tt> instead. Note that this requires that your HDF5 installation be
+compiled with <tt class="docutils literal"><span class="pre">--enable-parallel</span></tt>.</p>
 </div>
 </div>
 <div class="section" id="compiling-on-linux-and-mac-os-x">
@@ -222,9 +263,10 @@ a Linux-like environment for Windows. You will need to first <a class="reference
 Cygwin</a>. When you are asked to select packages, make sure the following are
 selected:</p>
 <ul class="simple">
-<li>Devel: gcc4-core</li>
-<li>Devel: gcc4-fortran</li>
+<li>Devel: gcc-core</li>
+<li>Devel: gcc-fortran</li>
 <li>Devel: make</li>
+<li>Devel: cmake</li>
 </ul>
 <p>If you plan on obtaining the source code directly using git, select the
 following packages:</p>
@@ -268,6 +310,26 @@ make
 <p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
 </div>
 </div>
+<div class="section" id="testing-build">
+<h3>2.2.6. Testing Build<a class="headerlink" href="#testing-build" title="Permalink to this headline">¶</a></h3>
+<p>If you have ENDF/B-VII.1 cross sections from <a class="reference external" href="http://www.nndc.bnl.gov/endf/b7.1/acefiles.html">NNDC</a> you can test your build.
+Make sure the <strong>CROSS_SECTIONS</strong> environmental variable is set to the
+<em>cross_sections.xml</em> file in the <em>data/nndc</em> directory.
+There are two ways to run tests. The first is to use the Makefile present in
+the source directory and run the following:</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src
+make <span class="nb">test</span>
+</pre></div>
+</div>
+<p>If you want more options for testing you can use <a class="reference external" href="http://www.cmake.org/cmake/help/v2.8.12/ctest.html">ctest</a> command. For example,
+if we wanted to run only the plot tests with 4 processors, we run:</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src/build
+ctest -j 4 -R plot
+</pre></div>
+</div>
+<p>If you want to run the full test suite with different build options please
+refer to our <a class="reference internal" href="../devguide/workflow.html#test-suite"><em>OpenMC Test Suite</em></a> documentation.</p>
+</div>
 </div>
 <div class="section" id="cross-section-configuration">
 <h2>2.3. Cross Section Configuration<a class="headerlink" href="#cross-section-configuration" title="Permalink to this headline">¶</a></h2>
@@ -287,8 +349,9 @@ extract, and set up a confiuration file:</p>
 python get_nndc_data.py
 </pre></div>
 </div>
-<p>At this point, you should set the <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable
-to the absolute path of the file <tt class="docutils literal"><span class="pre">openmc/data/nndc/cross_sections.xml</span></tt>.</p>
+<p>At this point, you should set the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable
+to the absolute path of the file <tt class="docutils literal"><span class="pre">openmc/data/nndc/cross_sections.xml</span></tt>. This
+cross section set is used by the test suite.</p>
 </div>
 <div class="section" id="using-jeff-cross-sections-from-oecd-nea">
 <h3>2.3.2. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
@@ -315,7 +378,7 @@ actual ACE files.</p>
 within the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file to lower-case.</p>
 </li>
 <li><p class="first">Either set the <a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the
-<span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable to the absolute path of the
+<span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable to the absolute path of the
 <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file.</p>
 </li>
 </ol>
@@ -325,7 +388,7 @@ within the <tt class="docutils literal"><span class="pre">cross_sections.xml</sp
 <p>To use cross sections distributed with MCNP, change the &lt;directory&gt; element in
 the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file in the root directory of the OpenMC distribution
 to the location of the MCNP cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
+<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-4"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
 environment variable to the absolute path of the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file.</p>
 </div>
 <div class="section" id="using-cross-sections-from-serpent">
@@ -333,7 +396,7 @@ environment variable to the absolute path of the <tt class="docutils literal"><s
 <p>To use cross sections distributed with Serpent, change the &lt;directory&gt; element
 in the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></tt> file in the root directory of the OpenMC
 distribution to the location of the Serpent cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
+<a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in a settings.xml file or the <span class="target" id="index-5"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
 environment variable to the absolute path of the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></tt>
 file.</p>
 </div>
@@ -429,7 +492,7 @@ schemas.xml file in your own OpenMC source directory.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

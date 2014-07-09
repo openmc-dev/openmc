@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -396,7 +394,7 @@ possible that the resulting energies would violate laws governing the
 kinematics, i.e. the outgoing energy may be outside the range of available
 energy in the reaction.</p>
 <p>To avoid this situation, the accepted practice is to use a process known as
-scaled interpolation <a class="reference internal" href="#doyas">[Doyas]</a>. First, we find the tabulated incident energies
+scaled interpolation <a class="reference internal" href="#doyas" id="id2">[Doyas]</a>. First, we find the tabulated incident energies
 which bound the actual incoming energy of the particle, i.e. find <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> such
 that <img class="math" src="../_images/math/e12f93f087b0231f50449edc28ed12050e5f68da.png" alt="E_i &lt; E &lt; E_{i+1}"/> and calculate the interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>
 via <a href="#equation-interpolation-factor">(18)</a>. Then, we interpolate between the minimum and
@@ -544,7 +542,7 @@ outgoing energy is only accepted according to a specified restriction energy
 <img class="math" src="../_images/math/e2bbebb3bd73f1ae5c64098ab0244f739abf7ca4.png" alt="U"/> as defined in equation <a href="#equation-maxwell-restriction">(41)</a>.</p>
 <p>This algorithm can be found in Forrest Brown&#8217;s <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf">lectures</a> on Monte Carlo methods
 and is an unpublished sampling scheme based on the original Watt spectrum
-derivation <a class="reference internal" href="#watt">[Watt]</a>.</p>
+derivation <a class="reference internal" href="#watt" id="id3">[Watt]</a>.</p>
 </div>
 <div class="section" id="ace-law-44-kalbach-mann-correlated-scattering">
 <h4>5.7.2.7. ACE Law 44 - Kalbach-Mann Correlated Scattering<a class="headerlink" href="#ace-law-44-kalbach-mann-correlated-scattering" title="Permalink to this headline">¶</a></h4>
@@ -718,7 +716,7 @@ well as secondary angle and energy distributions. For integrated cross sections,
 it is possible to calculate thermally-averaged cross sections by applying a
 kernel Doppler broadening algorithm to data at 0 K (or some temperature lower
 than the desired temperature). The most ubiquitous algorithm for this purpose is
-the <a class="reference internal" href="#sigma1">[SIGMA1]</a> method developed by Red Cullen and subsequently refined by
+the <a class="reference internal" href="#sigma1" id="id4">[SIGMA1]</a> method developed by Red Cullen and subsequently refined by
 others. This method is used in the <a class="reference external" href="http://t2.lanl.gov/codes.shtml">NJOY</a> and <a class="reference external" href="http://www-nds.iaea.org/ndspub/endf/prepro/">PREPRO</a> data processing codes.</p>
 <p>The effect of thermal motion on secondary angle and energy distributions can be
 accounted for on-the-fly in a Monte Carlo simulation. We must first qualify
@@ -746,7 +744,7 @@ rate. The conclusion is that if we are to sample a target velocity in the Monte
 Carlo code, it must be done in such a way that preserves the thermally-averaged
 reaction rate as per equation <a href="#equation-doppler-broaden">(59)</a>.</p>
 <p>The method by which most Monte Carlo codes sample the target velocity for use in
-elastic scattering kinematics is outlined in detail by <a class="reference internal" href="#gelbard">[Gelbard]</a>. The
+elastic scattering kinematics is outlined in detail by <a class="reference internal" href="#gelbard" id="id5">[Gelbard]</a>. The
 derivation here largely follows that of Gelbard. Let us first write the reaction
 rate as a function of the velocity of the target nucleus:</p>
 <div class="math" id="equation-reaction-rate">
@@ -906,8 +904,8 @@ used for moderating materials such as light or heavy water, graphite, hydrogen
 in ZrH, beryllium, etc.</p>
 <p>The theory behind S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) is rooted in quantum mechanics and is quite
 complex. Those interested in first principles derivations for formulae relating
-to S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) tables should be referred to the excellent books by <a class="reference internal" href="#williams">[Williams]</a> and
-<a class="reference internal" href="#squires">[Squires]</a>. For our purposes here, we will focus only on the use of already
+to S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) tables should be referred to the excellent books by <a class="reference internal" href="#williams" id="id7">[Williams]</a> and
+<a class="reference internal" href="#squires" id="id8">[Squires]</a>. For our purposes here, we will focus only on the use of already
 processed data as it appears in the ACE format.</p>
 <p>Each S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) table can contain the following:</p>
 <ul class="simple">
@@ -1045,7 +1043,7 @@ actual algorithm utilized to sample the outgoing angle is shown in equation
 <p>In the unresolved resonance energy range, resonances may be so closely spaced
 that it is not possible for experimental measurements to resolve all
 resonances. To properly account for self-shielding in this energy range, OpenMC
-uses the probability table method <a class="reference internal" href="#levitt">[Levitt]</a>. For most thermal reactors, the use
+uses the probability table method <a class="reference internal" href="#levitt" id="id9">[Levitt]</a>. For most thermal reactors, the use
 of probability tables will not significantly affect problem results. However,
 for some fast reactors and other problems with an appreciable flux spectrum in
 the unresolved resonance range, not using probability tables may lead to
@@ -1214,7 +1212,7 @@ book can be obtained for free from the <a class="reference external" href="http:
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

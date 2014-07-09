@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.3',
+        VERSION:     '0.6.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -237,8 +235,30 @@ represents a realization of random variables for tallies.</p>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="natural-elements-element">
+<span id="natural-elements"></span><h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> Element<a class="headerlink" href="#natural-elements-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> element indicates to OpenMC what nuclides are
+available in the cross section library when expanding an <tt class="docutils literal"><span class="pre">&lt;element&gt;</span></tt> into
+separate isotopes (see <a class="reference internal" href="#material"><em>&lt;material&gt; Element</em></a>). The accepted values are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>ENDF/B-VII.0</li>
+<li>ENDF/B-VII.1</li>
+<li>JEFF-3.1.1</li>
+<li>JEFF-3.1.2</li>
+<li>JEFF-3.2</li>
+<li>JENDL-3.2</li>
+<li>JENDL-3.3</li>
+<li>JENDL-4.0</li>
+</ul>
+</div></blockquote>
+<p>Note that the value is case-insensitive, so &#8220;ENDF/B-VII.1&#8221; is equivalent to
+&#8220;endf/b-vii.1&#8221;.</p>
+<blockquote>
+<div><em>Default</em>: ENDF/B-VII.1</div></blockquote>
+</div>
 <div class="section" id="no-reduce-element">
-<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> element has no attributes and has an accepted value of
 &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, all user-defined tallies and global tallies
 will not be reduced across processors in a parallel calculation. This means that
@@ -249,7 +269,7 @@ tally data, this option can significantly improve the parallel efficiency.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="output-element">
-<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> element determines what output files should be written to disk
 during the run. The sub-elements are described below, where &#8220;true&#8221; will write
 out the file and &#8220;false&#8221; will not.</p>
@@ -280,7 +300,7 @@ were read in.</p>
 </div></blockquote>
 </div>
 <div class="section" id="output-path-element">
-<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> Element<a class="headerlink" href="#output-path-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> Element<a class="headerlink" href="#output-path-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> element specifies an absolute or relative path where all
 output files should be written to. The specified path must exist or else OpenMC
 will abort.</p>
@@ -288,7 +308,7 @@ will abort.</p>
 <div><em>Default</em>: Current working directory</div></blockquote>
 </div>
 <div class="section" id="ptables-element">
-<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
@@ -296,7 +316,7 @@ or sub-elements and can be set to either &#8220;false&#8221; or &#8220;true&#822
 <div><em>Default</em>: true</div></blockquote>
 </div>
 <div class="section" id="run-cmfd-element">
-<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element<a class="headerlink" href="#run-cmfd-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element<a class="headerlink" href="#run-cmfd-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> element indicates whether or not CMFD acceleration should be
 turned on or off. This element has no attributes or sub-elements and can be set
 to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
@@ -304,14 +324,14 @@ to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
 <div><em>Defualt</em>: false</div></blockquote>
 </div>
 <div class="section" id="seed-element">
-<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="source-element">
-<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an external source distribution to
 be used either as the source for a fixed source calculation or the initial
 source guess for criticality calculations. It takes the following
@@ -415,7 +435,7 @@ c E e^{-E/a} dE"/>.</p>
 </div></blockquote>
 </div>
 <div class="section" id="state-point-element">
-<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
 tally results at any batch. The default behavior when using this tag is to
@@ -443,7 +463,7 @@ batches explicitly.</p>
 </div></blockquote>
 </div>
 <div class="section" id="source-point-element">
-<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element<a class="headerlink" href="#source-point-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element<a class="headerlink" href="#source-point-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> element indicates at what batches the source bank
 should be written. The source bank can be either written out within a state
 point file or separately in a source point file. This element has the following
@@ -454,21 +474,21 @@ attributes/sub-elements:</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">A list of integers separated by spaces indicating at what batches a state
-point file should be written. It should be noted that if source_separate
-tag is not set to &#8220;true&#8221;, this list must be a subset of state point batches.</p>
+point file should be written. It should be noted that if the <tt class="docutils literal"><span class="pre">separate</span></tt>
+attribute is not set to &#8220;true&#8221;, this list must be a subset of state point
+batches.</p>
 <p><em>Default</em>: Last batch only</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
-every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing
-batches explicitly. It should be noted that if source_separate tag is not
-set to &#8220;true&#8221;, this value should produce a list of batches that is a subset
-of state point batches.</p>
+every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing batches
+explicitly. It should be noted that if the <tt class="docutils literal"><span class="pre">separate</span></tt> attribute is not set
+to &#8220;true&#8221;, this value should produce a list of batches that is a subset of
+state point batches.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">source_separate:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source point file will be
+<tr class="field-odd field"><th class="field-name">separate:</th><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source point file will be
 written. Otherwise, the source sites will be written in the state point
 directly.</p>
 <p><em>Default</em>: false</p>
@@ -495,7 +515,7 @@ this element to &#8220;true&#8221; and specify batches to write a permanent sour
 </div></blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
 of &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.</p>
@@ -503,14 +523,14 @@ survival biasing, otherwise known as implicit capture or absorption.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="threads-element">
-<span id="trace"></span><h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.</p>
 <blockquote>
 <div><em>Default</em>: None (Determined by environment variable <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">OMP_NUM_THREADS</span></tt>)</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
@@ -518,13 +538,13 @@ integers: the batch number, generation number, and particle number.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="track-element">
-<span id="track"></span><h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
+<span id="track"></span><h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.</p>
 <blockquote>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.22. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -553,7 +573,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.22. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.23. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -813,7 +833,7 @@ space outside of the lattice. This element is optional.</p>
 <div class="section" id="materials-specification-materials-xml">
 <h2>3.4. Materials Specification &#8211; materials.xml<a class="headerlink" href="#materials-specification-materials-xml" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="material-element">
-<h3>3.4.1. <tt class="docutils literal"><span class="pre">&lt;material&gt;</span></tt> Element<a class="headerlink" href="#material-element" title="Permalink to this headline">¶</a></h3>
+<span id="material"></span><h3>3.4.1. <tt class="docutils literal"><span class="pre">&lt;material&gt;</span></tt> Element<a class="headerlink" href="#material-element" title="Permalink to this headline">¶</a></h3>
 <p>Each <tt class="docutils literal"><span class="pre">material</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -851,18 +871,22 @@ be given in atom percent. The same applies for weight percentages.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">element:</th><td class="field-body"><p class="first">Specifies that a natural element is present in the material. The natural
-element is split up into individual isotopes based on IUPAC Isotopic
-Compositions of the Elements 1997. This element has attributes/sub-elements
-called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute is the atomic
-symbol of the element while the <tt class="docutils literal"><span class="pre">xs</span></tt> attribute is the cross-section
-identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> attribute specifies the atom percent of the
-element within the material, respectively. One example would be as follows:</p>
+element is split up into individual isotopes based on <a class="reference external" href="http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf">IUPAC Isotopic
+Compositions of the Elements 2009</a>. This element has
+attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt>
+attribute is the atomic symbol of the element while the <tt class="docutils literal"><span class="pre">xs</span></tt> attribute is
+the cross-section identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> attribute specifies the
+atom percent of the element within the material, respectively. One example
+would be as follows:</p>
 <div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Al&quot;</span> <span class="na">ao=</span><span class="s">&quot;8.7115e-03&quot;</span> <span class="nt">/&gt;</span>
 <span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Mg&quot;</span> <span class="na">ao=</span><span class="s">&quot;1.5498e-04&quot;</span> <span class="nt">/&gt;</span>
 <span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Mn&quot;</span> <span class="na">ao=</span><span class="s">&quot;2.7426e-05&quot;</span> <span class="nt">/&gt;</span>
 <span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Cu&quot;</span> <span class="na">ao=</span><span class="s">&quot;1.6993e-04&quot;</span> <span class="nt">/&gt;</span>
 </pre></div>
 </div>
+<p>In some cross section libraries, certain naturally occurring isotopes do not
+have cross sections. The <a class="reference internal" href="#natural-elements"><em>&lt;natural_elements&gt; Element</em></a> option determines how a
+natural element is split into isotopes in these cases.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -988,10 +1012,11 @@ be:</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
-options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;,
-&#8220;scatter-PN&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;, &#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;,
-&#8220;current&#8221;, and &#8220;events&#8221;. These corresponding to the following physical
-quantities.</p>
+options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;,
+&#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;, &#8220;scatter-PN&#8221;,
+&#8220;scatter-YN&#8221;, &#8220;nu-scatter-N&#8221;, &#8220;nu-scatter-PN&#8221;, &#8220;nu-scatter-YN&#8221;, &#8220;flux-YN&#8221;,
+&#8220;total-YN&#8221;, &#8220;current&#8221;, and &#8220;events&#8221;. These corresponding to the following
+physical quantities:</p>
 <table class="last docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1006,35 +1031,17 @@ quantities.</p>
 response type.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">nu-scatter:</th><td class="field-body"><p class="first">Total production of neutrons due to scattering. This accounts for
-multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
-slightly higher than the scattering rate.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
-expansion order.  N must be between 0 and 10. As an example, tallying the
-2<sup>nd</sup> scattering moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span>
-<span class="pre">scatter-2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
-Legendre expansion order.  That is, <tt class="docutils literal"><span class="pre">scatter-P1</span></tt> is equivalent to
-requesting tallies of <tt class="docutils literal"><span class="pre">scatter-0</span></tt> and <tt class="docutils literal"><span class="pre">scatter-1</span></tt>.  N must be between
-0 and 10. As an example, tallying up to the 2<sup>nd</sup> scattering
-moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">absorption:</th><td class="field-body"><p class="first">Total absorption rate. This accounts for all reactions which do not
+<tr class="field-even field"><th class="field-name">absorption:</th><td class="field-body"><p class="first">Total absorption rate. This accounts for all reactions which do not
 produce secondary neutrons.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">fission:</th><td class="field-body"><p class="first">Total fission rate</p>
+<tr class="field-odd field"><th class="field-name">fission:</th><td class="field-body"><p class="first">Total fission rate</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">nu-fission:</th><td class="field-body"><p class="first">Total production of neutrons due to fission</p>
+<tr class="field-even field"><th class="field-name">nu-fission:</th><td class="field-body"><p class="first">Total production of neutrons due to fission</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
+<tr class="field-odd field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
 energy is defined as the fission product kinetic energy, prompt and
 delayed neutron kinetic energies, prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-ray
 total energies, and the total energy released by the delayed <img class="math" src="../_images/math/fdb63b9e51abe6bbb16acfb5d7b773ddbb5bf4a8.png" alt="\beta"/>
@@ -1043,7 +1050,49 @@ prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe
 locally.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
+<tr class="field-even field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
+expansion order of the change in particle angle <img class="math" src="../_images/math/f17a090d1cd6c549fd3d4c80e1c0fc444e9254a8.png" alt="\left(\mu\right)"/>.
+N must be between 0 and 10. As an example, tallying the
+2<sup>nd</sup> scattering moment would be specified as
+<tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
+Legendre expansion order of the change in particle angle <img class="math" src="../_images/math/f17a090d1cd6c549fd3d4c80e1c0fc444e9254a8.png" alt="\left(\mu\right)"/>.
+That is, <tt class="docutils literal"><span class="pre">scatter-P1</span></tt> is equivalent to requesting tallies of
+<tt class="docutils literal"><span class="pre">scatter-0</span></tt> and <tt class="docutils literal"><span class="pre">scatter-1</span></tt>.  Like for <tt class="docutils literal"><span class="pre">scatter-N</span></tt>,
+N must be between 0 and 10. As an example, tallying up to the
+2<sup>nd</sup> scattering moment would be specified as
+<tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">scatter-YN:</th><td class="field-body"><p class="first"><tt class="docutils literal"><span class="pre">scatter-YN</span></tt> is similar to <tt class="docutils literal"><span class="pre">scatter-PN</span></tt> except an additional
+expansion is performed for the incoming particle direction
+<img class="math" src="../_images/math/2459afa3f38a5d6cbb96b5f6306ef255b98c427c.png" alt="\left(\Omega\right)"/> using the real spherical harmonics.  This is useful
+for performing angular flux moment weighting of the scattering moments.
+Like <tt class="docutils literal"><span class="pre">scatter-PN</span></tt>, <tt class="docutils literal"><span class="pre">scatter-YN</span></tt> will tally all of the moments from
+order 0 to N; N again must be between 0 and 10.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">These scores are similar in functionality to their <tt class="docutils literal"><span class="pre">scatter*</span></tt>
+equivalents except the total production of neutrons due to
+scattering is scored vice simply the scattering rate. This accounts for
+multiplicity from (n,2n), (n,3n), and (n,4n) reactions.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">flux-YN:</th><td class="field-body"><p class="first">Spherical harmonic expansion of the direction of motion
+<img class="math" src="../_images/math/2459afa3f38a5d6cbb96b5f6306ef255b98c427c.png" alt="\left(\Omega\right)"/> of the total flux.  This score will tally
+all of the harmonic moments of order 0 to N.  N must be between 0 and 10.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">total-YN:</th><td class="field-body"><p class="first">Spherical harmonic expansion of the incoming particle&#8217;s direction of
+motion <img class="math" src="../_images/math/2459afa3f38a5d6cbb96b5f6306ef255b98c427c.png" alt="\left(\Omega\right)"/> of the total flux.  This score will
+tally all of the harmonic moments of order 0 to N.  N must be between 0
+and 10.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">This score can only be used if a mesh filter has been
@@ -1052,7 +1101,7 @@ other score.</p>
 </div>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">events:</th><td class="field-body"><p class="first last">Number of scoring events</p>
+<tr class="field-odd field"><th class="field-name">events:</th><td class="field-body"><p class="first last">Number of scoring events</p>
 </td>
 </tr>
 </tbody>
@@ -1491,7 +1540,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
     </div>
 <script type="text/javascript">
 

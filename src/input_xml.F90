@@ -1388,6 +1388,10 @@ contains
 
     do i = 1, n_materials
       mat => materials(i)
+      
+      ! set default values
+      mat % cell = 0
+      mat % map = 0
 
       ! Get pointer to i-th material node
       call get_list_item(node_mat_list, i, node_mat)
@@ -1594,8 +1598,8 @@ contains
         ! Verify that the input matches the number of nuclides
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
-        mat % n_comp = mod(n_comp,n)
-        if (mat % n_comp /= 0) then
+        mat % n_comp = n_comp / n
+        if (mod(n_comp,n) /= 0) then
           message = "Number of composition values not divisible by " // &
                     "number of nuclides." // &
                     trim(to_str(mat % id))
@@ -1617,7 +1621,7 @@ contains
         ! Write composition values
         do j = 1, mat % n_comp
           do k = 1, n
-            mat % comp(j) % atom_density(k) = temp_real_array(k + (j-1)*mat % n_comp)
+            mat % comp(j) % atom_density(k) = temp_real_array(k + (j - 1) * n)
           end do
         end do
 

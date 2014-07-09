@@ -88,26 +88,27 @@ contains
     call prepare_universes()
 
     ! Use dictionaries to redefine index pointers
-    call adjust_indices()
-
-    ! Initialize distributed materials and cells
-    call prepare_distribution()
-    
-    ! If distribution help mode is on, call the method to write the file
-    ! and then exit the run
-    if (run_mode == MODE_DISTRIBUTION) then
-      call distribution_help()
-      ! Stop initialization timer
-      call time_initialize % stop()
-      ! exit
-      return
-    end if
+    call adjust_indices()    
     
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
 
     if (run_mode /= MODE_PLOTTING) then
+
+      ! Initialize distributed materials and cells
+      call prepare_distribution()
+    
+      ! If distribution help mode is on, call the method to write the file
+      ! and then exit the run
+      if (run_mode == MODE_DISTRIBUTION) then
+        call distribution_help()
+        ! Stop initialization timer
+        call time_initialize % stop()
+        ! exit
+        return
+      end if
+    
       ! With the AWRs from the xs_listings, change all material specifications
       ! so that they contain atom percents summing to 1
       call normalize_ao()
@@ -1121,8 +1122,8 @@ end subroutine prepare_distribution
         do j = 1, n_cells
       
           c => cells(j)
-        
-          if (c % material == mat % id) then
+          if (.not. (c % type == CELL_NORMAL)) cycle
+          if (c % material == material_dict % get_key(mat % id)) then
 
             ! Enforce that two cells do not share a distributed material
             if (mat % cell == 0) then             
@@ -1136,7 +1137,10 @@ end subroutine prepare_distribution
           end if
 
         end do
-
+        if (mat % cell < 1) then        
+          message = "Failed to find the cell for material: " // to_str(mat % id)
+          call fatal_error()        
+        end if
       end if
 
     end do
@@ -1150,9 +1154,9 @@ end subroutine prepare_distribution
         
         ! Add any cells which contain distributed materials. This will cause 
         ! a map to be created for them
-        if (.not. cell_list % has_key(mat % cell)) then
+        if (.not. cell_list % has_key(cell_dict % get_key(mat % cell))) then
 
-            call cell_list % add_key(mat % cell,0)
+            call cell_list % add_key(cell_dict % get_key(mat % cell),0)
 
         end if
         
@@ -1164,14 +1168,13 @@ end subroutine prepare_distribution
     do i = 1, n_cells
       
       c => cells(i)
-      
-      if (cell_list % has_key(c % id) .and. c % instances == 0) then
+      if (cell_list % has_key(cell_dict % get_key(c % id)) .and. c % instances == 0) then
 
           j = 0
           u => universes(BASE_UNIVERSE)
 
           ! sum the number of occurrences of all cells requested
-          call count_instance(u,c % id,j)
+          call count_instance(u,cell_dict % get_key(c % id),j)
           c % instances = j
           
       end if          
@@ -1235,7 +1238,7 @@ end subroutine prepare_distribution
               mat => materials(l)
               ! If this material is in the current cell, store its corresponding
               ! map index
-              if (mat % cell == u % cells(j)) then
+              if (cell_dict % get_key(mat % cell) == u % cells(j)) then
                 mat % map = k
               end if
           
@@ -1300,7 +1303,7 @@ end subroutine prepare_distribution
       
       if (mat % distrib_dens) then
       
-        c => cells(mat % cell)
+        c => cells(cell_dict % get_key(mat % cell))
       
         num = mat % density % num
         ! Ensure that there are a sensible number of densities specified
@@ -1328,10 +1331,10 @@ end subroutine prepare_distribution
       end if
       
       if (mat % distrib_comp) then
-      
-        c => cells(mat % cell)
+        c => cells(cell_dict % get_key(mat % cell))
       
         num = mat % n_comp
+        
         ! Ensure that there are a sensible number of compositions specified
         if (.not.(num == 1 .or. num == c % instances)) then 
                  
@@ -1392,7 +1395,7 @@ end subroutine verify_distribmats
       
       if (mat % distrib_dens .or. mat % distrib_comp) then
       
-        c => cells(mat % cell)
+        c => cells(cell_dict % get_key(mat % cell))
         
         write(UNIT_HELP,*) 'Distributed Material:', mat % id
         write(UNIT_HELP,*) 'Number of Instances:', c % instances
@@ -1402,8 +1405,8 @@ end subroutine verify_distribmats
           offset = 0
           label = ''
           univ => universes(BASE_UNIVERSE)
-        
-          call find_offset(mat % map, mat % cell, univ, j - 1, offset, label, .true.)
+          write (*,*) "mat % id:", mat % id
+          call find_offset(mat % map, material_dict % get_key(mat % id), univ, j - 1, offset, label, .true.)
           write(UNIT_HELP,*) label
         
         end do

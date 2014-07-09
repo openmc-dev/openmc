@@ -2,32 +2,45 @@
 
 import os
 from subprocess import Popen, STDOUT, PIPE
-from nose_mpi import NoseMPI
+from optparse import OptionParser
 
-pwd = os.path.dirname(__file__)
-
-def setup(): 
-    os.putenv('PWD', pwd)
-    os.chdir(pwd)
+parser = OptionParser()
+parser.add_option('--mpi_exec', dest='mpi_exec', default='')
+parser.add_option('--mpi_np', dest='mpi_np', default='3')
+parser.add_option('--exe', dest='exe')
+(opts, args) = parser.parse_args()
+cwd = os.getcwd()
 
 def test_run():
-    openmc_path = pwd + '/../../src/openmc'
-    if int(NoseMPI.mpi_np) > 0:
-        proc = Popen([NoseMPI.mpi_exec, '-np', NoseMPI.mpi_np, openmc_path, '-p'],
+    if opts.mpi_exec != '':
+        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, '-p', cwd],
                stderr=STDOUT, stdout=PIPE)
     else:
-        proc = Popen([openmc_path, '-p'], stderr=STDOUT, stdout=PIPE)
+        proc = Popen([opts.exe, '-p', cwd], stderr=STDOUT, stdout=PIPE)
     print(proc.communicate()[0])
     returncode = proc.returncode
-    assert returncode == 0
+    assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_plots_exists():
-    assert os.path.exists(pwd + '/1_plot.ppm')
-    assert os.path.exists(pwd + '/2_plot.ppm')
-    assert os.path.exists(pwd + '/3_plot.ppm')
+    assert os.path.exists(os.path.join(cwd ,'1_plot.ppm')), 'Plot 1 result does not exist.'
+    assert os.path.exists(os.path.join(cwd ,'2_plot.ppm')), 'Plot 2 result does not exist.'
+    assert os.path.exists(os.path.join(cwd ,'3_plot.ppm')), 'Plot 3 result does not exist.' 
 
 def teardown():
-    output = [pwd + '/1_plot.ppm', pwd + '/2_plot.ppm', pwd + '/3_plot.ppm']
+    output = [os.path.join(cwd ,'1_plot.ppm'), os.path.join(cwd ,'2_plot.ppm'), os.path.join(cwd ,'3_plot.ppm')]
     for f in output:
         if os.path.exists(f):
             os.remove(f)
+
+if __name__ == '__main__':
+
+    # test for openmc executable
+    if opts.exe is None:
+        raise Exception('Must specify OpenMC executable from command line with --exe.')
+
+    # run tests
+    try:
+        test_run()
+        test_plots_exists()
+    finally:
+        teardown()

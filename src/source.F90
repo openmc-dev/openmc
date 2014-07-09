@@ -130,6 +130,7 @@ contains
           end if
         end if
       end do
+      call p % clear()
 
     case (SRC_SPACE_POINT)
       ! Point source
@@ -255,6 +256,7 @@ contains
     p % coord % xyz = src % xyz
     p % coord % uvw = src % uvw
     p % last_xyz    = src % xyz
+    p % last_uvw    = src % uvw
     p % E           = src % E
     p % last_E      = src % E
 

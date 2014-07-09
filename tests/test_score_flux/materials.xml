@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <!-- Fuel composition -->
   <material id="1">
@@ -59,7 +59,7 @@
     <nuclide name="O-16" ao="1.0" />
     <nuclide name="B-10" ao="6.490e-4" />
     <nuclide name="B-11" ao="2.689e-3" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Hot borated water -->
@@ -69,7 +69,7 @@
     <nuclide name="O-16" ao="1.0" />
     <nuclide name="B-10" ao="6.490e-4" />
     <nuclide name="B-11" ao="2.689e-3" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- RPV Composition -->
@@ -128,7 +128,7 @@
     <nuclide name="Cr-52" wo="0.145407678031" />
     <nuclide name="Cr-53" wo="0.016806340306" />
     <nuclide name="Cr-54" wo="0.004261520857" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Upper radial reflector / Top plate region -->
@@ -155,7 +155,7 @@
     <nuclide name="Cr-52" wo="0.146766614995" />
     <nuclide name="Cr-53" wo="0.01696340737" />
     <nuclide name="Cr-54" wo="0.004301347765" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Bottom plate region -->
@@ -182,7 +182,7 @@
     <nuclide name="Cr-52" wo="0.157390026871" />
     <nuclide name="Cr-53" wo="0.018191270146" />
     <nuclide name="Cr-54" wo="0.004612692337" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Bottom nozzle region -->
@@ -209,7 +209,7 @@
     <nuclide name="Cr-52" wo="0.124142524198" />
     <nuclide name="Cr-53" wo="0.014348496148" />
     <nuclide name="Cr-54" wo="0.003638294506" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Top nozzle region -->
@@ -236,7 +236,7 @@
     <nuclide name="Cr-52" wo="0.107931450781" />
     <nuclide name="Cr-53" wo="0.012474806806" />
     <nuclide name="Cr-54" wo="0.003163190107" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Top of Fuel Assemblies -->
@@ -251,7 +251,7 @@
     <nuclide name="Zr-92" wo="0.14759527104" />
     <nuclide name="Zr-94" wo="0.15280552077" />
     <nuclide name="Zr-96" wo="0.02511169542" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
   <!-- Bottom of Fuel Assemblies -->
@@ -266,7 +266,7 @@
     <nuclide name="Zr-92" wo="0.1274914944" />
     <nuclide name="Zr-94" wo="0.1319920622" />
     <nuclide name="Zr-96" wo="0.0216912612" />
-    <sab name="lwtr" xs="10t" />
+    <sab name="HH2O" xs="71t" />
   </material>
 
 </materials>

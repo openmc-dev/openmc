@@ -38,7 +38,7 @@ following criteria must be satisfied for all proposed changes:
 
 - Changes have a clear purpose and are useful.
 - Compiles under all conditions (MPI, OpenMP, HDF5, etc.).  This is checked as
-  part of the test suite (see `test_compile.py`_).
+  part of the test suite.
 - Passes the regression suite.
 - If appropriate, test cases are added to regression suite.
 - No memory leaks (checked with valgrind_).
@@ -91,6 +91,133 @@ features and bug fixes. The general steps for contributing are as follows:
 6. After the pull request has been thoroughly vetted, it is merged back into the
    *develop* branch of mit-crpg/openmc.
 
+.. _test suite:
+
+OpenMC Test Suite
+-----------------
+
+The purpose of this test suite is to ensure that OpenMC compiles using various
+combinations of compiler flags and options, and that all user input options can
+be used successfully without breaking the code. The test suite is comprised of 
+regression tests where different types of input files are configured and the
+full OpenMC code is executed. Results from simulations are compared with
+expected results. The test suite is comprised of many build configurations
+(e.g. debug, mpi, hdf5) and the actual tests which reside in sub-directories
+in the tests directory. We recommend to developers to test their branches
+before submitting a formal pull request using gfortran and intel compilers
+if available.
+
+The test suite is designed to integrate with cmake using ctest_.
+It is configured to run with cross sections from NNDC_. To
+download these cross sections please do the following:
+
+.. code-block:: sh
+
+    cd ../data
+    python get_nndc.py
+    export CROSS_SECTIONS=<path_to_data_folder>/nndc/cross_sections.xml
+
+The test suite can be run on an already existing build using:
+
+.. code-block:: sh
+
+    cd build
+    make test
+
+or
+
+.. code-block:: sh
+
+    cd build
+    ctest
+
+There are numerous ctest_ command line options that can be set to have
+more control over which tests are executed.
+
+Before running the test suite python script, the following environmental
+variables should be set if the default paths are incorrect:
+
+    * **FC** - The command of the Fortran compiler (e.g. gfotran, ifort).
+
+        * Default - *gfortran*
+
+    * **MPI_DIR** - The path to the MPI directory.
+
+        * Default - */opt/mpich/3.1-gnu*
+
+    * **HDF5_DIR** - The path to the HDF5 directory.
+
+        * Default - */opt/hdf5/1.8.12-gnu*
+
+    * **PHDF5_DIR** - The path to the parallel HDF5 directory.
+
+        * Default - */opt/phdf5/1.8.12-gnu* 
+
+    * **PETSC_DIR** - The path to the PETSc directory.
+
+        * Default - */opt/petsc/3.4.4-gnu*
+
+To run the full test suite, the following command can be executed in the
+tests directory:
+
+.. code-block:: sh
+
+    python run_tests.py
+
+A subset of build configurations and/or tests can be run. To see how to use
+the script run:
+
+.. code-block:: sh
+
+    python run_tests.py --help
+
+As an example, say we want to run all tests with debug flags only on tests
+that have cone and plot in their name. Also, we would like to run this on
+4 processors. We can run:
+
+.. code-block:: sh
+
+    python run_tests.py -j 4 -C debug -R "cone|plot"
+
+Note that standard regular expression syntax is used for selecting build
+configurations and tests. To print out a list of build configurations, we
+can run:
+
+.. code-block:: sh
+
+    python run_tests.py -p
+
+Adding tests to test suite
+++++++++++++++++++++++++++
+
+To add a new test to the test suite, create a sub-directory in the tests
+directory that conforms to the regular expression *test_*. To configure
+a test you need to add the following files to your new test directory, 
+*test_name* for example:
+
+    * OpenMC input XML files
+    * **test_name.py** - python test driver script, please refer to other
+      tests to see how to construct. Any output files that are generated
+      during testing must be removed at the end of this script.
+    * **results.py** - python script that extracts results from statepoint
+      output files. By default it should look for a binary file, but can
+      take an argument to overwrite which statepoint file is processed,
+      whether it is at a different batch or with an HDF5 extension. This
+      script must output a results file that is named *results_test.dat*.
+      It is recommended that any real numbers reported use *12.6E* format.
+    * **results_true.dat** - ASCII file that contains the expected results
+      from the test. The file *results_test.dat* is compared to this file
+      during the execution of the python test driver script. When the
+      above files have been created, generate a *results_test.dat* file and
+      copy it to this name and commit. It should be noted that this file
+      should be generated with basic compiler options during openmc
+      configuration and build (e.g., no MPI/HDF5, no debug/optimization).
+
+In addition to this description, please see the various types of tests that
+are already included in the test suite to see how to create them. If all is
+implemented correctly, the new test directory will automatically be added
+to the CTest framework.
+
 Private Development
 -------------------
 
@@ -108,10 +235,11 @@ from your private repository into a public fork.
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
-.. _test_compile.py: https://github.com/mit-crpg/openmc/blob/develop/tests/test_compile/test_compile.py
 .. _valgrind: http://valgrind.org/
 .. _style guide: http://mit-crpg.github.io/openmc/devguide/styleguide.html
 .. _pull request: https://help.github.com/articles/using-pull-requests
 .. _mit-crpg/openmc: https://github.com/mit-crpg/openmc
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
+.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

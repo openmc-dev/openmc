@@ -800,7 +800,7 @@ contains
 !===============================================================================
 ! FIX_NEUTRON_BALANCE is a method to adjust parameters to have perfect balance
 !===============================================================================
-
+#ifdef DEVELOPMENTAL 
   subroutine fix_neutron_balance()
 
     use constants,  only: ONE, ZERO, CMFD_NOACCEL
@@ -926,6 +926,7 @@ contains
     end do ZLOOP
 
   end subroutine fix_neutron_balance
+#endif
 
 !===============================================================================
 ! COMPUTE_EFFECTIVE_DOWNSCATTER changes downscatter rate for zero upscatter

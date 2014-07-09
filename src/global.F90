@@ -88,6 +88,9 @@ module global
   ! Default xs identifier (e.g. 70c)
   character(3):: default_xs
 
+  ! What to assume for expanding natural elements
+  integer :: default_expand = ENDF_BVII1
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
@@ -266,7 +269,7 @@ module global
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
   ! Message used in message/warning/fatal_error
-  character(MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message
 
   ! Random number seed
   integer(8) :: seed = 1_8
@@ -300,6 +303,9 @@ module global
 
   ! Is CMFD active
   logical :: cmfd_run = .false.
+
+  ! CMFD communicator
+  integer :: cmfd_comm
  
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
@@ -478,8 +484,29 @@ contains
     call sab_dict % clear()
     call xs_listing_dict % clear()
 
-    ! Clear statepoint batch set
+    ! Clear statepoint and sourcepoint batch set
     call statepoint_batch % clear()
+    call sourcepoint_batch % clear()
+
+    ! Deallocate entropy mesh
+    if (associated(entropy_mesh)) then
+      if (allocated(entropy_mesh % lower_left)) &
+          deallocate(entropy_mesh % lower_left)
+      if (allocated(entropy_mesh % upper_right)) &
+          deallocate(entropy_mesh % upper_right)
+      if (allocated(entropy_mesh % width)) deallocate(entropy_mesh % width)
+      deallocate(entropy_mesh)
+    end if
+
+    ! Deallocate ufs
+    if (allocated(source_frac)) deallocate(source_frac)
+    if (associated(ufs_mesh)) then
+        if (allocated(ufs_mesh % lower_left)) deallocate(ufs_mesh % lower_left)
+        if (allocated(ufs_mesh % upper_right)) &
+            deallocate(ufs_mesh % upper_right)
+        if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
+        deallocate(ufs_mesh)
+    end if
     
   end subroutine free_memory
 

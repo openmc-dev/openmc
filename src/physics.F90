@@ -36,6 +36,7 @@ contains
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
     p % last_E   = p % E
+    p % last_uvw = p % coord0 % uvw
 
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
@@ -98,8 +99,16 @@ contains
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
-    call absorption(p, i_nuclide)
+    if (micro_xs(i_nuclide) % absorption > ZERO) then
+      call absorption(p, i_nuclide)
+    else
+      p % absorb_wgt = ZERO
+    end if
     if (.not. p % alive) return
+
+    ! Sample a scattering reaction and determine the secondary energy of the
+    ! exiting neutron
+    call scatter(p, i_nuclide)
 
     ! Play russian roulette if survival biasing is turned on
 
@@ -107,11 +116,6 @@ contains
       call russian_roulette(p)
       if (.not. p % alive) return
     end if
-
-    ! Sample a scattering reaction and determine the secondary energy of the
-    ! exiting neutron
-
-    call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
 
@@ -293,6 +297,7 @@ contains
         p % last_wgt = p % wgt
       else
         p % wgt = ZERO
+        p % last_wgt = ZERO
         p % alive = .false.
       end if
     end if
@@ -866,10 +871,18 @@ contains
       nu = int(nu_t) + 1
     end if
 
+    ! Check for fission bank size getting hit
+    if (n_bank + nu > size(fission_bank)) then
+      message = "Maximum number of sites in fission bank reached. This can &
+           &result in irreproducible results using different numbers of &
+           &processes/threads."
+      call warning()
+    end if
+
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == 3*work) return
+    if (nu == 0 .or. n_bank == size(fission_bank)) return
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
+    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
       fission_bank(i) % xyz = p % coord0 % xyz
 
@@ -894,7 +907,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, 3*work)
+    n_bank = min(n_bank + nu, int(size(fission_bank),8))
 
     ! Store total weight banked for analog fission tallies
     p % n_bank   = nu
@@ -1156,7 +1169,7 @@ contains
       ! calculate cosine
       mu0 = rxn % adist % data(lc + k)
       mu1 = rxn % adist % data(lc + k+1)
-      mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
+      mu = mu0 + (32.0_8 * xi - k + ONE) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
       interp = int(rxn % adist % data(lc + 1))

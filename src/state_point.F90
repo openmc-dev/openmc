@@ -449,8 +449,8 @@ contains
         call sp % close_group()
 #endif
         COMPOSITION_LOOP: do j = 1, mat % n_comp
-          call sp % write_data(mat % comp(j) % atom_density, "atom_density " &
-               // trim(to_str(j)), length=mat % density % num, & 
+          call sp % write_data(mat % comp(j) % atom_density, "atom_density ", &
+               length=mat % n_nuclides, & 
                group="geometry/materials/material " &
                // trim(to_str(mat % id)) // "/compositions/" &
                // trim(to_str(j)))
@@ -1197,8 +1197,8 @@ contains
       call sp % read_data(k, "n_comp", &
              group="geometry/materials/material ")
       COMPOSITION_LOOP: do j = 1, k
-        call sp % read_data(temp_real_array, "atom_density " &
-             // trim(to_str(j)), length=size(temp_real_array), & 
+        call sp % read_data(temp_real_array, "atom_density ", &
+             length=size(temp_real_array), & 
              group="geometry/materials/material ")
       end do COMPOSITION_LOOP
       deallocate(temp_real_array)

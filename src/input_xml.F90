@@ -1894,6 +1894,16 @@ contains
 
       ! Add material to dictionary
       call material_dict % add_key(mat % id, i)
+      
+      write (*,*) "mat % nuclide:", mat % nuclide
+      
+      write (*,*) "mat % density:", mat % density % density
+      write (*,*) "mat % comp(1):", mat % comp(1) % atom_density
+      if ( mat % n_comp > 1) then
+        write (*,*) "mat % comp(2):", mat % comp(2) % atom_density
+        write (*,*) "mat % comp(3):", mat % comp(3) % atom_density
+        write (*,*) "mat % comp(4):", mat % comp(4) % atom_density
+      end if
     end do
 
     ! Set total number of nuclides and S(a,b) tables

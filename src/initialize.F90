@@ -788,9 +788,12 @@ contains
     integer        :: index_list      ! index in xs_listings array
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
+    integer        :: k               ! index over compositions
+    integer        :: l               ! index in density
     real(8)        :: sum_percent     ! summation
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: x               ! atom percent
+    real(8)        :: orig_dens       ! original density for distrib comps
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     type(Material), pointer :: mat => null()
@@ -808,40 +811,73 @@ contains
         ! determine atomic weight ratio
         index_list = xs_listing_dict % get_key(mat % names(j))
         awr = xs_listings(index_list) % awr
+        write (*,*) "awr:",awr
 
         ! if given weight percent, convert all values so that they are divided
         ! by awr. thus, when a sum is done over the values, it's actually
         ! sum(w/awr)
         if (.not. percent_in_atom) then
-          mat % comp(1) % atom_density(j) = -mat % comp(1) % atom_density(j) / awr
+          do k = 1, mat % n_comp
+            mat % comp(k) % atom_density(j) = &
+                -mat % comp(k) % atom_density(j) / awr
+          end do
         end if
       end do
 
-      ! determine normalized atom percents. if given atom percents, this is
-      ! straightforward. if given weight percents, the value is w/awr and is
-      ! divided by sum(w/awr)
-      do j = 1, mat % n_comp
-        sum_percent = sum(mat % comp(j) % atom_density)
-        mat % comp(j) % atom_density = mat % comp(j) % atom_density / sum_percent
+      do k = 1, mat % n_comp
+      
+        ! handle distributed densities
+        if (mat % distrib_dens) then
+        write (*,*) "l=k=", k
+          l = k
+        else
+          l = 1
+        end if
+        
+        ! determine normalized atom percents. if given atom percents, this is
+        ! straightforward. if given weight percents, the value is w/awr and is
+        ! divided by sum(w/awr)
+        sum_percent = sum(mat % comp(k) % atom_density)
+        mat % comp(k) % atom_density = &
+            mat % comp(k) % atom_density / sum_percent
+
+        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in
+        ! atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+        if (.not. density_in_atom) then
+          sum_percent = ZERO
+          do j = 1, mat % n_nuclides
+            index_list = xs_listing_dict % get_key(mat % names(j))
+            awr = xs_listings(index_list) % awr
+            x = mat % comp(k) % atom_density(j)
+            sum_percent = sum_percent + x*awr
+          end do
+          sum_percent = ONE / sum_percent
+          write (*,*) "sum_percent:",sum_percent
+          write (*,*) "PRE:mat % density % density(l):",mat % density % density(l)
+
+          ! we should only alter the density more than once for distributed
+          ! density materials
+          if (mat % distrib_comp .and. .not. mat % distrib_dens) then
+              if (k == 1) then
+                orig_dens = mat % density % density(l)
+              else 
+                mat % density % density(l) = orig_dens
+              end if
+              mat % density % density(l) = -mat % density % density(l) * N_AVOGADRO & 
+                 / MASS_NEUTRON * sum_percent
+          else
+              mat % density % density(l) = -mat % density % density(l) * N_AVOGADRO & 
+                 / MASS_NEUTRON * sum_percent
+          end if
+        end if
+        write (*,*) "mat % id:",mat % id
+        ! Calculate nuclide atom densities
+        write (*,*) "POSTmat % density % density(l):",mat % density % density(l)
+    write (*,*) "POSTmat % comp(k) % atom_density:",mat % comp(k) % atom_density
+        mat % comp(k) % atom_density = &
+            mat % density % density(l) * mat % comp(k) % atom_density
+    write (*,*) "FINALPOSTmat % comp(k) % atom_density:",mat % comp(k) % atom_density
       end do
-
-      ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
-      ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
-      if (.not. density_in_atom) then
-        sum_percent = ZERO
-        do j = 1, mat % n_nuclides
-          index_list = xs_listing_dict % get_key(mat % names(j))
-          awr = xs_listings(index_list) % awr
-          x = mat % comp(1) % atom_density(j)
-          sum_percent = sum_percent + x*awr
-        end do
-        sum_percent = ONE / sum_percent
-        mat % density % density(1) = -mat % density % density(1) * N_AVOGADRO & 
-             / MASS_NEUTRON * sum_percent
-      end if
-
-      ! Calculate nuclide atom densities
-      mat % comp(1) % atom_density = mat % density % density(1) * mat % comp(1) % atom_density
     end do
 
   end subroutine normalize_ao
@@ -1327,6 +1363,28 @@ end subroutine prepare_distribution
           mat % density % num = c % instances
           
         end if
+        
+        ! Distribute the density by creating a fake composition distribution
+        ! of the composition provided. Later the normalize_ao function will
+        ! distribute the densities on the composition
+        mat % distrib_comp = .true.
+        mat % n_comp = c % instances
+        allocate(atom_density(mat % n_nuclides))
+        atom_density = mat % comp(1) % atom_density
+        deallocate(mat % comp(1) % atom_density)
+        deallocate(mat % comp)
+        allocate(mat % comp(c % instances))
+        do j = 1, c % instances          
+          allocate(mat % comp(j) % atom_density(mat % n_nuclides))
+          mat % comp(j) % atom_density = atom_density          
+        end do
+        deallocate(atom_density)
+        
+        write (*,*) mat % density % density
+        write (*,*) mat % comp(1) % atom_density
+        write (*,*) mat % comp(2) % atom_density
+        write (*,*) mat % comp(3) % atom_density
+        write (*,*) mat % comp(4) % atom_density
         
       end if
       

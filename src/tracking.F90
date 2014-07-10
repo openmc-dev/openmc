@@ -6,6 +6,7 @@ module tracking
                              cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
+  use material_header
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
@@ -34,7 +35,9 @@ contains
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
+    logical :: distrib         ! material is distributed?
     type(LocalCoord), pointer, save :: coord => null()
+    type(Material),   pointer, save :: mat => null()
 !$omp threadprivate(coord)
 
     ! Display message if high verbosity or trace is on
@@ -84,8 +87,14 @@ contains
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-
-      if (p % material /= p % last_material) call calculate_xs(p)
+      write (*,*) "p % material:",p % material
+      if (p % material > 0) then 
+        mat => materials(p % material)
+        distrib = mat % distrib_comp
+      else
+        distrib = .false.
+      end if
+      if (p % material /= p % last_material .or. distrib) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)

@@ -36,15 +36,26 @@ contains
 
   subroutine write_state_point()
 
+    character(MAX_FILE_LEN) :: batch_form
+    character(MAX_FILE_LEN) :: batch_string
     character(MAX_FILE_LEN) :: filename
+    integer                 :: n_digits
     integer                 :: i
     integer                 :: j
     integer, allocatable    :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
+    ! Count digits needed to represent largest batch number (for file name).
+    n_digits = 1
+    do while (n_batches / 10**(n_digits) /= 0 &
+              & .and. n_batches / 10 **(n_digits-1) /= 1)
+      n_digits = n_digits + 1
+    end do
+    ! Convert the current batch batch to a zero-padded string.
+    write(batch_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+    write(batch_string, batch_form) current_batch
     ! Set filename for state point
-    filename = trim(path_output) // 'statepoint.' // &
-               trim(to_str(current_batch))
+    filename = trim(path_output) // 'statepoint.' // batch_string
 
     ! Append appropriate extension
 #ifdef HDF5

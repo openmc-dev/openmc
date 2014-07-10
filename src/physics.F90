@@ -148,11 +148,8 @@ contains
 
     i = 0
     prob = ZERO
-    write (*,*) "cutoff:",cutoff
     do while (prob < cutoff)
       i = i + 1
-      write (*,*) "i:", i
-      write (*,*) "prob:",prob
 
       ! Check to make sure that a nuclide was sampled
       if (i > mat % n_nuclides) then
@@ -164,7 +161,6 @@ contains
       ! Find atom density
       i_nuclide = mat % nuclide(i)
       if (mat % distrib_comp) then
-        write (*,*) "p % mapping(mat % map):",p % mapping(mat % map)
         atom_density = mat % get_density(p % mapping(mat % map), i)
       else
         atom_density = mat % get_density(1, i)

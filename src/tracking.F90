@@ -35,7 +35,7 @@ contains
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
-    logical :: distrib         ! material is distributed?
+    logical :: distrib         ! material is distribute
     type(LocalCoord), pointer, save :: coord => null()
     type(Material),   pointer, save :: mat => null()
 !$omp threadprivate(coord)
@@ -87,7 +87,6 @@ contains
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-      write (*,*) "p % material:",p % material
       if (p % material > 0) then 
         mat => materials(p % material)
         distrib = mat % distrib_comp

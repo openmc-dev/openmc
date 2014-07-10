@@ -107,10 +107,6 @@ contains
         atom_density = mat % get_density(1, i)
       endif
 
-      write (*,*) "density:",atom_density
-      if (atom_density < 0) then
-        write (*,*) "NEG: p % mapping(mat % map):",p % mapping(mat % map)
-      end if
       ! Add contributions to material macroscopic total cross section
       material_xs % total = material_xs % total + &
            atom_density * micro_xs(i_nuclide) % total

@@ -811,7 +811,6 @@ contains
         ! determine atomic weight ratio
         index_list = xs_listing_dict % get_key(mat % names(j))
         awr = xs_listings(index_list) % awr
-        write (*,*) "awr:",awr
 
         ! if given weight percent, convert all values so that they are divided
         ! by awr. thus, when a sum is done over the values, it's actually
@@ -828,7 +827,6 @@ contains
       
         ! handle distributed densities
         if (mat % distrib_dens) then
-        write (*,*) "l=k=", k
           l = k
         else
           l = 1
@@ -852,8 +850,6 @@ contains
             sum_percent = sum_percent + x*awr
           end do
           sum_percent = ONE / sum_percent
-          write (*,*) "sum_percent:",sum_percent
-          write (*,*) "PRE:mat % density % density(l):",mat % density % density(l)
 
           ! we should only alter the density more than once for distributed
           ! density materials
@@ -870,13 +866,9 @@ contains
                  / MASS_NEUTRON * sum_percent
           end if
         end if
-        write (*,*) "mat % id:",mat % id
         ! Calculate nuclide atom densities
-        write (*,*) "POSTmat % density % density(l):",mat % density % density(l)
-    write (*,*) "POSTmat % comp(k) % atom_density:",mat % comp(k) % atom_density
         mat % comp(k) % atom_density = &
             mat % density % density(l) * mat % comp(k) % atom_density
-    write (*,*) "FINALPOSTmat % comp(k) % atom_density:",mat % comp(k) % atom_density
       end do
     end do
 
@@ -1380,12 +1372,6 @@ end subroutine prepare_distribution
         end do
         deallocate(atom_density)
         
-        write (*,*) mat % density % density
-        write (*,*) mat % comp(1) % atom_density
-        write (*,*) mat % comp(2) % atom_density
-        write (*,*) mat % comp(3) % atom_density
-        write (*,*) mat % comp(4) % atom_density
-        
       end if
       
       if (mat % distrib_comp) then
@@ -1463,7 +1449,6 @@ end subroutine verify_distribmats
           offset = 0
           label = ''
           univ => universes(BASE_UNIVERSE)
-          write (*,*) "mat % id:", mat % id
           call find_offset(mat % map, material_dict % get_key(mat % id), univ, j - 1, offset, label, .true.)
           write(UNIT_HELP,*) label
         

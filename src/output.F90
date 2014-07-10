@@ -1721,9 +1721,6 @@ contains
       ! to be used for a given tally.
 
       ! Initialize bins, filter level, and indentation
-      write (*,*) "t % n_filters:",t % n_filters
-      write (*,*) "allocated(matching_bins):",allocated(matching_bins)
-      write (*,*) size(matching_bins)
       matching_bins(1:t%n_filters) = 0
       j = 1
       indent = 0

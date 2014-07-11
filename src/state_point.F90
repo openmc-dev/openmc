@@ -809,7 +809,9 @@ contains
   end subroutine load_state_point
 
 !===============================================================================
-! STATE_POINT -- This module handles writing and reading state point
+! ZERO_PADDED_BATCH -- This function returns the current batch number as a
+! string formatted into a zero padded integer.  For example, batch 3 out of 100
+! will be returned as '003'.
 !===============================================================================
 
   function zero_padded_batch()

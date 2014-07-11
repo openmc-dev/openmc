@@ -304,7 +304,7 @@ contains
       if (source_separate) then
 
         ! Set filename
-        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
+        filename = trim(path_output) // 'source.' // zero_padded_batch()
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -324,8 +324,7 @@ contains
       else
 
         ! Set filename for state point
-        filename = trim(path_output) // 'statepoint.' // &
-                   trim(to_str(current_batch))
+        filename = trim(path_output) // 'statepoint.' // zero_padded_batch()
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else

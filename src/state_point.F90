@@ -36,26 +36,14 @@ contains
 
   subroutine write_state_point()
 
-    character(MAX_FILE_LEN) :: batch_form
-    character(MAX_FILE_LEN) :: batch_string
     character(MAX_FILE_LEN) :: filename
-    integer                 :: n_digits
     integer                 :: i
     integer                 :: j
     integer, allocatable    :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
-    ! Count digits needed to represent largest batch number (for file name).
-    n_digits = 1
-    do while (n_batches / 10**(n_digits) /= 0 &
-              & .and. n_batches / 10 **(n_digits-1) /= 1)
-      n_digits = n_digits + 1
-    end do
-    ! Convert the current batch batch to a zero-padded string.
-    write(batch_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
-    write(batch_string, batch_form) current_batch
     ! Set filename for state point
-    filename = trim(path_output) // 'statepoint.' // batch_string
+    filename = trim(path_output) // 'statepoint.' // zero_padded_batch()
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -820,6 +808,32 @@ contains
     call sp % file_close()
 
   end subroutine load_state_point
+
+!===============================================================================
+! STATE_POINT -- This module handles writing and reading state point
+!===============================================================================
+
+  function zero_padded_batch()
+    character(MAX_FILE_LEN) :: zero_padded_batch
+
+    character(MAX_FILE_LEN) :: batch_form
+    character(MAX_FILE_LEN) :: batch_string
+    character(MAX_FILE_LEN) :: filename
+    integer                 :: n_digits
+
+    ! Count digits needed to represent largest batch number.
+    n_digits = 1
+    do while (n_batches / 10**(n_digits) /= 0 &
+              & .and. n_batches / 10 **(n_digits-1) /= 1)
+      n_digits = n_digits + 1
+    end do
+
+    ! Write a format string of the form In.n where n is n_digits.
+    write(batch_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+
+    ! Format the batch number
+    write(zero_padded_batch, batch_form) current_batch
+  end function zero_padded_batch
 
   subroutine read_source
 ! TODO write this routine

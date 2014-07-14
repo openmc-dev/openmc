@@ -132,6 +132,12 @@ module global
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
   real(8) :: total_weight       ! total starting particle weight in realization
+  
+  ! Trigger for tallies
+  integer :: trigger_method = VARIANCE_METHOD    ! type of trigger
+  real(8) :: n_threshold    = DEFAULT_THRESHOLD  ! # of trigger threshold
+  integer :: n_batch_interval    = DEFAULT_BATCH_INTERVAL  ! # of batches interval per cycle
+  integer :: n_max_batch    = DEFAULT_MAX_BATCH  ! # of max batches
 
   ! Flag for turning tallies on
   logical :: tallies_on = .false.

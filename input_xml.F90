@@ -1768,8 +1768,6 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
-    type(Node), pointer :: node_trigger=>null()
-    type(Node), pointer :: node_trigger_mode=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
@@ -1794,10 +1792,10 @@ contains
 
     ! Get pointer list to XML <mesh>
     call get_node_list(doc, "mesh", node_mesh_list)
- 
+
     ! Get pointer list to XML <tally>
     call get_node_list(doc, "tally", node_tal_list)
-    
+
     ! Check for user meshes
     n_user_meshes = get_list_size(node_mesh_list)
     if (cmfd_run) then
@@ -1828,72 +1826,6 @@ contains
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         assume_separate = .true.
     end if
-    
-    ! ==========================================================================
-    ! READ TRIGGER DATA
-    
-    ! Check for trigger
-       if (check_for_node(doc, "trigger")) then
-     
-    ! Get pointer to trigger
-       call get_node_ptr(doc, "trigger", node_trigger_mode)
-
-    ! Check for type of trigger
-       temp_str=' '
-       if (check_for_node(node_trigger_mode, "type")) then 
-         call get_node_value(node_trigger_mode, "type", temp_str)
-       else 
-         temp_str = 'variance'
-       end if
-       
-       call lower_case(temp_str)
-       
-       select case (trim(temp_str))
-       case ('variance')
-         write(*,*)"you choose the trigger: variance" !need to modify
-          trigger_method = VARIANCE_METHOD
-       case ('std_dev')
-         write(*,*)"you choose the trigger: standard deviation" 
-          trigger_method = RELATIVE_ERROR_METHOD
-       case ('rel_err')
-         write(*,*)"you choose the trigger: relative error"
-          trigger_method = STANDARD_DEVIATION_METHOD 
-       case default
-         message = "Invalid type of trigger " &
-             // trim(temp_str)
-         call fatal_error()
-       end select
-        
-     ! Check for threshold of trigger
-        if(check_for_node(node_trigger_mode,"threshold")) then
-          call get_node_value(node_trigger_mode,"threshold",n_threshold)
-        else
-          n_threshold = DEFAULT_THRESHOLD
-        end if
-        write(*,*)"The threshold is ",n_threshold !write
-        
-     ! Check for added batches of trigger for cycle
-        if(check_for_node(node_trigger_mode,"batch_interval"))then
-          call get_node_value(node_trigger_mode,"batch_interval",n_batch_interval)
-        else
-          n_batch_interval = DEFAULT_BATCH_INTERVAL
-        end if
-        write(*,*)"The added batch is ",n_batch_interval
-        
-     ! Check for max batch for trigger     
-         if(check_for_node(node_trigger_mode,"max_batch"))then
-           call get_node_value(node_trigger_mode,"max_batch",n_max_batch)
-         else 
-           n_max_batch = DEFAULT_MAX_BATCH
-        end if
-         write(*,*)n_max_batch
-         
-        if(n_max_batch<(n_batches+n_batch_interval)) then
-         message= "max batch must be bigger than the sum of batch"
-         call fatal_error()
-        end if
-    end if
-
 
     ! ==========================================================================
     ! READ MESH DATA

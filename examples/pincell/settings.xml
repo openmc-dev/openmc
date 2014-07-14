@@ -28,5 +28,7 @@
     <upper_right>0.39218  0.39218  1.e50</upper_right>
     <dimension>10 10 1</dimension>
   </entropy>
-
+ <state_point>
+    <interval>7</interval>
+ </state_point>
 </settings>

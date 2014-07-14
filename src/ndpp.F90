@@ -955,6 +955,29 @@ contains
       !!! TBI
     end if ! No default needed - read_ndpp_xml() already checked filetype
 
+! This is to correct an error in NDPP, the first point of elastic%outgoing could
+! have been thinned to zeros and thus not printed. So lets set it equal to the
+! the point above it.
+    if (is_nuc) then
+      if (allocated(nuc % ndpp_el)) then
+        if (.not. allocated(nuc % ndpp_el(1) % outgoing)) then
+          allocate(nuc % ndpp_el(1) % outgoing( &
+                   size(nuc % ndpp_el(2) % outgoing, dim=1), &
+                   size(nuc % ndpp_el(2) % outgoing, dim=2)))
+          nuc % ndpp_el(1) % outgoing = nuc % ndpp_el(2) % outgoing
+        end if
+      end if
+    else
+      if (allocated(sab % ndpp_el)) then
+        if (.not. allocated(sab % ndpp_el(1) % outgoing)) then
+          allocate(sab % ndpp_el(1) % outgoing( &
+                   size(sab % ndpp_el(2) % outgoing, dim=1), &
+                   size(sab % ndpp_el(2) % outgoing, dim=2)))
+          sab % ndpp_el(1) % outgoing = sab % ndpp_el(2) % outgoing
+        end if
+      end if
+    end if
+
     ! Finally, the above code read in all data since NDPP libs are sequential
     ! access; now we can deallocate what we do not need
     if (is_nuc) then

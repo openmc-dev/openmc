@@ -372,8 +372,8 @@ module ace_header
            deallocate(this % grid_index_0K)
 
       if (allocated(this % energy)) &
-           deallocate(this % total, this % elastic, this % fission, &
-          this % nu_fission, this % absorption)
+           deallocate(this % energy, this % total, this % elastic, &
+           & this % fission, this % nu_fission, this % absorption)
 
       if (allocated(this % energy_0K)) &
            deallocate(this % energy_0K)
@@ -387,17 +387,11 @@ module ace_header
       if (allocated(this % heating)) &
            deallocate(this % heating)
 
-      if (allocated(this % index_fission)) &
-           deallocate(this % index_fission)
+      if (allocated(this % index_fission)) deallocate(this % index_fission)
 
-      if (allocated(this % nu_t_data)) &
-           deallocate(this % nu_t_data)
-
-      if (allocated(this % nu_p_data)) &
-           deallocate(this % nu_p_data)
-
-      if (allocated(this % nu_d_data)) &
-           deallocate(this % nu_d_data)
+      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
+      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
+      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
 
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)

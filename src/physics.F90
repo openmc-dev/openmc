@@ -36,6 +36,7 @@ contains
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
     p % last_E   = p % E
+    p % last_uvw = p % coord0 % uvw
 
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
@@ -98,8 +99,16 @@ contains
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
-    call absorption(p, i_nuclide)
+    if (micro_xs(i_nuclide) % absorption > ZERO) then
+      call absorption(p, i_nuclide)
+    else
+      p % absorb_wgt = ZERO
+    end if
     if (.not. p % alive) return
+
+    ! Sample a scattering reaction and determine the secondary energy of the
+    ! exiting neutron
+    call scatter(p, i_nuclide)
 
     ! Play russian roulette if survival biasing is turned on
 
@@ -107,11 +116,6 @@ contains
       call russian_roulette(p)
       if (.not. p % alive) return
     end if
-
-    ! Sample a scattering reaction and determine the secondary energy of the
-    ! exiting neutron
-
-    call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
 
@@ -293,6 +297,7 @@ contains
         p % last_wgt = p % wgt
       else
         p % wgt = ZERO
+        p % last_wgt = ZERO
         p % alive = .false.
       end if
     end if

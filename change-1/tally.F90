@@ -1396,7 +1396,7 @@ contains
     integer :: num_nm               ! Number of N,M orders in harmonic
     integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk(3)              ! indices of ending coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
     integer :: n_cross              ! number of surface crossings
     integer :: filter_index         ! single index for single bin
@@ -1438,7 +1438,7 @@ contains
     ! Determine indices for starting and ending location
     m => meshes(t % filters(i_filter_mesh) % int_bins(1))
     call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
     ! Check if start or end is in mesh -- if not, check if track still
     ! intersects with mesh
@@ -1517,7 +1517,7 @@ contains
     ! DETERMINE WHICH MESH CELLS TO SCORE TO
 
     ! Calculate number of surface crossings
-    n_cross = sum(abs(ijk(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
+    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
 
     ! Copy particle's direction
     uvw = p % coord0 % uvw
@@ -1934,7 +1934,7 @@ contains
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk(3)              ! indices of ending coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index of scoring bin
@@ -1971,7 +1971,7 @@ contains
       ! Determine indices for starting and ending location
       m => meshes(t % filters(i_filter_mesh) % int_bins(1))
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
       ! Check to if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
@@ -1984,7 +1984,7 @@ contains
       end if
 
       ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk - ijk0))
+      n_cross = sum(abs(ijk1 - ijk0))
       if (n_cross == 0) then
         cycle
       end if
@@ -2010,14 +2010,14 @@ contains
       ! =======================================================================
       ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
 
-      x_same = (ijk0(1) == ijk(1))
-      y_same = (ijk0(2) == ijk(2))
-      z_same = (ijk0(3) == ijk(3))
+      x_same = (ijk0(1) == ijk1(1))
+      y_same = (ijk0(2) == ijk1(2))
+      z_same = (ijk0(3) == ijk1(3))
 
       if (x_same .and. y_same) then
         ! Only z crossings
         if (uvw(3) > 0) then
-          do j = ijk0(3), ijk(3) - 1
+          do j = ijk0(3), ijk1(3) - 1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_TOP
@@ -2031,7 +2031,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(3) - 1, ijk(3), -1
+          do j = ijk0(3) - 1, ijk1(3), -1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_TOP
@@ -2049,7 +2049,7 @@ contains
       elseif (x_same .and. z_same) then
         ! Only y crossings
         if (uvw(2) > 0) then
-          do j = ijk0(2), ijk(2) - 1
+          do j = ijk0(2), ijk1(2) - 1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_FRONT
@@ -2063,7 +2063,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(2) - 1, ijk(2), -1
+          do j = ijk0(2) - 1, ijk1(2), -1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_FRONT
@@ -2081,7 +2081,7 @@ contains
       elseif (y_same .and. z_same) then
         ! Only x crossings
         if (uvw(1) > 0) then
-          do j = ijk0(1), ijk(1) - 1
+          do j = ijk0(1), ijk1(1) - 1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_RIGHT
@@ -2095,7 +2095,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(1) - 1, ijk(1), -1
+          do j = ijk0(1) - 1, ijk1(1), -1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_RIGHT
@@ -2301,40 +2301,44 @@ contains
 ! CHECK FOR reach the threshold
 !=============================================================================== 
   subroutine check_for_trigger() 
-   integer :: i     ! index in tallies array
+  
+   integer :: i      ! index in tallies array
    integer :: j      ! temporary index for score bins result
    integer :: k      ! temporary index for score scores result
    integer :: n      ! number of filter bins
    integer :: m      ! number of score bins
-   real(8), allocatable :: temp_trigger(:,:) ! temporary real for comparision
+   real(8), allocatable :: temp_trigger(:,:,:) ! temporary real for comparision
 
    type(TallyObject), pointer :: t => null()
   ! Calculate statistics and get 
      if (master) then
-        if (n_realizations > 1) call tally_trigger_statistics()
+        if (n_realizations > 1) call tally_statistics()
      end if
      
-   CHECK_LOOP: do i =1, n_tallies
+   CHECKLOOP:do i, n_tallies
       
       t=>tallies(i)
       m = t % total_score_bins
       n = t % total_filter_bins
-     allocate(temp_trigger(m,n))
+     allocate(temp_trigger)
      
      
      ! get the temporary trigger       
      select case (trigger_method)
      case (VARIANCE_METHOD)
      !get the temporary variance
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq**2
+       temp_trigger = t% results(:,:) % sum_sq**2
+       end do
         
      case (RELATIVE_ERROR_METHOD)
      !get the temprary relative error
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq/t% results(:,:) % trigger_sum
+       temp_trigger = t% results(:,:) % sum_sq /t% results(:,:) % sum
+       end do
         
      case( STANDARD_DEVIATION_METHOD)
      !get the temprary relative standard deviation
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq
+       temp_trigger = t% results(:,:) % sum_sq
+       end do
         
      case default
        message="Invalid trigger type on tally"
@@ -2345,20 +2349,20 @@ contains
      
       do j = 1, n
         do k = 1, m
-          if (temp_trigger(k,j) > n_threshold) then
-          reach_trigger= .false. 
+          if (t% temp_trigger > n_threshold) then
+          reach_trigger= .false. return
           exit CHECK_LOOP
           else
           reach_trigger = .true. 
           end if
         end do 
       end do
-   
-    end do CHECK_LOOP
+      
+     deallocate(temp_trigger)
     
-    deallocate(temp_trigger)
+    end do CHECKLOOP
  
- end subroutine check_for_trigger
+ end subroutine check_for_trigger() 
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
@@ -2530,28 +2534,6 @@ contains
     call statistics_result(global_tallies, n_realizations)
 
   end subroutine tally_statistics
-  
-!===============================================================================
-! TALLY_TRIGGER_STATISTICS just computes the mean and standard deviation of the  
-! mean of each tally and stores them in the val and val_sq attributes of the 
-! TallyResults respectively for trigger.
-!===============================================================================
-
-  subroutine tally_trigger_statistics()
-
-    integer :: i    ! index in tallies array
-    type(TallyObject), pointer :: t => null()
-
-    ! Calculate statistics for user-defined tallies
-    do i = 1, n_tallies
-      t => tallies(i)
-
-      call statistics_trigger_result(t % results, t % n_realizations)
-    end do
-
-  end subroutine tally_trigger_statistics
-  
-
 
 !===============================================================================
 ! ACCUMULATE_RESULT accumulates results from many histories (or many generations)
@@ -2597,25 +2579,6 @@ contains
 
   end subroutine statistics_result
 
-!===============================================================================
-! STATISTICS_TRIGGER_RESULT just determines the sample mean and the standard 
-! deviation of the mean for a TallyResult for a trigger .
-!===============================================================================
-
-  elemental subroutine statistics_trigger_result(this, n)
-
-    type(TallyResult), intent(inout) :: this
-    integer,           intent(in)    :: n
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    this % trigger_sum    = this % sum/n
-    this % trigger_sum_sq = sqrt((this % sum_sq/n - this % trigger_sum * &
-         this % trigger_sum) / (n - 1))
-
-  end subroutine statistics_trigger_result
 !===============================================================================
 ! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a
 ! single TallyResult.
@@ -2698,5 +2661,72 @@ contains
     end do
 
   end subroutine setup_active_cmfdtallies
+!===============================================================================
+! CHECK FOR reach the threshold
+!=============================================================================== 
+  subroutine check_for_trigger() 
+  
+   integer :: i      ! index in tallies array
+   integer :: j      ! temporary index for score bins result
+   integer :: k      ! temporary index for score scores result
+   integer :: n      ! number of filter bins
+   integer :: m      ! number of score bins
+   real(8), allocatable :: temp_trigger(:,:,:) ! temporary real for comparision
+
+   type(TallyObject), pointer :: t => null()
+  ! Calculate statistics and get 
+     if (master) then
+        if (n_realizations > 1) call tally_statistics()
+     end if
+     
+   CHECKLOOP:do i, n_tallies
+      
+      t=>tallies(i)
+      m = t % total_score_bins
+      n = t % total_filter_bins
+     allocate(temp_trigger)
+     
+     
+     ! get the temporary trigger       
+     select case (trigger_method)
+     case (VARIANCE_METHOD)
+     !get the temporary variance
+       temp_trigger = t% results(:,:) % sum_sq**2
+       end do
+        
+     case (RELATIVE_ERROR_METHOD)
+     !get the temprary relative error
+       temp_trigger = t% results(:,:) % sum_sq /t% results(:,:) % sum
+       end do
+        
+     case( STANDARD_DEVIATION_METHOD)
+     !get the temprary relative standard deviation
+       temp_trigger = t% results(:,:) % sum_sq
+       end do
+        
+     case default
+       message="Invalid trigger type on tally"
+       call fatal_error()
+     end select
+     
+     ! check for trigger
+     
+      do j = 1, n
+        do k = 1, m
+          if (t% temp_trigger > n_threshold) then
+          reach_trigger= .false. return
+          exit CHECK_LOOP
+          else
+          reach_trigger = .true. 
+          end if
+        end do 
+      end do
+      
+     deallocate(temp_trigger)
+    
+    end do CHECKLOOP
+ 
+ end subroutine check_for_trigger() 
+
 
 end module tally

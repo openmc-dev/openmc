@@ -93,15 +93,20 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-    
-      !Check batches
-      call check_batch()
-      if(reach_trigger) then
-      exit  BATCH_LOOP
+      
+      ! Check the trigger
+      if(MOD((current_batch-n_min_batches),batches_interval)==0) then
+     ! Calculate statistics and get 
+     if (master) then
+        if (n_realizations > 1) call tally_statistics()
+     end if
+        check_for_trigger()
+        if(reach_trigger) exit  
+        end if
       end if 
-    
+
     end do BATCH_LOOP
-    
+
     call time_active % stop()
 
     ! ==========================================================================
@@ -239,22 +244,8 @@ contains
       ! batch in case no state point is written
       call calculate_combined_keff()
     end if
-    
+
   end subroutine finalize_batch
-  
-!===============================================================================
-! CHECK_BATCH checks whether to check the trigger and whether the trigger 
-! threshold is reached
-!===============================================================================
-  subroutine check_batch()
-  
-   if(.not.((current_batch-n_basic_batches)<0).and.trigger_on ) then
-      if(mod((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
-        current_batch==n_batches) then
-        call check_for_trigger()
-      end if 
-     end if
- end subroutine check_batch
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
@@ -887,6 +878,5 @@ contains
 
   end subroutine join_bank_from_threads
 #endif
-
 
 end module eigenvalue

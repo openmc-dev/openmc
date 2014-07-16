@@ -138,9 +138,6 @@ module global
   real(8) :: n_threshold      = DEFAULT_THRESHOLD  ! # of trigger threshold
   integer :: n_batch_interval = DEFAULT_BATCH_INTERVAL  ! # of batches interval per cycle
   integer :: n_max_batch      = DEFAULT_MAX_BATCH  ! # of max batches
-  
-  ! Flag for turning trigger on
-  logical:: trigger_on = .false.
 
   ! Flag for turning tallies on
   logical :: tallies_on = .false.
@@ -152,7 +149,7 @@ module global
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
   
-  ! Check whether reach the trigger
+  ! Chech whether reach the trigger
   logical :: reach_trigger = .false.
 
   ! ============================================================================
@@ -160,7 +157,6 @@ module global
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
-  integer    :: n_basic_batches   ! # of basic batches
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch

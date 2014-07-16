@@ -39,9 +39,11 @@ module tally_header
 !===============================================================================
 
   type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
+    real(8) :: value          = 0.
+    real(8) :: sum            = 0.
+    real(8) :: sum_sq         = 0.
+    real(8) :: trigger_sum    = 0.
+    real(8) :: trigger_sum_sq = 0.
   end type TallyResult
 
 !===============================================================================

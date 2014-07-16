@@ -153,7 +153,13 @@ contains
       if (n_particles == 0) n_particles = temp_long
 
       ! Copy batch and generation information
-      call get_node_value(node_mode, "batches", n_batches)
+      call get_node_value(node_mode, "batches", n_basic_batches)
+      if(.not. check_for_node(node_mode,"max_batches")) then
+      n_batches=n_basic_batches
+      else
+      call get_node_value(node_mode, "max_batches", n_batches)
+      end if
+      
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
@@ -1833,7 +1839,10 @@ contains
     ! READ TRIGGER DATA
     
     ! Check for trigger
-       if (check_for_node(doc, "trigger")) then
+    if (check_for_node(doc, "trigger")) then
+       
+    ! Turn on trigger
+       trigger_on = .true.
      
     ! Get pointer to trigger
        call get_node_ptr(doc, "trigger", node_trigger_mode)
@@ -1850,14 +1859,11 @@ contains
        
        select case (trim(temp_str))
        case ('variance')
-         write(*,*)"you choose the trigger: variance" !need to modify
           trigger_method = VARIANCE_METHOD
        case ('std_dev')
-         write(*,*)"you choose the trigger: standard deviation" 
-          trigger_method = RELATIVE_ERROR_METHOD
-       case ('rel_err')
-         write(*,*)"you choose the trigger: relative error"
           trigger_method = STANDARD_DEVIATION_METHOD 
+       case ('rel_err')
+          trigger_method = RELATIVE_ERROR_METHOD
        case default
          message = "Invalid type of trigger " &
              // trim(temp_str)
@@ -1870,7 +1876,6 @@ contains
         else
           n_threshold = DEFAULT_THRESHOLD
         end if
-        write(*,*)"The threshold is ",n_threshold !write
         
      ! Check for added batches of trigger for cycle
         if(check_for_node(node_trigger_mode,"batch_interval"))then
@@ -1878,7 +1883,6 @@ contains
         else
           n_batch_interval = DEFAULT_BATCH_INTERVAL
         end if
-        write(*,*)"The added batch is ",n_batch_interval
         
      ! Check for max batch for trigger     
          if(check_for_node(node_trigger_mode,"max_batch"))then
@@ -1886,14 +1890,18 @@ contains
          else 
            n_max_batch = DEFAULT_MAX_BATCH
         end if
-         write(*,*)n_max_batch
          
-        if(n_max_batch<(n_batches+n_batch_interval)) then
-         message= "max batch must be bigger than the sum of batch"
-         call fatal_error()
-        end if
-    end if
-
+         if(n_max_batch/=n_batches) then
+            message= "The values of max batch in settings XML and tally XML are &
+                      &different"
+            call fatal_error()
+         elseif(n_max_batch<(n_basic_batches+n_batch_interval)) then
+            message= "The number of max batch must be bigger than the &
+                      &sum of batch"
+            call fatal_error()
+         end if
+     end if
+ 
 
     ! ==========================================================================
     ! READ MESH DATA

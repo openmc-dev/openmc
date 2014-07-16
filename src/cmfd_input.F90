@@ -8,7 +8,7 @@ module cmfd_input
 
   implicit none
   private
-  public :: configure_cmfd 
+  public :: configure_cmfd
 
 contains
 
@@ -119,7 +119,7 @@ contains
       cmfd % egrid = (/0.0_8,20.0_8/)
       cmfd % indices(4) = 1 ! one energy group
     end if
-    
+
     ! Set global albedo
     if (check_for_node(node_mesh, "albedo")) then
       call get_node_array(node_mesh, "albedo", cmfd % albedo)
@@ -134,7 +134,7 @@ contains
       if (get_arraysize_integer(node_mesh, "map") /= &
           product(cmfd % indices(1:3))) then
         message = 'FATAL==>CMFD coremap not to correct dimensions'
-        call fatal_error() 
+        call fatal_error()
       end if
       allocate(iarray(get_arraysize_integer(node_mesh, "map")))
       call get_node_array(node_mesh, "map", iarray)
@@ -206,7 +206,7 @@ contains
 
     ! Batch to begin cmfd
     if (check_for_node(doc, "begin")) &
-      call get_node_value(doc, "begin", cmfd_begin) 
+      call get_node_value(doc, "begin", cmfd_begin)
 
     ! Tally during inactive batches
     if (check_for_node(doc, "inactive")) then
@@ -288,7 +288,7 @@ contains
     m => meshes(n_user_meshes+1)
 
     ! Set mesh id
-    m % id = n_user_meshes + 1 
+    m % id = n_user_meshes + 1
 
     ! Set mesh type to rectangular
     m % type = LATTICE_RECT
@@ -422,7 +422,7 @@ contains
       if (check_for_node(node_mesh, "energy")) then
         n_filters = n_filters + 1
         filters(n_filters) % type = FILTER_ENERGYIN
-        ng = get_arraysize_double(node_mesh, "energy") 
+        ng = get_arraysize_double(node_mesh, "energy")
         filters(n_filters) % n_bins = ng - 1
         allocate(filters(n_filters) % real_bins(ng))
         call get_node_array(node_mesh, "energy", &
@@ -454,20 +454,20 @@ contains
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! Allocate scoring bins 
+        ! Allocate scoring bins
         allocate(t % score_bins(3))
         t % n_score_bins = 3
         t % n_user_score_bins = 3
 
         ! Allocate scattering order data
-        allocate(t % scatt_order(3))
-        t % scatt_order = 0
-        
+        allocate(t % moment_order(3))
+        t % moment_order = 0
+
         ! Set macro_bins
         t % score_bins(1)  = SCORE_FLUX
         t % score_bins(2)  = SCORE_TOTAL
         t % score_bins(3)  = SCORE_SCATTER_N
-        t % scatt_order(3) = 1
+        t % moment_order(3) = 1
 
       else if (i == 2) then
 
@@ -507,8 +507,8 @@ contains
         t % n_user_score_bins = 2
 
         ! Allocate scattering order data
-        allocate(t % scatt_order(2))
-        t % scatt_order = 0
+        allocate(t % moment_order(2))
+        t % moment_order = 0
 
         ! Set macro_bins
         t % score_bins(1) = SCORE_NU_SCATTER
@@ -550,8 +550,8 @@ contains
         t % n_user_score_bins = 1
 
         ! Allocate scattering order data
-        allocate(t % scatt_order(1))
-        t % scatt_order = 0
+        allocate(t % moment_order(1))
+        t % moment_order = 0
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT

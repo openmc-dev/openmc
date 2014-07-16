@@ -337,26 +337,18 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % grid_index)) &
-           deallocate(this % grid_index)
+      if (allocated(this % grid_index)) deallocate(this % grid_index)
 
       if (allocated(this % energy)) &
-           deallocate(this % total, this % elastic, this % fission,  &
-          this % nu_fission, this % absorption)
-      if (allocated(this % heating)) &
-           deallocate(this % heating)
+           deallocate(this % energy, this % total, this % elastic, &
+           this % fission, this % nu_fission, this % absorption)
+      if (allocated(this % heating)) deallocate(this % heating)
 
-      if (allocated(this % index_fission)) &
-           deallocate(this % index_fission)
+      if (allocated(this % index_fission)) deallocate(this % index_fission)
 
-      if (allocated(this % nu_t_data)) &
-           deallocate(this % nu_t_data)
-
-      if (allocated(this % nu_p_data)) &
-           deallocate(this % nu_p_data)
-
-      if (allocated(this % nu_d_data)) &
-           deallocate(this % nu_d_data)
+      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
+      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
+      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
 
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)

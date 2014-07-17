@@ -29,7 +29,4 @@
     <upper_right>0.39218  0.39218  1.e50</upper_right>
     <dimension>10 10 1</dimension>
   </entropy>
- <state_point>
-    <batches>30</batches>
- </state_point>
 </settings>

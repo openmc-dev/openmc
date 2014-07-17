@@ -2330,7 +2330,8 @@ contains
         
      case (RELATIVE_ERROR_METHOD)
      !get the temprary relative error
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq/t% results(:,:) % trigger_sum
+       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq/t% results(:,:) % &
+                           trigger_sum
         
      case( STANDARD_DEVIATION_METHOD)
      !get the temprary relative standard deviation
@@ -2525,9 +2526,11 @@ contains
 
       call statistics_result(t % results, t % n_realizations)
     end do
-
+      
+      
     ! Calculate statistics for global tallies
     call statistics_result(global_tallies, n_realizations)
+    
 
   end subroutine tally_statistics
   
@@ -2590,14 +2593,9 @@ contains
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
-  if(.not.trigger_on) then
     this % sum    = this % sum/n
     this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
          this % sum) / (n - 1))
-    else 
-    this % sum = this % trigger_sum
-    this % sum_sq = this % trigger_sum_sq
-    end if
 
   end subroutine statistics_result
 

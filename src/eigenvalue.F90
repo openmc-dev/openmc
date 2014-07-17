@@ -93,7 +93,7 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-    
+      
       !Check batches
       call check_batch()
       if(reach_trigger) then
@@ -102,7 +102,7 @@ contains
       end if 
     
     end do BATCH_LOOP
-    
+       
     call time_active % stop()
 
     ! ==========================================================================
@@ -213,7 +213,6 @@ contains
       call reset_result(global_tallies)
       n_realizations = 0
     end if
-
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
 
@@ -265,6 +264,7 @@ contains
      call statepoint_batch%add(current_batch)
       ! Create state point file
      call write_state_point()
+     if (master) call calculate_combined_keff()
      end if
 
     if (.not.sourcepoint_batch % contains(current_batch)) then 
@@ -273,7 +273,7 @@ contains
       call write_source_point()
      end if
     end if
-    call calculate_combined_keff()
+   
  end subroutine write_last_state_point
 
 !===============================================================================

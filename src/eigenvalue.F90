@@ -263,8 +263,6 @@ contains
  subroutine write_last_state_point()
      if (.not.statepoint_batch % contains(current_batch)) then
      call statepoint_batch%add(current_batch)
-   
-     if (master) call calculate_combined_keff() 
       ! Create state point file
      call write_state_point()
      end if
@@ -275,7 +273,7 @@ contains
       call write_source_point()
      end if
     end if
-
+    call calculate_combined_keff()
  end subroutine write_last_state_point
 
 !===============================================================================

@@ -2590,10 +2590,14 @@ contains
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
-
+  if(.not.trigger_on) then
     this % sum    = this % sum/n
     this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
          this % sum) / (n - 1))
+    else 
+    this % sum = this % trigger_sum
+    this % sum_sq = this % trigger_sum_sq
+    end if
 
   end subroutine statistics_result
 

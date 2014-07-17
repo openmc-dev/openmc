@@ -30,6 +30,6 @@
     <dimension>10 10 1</dimension>
   </entropy>
  <state_point>
-    <interval>7</interval>
+    <batches>30</batches>
  </state_point>
 </settings>

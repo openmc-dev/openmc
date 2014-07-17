@@ -97,6 +97,7 @@ contains
       !Check batches
       call check_batch()
       if(reach_trigger) then
+      call write_last_state_point()
       exit  BATCH_LOOP
       end if 
     
@@ -255,6 +256,27 @@ contains
       end if 
      end if
  end subroutine check_batch
+ 
+!===============================================================================
+! Write_last_state_point writes the statepoint file when threshold is reached
+!===============================================================================
+ subroutine write_last_state_point()
+     if (.not.statepoint_batch % contains(current_batch)) then
+     call statepoint_batch%add(current_batch)
+   
+     if (master) call calculate_combined_keff() 
+      ! Create state point file
+     call write_state_point()
+     end if
+
+    if (.not.sourcepoint_batch % contains(current_batch)) then 
+     if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+        source_write) then
+      call write_source_point()
+     end if
+    end if
+
+ end subroutine write_last_state_point
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were

@@ -15,7 +15,7 @@
   
   
  <trigger type="rel_err">
-  <threshold>1</threshold>
+  <threshold>1e-10</threshold>
   <batch_interval>2</batch_interval>
   <max_batch>40</max_batch>
  </trigger>

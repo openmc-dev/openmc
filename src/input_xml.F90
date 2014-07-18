@@ -80,7 +80,11 @@ contains
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      message = "Settings XML file '" // trim(filename) // "' does not exist!"
+      message = "Settings XML file '" // trim(filename) // "' does not exist! &
+           &In order to run OpenMC, you first need a set of input files; at a &
+           &minimum, this includes settings.xml, geometry.xml, and &
+           &materials.xml. Please consult the user's guide at &
+           &http://mit-crpg.github.io/openmc for further information."
       call fatal_error()
     end if
 
@@ -98,7 +102,11 @@ contains
         call get_environment_variable("CROSS_SECTIONS", env_variable)
         if (len_trim(env_variable) == 0) then
           message = "No cross_sections.xml file was specified in settings.xml &
-               &or in the CROSS_SECTIONS environment variable."
+               &or in the CROSS_SECTIONS environment variable. OpenMC needs a &
+               &cross_sections.xml file to identify where to find ACE cross &
+               &section libraries. Please consult the user's guide at &
+               &http://mit-crpg.github.io/openmc for information on how to set &
+               &up ACE cross section libraries."
           call fatal_error()
         else
           path_cross_sections = trim(env_variable)
@@ -177,7 +185,7 @@ contains
 
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = temp_long 
+      if (n_particles == 0) n_particles = temp_long
 
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
@@ -270,10 +278,10 @@ contains
     else
 
       ! Spatial distribution for external source
-      if (check_for_node(node_source, "space")) then 
+      if (check_for_node(node_source, "space")) then
 
         ! Get pointer to spatial distribution
-        call get_node_ptr(node_source, "space", node_dist) 
+        call get_node_ptr(node_source, "space", node_dist)
 
         ! Check for type of spatial distribution
         type = ''
@@ -616,7 +624,7 @@ contains
       elseif (check_for_node(node_sp, "interval")) then
         ! User gave an interval for writing state points
         call get_node_value(node_sp, "interval", temp_int)
-        n_state_points = n_batches / temp_int 
+        n_state_points = n_batches / temp_int
         do i = 1, n_state_points
           call statepoint_batch % add(temp_int * i)
         end do
@@ -640,7 +648,7 @@ contains
 
       ! Determine number of batches at which to store source points
       if (check_for_node(node_sp, "batches")) then
-        n_source_points = get_arraysize_integer(node_sp, "batches") 
+        n_source_points = get_arraysize_integer(node_sp, "batches")
       else
         n_source_points = 0
       end if
@@ -692,7 +700,7 @@ contains
       end if
     else
       ! If no <source_point> tag was present, by default we keep source bank in
-      ! statepoint file and write it out at statepoints intervals 
+      ! statepoint file and write it out at statepoints intervals
       source_separate = .false.
       n_source_points = n_state_points
       do i = 1, n_state_points
@@ -936,7 +944,7 @@ contains
 
       ! Check to make sure that either material or fill was specified
       if (c % material == NONE .and. c % fill == NONE) then
-        message = "Neither material nor fill was specified for cell " // & 
+        message = "Neither material nor fill was specified for cell " // &
              trim(to_str(c % id))
         call fatal_error()
       end if
@@ -1131,7 +1139,7 @@ contains
 
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
-        message = "Not enough coefficients specified for surface: " // & 
+        message = "Not enough coefficients specified for surface: " // &
              trim(to_str(s % id))
         call fatal_error()
       elseif (n > coeffs_reqd) then
@@ -1731,7 +1739,7 @@ contains
         ! Check to make sure cross-section is continuous energy neutron table
         n = len_trim(name)
         if (name(n:n) /= 'c') then
-          message = "Cross-section table " // trim(name) // & 
+          message = "Cross-section table " // trim(name) // &
                " is not a continuous-energy neutron table."
           call fatal_error()
         end if
@@ -1760,7 +1768,7 @@ contains
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
-      if (.not. (all(mat % atom_density > ZERO) .or. & 
+      if (.not. (all(mat % atom_density > ZERO) .or. &
            all(mat % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
              to_str(mat % id)
@@ -1861,12 +1869,14 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
-    integer :: n_new         ! number of new scores to add based on Pn tally
-    integer :: n_scores      ! number of tot scores after adjusting for Pn tally
-    integer :: n_order       ! Scattering order requested
+    integer :: n_new         ! number of new scores to add based on Yn/Pn tally
+    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
+    integer :: n_bins        ! Total new bins for this score
+    integer :: n_order       ! Moment order requested
     integer :: n_order_pos   ! Position of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
+    integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     real(8) :: rarray3(3)    ! temporary double prec. array
     character(MAX_LINE_LEN) :: filename
@@ -2284,7 +2294,7 @@ contains
 
           case default
             ! Specified tally filter is invalid, raise error
-            message = "Unknown filter type '" // & 
+            message = "Unknown filter type '" // &
                  trim(temp_str) // "' on tally " // &
                  trim(to_str(t % id)) // "."
             call fatal_error()
@@ -2336,7 +2346,7 @@ contains
           t % all_nuclides = .true.
         else
           ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
-          n_words = get_arraysize_string(node_tal, "nuclides") 
+          n_words = get_arraysize_string(node_tal, "nuclides")
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
             ! Check if total material was specified
@@ -2358,7 +2368,7 @@ contains
                     word = pair_list % key(1:150)
                     exit
                   end if
-                  
+
                   ! Advance to next
                   pair_list => pair_list % next
                 end do
@@ -2407,79 +2417,110 @@ contains
       ! READ DATA FOR SCORES
 
       if (check_for_node(node_tal, "scores")) then
-        ! Loop through scores and determine if a scatter-p# input was used
-        ! to allow for proper pre-allocating of t % score_bins
-        ! This scheme allows multiple scatter-p# to be requested by the user
-        ! if so desired
         n_words = get_arraysize_string(node_tal, "scores")
         allocate(sarray(n_words))
         call get_node_array(node_tal, "scores", sarray)
+
+        ! Before we can allocate storage for scores, we must determine the
+        ! number of additional scores required due to the moment scores
+        ! (i.e., scatter-p#, flux-y#)
         n_new = 0
         do j = 1, n_words
           call lower_case(sarray(j))
-          ! Find if scores(j) is of the form 'scatter-p'
-          ! If so, get the number and do a select case on that.
+          ! Find if scores(j) is of the form 'moment-p' or 'moment-y' present in
+          ! MOMENT_STRS(:)
+          ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
-          if (starts_with(score_name,'scatter-p')) then
-            n_order_pos = scan(score_name,'0123456789')
-            n_order = int(str_to_int( &
-              score_name(n_order_pos:(len_trim(score_name)))),4)
-            if (n_order > SCATT_ORDER_MAX) then
-              ! Throw a warning. Set to the maximum number.
-              ! The above scheme will essentially take the absolute value
-              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
-                " requested. Setting to the maximum permissible value, " // &
-                trim(to_str(SCATT_ORDER_MAX))
-              call warning()
-              n_order = SCATT_ORDER_MAX
-              sarray(j) = SCATT_ORDER_MAX_PNSTR
+          do imomstr = 1, size(MOMENT_STRS)
+            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
+              n_order_pos = scan(score_name,'0123456789')
+              n_order = int(str_to_int( &
+                score_name(n_order_pos:(len_trim(score_name)))),4)
+              if (n_order > MAX_ANG_ORDER) then
+                ! User requested too many orders; throw a warning and set to the
+                ! maximum order.
+                ! The above scheme will essentially take the absolute value
+                message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                  " requested. Setting to the maximum permissible value, " // &
+                  trim(to_str(MAX_ANG_ORDER))
+                call warning()
+                n_order = MAX_ANG_ORDER
+                sarray(j) = trim(MOMENT_STRS(imomstr)) // &
+                  trim(to_str(MAX_ANG_ORDER))
+              end if
+              ! Find total number of bins for this case
+              if (imomstr >= YN_LOC) then
+                n_bins = (n_order + 1)**2
+              else
+                n_bins = n_order + 1
+              end if
+              ! We subtract one since n_words already included
+              n_new = n_new + n_bins - 1
+              exit
             end if
-            n_new = n_new + n_order
-          end if
+          end do
         end do
         n_scores = n_words + n_new
-        
-        ! Allocate accordingly
+
+        ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
-        allocate(t % scatt_order(n_scores))
-        t % scatt_order = 0
+        allocate(t % moment_order(n_scores))
+        t % moment_order = 0
         j = 0
         do l = 1, n_words
           j = j + 1
-          ! Get the input string in scores(l) but if scatter-n or scatter-pn
-          ! then strip off the n, and store it as an integer to be used later
-          ! Peform the select case on this modified (number removed) string
+          ! Get the input string in scores(l) but if score is one of the moment
+          ! scores then strip off the n and store it as an integer to be used
+          ! later. Then perform the select case on this modified (number removed) string
           score_name = sarray(l)
-          if (starts_with(score_name,'scatter-p')) then
-            n_order_pos = scan(score_name,'0123456789')
-            n_order = int(str_to_int( &
-              score_name(n_order_pos:(len_trim(score_name)))),4)
-            if (n_order > SCATT_ORDER_MAX) then
-              ! Throw a warning. Set to the maximum number.
-              ! The above scheme will essentially take the absolute value
-              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
-                " requested. Setting to the maximum permissible value, " // &
-                trim(to_str(SCATT_ORDER_MAX))
-              call warning()
-              n_order = SCATT_ORDER_MAX
+          do imomstr = 1, size(MOMENT_STRS)
+            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
+              n_order_pos = scan(score_name,'0123456789')
+              n_order = int(str_to_int( &
+                score_name(n_order_pos:(len_trim(score_name)))),4)
+              if (n_order > MAX_ANG_ORDER) then
+                ! User requested too many orders; throw a warning and set to the
+                ! maximum order.
+                ! The above scheme will essentially take the absolute value
+                message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                  " requested. Setting to the maximum permissible value, " // &
+                  trim(to_str(MAX_ANG_ORDER))
+                call warning()
+                n_order = MAX_ANG_ORDER
+              end if
+              score_name = trim(MOMENT_STRS(imomstr)) // "n"
+              ! Find total number of bins for this case
+              if (imomstr >= YN_LOC) then
+                n_bins = (n_order + 1)**2
+              else
+                n_bins = n_order + 1
+              end if
+              exit
             end if
-            score_name = "scatter-pn"
-          else if (starts_with(score_name,'scatter-')) then
-            n_order_pos = scan(score_name,'0123456789')
-            n_order = int(str_to_int( &
-              score_name(n_order_pos:(len_trim(score_name)))),4)
-            if (n_order > SCATT_ORDER_MAX) then
-              ! Throw a warning. Set to the maximum number.
-              ! The above scheme will essentially take the absolute value
-              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
-                " requested. Setting to the maximum permissible value, " // &
-                trim(to_str(SCATT_ORDER_MAX))
-              call warning()
-              n_order = SCATT_ORDER_MAX
-            end if
-            score_name = "scatter-n"
+          end do
+          ! Now check the Moment_N_Strs, but only if we werent successful above
+          if (imomstr > size(MOMENT_STRS)) then
+            do imomstr = 1, size(MOMENT_N_STRS)
+              if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
+                n_order_pos = scan(score_name,'0123456789')
+                n_order = int(str_to_int( &
+                  score_name(n_order_pos:(len_trim(score_name)))),4)
+                if (n_order > MAX_ANG_ORDER) then
+                  ! User requested too many orders; throw a warning and set to the
+                  ! maximum order.
+                  ! The above scheme will essentially take the absolute value
+                  message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                    " requested. Setting to the maximum permissible value, " // &
+                    trim(to_str(MAX_ANG_ORDER))
+                  call warning()
+                  n_order = MAX_ANG_ORDER
+                end if
+                score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
+                exit
+              end if
+            end do
           end if
-          
+
           select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
@@ -2494,6 +2535,23 @@ contains
               message = "Cannot tally flux with an outgoing energy filter."
               call fatal_error()
             end if
+          case ('flux-yn')
+            ! Prohibit user from tallying flux for an individual nuclide
+            if (.not. (t % n_nuclide_bins == 1 .and. &
+                 t % nuclide_bins(1) == -1)) then
+              message = "Cannot tally flux for an individual nuclide."
+              call fatal_error()
+            end if
+
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              message = "Cannot tally flux with an outgoing energy filter."
+              call fatal_error()
+            end if
+
+            t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins  - 1
+
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -2501,9 +2559,21 @@ contains
                    &outgoing energy filter."
               call fatal_error()
             end if
+
+          case ('total-yn')
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              message = "Cannot tally total reaction rate with an &
+                   &outgoing energy filter."
+              call fatal_error()
+            end if
+
+            t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
-            
+
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
@@ -2517,22 +2587,53 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
-            t % scatt_order(j) = n_order
-            
+            t % moment_order(j) = n_order
+
+          case ('nu-scatter-n')
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
+            if (n_order == 0) then
+              t % score_bins(j) = SCORE_NU_SCATTER
+            else
+              t % score_bins(j) = SCORE_NU_SCATTER_N
+            end if
+            t % moment_order(j) = n_order
+
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
-            t % scatt_order(j : j + n_order) = n_order
-            j = j + n_order
-            
+            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
+          case ('nu-scatter-pn')
+            t % estimator = ESTIMATOR_ANALOG
+            ! Setup P0:Pn
+            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
+          case ('scatter-yn')
+            t % estimator = ESTIMATOR_ANALOG
+            ! Setup P0:Pn
+            t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
+          case ('nu-scatter-yn')
+            t % estimator = ESTIMATOR_ANALOG
+            ! Setup P0:Pn
+            t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('diffusion')
-            message = "Diffusion score no longer supported for tallies, & 
+            message = "Diffusion score no longer supported for tallies, &
                       &please remove"
             call fatal_error()
           case ('n1n')
@@ -2635,14 +2736,14 @@ contains
                 t % score_bins(j) = MT
               else
                 message = "Invalid MT on <scores>: " // &
-                     trim(sarray(j))
+                     trim(sarray(l))
                 call fatal_error()
               end if
 
             else
               ! Specified score was not an integer
               message = "Unknown scoring function: " // &
-                   trim(sarray(j))
+                   trim(sarray(l))
               call fatal_error()
             end if
 
@@ -2791,7 +2892,7 @@ contains
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
              "_" // trim(filename) // ".voxel"
       end select
-      
+
       ! Copy plot pixel size
       if (pl % type == PLOT_TYPE_SLICE) then
         if (get_arraysize_integer(node_plot, "pixels") == 2) then
@@ -2814,7 +2915,7 @@ contains
       ! Copy plot background color
       if (check_for_node(node_plot, "background")) then
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Background color ignored in voxel plot " // & 
+          message = "Background color ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
@@ -2828,7 +2929,7 @@ contains
       else
         pl % not_found % rgb = (/ 255, 255, 255 /)
       end if
-      
+
       ! Copy plot basis
       if (pl % type == PLOT_TYPE_SLICE) then
         temp_str = 'xy'
@@ -2843,12 +2944,12 @@ contains
         case ("yz")
           pl % basis = PLOT_BASIS_YZ
         case default
-          message = "Unsupported plot basis '" // trim(temp_str) & 
+          message = "Unsupported plot basis '" // trim(temp_str) &
                // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
         end select
       end if
-      
+
       ! Copy plotting origin
       if (get_arraysize_double(node_plot, "origin") == 3) then
         call get_node_array(node_plot, "origin", pl % origin)
@@ -2915,13 +3016,13 @@ contains
 
       ! Copy user specified colors
       if (n_cols /= 0) then
-      
+
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Color specifications ignored in voxel plot " // & 
+          message = "Color specifications ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
-      
+
         do j = 1, n_cols
 
           ! Get pointer to color spec XML node
@@ -2931,7 +3032,7 @@ contains
           if (get_arraysize_double(node_col, "rgb") /= 3) then
             message = "Bad RGB " &
                  // "in plot " // trim(to_str(pl % id))
-            call fatal_error()          
+            call fatal_error()
           end if
 
           ! Ensure that there is an id for this color specification
@@ -2974,13 +3075,13 @@ contains
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)
       if (n_masks /= 0) then
-      
+
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Mask ignored in voxel plot " // & 
+          message = "Mask ignored in voxel plot " // &
                      trim(to_str(pl % id))
           call warning()
         end if
-      
+
         select case(n_masks)
           case default
             message = "Mutliple masks" // &
@@ -3001,14 +3102,14 @@ contains
             end if
             allocate(iarray(n_comp))
             call get_node_array(node_mask, "components", iarray)
- 
+
             ! First we need to change the user-specified identifiers to indices
             ! in the cell and material arrays
             do j=1, n_comp
               col_id = iarray(j)
-            
+
               if (pl % color_by == PLOT_COLOR_CELLS) then
-              
+
                 if (cell_dict % has_key(col_id)) then
                   iarray(j) = cell_dict % get_key(col_id)
                 else
@@ -3016,9 +3117,9 @@ contains
                        " specified in the mask in plot " // trim(to_str(pl % id))
                   call fatal_error()
                 end if
-              
+
               else if (pl % color_by == PLOT_COLOR_MATS) then
-              
+
                 if (material_dict % has_key(col_id)) then
                   iarray(j) = material_dict % get_key(col_id)
                 else
@@ -3026,10 +3127,10 @@ contains
                        " specified in the mask in plot " // trim(to_str(pl % id))
                   call fatal_error()
                 end if
-                
-              end if  
+
+              end if
             end do
-          
+
             ! Alter colors based on mask information
             do j=1,size(pl % colors)
               if (.not. any(j .eq. iarray)) then
@@ -3044,9 +3145,9 @@ contains
             end do
 
             deallocate(iarray)
-            
+
         end select
-        
+
       end if
 
       ! Add plot to dictionary
@@ -3086,7 +3187,7 @@ contains
             "' does not exist!"
        call fatal_error()
     end if
-    
+
     message = "Reading cross sections XML file..."
     call write_message(5)
 

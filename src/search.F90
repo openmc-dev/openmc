@@ -12,6 +12,29 @@ module search
 contains
 
 !===============================================================================
+! NEAR_NEIGHB finds the nearest-neighbor index given bounds and a value
+!===============================================================================
+
+  function near_neighb(i_low, lower, upper, val) result(i_near)
+
+    real(8), intent(in) :: lower  ! lower bound value
+    real(8), intent(in) :: upper  ! upper bound value
+    real(8), intent(in) :: val    ! value
+    integer             :: i_low  ! lower bound index
+    integer             :: i_near ! nearest-neighbor index
+    real(8)             :: dlow   ! distance to lower bound
+    real(8)             :: dup    ! distance to upper bound
+
+    dlow = val - lower
+    dup  = upper - val
+
+    i_near = i_low
+
+    if (dup < dlow) i_near = i_near + 1
+
+  end function near_neighb
+
+!===============================================================================
 ! BINARY_SEARCH performs a binary search of an array to find where a specific
 ! value lies in the array. This is used extensively for energy grid searching
 !===============================================================================

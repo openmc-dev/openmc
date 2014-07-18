@@ -4,6 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
+  use endf_reader,      only: read_endf
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
@@ -73,6 +74,9 @@ contains
 
     ! Read XML input files
     call read_input_xml()
+
+    ! Read ENDF files
+    call read_endf()
 
     ! Initialize random number generator -- this has to be done after the input
     ! files have been read in case the user specified a seed for the random

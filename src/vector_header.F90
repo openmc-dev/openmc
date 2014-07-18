@@ -9,6 +9,16 @@ module vector_header
   implicit none
   private
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! VECTOR is an object containing a vector of values
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type, public :: URRVector
+    real(8), allocatable :: vals(:)
+  end type URRVector
+
   type, public :: Vector 
     integer :: n        ! number of rows/cols in matrix
     real(8), allocatable :: data(:) ! where vector data is stored

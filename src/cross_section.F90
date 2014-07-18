@@ -9,6 +9,7 @@ module cross_section
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
+  use unresolved,      only: calculate_urr_xs_otf
 
   implicit none
   save
@@ -195,7 +196,7 @@ contains
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
          + f * nuc % total(i_grid+1)
 
-    ! Calculate microscopic nuclide total cross section
+    ! Calculate microscopic nuclide elastic cross section
     micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
          + f * nuc % elastic(i_grid+1)
 
@@ -230,10 +231,14 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
 
-    if (urr_ptables_on .and. nuc % urr_present) then
+    if (nuc % otf_urr) then
+      if (E * 1.0E6_8 >= nuc % EL .and. E * 1.0E6_8 <= nuc % EH) then
+        call calculate_urr_xs_otf(i_nuclide, E * 1.0E6_8)
+      end if
+    else if (urr_ptables_on .and. nuc % urr_present) then
       if (E > nuc % urr_data % energy(1) .and. &
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-        call calculate_urr_xs(i_nuclide, E)
+        call calculate_urr_xs_ptable(i_nuclide, E)
       end if
     end if
 
@@ -330,11 +335,11 @@ contains
   end subroutine calculate_sab_xs
 
 !===============================================================================
-! CALCULATE_URR_XS determines cross sections in the unresolved resonance range
-! from probability tables
+! CALCULATE_URR_XS_PTABLE determines cross sections in the unresolved resonance
+! range from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(i_nuclide, E)
+  subroutine calculate_urr_xs_ptable(i_nuclide, E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
@@ -458,7 +463,7 @@ contains
            micro_xs(i_nuclide) % fission
     end if
 
-  end subroutine calculate_urr_xs
+  end subroutine calculate_urr_xs_ptable
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain

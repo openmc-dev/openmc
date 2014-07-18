@@ -1,7 +1,8 @@
 module ace_header
 
-  use constants,   only: MAX_FILE_LEN
-  use endf_header, only: Tab1
+  use constants,     only: MAX_FILE_LEN, ONE, THREE
+  use endf_header,   only: Tab1
+  use vector_header, only: URRVector
 
   implicit none
 
@@ -93,6 +94,7 @@ module ace_header
     integer       :: zaid    ! Z and A identifier, e.g. 92235
     integer       :: listing ! index in xs_listings
     real(8)       :: awr     ! weight of nucleus in neutron masses
+    real(8)       :: T       ! termperature in K
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Energy grid information
@@ -129,10 +131,69 @@ module ace_header
     real(8), allocatable :: nu_d_precursor_data(:)
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
-    ! Unresolved resonance data
+    ! Unresolved resonance information
+    logical                :: otf_urr
+    integer                :: n_resonances
+    integer                :: n_ES_grid ! # of energy points
     logical                :: urr_present
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
+
+    ! ENDF URR data
+    real(8) :: EL           ! lower energy bound of URR
+    real(8) :: EH           ! upper energy bound of URR
+    integer :: NRO          ! AP energy-dependence flag
+    integer :: NAPS         ! channel radius handling flag
+    real(8) :: SPI          ! total spin
+    real(8) :: AP           ! scattering radius
+    real(8) :: ac           ! channel radius
+    integer :: NLS          ! # of orbital quantum #'s
+    integer :: L            ! current orbital quantum #
+    integer :: LRX          ! competitive inelastic width flag
+    integer :: LSSF         ! self-shielding factor flag
+    integer :: LRP          ! resonance parameter flag
+! TODO: only accept LRP of 1
+! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
+
+    ! # of total angular momenta for each orbital quantum #
+    integer, allocatable      :: NJS(:)
+    type(URRVector), allocatable :: J_grid(:) ! values at each orbital quantum #
+    real(8)                   :: J         ! current total angular momentum
+
+    ! degrees of freedom at each orbital quantum # (one value for each J value)
+    type(URRVector), allocatable :: AMUX_grid(:) ! competitive reaction values
+    integer                   :: AMUX         ! current value
+    type(URRVector), allocatable :: AMUN_grid(:) ! elastic neutron scatter values
+    integer                   :: AMUN         ! current value
+    type(URRVector), allocatable :: AMUG_grid(:) ! capture values
+    integer                   :: AMUG         ! current value
+    type(URRVector), allocatable :: AMUF_grid(:) ! fission values
+    integer                   :: AMUF         ! current value
+
+    ! energy grid of probability tables
+    real(8), allocatable :: ES_grid(:)
+    real(8)              :: ES ! current energy
+    real(8)              :: E  ! neutron energy
+
+    ! mean level spacing for a value of J for a given (E,l)
+    type(URRVector), allocatable :: D_means(:,:)
+    real(8)                   :: D ! current value
+
+    ! mean neutron width for a value of J for a given (E,l)
+    type(URRVector), allocatable :: Gam_n_means(:,:)
+    real(8)                   :: GN0 ! current value
+
+    ! mean radiative width for a value of J for a given (E,l)
+    type(URRVector), allocatable :: Gam_gam_means(:,:)
+    real(8)                   :: GG ! current mean value
+
+    ! mean fission width for a value of J for a given (E,l)
+    type(URRVector), allocatable :: Gam_f_means(:,:)
+    real(8)                   :: GF ! current value
+
+    ! mean competitive width for a value of J for a given (E,l)
+    type(URRVector), allocatable :: Gam_x_means(:,:)
+    real(8)                   :: GX ! current value
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -140,7 +201,19 @@ module ace_header
 
     ! Type-Bound procedures
     contains
-      procedure :: clear => nuclide_clear ! Deallocates Nuclide
+
+      ! allocate a nuclide object
+      procedure :: alloc       => allocator
+
+      ! Deallocates Nuclide
+      procedure :: clear => nuclide_clear
+
+      ! pre-process data that needs it
+      procedure :: pprocess    => pre_process
+
+      ! set channel radius
+      procedure :: rad_channel => channel_radius
+
   end type Nuclide
 
 !===============================================================================
@@ -327,6 +400,61 @@ module ace_header
 
     end subroutine urrdata_clear
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ALLOCATOR allocates memory for a single nuclide
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine allocator(this)
+    
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    integer :: i_L ! orbital quantum # index
+    integer :: i_E ! energy grid index
+
+    ! allocate energy grid
+    allocate(this % ES_grid(this % n_ES_grid))
+
+    ! allocate total angular momentum quantum #'s
+    allocate(this % NJS(this % NLS))
+    allocate(this % J_grid(this % NLS))
+
+    ! allocate degress of freedom for partial widths
+    allocate(this % AMUX_grid(this % NLS))
+    allocate(this % AMUN_grid(this % NLS))
+    allocate(this % AMUG_grid(this % NLS))
+    allocate(this % AMUF_grid(this % NLS))
+
+    ! allocate mean widths and spacings
+    allocate(this % D_means(this % n_ES_grid, this % NLS))
+    allocate(this % Gam_n_means(this % n_ES_grid, this % NLS))
+    allocate(this % Gam_gam_means(this % n_ES_grid, this % NLS))
+    allocate(this % Gam_f_means(this % n_ES_grid, this % NLS))
+    allocate(this % Gam_x_means(this % n_ES_grid, this % NLS))
+
+! TODO: read in NJS(:) from ENDF
+
+    ! allocate space for the different spin sequences (i.e. (l,J) pairs)
+    do i_L = 1, this % NLS
+
+      allocate(this % J_grid(i_L)    % vals(this % NJS(i_L)))
+      allocate(this % AMUX_grid(i_L) % vals(this % NJS(i_L)))
+      allocate(this % AMUN_grid(i_L) % vals(this % NJS(i_L)))
+      allocate(this % AMUG_grid(i_L) % vals(this % NJS(i_L)))
+      allocate(this % AMUF_grid(i_L) % vals(this % NJS(i_L)))
+
+      do i_E = 1, this % n_ES_grid
+        allocate(this % D_means(i_E, i_L)       % vals(this % NJS(i_L)))
+        allocate(this % Gam_n_means(i_E, i_L)   % vals(this % NJS(i_L)))
+        allocate(this % Gam_gam_means(i_E, i_L) % vals(this % NJS(i_L)))
+        allocate(this % Gam_f_means(i_E, i_L)   % vals(this % NJS(i_L)))
+        allocate(this % Gam_x_means(i_E, i_L)   % vals(this % NJS(i_L)))
+      end do
+    end do
+
+  end subroutine allocator
+
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
 !===============================================================================
@@ -336,6 +464,8 @@ module ace_header
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
+      integer :: i_L ! orbital quantum # index
+      integer :: i_E ! energy grid index
 
       if (allocated(this % grid_index)) deallocate(this % grid_index)
 
@@ -372,6 +502,141 @@ module ace_header
         deallocate(this % reactions)
       end if
 
+      ! deallocate energy grid
+      if (allocated(this % ES_grid)) deallocate(this % ES_grid)
+      
+      ! deallocate space for the different spin sequences (i.e. (l,J) pairs)
+      do i_L = 1, this % NLS
+        
+        if (allocated(this % J_grid(i_L) % vals)) &
+          & deallocate(this % J_grid(i_L) % vals)
+        
+        if (allocated(this % AMUX_grid(i_L) % vals)) &
+          & deallocate(this % AMUX_grid(i_L) % vals)
+        
+        if (allocated(this % AMUN_grid(i_L) % vals)) &
+          & deallocate(this % AMUN_grid(i_L) % vals)
+        
+        if (allocated(this % AMUG_grid(i_L) % vals)) &
+          & deallocate(this % AMUG_grid(i_L) % vals)
+        
+        if (allocated(this % AMUF_grid(i_L) % vals)) &
+          & deallocate(this % AMUF_grid(i_L) % vals)
+        
+        do i_E = 1, this % n_ES_grid
+          if (allocated(this % D_means(i_E, i_L) % vals)) &
+            & deallocate(this % D_means(i_E, i_L) % vals)
+          if (allocated(this % Gam_n_means(i_E, i_L) % vals)) &
+            & deallocate(this % Gam_n_means(i_E, i_L) % vals)
+          if (allocated(this % Gam_gam_means(i_E, i_L) % vals)) &
+            & deallocate(this % Gam_gam_means(i_E, i_L) % vals)
+          if (allocated(this % Gam_f_means(i_E, i_L) % vals)) &
+            & deallocate(this % Gam_f_means(i_E, i_L) % vals)
+          if (allocated(this % Gam_x_means(i_E, i_L) % vals)) &
+            & deallocate(this % Gam_x_means(i_E, i_L) % vals)
+        end do
+      end do
+      
+      ! deallocate total angular momentum quantum #'s
+      if (allocated(this % NJS))     deallocate(this % NJS)
+      if (allocated(this % J_grid))  deallocate(this % J_grid)
+      
+      ! deallocate mean unresolved resonance parameters
+      if (allocated(this % AMUX_grid))     deallocate(this % AMUX_grid)
+      if (allocated(this % AMUN_grid))     deallocate(this % AMUN_grid)
+      if (allocated(this % AMUG_grid))     deallocate(this % AMUG_grid)
+      if (allocated(this % AMUF_grid))     deallocate(this % AMUF_grid)
+      if (allocated(this % D_means))       deallocate(this % D_means)
+      if (allocated(this % Gam_n_means))   deallocate(this % Gam_n_means)
+      if (allocated(this % Gam_gam_means)) deallocate(this % Gam_gam_means)
+      if (allocated(this % Gam_f_means))   deallocate(this % Gam_f_means)
+      if (allocated(this % Gam_x_means))   deallocate(this % Gam_x_means)
+      
     end subroutine nuclide_clear
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! PRE_PROCESS pre-processes any nuclear data that needs it
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine pre_process(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    ! set the channel radius
+    call this % rad_channel
+
+  end subroutine pre_process
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CHANNEL_RADIUS computes or sets the channel radius depending on ENDF flags
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine channel_radius(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    select case(this % NRO)
+
+    ! scattering radius is independent of energy
+    case(0)
+
+      select case(this % NAPS)
+
+        ! use channel radius for penetrabilities and shift factors but
+        ! scattering radius for phase shifts
+        case(0)
+          this % ac = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+
+        ! use scattering radius for penetrabilities, shift factors and phase
+        ! shifts
+        case(1)
+          this % ac = this % AP
+
+        ! invalid scattering radius treatment flag
+        case default
+          print*, 'ENDF NAPS flag must be 0 or 1 when NRO is 0'
+          stop
+      end select
+
+    ! scattering radius is energy dependent
+    case(1)
+
+      select case(this % NAPS)
+
+        ! use channel radius for penetrabilities and shift factors but
+        ! scattering radius for phase shifts
+        case(0)
+          this % ac = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+
+        ! use scattering radius for penetrabilities, shift factors and phase
+        ! shifts
+        case(1)
+          this % ac = this % AP
+
+! TODO: understand this and implement it correctly
+        ! use energy dependent scattering radius in phase shifts but the energy
+        ! independent AP scattering radius value for penetrabilities and shift
+        ! factors
+        case(2)
+          this % ac = this % AP
+
+        ! invalid scattering radius treatment flag
+        case default
+          print*, 'ENDF NAPS flag must be 0, 1, or 2 when NRO is 1'
+          stop
+      end select
+
+    ! invalid energy dependence of scattering radius flag
+    case default
+      print*, 'ENDF NRO flag must be 0 or 1'
+      stop
+  
+    end select
+
+  end subroutine channel_radius
 
 end module ace_header

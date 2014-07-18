@@ -63,15 +63,26 @@ module constants
 
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
+       SQRT_PI      = sqrt(PI),          & ! sqrt of pi
        MASS_NEUTRON = 1.008664916,       & ! mass of a neutron in amu
+       M_NEUTRON_eV = 939.565379E6_8,    & ! neutron mass [eV]
        MASS_PROTON  = 1.007276466812,    & ! mass of a proton in amu
        AMU          = 1.660538921e-27,   & ! 1 amu in kg
        N_AVOGADRO   = 0.602214129,       & ! Avogadro's number in 10^24/mol
        K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
+       HBAR_C       = 197.3269718E6_8,   & ! [eV-fm]
        INFINITY     = huge(0.0_8),       & ! positive infinity
        ZERO         = 0.0_8,             &
+       HALF         = 0.5_8,             &
        ONE          = 1.0_8,             &
-       TWO          = 2.0_8
+       TWO          = 2.0_8,             &
+       THREE        = 3.0_8,             &
+       FOUR         = 4.0_8
+
+  ! constant appearing in SLBW equations
+  real(8) :: C_1 = sqrt(TWO * M_NEUTRON_eV) / HBAR_C * 1.0E1_8
+
+  complex(8), parameter :: ONEI = (ZERO, ONE)
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS

@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use endf_reader,      only: urr_endf_filenames, urr_zaids
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -15,6 +16,7 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
+  use unresolved,       only: URR_FREQUENCY, URR_METHOD
   use xml_interface
 
   implicit none
@@ -27,7 +29,7 @@ contains
 
 !===============================================================================
 ! READ_INPUT_XML calls each of the separate subroutines for reading settings,
-! geometry, materials, and tallies.
+! geometry, materials, tallies, and unresolved resonance region (URR) treatment.
 !===============================================================================
 
   subroutine read_input_xml()
@@ -37,7 +39,9 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
+    call read_urr_xml()
     if (cmfd_run) call configure_cmfd()
+    
 
   end subroutine read_input_xml
 
@@ -3035,6 +3039,110 @@ contains
     call close_xmldoc(doc)
 
   end subroutine read_plots_xml
+
+!===============================================================================
+! READ_URR_XML reads data from a urr.xml file and parses it, checking for
+! errors and placing properly-formatted data in the right data structures
+!===============================================================================
+
+  subroutine read_urr_xml()
+
+    integer :: i ! URR nuclides loop index
+    integer :: j ! all nuclides loop index
+    character(MAX_LINE_LEN) :: temp_str
+    character(MAX_LINE_LEN) :: filename
+    logical                 :: file_exists ! does urr.xml file exist?
+    type(Node),     pointer :: doc => null()
+    type(Node),     pointer :: otf_node => null()
+    type(NodeList), pointer :: nuc_list_node => null()
+    type(Node),     pointer :: nuc_node => null()
+
+    ! Check if urr.xml exists
+    filename = trim(path_input) // "urr.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+      ! Since a urr.xml file is optional, no error is issued here
+      return
+    end if
+
+    ! Display output message
+    message = "Reading urr XML file..."
+    call write_message(5)
+
+    ! Parse urr.xml file
+    call open_xmldoc(doc, filename)
+
+    ! Check that an on-the-fly URR treatment is specified
+    if (check_for_node(doc, "on_the_fly")) then
+      call get_node_ptr(doc, "on_the_fly", otf_node)
+    else
+      message = 'No on-the-fly URR treatment is specified in urr.xml.'
+      call fatal_error
+    end if
+
+    ! Check that a path to ENDF data is specified
+    if (check_for_node(doc, "endf_data_path")) then
+      call get_node_value(doc, "endf_data_path", path_endf)
+    else
+      message = 'No path to ENDF data files for URR treatment is specified'
+      call fatal_error
+    end if
+
+    ! Check if a method for the on-the-fly URR treatment is specified
+    if (check_for_node(otf_node, 'method')) then
+      call get_node_value(otf_node, 'method', URR_METHOD)
+      call lower_case(URR_METHOD)
+    else
+      URR_METHOD = 'slbw'
+    end if
+
+    ! Check if a xs calculation frequency is specified
+    if (check_for_node(otf_node, 'frequency')) then
+      call get_node_value(otf_node, 'frequency', URR_FREQUENCY)
+      call lower_case(URR_FREQUENCY)
+    else
+      URR_FREQUENCY = 'unlimited'
+    end if
+
+    ! Check for list of nuclides to apply the treatment to
+    if (check_for_node(otf_node, 'nuclide')) then
+      call get_node_list(otf_node, 'nuclide', nuc_list_node)
+
+      n_otf_urr_nuclides = get_list_size(nuc_list_node)
+      allocate(urr_zaids(n_otf_urr_nuclides))
+      allocate(urr_endf_filenames(n_otf_urr_nuclides))
+
+      ! Read in nuclide id's and ENDF filenames for the nuclide(s)
+      do i = 1, n_otf_urr_nuclides
+        call get_list_item(nuc_list_node, i, nuc_node)
+
+        ! Check that a nuclide ZAID # is given
+        if (.not. check_for_node(nuc_node, 'ZAID')) then
+          message = 'No nuclide ZAID # specified for nuclide ' &
+            & // trim(to_str(i)) // ' in urr.xml file.'
+          call fatal_error
+        end if
+
+        ! Check that an ENDF data file is given
+        if (.not. check_for_node(nuc_node, 'ENDF')) then
+          message = 'No ENDF data file specified for nuclide ' &
+            & // trim(to_str(i)) // ' in urr.xml file.'
+          call fatal_error
+        end if        
+
+        call get_node_value(nuc_node, 'ZAID', urr_zaids(i))
+        call get_node_value(nuc_node, 'ENDF', urr_endf_filenames(i) % filename)
+
+      end do
+    else
+      message = 'No nuclide(s) specified for the on-the-fly URR treatment.'
+      call fatal_error()
+    end if
+
+    ! Close URR XML file
+    call close_xmldoc(doc)
+
+  end subroutine read_urr_xml
 
 !===============================================================================
 ! READ_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This

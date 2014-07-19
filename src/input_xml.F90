@@ -61,8 +61,10 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
+    character(MAX_LINE_LEN) :: temp_str
     type(Node), pointer :: doc          => null()
     type(Node), pointer :: node_mode    => null()
+    type(Node), pointer :: node_trigger => null()
     type(Node), pointer :: node_source  => null()
     type(Node), pointer :: node_dist    => null()
     type(Node), pointer :: node_cutoff  => null()
@@ -151,13 +153,51 @@ contains
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
-
-      ! Copy batch and generation information
-      call get_node_value(node_mode, "batches", n_basic_batches)
-      if(.not. check_for_node(node_mode,"max_batches")) then
-      n_batches=n_basic_batches
-      else
-      call get_node_value(node_mode, "max_batches", n_batches)
+      
+      
+      ! Check for the node trigger_on to find the trigger status and get the
+      ! trigger information, i.e. max_batches, batch_interval and basic batches
+      if(check_for_node(node_mode,"trigger_on")) then
+        call get_node_ptr(node_mode,"trigger_on",node_trigger)
+        ! Get trigger status
+        get_node_value(node_trigger,"status",temp_str)
+        call lower_case(temp_str)
+        select case(temp_str)
+        case ("true") trigger_on = .true.
+        case ("false") trigger_on = .false.
+        case default
+          message = "Unknown trigger statu: "//trim(temp_str)
+          call fatal_error()
+        end select
+        
+        ! Get number of max_batches
+        if(.not.check_for_node(node_trigger,"max_batches") then
+          message = "Need to specify number of max_batches."\
+          call fatal_error()
+        end if
+        call get_node_value(node_trigger, "max_batches", n_batches)
+        
+        ! Get number of batch_interval
+        if(.not.check_for_node(node_trigger,"batch_interval") then
+          n_batch_interval = DEFAULT_BATCH_INTERVAL
+        else 
+         call get_node_value(node_trigger,"batch_interval",n_batch_interval)
+         if (.not.(n_batch_interval > 0)) then
+           message = "Batch_interval must be positive integer."
+           call fatal_error()
+         end if
+       end if 
+     end if
+       
+       ! Get number of basic batches.
+      if(check_for_node(node_mode,"batches")) then
+        call get_node_value(node_mode,"batches",n_basic_batches)
+        if(.not.trigger_on) then
+        n_batches = n_basic_batches
+        end if
+      else then
+        message = "Basic number of batches is not specified."
+        call fatal_error()
       end if
       
       call get_node_value(node_mode, "inactive", n_inactive)
@@ -1835,74 +1875,6 @@ contains
         assume_separate = .true.
     end if
     
-    ! ==========================================================================
-    ! READ TRIGGER DATA
-    
-    ! Check for trigger
-    if (check_for_node(doc, "trigger")) then
-       
-    ! Turn on trigger
-       trigger_on = .true.
-     
-    ! Get pointer to trigger
-       call get_node_ptr(doc, "trigger", node_trigger_mode)
-
-    ! Check for type of trigger
-       temp_str=' '
-       if (check_for_node(node_trigger_mode, "type")) then 
-         call get_node_value(node_trigger_mode, "type", temp_str)
-       else 
-         temp_str = 'variance'
-       end if
-       
-       call lower_case(temp_str)
-       
-       select case (trim(temp_str))
-       case ('variance')
-          trigger_method = VARIANCE_METHOD
-       case ('std_dev')
-          trigger_method = STANDARD_DEVIATION_METHOD 
-       case ('rel_err')
-          trigger_method = RELATIVE_ERROR_METHOD
-       case default
-         message = "Invalid type of trigger " &
-             // trim(temp_str)
-         call fatal_error()
-       end select
-        
-     ! Check for threshold of trigger
-        if(check_for_node(node_trigger_mode,"threshold")) then
-          call get_node_value(node_trigger_mode,"threshold",n_threshold)
-        else
-          n_threshold = DEFAULT_THRESHOLD
-        end if
-        
-     ! Check for added batches of trigger for cycle
-        if(check_for_node(node_trigger_mode,"batch_interval"))then
-          call get_node_value(node_trigger_mode,"batch_interval",n_batch_interval)
-        else
-          n_batch_interval = DEFAULT_BATCH_INTERVAL
-        end if
-        
-     ! Check for max batch for trigger     
-         if(check_for_node(node_trigger_mode,"max_batch"))then
-           call get_node_value(node_trigger_mode,"max_batch",n_max_batch)
-         else 
-           n_max_batch = DEFAULT_MAX_BATCH
-        end if
-         
-         if(n_max_batch/=n_batches) then
-            message= "The values of max batch in settings XML and tally XML are &
-                      &different"
-            call fatal_error()
-         elseif(n_max_batch<(n_basic_batches+n_batch_interval)) then
-            message= "The number of max batch must be bigger than the &
-                      &sum of batch"
-            call fatal_error()
-         end if
-     end if
- 
-
     ! ==========================================================================
     ! READ MESH DATA
 

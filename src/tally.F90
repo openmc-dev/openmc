@@ -13,7 +13,8 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
-  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement,&
+                              TriggerObject, TallyObject
 
 #ifdef MPI
   use mpi
@@ -2300,67 +2301,170 @@ contains
 !===============================================================================
 ! CHECK FOR reach the threshold
 !=============================================================================== 
-  subroutine check_for_trigger() 
-   integer :: i     ! index in tallies array
-   integer :: j      ! temporary index for score bins result
-   integer :: k      ! temporary index for score scores result
-   integer :: n      ! number of filter bins
-   integer :: m      ! number of score bins
-   real(8), allocatable :: temp_trigger(:,:) ! temporary real for comparision
-
-   type(TallyObject), pointer :: t => null()
-  ! Calculate statistics and get 
+ subroutine check_for_trigger() 
+    
+    integer :: i            ! index in tallies array
+    integer :: j            ! level in tally hierarchy
+    integer :: k            ! loop index for scoring bins
+    integer :: n            ! loop index for nuclides
+    integer :: l            ! loop index for user scores
+    integer :: filter_index ! index in results array for filters
+    integer :: score_index  ! scoring bin index
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_listing    ! index in xs_listings array
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
+    real(8), allocatable :: temp_trig(:)
+    type(TriggerObject), allocatable :: temp_real(:)
+    type(TallyObject), pointer :: t => null()
+   
+   ! Calculate statistics and get 
      if (master) then
         if (n_realizations > 1) call tally_trigger_statistics()
      end if
      
-   CHECK_LOOP: do i =1, n_tallies
-      
-      t=>tallies(i)
-      m = t % total_score_bins
-      n = t % total_filter_bins
-     allocate(temp_trigger(m,n))
      
+   ! Check the trigger 
+    TALLY_LOOP: do i = 1, n_tallies
+      t => tallies(i)
      
-     ! get the temporary trigger       
-     select case (trigger_method)
-     case (VARIANCE_METHOD)
-     !get the temporary variance
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq**2
-        
-     case (RELATIVE_ERROR_METHOD)
-     !get the temprary relative error
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq/t% results(:,:) % &
-                           trigger_sum
-        
-     case( STANDARD_DEVIATION_METHOD)
-     !get the temprary relative standard deviation
-       temp_trigger(:,:) = t% results(:,:) % trigger_sum_sq
-        
-     case default
-       message="Invalid trigger type on tally"
-       call fatal_error()
-     end select
-     
-     ! check for trigger
-     
-      do j = 1, n
-        do k = 1, m
-          if (temp_trigger(k,j) > n_threshold) then
-          reach_trigger= .false. 
-          exit CHECK_LOOP
-          else
-          reach_trigger = .true. 
-          end if
-        end do 
-      end do
-   
-    end do CHECK_LOOP
-    
-    deallocate(temp_trigger)
- 
- end subroutine check_for_trigger
+      allocate (temp_trig(t % n_user_score_bins))
+      allocate (temp_real(t % n_user_score_bins))
 
+      ! Get the result
+      
+      ! WARNING: Admittedly, the logic for moving for printing results is
+      ! extremely confusing and took quite a bit of time to get correct. The
+      ! logic is structured this way since it is not practical to have a do
+      ! loop for each filter variable (given that only a few filters are likely
+      ! to be used for a given tally.
+
+      ! Initialize bins, filter level, and indentation
+      matching_bins(1:t%n_filters) = 0
+      j = 1
+
+      print_bin: do
+        find_bin: do
+          if (t % n_filters == 0) exit find_bin
+             matching_bins(j) = matching_bins(j) + 1
+          if (matching_bins(j) > t % filters(j) % n_bins) then
+             if (j == 1) exit print_bin
+             matching_bins(j) = 0
+             j = j - 1
+          else
+             if (j == t % n_filters) exit find_bin
+          end if
+        end do find_bin
+        
+        if (t % n_filters > 0) then
+           filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
+        else
+           filter_index = 1
+        end if
+           score_index = 0
+           
+        do n = 1, t % n_nuclide_bins
+           k = 0
+          do l = 1, t % n_user_score_bins
+            k = k + 1
+            score_index = score_index + 1
+           
+            select case(t % score_bins(k))
+            
+            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+            
+              if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+              end if
+              if (temp_real(l)%t2< t % results(score_index,filter_index) % trigger_sum_sq / &
+                            t % results(score_index,filter_index) % trigger_sum) then 
+              temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+              end if
+              temp_real(l)%t3=temp_real(l)%t1**2
+            
+            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+              score_index = score_index - 1
+              
+            do n_order = 0, t % moment_order(k)
+                score_index = score_index + 1
+                if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then 
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                end if
+                if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum ) then
+                temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+                end if
+                temp_real(l)%t3=temp_real(l)%t1**2
+            end do
+              k = k + t % moment_order(k)
+              
+            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                  SCORE_TOTAL_YN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
+                do nm_order = -n_order, n_order
+                  score_index = score_index + 1
+                  if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                   end if
+                   if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum) then
+                       temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+                   end if
+                   temp_real(l)%t3=temp_real(l)%t1**2 
+                end do
+              end do
+              k = k + (t % moment_order(k) + 1)**2 - 1
+           
+            case default
+               if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+               end if
+               if (temp_real(l)%t2<(t % results(score_index,filter_index) % trigger_sum_sq / &
+                             t % results(score_index,filter_index) % trigger_sum)) then
+                   temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                t % results(score_index,filter_index) % trigger_sum
+               end if
+               temp_real(l)%t3=temp_real(l)%t1**2    
+            end select
+          end do         
+        end do
+     
+      if (t % n_filters == 0) exit print_bin
+      end do print_bin
+      
+     do l = 1, t % n_user_score_bins
+       do k = 1 ,t % n_user_triggers
+       if( t%score(k)%position == l ) then
+        select case (t%score(k)%type)        
+        case(VARIANCE_METHOD) 
+        temp_trig(l)=temp_real(l)%t3
+        case(RELATIVE_ERROR_METHOD)      
+        temp_trig(l)=temp_real(l)%t2
+        case default
+        temp_trig(k)=temp_real(l)%t1
+        end select
+        
+        if (temp_trig(l)>t%score(k)%threshold) then
+        reach_trigger = .false.
+        exit TALLY_LOOP  
+        end if
+      else 
+      cycle
+      end if
+      end do
+    end do
+    reach_trigger = .true.       
+ 
+   deallocate (temp_trig)
+   deallocate (temp_real)
+ end do TALLY_LOOP
+   
+     
+ end subroutine check_for_trigger
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable

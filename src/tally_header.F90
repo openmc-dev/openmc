@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES
+  use constants, only: NONE, N_FILTER_TYPES,N_SCORE_TYPES,N_SCORE_MINUM
 
   implicit none
 
@@ -64,6 +64,24 @@ module tally_header
   end type TallyFilter
 
 !===============================================================================
+! TRIGGEROBJECT describes a trigger that stores different information
+!===============================================================================
+   type TriggerObject
+     real(8) :: t1=0.0
+     real(8) :: t2=0.0
+     real(8) :: t3=0.0
+   end type TriggerObject
+   
+!===============================================================================
+! SCOREOBJECT describes a score that stores different information
+!===============================================================================
+   type ScoreObject
+      integer :: position
+      integer :: type
+      real(8)    :: threshold
+   end type ScoreObject
+      
+!===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
 ! TallyResult array.
@@ -95,6 +113,7 @@ module tally_header
     ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
+    integer :: find_score (N_SCORE_MINUM:N_SCORE_TYPES) = 0
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
@@ -124,7 +143,10 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-
+    
+    ! Trigger information
+    type(ScoreObject), allocatable :: score(:)
+    integer :: n_user_triggers = 0
     ! Type-Bound procedures
     contains
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject

@@ -276,7 +276,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20
+  integer, parameter :: N_SCORE_TYPES = 60
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -297,7 +297,8 @@ module constants
        SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS        = -20    ! number of events
+       SCORE_EVENTS        = -20, & ! number of events
+       N_SCORE_MINUM   = -20    ! expand the boundary
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

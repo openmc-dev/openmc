@@ -105,7 +105,9 @@ contains
       call time_read_xs % stop()
 
       ! Construct unionized energy grid from cross-sections
-      if (grid_method == GRID_UNION) then
+      if (grid_method == GRID_NUCLIDE) then
+        continue
+      else
         call time_unionize % start()
         call unionized_grid()
         call time_unionize % stop()

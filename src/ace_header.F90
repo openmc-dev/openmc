@@ -97,7 +97,7 @@ module ace_header
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
-    integer, allocatable :: grid_index(:) ! pointers to union grid
+    integer, allocatable :: glob_grid_index(:) ! pointers to union grid
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
     ! Microscopic cross sections
@@ -337,8 +337,8 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % grid_index)) &
-           deallocate(this % grid_index)
+      if (allocated(this % glob_grid_index)) &
+           deallocate(this % glob_grid_index)
 
       if (allocated(this % energy)) &
            deallocate(this % total, this % elastic, this % fission,  &

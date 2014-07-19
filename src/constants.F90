@@ -382,9 +382,10 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE  = 1, & ! non-unionized energy grid
-       GRID_UNION    = 2, & ! union grid with pointers
-       GRID_LETHARGY = 3    ! lethargy mapping
+       GRID_NUCLIDE    = 1, & ! non-unionized energy grid
+       GRID_GLOB_UNION = 2, & ! global union grid with pointers
+       GRID_MAT_UNION  = 3, & ! material union grids with pointers
+       GRID_LETHARGY   = 4    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

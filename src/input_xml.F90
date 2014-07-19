@@ -213,13 +213,15 @@ contains
     if (check_for_node(doc, "energy_grid")) then
       call get_node_value(doc, "energy_grid", temp_str)
     else
-      temp_str = 'union'
+      temp_str = 'global-union'
     end if
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('union')
-      grid_method = GRID_UNION
+    case ('global-union')
+      grid_method = GRID_GLOB_UNION
+    case ('material-union')
+      grid_method = GRID_MAT_UNION
     case ('lethargy')
       message = "Lethargy mapped energy grid not yet supported."
       call fatal_error()

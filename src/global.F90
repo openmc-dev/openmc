@@ -136,11 +136,6 @@ module global
   ! Trigger for tallies
   integer :: trigger_method   = VARIANCE_METHOD    ! type of trigger
   real(8) :: n_threshold      = DEFAULT_THRESHOLD  ! # of trigger threshold
-  integer :: n_batch_interval = DEFAULT_BATCH_INTERVAL  ! # of batches interval per cycle
-  integer :: n_max_batch      = DEFAULT_MAX_BATCH  ! # of max batches
-  
-  ! Flag for turning trigger on
-  logical:: trigger_on = .false.
 
   ! Flag for turning tallies on
   logical :: tallies_on = .false.
@@ -167,7 +162,11 @@ module global
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
-
+  integer    :: n_batch_interval = DEFAULT_BATCH_INTERVAL  ! # of batches 
+                                                           ! interval per cycle
+  ! Flag for turning trigger on
+  logical:: trigger_on = .false.                                                         
+  
   ! External source
   type(ExtSource), target :: external_source
 

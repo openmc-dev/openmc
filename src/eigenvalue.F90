@@ -248,10 +248,11 @@ contains
 !===============================================================================
   subroutine check_batch()
   
-   if((.not.((current_batch-n_basic_batches)<0).and.trigger_on) .and. (mod&
-   ((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
-   current_batch==n_batches) )then
+   if(.not.((current_batch-n_basic_batches)<0).and.trigger_on ) then
+      if(mod((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
+        current_batch==n_batches) then
         call check_for_trigger()
+      end if 
      end if
  end subroutine check_batch
  

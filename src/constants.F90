@@ -348,7 +348,8 @@ module constants
   real(8), parameter :: DEFAULT_THRESHOLD = huge(0.0_8)
   
   ! Batches added and max batches for trigger
-  integer, parameter :: DEFAULT_BATCH_INTERVAL = 1
+  integer, parameter :: DEFAULT_BATCH_INTERVAL = 50
+  integer, parameter :: DEFAULT_MAX_BATCH = 1000
      
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4

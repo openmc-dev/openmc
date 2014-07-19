@@ -33,6 +33,8 @@ contains
     ! Set size of unionized energy grid 
     n_grid = list % size() 
 
+    i_E_last = n_grid
+
     ! create allocated array from linked list
     allocate(e_grid(n_grid))
     do i = 1, n_grid

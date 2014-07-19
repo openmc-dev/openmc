@@ -162,13 +162,22 @@ contains
       ! the nuclide energy grid in order to determine which points to
       ! interpolate between
 
-      if (E < nuc % energy(1)) then
+      if (E <= nuc % energy(1)) then
         i_grid = 1
       elseif (E > nuc % energy(nuc % n_grid)) then
         i_grid = nuc % n_grid - 1
       else
-        i_grid = binary_search(nuc % energy, nuc % n_grid, E)
+        if (E < nuc % energy(nuc % i_E_last)) then
+          i_grid = binary_search(nuc % energy(1:nuc % i_E_last), &
+                               & nuc % i_E_last, E)
+        else
+          i_grid = nuc % i_E_last - 1 &
+            & + binary_search(nuc % energy(nuc % i_E_last:nuc % n_grid), &
+            & nuc % n_grid - nuc % i_E_last + 1, E)
+        end if
       end if
+
+      nuc % i_E_last = i_grid
 
     end select
 
@@ -476,8 +485,15 @@ contains
     elseif (E > e_grid(n_grid)) then
       union_grid_index = n_grid - 1
     else
-      union_grid_index = binary_search(e_grid, n_grid, E)
+      if (E < e_grid(i_E_last)) then
+        union_grid_index = binary_search(e_grid(1:i_E_last), i_E_last, E)
+      else
+        union_grid_index = i_E_last - 1 &
+          & + binary_search(e_grid(i_E_last:n_grid), n_grid - i_E_last + 1, E)
+      end if
     end if
+
+    i_E_last = union_grid_index
 
   end subroutine find_energy_index
 

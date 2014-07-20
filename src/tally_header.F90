@@ -76,7 +76,7 @@ module tally_header
 ! SCOREOBJECT describes a score that stores different information
 !===============================================================================
    type ScoreObject
-      integer :: position
+      integer :: position = 0 
       integer :: type
       real(8)    :: threshold
    end type ScoreObject
@@ -147,6 +147,7 @@ module tally_header
     ! Trigger information
     type(ScoreObject), allocatable :: score(:)
     integer :: n_user_triggers = 0
+    logical :: trigger_for_all = .false.
     ! Type-Bound procedures
     contains
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject

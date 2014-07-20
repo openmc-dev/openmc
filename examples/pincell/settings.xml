@@ -6,6 +6,11 @@
     <batches>20</batches>
     <inactive>10</inactive>
     <particles>1000</particles>
+    <trigger_on>
+    <status>true</status>
+    <max_batches>60</max_batches>
+    <batch_interval>1</batch_interval>
+    </trigger_on>
   </eigenvalue>
 
   <!-- The starting source is a uniform distribution over the entire pin

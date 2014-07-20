@@ -2716,8 +2716,8 @@ contains
      call get_node_list(node_tal,"trigger",node_trigger_list)
      t%n_user_triggers = get_list_size(node_trigger_list)
      nt = nt+t%n_user_triggers
-  if(t%n_user_triggers > 0 ) then
-
+     
+   if(t%n_user_triggers > 0) then
      allocate(t%score(t%n_user_triggers))
      do tr =1, t%n_user_triggers
   
@@ -2776,6 +2776,15 @@ contains
           end if
     
      select case (trim(score_name))
+          case ('all')
+          if(t%n_user_triggers /= 1) then
+            message = "Cannot set trigger for other scoring functions in the same &
+                     &tally as all. Separate other scoring &
+                     &functions into a distinct tally."
+            call fatal_error()
+          else 
+          t%trigger_for_all = .true.
+          end if
           case ('flux')
             t % score(tr) % position =  t % find_score(SCORE_FLUX)
            
@@ -2850,7 +2859,10 @@ contains
           case ('current')
             t % score(tr) % position = t % find_score(SCORE_CURRENT)
           end select
-        
+     if  ( t % score(tr) % position == 0 ) then 
+        message = "The score"//trim(score_name)//" has not been tallied in tally "//trim(to_str(t%id))//" in tally XML file."
+        call fatal_error()
+     end if   
      temp_str=' '
      if (check_for_node(node_trigger, "type")) then
         call get_node_value(node_trigger, "type", temp_str)
@@ -2862,7 +2874,7 @@ contains
      call lower_case(temp_str)
      
      select case (temp_str)
-     case ("str_dev")
+     case ("std_dev")
        t%score(tr)%type = STANDARD_DEVIATION_METHOD
      case ("variance")
        t%score(tr)%type = VARIANCE_METHOD 

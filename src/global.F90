@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyMap, TallyResult , Temp_trig
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -145,7 +145,7 @@ module global
   
   ! Check whether reach the trigger
   logical :: reach_trigger = .false.
-
+  type(Temp_trig) :: trig_dis
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 

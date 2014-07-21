@@ -2774,7 +2774,7 @@ contains
               end if
             end do
           end if
-    
+         t % score(tr) % score_name = score_name
      select case (trim(score_name))
           case ('all')
           if(t%n_user_triggers /= 1) then

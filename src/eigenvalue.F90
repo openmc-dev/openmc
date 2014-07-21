@@ -96,7 +96,7 @@ contains
       
       !Check batches
       call check_batch()
-      if(reach_trigger) then
+      if (reach_trigger) then
       call write_last_state_point()
       exit  BATCH_LOOP
       end if 
@@ -251,8 +251,16 @@ contains
    if((.not.((current_batch-n_basic_batches)<0).and.trigger_on) .and. (mod&
    ((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
    current_batch==n_batches) )then
-        call check_for_trigger()
-     end if
+   call check_for_trigger()
+   end if
+   
+   if(reach_trigger) then
+    write(*,*) "Trigger has been reached in batch"// trim(to_str(current_batch))
+    else
+    write(*,*) "Trigger isn't reached, the max_trio is "//trim(to_str(trig_dis%max_ratio))// &
+               &" for "//trim(trig_dis%temp_name)//" in tally "// trim(to_str(trig_dis%id))
+   end if 
+     
  end subroutine check_batch
  
 !===============================================================================

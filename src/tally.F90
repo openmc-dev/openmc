@@ -2299,7 +2299,7 @@ contains
   end function get_next_bin
   
 !===============================================================================
-! CHECK FOR reach the threshold
+! CHECK FOR reach the threshold, get the max ratio
 !=============================================================================== 
  subroutine check_for_trigger() 
     
@@ -2315,6 +2315,7 @@ contains
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     real(8), allocatable :: temp_trig(:)
+    real(8) :: temp_ratio
     type(TriggerObject), allocatable :: temp_real(:)
     type(TallyObject), pointer :: t => null()
    
@@ -2323,7 +2324,7 @@ contains
         if (n_realizations > 1) call tally_trigger_statistics()
      end if
      
-     
+ 
    ! Check the trigger 
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)    
@@ -2453,7 +2454,13 @@ contains
          end select
         
          if (temp_trig(l)>t%score(k)%threshold) then
-         reach_trigger = .false.
+          reach_trigger = .false.
+          temp_ratio = temp_trig(l)/t%score(k)%threshold
+          if(trig_dis%max_ratio < temp_ratio) then
+          trig_dis%max_ratio = temp_ratio
+          trig_dis%temp_name  = t%score(k)%score_name
+          trig_dis%id = t%id
+          end if
          exit TALLY_LOOP  
          end if
          else 
@@ -2471,6 +2478,12 @@ contains
         
          if (temp_trig(l)>t%score(k)%threshold) then
          reach_trigger = .false.
+          temp_ratio = temp_trig(l)/t%score(k)%threshold
+          if(trig_dis%max_ratio < temp_ratio) then
+          trig_dis%max_ratio = temp_ratio
+          trig_dis%temp_name  = t%score(k)%score_name
+          trig_dis%id = t%id
+          end if
          exit TALLY_LOOP  
          end if 
        end if

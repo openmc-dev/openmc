@@ -79,7 +79,18 @@ module tally_header
       integer :: position = 0 
       integer :: type
       real(8)    :: threshold
+      character(len=52) :: score_name
    end type ScoreObject
+
+!===============================================================================
+! SCOREOBJECT describes a score that stores different information
+!===============================================================================
+   type Temp_trig
+      integer    :: id
+      real(8)    :: max_ratio = 0
+      character(len=52) :: temp_name 
+   end type Temp_trig
+      
       
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to

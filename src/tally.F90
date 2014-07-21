@@ -2314,6 +2314,7 @@ contains
     integer :: i_listing    ! index in xs_listings array
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
+    integer :: amount = 0
     real(8), allocatable :: temp_trig(:)
     real(8) :: temp_ratio
     type(TriggerObject), allocatable :: temp_real(:)
@@ -2324,7 +2325,7 @@ contains
         if (n_realizations > 1) call tally_trigger_statistics()
      end if
      
- 
+   trig_dis%max_ratio = 0
    ! Check the trigger 
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)    
@@ -2442,7 +2443,7 @@ contains
     
      do l = 1, t % n_user_score_bins
        do k = 1 ,t % n_user_triggers 
-       if (.not.t%trigger_for_all .or.(t%type /=TALLY_SURFACE_CURRENT)) then
+       if (.not.t%trigger_for_all .and. (t%type /=TALLY_SURFACE_CURRENT)) then
         if( t%score(k)%position == l ) then
          select case (t%score(k)%type)        
          case(VARIANCE_METHOD) 
@@ -2454,18 +2455,17 @@ contains
          end select
         
          if (temp_trig(l)>t%score(k)%threshold) then
-          reach_trigger = .false.
+          amount = amount+1 
           temp_ratio = temp_trig(l)/t%score(k)%threshold
           if(trig_dis%max_ratio < temp_ratio) then
           trig_dis%max_ratio = temp_ratio
           trig_dis%temp_name  = t%score(k)%score_name
           trig_dis%id = t%id
+          end if 
           end if
-         exit TALLY_LOOP  
-         end if
-         else 
-         cycle
-         end if
+          else 
+          cycle
+          end if
        else
          select case (t%score(k)%type)        
          case(VARIANCE_METHOD) 
@@ -2476,23 +2476,25 @@ contains
          temp_trig(k)=temp_real(l)%t1
          end select
         
-         if (temp_trig(l)>t%score(k)%threshold) then
-         reach_trigger = .false.
-          temp_ratio = temp_trig(l)/t%score(k)%threshold
+         if (temp_trig(l)>t%score(1)%threshold) then
+          amount = amount+1 
+          temp_ratio = temp_trig(l)/t%score(1)%threshold
           if(trig_dis%max_ratio < temp_ratio) then
           trig_dis%max_ratio = temp_ratio
-          trig_dis%temp_name  = t%score(k)%score_name
+          trig_dis%temp_name  = t%score_for_all(l)
           trig_dis%id = t%id
-          end if
-         exit TALLY_LOOP  
+          end if 
          end if 
        end if
      end do
     end do   
    deallocate (temp_trig)
    deallocate (temp_real)
-   
+   if(amount == 0 ) then
    reach_trigger = .true.    
+   else 
+   reach_trigger = .false.
+   end if
  end do TALLY_LOOP
    
      

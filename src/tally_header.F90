@@ -157,6 +157,7 @@ module tally_header
     
     ! Trigger information
     type(ScoreObject), allocatable :: score(:)
+    character(len =52),allocatable :: score_for_all(:)
     integer :: n_user_triggers = 0
     logical :: trigger_for_all = .false.
     ! Type-Bound procedures

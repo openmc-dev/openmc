@@ -2393,6 +2393,7 @@ contains
         ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
         allocate(t % moment_order(n_scores))
+        allocate(t % score_for_all(n_words))
         t % moment_order = 0
         j = 0
         do l = 1, n_words
@@ -2448,7 +2449,7 @@ contains
               end if
             end do
           end if
-
+          t%score_for_all(l) = score_name
           select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
@@ -2859,8 +2860,8 @@ contains
           case ('current')
             t % score(tr) % position = t % find_score(SCORE_CURRENT)
           end select
-     if  ( t % score(tr) % position == 0 ) then 
-        message = "The score"//trim(score_name)//" has not been tallied in tally "//trim(to_str(t%id))//" in tally XML file."
+     if  (.not.t%trigger_for_all .and. t % score(tr) % position == 0 ) then 
+        message = "The score "//trim(score_name)//" has not been tallied in tally "//trim(to_str(t%id))//" in tally XML file."
         call fatal_error()
      end if   
      temp_str=' '

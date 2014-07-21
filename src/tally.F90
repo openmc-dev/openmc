@@ -2332,7 +2332,7 @@ contains
       allocate (temp_trig(t % n_user_score_bins))
       allocate (temp_real(t % n_user_score_bins))
        if (t % type == TALLY_SURFACE_CURRENT) then
-        call check_for_current(t,temp_real(l))
+        call check_for_current(t,temp_real(1))
        else
       ! Get the result
       
@@ -2451,7 +2451,7 @@ contains
          case(RELATIVE_ERROR_METHOD)      
          temp_trig(l)=temp_real(l)%t2
          case default
-         temp_trig(k)=temp_real(l)%t1
+         temp_trig(l)=temp_real(l)%t1
          end select
         
          if (temp_trig(l)>t%score(k)%threshold) then
@@ -2473,7 +2473,7 @@ contains
          case(RELATIVE_ERROR_METHOD)      
          temp_trig(l)=temp_real(l)%t2
          case default
-         temp_trig(k)=temp_real(l)%t1
+         temp_trig(l)=temp_real(l)%t1
          end select
         
          if (temp_trig(l)>t%score(1)%threshold) then

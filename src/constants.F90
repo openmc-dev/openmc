@@ -276,7 +276,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20
+  integer, parameter :: N_SCORE_TYPES = 60
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -297,7 +297,8 @@ module constants
        SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS        = -20    ! number of events
+       SCORE_EVENTS        = -20, & ! number of events
+       N_SCORE_MINUM   = -20    ! expand the boundary
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -339,7 +340,17 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-
+  
+  ! Tally trigger types and threshold
+  integer, parameter :: &
+       VARIANCE_METHOD            = 1, &
+       RELATIVE_ERROR_METHOD      = 2, &
+       STANDARD_DEVIATION_METHOD  = 3 
+  real(8), parameter :: DEFAULT_THRESHOLD = huge(0.0_8)
+  
+  ! Batches added and max batches for trigger
+  integer, parameter :: DEFAULT_BATCH_INTERVAL = 1
+     
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

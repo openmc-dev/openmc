@@ -13,7 +13,9 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
-  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement,&
+                              TriggerObject, TallyObject
+                              
 
 #ifdef MPI
   use mpi
@@ -1396,7 +1398,7 @@ contains
     integer :: num_nm               ! Number of N,M orders in harmonic
     integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
+    integer :: ijk(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
     integer :: n_cross              ! number of surface crossings
     integer :: filter_index         ! single index for single bin
@@ -1438,7 +1440,7 @@ contains
     ! Determine indices for starting and ending location
     m => meshes(t % filters(i_filter_mesh) % int_bins(1))
     call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
 
     ! Check if start or end is in mesh -- if not, check if track still
     ! intersects with mesh
@@ -1517,7 +1519,7 @@ contains
     ! DETERMINE WHICH MESH CELLS TO SCORE TO
 
     ! Calculate number of surface crossings
-    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
+    n_cross = sum(abs(ijk(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
 
     ! Copy particle's direction
     uvw = p % coord0 % uvw
@@ -1934,7 +1936,7 @@ contains
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
+    integer :: ijk(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index of scoring bin
@@ -1971,7 +1973,7 @@ contains
       ! Determine indices for starting and ending location
       m => meshes(t % filters(i_filter_mesh) % int_bins(1))
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
 
       ! Check to if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
@@ -1984,7 +1986,7 @@ contains
       end if
 
       ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk1 - ijk0))
+      n_cross = sum(abs(ijk - ijk0))
       if (n_cross == 0) then
         cycle
       end if
@@ -2010,14 +2012,14 @@ contains
       ! =======================================================================
       ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
 
-      x_same = (ijk0(1) == ijk1(1))
-      y_same = (ijk0(2) == ijk1(2))
-      z_same = (ijk0(3) == ijk1(3))
+      x_same = (ijk0(1) == ijk(1))
+      y_same = (ijk0(2) == ijk(2))
+      z_same = (ijk0(3) == ijk(3))
 
       if (x_same .and. y_same) then
         ! Only z crossings
         if (uvw(3) > 0) then
-          do j = ijk0(3), ijk1(3) - 1
+          do j = ijk0(3), ijk(3) - 1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_TOP
@@ -2031,7 +2033,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(3) - 1, ijk1(3), -1
+          do j = ijk0(3) - 1, ijk(3), -1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_TOP
@@ -2049,7 +2051,7 @@ contains
       elseif (x_same .and. z_same) then
         ! Only y crossings
         if (uvw(2) > 0) then
-          do j = ijk0(2), ijk1(2) - 1
+          do j = ijk0(2), ijk(2) - 1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_FRONT
@@ -2063,7 +2065,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(2) - 1, ijk1(2), -1
+          do j = ijk0(2) - 1, ijk(2), -1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_FRONT
@@ -2081,7 +2083,7 @@ contains
       elseif (y_same .and. z_same) then
         ! Only x crossings
         if (uvw(1) > 0) then
-          do j = ijk0(1), ijk1(1) - 1
+          do j = ijk0(1), ijk(1) - 1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_RIGHT
@@ -2095,7 +2097,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(1) - 1, ijk1(1), -1
+          do j = ijk0(1) - 1, ijk(1), -1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_RIGHT
@@ -2296,7 +2298,458 @@ contains
     end do
 
   end function get_next_bin
+  
+!===============================================================================
+! CHECK FOR reach the threshold, get the max ratio
+!=============================================================================== 
+ subroutine check_for_trigger() 
+    
+    integer :: i            ! index in tallies array
+    integer :: j            ! level in tally hierarchy
+    integer :: k            ! loop index for scoring bins
+    integer :: n            ! loop index for nuclides
+    integer :: l            ! loop index for user scores
+    integer :: filter_index ! index in results array for filters
+    integer :: score_index  ! scoring bin index
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_listing    ! index in xs_listings array
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
+    integer :: amount 
+    real(8), allocatable :: temp_trig(:)
+    real(8) :: temp_ratio
+    real(8) :: temp_keff_trig
+    type(TriggerObject), allocatable :: temp_real(:)
+    type(TallyObject), pointer :: t => null()
+   trig_dis%max_ratio = 0
+   amount = 0
+   ! Calculate statistics and get 
+     if (master) then
+        if (n_realizations > 1) call tally_trigger_statistics()
+       
+        if (keff_trigger%trigger_type > 0) then
+         select case (keff_trigger%trigger_type)        
+         case(VARIANCE_METHOD) 
+         temp_keff_trig=k_combined(2)**2
+         case(RELATIVE_ERROR_METHOD)      
+         temp_keff_trig=k_combined(2)/k_combined(1)
+         case default
+         temp_keff_trig=k_combined(2)
+         end select
+         if (temp_keff_trig>keff_trigger%threshold) then
+         amount = amount+1 
+         temp_ratio = temp_keff_trig/keff_trigger%threshold
+         if(trig_dis%max_ratio < temp_ratio) then
+           trig_dis%max_ratio = temp_ratio
+           trig_dis%temp_name  = "eigenvalue"
+         end if 
+         end if 
+         end if
+         
+         
+        
+        
+   
+     
+   ! Check the trigger 
+    TALLY_LOOP: do i = 1, n_tallies
+      t => tallies(i)    
+      allocate (temp_trig(t % n_user_score_bins))
+      allocate (temp_real(t % n_user_score_bins))
+       if (t % type == TALLY_SURFACE_CURRENT) then
+        call check_for_current(t,temp_real(1))
+       else
+      ! Get the result
+      
+      ! WARNING: Admittedly, the logic for moving for printing results is
+      ! extremely confusing and took quite a bit of time to get correct. The
+      ! logic is structured this way since it is not practical to have a do
+      ! loop for each filter variable (given that only a few filters are likely
+      ! to be used for a given tally.
 
+      ! Initialize bins, filter level, and indentation
+      matching_bins(1:t%n_filters) = 0
+      j = 1
+
+      print_bin: do
+        find_bin: do
+          if (t % n_filters == 0) exit find_bin
+             matching_bins(j) = matching_bins(j) + 1
+          if (matching_bins(j) > t % filters(j) % n_bins) then
+             if (j == 1) exit print_bin
+             matching_bins(j) = 0
+             j = j - 1
+          else
+             if (j == t % n_filters) exit find_bin
+          end if
+        end do find_bin
+        
+        if (t % n_filters > 0) then
+           filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
+        else
+           filter_index = 1
+        end if
+           score_index = 0
+           
+        do n = 1, t % n_nuclide_bins
+           k = 0
+          do l = 1, t % n_user_score_bins
+            k = k + 1
+            score_index = score_index + 1
+           
+            select case(t % score_bins(k))
+            
+            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+            
+              if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+              end if
+              if (temp_real(l)%t2< t % results(score_index,filter_index) % trigger_sum_sq / &
+                            t % results(score_index,filter_index) % trigger_sum) then 
+              temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+              end if
+              temp_real(l)%t3=temp_real(l)%t1**2
+            
+            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+              score_index = score_index - 1
+              
+            do n_order = 0, t % moment_order(k)
+                score_index = score_index + 1
+                if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then 
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                end if
+                if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum ) then
+                temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+                end if
+                temp_real(l)%t3=temp_real(l)%t1**2
+            end do
+              k = k + t % moment_order(k)
+              
+            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                  SCORE_TOTAL_YN)
+              score_index = score_index - 1
+              do n_order = 0, t % moment_order(k)
+                do nm_order = -n_order, n_order
+                  score_index = score_index + 1
+                  if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                   end if
+                   if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum) then
+                       temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 t % results(score_index,filter_index) % trigger_sum
+                   end if
+                   temp_real(l)%t3=temp_real(l)%t1**2 
+                end do
+              end do
+              k = k + (t % moment_order(k) + 1)**2 - 1
+           
+            case default
+               if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+               end if
+               if (temp_real(l)%t2<(t % results(score_index,filter_index) % trigger_sum_sq / &
+                             t % results(score_index,filter_index) % trigger_sum)) then
+                   temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                                t % results(score_index,filter_index) % trigger_sum
+               end if
+               temp_real(l)%t3=temp_real(l)%t1**2    
+            end select
+          end do         
+        end do
+     
+      if (t % n_filters == 0) exit print_bin
+      end do print_bin
+      end if 
+     
+    
+     do l = 1, t % n_user_score_bins
+       do k = 1 ,t % n_user_triggers 
+       if (.not.t%trigger_for_all .and. (t%type /=TALLY_SURFACE_CURRENT)) then
+        if( t%score(k)%position == l ) then
+         select case (t%score(k)%type)        
+         case(VARIANCE_METHOD) 
+         temp_trig(l)=temp_real(l)%t3
+         case(RELATIVE_ERROR_METHOD)      
+         temp_trig(l)=temp_real(l)%t2
+         case default
+         temp_trig(l)=temp_real(l)%t1
+         end select
+        
+         if (temp_trig(l)>t%score(k)%threshold) then
+          amount = amount+1 
+          temp_ratio = temp_trig(l)/t%score(k)%threshold
+          if(trig_dis%max_ratio < temp_ratio) then
+          trig_dis%max_ratio = temp_ratio
+          trig_dis%temp_name  = t%score(k)%score_name
+          trig_dis%id = t%id
+          end if 
+          end if
+        else 
+        cycle
+        end if
+       else
+         select case (t%score(k)%type)        
+         case(VARIANCE_METHOD) 
+         temp_trig(l)=temp_real(l)%t3
+         case(RELATIVE_ERROR_METHOD)      
+         temp_trig(l)=temp_real(l)%t2
+         case default
+         temp_trig(l)=temp_real(l)%t1
+         end select
+        
+         if (temp_trig(l)>t%score(1)%threshold) then
+          amount = amount+1 
+          temp_ratio = temp_trig(l)/t%score(1)%threshold
+          if(trig_dis%max_ratio < temp_ratio) then
+          trig_dis%max_ratio = temp_ratio
+          trig_dis%temp_name  = t%score_for_all(l)
+          trig_dis%id = t%id
+          end if 
+         end if 
+       end if
+     end do
+    end do   
+ end do TALLY_LOOP
+   deallocate (temp_trig)
+   deallocate (temp_real)
+   if(amount == 0 ) then
+   reach_trigger = .true. 
+   else 
+   reach_trigger = .false.
+   end if
+ end if
+   
+     
+ end subroutine check_for_trigger
+
+!===============================================================================
+! CHECK_FOR_CURRENT get the temporary result of current
+!===============================================================================
+ 
+ subroutine check_for_current(t,s)
+
+    type(TallyObject), pointer :: t
+
+    integer :: i                    ! mesh index for x
+    integer :: j                    ! mesh index for y
+    integer :: k                    ! mesh index for z
+    integer :: l                    ! index for energy
+    integer :: i_filter_mesh        ! index for mesh filter
+    integer :: i_filter_ein         ! index for incoming energy filter
+    integer :: i_filter_surf        ! index for surface filter
+    integer :: n                    ! number of incoming energy bins
+    integer :: len1                 ! length of string
+    integer :: len2                 ! length of string
+    integer :: filter_index         ! index in results array for filters
+    logical :: print_ebin           ! should incoming energy bin be displayed?
+    type(TriggerObject)   :: s
+    type(StructuredMesh), pointer :: m => null()
+
+    ! Get pointer to mesh
+    i_filter_mesh = t % find_filter(FILTER_MESH)
+    i_filter_surf = t % find_filter(FILTER_SURFACE)
+    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
+
+    ! initialize bins array
+    matching_bins(1:t%n_filters) = 1
+
+    ! determine how many energy in bins there are
+    i_filter_ein = t % find_filter(FILTER_ENERGYIN)
+    if (i_filter_ein > 0) then
+      print_ebin = .true.
+      n = t % filters(i_filter_ein) % n_bins
+    else
+      print_ebin = .false.
+      n = 1
+    end if
+
+    do i = 1, m % dimension(1)
+      do j = 1, m % dimension(2)
+        do k = 1, m % dimension(3)
+          do l = 1, n
+            if (print_ebin) then
+              matching_bins(i_filter_ein) = l
+
+            end if
+
+            ! Left Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_RIGHT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            matching_bins(i_filter_surf) = OUT_RIGHT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            ! Right Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_RIGHT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            matching_bins(i_filter_surf) = OUT_RIGHT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            ! Back Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_FRONT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            matching_bins(i_filter_surf) = OUT_FRONT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+
+            ! Front Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_FRONT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+           
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            matching_bins(i_filter_surf) = OUT_FRONT
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+
+            ! Bottom Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_TOP
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+
+            matching_bins(i_filter_surf) = OUT_TOP
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            ! Top Surface
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+            matching_bins(i_filter_surf) = IN_TOP
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+            matching_bins(i_filter_surf) = OUT_TOP
+            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            if(s%t1< t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            end if
+            if (s%t2< t % results(1,filter_index) % trigger_sum_sq / &
+                            t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
+                              t % results(1,filter_index) % trigger_sum
+            end if
+            s%t3=s%t1**2
+
+
+          end do
+
+        end do
+      end do
+    end do
+
+  end subroutine check_for_current
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
@@ -2462,11 +2915,35 @@ contains
 
       call statistics_result(t % results, t % n_realizations)
     end do
-
+      
+      
     ! Calculate statistics for global tallies
     call statistics_result(global_tallies, n_realizations)
+    
 
   end subroutine tally_statistics
+  
+!===============================================================================
+! TALLY_TRIGGER_STATISTICS just computes the mean and standard deviation of the  
+! mean of each tally and stores them in the val and val_sq attributes of the 
+! TallyResults respectively for trigger.
+!===============================================================================
+
+  subroutine tally_trigger_statistics()
+
+    integer :: i    ! index in tallies array
+    type(TallyObject), pointer :: t => null()
+
+    ! Calculate statistics for user-defined tallies
+    do i = 1, n_tallies
+      t => tallies(i)
+
+      call statistics_trigger_result(t % results, t % n_realizations)
+    end do
+
+  end subroutine tally_trigger_statistics
+  
+
 
 !===============================================================================
 ! ACCUMULATE_RESULT accumulates results from many histories (or many generations)
@@ -2505,13 +2982,31 @@ contains
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
-
     this % sum    = this % sum/n
     this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
          this % sum) / (n - 1))
 
   end subroutine statistics_result
 
+!===============================================================================
+! STATISTICS_TRIGGER_RESULT just determines the sample mean and the standard 
+! deviation of the mean for a TallyResult for a trigger .
+!===============================================================================
+
+  elemental subroutine statistics_trigger_result(this, n)
+
+    type(TallyResult), intent(inout) :: this
+    integer,           intent(in)    :: n
+
+    ! Calculate sample mean and standard deviation of the mean -- note that we
+    ! have used Bessel's correction so that the estimator of the variance of the
+    ! sample mean is unbiased.
+
+    this % trigger_sum    = this % sum/n
+    this % trigger_sum_sq = sqrt((this % sum_sq/n - this % trigger_sum * &
+         this % trigger_sum) / (n - 1))
+
+  end subroutine statistics_trigger_result
 !===============================================================================
 ! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a
 ! single TallyResult.

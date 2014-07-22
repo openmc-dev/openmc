@@ -20,7 +20,7 @@ module eigenvalue
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result
+                          reset_result,check_for_trigger
   use tracking,     only: transport
 
   private
@@ -93,9 +93,18 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-
+      
+      !Check batches, check the trigger, write the statepoint file
+      if(master) then
+       call check_batch()
+       if (reach_trigger) then
+       call write_last_state_point()
+       exit  BATCH_LOOP
+       end if
+      end if  
+    
     end do BATCH_LOOP
-
+       
     call time_active % stop()
 
     ! ==========================================================================
@@ -206,7 +215,6 @@ contains
       call reset_result(global_tallies)
       n_realizations = 0
     end if
-
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
 
@@ -233,8 +241,57 @@ contains
       ! batch in case no state point is written
       call calculate_combined_keff()
     end if
-
+    
   end subroutine finalize_batch
+  
+!===============================================================================
+! CHECK_BATCH checks whether to check the trigger and whether the trigger 
+! threshold is reached
+!===============================================================================
+  subroutine check_batch()
+  
+   if(.not.((current_batch-n_basic_batches)<0).and.trigger_on) then
+    if  (mod((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
+    current_batch==n_batches) then
+      call calculate_combined_keff()
+      call check_for_trigger()
+  
+   
+       if(reach_trigger) then
+        write(*,*) "Trigger has been reached in batch "// trim(to_str(current_batch))
+       elseif(trig_dis%temp_name=="eigenvalue") then
+        write(*,*) " Trigger isn't reached, the max uncertainty/threshold "
+        write(*,*) " is "//trim(to_str(trig_dis%max_ratio))// " for "&
+                   //trim(trig_dis%temp_name)
+       else   
+        write(*,*) "Trigger isn't reached, the max uncertainty/threshold "
+        write(*,*)" is "//trim(to_str(trig_dis%max_ratio))//" of "//trim(trig_dis%temp_nuclide)&
+        // " for "//trim(trig_dis%temp_name)//" in tally "// trim(to_str(trig_dis%id))
+       end if 
+    end if
+   end if
+     
+ end subroutine check_batch
+ 
+!===============================================================================
+! Write_last_state_point writes the statepoint file when threshold is reached
+!===============================================================================
+ subroutine write_last_state_point()
+     if (.not.statepoint_batch % contains(current_batch)) then
+     call statepoint_batch%add(current_batch)
+      ! Create state point file
+     call write_state_point()
+     if (master) call calculate_combined_keff()
+     end if
+
+    if (.not.sourcepoint_batch % contains(current_batch)) then 
+     if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+        source_write) then
+      call write_source_point()
+     end if
+    end if
+   
+ end subroutine write_last_state_point
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
@@ -867,5 +924,6 @@ contains
 
   end subroutine join_bank_from_threads
 #endif
+
 
 end module eigenvalue

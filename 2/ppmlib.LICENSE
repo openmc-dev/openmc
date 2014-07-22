@@ -1,4 +1,0 @@
-The source code in ppmlib.F90 is adapted from code found on Rosetta Code
-<http://rosettacode.org/wiki/Bitmap/Write_a_PPM_file#Fortran> which was authored
-by Mauro Panigada. The authors of OpenMC have obtained permission from Mauro
-Panigada to use and distribution this source code as part of OpenMC.

@@ -1398,7 +1398,7 @@ contains
     integer :: num_nm               ! Number of N,M orders in harmonic
     integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk(3)              ! indices of ending coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
     integer :: n_cross              ! number of surface crossings
     integer :: filter_index         ! single index for single bin
@@ -1440,7 +1440,7 @@ contains
     ! Determine indices for starting and ending location
     m => meshes(t % filters(i_filter_mesh) % int_bins(1))
     call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
     ! Check if start or end is in mesh -- if not, check if track still
     ! intersects with mesh
@@ -1519,7 +1519,7 @@ contains
     ! DETERMINE WHICH MESH CELLS TO SCORE TO
 
     ! Calculate number of surface crossings
-    n_cross = sum(abs(ijk(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
+    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
 
     ! Copy particle's direction
     uvw = p % coord0 % uvw
@@ -1936,7 +1936,7 @@ contains
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
     integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk(3)              ! indices of ending coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index of scoring bin
@@ -1973,7 +1973,7 @@ contains
       ! Determine indices for starting and ending location
       m => meshes(t % filters(i_filter_mesh) % int_bins(1))
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk(:m % n_dimension), end_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
       ! Check to if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
@@ -1986,7 +1986,7 @@ contains
       end if
 
       ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk - ijk0))
+      n_cross = sum(abs(ijk1 - ijk0))
       if (n_cross == 0) then
         cycle
       end if
@@ -2012,14 +2012,14 @@ contains
       ! =======================================================================
       ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
 
-      x_same = (ijk0(1) == ijk(1))
-      y_same = (ijk0(2) == ijk(2))
-      z_same = (ijk0(3) == ijk(3))
+      x_same = (ijk0(1) == ijk1(1))
+      y_same = (ijk0(2) == ijk1(2))
+      z_same = (ijk0(3) == ijk1(3))
 
       if (x_same .and. y_same) then
         ! Only z crossings
         if (uvw(3) > 0) then
-          do j = ijk0(3), ijk(3) - 1
+          do j = ijk0(3), ijk1(3) - 1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_TOP
@@ -2033,7 +2033,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(3) - 1, ijk(3), -1
+          do j = ijk0(3) - 1, ijk1(3), -1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_TOP
@@ -2051,7 +2051,7 @@ contains
       elseif (x_same .and. z_same) then
         ! Only y crossings
         if (uvw(2) > 0) then
-          do j = ijk0(2), ijk(2) - 1
+          do j = ijk0(2), ijk1(2) - 1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_FRONT
@@ -2065,7 +2065,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(2) - 1, ijk(2), -1
+          do j = ijk0(2) - 1, ijk1(2), -1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_FRONT
@@ -2083,7 +2083,7 @@ contains
       elseif (y_same .and. z_same) then
         ! Only x crossings
         if (uvw(1) > 0) then
-          do j = ijk0(1), ijk(1) - 1
+          do j = ijk0(1), ijk1(1) - 1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = OUT_RIGHT
@@ -2097,7 +2097,7 @@ contains
             end if
           end do
         else
-          do j = ijk0(1) - 1, ijk(1), -1
+          do j = ijk0(1) - 1, ijk1(1), -1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
               matching_bins(i_filter_surf) = IN_RIGHT
@@ -2316,10 +2316,11 @@ contains
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer :: amount 
-    real(8), allocatable :: temp_trig(:)
+    real(8), allocatable :: temp_trig(:,:)
     real(8) :: temp_ratio
     real(8) :: temp_keff_trig
-    type(TriggerObject), allocatable :: temp_real(:)
+    character(len=52), allocatable :: temp_nuclide_name(:)
+    type(TriggerObject), allocatable :: temp_real(:,:)
     type(TallyObject), pointer :: t => null()
    trig_dis%max_ratio = 0
    amount = 0
@@ -2354,10 +2355,11 @@ contains
    ! Check the trigger 
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)    
-      allocate (temp_trig(t % n_user_score_bins))
-      allocate (temp_real(t % n_user_score_bins))
+      allocate (temp_trig(t % n_user_score_bins,t%n_nuclide_bins))
+      allocate (temp_real(t % n_user_score_bins,t%n_nuclide_bins))
+      allocate(temp_nuclide_name(t%n_nuclide_bins))
        if (t % type == TALLY_SURFACE_CURRENT) then
-        call check_for_current(t,temp_real(1))
+        call check_for_current(t,temp_real(1,1))
        else
       ! Get the result
       
@@ -2392,6 +2394,13 @@ contains
            score_index = 0
            
         do n = 1, t % n_nuclide_bins
+          i_nuclide = t % nuclide_bins(n)
+          if (i_nuclide == -1) then
+                temp_nuclide_name(n) = "Total Material"
+          else
+                i_listing = nuclides(i_nuclide) % listing
+                temp_nuclide_name(n) = xs_listings(i_listing) % alias
+          end if
            k = 0
           do l = 1, t % n_user_score_bins
             k = k + 1
@@ -2401,30 +2410,30 @@ contains
             
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
             
-              if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
-                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+              if(temp_real(l,n)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l,n)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
               end if
-              if (temp_real(l)%t2< t % results(score_index,filter_index) % trigger_sum_sq / &
+              if (temp_real(l,n)%t2< t % results(score_index,filter_index) % trigger_sum_sq / &
                             t % results(score_index,filter_index) % trigger_sum) then 
-              temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+              temp_real(l,n)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
                                  t % results(score_index,filter_index) % trigger_sum
               end if
-              temp_real(l)%t3=temp_real(l)%t1**2
+              temp_real(l,n)%t3=temp_real(l,n)%t1**2
             
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               score_index = score_index - 1
               
             do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
-                if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then 
-                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                if(temp_real(l,n)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then 
+                   temp_real(l,n)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
                 end if
-                if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                if (temp_real(l,n)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
                                  t % results(score_index,filter_index) % trigger_sum ) then
-                temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                temp_real(l,n)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
                                  t % results(score_index,filter_index) % trigger_sum
                 end if
-                temp_real(l)%t3=temp_real(l)%t1**2
+                temp_real(l,n)%t3=temp_real(l,n)%t1**2
             end do
               k = k + t % moment_order(k)
               
@@ -2434,29 +2443,29 @@ contains
               do n_order = 0, t % moment_order(k)
                 do nm_order = -n_order, n_order
                   score_index = score_index + 1
-                  if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
-                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                  if(temp_real(l,n)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l,n)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
                    end if
-                   if (temp_real(l)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
+                   if (temp_real(l,n)%t2<t % results(score_index,filter_index) % trigger_sum_sq / &
                                  t % results(score_index,filter_index) % trigger_sum) then
-                       temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                       temp_real(l,n)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
                                  t % results(score_index,filter_index) % trigger_sum
                    end if
-                   temp_real(l)%t3=temp_real(l)%t1**2 
+                   temp_real(l,n)%t3=temp_real(l,n)%t1**2 
                 end do
               end do
               k = k + (t % moment_order(k) + 1)**2 - 1
            
             case default
-               if(temp_real(l)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
-                   temp_real(l)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
+               if(temp_real(l,n)%t1< t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l,n)%t1 = t % results(score_index,filter_index) % trigger_sum_sq
                end if
-               if (temp_real(l)%t2<(t % results(score_index,filter_index) % trigger_sum_sq / &
+               if (temp_real(l,n)%t2<(t % results(score_index,filter_index) % trigger_sum_sq / &
                              t % results(score_index,filter_index) % trigger_sum)) then
-                   temp_real(l)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
+                   temp_real(l,n)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
                                 t % results(score_index,filter_index) % trigger_sum
                end if
-               temp_real(l)%t3=temp_real(l)%t1**2    
+               temp_real(l,n)%t3=temp_real(l,n)%t1**2    
             end select
           end do         
         end do
@@ -2465,27 +2474,28 @@ contains
       end do print_bin
       end if 
      
-    
+    do n = 1, t % n_nuclide_bins
      do l = 1, t % n_user_score_bins
        do k = 1 ,t % n_user_triggers 
        if (.not.t%trigger_for_all .and. (t%type /=TALLY_SURFACE_CURRENT)) then
         if( t%score(k)%position == l ) then
          select case (t%score(k)%type)        
          case(VARIANCE_METHOD) 
-         temp_trig(l)=temp_real(l)%t3
+         temp_trig(l,n)=temp_real(l,n)%t3
          case(RELATIVE_ERROR_METHOD)      
-         temp_trig(l)=temp_real(l)%t2
+         temp_trig(l,n)=temp_real(l,n)%t2
          case default
-         temp_trig(l)=temp_real(l)%t1
+         temp_trig(l,n)=temp_real(l,n)%t1
          end select
         
-         if (temp_trig(l)>t%score(k)%threshold) then
+         if (temp_trig(l,n)>t%score(k)%threshold) then
           amount = amount+1 
-          temp_ratio = temp_trig(l)/t%score(k)%threshold
+          temp_ratio = temp_trig(l,n)/t%score(k)%threshold
           if(trig_dis%max_ratio < temp_ratio) then
           trig_dis%max_ratio = temp_ratio
           trig_dis%temp_name  = t%score(k)%score_name
           trig_dis%id = t%id
+          trig_dis%temp_nuclide = temp_nuclide_name(n)
           end if 
           end if
         else 
@@ -2494,28 +2504,32 @@ contains
        else
          select case (t%score(k)%type)        
          case(VARIANCE_METHOD) 
-         temp_trig(l)=temp_real(l)%t3
+         temp_trig(l,n)=temp_real(l,n)%t3
          case(RELATIVE_ERROR_METHOD)      
-         temp_trig(l)=temp_real(l)%t2
+         temp_trig(l,n)=temp_real(l,n)%t2
          case default
-         temp_trig(l)=temp_real(l)%t1
+         temp_trig(l,n)=temp_real(l,n)%t1
          end select
         
-         if (temp_trig(l)>t%score(1)%threshold) then
+         if (temp_trig(l,n)>t%score(1)%threshold) then
           amount = amount+1 
-          temp_ratio = temp_trig(l)/t%score(1)%threshold
+          temp_ratio = temp_trig(l,n)/t%score(1)%threshold
           if(trig_dis%max_ratio < temp_ratio) then
           trig_dis%max_ratio = temp_ratio
           trig_dis%temp_name  = t%score_for_all(l)
           trig_dis%id = t%id
+          trig_dis%temp_nuclide = temp_nuclide_name(n)
           end if 
          end if 
        end if
      end do
-    end do   
- end do TALLY_LOOP
-   deallocate (temp_trig)
+    end do  
+  end do 
+    deallocate (temp_trig)
    deallocate (temp_real)
+   deallocate (temp_nuclide_name)
+ end do TALLY_LOOP
+   
    if(amount == 0 ) then
    reach_trigger = .true. 
    else 

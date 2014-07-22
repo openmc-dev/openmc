@@ -298,7 +298,7 @@ module constants
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS        = -20, & ! number of events
-       N_SCORE_MINUM   = -20    ! expand the boundary
+       N_SCORE_MINUM       = -20    ! expand the boundary
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

@@ -193,10 +193,8 @@ contains
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
-      
-     
-       
-       ! Get number of basic batches.
+        
+      ! Get number of basic batches.
       if(check_for_node(node_mode,"batches")) then
         call get_node_value(node_mode,"batches",n_basic_batches)
         if(.not.trigger_on) then
@@ -248,7 +246,7 @@ contains
          call fatal_error()
        end if
      end if
-  end if
+    end if
 
     ! Fixed source calculation information
     if (check_for_node(doc, "fixed_source")) then

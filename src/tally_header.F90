@@ -79,7 +79,7 @@ module tally_header
       integer :: position = 0 
       integer :: type
       real(8)    :: threshold
-      character(len=52) :: score_name
+      character(len=52) :: score_name  
    end type ScoreObject
 
 !===============================================================================
@@ -88,7 +88,8 @@ module tally_header
    type Temp_trig
       integer    :: id
       real(8)    :: max_ratio = 0
-      character(len=52) :: temp_name 
+      character(len=52) :: temp_name
+      character(len=52) :: temp_nuclide 
    end type Temp_trig
    
 !===============================================================================

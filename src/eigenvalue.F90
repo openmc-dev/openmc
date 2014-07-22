@@ -94,7 +94,7 @@ contains
 
       call finalize_batch()
       
-      !Check batches
+      !Check batches, check the trigger, write the statepoint file
       if(master) then
        call check_batch()
        if (reach_trigger) then
@@ -253,21 +253,23 @@ contains
    if(.not.((current_batch-n_basic_batches)<0).and.trigger_on) then
     if  (mod((current_batch-n_basic_batches),n_batch_interval)==0 .or. &
     current_batch==n_batches) then
-   call calculate_combined_keff()
-   call check_for_trigger()
+      call calculate_combined_keff()
+      call check_for_trigger()
   
    
-   if(reach_trigger) then
-   write(*,*) "Trigger has been reached in batch "// trim(to_str(current_batch))
-   elseif(trig_dis%temp_name=="eigenvalue") then
-   write(*,*) " Trigger isn't reached, the max uncertainty/threshold "
-   write(*,*) " is "//trim(to_str(trig_dis%max_ratio))// " for "//trim(trig_dis%temp_name)
-   else   
-   write(*,*) "Trigger isn't reached, the max uncertainty/threshold "
-   write(*,*)" is "//trim(to_str(trig_dis%max_ratio))// " for "//trim(trig_dis%temp_name)//" in tally "// trim(to_str(trig_dis%id))
-   end if 
+       if(reach_trigger) then
+        write(*,*) "Trigger has been reached in batch "// trim(to_str(current_batch))
+       elseif(trig_dis%temp_name=="eigenvalue") then
+        write(*,*) " Trigger isn't reached, the max uncertainty/threshold "
+        write(*,*) " is "//trim(to_str(trig_dis%max_ratio))// " for "&
+                   //trim(trig_dis%temp_name)
+       else   
+        write(*,*) "Trigger isn't reached, the max uncertainty/threshold "
+        write(*,*)" is "//trim(to_str(trig_dis%max_ratio))//" of "//trim(trig_dis%temp_nuclide)&
+        // " for "//trim(trig_dis%temp_name)//" in tally "// trim(to_str(trig_dis%id))
+       end if 
+    end if
    end if
-  end if
      
  end subroutine check_batch
  

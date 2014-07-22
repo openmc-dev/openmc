@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES,N_SCORE_TYPES,N_SCORE_MINUM
+  use constants, only: NONE, N_FILTER_TYPES
 
   implicit none
 
@@ -39,11 +39,9 @@ module tally_header
 !===============================================================================
 
   type TallyResult
-    real(8) :: value          = 0.
-    real(8) :: sum            = 0.
-    real(8) :: sum_sq         = 0.
-    real(8) :: trigger_sum    = 0.
-    real(8) :: trigger_sum_sq = 0.
+    real(8) :: value    = 0.
+    real(8) :: sum      = 0.
+    real(8) :: sum_sq   = 0.
   end type TallyResult
 
 !===============================================================================
@@ -63,43 +61,6 @@ module tally_header
       procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
-!===============================================================================
-! TRIGGEROBJECT describes a trigger that stores different information
-!===============================================================================
-   type TriggerObject
-     real(8) :: t1=0.0
-     real(8) :: t2=0.0
-     real(8) :: t3=0.0
-   end type TriggerObject
-   
-!===============================================================================
-! SCOREOBJECT describes a score that stores different information
-!===============================================================================
-   type ScoreObject
-      integer :: position = 0 
-      integer :: type
-      real(8)    :: threshold
-      character(len=52) :: score_name  
-   end type ScoreObject
-
-!===============================================================================
-! TEMP_TRIG describes the search for the max uncertainty/trigger ratio
-!===============================================================================
-   type Temp_trig
-      integer    :: id
-      real(8)    :: max_ratio = 0
-      character(len=52) :: temp_name
-      character(len=52) :: temp_nuclide 
-   end type Temp_trig
-   
-!===============================================================================
-! K_TRIGGER describes a trigger for k
-!===============================================================================
-   type K_trigger
-     integer    :: trigger_type = 0
-     real(8)    :: threshold    = 0 
-   end type K_trigger
-      
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -132,7 +93,6 @@ module tally_header
     ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
-    integer :: find_score (N_SCORE_MINUM:N_SCORE_TYPES) = 0
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
@@ -162,12 +122,7 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-    
-    ! Trigger information
-    type(ScoreObject), allocatable :: score(:)
-    character(len =52),allocatable :: score_for_all(:)
-    integer :: n_user_triggers = 0
-    logical :: trigger_for_all = .false.
+
     ! Type-Bound procedures
     contains
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject

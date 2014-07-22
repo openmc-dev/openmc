@@ -1,0 +1,3613 @@
+Start testing: Jul 21 21:26 EDT
+----------------------------------------------------------
+1/79 Testing: test_void.py
+1/79 Test: test_void.py
+Command: "/usr/bin/python" "test_void.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_void
+"test_void.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:42
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 31069.71c
+ Loading ACE cross section table: 31071.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 74182.71c
+ Loading ACE cross section table: 74183.71c
+ Loading ACE cross section table: 74184.71c
+ Loading ACE cross section table: 74186.71c
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 4009.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 8017.71c
+ Loading ACE cross section table: Be.71t
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    1.07463                       
+        2/1    1.03042                       
+        3/1    0.99914                       
+        4/1    1.05528                       
+        5/1    0.96865                       
+        6/1    0.96341                       
+        7/1    0.97595    0.96968 +/- 0.00627
+        8/1    1.11300    1.01746 +/- 0.04791
+        9/1    0.94766    1.00001 +/- 0.03811
+       10/1    0.94500    0.98901 +/- 0.03150
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  2.3200E+00 seconds
+   Reading cross sections          =  1.4090E+00 seconds
+   Unionizing energy grid          =  2.7200E-01 seconds
+ Total time in simulation          =  3.2000E-02 seconds
+   Time in transport only          =  3.0000E-02 seconds
+   Time in inactive batches        =  1.6000E-02 seconds
+   Time in active batches          =  1.6000E-02 seconds
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+   Time synchronizing fission bank =  1.0000E-03 seconds
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  2.3520E+00 seconds
+ Calculation Rate (inactive)       =  31250.0 neutrons/second
+ Calculation Rate (active)         =  31250.0 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.94405 +/-  0.04207
+ k-effective (Track-length)  =  0.98901 +/-  0.03150
+ k-effective (Absorption)    =  0.93692 +/-  0.03893
+ Combined k-effective        =  0.97499 +/-  0.03203
+ Leakage Fraction            =  0.69800 +/-  0.02177
+
+
+Traceback (most recent call last):
+  File "test_void.py", line 57, in <module>
+    test_results()
+  File "test_void.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.39 sec
+----------------------------------------------------------
+Test Failed.
+"test_void.py" end time: Jul 21 21:26 EDT
+"test_void.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+2/79 Testing: test_energy_grid.py
+2/79 Test: test_energy_grid.py
+Command: "/usr/bin/python" "test_energy_grid.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_energy_grid
+"test_energy_grid.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:45
+
+Traceback (most recent call last):
+  File "test_energy_grid.py", line 57, in <module>
+    test_results()
+  File "test_energy_grid.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 6000.71c
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.39949                       
+        2/1    0.33242                       
+        3/1    0.33527                       
+        4/1    0.30805                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        5/1    0.33296                       
+        6/1    0.31695                       
+        7/1    0.31211    0.31453 +/- 0.00242
+        8/1    0.32313    0.31740 +/- 0.00319
+        9/1    0.32737    0.31989 +/- 0.00336
+       10/1    0.33537    0.32299 +/- 0.00405
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.3600E-01 seconds
+   Reading cross sections          =  3.8000E-02 seconds
+   Unionizing energy grid          =  0.0000E+00 seconds
+ Total time in simulation          =  5.4000E-02 seconds
+   Time in transport only          =  5.3000E-02 seconds
+   Time in inactive batches        =  2.7000E-02 seconds
+   Time in active batches          =  2.7000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.9000E-01 seconds
+ Calculation Rate (inactive)       =  1.85185E+05 neutrons/second
+ Calculation Rate (active)         =  1.85185E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.32135 +/-  0.00392
+ k-effective (Track-length)  =  0.32299 +/-  0.00405
+ k-effective (Absorption)    =  0.32288 +/-  0.00859
+ Combined k-effective        =  0.32243 +/-  0.00050
+ Leakage Fraction            =  0.86180 +/-  0.00343
+
+
+<end of output>
+Test time =   0.82 sec
+----------------------------------------------------------
+Test Failed.
+"test_energy_grid.py" end time: Jul 21 21:26 EDT
+"test_energy_grid.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/79 Testing: test_plot_basis.py
+3/79 Test: test_plot_basis.py
+Command: "/usr/bin/python" "test_plot_basis.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_plot_basis
+"test_plot_basis.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:46
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading plot XML file...
+ Building neighboring cells lists for each surface...
+
+ =======================>     PLOTTING SUMMARY     <========================
+
+ Plot ID:               1
+ Plot Type:             Slice
+ Origin:                0.0 0.0 0.0
+ Width:                 25.0000 25.0000
+ Coloring:              Cells
+ Basis:                 xy
+ Pixels:                200 200
+
+ Plot ID:               2
+ Plot Type:             Slice
+ Origin:                0.0 0.0 0.0
+ Width:                 25.0000 25.0000
+ Coloring:              Cells
+ Basis:                 xz
+ Pixels:                200 200
+
+ Plot ID:               3
+ Plot Type:             Slice
+ Origin:                0.0 0.0 0.0
+ Width:                 25.0000 25.0000
+ Coloring:              Cells
+ Basis:                 yz
+ Pixels:                200 200
+
+ 
+ WARNING: Cell overlap checking is ON
+ Processing plot 1...
+ Processing plot 2...
+ Processing plot 3...
+
+<end of output>
+Test time =   0.14 sec
+----------------------------------------------------------
+Test Passed.
+"test_plot_basis.py" end time: Jul 21 21:26 EDT
+"test_plot_basis.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/79 Testing: test_score_flux_yn.py
+4/79 Test: test_score_flux_yn.py
+Command: "/usr/bin/python" "test_score_flux_yn.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_score_flux_yn
+"test_score_flux_yn.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:46
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_score_flux_yn.py", line 61, in <module>
+    test_results()
+  File "test_score_flux_yn.py", line 38, in test_results
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  4.7990E+00 seconds
+   Reading cross sections          =  2.1960E+00 seconds
+   Unionizing energy grid          =  1.9810E+00 seconds
+ Total time in simulation          =  4.8700E-01 seconds
+   Time in transport only          =  4.8600E-01 seconds
+   Time in inactive batches        =  1.5900E-01 seconds
+   Time in active batches          =  3.2800E-01 seconds
+   Time synchronizing fission bank =  1.0000E-03 seconds
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  3.0000E-03 seconds
+ Total time elapsed                =  5.2890E+00 seconds
+ Calculation Rate (inactive)       =  3144.65 neutrons/second
+ Calculation Rate (active)         =  1524.39 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   5.45 sec
+----------------------------------------------------------
+Test Failed.
+"test_score_flux_yn.py" end time: Jul 21 21:26 EDT
+"test_score_flux_yn.py" time elapsed: 00:00:05
+----------------------------------------------------------
+
+5/79 Testing: test_eigenvalue_no_inactive.py
+5/79 Test: test_eigenvalue_no_inactive.py
+Command: "/usr/bin/python" "test_eigenvalue_no_inactive.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_eigenvalue_no_inactive
+"test_eigenvalue_no_inactive.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:52
+
+Traceback (most recent call last):
+  File "test_eigenvalue_no_inactive.py", line 57, in <module>
+    test_results()
+  File "test_eigenvalue_no_inactive.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+        2/1    0.31092    0.33788 +/- 0.02697
+        3/1    0.30591    0.32723 +/- 0.01887
+        4/1    0.30304    0.32118 +/- 0.01465
+        5/1    0.30679    0.31830 +/- 0.01171
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    0.29376    0.31421 +/- 0.01040
+        7/1    0.30247    0.31253 +/- 0.00894
+        8/1    0.30380    0.31144 +/- 0.00782
+        9/1    0.30091    0.31027 +/- 0.00700
+       10/1    0.29403    0.30865 +/- 0.00647
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2100E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  4.0000E-02 seconds
+   Time in transport only          =  4.0000E-02 seconds
+   Time in inactive batches        =  0.0000E+00 seconds
+   Time in active batches          =  4.0000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.6100E-01 seconds
+ Calculation Rate (active)         =  2.50000E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.31089 +/-  0.00553
+ k-effective (Track-length)  =  0.30865 +/-  0.00647
+ k-effective (Absorption)    =  0.31717 +/-  0.01135
+ Combined k-effective        =  0.31078 +/-  0.00637
+ Leakage Fraction            =  0.86890 +/-  0.00502
+
+
+<end of output>
+Test time =   0.81 sec
+----------------------------------------------------------
+Test Failed.
+"test_eigenvalue_no_inactive.py" end time: Jul 21 21:26 EDT
+"test_eigenvalue_no_inactive.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/79 Testing: test_score_nuscatter_pn.py
+6/79 Test: test_score_nuscatter_pn.py
+Command: "/usr/bin/python" "test_score_nuscatter_pn.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_score_nuscatter_pn
+"test_score_nuscatter_pn.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:52
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_score_nuscatter_pn.py", line 61, in <module>
+    test_results()
+  File "test_score_nuscatter_pn.py", line 38, in test_results
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2660E+00 seconds
+   Reading cross sections          =  6.6100E-01 seconds
+   Unionizing energy grid          =  1.9700E+00 seconds
+ Total time in simulation          =  3.2000E-01 seconds
+   Time in transport only          =  3.1800E-01 seconds
+   Time in inactive batches        =  1.6000E-01 seconds
+   Time in active batches          =  1.6000E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.5860E+00 seconds
+ Calculation Rate (inactive)       =  3125.00 neutrons/second
+ Calculation Rate (active)         =  3125.00 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.75 sec
+----------------------------------------------------------
+Test Failed.
+"test_score_nuscatter_pn.py" end time: Jul 21 21:26 EDT
+"test_score_nuscatter_pn.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+7/79 Testing: test_density_atombcm.py
+7/79 Test: test_density_atombcm.py
+Command: "/usr/bin/python" "test_density_atombcm.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_density_atombcm
+"test_density_atombcm.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:56
+
+Traceback (most recent call last):
+  File "test_density_atombcm.py", line 57, in <module>
+    test_results()
+  File "test_density_atombcm.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    2.13762                       
+        2/1    1.97679                       
+        3/1    1.77505                       
+        4/1    1.80838                       
+        5/1    1.75468                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    1.69469                       
+        7/1    1.75962    1.72716 +/- 0.03247
+        8/1    1.78998    1.74810 +/- 0.02811
+        9/1    1.82123    1.76638 +/- 0.02700
+       10/1    1.80858    1.77482 +/- 0.02256
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2500E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  8.1000E-02 seconds
+   Time in transport only          =  8.1000E-02 seconds
+   Time in inactive batches        =  4.2000E-02 seconds
+   Time in active batches          =  3.9000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  7.0600E-01 seconds
+ Calculation Rate (inactive)       =  1.19048E+05 neutrons/second
+ Calculation Rate (active)         =  1.28205E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  1.77181 +/-  0.01663
+ k-effective (Track-length)  =  1.77482 +/-  0.02256
+ k-effective (Absorption)    =  1.78872 +/-  0.01043
+ Combined k-effective        =  1.77988 +/-  0.00829
+ Leakage Fraction            =  0.22620 +/-  0.00354
+
+
+<end of output>
+Test time =   0.84 sec
+----------------------------------------------------------
+Test Failed.
+"test_density_atombcm.py" end time: Jul 21 21:26 EDT
+"test_density_atombcm.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/79 Testing: test_filter_cellborn.py
+8/79 Test: test_filter_cellborn.py
+Command: "/usr/bin/python" "test_filter_cellborn.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_filter_cellborn
+"test_filter_cellborn.py" start time: Jul 21 21:26 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:26:57
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_filter_cellborn.py", line 59, in <module>
+    test_results()
+  File "test_filter_cellborn.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2730E+00 seconds
+   Reading cross sections          =  6.5900E-01 seconds
+   Unionizing energy grid          =  1.9770E+00 seconds
+ Total time in simulation          =  3.2000E-01 seconds
+   Time in transport only          =  3.2000E-01 seconds
+   Time in inactive batches        =  1.6000E-01 seconds
+   Time in active batches          =  1.6000E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.5930E+00 seconds
+ Calculation Rate (inactive)       =  3125.00 neutrons/second
+ Calculation Rate (active)         =  3125.00 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.75 sec
+----------------------------------------------------------
+Test Failed.
+"test_filter_cellborn.py" end time: Jul 21 21:27 EDT
+"test_filter_cellborn.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+9/79 Testing: test_sourcepoint_latest.py
+9/79 Test: test_sourcepoint_latest.py
+Command: "/usr/bin/python" "test_sourcepoint_latest.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_sourcepoint_latest
+"test_sourcepoint_latest.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:01
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+ Creating source file source.binary...
+        2/1    0.31092                       
+ Creating source file source.binary...
+        3/1    0.30817                       
+ Creating source file source.binary...
+        4/1    0.29491                       
+ Creating source file source.binary...
+        5/1    0.30532                       
+ Creating source file source.binary...
+        6/1    0.30441                       
+ Creating source file source.binary...
+        7/1    0.30694    0.30568 +/- 0.00126
+ Creating source file source.binary...
+        8/1    0.30688    0.30608 +/- 0.00083
+ Creating source file source.binary...
+        9/1    0.29418    0.30310 +/- 0.00303
+ Creating source file source.binary...
+       10/1    0.29172    0.30083 +/- 0.00327
+ Creating state point statepoint.10.binary...
+ Creating source file source.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.1800E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  4.3000E-02 seconds
+   Time in transport only          =  4.0000E-02 seconds
+   Time in inactive batches        =  2.1000E-02 seconds
+   Time in active batches          =  2.2000E-02 seconds
+   Time synchronizing fission bank =  1.0000E-03 seconds
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.6100E-01 seconds
+ Calculation Rate (inactive)       =  2.38095E+05 neutrons/second
+ Calculation Rate (active)         =  2.27273E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30292 +/-  0.00290
+ k-effective (Track-length)  =  0.30083 +/-  0.00327
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ k-effective (Absorption)    =  0.30980 +/-  0.00647
+ Combined k-effective        =  0.30378 +/-  0.00440
+ Leakage Fraction            =  0.87380 +/-  0.00203
+
+
+Traceback (most recent call last):
+  File "test_sourcepoint_latest.py", line 62, in <module>
+    test_results()
+  File "test_sourcepoint_latest.py", line 39, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   0.80 sec
+----------------------------------------------------------
+Test Failed.
+"test_sourcepoint_latest.py" end time: Jul 21 21:27 EDT
+"test_sourcepoint_latest.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/79 Testing: test_plot_colspec.py
+10/79 Test: test_plot_colspec.py
+Command: "/usr/bin/python" "test_plot_colspec.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_plot_colspec
+"test_plot_colspec.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:01
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading plot XML file...
+ Building neighboring cells lists for each surface...
+
+ =======================>     PLOTTING SUMMARY     <========================
+
+ Plot ID:               1
+ Plot Type:             Slice
+ Origin:                0.0 0.0 0.0
+ Width:                 30.0000 30.0000
+ Coloring:              Cells
+ Basis:                 xy
+ Pixels:                200 200
+
+ 
+ WARNING: Cell overlap checking is ON
+ Processing plot 1...
+
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"test_plot_colspec.py" end time: Jul 21 21:27 EDT
+"test_plot_colspec.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/79 Testing: test_statepoint_restart.py
+11/79 Test: test_statepoint_restart.py
+Command: "/usr/bin/python" "test_statepoint_restart.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_statepoint_restart
+"test_statepoint_restart.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:02
+
+Traceback (most recent call last):
+  File "test_statepoint_restart.py", line 128, in <module>
+    test_results()
+  File "test_statepoint_restart.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+        2/1    0.31092                       
+        3/1    0.30817                       
+        4/1    0.29491                       
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        5/1    0.30532                       
+        6/1    0.30441                       
+        7/1    0.30694    0.30568 +/- 0.00126
+ Creating state point statepoint.7.binary...
+        8/1    0.30688    0.30608 +/- 0.00083
+        9/1    0.29418    0.30310 +/- 0.00303
+       10/1    0.29172    0.30083 +/- 0.00327
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2100E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  4.4000E-02 seconds
+   Time in transport only          =  4.3000E-02 seconds
+   Time in inactive batches        =  2.0000E-02 seconds
+   Time in active batches          =  2.4000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  1.3000E-02 seconds
+ Total time elapsed                =  6.7800E-01 seconds
+ Calculation Rate (inactive)       =  2.50000E+05 neutrons/second
+ Calculation Rate (active)         =  2.08333E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30292 +/-  0.00290
+ k-effective (Track-length)  =  0.30083 +/-  0.00327
+ k-effective (Absorption)    =  0.30980 +/-  0.00647
+ Combined k-effective        =  0.30378 +/-  0.00440
+ Leakage Fraction            =  0.87380 +/-  0.00203
+
+
+<end of output>
+Test time =   0.82 sec
+----------------------------------------------------------
+Test Failed.
+"test_statepoint_restart.py" end time: Jul 21 21:27 EDT
+"test_statepoint_restart.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/79 Testing: test_lattice_multiple.py
+12/79 Test: test_lattice_multiple.py
+Command: "/usr/bin/python" "test_lattice_multiple.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_lattice_multiple
+"test_lattice_multiple.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:02
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+ Loading ACE cross section table: 14030.71c
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+        7/1    1.13018    1.00005 +/- 0.13013
+Traceback (most recent call last):
+  File "test_lattice_multiple.py", line 57, in <module>
+    test_results()
+  File "test_lattice_multiple.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2810E+00 seconds
+   Reading cross sections          =  6.5700E-01 seconds
+   Unionizing energy grid          =  1.9860E+00 seconds
+ Total time in simulation          =  3.1800E-01 seconds
+   Time in transport only          =  3.1800E-01 seconds
+   Time in inactive batches        =  1.6200E-01 seconds
+   Time in active batches          =  1.5600E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.5990E+00 seconds
+ Calculation Rate (inactive)       =  3086.42 neutrons/second
+ Calculation Rate (active)         =  3205.13 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.76 sec
+----------------------------------------------------------
+Test Failed.
+"test_lattice_multiple.py" end time: Jul 21 21:27 EDT
+"test_lattice_multiple.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+13/79 Testing: test_statepoint_batch.py
+13/79 Test: test_statepoint_batch.py
+Command: "/usr/bin/python" "test_statepoint_batch.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_statepoint_batch
+"test_statepoint_batch.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:06
+
+Traceback (most recent call last):
+  File "test_statepoint_batch.py", line 65, in <module>
+    test_results()
+  File "test_statepoint_batch.py", line 43, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+        2/1    0.31092                       
+        3/1    0.30817                       
+ Creating state point statepoint.3.binary...
+        4/1    0.29491                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        5/1    0.30532                       
+        6/1    0.30441                       
+ Creating state point statepoint.6.binary...
+        7/1    0.30694    0.30568 +/- 0.00126
+        8/1    0.30688    0.30608 +/- 0.00083
+        9/1    0.29418    0.30310 +/- 0.00303
+ Creating state point statepoint.9.binary...
+       10/1    0.29172    0.30083 +/- 0.00327
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2000E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  4.1000E-02 seconds
+   Time in transport only          =  3.9000E-02 seconds
+   Time in inactive batches        =  2.0000E-02 seconds
+   Time in active batches          =  2.1000E-02 seconds
+   Time synchronizing fission bank =  1.0000E-03 seconds
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.6100E-01 seconds
+ Calculation Rate (inactive)       =  2.50000E+05 neutrons/second
+ Calculation Rate (active)         =  2.38095E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30292 +/-  0.00290
+ k-effective (Track-length)  =  0.30083 +/-  0.00327
+ k-effective (Absorption)    =  0.30980 +/-  0.00647
+ Combined k-effective        =  0.30378 +/-  0.00440
+ Leakage Fraction            =  0.87380 +/-  0.00203
+
+
+<end of output>
+Test time =   0.81 sec
+----------------------------------------------------------
+Test Failed.
+"test_statepoint_batch.py" end time: Jul 21 21:27 EDT
+"test_statepoint_batch.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/79 Testing: test_score_flux.py
+14/79 Test: test_score_flux.py
+Command: "/usr/bin/python" "test_score_flux.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_score_flux
+"test_score_flux.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:07
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_score_flux.py", line 62, in <module>
+    test_results()
+  File "test_score_flux.py", line 38, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2730E+00 seconds
+   Reading cross sections          =  6.5800E-01 seconds
+   Unionizing energy grid          =  1.9740E+00 seconds
+ Total time in simulation          =  3.2800E-01 seconds
+   Time in transport only          =  3.2700E-01 seconds
+   Time in inactive batches        =  1.6100E-01 seconds
+   Time in active batches          =  1.6700E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  1.0000E-03 seconds
+ Total time elapsed                =  3.6020E+00 seconds
+ Calculation Rate (inactive)       =  3105.59 neutrons/second
+ Calculation Rate (active)         =  2994.01 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.76 sec
+----------------------------------------------------------
+Test Failed.
+"test_score_flux.py" end time: Jul 21 21:27 EDT
+"test_score_flux.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+15/79 Testing: test_filter_material.py
+15/79 Test: test_filter_material.py
+Command: "/usr/bin/python" "test_filter_material.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_filter_material
+"test_filter_material.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:11
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_filter_material.py", line 62, in <module>
+    test_results()
+  File "test_filter_material.py", line 38, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2730E+00 seconds
+   Reading cross sections          =  6.5800E-01 seconds
+   Unionizing energy grid          =  1.9760E+00 seconds
+ Total time in simulation          =  3.2500E-01 seconds
+   Time in transport only          =  3.2500E-01 seconds
+   Time in inactive batches        =  1.6000E-01 seconds
+   Time in active batches          =  1.6500E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.5980E+00 seconds
+ Calculation Rate (inactive)       =  3125.00 neutrons/second
+ Calculation Rate (active)         =  3030.30 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.76 sec
+----------------------------------------------------------
+Test Failed.
+"test_filter_material.py" end time: Jul 21 21:27 EDT
+"test_filter_material.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+16/79 Testing: test_score_nuscatter.py
+16/79 Test: test_score_nuscatter.py
+Command: "/usr/bin/python" "test_score_nuscatter.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_score_nuscatter
+"test_score_nuscatter.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:14
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_score_nuscatter.py", line 62, in <module>
+    test_results()
+  File "test_score_nuscatter.py", line 38, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.3090E+00 seconds
+   Reading cross sections          =  6.5600E-01 seconds
+   Unionizing energy grid          =  2.0300E+00 seconds
+ Total time in simulation          =  3.1800E-01 seconds
+   Time in transport only          =  3.1800E-01 seconds
+   Time in inactive batches        =  1.6000E-01 seconds
+   Time in active batches          =  1.5800E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.6270E+00 seconds
+ Calculation Rate (inactive)       =  3125.00 neutrons/second
+ Calculation Rate (active)         =  3164.56 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.78 sec
+----------------------------------------------------------
+Test Failed.
+"test_score_nuscatter.py" end time: Jul 21 21:27 EDT
+"test_score_nuscatter.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+17/79 Testing: test_ptables_off.py
+17/79 Test: test_ptables_off.py
+Command: "/usr/bin/python" "test_ptables_off.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_ptables_off
+"test_ptables_off.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:18
+
+Traceback (most recent call last):
+  File "test_ptables_off.py", line 57, in <module>
+    test_results()
+  File "test_ptables_off.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36517                       
+        2/1    0.31667                       
+        3/1    0.30602                       
+        4/1    0.30712                       
+        5/1    0.30373                       
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    0.31230                       
+        7/1    0.31058    0.31144 +/- 0.00086
+        8/1    0.29346    0.30545 +/- 0.00602
+        9/1    0.29443    0.30270 +/- 0.00507
+       10/1    0.30117    0.30239 +/- 0.00394
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.1900E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  3.9000E-02 seconds
+   Time in transport only          =  3.9000E-02 seconds
+   Time in inactive batches        =  1.8000E-02 seconds
+   Time in active batches          =  2.1000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.5800E-01 seconds
+ Calculation Rate (inactive)       =  2.77778E+05 neutrons/second
+ Calculation Rate (active)         =  2.38095E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30594 +/-  0.00666
+ k-effective (Track-length)  =  0.30239 +/-  0.00394
+ k-effective (Absorption)    =  0.30056 +/-  0.00387
+ Combined k-effective        =  0.29839 +/-  0.00426
+ Leakage Fraction            =  0.87740 +/-  0.00216
+
+
+<end of output>
+Test time =   0.79 sec
+----------------------------------------------------------
+Test Failed.
+"test_ptables_off.py" end time: Jul 21 21:27 EDT
+"test_ptables_off.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/79 Testing: test_eigenvalue_genperbatch.py
+18/79 Test: test_eigenvalue_genperbatch.py
+Command: "/usr/bin/python" "test_eigenvalue_genperbatch.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_eigenvalue_genperbatch
+"test_eigenvalue_genperbatch.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:19
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485
+        1/2    0.31092
+        1/3    0.30817                       
+        2/1    0.29491
+        2/2    0.30532
+        2/3    0.30441                       
+        3/1    0.30694
+        3/2    0.30613
+        3/3    0.29024                       
+        4/1    0.28831
+        4/2    0.28903    0.28867 +/- 0.00036
+        4/3    0.30517    0.29417 +/- 0.00550
+        5/1    0.29270    0.29380 +/- 0.00391
+        5/2    0.29722    0.29449 +/- 0.00310
+        5/3    0.29444    0.29448 +/- 0.00254
+        6/1    0.30420    0.29587 +/- 0.00255
+        6/2    0.30264    0.29671 +/- 0.00237
+        6/3    0.29915    0.29698 +/- 0.00211
+        7/1    0.30242    0.29753 +/- 0.00196
+        7/2    0.29659    0.29744 +/- 0.00178
+        7/3    0.30178    0.29780 +/- 0.00166
+ Creating state point statepoint.7.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.4900E-01 seconds
+   Reading cross sections          =  3.4000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  8.6000E-02 seconds
+   Time in transport only          =  8.3000E-02 seconds
+   Time in inactive batches        =  3.5000E-02 seconds
+   Time in active batches          =  5.1000E-02 seconds
+   Time synchronizing fission bank =  2.0000E-03 seconds
+     Sampling source sites         =  2.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  7.3500E-01 seconds
+ Calculation Rate (inactive)       =  2.57143E+05 neutrons/second
+ Calculation Rate (active)         =  2.35294E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30017 +/-  0.00409
+ k-effective (Track-length)  =  0.29780 +/-  0.00196
+ k-effective (Absorption)    =  0.30109 +/-  0.00197
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Combined k-effective        =  0.30015 +/-  0.00083
+ Leakage Fraction            =  0.87692 +/-  0.00103
+
+
+Traceback (most recent call last):
+  File "test_eigenvalue_genperbatch.py", line 57, in <module>
+    test_results()
+  File "test_eigenvalue_genperbatch.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   0.88 sec
+----------------------------------------------------------
+Test Failed.
+"test_eigenvalue_genperbatch.py" end time: Jul 21 21:27 EDT
+"test_eigenvalue_genperbatch.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/79 Testing: test_statepoint_interval.py
+19/79 Test: test_statepoint_interval.py
+Command: "/usr/bin/python" "test_statepoint_interval.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_statepoint_interval
+"test_statepoint_interval.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:20
+
+Traceback (most recent call last):
+  File "test_statepoint_interval.py", line 74, in <module>
+    test_results()
+  File "test_statepoint_interval.py", line 52, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+        2/1    0.31092                       
+ Creating state point statepoint.2.binary...
+        3/1    0.30817                       
+        4/1    0.29491                       
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+ Creating state point statepoint.4.binary...
+        5/1    0.30532                       
+        6/1    0.30441                       
+ Creating state point statepoint.6.binary...
+        7/1    0.30694    0.30568 +/- 0.00126
+        8/1    0.30688    0.30608 +/- 0.00083
+ Creating state point statepoint.8.binary...
+        9/1    0.29418    0.30310 +/- 0.00303
+       10/1    0.29172    0.30083 +/- 0.00327
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2200E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  4.3000E-02 seconds
+   Time in transport only          =  4.1000E-02 seconds
+   Time in inactive batches        =  2.0000E-02 seconds
+   Time in active batches          =  2.3000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.6500E-01 seconds
+ Calculation Rate (inactive)       =  2.50000E+05 neutrons/second
+ Calculation Rate (active)         =  2.17391E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30292 +/-  0.00290
+ k-effective (Track-length)  =  0.30083 +/-  0.00327
+ k-effective (Absorption)    =  0.30980 +/-  0.00647
+ Combined k-effective        =  0.30378 +/-  0.00440
+ Leakage Fraction            =  0.87380 +/-  0.00203
+
+
+<end of output>
+Test time =   0.81 sec
+----------------------------------------------------------
+Test Failed.
+"test_statepoint_interval.py" end time: Jul 21 21:27 EDT
+"test_statepoint_interval.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/79 Testing: test_plot_background.py
+20/79 Test: test_plot_background.py
+Command: "/usr/bin/python" "test_plot_background.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_plot_background
+"test_plot_background.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:21
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading plot XML file...
+ Building neighboring cells lists for each surface...
+
+ =======================>     PLOTTING SUMMARY     <========================
+
+ Plot ID:               1
+ Plot Type:             Slice
+ Origin:                0.0 0.0 0.0
+ Width:                 30.0000 30.0000
+ Coloring:              Cells
+ Basis:                 xy
+ Pixels:                200 200
+
+ 
+ WARNING: Cell overlap checking is ON
+ Processing plot 1...
+
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"test_plot_background.py" end time: Jul 21 21:27 EDT
+"test_plot_background.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/79 Testing: test_natural_element.py
+21/79 Test: test_natural_element.py
+Command: "/usr/bin/python" "test_natural_element.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_natural_element
+"test_natural_element.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:21
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 4009.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 8017.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 22046.71c
+ Loading ACE cross section table: 22047.71c
+ Loading ACE cross section table: 22048.71c
+ Loading ACE cross section table: 22049.71c
+ Loading ACE cross section table: 22050.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 13027.71c
+ Loading ACE cross section table: 12024.71c
+ Loading ACE cross section table: 12025.71c
+ Loading ACE cross section table: 12026.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    1.31786                       
+        2/1    0.96345                       
+        3/1    1.05209                       
+        4/1    0.93102                       
+        5/1    1.07003                       
+        6/1    1.00530                       
+        7/1    0.99559    1.00045 +/- 0.00485
+        8/1    1.00625    1.00238 +/- 0.00340
+        9/1    1.02045    1.00690 +/- 0.00512
+       10/1    0.99614    1.00475 +/- 0.00451
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  1.4930E+00 seconds
+   Reading cross sections          =  4.7700E-01 seconds
+   Unionizing energy grid          =  4.1800E-01 seconds
+ Total time in simulation          =  1.6000E-01 seconds
+   Time in transport only          =  1.5900E-01 seconds
+   Time in inactive batches        =  8.3000E-02 seconds
+   Time in active batches          =  7.7000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  1.0000E-03 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  1.6530E+00 seconds
+ Calculation Rate (inactive)       =  24096.4 neutrons/second
+ Calculation Rate (active)         =  25974.0 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.98591 +/-  0.01782
+Traceback (most recent call last):
+  File "test_natural_element.py", line 57, in <module>
+    test_results()
+  File "test_natural_element.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+ k-effective (Track-length)  =  1.00475 +/-  0.00451
+ k-effective (Absorption)    =  1.03100 +/-  0.03104
+ Combined k-effective        =  0.99803 +/-  0.00768
+ Leakage Fraction            =  0.66400 +/-  0.01362
+
+
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   1.79 sec
+----------------------------------------------------------
+Test Failed.
+"test_natural_element.py" end time: Jul 21 21:27 EDT
+"test_natural_element.py" time elapsed: 00:00:01
+----------------------------------------------------------
+
+22/79 Testing: test_source_energy_mono.py
+22/79 Test: test_source_energy_mono.py
+Command: "/usr/bin/python" "test_source_energy_mono.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_source_energy_mono
+"test_source_energy_mono.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:23
+
+Traceback (most recent call last):
+  File "test_source_energy_mono.py", line 57, in <module>
+    test_results()
+  File "test_source_energy_mono.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    2.13464                       
+        2/1    0.37943                       
+        3/1    0.32541                       
+        4/1    0.32171                       
+        5/1    0.30844                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    0.31238                       
+        7/1    0.30211    0.30725 +/- 0.00514
+        8/1    0.30362    0.30604 +/- 0.00320
+        9/1    0.29449    0.30315 +/- 0.00367
+       10/1    0.30875    0.30427 +/- 0.00305
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.4800E-01 seconds
+   Reading cross sections          =  3.4000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  4.1000E-02 seconds
+   Time in transport only          =  4.0000E-02 seconds
+   Time in inactive batches        =  2.0000E-02 seconds
+   Time in active batches          =  2.1000E-02 seconds
+   Time synchronizing fission bank =  1.0000E-03 seconds
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.8900E-01 seconds
+ Calculation Rate (inactive)       =  2.50000E+05 neutrons/second
+ Calculation Rate (active)         =  2.38095E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30622 +/-  0.00257
+ k-effective (Track-length)  =  0.30427 +/-  0.00305
+ k-effective (Absorption)    =  0.31228 +/-  0.01152
+ Combined k-effective        =  0.30564 +/-  0.00329
+ Leakage Fraction            =  0.87240 +/-  0.00448
+
+
+<end of output>
+Test time =   0.84 sec
+----------------------------------------------------------
+Test Failed.
+"test_source_energy_mono.py" end time: Jul 21 21:27 EDT
+"test_source_energy_mono.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/79 Testing: test_source_point.py
+23/79 Test: test_source_point.py
+Command: "/usr/bin/python" "test_source_point.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_source_point
+"test_source_point.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:23
+
+Traceback (most recent call last):
+  File "test_source_point.py", line 57, in <module>
+    test_results()
+  File "test_source_point.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36769                       
+        2/1    0.32809                       
+        3/1    0.31591                       
+        4/1    0.30172                       
+        5/1    0.29720                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    0.31097                       
+        7/1    0.31014    0.31056 +/- 0.00042
+        8/1    0.30963    0.31025 +/- 0.00039
+        9/1    0.31368    0.31111 +/- 0.00090
+       10/1    0.29954    0.30879 +/- 0.00242
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.1800E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  4.0000E-02 seconds
+   Time in transport only          =  4.0000E-02 seconds
+   Time in inactive batches        =  1.9000E-02 seconds
+   Time in active batches          =  2.1000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.5800E-01 seconds
+ Calculation Rate (inactive)       =  2.63158E+05 neutrons/second
+ Calculation Rate (active)         =  2.38095E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30596 +/-  0.00440
+ k-effective (Track-length)  =  0.30879 +/-  0.00242
+ k-effective (Absorption)    =  0.30340 +/-  0.00726
+ Combined k-effective        =  0.30999 +/-  0.00139
+ Leakage Fraction            =  0.87560 +/-  0.00298
+
+
+<end of output>
+Test time =   0.80 sec
+----------------------------------------------------------
+Test Failed.
+"test_source_point.py" end time: Jul 21 21:27 EDT
+"test_source_point.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/79 Testing: test_output.py
+24/79 Test: test_output.py
+Command: "/usr/bin/python" "test_output.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_output
+"test_output.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:24
+
+Traceback (most recent call last):
+  File "test_output.py", line 71, in <module>
+    test_results()
+  File "test_output.py", line 45, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.36485                       
+        2/1    0.31092                       
+        3/1    0.30817                       
+        4/1    0.29491                       
+        5/1    0.30532                       
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    0.30441                       
+        7/1    0.30694    0.30568 +/- 0.00126
+        8/1    0.30688    0.30608 +/- 0.00083
+        9/1    0.29418    0.30310 +/- 0.00303
+       10/1    0.29172    0.30083 +/- 0.00327
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2000E-01 seconds
+   Reading cross sections          =  2.8000E-02 seconds
+   Unionizing energy grid          =  6.0000E-03 seconds
+ Total time in simulation          =  4.0000E-02 seconds
+   Time in transport only          =  4.0000E-02 seconds
+   Time in inactive batches        =  1.9000E-02 seconds
+   Time in active batches          =  2.1000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.6000E-01 seconds
+ Calculation Rate (inactive)       =  2.63158E+05 neutrons/second
+ Calculation Rate (active)         =  2.38095E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.30292 +/-  0.00290
+ k-effective (Track-length)  =  0.30083 +/-  0.00327
+ k-effective (Absorption)    =  0.30980 +/-  0.00647
+ Combined k-effective        =  0.30378 +/-  0.00440
+ Leakage Fraction            =  0.87380 +/-  0.00203
+
+
+<end of output>
+Test time =   0.79 sec
+----------------------------------------------------------
+Test Failed.
+"test_output.py" end time: Jul 21 21:27 EDT
+"test_output.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/79 Testing: test_salphabeta.py
+25/79 Test: test_salphabeta.py
+Command: "/usr/bin/python" "test_salphabeta.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_salphabeta
+"test_salphabeta.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:25
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: Graph.71t
+ Loading ACE cross section table: 4009.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: BeBeO.71t
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.96530                       
+        2/1    0.82385                       
+        3/1    0.83036                       
+        4/1    0.85843                       
+        5/1    0.84960                       
+        6/1    0.84647                       
+        7/1    0.87137    0.85892 +/- 0.01245
+        8/1    0.80360    0.84048 +/- 0.01979
+        9/1    0.86255    0.84600 +/- 0.01504
+       10/1    0.86972    0.85074 +/- 0.01258
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  7.0400E-01 seconds
+   Reading cross sections          =  1.0100E-01 seconds
+   Unionizing energy grid          =  1.5000E-02 seconds
+ Total time in simulation          =  8.0000E-02 seconds
+   Time in transport only          =  8.0000E-02 seconds
+   Time in inactive batches        =  4.0000E-02 seconds
+   Time in active batches          =  4.0000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  7.8400E-01 seconds
+ Calculation Rate (inactive)       =  1.25000E+05 neutrons/second
+ Calculation Rate (active)         =  1.25000E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.84768 +/-  0.01422
+ k-effective (Track-length)  =  0.85074 +/-  0.01258
+ k-effective (Absorption)    =  0.88156 +/-  0.01350
+ Combined k-effective        =  0.88398 +/-  0.01830
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Leakage Fraction            =  0.61680 +/-  0.00661
+
+
+Traceback (most recent call last):
+  File "test_salphabeta.py", line 57, in <module>
+    test_results()
+  File "test_salphabeta.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   0.93 sec
+----------------------------------------------------------
+Test Failed.
+"test_salphabeta.py" end time: Jul 21 21:27 EDT
+"test_salphabeta.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/79 Testing: test_score_scatter_yn.py
+26/79 Test: test_score_scatter_yn.py
+Command: "/usr/bin/python" "test_score_scatter_yn.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_score_scatter_yn
+"test_score_scatter_yn.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:26
+
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Reading tallies XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92234.71c
+ Loading ACE cross section table: 92235.71c
+ Loading ACE cross section table: 92236.71c
+ Loading ACE cross section table: 92238.71c
+ Loading ACE cross section table: 93237.71c
+ Loading ACE cross section table: 94238.71c
+ Loading ACE cross section table: 94239.71c
+ Loading ACE cross section table: 94240.71c
+ Loading ACE cross section table: 94241.71c
+ Loading ACE cross section table: 94242.71c
+ Loading ACE cross section table: 95241.71c
+ Loading ACE cross section table: 95242.71c
+ Loading ACE cross section table: 95243.71c
+ Loading ACE cross section table: 96242.71c
+ Loading ACE cross section table: 96243.71c
+ Loading ACE cross section table: 96244.71c
+ Loading ACE cross section table: 96245.71c
+ Loading ACE cross section table: 42095.71c
+ Loading ACE cross section table: 43099.71c
+ Loading ACE cross section table: 44101.71c
+ Loading ACE cross section table: 44103.71c
+ Loading ACE cross section table: 47109.71c
+ Loading ACE cross section table: 54135.71c
+ Loading ACE cross section table: 55133.71c
+ Loading ACE cross section table: 60143.71c
+ Loading ACE cross section table: 60145.71c
+ Loading ACE cross section table: 62147.71c
+ Loading ACE cross section table: 62149.71c
+ Loading ACE cross section table: 62150.71c
+ Loading ACE cross section table: 62151.71c
+ Loading ACE cross section table: 62152.71c
+ Loading ACE cross section table: 63153.71c
+ Loading ACE cross section table: 64155.71c
+ Loading ACE cross section table: 8016.71c
+ Loading ACE cross section table: 40090.71c
+ Loading ACE cross section table: 40091.71c
+ Loading ACE cross section table: 40092.71c
+ Loading ACE cross section table: 40094.71c
+ Loading ACE cross section table: 40096.71c
+ Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
+ Loading ACE cross section table: 5011.71c
+ Loading ACE cross section table: HH2O.71t
+ Loading ACE cross section table: 26054.71c
+ Loading ACE cross section table: 26056.71c
+ Loading ACE cross section table: 26057.71c
+ Loading ACE cross section table: 26058.71c
+ Loading ACE cross section table: 28058.71c
+ Loading ACE cross section table: 28060.71c
+ Loading ACE cross section table: 28061.71c
+ Loading ACE cross section table: 28062.71c
+ Loading ACE cross section table: 28064.71c
+ Loading ACE cross section table: 25055.71c
+ Loading ACE cross section table: 42092.71c
+ Loading ACE cross section table: 42094.71c
+ Loading ACE cross section table: 42096.71c
+ Loading ACE cross section table: 42097.71c
+ Loading ACE cross section table: 42098.71c
+ Loading ACE cross section table: 42100.71c
+ Loading ACE cross section table: 14028.71c
+ Loading ACE cross section table: 14029.71c
+Traceback (most recent call last):
+  File "results.py", line 8, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+ Loading ACE cross section table: 14030.71c
+ Loading ACE cross section table: 24050.71c
+ Loading ACE cross section table: 24052.71c
+ Loading ACE cross section table: 24053.71c
+ Loading ACE cross section table: 24054.71c
+ Loading ACE cross section table: 6000.71c
+ Loading ACE cross section table: 29063.71c
+ Loading ACE cross section table: 29065.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    0.83858                       
+        2/1    0.99870                       
+        3/1    1.08493                       
+        4/1    0.88971                       
+        5/1    1.08035                       
+        6/1    0.86992                       
+Traceback (most recent call last):
+  File "test_score_scatter_yn.py", line 61, in <module>
+    test_results()
+  File "test_score_scatter_yn.py", line 38, in test_results
+        7/1    1.13018    1.00005 +/- 0.13013
+        8/1    1.09219    1.03077 +/- 0.08117
+        9/1    0.93850    1.00770 +/- 0.06185
+       10/1    0.98575    1.00331 +/- 0.04811
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  3.2780E+00 seconds
+   Reading cross sections          =  6.6100E-01 seconds
+   Unionizing energy grid          =  1.9990E+00 seconds
+ Total time in simulation          =  3.4000E-01 seconds
+   Time in transport only          =  3.3900E-01 seconds
+   Time in inactive batches        =  1.6700E-01 seconds
+   Time in active batches          =  1.7300E-01 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+    s1 = _sig(os.stat(f1))
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  3.6180E+00 seconds
+ Calculation Rate (inactive)       =  2994.01 neutrons/second
+ Calculation Rate (active)         =  2890.17 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  0.97524 +/-  0.02222
+ k-effective (Track-length)  =  1.00331 +/-  0.04811
+ k-effective (Absorption)    =  0.97401 +/-  0.04294
+ Combined k-effective        =  0.97853 +/-  0.02895
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+<end of output>
+Test time =   3.79 sec
+----------------------------------------------------------
+Test Failed.
+"test_score_scatter_yn.py" end time: Jul 21 21:27 EDT
+"test_score_scatter_yn.py" time elapsed: 00:00:03
+----------------------------------------------------------
+
+27/79 Testing: test_reflective_cone.py
+27/79 Test: test_reflective_cone.py
+Command: "/usr/bin/python" "test_reflective_cone.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_reflective_cone
+"test_reflective_cone.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:30
+
+Traceback (most recent call last):
+  File "test_reflective_cone.py", line 57, in <module>
+    test_results()
+  File "test_reflective_cone.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    2.35063                       
+        2/1    2.38734                       
+        3/1    2.00741                       
+        4/1    2.45033                       
+        5/1    2.38147                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    2.63734                       
+        7/1    1.98349    2.31042 +/- 0.32693
+        8/1    2.40162    2.34082 +/- 0.19118
+        9/1    2.22753    2.31250 +/- 0.13812
+       10/1    2.37740    2.32548 +/- 0.10777
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.2700E-01 seconds
+   Reading cross sections          =  2.7000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  1.1000E-02 seconds
+   Time in transport only          =  1.0000E-02 seconds
+   Time in inactive batches        =  6.0000E-03 seconds
+   Time in active batches          =  5.0000E-03 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  6.3800E-01 seconds
+ Calculation Rate (inactive)       =  83333.3 neutrons/second
+ Calculation Rate (active)         =  1.00000E+05 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  2.34804 +/-  0.10204
+ k-effective (Track-length)  =  2.32548 +/-  0.10777
+ k-effective (Absorption)    =  2.25821 +/-  0.01734
+ Combined k-effective        =  2.26392 +/-  0.00183
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+<end of output>
+Test time =   0.76 sec
+----------------------------------------------------------
+Test Failed.
+"test_reflective_cone.py" end time: Jul 21 21:27 EDT
+"test_reflective_cone.py" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/79 Testing: test_reflective_plane.py
+28/79 Test: test_reflective_plane.py
+Command: "/usr/bin/python" "test_reflective_plane.py" "--exe" "/home/stsqc/openmc/tests/build/bin/openmc"
+Directory: /home/stsqc/openmc/src/../tests/test_reflective_plane
+"test_reflective_plane.py" start time: Jul 21 21:27 EDT
+Output:
+----------------------------------------------------------
+Traceback (most recent call last):
+  File "results.py", line 7, in <module>
+    import statepoint
+  File "../../src/utils/statepoint.py", line 7, in <module>
+    import scipy.stats
+ImportError: No module named scipy.stats
+
+       .d88888b.                             888b     d888  .d8888b.
+      d88P" "Y88b                            8888b   d8888 d88P  Y88b
+      888     888                            88888b.d88888 888    888
+      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       
+      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       
+      888     888 888  888 88888888 888  888 888  Y8P  888 888    888
+      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P
+       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"
+__________________888______________________________________________________
+                  888
+                  888
+
+      Copyright:      2011-2014 Massachusetts Institute of Technology
+      License:        http://mit-crpg.github.io/openmc/license.html
+      Version:        0.6.0
+      Git SHA1:       1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c
+      Date/Time:      2014-07-21 21:27:31
+
+Traceback (most recent call last):
+  File "test_reflective_plane.py", line 57, in <module>
+    test_results()
+  File "test_reflective_plane.py", line 35, in test_results
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+  File "/usr/lib/python2.7/filecmp.py", line 42, in cmp
+ ===========================================================================
+ ========================>     INITIALIZATION     <=========================
+ ===========================================================================
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading geometry XML file...
+ Reading materials XML file...
+ Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
+ Creating unionized energy grid...
+ Initializing source particles...
+
+ ===========================================================================
+ ====================>     K EIGENVALUE SIMULATION     <====================
+ ===========================================================================
+
+  Bat./Gen.      k            Average k         
+  =========   ========   ====================   
+        1/1    2.24108                       
+        2/1    2.34804                       
+        3/1    2.23703                       
+        4/1    2.19050                       
+        5/1    2.16861                       
+    s1 = _sig(os.stat(f1))
+OSError: [Errno 2] No such file or directory: 'results_test.dat'
+        6/1    2.33302                       
+        7/1    2.27840    2.30571 +/- 0.02731
+        8/1    2.24100    2.28414 +/- 0.02672
+        9/1    2.27877    2.28280 +/- 0.01894
+       10/1    2.31071    2.28838 +/- 0.01570
+ Creating state point statepoint.10.binary...
+
+ ===========================================================================
+ ======================>     SIMULATION FINISHED     <======================
+ ===========================================================================
+
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     =  6.5300E-01 seconds
+   Reading cross sections          =  2.8000E-02 seconds
+   Unionizing energy grid          =  5.0000E-03 seconds
+ Total time in simulation          =  1.5100E-01 seconds
+   Time in transport only          =  1.5100E-01 seconds
+   Time in inactive batches        =  7.7000E-02 seconds
+   Time in active batches          =  7.4000E-02 seconds
+   Time synchronizing fission bank =  0.0000E+00 seconds
+     Sampling source sites         =  0.0000E+00 seconds
+     SEND/RECV source sites        =  0.0000E+00 seconds
+   Time accumulating tallies       =  0.0000E+00 seconds
+ Total time for finalization       =  0.0000E+00 seconds
+ Total time elapsed                =  8.0400E-01 seconds
+ Calculation Rate (inactive)       =  64935.1 neutrons/second
+ Calculation Rate (active)         =  67567.6 neutrons/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     =  2.27723 +/-  0.00598
+ k-effective (Track-length)  =  2.28838 +/-  0.01570
+ k-effective (Absorption)    =  2.27682 +/-  0.00617
+ Combined k-effective        =  2.27787 +/-  0.00253
+ Leakage Fraction            =  0.00000 +/-  0.00000
+
+
+<end of output>
+Test time =   0.95 sec
+----------------------------------------------------------
+Test Failed.
+"test_reflective_plane.py" end time: Jul 21 21:27 EDT
+"test_reflective_plane.py" time elapsed: 00:00:00
+----------------------------------------------------------
+

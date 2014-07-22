@@ -1,0 +1,9 @@
+# The fortran modules provided by this target.
+provides
+ fox_sax
+ m_sax_operate
+ m_sax_parser
+ m_sax_reader
+ m_sax_tokenizer
+ m_sax_types
+ m_sax_xml_source

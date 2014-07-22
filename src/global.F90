@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult , Temp_trig
+  use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -142,27 +142,19 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-  
-  ! Check whether reach the trigger
-  logical :: reach_trigger = .false.
-  type(Temp_trig) :: trig_dis
+
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
-  integer    :: n_basic_batches   ! # of basic batches
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
-  integer    :: n_batch_interval = DEFAULT_BATCH_INTERVAL  ! # of batches 
-                                                           ! interval per cycle
-  ! Flag for turning trigger on
-  logical:: trigger_on = .false.                                                         
-  
+
   ! External source
   type(ExtSource), target :: external_source
 

@@ -7,12 +7,10 @@
     <upper_right>0.62992  0.62992  1.e50</upper_right>
   </mesh>
 
-  
-  <tally id="2">
-   <filter type="energy" bins="0. 4.e-6 20.0" />
-   <nuclides>all</nuclides>
-   <scores>scatter fission</scores>
+  <tally id="1">
+    <filter type="mesh" bins="1" />
+    <filter type="energy" bins="0. 4.e-6 20.0" />
+    <scores>flux fission nu-fission</scores>
   </tally>
-  
 
 </tallies>

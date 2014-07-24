@@ -3,21 +3,11 @@
 
   <!-- Define how many particles to run and for how many batches -->
   <eigenvalue>
-    <batches>40</batches>
-    <inactive>20</inactive>
+    <batches>100</batches>
+    <inactive>10</inactive>
     <particles>1000</particles>
-    <keff_trigger>
-    <type>std_dev</type>
-    <threshold>0.002</threshold>
-    </keff_trigger>
   </eigenvalue>
-  <trigger>
-  <status>true</status>
-  <max_batches>100</max_batches>
-  
-  </trigger>
- 
- 
+
   <!-- The starting source is a uniform distribution over the entire pin
        cell. Note that since this is effectively a 2D model, the z coordinates
        are inconsequential -->
@@ -38,7 +28,5 @@
     <upper_right>0.39218  0.39218  1.e50</upper_right>
     <dimension>10 10 1</dimension>
   </entropy>
-  <state_point>
-    <batches>35</batches>
-  </state_point>
+
 </settings>

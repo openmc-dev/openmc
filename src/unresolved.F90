@@ -12,8 +12,14 @@ module unresolved
 
   implicit none
 
+  logical                   :: OTF_URR       ! are we treating the URR OTF?
   character(MAX_LINE_LEN)   :: URR_METHOD    ! method for URR data treatment
   character(MAX_LINE_LEN)   :: URR_FREQUENCY ! frequency of urr xs realization
+  integer, allocatable      :: urr_zaids(:)  ! ZAID #'s for URR nuclides
+  type ENDFFilename
+    character(MAX_LINE_LEN) :: filename      ! ENDF filename for URR nuclide
+  end type ENDFFilename
+  type(ENDFFilename), allocatable :: urr_endf_filenames(:) ! ENDF filename
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -171,10 +177,18 @@ contains
     nuc => nuclides(i_nuc)
 
     nuc % E = E
-    i_E     = binary_search(nuc % ES_grid, nuc % n_ES_grid, E)
-    i_near  = near_neighb(i_E, nuc % ES_grid(i_E), nuc % ES_grid(i_E + 1), E)
-    f       = (E - nuc % ES_grid(i_E)) &
-            & / (nuc % ES_grid(i_E + 1) - nuc % ES_grid(i_E))
+    i_E     = binary_search(nuc % ES, nuc % NE, E)
+    i_near  = near_neighb(i_E, nuc % ES(i_E), nuc % ES(i_E + 1), E)
+    if (nuc % INT == LINEAR_LINEAR) then
+      f = (E - nuc % ES(i_E)) &
+        & / (nuc % ES(i_E + 1) - nuc % ES(i_E))
+    else if (nuc % INT == LOG_LOG) then
+      f = log(E / nuc % ES(i_E)) / log(nuc % ES(i_E + 1) / nuc % ES(i_E))
+    else
+      message = 'Interpolations other than lin-lin or log-log currently not &
+        & supported in OTF URR treatments'
+      call fatal_error()
+    end if
 
     ! reset xs objects
     call sig_t   % reset()
@@ -201,24 +215,40 @@ contains
         nuc % AMUG = int(nuc % AMUG_grid(i_l) % vals(i_J))
         nuc % AMUF = int(nuc % AMUF_grid(i_l) % vals(i_J))
 
-! TODO: make sure correct interpolation law is used-currently only using linlin
-
         ! set current mean unresolved resonance parameters
-        nuc % D   = nuc % D_means(i_E, i_l)           % vals(i_J) &
-           & + f * (nuc % D_means(i_E + 1, i_l)       % vals(i_J) &
-           & -      nuc % D_means(i_E, i_l)           % vals(i_J))
-        nuc % GN0 = nuc % Gam_n_means(i_E, i_l)       % vals(i_J) &
-           & + f * (nuc % Gam_n_means(i_E + 1, i_l)   % vals(i_J) &
-           & -      nuc % Gam_n_means(i_E, i_l)       % vals(i_J))
-        nuc % GG  = nuc % Gam_gam_means(i_E, i_l)     % vals(i_J) &
-           & + f * (nuc % Gam_gam_means(i_E + 1, i_l) % vals(i_J) &
-           & -      nuc % Gam_gam_means(i_E, i_l)     % vals(i_J))
-        nuc % GF  = nuc % Gam_f_means(i_E, i_l)       % vals(i_J) &
-           & + f * (nuc % Gam_f_means(i_E + 1, i_l)   % vals(i_J) &
-           & -      nuc % Gam_f_means(i_E, i_l)       % vals(i_J))
-        nuc % GX  = nuc % Gam_x_means(i_E, i_l)       % vals(i_J) &
-           & + f * (nuc % Gam_x_means(i_E + 1, i_l)   % vals(i_J) &
-           & -      nuc % Gam_x_means(i_E, i_l)       % vals(i_J))      
+        if (nuc % INT == LINEAR_LINEAR) then
+          nuc % D   = nuc % D_means(i_E, i_l)           % vals(i_J) &
+            & + f * (nuc % D_means(i_E + 1, i_l)        % vals(i_J) &
+            & -      nuc % D_means(i_E, i_l)            % vals(i_J))
+          nuc % GN0 = nuc % Gam_n_means(i_E, i_l)       % vals(i_J) &
+            & + f * (nuc % Gam_n_means(i_E + 1, i_l)    % vals(i_J) &
+            & -      nuc % Gam_n_means(i_E, i_l)        % vals(i_J))
+          nuc % GG  = nuc % Gam_gam_means(i_E, i_l)     % vals(i_J) &
+            & + f * (nuc % Gam_gam_means(i_E + 1, i_l)  % vals(i_J) &
+            & -      nuc % Gam_gam_means(i_E, i_l)      % vals(i_J))
+          nuc % GF  = nuc % Gam_f_means(i_E, i_l)       % vals(i_J) &
+            & + f * (nuc % Gam_f_means(i_E + 1, i_l)    % vals(i_J) &
+            & -      nuc % Gam_f_means(i_E, i_l)        % vals(i_J))
+          nuc % GX  = nuc % Gam_x_means(i_E, i_l)       % vals(i_J) &
+            & + f * (nuc % Gam_x_means(i_E + 1, i_l)    % vals(i_J) &
+            & -      nuc % Gam_x_means(i_E, i_l)        % vals(i_J))      
+        else if (nuc % INT == LOG_LOG) then
+          nuc % D = exp((ONE - f) * log(nuc % D_means(i_E, i_l) % vals(i_J)) &
+            & + f * log(nuc % D_means(i_E + 1, i_l) % vals(i_J)))
+          nuc % GN0 = exp((ONE - f) * log(nuc % Gam_n_means(i_E, i_l) % vals(i_J)) &
+            & + f * log(nuc % Gam_n_means(i_E + 1, i_l) % vals(i_J)))
+          nuc % GG = exp((ONE - f) * log(nuc % Gam_gam_means(i_E, i_l) % vals(i_J)) &
+            & + f * log(nuc % Gam_gam_means(i_E + 1, i_l) % vals(i_J)))
+          nuc % GF = exp((ONE - f) * log(nuc % Gam_f_means(i_E, i_l) % vals(i_J)) &
+            & + f * log(nuc % Gam_f_means(i_E + 1, i_l) % vals(i_J)))
+          nuc % GX = exp((ONE - f) * log(nuc % Gam_x_means(i_E, i_l) % vals(i_J)) &
+            & + f * log(nuc % Gam_x_means(i_E + 1, i_l) % vals(i_J)))
+        else
+          message = 'Interpolations other than lin-lin or log-log currently not &
+            & supported in OTF URR treatments'
+          call fatal_error()
+        end if
+
 
         ! reset the resonance object for a new spin sequence
         call res % reset(i_nuc, E)
@@ -279,6 +309,19 @@ contains
       message = 'Encountered a negative elastic scattering xs in the URR'
       call warning()
     end if
+
+    jt = jt + ONE
+    xst = xst + micro_xs(i_nuc) % total
+    jf = jf + ONE
+    xsf = xsf + micro_xs(i_nuc) % fission
+    jn = jn + ONE
+    xsn = xsn + micro_xs(i_nuc) % elastic
+    jg = jg + ONE
+    xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+    jx = jx + ONE
+    xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
+!    write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
+!      & xsg/jg,xsx/jx
 
   end subroutine calculate_urr_xs_otf
 
@@ -441,8 +484,10 @@ contains
     this % Gam_gam = nuc % GG
 
     ! fission width
-    this % Gam_f = nuc % GF  * chi2(i_tabf, nuc % AMUF)
-    if (nuc % AMUF > 0) this % Gam_f = this % Gam_f / dble(nuc % AMUF)
+    if (nuc % AMUF > 0) then
+      this % Gam_f = nuc % GF  * chi2(i_tabf, nuc % AMUF)
+      this % Gam_f = this % Gam_f / dble(nuc % AMUF)
+    end if
 
     ! competitive width
     this % Gam_x = nuc % GX  * chi2(i_tabx, nuc % AMUX)
@@ -715,6 +760,8 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
+    relerr = ZERO
+
 ! TODO: Allow option of using different Faddeeva evaluations?
 
     ! call S.G. Johnson's Faddeeva evaluation
@@ -743,6 +790,8 @@ contains
     real(8)    :: chi_val ! calculated value of chi
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
+
+    relerr = ZERO
 
 ! TODO: Allow option of using different Faddeeva evaluations?
 
@@ -796,7 +845,8 @@ contains
     this % val = this % val + sig
 
     ! compute the magnitude of the relative error between current and last xs
-    this % rel_err  = abs((this % val_last - this % val) / this % val)
+    if (this % val > ZERO) &
+      this % rel_err  = abs((this % val_last - this % val) / this % val)
 
   end subroutine accum_resonance
 
@@ -857,7 +907,7 @@ contains
     ! clear accumulated xs values for this realization and set error to INF
     this % val      = ZERO
     this % val_last = ZERO
-    this % rel_err  = ONE / ZERO
+    this % rel_err  = ONE
 
   end subroutine reset_xs
 

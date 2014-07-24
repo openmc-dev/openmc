@@ -4,7 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use endf_reader,      only: read_endf
+  use endf_reader,      only: read_endf, print_shit
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
@@ -22,6 +22,7 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
+  use unresolved,       only: OTF_URR, urr_endf_filenames, urr_zaids
 
 #ifdef MPI
   use mpi
@@ -75,9 +76,6 @@ contains
     ! Read XML input files
     call read_input_xml()
 
-    ! Read ENDF files
-    call read_endf()
-
     ! Initialize random number generator -- this has to be done after the input
     ! files have been read in case the user specified a seed for the random
     ! number generator
@@ -107,6 +105,9 @@ contains
       call time_read_xs % start()
       call read_xs()
       call time_read_xs % stop()
+
+      ! Read ENDF-6 format nuclear data file
+      if (OTF_URR) call initialize_endf()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
@@ -166,6 +167,23 @@ contains
     call time_initialize % stop()
 
   end subroutine initialize_run
+
+  subroutine initialize_endf()
+
+    integer :: i ! on-the-fly URR nuclide index
+    integer :: j ! global nuclide index
+
+    do i = 1, n_otf_urr_nuclides
+      do j = 1, n_nuclides_total
+        if (nuclides(j) % zaid == urr_zaids(i)) then
+          nuclides(j) % otf_urr = .true.
+          call read_endf(urr_endf_filenames(i) % filename, j)
+          call print_shit(j)
+        end if
+      end do
+    end do
+
+  end subroutine initialize_endf
 
 #ifdef MPI
 !===============================================================================

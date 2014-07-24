@@ -3,7 +3,6 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
-  use endf_reader,      only: urr_endf_filenames, urr_zaids
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -16,7 +15,8 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: URR_FREQUENCY, URR_METHOD
+  use unresolved,       only: URR_FREQUENCY, URR_METHOD, urr_endf_filenames, &
+                              urr_zaids, OTF_URR
   use xml_interface
 
   implicit none
@@ -3063,6 +3063,8 @@ contains
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
       return
+    else
+      OTF_URR = .true.
     end if
 
     ! Display output message

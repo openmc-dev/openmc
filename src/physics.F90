@@ -362,6 +362,12 @@ contains
       ! scattering
       i = 1
       do while (prob < cutoff)
+
+        if (p%E>nuc%EL/1.0E6 .and. p%E<nuc%EH/1.0E6) then
+          rxn => nuc % reactions(nuc % urr_inelastic)
+          exit
+        end if
+
         i = i + 1
 
         ! Check to make sure inelastic scattering reaction sampled
@@ -389,6 +395,7 @@ contains
         ! add to cumulative probability
         prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+
       end do
 
       ! Perform collision physics for inelastics scattering

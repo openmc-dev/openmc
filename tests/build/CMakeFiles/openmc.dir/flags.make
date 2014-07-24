@@ -4,7 +4,7 @@
 # compile Fortran with /usr/bin/gfortran
 Fortran_FLAGS = -Jinclude  
 
-Fortran_DEFINES = -DUNIX -DGIT_SHA1=\"de63975f8ce533eb9de1f90ad663d09d82f67e9e\"
+Fortran_DEFINES = -DUNIX -DGIT_SHA1=\"e94e6475250230aeac0304adc4c7d0a5b752ab1e\"
 
-# TARGET_FLAGS = -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace
+# TARGET_FLAGS = -cpp -std=f2008 -fbacktrace
 

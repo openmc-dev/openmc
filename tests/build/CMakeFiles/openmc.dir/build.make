@@ -56,7 +56,7 @@ CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o: /home/qicang/openmc/src/cmfd_jfnk_solver.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_jfnk_solver.F90 -o CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_jfnk_solver.F90 -o CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o
 
 CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_jfnk_solver.F90.o.requires
@@ -71,7 +71,7 @@ CMakeFiles/openmc.dir/fission.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/fission.F90.o: /home/qicang/openmc/src/fission.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/fission.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/fission.F90 -o CMakeFiles/openmc.dir/fission.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/fission.F90 -o CMakeFiles/openmc.dir/fission.F90.o
 
 CMakeFiles/openmc.dir/fission.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/fission.F90.o.requires
@@ -86,7 +86,7 @@ CMakeFiles/openmc.dir/particle_restart_write.F90.o: CMakeFiles/openmc.dir/flags.
 CMakeFiles/openmc.dir/particle_restart_write.F90.o: /home/qicang/openmc/src/particle_restart_write.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/particle_restart_write.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_restart_write.F90 -o CMakeFiles/openmc.dir/particle_restart_write.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_restart_write.F90 -o CMakeFiles/openmc.dir/particle_restart_write.F90.o
 
 CMakeFiles/openmc.dir/particle_restart_write.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/particle_restart_write.F90.o.requires
@@ -101,7 +101,7 @@ CMakeFiles/openmc.dir/bank_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/bank_header.F90.o: /home/qicang/openmc/src/bank_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/bank_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/bank_header.F90 -o CMakeFiles/openmc.dir/bank_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/bank_header.F90 -o CMakeFiles/openmc.dir/bank_header.F90.o
 
 CMakeFiles/openmc.dir/bank_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/bank_header.F90.o.requires
@@ -116,7 +116,7 @@ CMakeFiles/openmc.dir/geometry_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/geometry_header.F90.o: /home/qicang/openmc/src/geometry_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_5)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/geometry_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/geometry_header.F90 -o CMakeFiles/openmc.dir/geometry_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/geometry_header.F90 -o CMakeFiles/openmc.dir/geometry_header.F90.o
 
 CMakeFiles/openmc.dir/geometry_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/geometry_header.F90.o.requires
@@ -131,7 +131,7 @@ CMakeFiles/openmc.dir/cross_section.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cross_section.F90.o: /home/qicang/openmc/src/cross_section.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_6)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cross_section.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cross_section.F90 -o CMakeFiles/openmc.dir/cross_section.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cross_section.F90 -o CMakeFiles/openmc.dir/cross_section.F90.o
 
 CMakeFiles/openmc.dir/cross_section.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cross_section.F90.o.requires
@@ -146,7 +146,7 @@ CMakeFiles/openmc.dir/ppmlib.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/ppmlib.F90.o: /home/qicang/openmc/src/ppmlib.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_7)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/ppmlib.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ppmlib.F90 -o CMakeFiles/openmc.dir/ppmlib.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ppmlib.F90 -o CMakeFiles/openmc.dir/ppmlib.F90.o
 
 CMakeFiles/openmc.dir/ppmlib.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/ppmlib.F90.o.requires
@@ -161,7 +161,7 @@ CMakeFiles/openmc.dir/constants.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/constants.F90.o: /home/qicang/openmc/src/constants.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_8)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/constants.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/constants.F90 -o CMakeFiles/openmc.dir/constants.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/constants.F90 -o CMakeFiles/openmc.dir/constants.F90.o
 
 CMakeFiles/openmc.dir/constants.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/constants.F90.o.requires
@@ -176,7 +176,7 @@ CMakeFiles/openmc.dir/solver_interface.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/solver_interface.F90.o: /home/qicang/openmc/src/solver_interface.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_9)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/solver_interface.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/solver_interface.F90 -o CMakeFiles/openmc.dir/solver_interface.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/solver_interface.F90 -o CMakeFiles/openmc.dir/solver_interface.F90.o
 
 CMakeFiles/openmc.dir/solver_interface.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/solver_interface.F90.o.requires
@@ -191,7 +191,7 @@ CMakeFiles/openmc.dir/doppler.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/doppler.F90.o: /home/qicang/openmc/src/doppler.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_10)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/doppler.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/doppler.F90 -o CMakeFiles/openmc.dir/doppler.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/doppler.F90 -o CMakeFiles/openmc.dir/doppler.F90.o
 
 CMakeFiles/openmc.dir/doppler.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/doppler.F90.o.requires
@@ -206,7 +206,7 @@ CMakeFiles/openmc.dir/particle_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/particle_header.F90.o: /home/qicang/openmc/src/particle_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_11)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/particle_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_header.F90 -o CMakeFiles/openmc.dir/particle_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_header.F90 -o CMakeFiles/openmc.dir/particle_header.F90.o
 
 CMakeFiles/openmc.dir/particle_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/particle_header.F90.o.requires
@@ -221,7 +221,7 @@ CMakeFiles/openmc.dir/mesh.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/mesh.F90.o: /home/qicang/openmc/src/mesh.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_12)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/mesh.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mesh.F90 -o CMakeFiles/openmc.dir/mesh.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mesh.F90 -o CMakeFiles/openmc.dir/mesh.F90.o
 
 CMakeFiles/openmc.dir/mesh.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/mesh.F90.o.requires
@@ -236,7 +236,7 @@ CMakeFiles/openmc.dir/dict_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/dict_header.F90.o: /home/qicang/openmc/src/dict_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_13)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/dict_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/dict_header.F90 -o CMakeFiles/openmc.dir/dict_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/dict_header.F90 -o CMakeFiles/openmc.dir/dict_header.F90.o
 
 CMakeFiles/openmc.dir/dict_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/dict_header.F90.o.requires
@@ -251,7 +251,7 @@ CMakeFiles/openmc.dir/physics.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/physics.F90.o: /home/qicang/openmc/src/physics.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_14)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/physics.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/physics.F90 -o CMakeFiles/openmc.dir/physics.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/physics.F90 -o CMakeFiles/openmc.dir/physics.F90.o
 
 CMakeFiles/openmc.dir/physics.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/physics.F90.o.requires
@@ -266,7 +266,7 @@ CMakeFiles/openmc.dir/search.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/search.F90.o: /home/qicang/openmc/src/search.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_15)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/search.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/search.F90 -o CMakeFiles/openmc.dir/search.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/search.F90 -o CMakeFiles/openmc.dir/search.F90.o
 
 CMakeFiles/openmc.dir/search.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/search.F90.o.requires
@@ -281,7 +281,7 @@ CMakeFiles/openmc.dir/ace.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/ace.F90.o: /home/qicang/openmc/src/ace.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_16)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/ace.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ace.F90 -o CMakeFiles/openmc.dir/ace.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ace.F90 -o CMakeFiles/openmc.dir/ace.F90.o
 
 CMakeFiles/openmc.dir/ace.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/ace.F90.o.requires
@@ -296,7 +296,7 @@ CMakeFiles/openmc.dir/cmfd_data.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_data.F90.o: /home/qicang/openmc/src/cmfd_data.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_17)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_data.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_data.F90 -o CMakeFiles/openmc.dir/cmfd_data.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_data.F90 -o CMakeFiles/openmc.dir/cmfd_data.F90.o
 
 CMakeFiles/openmc.dir/cmfd_data.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_data.F90.o.requires
@@ -311,7 +311,7 @@ CMakeFiles/openmc.dir/output_interface.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/output_interface.F90.o: /home/qicang/openmc/src/output_interface.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_18)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/output_interface.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/output_interface.F90 -o CMakeFiles/openmc.dir/output_interface.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/output_interface.F90 -o CMakeFiles/openmc.dir/output_interface.F90.o
 
 CMakeFiles/openmc.dir/output_interface.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/output_interface.F90.o.requires
@@ -326,7 +326,7 @@ CMakeFiles/openmc.dir/input_xml.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/input_xml.F90.o: /home/qicang/openmc/src/input_xml.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_19)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/input_xml.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/input_xml.F90 -o CMakeFiles/openmc.dir/input_xml.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/input_xml.F90 -o CMakeFiles/openmc.dir/input_xml.F90.o
 
 CMakeFiles/openmc.dir/input_xml.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/input_xml.F90.o.requires
@@ -341,7 +341,7 @@ CMakeFiles/openmc.dir/eigenvalue.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/eigenvalue.F90.o: /home/qicang/openmc/src/eigenvalue.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_20)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/eigenvalue.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/eigenvalue.F90 -o CMakeFiles/openmc.dir/eigenvalue.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/eigenvalue.F90 -o CMakeFiles/openmc.dir/eigenvalue.F90.o
 
 CMakeFiles/openmc.dir/eigenvalue.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/eigenvalue.F90.o.requires
@@ -356,7 +356,7 @@ CMakeFiles/openmc.dir/string.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/string.F90.o: /home/qicang/openmc/src/string.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_21)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/string.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/string.F90 -o CMakeFiles/openmc.dir/string.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/string.F90 -o CMakeFiles/openmc.dir/string.F90.o
 
 CMakeFiles/openmc.dir/string.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/string.F90.o.requires
@@ -371,7 +371,7 @@ CMakeFiles/openmc.dir/cmfd_power_solver.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_power_solver.F90.o: /home/qicang/openmc/src/cmfd_power_solver.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_22)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_power_solver.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_power_solver.F90 -o CMakeFiles/openmc.dir/cmfd_power_solver.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_power_solver.F90 -o CMakeFiles/openmc.dir/cmfd_power_solver.F90.o
 
 CMakeFiles/openmc.dir/cmfd_power_solver.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_power_solver.F90.o.requires
@@ -386,7 +386,7 @@ CMakeFiles/openmc.dir/source_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/source_header.F90.o: /home/qicang/openmc/src/source_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_23)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/source_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/source_header.F90 -o CMakeFiles/openmc.dir/source_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/source_header.F90 -o CMakeFiles/openmc.dir/source_header.F90.o
 
 CMakeFiles/openmc.dir/source_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/source_header.F90.o.requires
@@ -401,7 +401,7 @@ CMakeFiles/openmc.dir/mpiio_interface.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/mpiio_interface.F90.o: /home/qicang/openmc/src/mpiio_interface.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_24)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/mpiio_interface.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mpiio_interface.F90 -o CMakeFiles/openmc.dir/mpiio_interface.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mpiio_interface.F90 -o CMakeFiles/openmc.dir/mpiio_interface.F90.o
 
 CMakeFiles/openmc.dir/mpiio_interface.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/mpiio_interface.F90.o.requires
@@ -416,7 +416,7 @@ CMakeFiles/openmc.dir/initialize.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/initialize.F90.o: /home/qicang/openmc/src/initialize.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_25)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/initialize.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/initialize.F90 -o CMakeFiles/openmc.dir/initialize.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/initialize.F90 -o CMakeFiles/openmc.dir/initialize.F90.o
 
 CMakeFiles/openmc.dir/initialize.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/initialize.F90.o.requires
@@ -431,7 +431,7 @@ CMakeFiles/openmc.dir/output.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/output.F90.o: /home/qicang/openmc/src/output.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_26)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/output.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/output.F90 -o CMakeFiles/openmc.dir/output.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/output.F90 -o CMakeFiles/openmc.dir/output.F90.o
 
 CMakeFiles/openmc.dir/output.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/output.F90.o.requires
@@ -446,7 +446,7 @@ CMakeFiles/openmc.dir/ace_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/ace_header.F90.o: /home/qicang/openmc/src/ace_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_27)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/ace_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ace_header.F90 -o CMakeFiles/openmc.dir/ace_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/ace_header.F90 -o CMakeFiles/openmc.dir/ace_header.F90.o
 
 CMakeFiles/openmc.dir/ace_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/ace_header.F90.o.requires
@@ -461,7 +461,7 @@ CMakeFiles/openmc.dir/cmfd_execute.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_execute.F90.o: /home/qicang/openmc/src/cmfd_execute.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_28)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_execute.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_execute.F90 -o CMakeFiles/openmc.dir/cmfd_execute.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_execute.F90 -o CMakeFiles/openmc.dir/cmfd_execute.F90.o
 
 CMakeFiles/openmc.dir/cmfd_execute.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_execute.F90.o.requires
@@ -476,7 +476,7 @@ CMakeFiles/openmc.dir/interpolation.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/interpolation.F90.o: /home/qicang/openmc/src/interpolation.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_29)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/interpolation.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/interpolation.F90 -o CMakeFiles/openmc.dir/interpolation.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/interpolation.F90 -o CMakeFiles/openmc.dir/interpolation.F90.o
 
 CMakeFiles/openmc.dir/interpolation.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/interpolation.F90.o.requires
@@ -491,7 +491,7 @@ CMakeFiles/openmc.dir/source.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/source.F90.o: /home/qicang/openmc/src/source.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_30)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/source.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/source.F90 -o CMakeFiles/openmc.dir/source.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/source.F90 -o CMakeFiles/openmc.dir/source.F90.o
 
 CMakeFiles/openmc.dir/source.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/source.F90.o.requires
@@ -506,7 +506,7 @@ CMakeFiles/openmc.dir/tracking.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/tracking.F90.o: /home/qicang/openmc/src/tracking.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_31)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/tracking.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tracking.F90 -o CMakeFiles/openmc.dir/tracking.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tracking.F90 -o CMakeFiles/openmc.dir/tracking.F90.o
 
 CMakeFiles/openmc.dir/tracking.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/tracking.F90.o.requires
@@ -521,7 +521,7 @@ CMakeFiles/openmc.dir/tally.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/tally.F90.o: /home/qicang/openmc/src/tally.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_32)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/tally.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally.F90 -o CMakeFiles/openmc.dir/tally.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally.F90 -o CMakeFiles/openmc.dir/tally.F90.o
 
 CMakeFiles/openmc.dir/tally.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/tally.F90.o.requires
@@ -536,7 +536,7 @@ CMakeFiles/openmc.dir/list_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/list_header.F90.o: /home/qicang/openmc/src/list_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_33)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/list_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/list_header.F90 -o CMakeFiles/openmc.dir/list_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/list_header.F90 -o CMakeFiles/openmc.dir/list_header.F90.o
 
 CMakeFiles/openmc.dir/list_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/list_header.F90.o.requires
@@ -551,7 +551,7 @@ CMakeFiles/openmc.dir/matrix_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/matrix_header.F90.o: /home/qicang/openmc/src/matrix_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_34)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/matrix_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/matrix_header.F90 -o CMakeFiles/openmc.dir/matrix_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/matrix_header.F90 -o CMakeFiles/openmc.dir/matrix_header.F90.o
 
 CMakeFiles/openmc.dir/matrix_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/matrix_header.F90.o.requires
@@ -566,7 +566,7 @@ CMakeFiles/openmc.dir/hdf5_summary.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/hdf5_summary.F90.o: /home/qicang/openmc/src/hdf5_summary.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_35)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/hdf5_summary.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/hdf5_summary.F90 -o CMakeFiles/openmc.dir/hdf5_summary.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/hdf5_summary.F90 -o CMakeFiles/openmc.dir/hdf5_summary.F90.o
 
 CMakeFiles/openmc.dir/hdf5_summary.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/hdf5_summary.F90.o.requires
@@ -581,7 +581,7 @@ CMakeFiles/openmc.dir/random_lcg.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/random_lcg.F90.o: /home/qicang/openmc/src/random_lcg.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_36)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/random_lcg.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/random_lcg.F90 -o CMakeFiles/openmc.dir/random_lcg.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/random_lcg.F90 -o CMakeFiles/openmc.dir/random_lcg.F90.o
 
 CMakeFiles/openmc.dir/random_lcg.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/random_lcg.F90.o.requires
@@ -596,7 +596,7 @@ CMakeFiles/openmc.dir/tally_initialize.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/tally_initialize.F90.o: /home/qicang/openmc/src/tally_initialize.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_37)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/tally_initialize.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally_initialize.F90 -o CMakeFiles/openmc.dir/tally_initialize.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally_initialize.F90 -o CMakeFiles/openmc.dir/tally_initialize.F90.o
 
 CMakeFiles/openmc.dir/tally_initialize.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/tally_initialize.F90.o.requires
@@ -611,7 +611,7 @@ CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o: /home/qicang/openmc/src/cmfd_loss_operator.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_38)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_loss_operator.F90 -o CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_loss_operator.F90 -o CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o
 
 CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_loss_operator.F90.o.requires
@@ -626,7 +626,7 @@ CMakeFiles/openmc.dir/progress_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/progress_header.F90.o: /home/qicang/openmc/src/progress_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_39)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/progress_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/progress_header.F90 -o CMakeFiles/openmc.dir/progress_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/progress_header.F90 -o CMakeFiles/openmc.dir/progress_header.F90.o
 
 CMakeFiles/openmc.dir/progress_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/progress_header.F90.o.requires
@@ -641,7 +641,7 @@ CMakeFiles/openmc.dir/main.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/main.F90.o: /home/qicang/openmc/src/main.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_40)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/main.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/main.F90 -o CMakeFiles/openmc.dir/main.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/main.F90 -o CMakeFiles/openmc.dir/main.F90.o
 
 CMakeFiles/openmc.dir/main.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/main.F90.o.requires
@@ -656,7 +656,7 @@ CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o: /home/qicang/openmc/src/cmfd_prod_operator.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_41)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_prod_operator.F90 -o CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_prod_operator.F90 -o CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o
 
 CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_prod_operator.F90.o.requires
@@ -671,7 +671,7 @@ CMakeFiles/openmc.dir/global.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/global.F90.o: /home/qicang/openmc/src/global.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_42)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/global.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/global.F90 -o CMakeFiles/openmc.dir/global.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/global.F90 -o CMakeFiles/openmc.dir/global.F90.o
 
 CMakeFiles/openmc.dir/global.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/global.F90.o.requires
@@ -686,7 +686,7 @@ CMakeFiles/openmc.dir/cmfd_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_header.F90.o: /home/qicang/openmc/src/cmfd_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_43)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_header.F90 -o CMakeFiles/openmc.dir/cmfd_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_header.F90 -o CMakeFiles/openmc.dir/cmfd_header.F90.o
 
 CMakeFiles/openmc.dir/cmfd_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_header.F90.o.requires
@@ -701,7 +701,7 @@ CMakeFiles/openmc.dir/vector_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/vector_header.F90.o: /home/qicang/openmc/src/vector_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_44)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/vector_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/vector_header.F90 -o CMakeFiles/openmc.dir/vector_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/vector_header.F90 -o CMakeFiles/openmc.dir/vector_header.F90.o
 
 CMakeFiles/openmc.dir/vector_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/vector_header.F90.o.requires
@@ -716,7 +716,7 @@ CMakeFiles/openmc.dir/mesh_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/mesh_header.F90.o: /home/qicang/openmc/src/mesh_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_45)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/mesh_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mesh_header.F90 -o CMakeFiles/openmc.dir/mesh_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/mesh_header.F90 -o CMakeFiles/openmc.dir/mesh_header.F90.o
 
 CMakeFiles/openmc.dir/mesh_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/mesh_header.F90.o.requires
@@ -731,7 +731,7 @@ CMakeFiles/openmc.dir/energy_grid.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/energy_grid.F90.o: /home/qicang/openmc/src/energy_grid.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_46)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/energy_grid.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/energy_grid.F90 -o CMakeFiles/openmc.dir/energy_grid.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/energy_grid.F90 -o CMakeFiles/openmc.dir/energy_grid.F90.o
 
 CMakeFiles/openmc.dir/energy_grid.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/energy_grid.F90.o.requires
@@ -746,7 +746,7 @@ CMakeFiles/openmc.dir/timer_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/timer_header.F90.o: /home/qicang/openmc/src/timer_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_47)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/timer_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/timer_header.F90 -o CMakeFiles/openmc.dir/timer_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/timer_header.F90 -o CMakeFiles/openmc.dir/timer_header.F90.o
 
 CMakeFiles/openmc.dir/timer_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/timer_header.F90.o.requires
@@ -761,7 +761,7 @@ CMakeFiles/openmc.dir/set_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/set_header.F90.o: /home/qicang/openmc/src/set_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_48)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/set_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/set_header.F90 -o CMakeFiles/openmc.dir/set_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/set_header.F90 -o CMakeFiles/openmc.dir/set_header.F90.o
 
 CMakeFiles/openmc.dir/set_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/set_header.F90.o.requires
@@ -776,7 +776,7 @@ CMakeFiles/openmc.dir/geometry.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/geometry.F90.o: /home/qicang/openmc/src/geometry.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_49)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/geometry.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/geometry.F90 -o CMakeFiles/openmc.dir/geometry.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/geometry.F90 -o CMakeFiles/openmc.dir/geometry.F90.o
 
 CMakeFiles/openmc.dir/geometry.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/geometry.F90.o.requires
@@ -791,7 +791,7 @@ CMakeFiles/openmc.dir/cmfd_input.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_input.F90.o: /home/qicang/openmc/src/cmfd_input.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_50)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_input.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_input.F90 -o CMakeFiles/openmc.dir/cmfd_input.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_input.F90 -o CMakeFiles/openmc.dir/cmfd_input.F90.o
 
 CMakeFiles/openmc.dir/cmfd_input.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_input.F90.o.requires
@@ -806,7 +806,7 @@ CMakeFiles/openmc.dir/track_output.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/track_output.F90.o: /home/qicang/openmc/src/track_output.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_51)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/track_output.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/track_output.F90 -o CMakeFiles/openmc.dir/track_output.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/track_output.F90 -o CMakeFiles/openmc.dir/track_output.F90.o
 
 CMakeFiles/openmc.dir/track_output.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/track_output.F90.o.requires
@@ -821,7 +821,7 @@ CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o: /home/qicang/openmc/src/cmfd_slepc_solver.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_52)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_slepc_solver.F90 -o CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/cmfd_slepc_solver.F90 -o CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o
 
 CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/cmfd_slepc_solver.F90.o.requires
@@ -836,7 +836,7 @@ CMakeFiles/openmc.dir/material_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/material_header.F90.o: /home/qicang/openmc/src/material_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_53)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/material_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/material_header.F90 -o CMakeFiles/openmc.dir/material_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/material_header.F90 -o CMakeFiles/openmc.dir/material_header.F90.o
 
 CMakeFiles/openmc.dir/material_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/material_header.F90.o.requires
@@ -851,7 +851,7 @@ CMakeFiles/openmc.dir/particle_restart.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/particle_restart.F90.o: /home/qicang/openmc/src/particle_restart.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_54)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/particle_restart.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_restart.F90 -o CMakeFiles/openmc.dir/particle_restart.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/particle_restart.F90 -o CMakeFiles/openmc.dir/particle_restart.F90.o
 
 CMakeFiles/openmc.dir/particle_restart.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/particle_restart.F90.o.requires
@@ -866,7 +866,7 @@ CMakeFiles/openmc.dir/plot_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/plot_header.F90.o: /home/qicang/openmc/src/plot_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_55)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/plot_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/plot_header.F90 -o CMakeFiles/openmc.dir/plot_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/plot_header.F90 -o CMakeFiles/openmc.dir/plot_header.F90.o
 
 CMakeFiles/openmc.dir/plot_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/plot_header.F90.o.requires
@@ -881,7 +881,7 @@ CMakeFiles/openmc.dir/tally_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/tally_header.F90.o: /home/qicang/openmc/src/tally_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_56)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/tally_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally_header.F90 -o CMakeFiles/openmc.dir/tally_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/tally_header.F90 -o CMakeFiles/openmc.dir/tally_header.F90.o
 
 CMakeFiles/openmc.dir/tally_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/tally_header.F90.o.requires
@@ -896,7 +896,7 @@ CMakeFiles/openmc.dir/math.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/math.F90.o: /home/qicang/openmc/src/math.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_57)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/math.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/math.F90 -o CMakeFiles/openmc.dir/math.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/math.F90 -o CMakeFiles/openmc.dir/math.F90.o
 
 CMakeFiles/openmc.dir/math.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/math.F90.o.requires
@@ -911,7 +911,7 @@ CMakeFiles/openmc.dir/hdf5_interface.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/hdf5_interface.F90.o: /home/qicang/openmc/src/hdf5_interface.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_58)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/hdf5_interface.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/hdf5_interface.F90 -o CMakeFiles/openmc.dir/hdf5_interface.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/hdf5_interface.F90 -o CMakeFiles/openmc.dir/hdf5_interface.F90.o
 
 CMakeFiles/openmc.dir/hdf5_interface.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/hdf5_interface.F90.o.requires
@@ -926,7 +926,7 @@ CMakeFiles/openmc.dir/finalize.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/finalize.F90.o: /home/qicang/openmc/src/finalize.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_59)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/finalize.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/finalize.F90 -o CMakeFiles/openmc.dir/finalize.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/finalize.F90 -o CMakeFiles/openmc.dir/finalize.F90.o
 
 CMakeFiles/openmc.dir/finalize.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/finalize.F90.o.requires
@@ -941,7 +941,7 @@ CMakeFiles/openmc.dir/endf.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/endf.F90.o: /home/qicang/openmc/src/endf.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_60)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/endf.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/endf.F90 -o CMakeFiles/openmc.dir/endf.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/endf.F90 -o CMakeFiles/openmc.dir/endf.F90.o
 
 CMakeFiles/openmc.dir/endf.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/endf.F90.o.requires
@@ -956,7 +956,7 @@ CMakeFiles/openmc.dir/fixed_source.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/fixed_source.F90.o: /home/qicang/openmc/src/fixed_source.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_61)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/fixed_source.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/fixed_source.F90 -o CMakeFiles/openmc.dir/fixed_source.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/fixed_source.F90 -o CMakeFiles/openmc.dir/fixed_source.F90.o
 
 CMakeFiles/openmc.dir/fixed_source.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/fixed_source.F90.o.requires
@@ -971,7 +971,7 @@ CMakeFiles/openmc.dir/endf_header.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/endf_header.F90.o: /home/qicang/openmc/src/endf_header.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_62)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/endf_header.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/endf_header.F90 -o CMakeFiles/openmc.dir/endf_header.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/endf_header.F90 -o CMakeFiles/openmc.dir/endf_header.F90.o
 
 CMakeFiles/openmc.dir/endf_header.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/endf_header.F90.o.requires
@@ -986,7 +986,7 @@ CMakeFiles/openmc.dir/error.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/error.F90.o: /home/qicang/openmc/src/error.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_63)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/error.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/error.F90 -o CMakeFiles/openmc.dir/error.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/error.F90 -o CMakeFiles/openmc.dir/error.F90.o
 
 CMakeFiles/openmc.dir/error.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/error.F90.o.requires
@@ -1001,7 +1001,7 @@ CMakeFiles/openmc.dir/xml_interface.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/xml_interface.F90.o: /home/qicang/openmc/src/xml_interface.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_64)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/xml_interface.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/xml_interface.F90 -o CMakeFiles/openmc.dir/xml_interface.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/xml_interface.F90 -o CMakeFiles/openmc.dir/xml_interface.F90.o
 
 CMakeFiles/openmc.dir/xml_interface.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/xml_interface.F90.o.requires
@@ -1016,7 +1016,7 @@ CMakeFiles/openmc.dir/plot.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/plot.F90.o: /home/qicang/openmc/src/plot.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_65)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/plot.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/plot.F90 -o CMakeFiles/openmc.dir/plot.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/plot.F90 -o CMakeFiles/openmc.dir/plot.F90.o
 
 CMakeFiles/openmc.dir/plot.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/plot.F90.o.requires
@@ -1031,7 +1031,7 @@ CMakeFiles/openmc.dir/state_point.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/state_point.F90.o: /home/qicang/openmc/src/state_point.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_66)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/state_point.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/state_point.F90 -o CMakeFiles/openmc.dir/state_point.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/state_point.F90 -o CMakeFiles/openmc.dir/state_point.F90.o
 
 CMakeFiles/openmc.dir/state_point.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/state_point.F90.o.requires
@@ -1046,7 +1046,7 @@ CMakeFiles/openmc.dir/xml/openmc_fox.F90.o: CMakeFiles/openmc.dir/flags.make
 CMakeFiles/openmc.dir/xml/openmc_fox.F90.o: /home/qicang/openmc/src/xml/openmc_fox.F90
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_67)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object CMakeFiles/openmc.dir/xml/openmc_fox.F90.o"
-	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/xml/openmc_fox.F90 -o CMakeFiles/openmc.dir/xml/openmc_fox.F90.o
+	/usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -cpp -std=f2008 -fbacktrace -c /home/qicang/openmc/src/xml/openmc_fox.F90 -o CMakeFiles/openmc.dir/xml/openmc_fox.F90.o
 
 CMakeFiles/openmc.dir/xml/openmc_fox.F90.o.requires:
 .PHONY : CMakeFiles/openmc.dir/xml/openmc_fox.F90.o.requires

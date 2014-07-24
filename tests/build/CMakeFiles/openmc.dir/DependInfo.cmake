@@ -77,7 +77,7 @@ SET(CMAKE_Fortran_COMPILER_ID "GNU")
 # Preprocessor definitions for this target.
 SET(CMAKE_TARGET_DEFINITIONS
   "UNIX"
-  "GIT_SHA1=\"de63975f8ce533eb9de1f90ad663d09d82f67e9e\""
+  "GIT_SHA1=\"e94e6475250230aeac0304adc4c7d0a5b752ab1e\""
   )
 
 # Targets to which this target links.

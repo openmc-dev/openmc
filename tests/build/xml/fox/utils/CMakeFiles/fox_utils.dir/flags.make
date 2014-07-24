@@ -4,5 +4,5 @@
 # compile Fortran with /usr/bin/gfortran
 Fortran_FLAGS = -J../../../include -I/home/stsqc/openmc/tests/build/xml/fox/fsys   
 
-Fortran_DEFINES = -DGIT_SHA1=\"1fef33e48d10c096ee6dd4a5cbe47f88e1148a1c\" -DUNIX
+Fortran_DEFINES = -DGIT_SHA1=\"792a8070f5a730c9427b5b80659bc610f28b0877\" -DUNIX
 

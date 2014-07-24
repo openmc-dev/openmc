@@ -144,8 +144,9 @@ module global
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
   
-  ! Check whether reach the trigger
+  ! Check whether reach the trigger 
   logical :: reach_trigger = .false.
+  ! Temporary trig_dis to see how far the result is from trigger threshold
   type(Temp_trig) :: trig_dis
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -159,10 +160,12 @@ module global
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
-  integer    :: n_batch_interval = DEFAULT_BATCH_INTERVAL  ! # of batches 
-                                                           ! interval per cycle
+  integer    :: n_batch_interval = 1 ! # the batch interval 
+  logical    :: no_batch_interval = .false.  ! whether to predict batches
+  
   ! Flag for turning trigger on
-  logical:: trigger_on = .false.                                                         
+  logical:: trigger_on = .false. 
+  logical:: temp_state = .false.                                                        
   
   ! Trigger for k-effective
   type(K_trigger) keff_trigger

@@ -276,7 +276,8 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 60
+  integer, parameter :: N_SCORE_TYPES = 20  
+  integer, parameter :: N_SCORE_TYPES_1 = 60
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -346,10 +347,11 @@ module constants
        VARIANCE_METHOD            = 1, &
        RELATIVE_ERROR_METHOD      = 2, &
        STANDARD_DEVIATION_METHOD  = 3 
-  real(8), parameter :: DEFAULT_THRESHOLD = huge(0.0_8)
-  
-  ! Batches added and max batches for trigger
-  integer, parameter :: DEFAULT_BATCH_INTERVAL = 1
+       
+  ! Trigger result
+  character, parameter :: &
+       CHAR_EIGENVALUE = "eigenvalue", &
+       NO_NUCLIDE      = "" 
      
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4

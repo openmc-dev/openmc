@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES,N_SCORE_TYPES,N_SCORE_MINUM
+  use constants, only: NONE, N_FILTER_TYPES,N_SCORE_TYPES_1,N_SCORE_MINUM
 
   implicit none
 
@@ -132,7 +132,7 @@ module tally_header
     ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
-    integer :: find_score (N_SCORE_MINUM:N_SCORE_TYPES) = 0
+    integer :: find_score (N_SCORE_MINUM:N_SCORE_TYPES_1) = 0
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0

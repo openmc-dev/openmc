@@ -10,9 +10,8 @@
   
   <tally id="2">
    <filter type="energy" bins="0. 4.e-6 20.0" />
-   <nuclides>U-238 U-235</nuclides>
-   <scores>scatter fission</scores>
-   <trigger type="std_dev" threshold="0.003" scores="scatter"/>
+   <scores>flux</scores>
+   <trigger type="rel_err" threshold="0.01" scores="flux"/>
   </tally>
   
 

@@ -216,7 +216,7 @@ SVNCOMMAND:FILEPATH=SVNCOMMAND-NOTFOUND
 coverage:BOOL=OFF
 
 //Compile with debug flags
-debug:BOOL=OFF
+debug:BOOL=ON
 
 //Value Computed by CMake
 fox_BINARY_DIR:STATIC=/home/stsqc/openmc/tests/build/xml/fox

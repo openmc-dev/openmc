@@ -27,7 +27,8 @@ element settings {
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
   }? &
 
-  element energy_grid { ( "nuclide" | "union" | "lethargy" ) }? &
+  element energy_grid { ( "nuclide" | "union" | "log" |
+                          "logarithm" | "logarithmic" ) }? &
 
   element entropy {
     (element dimension { list { xsd:int+ } } | 

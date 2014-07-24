@@ -213,7 +213,7 @@ contains
     if (check_for_node(doc, "energy_grid")) then
       call get_node_value(doc, "energy_grid", temp_str)
     else
-      temp_str = 'union'
+      temp_str = 'logarithm'
     end if
     select case (trim(temp_str))
     case ('nuclide')

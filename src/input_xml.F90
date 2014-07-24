@@ -220,9 +220,8 @@ contains
       grid_method = GRID_NUCLIDE
     case ('union')
       grid_method = GRID_UNION
-    case ('lethargy')
-      message = "Lethargy mapped energy grid not yet supported."
-      call fatal_error()
+    case ('logarithm', 'logarithmic', 'log')
+      grid_method = GRID_LOGARITHM
     case default
       message = "Unknown energy grid method: " // trim(temp_str)
       call fatal_error()

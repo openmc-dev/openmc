@@ -141,8 +141,10 @@ contains
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f      ! interp factor on nuclide energy grid
+    integer :: i_grid        ! index on nuclide energy grid
+    integer :: i_low, i_high ! bounding indices from logarithmic mapping
+    integer :: u             ! index into logarithmic mapping array
+    real(8) :: f             ! interp factor on nuclide energy grid
     type(Nuclide), pointer, save :: nuc => null()
 !$omp threadprivate(nuc)
 
@@ -157,10 +159,29 @@ contains
 
       i_grid = nuc % grid_index(union_grid_index)
 
+    case (GRID_LOGARITHM)
+      ! Determine the energy grid index using a logarithmic mapping to reduce
+      ! the energy range over which a binary search needs to be performed
+
+      if (E < nuc % energy(1)) then
+        i_grid = 1
+      elseif (E > nuc % energy(nuc % n_grid)) then
+        i_grid = nuc % n_grid - 1
+      else
+        ! Determine bounding indices based on which equal log-spaced interval
+        ! the energy is in
+        u = int(log(E/1.0e-11_8)/log_spacing)
+        i_low  = nuc % grid_index(u)
+        i_high = nuc % grid_index(u + 1) + 1
+
+        ! Perform binary search over reduced range
+        i_grid = binary_search(nuc % energy(i_low:i_high), &
+             i_high - i_low + 1, E) + i_low - 1
+      end if
+
     case (GRID_NUCLIDE)
-      ! If we're not using the unionized grid, we have to do a binary search on
-      ! the nuclide energy grid in order to determine which points to
-      ! interpolate between
+      ! Perform binary search on the nuclide energy grid in order to determine
+      ! which points to interpolate between
 
       if (E < nuc % energy(1)) then
         i_grid = 1

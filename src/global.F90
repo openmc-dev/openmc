@@ -80,6 +80,7 @@ module global
   ! Unionized energy grid
   integer :: grid_method ! how to treat the energy grid
   integer :: n_grid      ! number of points on unionized grid
+  real(8) :: log_spacing ! spacing on logarithmic grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables

@@ -1,4 +1,4 @@
-# Install script for directory: /home/stsqc/openmc/src/xml/fox
+# Install script for directory: /home/qicang/openmc/src/xml/fox
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,12 +34,12 @@ ENDIF(NOT DEFINED CMAKE_INSTALL_SO_NO_EXE)
 
 IF(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/fsys/cmake_install.cmake")
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/utils/cmake_install.cmake")
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/common/cmake_install.cmake")
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/wxml/cmake_install.cmake")
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/sax/cmake_install.cmake")
-  INCLUDE("/home/stsqc/openmc/tests/build/xml/fox/dom/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/fsys/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/utils/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/common/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/wxml/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/sax/cmake_install.cmake")
+  INCLUDE("/home/qicang/openmc/tests/build/xml/fox/dom/cmake_install.cmake")
 
 ENDIF(NOT CMAKE_INSTALL_LOCAL_ONLY)
 

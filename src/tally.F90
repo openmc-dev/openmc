@@ -2634,7 +2634,7 @@ contains
             s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
                               t % results(1,filter_index) % trigger_sum
             end if
-            s%t3=s % t1**2
+            s % t3=s % t1**2
 
             ! Right Surface
             matching_bins(i_filter_mesh) = &
@@ -2642,7 +2642,7 @@ contains
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
             if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
             end if
             if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
                             t % results(1,filter_index) % trigger_sum) then 
@@ -2710,7 +2710,7 @@ contains
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
             if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
             end if
             if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
                             t % results(1,filter_index) % trigger_sum) then 
@@ -2754,7 +2754,7 @@ contains
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
             if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
             end if
             if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
                             t % results(1,filter_index) % trigger_sum) then 
@@ -2766,7 +2766,7 @@ contains
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
             if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
             end if
             if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
                             t % results(1,filter_index) % trigger_sum) then 

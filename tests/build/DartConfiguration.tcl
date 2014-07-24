@@ -4,14 +4,14 @@
 
 
 # Configuration directories and files
-SourceDirectory: /home/stsqc/openmc/src
-BuildDirectory: /home/stsqc/openmc/tests/build
+SourceDirectory: /home/qicang/openmc/src
+BuildDirectory: /home/qicang/openmc/tests/build
 
 # Where to place the cost data store
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: stsqc-Inspiron-7420
+Site: mightycesar
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
 BuildName: Linux-
@@ -33,7 +33,7 @@ ScpCommand: /usr/bin/scp
 NightlyStartTime: 01:00:00 UTC
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/usr/bin/cmake" "/home/stsqc/openmc/src"
+ConfigureCommand: "/usr/bin/cmake" "/home/qicang/openmc/src"
 MakeCommand: /usr/bin/make -i
 DefaultCTestConfigurationType: Release
 
@@ -43,8 +43,7 @@ CVSCommand: CVSCOMMAND-NOTFOUND
 CVSUpdateOptions: -d -A -P
 
 # Subversion options
-SVNCommand: SVNCOMMAND-NOTFOUND
-SVNOptions: 
+SVNCommand: /usr/bin/svn
 SVNUpdateOptions: 
 
 # Git options

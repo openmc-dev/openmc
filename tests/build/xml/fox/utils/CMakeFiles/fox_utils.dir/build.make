@@ -34,11 +34,14 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 # Include any dependencies generated for this target.
 include xml/fox/utils/CMakeFiles/fox_utils.dir/depend.make
@@ -50,10 +53,10 @@ include xml/fox/utils/CMakeFiles/fox_utils.dir/progress.make
 include xml/fox/utils/CMakeFiles/fox_utils.dir/flags.make
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o: xml/fox/utils/CMakeFiles/fox_utils.dir/flags.make
-xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o: /home/stsqc/openmc/src/xml/fox/utils/FoX_utils.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
+xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o: /home/qicang/openmc/src/xml/fox/utils/FoX_utils.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/utils/FoX_utils.f90 -o CMakeFiles/fox_utils.dir/FoX_utils.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/utils/FoX_utils.f90 -o CMakeFiles/fox_utils.dir/FoX_utils.f90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o.requires:
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o.requires
@@ -65,10 +68,10 @@ xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o.provides: xml/fox/utils/C
 xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o.provides.build: xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o: xml/fox/utils/CMakeFiles/fox_utils.dir/flags.make
-xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o: /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_mtprng.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
+xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o: /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_mtprng.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_mtprng.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_mtprng.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o.requires:
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o.requires
@@ -80,10 +83,10 @@ xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o.provides: xml/fo
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o.provides.build: xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o: xml/fox/utils/CMakeFiles/fox_utils.dir/flags.make
-xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o: /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_uri.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
+xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o: /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_uri.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_uri.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_uri.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o.requires:
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o.requires
@@ -95,10 +98,10 @@ xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o.provides: xml/fox/u
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o.provides.build: xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o: xml/fox/utils/CMakeFiles/fox_utils.dir/flags.make
-xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o: /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_uuid.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
+xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o: /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_uuid.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/utils/fox_m_utils_uuid.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/utils/fox_m_utils_uuid.F90 -o CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o.requires:
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o.requires
@@ -126,8 +129,8 @@ lib/libfox_utils.a: xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.
 lib/libfox_utils.a: xml/fox/utils/CMakeFiles/fox_utils.dir/build.make
 lib/libfox_utils.a: xml/fox/utils/CMakeFiles/fox_utils.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking Fortran static library ../../../lib/libfox_utils.a"
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -P CMakeFiles/fox_utils.dir/cmake_clean_target.cmake
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_utils.dir/link.txt --verbose=$(VERBOSE)
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -P CMakeFiles/fox_utils.dir/cmake_clean_target.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_utils.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 xml/fox/utils/CMakeFiles/fox_utils.dir/build: lib/libfox_utils.a
@@ -140,10 +143,10 @@ xml/fox/utils/CMakeFiles/fox_utils.dir/requires: xml/fox/utils/CMakeFiles/fox_ut
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/requires
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/clean:
-	cd /home/stsqc/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -P CMakeFiles/fox_utils.dir/cmake_clean.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/utils && $(CMAKE_COMMAND) -P CMakeFiles/fox_utils.dir/cmake_clean.cmake
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/clean
 
 xml/fox/utils/CMakeFiles/fox_utils.dir/depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/stsqc/openmc/src /home/stsqc/openmc/src/xml/fox/utils /home/stsqc/openmc/tests/build /home/stsqc/openmc/tests/build/xml/fox/utils /home/stsqc/openmc/tests/build/xml/fox/utils/CMakeFiles/fox_utils.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/qicang/openmc/src /home/qicang/openmc/src/xml/fox/utils /home/qicang/openmc/tests/build /home/qicang/openmc/tests/build/xml/fox/utils /home/qicang/openmc/tests/build/xml/fox/utils/CMakeFiles/fox_utils.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/depend
 

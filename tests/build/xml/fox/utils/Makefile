@@ -38,19 +38,22 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 #=============================================================================
 # Targets provided globally by CMake.
 
 # Special rule for the target edit_cache
 edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running interactive CMake command-line interface..."
-	/usr/bin/cmake -i .
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
+	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -120,14 +123,14 @@ test/fast: test
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/stsqc/openmc/tests/build/CMakeFiles /home/stsqc/openmc/tests/build/xml/fox/utils/CMakeFiles/progress.marks
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/stsqc/openmc/tests/build/CMakeFiles 0
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/qicang/openmc/tests/build/CMakeFiles /home/qicang/openmc/tests/build/xml/fox/utils/CMakeFiles/progress.marks
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/qicang/openmc/tests/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/clean
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/clean
 .PHONY : clean
 
 # The main clean target
@@ -136,22 +139,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/preinstall
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/preinstall
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 xml/fox/utils/CMakeFiles/fox_utils.dir/rule:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/CMakeFiles/fox_utils.dir/rule
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/utils/CMakeFiles/fox_utils.dir/rule
 .PHONY : xml/fox/utils/CMakeFiles/fox_utils.dir/rule
 
 # Convenience name for target.
@@ -160,7 +163,7 @@ fox_utils: xml/fox/utils/CMakeFiles/fox_utils.dir/rule
 
 # fast build rule for target.
 fox_utils/fast:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/build
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/build
 .PHONY : fox_utils/fast
 
 FoX_utils.o: FoX_utils.f90.o
@@ -168,7 +171,7 @@ FoX_utils.o: FoX_utils.f90.o
 
 # target to build an object file
 FoX_utils.f90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/FoX_utils.f90.o
 .PHONY : FoX_utils.f90.o
 
 fox_m_utils_mtprng.o: fox_m_utils_mtprng.F90.o
@@ -176,7 +179,7 @@ fox_m_utils_mtprng.o: fox_m_utils_mtprng.F90.o
 
 # target to build an object file
 fox_m_utils_mtprng.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o
 .PHONY : fox_m_utils_mtprng.F90.o
 
 fox_m_utils_uri.o: fox_m_utils_uri.F90.o
@@ -184,7 +187,7 @@ fox_m_utils_uri.o: fox_m_utils_uri.F90.o
 
 # target to build an object file
 fox_m_utils_uri.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o
 .PHONY : fox_m_utils_uri.F90.o
 
 fox_m_utils_uuid.o: fox_m_utils_uuid.F90.o
@@ -192,7 +195,7 @@ fox_m_utils_uuid.o: fox_m_utils_uuid.F90.o
 
 # target to build an object file
 fox_m_utils_uuid.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/utils/CMakeFiles/fox_utils.dir/build.make xml/fox/utils/CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o
 .PHONY : fox_m_utils_uuid.F90.o
 
 # Help Target
@@ -224,6 +227,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

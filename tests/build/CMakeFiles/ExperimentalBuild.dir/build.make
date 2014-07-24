@@ -34,11 +34,14 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 # Utility rule file for ExperimentalBuild.
 
@@ -61,6 +64,6 @@ CMakeFiles/ExperimentalBuild.dir/clean:
 .PHONY : CMakeFiles/ExperimentalBuild.dir/clean
 
 CMakeFiles/ExperimentalBuild.dir/depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/stsqc/openmc/src /home/stsqc/openmc/src /home/stsqc/openmc/tests/build /home/stsqc/openmc/tests/build /home/stsqc/openmc/tests/build/CMakeFiles/ExperimentalBuild.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/qicang/openmc/src /home/qicang/openmc/src /home/qicang/openmc/tests/build /home/qicang/openmc/tests/build /home/qicang/openmc/tests/build/CMakeFiles/ExperimentalBuild.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/ExperimentalBuild.dir/depend
 

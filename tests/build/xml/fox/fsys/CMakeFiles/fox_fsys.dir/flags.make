@@ -4,5 +4,5 @@
 # compile Fortran with /usr/bin/gfortran
 Fortran_FLAGS = -J../../../include  
 
-Fortran_DEFINES = -DGIT_SHA1=\"792a8070f5a730c9427b5b80659bc610f28b0877\" -DUNIX
+Fortran_DEFINES = -DUNIX -DGIT_SHA1=\"de63975f8ce533eb9de1f90ad663d09d82f67e9e\"
 

@@ -271,7 +271,7 @@ contains
           call write_message()
       
         ! When trigger is not reached write information   
-        elseif(trig_dis%temp_name == CHAR_EIGENVALUE) then
+        elseif(trig_dis % temp_name == CHAR_EIGENVALUE) then
           message = "Trigger isn't reached, the max uncertainty/threshold is " &
           // trim(to_str(trig_dis % max_ratio)) // " for " &
           // trim(trig_dis % temp_name)
@@ -304,9 +304,21 @@ contains
           if(n_batches < n1) then 
             call write_last_state_point()
             message = "The estimated number of batches is " // trim(to_str(n1)) &
-                   // "---bigger than max batches, please reset max batches"
-            call fatal_error()
-          else
+                   // "---bigger than max batches, please reset max batches."
+            call write_message
+            call free_memory()
+#ifdef MPI
+            ! Abort MPI
+            call MPI_ABORT(MPI_COMM_WORLD, code, mpi_err)
+#endif
+            ! Abort program
+#ifdef NO_F2008
+            stop
+#else
+            error stop 
+#endif
+
+            else
             message = "The estimated number of batches is "// trim(to_str(n1)) &
                    //"---check there"
             call write_message
@@ -326,7 +338,7 @@ contains
    
      ! Add current batch in statepoint_batch
      if (.not.statepoint_batch % contains(current_batch)) then
-       call statepoint_batch%add(current_batch) 
+       call statepoint_batch % add(current_batch) 
        call write_state_point()
      else
        call write_state_point()

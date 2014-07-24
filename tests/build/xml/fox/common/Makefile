@@ -38,19 +38,22 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 #=============================================================================
 # Targets provided globally by CMake.
 
 # Special rule for the target edit_cache
 edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running interactive CMake command-line interface..."
-	/usr/bin/cmake -i .
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
+	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -120,14 +123,14 @@ test/fast: test
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/stsqc/openmc/tests/build/CMakeFiles /home/stsqc/openmc/tests/build/xml/fox/common/CMakeFiles/progress.marks
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/stsqc/openmc/tests/build/CMakeFiles 0
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/qicang/openmc/tests/build/CMakeFiles /home/qicang/openmc/tests/build/xml/fox/common/CMakeFiles/progress.marks
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/qicang/openmc/tests/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/clean
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/clean
 .PHONY : clean
 
 # The main clean target
@@ -136,22 +139,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/preinstall
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/preinstall
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 xml/fox/common/CMakeFiles/fox_common.dir/rule:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/CMakeFiles/fox_common.dir/rule
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f CMakeFiles/Makefile2 xml/fox/common/CMakeFiles/fox_common.dir/rule
 .PHONY : xml/fox/common/CMakeFiles/fox_common.dir/rule
 
 # Convenience name for target.
@@ -160,7 +163,7 @@ fox_common: xml/fox/common/CMakeFiles/fox_common.dir/rule
 
 # fast build rule for target.
 fox_common/fast:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/build
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/build
 .PHONY : fox_common/fast
 
 FoX_common.o: FoX_common.F90.o
@@ -168,7 +171,7 @@ FoX_common.o: FoX_common.F90.o
 
 # target to build an object file
 FoX_common.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/FoX_common.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/FoX_common.F90.o
 .PHONY : FoX_common.F90.o
 
 m_common_attrs.o: m_common_attrs.F90.o
@@ -176,7 +179,7 @@ m_common_attrs.o: m_common_attrs.F90.o
 
 # target to build an object file
 m_common_attrs.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_attrs.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_attrs.F90.o
 .PHONY : m_common_attrs.F90.o
 
 m_common_buffer.o: m_common_buffer.F90.o
@@ -184,7 +187,7 @@ m_common_buffer.o: m_common_buffer.F90.o
 
 # target to build an object file
 m_common_buffer.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_buffer.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_buffer.F90.o
 .PHONY : m_common_buffer.F90.o
 
 m_common_charset.o: m_common_charset.F90.o
@@ -192,7 +195,7 @@ m_common_charset.o: m_common_charset.F90.o
 
 # target to build an object file
 m_common_charset.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_charset.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_charset.F90.o
 .PHONY : m_common_charset.F90.o
 
 m_common_content_model.o: m_common_content_model.F90.o
@@ -200,7 +203,7 @@ m_common_content_model.o: m_common_content_model.F90.o
 
 # target to build an object file
 m_common_content_model.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_content_model.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_content_model.F90.o
 .PHONY : m_common_content_model.F90.o
 
 m_common_element.o: m_common_element.F90.o
@@ -208,7 +211,7 @@ m_common_element.o: m_common_element.F90.o
 
 # target to build an object file
 m_common_element.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_element.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_element.F90.o
 .PHONY : m_common_element.F90.o
 
 m_common_elstack.o: m_common_elstack.F90.o
@@ -216,7 +219,7 @@ m_common_elstack.o: m_common_elstack.F90.o
 
 # target to build an object file
 m_common_elstack.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_elstack.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_elstack.F90.o
 .PHONY : m_common_elstack.F90.o
 
 m_common_entities.o: m_common_entities.F90.o
@@ -224,7 +227,7 @@ m_common_entities.o: m_common_entities.F90.o
 
 # target to build an object file
 m_common_entities.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_entities.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_entities.F90.o
 .PHONY : m_common_entities.F90.o
 
 m_common_entity_expand.o: m_common_entity_expand.F90.o
@@ -232,7 +235,7 @@ m_common_entity_expand.o: m_common_entity_expand.F90.o
 
 # target to build an object file
 m_common_entity_expand.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_entity_expand.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_entity_expand.F90.o
 .PHONY : m_common_entity_expand.F90.o
 
 m_common_error.o: m_common_error.F90.o
@@ -240,7 +243,7 @@ m_common_error.o: m_common_error.F90.o
 
 # target to build an object file
 m_common_error.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_error.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_error.F90.o
 .PHONY : m_common_error.F90.o
 
 m_common_io.o: m_common_io.F90.o
@@ -248,7 +251,7 @@ m_common_io.o: m_common_io.F90.o
 
 # target to build an object file
 m_common_io.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_io.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_io.F90.o
 .PHONY : m_common_io.F90.o
 
 m_common_namecheck.o: m_common_namecheck.F90.o
@@ -256,7 +259,7 @@ m_common_namecheck.o: m_common_namecheck.F90.o
 
 # target to build an object file
 m_common_namecheck.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_namecheck.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_namecheck.F90.o
 .PHONY : m_common_namecheck.F90.o
 
 m_common_namespaces.o: m_common_namespaces.F90.o
@@ -264,7 +267,7 @@ m_common_namespaces.o: m_common_namespaces.F90.o
 
 # target to build an object file
 m_common_namespaces.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_namespaces.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_namespaces.F90.o
 .PHONY : m_common_namespaces.F90.o
 
 m_common_notations.o: m_common_notations.F90.o
@@ -272,7 +275,7 @@ m_common_notations.o: m_common_notations.F90.o
 
 # target to build an object file
 m_common_notations.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_notations.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_notations.F90.o
 .PHONY : m_common_notations.F90.o
 
 m_common_struct.o: m_common_struct.F90.o
@@ -280,7 +283,7 @@ m_common_struct.o: m_common_struct.F90.o
 
 # target to build an object file
 m_common_struct.F90.o:
-	cd /home/stsqc/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_struct.F90.o
+	cd /home/qicang/openmc/tests/build && $(MAKE) -f xml/fox/common/CMakeFiles/fox_common.dir/build.make xml/fox/common/CMakeFiles/fox_common.dir/m_common_struct.F90.o
 .PHONY : m_common_struct.F90.o
 
 # Help Target
@@ -323,6 +326,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

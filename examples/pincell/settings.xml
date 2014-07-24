@@ -8,12 +8,13 @@
     <particles>1000</particles>
     <keff_trigger>
     <type>std_dev</type>
-    <threshold>0.004</threshold>
+    <threshold>0.002</threshold>
     </keff_trigger>
   </eigenvalue>
   <trigger>
   <status>true</status>
   <max_batches>100</max_batches>
+  
   </trigger>
  
  

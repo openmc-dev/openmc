@@ -34,11 +34,14 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 # Include any dependencies generated for this target.
 include xml/fox/dom/CMakeFiles/fox_dom.dir/depend.make
@@ -50,10 +53,10 @@ include xml/fox/dom/CMakeFiles/fox_dom.dir/progress.make
 include xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o: /home/stsqc/openmc/src/xml/fox/dom/FoX_dom.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
+xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o: /home/qicang/openmc/src/xml/fox/dom/FoX_dom.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/FoX_dom.f90 -o CMakeFiles/fox_dom.dir/FoX_dom.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/FoX_dom.f90 -o CMakeFiles/fox_dom.dir/FoX_dom.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o.requires
@@ -65,10 +68,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o.provides: xml/fox/dom/CMakeFile
 xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o.provides.build: xml/fox/dom/CMakeFiles/fox_dom.dir/FoX_dom.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o: /home/stsqc/openmc/src/xml/fox/dom/m_dom_error.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
+xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o: /home/qicang/openmc/src/xml/fox/dom/m_dom_error.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/m_dom_error.f90 -o CMakeFiles/fox_dom.dir/m_dom_error.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/m_dom_error.f90 -o CMakeFiles/fox_dom.dir/m_dom_error.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o.requires
@@ -80,10 +83,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o.provides: xml/fox/dom/CMake
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o.provides.build: xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_error.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o: /home/stsqc/openmc/src/xml/fox/dom/m_dom_parse.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
+xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o: /home/qicang/openmc/src/xml/fox/dom/m_dom_parse.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/m_dom_parse.f90 -o CMakeFiles/fox_dom.dir/m_dom_parse.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/m_dom_parse.f90 -o CMakeFiles/fox_dom.dir/m_dom_parse.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o.requires
@@ -95,10 +98,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o.provides: xml/fox/dom/CMake
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o.provides.build: xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_parse.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o: /home/stsqc/openmc/src/xml/fox/dom/m_dom_utils.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
+xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o: /home/qicang/openmc/src/xml/fox/dom/m_dom_utils.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/m_dom_utils.f90 -o CMakeFiles/fox_dom.dir/m_dom_utils.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/m_dom_utils.f90 -o CMakeFiles/fox_dom.dir/m_dom_utils.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o.requires
@@ -110,10 +113,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o.provides: xml/fox/dom/CMake
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o.provides.build: xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_utils.f90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o: /home/stsqc/openmc/src/xml/fox/dom/m_dom_dom.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_5)
+xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o: /home/qicang/openmc/src/xml/fox/dom/m_dom_dom.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_5)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/m_dom_dom.F90 -o CMakeFiles/fox_dom.dir/m_dom_dom.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/m_dom_dom.F90 -o CMakeFiles/fox_dom.dir/m_dom_dom.F90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o.requires
@@ -125,10 +128,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o.provides: xml/fox/dom/CMakeFi
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o.provides.build: xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_dom.F90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o: xml/fox/dom/CMakeFiles/fox_dom.dir/flags.make
-xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o: /home/stsqc/openmc/src/xml/fox/dom/m_dom_extras.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_6)
+xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o: /home/qicang/openmc/src/xml/fox/dom/m_dom_extras.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_6)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/dom/m_dom_extras.F90 -o CMakeFiles/fox_dom.dir/m_dom_extras.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/dom/m_dom_extras.F90 -o CMakeFiles/fox_dom.dir/m_dom_extras.F90.o
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o.requires:
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o.requires
@@ -160,8 +163,8 @@ lib/libfox_dom.a: xml/fox/dom/CMakeFiles/fox_dom.dir/m_dom_extras.F90.o
 lib/libfox_dom.a: xml/fox/dom/CMakeFiles/fox_dom.dir/build.make
 lib/libfox_dom.a: xml/fox/dom/CMakeFiles/fox_dom.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking Fortran static library ../../../lib/libfox_dom.a"
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -P CMakeFiles/fox_dom.dir/cmake_clean_target.cmake
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_dom.dir/link.txt --verbose=$(VERBOSE)
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -P CMakeFiles/fox_dom.dir/cmake_clean_target.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_dom.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 xml/fox/dom/CMakeFiles/fox_dom.dir/build: lib/libfox_dom.a
@@ -176,10 +179,10 @@ xml/fox/dom/CMakeFiles/fox_dom.dir/requires: xml/fox/dom/CMakeFiles/fox_dom.dir/
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/requires
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/clean:
-	cd /home/stsqc/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -P CMakeFiles/fox_dom.dir/cmake_clean.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/dom && $(CMAKE_COMMAND) -P CMakeFiles/fox_dom.dir/cmake_clean.cmake
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/clean
 
 xml/fox/dom/CMakeFiles/fox_dom.dir/depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/stsqc/openmc/src /home/stsqc/openmc/src/xml/fox/dom /home/stsqc/openmc/tests/build /home/stsqc/openmc/tests/build/xml/fox/dom /home/stsqc/openmc/tests/build/xml/fox/dom/CMakeFiles/fox_dom.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/qicang/openmc/src /home/qicang/openmc/src/xml/fox/dom /home/qicang/openmc/tests/build /home/qicang/openmc/tests/build/xml/fox/dom /home/qicang/openmc/tests/build/xml/fox/dom/CMakeFiles/fox_dom.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : xml/fox/dom/CMakeFiles/fox_dom.dir/depend
 

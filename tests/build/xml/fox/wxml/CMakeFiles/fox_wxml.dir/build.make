@@ -34,11 +34,14 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
+# The program to use to edit the cache.
+CMAKE_EDIT_COMMAND = /usr/bin/ccmake
+
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stsqc/openmc/src
+CMAKE_SOURCE_DIR = /home/qicang/openmc/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stsqc/openmc/tests/build
+CMAKE_BINARY_DIR = /home/qicang/openmc/tests/build
 
 # Include any dependencies generated for this target.
 include xml/fox/wxml/CMakeFiles/fox_wxml.dir/depend.make
@@ -50,10 +53,10 @@ include xml/fox/wxml/CMakeFiles/fox_wxml.dir/progress.make
 include xml/fox/wxml/CMakeFiles/fox_wxml.dir/flags.make
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o: xml/fox/wxml/CMakeFiles/fox_wxml.dir/flags.make
-xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o: /home/stsqc/openmc/src/xml/fox/wxml/FoX_wxml.f90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
+xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o: /home/qicang/openmc/src/xml/fox/wxml/FoX_wxml.f90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/wxml/FoX_wxml.f90 -o CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/wxml/FoX_wxml.f90 -o CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o.requires:
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o.requires
@@ -65,10 +68,10 @@ xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o.provides: xml/fox/wxml/CMake
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o.provides.build: xml/fox/wxml/CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o: xml/fox/wxml/CMakeFiles/fox_wxml.dir/flags.make
-xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o: /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_core.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
+xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o: /home/qicang/openmc/src/xml/fox/wxml/m_wxml_core.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_2)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_core.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/wxml/m_wxml_core.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o.requires:
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o.requires
@@ -80,10 +83,10 @@ xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o.provides: xml/fox/wxml/CM
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o.provides.build: xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o: xml/fox/wxml/CMakeFiles/fox_wxml.dir/flags.make
-xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o: /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_escape.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
+xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o: /home/qicang/openmc/src/xml/fox/wxml/m_wxml_escape.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_3)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_escape.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/wxml/m_wxml_escape.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o.requires:
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o.requires
@@ -95,10 +98,10 @@ xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o.provides: xml/fox/wxml/
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o.provides.build: xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o: xml/fox/wxml/CMakeFiles/fox_wxml.dir/flags.make
-xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o: /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_overloads.F90
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/stsqc/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
+xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o: /home/qicang/openmc/src/xml/fox/wxml/m_wxml_overloads.F90
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/qicang/openmc/tests/build/CMakeFiles $(CMAKE_PROGRESS_4)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building Fortran object xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o"
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/stsqc/openmc/src/xml/fox/wxml/m_wxml_overloads.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && /usr/bin/gfortran  $(Fortran_DEFINES) $(Fortran_FLAGS) -c /home/qicang/openmc/src/xml/fox/wxml/m_wxml_overloads.F90 -o CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o.requires:
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o.requires
@@ -126,8 +129,8 @@ lib/libfox_wxml.a: xml/fox/wxml/CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o
 lib/libfox_wxml.a: xml/fox/wxml/CMakeFiles/fox_wxml.dir/build.make
 lib/libfox_wxml.a: xml/fox/wxml/CMakeFiles/fox_wxml.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking Fortran static library ../../../lib/libfox_wxml.a"
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -P CMakeFiles/fox_wxml.dir/cmake_clean_target.cmake
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_wxml.dir/link.txt --verbose=$(VERBOSE)
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -P CMakeFiles/fox_wxml.dir/cmake_clean_target.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fox_wxml.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/build: lib/libfox_wxml.a
@@ -140,10 +143,10 @@ xml/fox/wxml/CMakeFiles/fox_wxml.dir/requires: xml/fox/wxml/CMakeFiles/fox_wxml.
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/requires
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/clean:
-	cd /home/stsqc/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -P CMakeFiles/fox_wxml.dir/cmake_clean.cmake
+	cd /home/qicang/openmc/tests/build/xml/fox/wxml && $(CMAKE_COMMAND) -P CMakeFiles/fox_wxml.dir/cmake_clean.cmake
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/clean
 
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/depend:
-	cd /home/stsqc/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/stsqc/openmc/src /home/stsqc/openmc/src/xml/fox/wxml /home/stsqc/openmc/tests/build /home/stsqc/openmc/tests/build/xml/fox/wxml /home/stsqc/openmc/tests/build/xml/fox/wxml/CMakeFiles/fox_wxml.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/qicang/openmc/tests/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/qicang/openmc/src /home/qicang/openmc/src/xml/fox/wxml /home/qicang/openmc/tests/build /home/qicang/openmc/tests/build/xml/fox/wxml /home/qicang/openmc/tests/build/xml/fox/wxml/CMakeFiles/fox_wxml.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : xml/fox/wxml/CMakeFiles/fox_wxml.dir/depend
 

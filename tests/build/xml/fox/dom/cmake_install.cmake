@@ -1,4 +1,4 @@
-# Install script for directory: /home/stsqc/openmc/src/xml/fox/dom
+# Install script for directory: /home/qicang/openmc/src/xml/fox/dom
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)

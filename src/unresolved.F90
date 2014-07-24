@@ -800,11 +800,11 @@ contains
 
     ! compute chi
     chi_val = SQRT_PI / TWO * theta &
-      & * real(dimag(w_val), 8)
+      & * real(aimag(w_val), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
 !    chi_val = SQRT_PI / TWO * theta &
-!      & * real(dimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+!      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
 
   end function chi
 

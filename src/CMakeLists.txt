@@ -59,7 +59,7 @@ endif()
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   # GNU Fortran compiler options
   set(f90flags  "-cpp -std=f2008 -fbacktrace")
-  set(cflags    "-std=c99 -traceback")
+  set(cflags    "-std=c99")
   if(debug)
     set(f90flags  "-g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow ${f90flags}")
     set(ldflags   "-g")

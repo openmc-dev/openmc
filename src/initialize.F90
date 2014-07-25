@@ -7,6 +7,7 @@ module initialize
   use endf_reader,      only: read_endf, print_shit
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
+  use faddeeva,         only: initialize_w_tabulated
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
@@ -107,7 +108,24 @@ contains
       call time_read_xs % stop()
 
       ! Read ENDF-6 format nuclear data file
-      if (OTF_URR) call initialize_endf()
+      if (OTF_URR) then
+        call initialize_endf()
+        call initialize_w_tabulated()
+      end if
+
+      sig_nmax = ZERO
+      xst = ZERO
+      xsf = ZERO
+      xsn = ZERO
+      xsg = ZERO
+      xsx = ZERO
+      xspot = ZERO
+      jt = ZERO
+      jf = ZERO
+      jn = ZERO
+      jg = ZERO
+      jx = ZERO
+      jpot = ZERO
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then

@@ -436,8 +436,6 @@ module ace_header
     allocate(this % Gam_f_means(this % NE, this % NLS))
     allocate(this % Gam_x_means(this % NE, this % NLS))
 
-! TODO: read in NJS(:) from ENDF
-
     ! allocate space for the different spin sequences (i.e. (l,J) pairs)
     do i_L = 1, this % NLS
 

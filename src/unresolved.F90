@@ -310,18 +310,20 @@ contains
       call warning()
     end if
 
-    jt = jt + ONE
-    xst = xst + micro_xs(i_nuc) % total
-    jf = jf + ONE
-    xsf = xsf + micro_xs(i_nuc) % fission
-    jn = jn + ONE
-    xsn = xsn + micro_xs(i_nuc) % elastic
-    jg = jg + ONE
-    xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-    jx = jx + ONE
-    xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
-!    write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
-!      & xsg/jg,xsx/jx
+    if (E > 1.9E4_8 .and. E < 2.1E4_8) then
+      jt = jt + ONE
+      xst = xst + micro_xs(i_nuc) % total
+      jf = jf + ONE
+      xsf = xsf + micro_xs(i_nuc) % fission
+      jn = jn + ONE
+      xsn = xsn + micro_xs(i_nuc) % elastic
+      jg = jg + ONE
+      xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+      jx = jx + ONE
+      xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
+      write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsn/jn,xsf/jf,&
+        & xsg/jg,xsx/jx
+    end if
 
   end subroutine calculate_urr_xs_otf
 
@@ -760,20 +762,20 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
-    relerr = ZERO
+    relerr = 1.0e-1
 
 ! TODO: Allow option of using different Faddeeva evaluations?
 
     ! call S.G. Johnson's Faddeeva evaluation
-    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+!    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
 
     ! compute psi
-    psi_val = SQRT_PI / TWO * theta &
-      & * real(real(w_val, 8), 8)
+!    psi_val = SQRT_PI / TWO * theta &
+!      & * real(real(w_val, 8), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-!    psi_val = SQRT_PI / TWO * theta &
-!      & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
+    psi_val = SQRT_PI / TWO * theta &
+      & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
 
   end function psi
 
@@ -791,20 +793,20 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
-    relerr = ZERO
+    relerr = 1.0e-1
 
 ! TODO: Allow option of using different Faddeeva evaluations?
 
     ! call S.G. Johnson's Faddeeva evaluation
-    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+!    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
 
     ! compute chi
-    chi_val = SQRT_PI / TWO * theta &
-      & * real(aimag(w_val), 8)
+!    chi_val = SQRT_PI / TWO * theta &
+!      & * real(aimag(w_val), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-!    chi_val = SQRT_PI / TWO * theta &
-!      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+    chi_val = SQRT_PI / TWO * theta &
+      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
 
   end function chi
 
@@ -891,6 +893,10 @@ contains
 
     ! add the potential scattering xs to this xs
     this % val = this % val + sig_pot
+
+!    jpot = jpot + ONE
+!    xspot = xspot + sig_pot
+!    write(*,'(ES10.3)') xspot/jpot
 
   end subroutine pot_scatter_xs
 

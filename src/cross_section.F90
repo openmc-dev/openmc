@@ -252,8 +252,8 @@ contains
           xsx = xsx + micro_xs(i_nuclide) % total &
             & - micro_xs(i_nuclide) % elastic &
             & - micro_xs(i_nuclide) % absorption
-!          write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
-!            & xsg/jg,xsx/jx
+          write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
+            & xsg/jg,xsx/jx
         end if
       end if
     end if

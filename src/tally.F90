@@ -2356,6 +2356,7 @@ contains
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       allocate(temp_t % results(t % total_score_bins, t % total_filter_bins))
+     
       if (n_realizations > 1) call tally_trigger_statistics(t,temp_t)
       allocate (temp_trig(t % n_user_score_bins,t % n_nuclide_bins))
       allocate (temp_real(t % n_user_score_bins,t % n_nuclide_bins))
@@ -2512,7 +2513,7 @@ contains
          case default
          temp_trig(l,n) = temp_real(l,n) % t1
          end select
-        
+         
          if (temp_trig(l,n) > t % score(1)%threshold) then
           amount = amount + 1 
           temp_ratio = temp_trig(l,n) / t % score(1)%threshold
@@ -3036,7 +3037,7 @@ contains
     ! sample mean is unbiased.
 
     that % trigger_sum    = this % sum/n
-    that % trigger_sum_sq = sqrt((that % trigger_sum_sq/n - that % trigger_sum * &
+    that % trigger_sum_sq = sqrt((this % sum_sq/n - that % trigger_sum * &
          that % trigger_sum) / (n - 1))
 
   end subroutine statistics_trigger_result

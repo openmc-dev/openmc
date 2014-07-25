@@ -155,7 +155,7 @@ contains
         if (mat % i_sab_nuclides(k) == NONE) then
           message = "S(a,b) table " // trim(mat % sab_names(k)) // " did not &
                &match any nuclide on material " // trim(to_str(mat % id))
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do ASSIGN_SAB
 
@@ -267,16 +267,16 @@ contains
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
       message = "ACE library '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error(message)
     elseif (readable(1:3) == 'NO') then
       message = "ACE library '" // trim(filename) // "' is not readable! &
            &Change file permissions with chmod command."
-      call fatal_error()
+      call fatal_error(message)
     end if
 
     ! display message
     message = "Loading ACE cross section table: " // listing % name
-    call write_message(6)
+    call write_message(message, 6)
 
     if (filetype == ASCII) then
       ! =======================================================================
@@ -297,7 +297,7 @@ contains
       if(adjustl(name) /= adjustl(listing % name)) then
         message = "XS listing entry " // trim(listing % name) // " did not &
              &match ACE data, " // trim(name) // " found instead."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Read more header and NXS and JXS
@@ -380,7 +380,7 @@ contains
       ! abort the run.
       if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
         message = "Cannot have fissionable material in a fixed source run."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! for fissionable nuclides, precalculate microscopic nu-fission cross
@@ -1319,7 +1319,7 @@ contains
       if (nuc % urr_inelastic == NONE) then
         message = "Could not find inelastic reaction specified on " &
              // "unresolved resonance probability table."
-        call fatal_error()
+        call fatal_error(message)
       end if
     end if
 
@@ -1347,7 +1347,7 @@ contains
     if (any(nuc % urr_data % prob < ZERO)) then
       message = "Negative value(s) found on probability table for nuclide " &
            // nuc % name
-      call warning()
+      if (master) call warning(message)
     end if
 
   end subroutine read_unr_res

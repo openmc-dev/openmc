@@ -34,7 +34,7 @@ contains
 
       ! Display output message
       message = "Processing plot " // trim(to_str(pl % id)) // "..."
-      call write_message(5)
+      call write_message(message, 5)
 
       if (pl % type == PLOT_TYPE_SLICE) then
         ! create 2d image

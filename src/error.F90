@@ -1,6 +1,9 @@
 module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
+  use constants
+
+  use global
 
 #ifdef MPI
   use mpi
@@ -73,8 +76,9 @@ contains
 ! the program is aborted.
 !===============================================================================
 
-  subroutine fatal_error(error_code)
+  subroutine fatal_error(message, error_code)
 
+    character(2*MAX_LINE_LEN) :: message
     integer, optional :: error_code ! error code
 
     integer :: code      ! error code

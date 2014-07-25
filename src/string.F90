@@ -2,7 +2,7 @@ module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
   use error,     only: fatal_error, warning
-  use global,    only: message
+  use global,    only: master
 
   implicit none
 
@@ -53,7 +53,7 @@ contains
           if (i_end - i_start + 1 > len(words(n))) then
             message = "The word '" // string(i_start:i_end) // &
                  "' is longer than the space allocated for it."
-            call warning()
+            if (master) call warning(message)
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -213,7 +213,7 @@ function zero_padded(num, n_digits) result(str)
   ! largest integer(4).
   if (n_digits > 10) then
     message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error()
+    call fatal_error(message)
   end if
 
   ! Write a format string of the form '(In.m)' where n is the max width and

@@ -52,14 +52,14 @@ contains
       message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
            trim(adjustl(nuclides(p % event_nuclide) % name)) // &
            ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV."
-      call write_message()
+      call write_message(message)
     end if
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
       p % alive = .false.
       message = "Killing neutron with extremely low energy"
-      call warning()
+      if (master) call warning(message)
     end if
 
   end subroutine collision
@@ -162,7 +162,7 @@ contains
       if (i > mat % n_nuclides) then
         call write_particle_restart(p)
         message = "Did not sample any nuclide during collision."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Find atom density
@@ -372,7 +372,7 @@ contains
           call write_particle_restart(p)
           message = "Did not sample any reaction for nuclide " // &
                trim(nuc % name)
-          call fatal_error()
+          call fatal_error(message)
         end if
 
         rxn => nuc % reactions(i)
@@ -977,7 +977,7 @@ contains
 
     case default
       message = "Not a recognized resonance scattering treatment!"
-      call fatal_error()
+      call fatal_error(message)
     end select
     
   end subroutine sample_target_velocity
@@ -1096,7 +1096,7 @@ contains
       if (.not. in_mesh) then
         call write_particle_restart(p)
         message = "Source site outside UFS mesh!"
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
@@ -1124,7 +1124,7 @@ contains
       message = "Maximum number of sites in fission bank reached. This can &
            &result in irreproducible results using different numbers of &
            &processes/threads."
-      call warning()
+      if (master) call warning(message)
     end if
 
     ! Bank source neutrons
@@ -1251,7 +1251,7 @@ contains
           ! call write_particle_restart(p)
           message = "Resampled energy distribution maximum number of " // &
                "times for nuclide " // nuc % name
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do
 
@@ -1278,7 +1278,7 @@ contains
           ! call write_particle_restart(p)
           message = "Resampled energy distribution maximum number of " // &
                "times for nuclide " // nuc % name
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do
 
@@ -1460,7 +1460,7 @@ contains
       else
         ! call write_particle_restart(p)
         message = "Unknown interpolation type: " // trim(to_str(interp))
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Because of floating-point roundoff, it may be possible for mu to be
@@ -1472,7 +1472,7 @@ contains
     else
       ! call write_particle_restart(p)
       message = "Unknown angular distribution type: " // trim(to_str(type))
-      call fatal_error()
+      call fatal_error(message)
     end if
 
   end function sample_angle
@@ -1621,7 +1621,7 @@ contains
         ! call write_particle_restart(p)
         message = "Multiple interpolation regions not supported while &
              &attempting to sample equiprobable energy bins."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! determine index on incoming energy grid and interpolation factor
@@ -1686,12 +1686,12 @@ contains
       if (NR == 1) then
         message = "Assuming linear-linear interpolation when sampling &
              &continuous tabular distribution"
-        call warning()
+        if (master) call warning(message)
       else if (NR > 1) then
         ! call write_particle_restart(p)
         message = "Multiple interpolation regions not supported while &
              &attempting to sample continuous tabular distribution."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1751,7 +1751,7 @@ contains
         ! call write_particle_restart(p)
         message = "Discrete lines in continuous tabular distributed not &
              &yet supported"
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! determine outgoing energy bin
@@ -1792,7 +1792,7 @@ contains
       else
         ! call write_particle_restart(p)
         message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -1834,7 +1834,7 @@ contains
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           message = "Too many rejections on Maxwell fission spectrum."
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do
 
@@ -1867,7 +1867,7 @@ contains
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           message = "Too many rejections on evaporation spectrum."
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do
 
@@ -1909,7 +1909,7 @@ contains
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           message = "Too many rejections on Watt spectrum."
-          call fatal_error()
+          call fatal_error(message)
         end if
       end do
 
@@ -1920,7 +1920,7 @@ contains
       if (.not. present(mu_out)) then
         ! call write_particle_restart(p)
         message = "Law 44 called without giving mu_out as argument."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! read number of interpolation regions and incoming energies
@@ -1930,7 +1930,7 @@ contains
         ! call write_particle_restart(p)
         message = "Multiple interpolation regions not supported while &
              &attempting to sample Kalbach-Mann distribution."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1991,7 +1991,7 @@ contains
         ! call write_particle_restart(p)
         message = "Discrete lines in continuous tabular distributed not &
              &yet supported"
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! determine outgoing energy bin
@@ -2046,7 +2046,7 @@ contains
       else
         ! call write_particle_restart()
         message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -2073,7 +2073,7 @@ contains
       if (.not. present(mu_out)) then
         ! call write_particle_restart()
         message = "Law 61 called without giving mu_out as argument."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! read number of interpolation regions and incoming energies
@@ -2083,7 +2083,7 @@ contains
         ! call write_particle_restart()
         message = "Multiple interpolation regions not supported while &
              &attempting to sample correlated energy-angle distribution."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -2144,7 +2144,7 @@ contains
         ! call write_particle_restart()
         message = "Discrete lines in continuous tabular distributed not &
              &yet supported"
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! determine outgoing energy bin
@@ -2186,7 +2186,7 @@ contains
       else
         ! call write_particle_restart()
         message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -2250,7 +2250,7 @@ contains
       else
         ! call write_particle_restart()
         message = "Unknown interpolation type: " // trim(to_str(JJ))
-        call fatal_error()
+        call fatal_error(message)
       end if
 
     case (66)

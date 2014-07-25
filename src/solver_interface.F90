@@ -1,7 +1,7 @@
 module solver_interface
 
+  use constants
   use error,          only: fatal_error
-  use global,         only: message
   use matrix_header,  only: Matrix
   use vector_header,  only: Vector
 
@@ -12,6 +12,8 @@ module solver_interface
 
   implicit none
   private
+
+  character(2*MAX_LINE_LEN) :: message
 
   ! GMRES solver type 
   type, public :: GMRESSolver 
@@ -69,8 +71,6 @@ module solver_interface
 #ifdef PETSC
   integer :: petsc_err ! petsc error code
 #endif
-
-  character(2*MAX_LINE_LEN) :: message
 
 contains
 

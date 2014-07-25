@@ -22,8 +22,6 @@ module output
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
-  character(2*MAX_LINE_LEN) :: message
-
 contains
 
 !===============================================================================
@@ -197,6 +195,7 @@ contains
 
   subroutine write_message(message, level)
 
+    character(2*MAX_LINE_LEN) :: message
     integer, optional :: level ! verbosity level
 
     integer :: i_start    ! starting position
@@ -1556,6 +1555,7 @@ contains
 
   subroutine print_results()
 
+    character(2*MAX_LINE_LEN) :: message
     real(8) :: alpha   ! significance level for CI
     real(8) :: t_value ! t-value for confidence intervals
 
@@ -1590,7 +1590,7 @@ contains
            global_tallies(LEAKAGE) % sum_sq
     else
       message = "Could not compute uncertainties -- only one active batch simulated!"
-      call warning()
+      if (master) call warning(message)
 
       write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
       write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum

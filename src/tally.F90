@@ -874,7 +874,7 @@ contains
 
                 else
                   message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error(message)
                 end if
               end select
 
@@ -1012,7 +1012,7 @@ contains
 
                 else
                   message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error(message)
                 end if
               end select
             end if
@@ -1212,7 +1212,7 @@ contains
 
           else
             message = "Invalid score type on tally " // to_str(t % id) // "."
-            call fatal_error()
+            call fatal_error(message)
           end if
         end select
 
@@ -1364,7 +1364,7 @@ contains
 
         else
           message = "Invalid score type on tally " // to_str(t % id) // "."
-          call fatal_error()
+          call fatal_error(message)
         end if
       end select
 
@@ -1711,7 +1711,7 @@ contains
                 case default
                   message = "Invalid score type on tally " // &
                        to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error(message)
                 end select
 
               else
@@ -1787,7 +1787,7 @@ contains
                 case default
                   message = "Invalid score type on tally " // &
                        to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error(message)
                 end select
               end if
 
@@ -2226,7 +2226,7 @@ contains
           if (filter_index <= 0 .or. filter_index > &
                t % total_filter_bins) then
             message = "Score index outside range."
-            call fatal_error()
+            call fatal_error(message)
           end if
 
           ! Add to surface current tally
@@ -2566,17 +2566,17 @@ contains
     ! check to see if any of the active tally lists has been allocated
     if (active_tallies % size() > 0) then
       message = "Active tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error(message)
     else if (active_analog_tallies % size() > 0) then
       message = 'Active analog tallies should not exist before CMFD tallies!'
-      call fatal_error()
+      call fatal_error(message)
     else if (active_tracklength_tallies % size() > 0) then
       message = "Active tracklength tallies should not exist before CMFD &
            &tallies!"
-      call fatal_error()
+      call fatal_error(message)
     else if (active_current_tallies % size() > 0) then
       message = "Active current tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error(message)
     end if
 
     do i = 1, n_cmfd_tallies

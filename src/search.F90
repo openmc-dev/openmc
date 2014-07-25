@@ -1,7 +1,7 @@
 module search
 
+  use constants
   use error,     only: fatal_error
-  use global,    only: message
 
   integer, parameter :: MAX_ITERATION = 64
 
@@ -35,7 +35,7 @@ contains
 
     if (val < array(L) .or. val > array(R)) then
       message = "Value outside of array during binary search"
-      call fatal_error()
+      call fatal_error(message)
     end if
 
     n_iteration = 0
@@ -63,7 +63,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
+        call fatal_error(message)
       end if
     end do
 
@@ -88,7 +88,7 @@ contains
 
     if (val < array(L) .or. val > array(R)) then
       message = "Value outside of array during binary search"
-      call fatal_error()
+      call fatal_error(message)
     end if
 
     n_iteration = 0
@@ -116,7 +116,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
+        call fatal_error(message)
       end if
     end do
 
@@ -141,7 +141,7 @@ contains
 
     if (val < array(L) .or. val > array(R)) then
       message = "Value outside of array during binary search"
-      call fatal_error()
+      call fatal_error(message)
     end if
 
     n_iteration = 0
@@ -169,7 +169,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
+        call fatal_error(message)
       end if
     end do
 

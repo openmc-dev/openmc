@@ -37,14 +37,14 @@ contains
     type(BinaryOutput) :: sp ! statepoint/source binary file
 
     message = "Initializing source particles..."
-    call write_message(6)
+    call write_message(message, 6)
 
     if (path_source /= '') then
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
       message = 'Reading source file from ' // trim(path_source) // '...'
-      call write_message(6)
+      call write_message(message, 6)
 
       ! Open the binary file
       call sp % file_open(path_source, 'r', serial = .false.)
@@ -55,7 +55,7 @@ contains
       ! Check to make sure this is a source file
       if (itmp /= FILETYPE_SOURCE) then
         message = "Specified starting source file not a source file type."
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Read in the source bank
@@ -82,7 +82,7 @@ contains
     ! Write out initial source
     if (write_initial_source) then
       message = 'Writing out initial source guess...'
-      call write_message(1)
+      call write_message(message, 1)
 #ifdef HDF5
       filename = trim(path_output) // 'initial_source.h5'
 #else
@@ -146,7 +146,7 @@ contains
           if (num_resamples == MAX_EXTSRC_RESAMPLES) then
             message = "Maximum number of external source spatial resamples &
                       &reached!"
-            call fatal_error()
+            call fatal_error(message)
           end if
         end if
       end do
@@ -176,7 +176,7 @@ contains
           if (num_resamples == MAX_EXTSRC_RESAMPLES) then
             message = "Maximum number of external source spatial resamples &
                       &reached!"
-            call fatal_error()
+            call fatal_error(message)
           end if
           cycle
         end if
@@ -210,7 +210,7 @@ contains
 
     case default
       message = "No angle distribution specified for external source!"
-      call fatal_error()
+      call fatal_error(message)
     end select
 
     ! Sample energy distribution
@@ -242,7 +242,7 @@ contains
 
     case default
       message = "No energy distribution specified for external source!"
-      call fatal_error()
+      call fatal_error(message)
     end select
 
     ! Set the random number generator back to the tracking stream.

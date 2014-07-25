@@ -2,6 +2,7 @@ module cmfd_solver
 
 ! This module contains routines to execute the power iteration solver
 
+  use constants
   use cmfd_loss_operator, only: init_loss_matrix, build_loss_matrix
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
@@ -30,6 +31,7 @@ module cmfd_solver
   type(Vector) :: s_n             ! new source vector
   type(Vector) :: s_o             ! old flux vector
   type(Vector) :: serr_v          ! error in source
+  character(2*MAX_LINE_LEN) :: message
 
   ! CMFD linear solver interface
   procedure(linsolve), pointer :: cmfd_linsolver => null()
@@ -180,8 +182,6 @@ contains
     use error,   only: fatal_error
 #ifdef PETSC
     use global,  only: cmfd_write_matrices
-#else
-    use global,  only: message
 #endif
 
 #ifdef PETSC
@@ -196,7 +196,7 @@ contains
     end if
 #else
     message = 'Adjoint calculations only allowed with PETSc'
-    call fatal_error()
+    call fatal_error(message)
 #endif
 
   end subroutine compute_adjoint
@@ -210,7 +210,7 @@ contains
 
     use constants,  only: ONE
     use error,      only: fatal_error
-    use global,     only: cmfd_atoli, cmfd_rtoli, message
+    use global,     only: cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -238,7 +238,7 @@ contains
       ! Check if reached iteration 10000
       if (i == 10000) then
         message = 'Reached maximum iterations in CMFD power iteration solver.'
-        call fatal_error()
+        call fatal_error(message)
       end if
 
       ! Compute source vector
@@ -357,7 +357,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -402,7 +402,7 @@ contains
       ! Check for max iterations met
       if (igs == 10000) then
         message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error(message)
       endif
 
       ! Copy over x vector
@@ -464,7 +464,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -521,7 +521,7 @@ contains
       ! Check for max iterations met
       if (igs == 10000) then
         message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error(message)
       endif
 
       ! Copy over x vector
@@ -610,7 +610,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -654,7 +654,7 @@ contains
       ! Check for max iterations met
       if (igs == 10000) then
         message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error(message)
       endif
 
       ! Copy over x vector

@@ -106,7 +106,7 @@ contains
                       trim(to_str(cells(index_cell) % id)) // ", " // &
                       trim(to_str(cells(coord % cell) % id)) //       &
                       " on universe " // trim(to_str(univ % id))
-            call fatal_error()
+            call fatal_error(message)
           end if
 
           overlap_check_cnt(index_cell) = overlap_check_cnt(index_cell) + 1
@@ -182,7 +182,7 @@ contains
         ! Show cell information on trace
         if (verbosity >= 10 .or. trace) then
           message = "    Entering cell " // trim(to_str(c % id))
-          call write_message()
+          call write_message(message)
         end if
 
         if (c % type == CELL_NORMAL) then
@@ -387,7 +387,7 @@ contains
     surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
       message = "    Crossing surface " // trim(to_str(surf % id))
-      call write_message()
+      call write_message(message)
     end if
 
     if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
@@ -420,7 +420,7 @@ contains
       ! Display message
       if (verbosity >= 10 .or. trace) then
         message = "    Leaked out of surface " // trim(to_str(surf % id))
-        call write_message()
+        call write_message(message)
       end if
       return
 
@@ -566,7 +566,7 @@ contains
       case default
         message = "Reflection not supported for surface " // &
              trim(to_str(surf % id))
-        call fatal_error()
+        call fatal_error(message)
       end select
 
       ! Set new particle direction
@@ -597,7 +597,7 @@ contains
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
         message = "    Reflected from surface " // trim(to_str(surf%id))
-        call write_message()
+        call write_message(message)
       end if
       return
     end if
@@ -678,7 +678,7 @@ contains
            ". Current position (" // trim(to_str(p % coord % lattice_x)) &
            // "," // trim(to_str(p % coord % lattice_y)) // "," // &
            trim(to_str(p % coord % lattice_z)) // ")"
-      call write_message()
+      call write_message(message)
     end if
 
     if (lat % type == LATTICE_RECT) then
@@ -1497,7 +1497,7 @@ contains
     type(Surface), pointer  :: surf
 
     message = "Building neighboring cells lists for each surface..."
-    call write_message(4)
+    call write_message(message, 4)
 
     allocate(count_positive(n_surfaces))
     allocate(count_negative(n_surfaces))
@@ -1569,7 +1569,7 @@ contains
     type(Particle), intent(inout) :: p
 
     ! Print warning and write lost particle file
-    call warning(force = .true.)
+    call warning(message)
     call write_particle_restart(p)
 
     ! Increment number of lost particles
@@ -1582,7 +1582,7 @@ contains
     ! reached
     if (n_lost_particles == MAX_LOST_PARTICLES) then
       message = "Maximum number of lost particles has been reached."
-      call fatal_error()
+      call fatal_error(message)
     end if
 
   end subroutine handle_lost_particle

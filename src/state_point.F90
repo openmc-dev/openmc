@@ -26,6 +26,7 @@ module state_point
 
   implicit none
 
+  character(2*MAX_LINE_LEN) :: message
   type(BinaryOutput) :: sp ! statepoint/source output file
 
 contains

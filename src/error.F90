@@ -2,8 +2,6 @@ module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use global
-
 #ifdef MPI
   use mpi
 #endif
@@ -17,18 +15,15 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(force)
+  subroutine warning(message)
 
-    logical, optional :: force ! force write from proc other than master
+    character(2*MAX_LINE_LEN) :: message
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-
-    ! Only allow master to print to screen
-    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
     write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '

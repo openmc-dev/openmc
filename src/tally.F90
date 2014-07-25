@@ -25,6 +25,8 @@ module tally
   integer :: position(N_FILTER_TYPES - 3) = 0
 !$omp threadprivate(position)
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================

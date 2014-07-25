@@ -9,6 +9,8 @@ module search
     module procedure binary_search_real, binary_search_int4, binary_search_int8
   end interface binary_search
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================

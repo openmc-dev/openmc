@@ -272,9 +272,6 @@ module global
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
-  ! Message used in message/warning/fatal_error
-  character(2*MAX_LINE_LEN) :: message
-
   ! Random number seed
   integer(8) :: seed = 1_8
 

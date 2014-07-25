@@ -11,6 +11,8 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
+
+  character(2*MAX_LINE_LEN) :: message
      
 contains
 

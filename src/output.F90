@@ -22,6 +22,8 @@ module output
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================
@@ -193,7 +195,7 @@ contains
 ! standard output stream.
 !===============================================================================
 
-  subroutine write_message(level)
+  subroutine write_message(message, level)
 
     integer, optional :: level ! verbosity level
 

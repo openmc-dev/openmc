@@ -11,6 +11,8 @@ module cmfd_execute
   private
   public :: execute_cmfd, cmfd_init_batch
 
+  character(2*MAX_LINE_LEN) :: message                                      
+
 contains
 
 !==============================================================================

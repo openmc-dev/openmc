@@ -15,6 +15,8 @@ module ace
 
   implicit none
 
+  character(2*MAX_LINE_LEN) :: message
+
   integer :: NXS(16)             ! Descriptors for ACE XSS tables
   integer :: JXS(32)             ! Pointers into ACE XSS tables
   real(8), allocatable :: XSS(:) ! Cross section data

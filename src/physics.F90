@@ -20,6 +20,8 @@ module physics
 
   implicit none
 
+  character(2*MAX_LINE_LEN) :: message
+
 ! TODO: Figure out how to write particle restart files in sample_angle,
 ! sample_energy, etc.
 

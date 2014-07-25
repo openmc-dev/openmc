@@ -19,6 +19,8 @@ module particle_restart
   ! Binary file
   type(BinaryOutput) :: pr
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================

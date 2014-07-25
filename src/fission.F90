@@ -9,6 +9,8 @@ module fission
 
   implicit none
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================

@@ -10,6 +10,8 @@ module cmfd_input
   private
   public :: configure_cmfd
 
+  character(2*MAX_LINE_LEN) :: message                                      
+
 contains
 
 !===============================================================================

@@ -70,6 +70,8 @@ module solver_interface
   integer :: petsc_err ! petsc error code
 #endif
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 #ifdef PETSC

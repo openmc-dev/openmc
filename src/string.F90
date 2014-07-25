@@ -10,6 +10,8 @@ module string
      module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
+  character(2*MAX_LINE_LEN) :: message
+
 contains
 
 !===============================================================================

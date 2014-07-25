@@ -240,20 +240,22 @@ contains
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
         if (nuc % zaid == 92238) then
-          jt = jt + ONE
-          xst = xst + micro_xs(i_nuclide) % total
-          jf = jf + ONE
-          xsf = xsf + micro_xs(i_nuclide) % fission
-          jn = jn + ONE
-          xsn = xsn + micro_xs(i_nuclide) % elastic
-          jg = jg + ONE
-          xsg = xsg + micro_xs(i_nuclide) % absorption - micro_xs(i_nuclide) % fission
-          jx = jx + ONE
-          xsx = xsx + micro_xs(i_nuclide) % total &
-            & - micro_xs(i_nuclide) % elastic &
-            & - micro_xs(i_nuclide) % absorption
-          write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
-            & xsg/jg,xsx/jx
+          if (E > 1.25E-1_8 .and. E < 1.35E-1_8) then
+            jt = jt + ONE
+            xst = xst + micro_xs(i_nuclide) % total
+            jf = jf + ONE
+            xsf = xsf + micro_xs(i_nuclide) % fission
+            jn = jn + ONE
+            xsn = xsn + micro_xs(i_nuclide) % elastic
+            jg = jg + ONE
+            xsg = xsg + micro_xs(i_nuclide) % absorption - micro_xs(i_nuclide) % fission
+            jx = jx + ONE
+            xsx = xsx + micro_xs(i_nuclide) % total &
+              & - micro_xs(i_nuclide) % elastic &
+              & - micro_xs(i_nuclide) % absorption
+            write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
+              & xsg/jg,xsx/jx
+          end if
         end if
       end if
     end if
@@ -362,6 +364,11 @@ contains
 
     integer :: i_energy   ! index for energy
     integer :: i_table    ! index for table
+! TODO: remove what follows
+    integer :: i_up
+    integer :: i_low
+    integer :: ie
+
     real(8) :: f          ! interpolation factor
     real(8) :: r          ! pseudo-random number
     real(8) :: elastic    ! elastic cross section
@@ -398,6 +405,65 @@ contains
       i_table = i_table + 1
     end do
 
+! TODO: remove what follows
+!    if (nuc%zaid==92238) urr%interp=5
+    i_low = 1
+    do
+      if (urr % prob(i_energy, URR_CUM_PROB, i_low) > r) exit
+      i_low = i_low + 1
+    end do
+    i_up = 1
+    do
+      if (urr % prob(i_energy + 1, URR_CUM_PROB, i_up) > r) exit
+      i_up = i_up + 1
+    end do
+
+! TODO: remove >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    ! determine elastic, fission, and capture cross sections from probability
+    ! table
+    if (urr % interp == LINEAR_LINEAR) then
+      elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_low) + &
+           f * urr % prob(i_energy + 1, URR_ELASTIC, i_up)
+      fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_low) + &
+           f * urr % prob(i_energy + 1, URR_FISSION, i_up)
+      capture = (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_low) + &
+           f * urr % prob(i_energy + 1, URR_N_GAMMA, i_up)
+    elseif (urr % interp == LOG_LOG) then
+      ! Get logarithmic interpolation factor
+      f = log(E / urr % energy(i_energy)) / &
+           log(urr % energy(i_energy + 1) / urr % energy(i_energy))
+
+      ! Calculate elastic cross section/factor
+      elastic = ZERO
+      if (urr % prob(i_energy, URR_ELASTIC, i_low) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_ELASTIC, i_up) > ZERO) then
+        elastic = exp((ONE - f) * log(urr % prob(i_energy, URR_ELASTIC, &
+             i_low)) + f * log(urr % prob(i_energy + 1, URR_ELASTIC, &
+             i_up)))
+      end if
+
+      ! Calculate fission cross section/factor
+      fission = ZERO
+      if (urr % prob(i_energy, URR_FISSION, i_low) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_FISSION, i_up) > ZERO) then
+        fission = exp((ONE - f) * log(urr % prob(i_energy, URR_FISSION, &
+             i_low)) + f * log(urr % prob(i_energy + 1, URR_FISSION, &
+             i_up)))
+      end if
+
+      ! Calculate capture cross section/factor
+      capture = ZERO
+      if (urr % prob(i_energy, URR_N_GAMMA, i_low) > ZERO .and. &
+          urr % prob(i_energy + 1, URR_N_GAMMA, i_up) > ZERO) then
+        capture = exp((ONE - f) * log(urr % prob(i_energy, URR_N_GAMMA, &
+             i_low)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
+             i_up)))
+      end if
+    end if
+
+! TODO: remove <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    if (1 == 2) then
     ! determine elastic, fission, and capture cross sections from probability
     ! table
     if (urr % interp == LINEAR_LINEAR) then
@@ -438,6 +504,7 @@ contains
              i_table)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
              i_table)))
       end if
+    end if
     end if
 
     ! Determine treatment of inelastic scattering

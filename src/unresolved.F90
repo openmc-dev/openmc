@@ -145,6 +145,46 @@ module unresolved
      & 6.35044e0_8,   7.22996e0_8,  8.541e0_8,     11.8359e0_8   &
                                                               &/),(/20,4/))
 
+  real(8), parameter :: Eid(18) = (/&
+    2.000000E+4,&
+    2.300000E+4,&
+    2.600000E+4,&
+    3.000000E+4,&
+    3.500000E+4,&
+    4.000000E+4,&
+    4.500000E+4,&
+    4.509020E+4,&
+    5.000000E+4,&
+    5.500000E+4,&
+    6.000000E+4,&
+    7.000000E+4,&
+    8.000000E+4,&
+    9.000000E+4,&
+    1.000000E+5,&
+    1.200000E+5,&
+    1.400000E+5,&
+    1.490288E+5/)
+
+  real(8), parameter :: xsid(18) = (/&
+    1.3796E+01,&
+    1.3643E+01,&
+    1.3517E+01,&
+    1.3377E+01,&
+    1.3234E+01,&
+    1.3113E+01,&
+    1.3010E+01,&
+    1.3008E+01,&
+    1.2882E+01,&
+    1.2749E+01,&
+    1.2624E+01,&
+    1.2398E+01,&
+    1.2202E+01,&
+    1.2028E+01,&
+    1.1871E+01,&
+    1.1596E+01,&
+    1.1357E+01,&
+    1.1258E+01/)
+
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -170,6 +210,8 @@ contains
     integer :: i_J    ! total angular momentum quantum #
     integer :: i_r    ! resonance index
     real(8) :: f      ! interpolation factor
+    integer :: i_energy
+    real(8) :: xsidval
 
 !$omp threadprivate(nuc) 
 
@@ -283,6 +325,16 @@ contains
     call sig_t % potential(i_nuc)
     call sig_n % potential(i_nuc)
 
+    ! determine energy table
+    i_energy = 1
+    do
+      if (E < Eid(i_energy + 1)) exit
+      i_energy = i_energy + 1
+    end do
+    xsidval = xsid(i_energy) &
+      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+      & * (xsid(i_energy+1) - xsid(i_energy))
+
     ! interpret MF3 data according to ENDF self-shielding flag (LSSF)
     if (nuc % LSSF == 0) then ! MF3 contains background xs values (add to MF2
                               ! contributions)
@@ -293,8 +345,9 @@ contains
       micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
     elseif (nuc % LSSF == 1) then ! MF3 contains infinite dilute xs values
                                   ! (so the calculated xs is correct, as is)
-      micro_xs(i_nuc) % total      = sig_t % val
-      micro_xs(i_nuc) % elastic    = sig_n % val
+      micro_xs(i_nuc) % total      = sig_t % val - sig_n % val
+      micro_xs(i_nuc) % elastic    = sig_n % val / xsidval * micro_xs(i_nuc) % elastic
+      micro_xs(i_nuc) % total      = micro_xs(i_nuc) % total + micro_xs(i_nuc) % elastic
       micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val
       micro_xs(i_nuc) % fission    = sig_f % val
     else
@@ -310,7 +363,7 @@ contains
       call warning()
     end if
 
-    if (E > 1.9E4_8 .and. E < 2.1E4_8) then
+    if (E > 1.25E5_8 .and. E < 1.35E5_8) then
       jt = jt + ONE
       xst = xst + micro_xs(i_nuc) % total
       jf = jf + ONE
@@ -321,8 +374,8 @@ contains
       xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
       jx = jx + ONE
       xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
-      write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsn/jn,xsf/jf,&
-        & xsg/jg,xsx/jx
+!      write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsn/jn,xsf/jf,&
+!        & xsg/jg,xsx/jx
     end if
 
   end subroutine calculate_urr_xs_otf

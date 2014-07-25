@@ -2963,8 +2963,8 @@ contains
   
 !===============================================================================
 ! TALLY_TRIGGER_STATISTICS just computes the mean and standard deviation of the  
-! mean of each tally and stores them in the val and val_sq attributes of the 
-! TallyResults respectively for trigger.
+! mean of each tally and stores them in the val_sq attributes of the 
+! TriggerResults respectively for trigger.
 !===============================================================================
 
   subroutine tally_trigger_statistics(t,s)
@@ -3023,7 +3023,7 @@ contains
 
 !===============================================================================
 ! STATISTICS_TRIGGER_RESULT just determines the sample mean and the standard 
-! deviation of the mean for a TallyResult for a trigger .
+! deviation of the mean for a TriggerResult for a trigger .
 !===============================================================================
 
   elemental subroutine statistics_trigger_result(this, n, that)

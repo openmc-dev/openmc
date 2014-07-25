@@ -14,7 +14,8 @@ module tally
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement,&
-                              TriggerObject, TallyObject
+                              TriggerObject, TallyObject, TempTrigger, &
+                              TriggerResult
                               
 
 #ifdef MPI
@@ -2315,20 +2316,20 @@ contains
     integer :: i_listing    ! index in xs_listings array
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
-    integer :: amount 
+    integer :: amount       ! the number of uncertainty bigger than threshold
     real(8), allocatable :: temp_trig(:,:)
     real(8) :: temp_ratio
     real(8) :: temp_keff_trig
     character(len=52), allocatable :: temp_nuclide_name(:)
+    type(Temptrigger), target      :: tempresult
     type(TriggerObject), allocatable :: temp_real(:,:)
     type(TallyObject), pointer :: t => null()
+    type(Temptrigger), pointer :: temp_t => null()
     
     trig_dis % max_ratio = 0
     amount = 0
    ! Calculate statistics and get 
      if (master) then
-        if (n_realizations > 1) call tally_trigger_statistics()
-       
         if (keff_trigger % trigger_type > 0) then
           
           select case (keff_trigger % trigger_type)        
@@ -2350,15 +2351,17 @@ contains
           end if 
      
         end if
-           
+      temp_t => tempresult              
    ! Check the trigger 
     TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)    
-      allocate (temp_trig(t % n_user_score_bins,t%n_nuclide_bins))
-      allocate (temp_real(t % n_user_score_bins,t%n_nuclide_bins))
-      allocate(temp_nuclide_name(t%n_nuclide_bins))
+      t => tallies(i)
+      allocate(temp_t % results(t % total_score_bins, t % total_filter_bins))
+      if (n_realizations > 1) call tally_trigger_statistics(t,temp_t)
+      allocate (temp_trig(t % n_user_score_bins,t % n_nuclide_bins))
+      allocate (temp_real(t % n_user_score_bins,t % n_nuclide_bins))
+      allocate(temp_nuclide_name(t % n_nuclide_bins))
        if (t % type == TALLY_SURFACE_CURRENT) then
-        call check_for_current(t,temp_real(1,1))
+        call check_for_current(t,temp_t,temp_real(1,1))
        else
       ! Get the result
       
@@ -2409,13 +2412,13 @@ contains
             
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
             
-            if(temp_real(l,n) % t1 < t % results(score_index,filter_index) % trigger_sum_sq) then
-              temp_real(l,n) % t1 = t % results(score_index,filter_index) % trigger_sum_sq
+            if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
+              temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
             end if
-            if (temp_real(l,n) % t2< t % results(score_index,filter_index) % trigger_sum_sq / &
-                            t % results(score_index,filter_index) % trigger_sum) then 
-              temp_real(l,n) % t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 t % results(score_index,filter_index) % trigger_sum
+            if (temp_real(l,n) % t2< temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                            temp_t % results(score_index,filter_index) % trigger_sum) then 
+              temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 temp_t % results(score_index,filter_index) % trigger_sum
             end if
             temp_real(l,n) % t3=temp_real(l,n) % t1**2
             
@@ -2424,13 +2427,13 @@ contains
               
             do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
-                if(temp_real(l,n) % t1 < t % results(score_index,filter_index) % trigger_sum_sq) then 
-                   temp_real(l,n) % t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then 
+                   temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
                 end if
-                if (temp_real(l,n) % t2 < t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 t % results(score_index,filter_index) % trigger_sum ) then
-                temp_real(l,n) % t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 t % results(score_index,filter_index) % trigger_sum
+                if (temp_real(l,n) % t2 < temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 temp_t % results(score_index,filter_index) % trigger_sum ) then
+                temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 temp_t % results(score_index,filter_index) % trigger_sum
                 end if
                 temp_real(l,n) % t3 = temp_real(l,n) % t1**2
             end do
@@ -2442,13 +2445,13 @@ contains
               do n_order = 0, t % moment_order(k)
                 do nm_order = -n_order, n_order
                   score_index = score_index + 1
-                  if(temp_real(l,n) % t1 < t % results(score_index,filter_index) % trigger_sum_sq) then
-                   temp_real(l,n) % t1 = t % results(score_index,filter_index) % trigger_sum_sq
+                  if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
+                   temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
                    end if
-                   if (temp_real(l,n) % t2 < t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 t % results(score_index,filter_index) % trigger_sum) then
-                       temp_real(l,n) % t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 t % results(score_index,filter_index) % trigger_sum
+                   if (temp_real(l,n) % t2 < temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 temp_t % results(score_index,filter_index) % trigger_sum) then
+                       temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                 temp_t % results(score_index,filter_index) % trigger_sum
                    end if
                    temp_real(l,n) % t3 = temp_real(l,n) % t1**2 
                 end do
@@ -2456,13 +2459,13 @@ contains
               k = k + (t % moment_order(k) + 1)**2 - 1
            
             case default
-               if(temp_real(l,n) % t1 < t % results(score_index,filter_index) % trigger_sum_sq) then
-                  temp_real(l,n) % t1 = t % results(score_index,filter_index) % trigger_sum_sq
+               if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
+                  temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
                end if
-               if(temp_real(l,n) % t2 < (t % results(score_index,filter_index) % trigger_sum_sq / &
-                             t % results(score_index,filter_index) % trigger_sum)) then
-                   temp_real(l,n)%t2 = t % results(score_index,filter_index) % trigger_sum_sq / &
-                                t % results(score_index,filter_index) % trigger_sum
+               if(temp_real(l,n) % t2 < (temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                             temp_t % results(score_index,filter_index) % trigger_sum)) then
+                   temp_real(l,n)%t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
+                                temp_t % results(score_index,filter_index) % trigger_sum
                end if
                temp_real(l,n) % t3 = temp_real(l,n) % t1**2    
             end select
@@ -2544,9 +2547,10 @@ contains
      end do
     end do  
   end do 
-    deallocate (temp_trig)
+   deallocate (temp_trig)
    deallocate (temp_real)
    deallocate (temp_nuclide_name)
+   deallocate (temp_t % results)
  end do TALLY_LOOP
    
    if(amount == 0 ) then
@@ -2563,9 +2567,10 @@ contains
 ! CHECK_FOR_CURRENT get the temporary result of current
 !===============================================================================
  
- subroutine check_for_current(t,s)
+ subroutine check_for_current(t,temp_t,s)
 
     type(TallyObject), pointer :: t
+    type(TempTrigger), pointer :: temp_t
 
     integer :: i                    ! mesh index for x
     integer :: j                    ! mesh index for y
@@ -2614,25 +2619,25 @@ contains
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3=s % t1**2
 
@@ -2641,25 +2646,25 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
@@ -2668,25 +2673,25 @@ contains
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3=s % t1**2
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
@@ -2697,25 +2702,25 @@ contains
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
            
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3=s % t1**2
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3=s % t1**2
 
@@ -2725,26 +2730,26 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2< t % results(1,filter_index) % trigger_sum_sq / &
-                             t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2< temp_t % results(1,filter_index) % trigger_sum_sq / &
+                             temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3=s % t1**2
 
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
@@ -2753,25 +2758,25 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s%t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s%t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = t % results(1,filter_index) % trigger_sum_sq
+            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
+                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
             end if
-            if (s % t2 < t % results(1,filter_index) % trigger_sum_sq / &
-                            t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = t % results(1,filter_index) % trigger_sum_sq / &
-                              t % results(1,filter_index) % trigger_sum
+            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
+                            temp_t % results(1,filter_index) % trigger_sum) then 
+            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
+                              temp_t % results(1,filter_index) % trigger_sum
             end if
             s % t3 = s % t1**2
           end do
@@ -2781,6 +2786,7 @@ contains
     end do
 
   end subroutine check_for_current
+  
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
@@ -2960,17 +2966,12 @@ contains
 ! TallyResults respectively for trigger.
 !===============================================================================
 
-  subroutine tally_trigger_statistics()
+  subroutine tally_trigger_statistics(t,s)
 
-    integer :: i    ! index in tallies array
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t 
+    type(TempTrigger), pointer :: s 
 
-    ! Calculate statistics for user-defined tallies
-    do i = 1, n_tallies
-      t => tallies(i)
-
-      call statistics_trigger_result(t % results, t % n_realizations)
-    end do
+    call statistics_trigger_result(t % results, t % n_realizations, s % results)
 
   end subroutine tally_trigger_statistics
   
@@ -3024,18 +3025,19 @@ contains
 ! deviation of the mean for a TallyResult for a trigger .
 !===============================================================================
 
-  elemental subroutine statistics_trigger_result(this, n)
+  elemental subroutine statistics_trigger_result(this, n, that)
 
-    type(TallyResult), intent(inout) :: this
-    integer,           intent(in)    :: n
+    type(TallyResult), intent(inout)   :: this
+    type(TriggerResult), intent(inout) :: that
+    integer,           intent(in)      :: n
 
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    this % trigger_sum    = this % sum/n
-    this % trigger_sum_sq = sqrt((this % sum_sq/n - this % trigger_sum * &
-         this % trigger_sum) / (n - 1))
+    that % trigger_sum    = this % sum/n
+    that % trigger_sum_sq = sqrt((that % trigger_sum_sq/n - that % trigger_sum * &
+         that % trigger_sum) / (n - 1))
 
   end subroutine statistics_trigger_result
 !===============================================================================

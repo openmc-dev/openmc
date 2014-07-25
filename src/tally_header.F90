@@ -42,8 +42,6 @@ module tally_header
     real(8) :: value          = 0.
     real(8) :: sum            = 0.
     real(8) :: sum_sq         = 0.
-    real(8) :: trigger_sum    = 0.
-    real(8) :: trigger_sum_sq = 0.
   end type TallyResult
 
 !===============================================================================
@@ -71,7 +69,22 @@ module tally_header
      real(8) :: t2=0.0
      real(8) :: t3=0.0
    end type TriggerObject
-   
+
+!===============================================================================
+! TRIGGERRESULT describes a score that stores different information
+!===============================================================================
+   type TriggerResult
+     real(8) :: trigger_sum=0.
+     real(8) :: trigger_sum_sq=0.
+   end type TriggerResult
+
+!===============================================================================
+! TEMPTRIGGER describes a trigger stores temporary results
+!===============================================================================
+   type TempTrigger
+    type(TriggerResult), allocatable :: results(:,:)
+   end type TempTrigger
+
 !===============================================================================
 ! SCOREOBJECT describes a score that stores different information
 !===============================================================================

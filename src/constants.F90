@@ -349,10 +349,10 @@ module constants
        STANDARD_DEVIATION_METHOD  = 3 
        
   ! Trigger result
-  character, parameter :: &
+  character(*), parameter :: &
        CHAR_EIGENVALUE = "eigenvalue", &
-       NO_NUCLIDE      = "" 
-     
+       NO_NUCLIDE      = "a"        ! Just for comparing in tally
+          
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

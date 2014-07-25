@@ -63,6 +63,7 @@ contains
     character(MAX_LINE_LEN) :: filename
     type(Node), pointer :: doc          => null()
     type(Node), pointer :: node_mode    => null()
+    type(Node), pointer :: node_trigger => null()
     type(Node), pointer :: node_source  => null()
     type(Node), pointer :: node_dist    => null()
     type(Node), pointer :: node_cutoff  => null()
@@ -71,6 +72,7 @@ contains
     type(Node), pointer :: node_sp      => null()
     type(Node), pointer :: node_output  => null()
     type(Node), pointer :: node_verb    => null()
+    type(Node), pointer :: node_keff_trigger => null()
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -123,6 +125,48 @@ contains
       if (.not. ends_with(path_output, "/")) &
            path_output = trim(path_output) // "/"
     end if
+    
+     
+      ! Check for the node trigger_on to find the trigger status and get the
+      ! trigger information, i.e. max_batches, batch_interval and basic batches
+      if(check_for_node(doc, "trigger")) then
+        call get_node_ptr(doc, "trigger", node_trigger)
+        ! Get trigger status
+        call get_node_value(node_trigger,"status", temp_str)
+        call lower_case(temp_str)
+        
+        select case(temp_str)
+        case ('true') 
+        trigger_on = .true.
+        case ('false') 
+        trigger_on = .false.
+        case default
+          message = "Unknown trigger statu: " // trim(temp_str)
+          call fatal_error()
+        end select
+        
+      if(trigger_on) then
+        ! Get number of max_batches
+        if( .not. check_for_node(node_trigger, "max_batches") )then
+          message = "Need to specify number of max_batches."
+          call fatal_error()
+        else
+        call get_node_value(node_trigger, "max_batches", n_batches)
+        end if
+        
+        ! Get number of batch_interval
+        if(.not.check_for_node(node_trigger, "batch_interval"))then
+          no_batch_interval = .true.
+        else 
+        call get_node_value(node_trigger, "batch_interval", temp_int)
+           n_batch_interval = temp_int
+           if (.not. (n_batch_interval > 0)) then
+              message = "Batch_interval must be positive integer."
+              call fatal_error()
+           end if
+        end if 
+      end if
+     end if
 
     ! Make sure that either eigenvalue or fixed source was specified
     if (.not.check_for_node(doc, "eigenvalue") .and. &
@@ -151,19 +195,62 @@ contains
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
-
-      ! Copy batch and generation information
-      call get_node_value(node_mode, "batches", n_batches)
+        
+      ! Get number of basic batches.
+      if(check_for_node(node_mode, "batches")) then
+        call get_node_value(node_mode, "batches", n_basic_batches)
+        if( .not. trigger_on) then
+        n_batches = n_basic_batches
+        end if
+      else 
+        message = "Basic number of batches is not specified."
+        call fatal_error()
+      end if
+      
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
-        call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
+      call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
       end if
 
       ! Allocate array for batch keff and entropy
       allocate(k_generation(n_batches*gen_per_batch))
       allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
+      
+     ! Get the trigger information for keff   
+      if (check_for_node(node_mode, "keff_trigger")) then
+        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
+        if(check_for_node(node_keff_trigger, "type")) then
+         temp_str=' '
+         call get_node_value(node_keff_trigger,"type",temp_str)
+         call lower_case(temp_str)
+         
+         select case (temp_str)
+         case ('std_dev')
+           keff_trigger%trigger_type = STANDARD_DEVIATION_METHOD
+         case ('variance')
+           keff_trigger%trigger_type = VARIANCE_METHOD 
+         case ('rel_err')
+           keff_trigger%trigger_type = RELATIVE_ERROR_METHOD
+         case default 
+           message= "Unknown trigger type " // trim(temp_str) // & 
+                    " in eigenvalue"
+         call fatal_error()
+         end select
+         
+         else 
+           message = "Must specify the type for keff_trigger in settings XML"
+           call fatal_error()
+         end if
+    
+         if(check_for_node(node_keff_trigger, "threshold")) then
+           call get_node_value(node_keff_trigger, "threshold",keff_trigger%threshold)
+         else 
+           message = "Must specify the threshold for keff_trigger in settings XML"
+           call fatal_error()
+         end if
+      end if
     end if
 
     ! Fixed source calculation information
@@ -1752,7 +1839,9 @@ contains
     integer :: n_order_pos   ! Position of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
+    integer :: nt            ! # of triggers set
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
+    integer :: tr            ! Index of triggers
     logical :: file_exists   ! does tallies.xml file exist?
     real(8) :: rarray3(3)    ! temporary double prec. array
     character(MAX_LINE_LEN) :: filename
@@ -1768,9 +1857,12 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
+    type(Node), pointer :: node_trigger=>null()
+    type(Node), pointer :: node_trigger_mode=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
+    type(NodeList), pointer :: node_trigger_list => null()
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1792,10 +1884,10 @@ contains
 
     ! Get pointer list to XML <mesh>
     call get_node_list(doc, "mesh", node_mesh_list)
-
+ 
     ! Get pointer list to XML <tally>
     call get_node_list(doc, "tally", node_tal_list)
-
+    
     ! Check for user meshes
     n_user_meshes = get_list_size(node_mesh_list)
     if (cmfd_run) then
@@ -1826,7 +1918,7 @@ contains
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         assume_separate = .true.
     end if
-
+    
     ! ==========================================================================
     ! READ MESH DATA
 
@@ -2341,6 +2433,7 @@ contains
         ! Allocate score storage accordingly
         allocate(t % score_bins(n_scores))
         allocate(t % moment_order(n_scores))
+        allocate(t % score_for_all(n_words))
         t % moment_order = 0
         j = 0
         do l = 1, n_words
@@ -2396,7 +2489,7 @@ contains
               end if
             end do
           end if
-
+          t % score_for_all(l) = score_name
           select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
@@ -2407,6 +2500,7 @@ contains
             end if
 
             t % score_bins(j) = SCORE_FLUX
+            t % find_score(SCORE_FLUX)=l
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally flux with an outgoing energy filter."
               call fatal_error()
@@ -2427,9 +2521,11 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins  - 1
+            t % find_score(SCORE_FLUX_YN)=l
 
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
+            t % find_score(SCORE_TOTAL)=l
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally total reaction rate with an &
                    &outgoing energy filter."
@@ -2444,24 +2540,29 @@ contains
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
+            t % find_score(SCORE_TOTAL_YN)=l
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
 
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
+            t % find_score(SCORE_SCATTER)=l
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
+            t % find_score(SCORE_NU_SCATTER)=l
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('scatter-n')
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
+              t % find_score(SCORE_SCATTER)=l
             else
               t % score_bins(j) = SCORE_SCATTER_N
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
+              t % find_score(SCORE_SCATTER_N)=l
             end if
             t % moment_order(j) = n_order
 
@@ -2470,8 +2571,10 @@ contains
             t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
               t % score_bins(j) = SCORE_NU_SCATTER
+               t % find_score(SCORE_NU_SCATTER)=l
             else
               t % score_bins(j) = SCORE_NU_SCATTER_N
+              t % find_score(SCORE_NU_SCATTER_N)=l
             end if
             t % moment_order(j) = n_order
 
@@ -2481,6 +2584,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
+            t % find_score(SCORE_SCATTER_PN)=l
 
           case ('nu-scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2488,6 +2592,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
+            t % find_score(SCORE_NU_SCATTER_PN)=l
 
           case ('scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2495,6 +2600,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
+            t % find_score(SCORE_SCATTER_YN)=l
 
           case ('nu-scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2502,9 +2608,11 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
+            t % find_score(SCORE_NU_SCATTER_YN)=l
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
+            t % find_score(SCORE_TRANSPORT)=l
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
@@ -2514,20 +2622,25 @@ contains
             call fatal_error()
           case ('n1n')
             t % score_bins(j) = SCORE_N_1N
+            t % find_score(SCORE_N_1N)=l
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('n2n')
             t % score_bins(j) = N_2N
+            t % find_score(N_2N)=l
 
           case ('n3n')
             t % score_bins(j) = N_3N
+            t % find_score(N_3N)=l
 
           case ('n4n')
             t % score_bins(j) = N_4N
+            t % find_score(N_4N)=l
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
+            t % find_score(SCORE_ABSORPTION)=l
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally absorption rate with an outgoing &
                    &energy filter."
@@ -2542,15 +2655,18 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
+            t % find_score(SCORE_NU_FISSION)=l
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
+            t % find_score(SCORE_KAPPA_FISSION)=l
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT
+            t % find_score(SCORE_CURRENT)=l
 
             ! Check to make sure that current is the only desired response
             ! for this tally
@@ -2635,6 +2751,215 @@ contains
              // "."
         call fatal_error()
       end if
+    
+    !Read the trigger information
+ 
+    if(keff_trigger % trigger_type > 0) then
+      nt = 1
+    else 
+      nt = 0
+    end if
+    
+    if(trigger_on) then
+      call get_node_list(node_tal, "trigger", node_trigger_list)
+      t % n_user_triggers = get_list_size(node_trigger_list)
+      nt = nt + t % n_user_triggers
+      
+      if(nt == 0) then
+      message = "Trigger is set and no trigger is found in tally XML file."
+      call fatal_error()
+      end if
+      
+      if(t%n_user_triggers > 0) then
+        allocate(t%score(t%n_user_triggers))
+        do tr =1, t%n_user_triggers
+  
+       ! Get pointer to trigger mode
+        call get_list_item(node_trigger_list, tr , node_trigger)
+     
+       ! Get scores information
+        if (check_for_node(node_trigger, "scores")) then
+          call get_node_value(node_trigger, "scores", score_name)     
+          do imomstr = 1, size(MOMENT_STRS)
+            if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
+              n_order_pos = scan(score_name,'0123456789')
+              n_order = int(str_to_int( &
+                score_name(n_order_pos:(len_trim(score_name)))),4)
+              if (n_order > MAX_ANG_ORDER) then
+                ! User requested too many orders; throw a warning and set to the
+                ! maximum order.
+                ! The above scheme will essentially take the absolute value
+                message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                  " requested. Setting to the maximum permissible value, " // &
+                  trim(to_str(MAX_ANG_ORDER))
+                call warning()
+                n_order = MAX_ANG_ORDER
+              end if
+              score_name = trim(MOMENT_STRS(imomstr)) // "n"
+              ! Find total number of bins for this case
+              if (imomstr >= YN_LOC) then
+                n_bins = (n_order + 1)**2
+              else
+                n_bins = n_order + 1
+              end if
+              exit
+            end if
+          end do
+          ! Now check the Moment_N_Strs, but only if we werent successful above
+          if (imomstr > size(MOMENT_STRS)) then
+            do imomstr = 1, size(MOMENT_N_STRS)
+              if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
+                n_order_pos = scan(score_name,'0123456789')
+                n_order = int(str_to_int( &
+                 score_name(n_order_pos:(len_trim(score_name)))),4)
+                if (n_order > MAX_ANG_ORDER) then
+                  ! User requested too many orders; throw a warning and set to the
+                  ! maximum order.
+                  ! The above scheme will essentially take the absolute value
+                  message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                    " requested. Setting to the maximum permissible value, " // &
+                    trim(to_str(MAX_ANG_ORDER))
+                  call warning()
+                  n_order = MAX_ANG_ORDER
+                end if
+                score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
+                exit
+              end if
+            end do
+          end if
+         t % score(tr) % score_name = score_name
+    
+          select case (trim(score_name))
+          case ('all')
+          if(t%n_user_triggers /= 1) then
+            message = "Cannot set trigger for other scoring functions in the same &
+                     &tally as all. Separate other scoring &
+                     &functions into a distinct tally."
+            call fatal_error()
+          else 
+          t % trigger_for_all = .true.
+          end if
+          case ('flux')
+            t % score(tr) % position =  t % find_score(SCORE_FLUX)
+           
+          case ('flux-yn')
+            t % score(tr) % position =  t % find_score(SCORE_FLUX_YN)
+
+          case ('total')
+            t % score(tr) % position =  t % find_score(SCORE_TOTAL)
+   
+          case ('total-yn')
+            t % score(tr) % position =  t % find_score(SCORE_TOTAL_YN)
+      
+          case ('scatter')
+            t % score(tr) % position = t % find_score(SCORE_SCATTER)
+           
+          case ('nu-scatter')
+            t % score(tr) % position = t % find_score(SCORE_NU_SCATTER)
+            
+          case ('scatter-n')
+            if (n_order == 0) then
+            t % score(tr) % position = t % find_score(SCORE_SCATTER)
+            else   
+            t % score(tr) % position = t % find_score(SCORE_SCATTER_N)
+            end if
+
+          case ('nu-scatter-n')
+            if (n_order == 0) then
+            t % score(tr) % position = t % find_score(SCORE_NU_SCATTER)
+            else
+            t % score(tr) % position = t % find_score(SCORE_NU_SCATTER_N)
+            end if
+
+          case ('scatter-pn')
+            t % score(tr) % position = t % find_score(SCORE_SCATTER_PN)
+
+          case ('nu-scatter-pn')
+            t % score(tr) % position = t % find_score(SCORE_NU_SCATTER_PN)
+ 
+          case ('scatter-yn')
+            t % score(tr) % position = t % find_score(SCORE_SCATTER_YN)
+
+          case ('nu-scatter-yn')
+            t % score(tr) % position = t % find_score(SCORE_NU_SCATTER_YN)
+
+          case('transport')
+            t % score(tr) % position = t % find_score(SCORE_TRANSPORT)
+        
+          case ('n1n')
+            t % score(tr) % position = t % find_score(SCORE_N_1N)
+
+          case ('n2n')
+            t % score(tr) % position = t % find_score(N_2N)
+
+          case ('n3n')
+            t % score(tr) % position = t % find_score(N_3N)
+
+          case ('n4n')
+           t % score(tr) % position = t % find_score(N_4N)
+
+          case ('absorption')
+            t % score(tr) % position = t % find_score(SCORE_ABSORPTION)
+           
+          case ('fission')
+            t % score(tr) % position = t % find_score(SCORE_FISSION)
+          
+          case ('nu-fission')
+            t % score(tr) % position = t % find_score(SCORE_NU_FISSION)
+            
+          case ('kappa-fission')
+            t % score(tr) % position = t % find_score(SCORE_KAPPA_FISSION)
+           
+          case ('current')
+            t % score(tr) % position = t % find_score(SCORE_CURRENT)
+          end select
+         
+          if  (.not.t%trigger_for_all .and. t % score(tr) % position == 0 ) then 
+            message = "The score "// trim(score_name) //" has not been tallied in &
+                    &tally "// trim(to_str(t%id)) //" in tally XML file."
+            call fatal_error()
+          end if   
+          
+          temp_str = ''
+          if (check_for_node(node_trigger, "type")) then
+            call get_node_value(node_trigger, "type", temp_str)
+          else
+            message = "Must specify type for trigger of tally "&
+                   // trim(to_str(t % id)) //" in tally XML file."
+            call fatal_error()
+          end if
+     
+          call lower_case(temp_str)
+     
+          select case (temp_str)
+          case ('std_dev')
+          t % score(tr) % type = STANDARD_DEVIATION_METHOD
+          case ('variance')
+          t % score(tr) % type = VARIANCE_METHOD 
+          case ('rel_err')
+          t % score(tr) % type = RELATIVE_ERROR_METHOD
+          case default 
+            message = "Unknown trigger type "//trim(temp_str)//& 
+                      " in tally " //trim(to_str(t%id))
+            call fatal_error()
+          end select
+    
+          if (check_for_node(node_trigger, "threshold")) then
+            call get_node_value(node_trigger, "threshold", t % score(tr) % threshold)
+          else
+            message = "Must specify threshold for trigger of tally " &
+            // trim(to_str(t % id)) // " in tally XML file."
+          call fatal_error()
+          end if
+    
+        else
+          message = "Must specify scores for trigger of tally " &
+         // trim(to_str(t % id)) // " in tally XML file."
+         call fatal_error()
+        end if 
+        end do
+      end if 
+    end if 
 
       ! =======================================================================
       ! SET TALLY ESTIMATOR

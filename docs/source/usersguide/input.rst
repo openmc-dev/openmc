@@ -138,15 +138,15 @@ should be performed. It has the following attributes/sub-elements:
      The type of the keff_trigger. Accepted options are "variance", "std_dev", 
      and "rel_err".
      
-    :variance: 
-     Variance of the batch mean :math:`\sigma^2`
-        
-    :std_dev:
-     Standard deviation of the batch mean :math:`\sigma` 
+     :rel_err:
+      Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
+      
+     :std_dev:
+      Standard deviation of the batch mean :math:`\sigma` 
     
-    :rel_err:
-     Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
-     
+     :variance: 
+      Variance of the batch mean :math:`\sigma^2` 
+
      *Default*: None
         
     :threshold:
@@ -154,41 +154,47 @@ should be performed. It has the following attributes/sub-elements:
     
      *Default*: None
     
+    .. note:: See section on the ``<trigger>`` element for more information.
+    
 ``<trigger>`` Element
 -------------------------
 
 OpenMC includes tally precision triggers which allow the user to define 
 uncertainty thresholds on :math:`k_{eff}` and/or other tallies. When using 
 triggers, OpenMC will run until it completes as many batches as are defined
-by``<batches>``. At this point, the uncertainties on all tallied values are 
+by ``<batches>`` . At this point, the uncertainties on all tallied values are 
 computed and compared with their corresponding trigger thresholds. If any
 triggers have not been met, OpenMC will continue until either 1) all trigger
 thresholds have been satisfied or 2) ``<max_batches>`` has been reached.
 
-The ``<trigger>`` element describes the status of the trigger (i.e. whether to 
-use the trigger or not), the max number of batches and the batch interval. 
+The ``<trigger>`` element describes the status of the trigger (i.e. whether or 
+not to use the trigger), the max number of batches and the batch interval. 
 It has the following attributes/sub-elements: 
   
   :status:
-    This determines whether to use trigger or not. Set this tag to 
+    This determines whether or not to use trigger. Set this tag to 
     "true" when using trigger and "false" for not.
  
   :max_batches:
-    This tag describes the max number of batches when using trigger.
+    This describes the max number of batches when using trigger.
     
     .. note:: When max_batches is set, the number of tag ``batches`` shown in 
-              ``<eigenvalue>`` element represents the minimum number of batches 
-              when using the trigger.
+              ``<eigenvalue>`` element represents minimum number of batches to 
+              simulate when using the triggers.
     
   :batch_interval:
-    This tag describes the number of  batches in between convergence checks. 
-    OpenMC will check if the trigger has been reached at each batch defined  
-    by batch_interval after the minimum number of batches is reached.
-      
-   *Default*: If this tag is not present, the batch_interval is predicted 
-   dynamically by OpenMC for each convergence check.
+   This tag describes the number of  batches in between convergence checks. 
+   OpenMC will check if the trigger has been reached at each batch defined 
+   by batch_interval after the minimum number of batches is reached.
+   
+   *Default*: If this tag is not present, the ``batch_interval`` is predicted 
+   dynamically by OpenMC for each convergence check. 
+   
+   This predictive model assumes no correlation between fission sources 
+   distributions from batch-to-batch. This assumption is reasonable for fixed 
+   source and small criticality calculations, but is very optimistic for highly 
+   coupled full-core reactor problems.
  
-
 ``<energy_grid>`` Element
 -------------------------
 
@@ -1096,9 +1102,9 @@ The ``<tally>`` element accepts the following sub-elements:
       Number of scoring events
       
   :trigger:
-   This is the trigger when tally is used. It will specify the trigger's type, 
-   threshold and scores to which it will be applied. It has the following 
-   attributes/sub-elements :
+   Trigger applied to all filter bins and nuclides for this tally. It will 
+   specify the trigger's type, threshold and scores to which it will be applied. 
+   It has the following attributes/sub-elements :
   
    :type:
     The type of the trigger. Accepted options are "variance", "std_dev", 
@@ -1121,7 +1127,7 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: None
     
    :scores:
-    It descibes the trigger is of which score for tally.
+    The score(s) in this tally to which the trigger should be applied.
     
     .. note:: The ``scores`` in ``trigger`` must have been defined in ``scores``
               in ``tally``. And each trigger just includes a scores. An optional

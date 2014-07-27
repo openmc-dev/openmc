@@ -2326,16 +2326,16 @@ contains
     type(TallyObject), pointer :: t => null()
     type(Temptrigger), pointer :: temp_t => null()
     
-    trig_dis % max_ratio = 0
+    trig_dist % max_ratio = 0
     amount = 0
    ! Calculate statistics and get 
      if (master) then
         if (keff_trigger % trigger_type > 0) then
           
           select case (keff_trigger % trigger_type)        
-          case(VARIANCE_METHOD) 
+          case(VARIANCE) 
           temp_keff_trig=k_combined(2) ** 2
-          case(RELATIVE_ERROR_METHOD)      
+          case(RELATIVE_ERROR)      
           temp_keff_trig=k_combined(2) / k_combined(1)
           case default
           temp_keff_trig=k_combined(2)
@@ -2344,9 +2344,9 @@ contains
           if (temp_keff_trig > keff_trigger%threshold) then
             amount = amount + 1 
             temp_ratio = temp_keff_trig / keff_trigger%threshold
-            if(trig_dis % max_ratio < temp_ratio) then
-               trig_dis % max_ratio = temp_ratio
-               trig_dis % temp_name = CHAR_EIGENVALUE
+            if(trig_dist % max_ratio < temp_ratio) then
+               trig_dist % max_ratio = temp_ratio
+               trig_dist % temp_name = CHAR_EIGENVALUE
             end if 
           end if 
      
@@ -2483,9 +2483,9 @@ contains
        if (.not.t % trigger_for_all .and. (t % type /=TALLY_SURFACE_CURRENT)) then
         if( t % score(k) % position == l ) then
          select case (t % score(k) % type)        
-         case(VARIANCE_METHOD) 
+         case(VARIANCE) 
          temp_trig(l,n) = temp_real(l,n) % t3
-         case(RELATIVE_ERROR_METHOD)      
+         case(RELATIVE_ERROR)      
          temp_trig(l,n) = temp_real(l,n) % t2
          case default
          temp_trig(l,n) = temp_real(l,n) % t1
@@ -2494,11 +2494,11 @@ contains
          if (temp_trig(l,n) > t % score(k) % threshold) then
           amount = amount + 1 
           temp_ratio = temp_trig(l,n) / t % score(k) % threshold
-          if(trig_dis % max_ratio < temp_ratio) then
-          trig_dis % max_ratio = temp_ratio
-          trig_dis % temp_name = t % score(k) % score_name
-          trig_dis % id = t % id
-          trig_dis % temp_nuclide = temp_nuclide_name(n)
+          if(trig_dist % max_ratio < temp_ratio) then
+          trig_dist % max_ratio = temp_ratio
+          trig_dist % temp_name = t % score(k) % score_name
+          trig_dist % id = t % id
+          trig_dist % temp_nuclide = temp_nuclide_name(n)
           end if 
           end if
         else 
@@ -2506,9 +2506,9 @@ contains
         end if
        else if(t % trigger_for_all .and. t % type /= TALLY_SURFACE_CURRENT) then
          select case (t % score(k) % type)        
-         case(VARIANCE_METHOD) 
+         case(VARIANCE) 
          temp_trig(l,n) = temp_real(l,n) % t3
-         case(RELATIVE_ERROR_METHOD)      
+         case(RELATIVE_ERROR)      
          temp_trig(l,n) = temp_real(l,n) % t2
          case default
          temp_trig(l,n) = temp_real(l,n) % t1
@@ -2517,18 +2517,18 @@ contains
          if (temp_trig(l,n) > t % score(1)%threshold) then
           amount = amount + 1 
           temp_ratio = temp_trig(l,n) / t % score(1)%threshold
-          if(trig_dis % max_ratio < temp_ratio) then
-          trig_dis % max_ratio = temp_ratio
-          trig_dis % temp_name  = t % score_for_all(l)
-          trig_dis % id = t % id
-          trig_dis % temp_nuclide = temp_nuclide_name(n)
+          if(trig_dist % max_ratio < temp_ratio) then
+          trig_dist % max_ratio = temp_ratio
+          trig_dist % temp_name  = t % score_for_all(l)
+          trig_dist % id = t % id
+          trig_dist % temp_nuclide = temp_nuclide_name(n)
           end if 
          end if 
        else
          select case (t % score(k) % type)        
-         case(VARIANCE_METHOD) 
+         case(VARIANCE) 
          temp_trig(l,n) = temp_real(l,n) % t3
-         case(RELATIVE_ERROR_METHOD)      
+         case(RELATIVE_ERROR)      
          temp_trig(l,n) = temp_real(l,n) % t2
          case default
          temp_trig(l,n) = temp_real(l,n) % t1
@@ -2537,11 +2537,11 @@ contains
          if (temp_trig(l,n)>t % score(1) % threshold) then
           amount = amount + 1 
           temp_ratio = temp_trig(l,n)/t % score(1) % threshold
-          if(trig_dis % max_ratio < temp_ratio) then
-          trig_dis % max_ratio = temp_ratio
-          trig_dis % temp_name  = t % score_for_all(l)
-          trig_dis % id = t % id
-          trig_dis % temp_nuclide = NO_NUCLIDE
+          if(trig_dist % max_ratio < temp_ratio) then
+          trig_dist % max_ratio = temp_ratio
+          trig_dist % temp_name  = t % score_for_all(l)
+          trig_dist % id = t % id
+          trig_dist % temp_nuclide = NO_NUCLIDE
           end if
         end if
       end if
@@ -2555,9 +2555,9 @@ contains
  end do TALLY_LOOP
    
    if(amount == 0 ) then
-   reach_trigger = .true. 
+   satisfy_triggers = .true. 
    else 
-   reach_trigger = .false.
+   satisfy_triggers = .false.
    end if
  end if
    

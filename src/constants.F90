@@ -277,7 +277,6 @@ module constants
 
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 20  
-  integer, parameter :: N_SCORE_TYPES_1 = 60
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -299,7 +298,12 @@ module constants
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS        = -20, & ! number of events
-       N_SCORE_MINUM       = -20    ! expand the boundary
+       N_SCORE_MINIMUM     = -20, & ! This is the index used to find 
+                                    ! in which scores trigger is applied,
+                                    ! combined with N_SCORE_MAX 
+       N_SCORE_MAX         =  60    ! This is the index used to find 
+                                    ! in which scores trigger is applied,
+                                    ! combined with N_SCORE_MINIMUM 
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -344,11 +348,12 @@ module constants
   
   ! Tally trigger types and threshold
   integer, parameter :: &
-       VARIANCE_METHOD            = 1, &
-       RELATIVE_ERROR_METHOD      = 2, &
-       STANDARD_DEVIATION_METHOD  = 3 
+       VARIANCE           = 1, &
+       RELATIVE_ERROR     = 2, &
+       STANDARD_DEVIATION = 3 
        
-  ! Trigger result
+  ! The string that shows whether trigger is applied in eigenvalue or without 
+  ! nuclides
   character(*), parameter :: &
        CHAR_EIGENVALUE = "eigenvalue", &
        NO_NUCLIDE      = "a"        ! Just for comparing in tally

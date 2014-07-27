@@ -97,8 +97,8 @@ contains
       ! Check batches to find whether to compare the result with trigger, check 
       ! the trigger, write the statepoint file
       if(master) then
-        call check_batch()
-        if (reach_trigger) then
+        call check_triggers()
+        if (satisfy_triggers) then
           exit  BATCH_LOOP
         end if
      end if  
@@ -244,66 +244,67 @@ contains
   end subroutine finalize_batch
   
 !===============================================================================
-! CHECK_BATCH checks whether to check the trigger and whether the trigger 
-! threshold is reached. 
+! CHECK_TRIGGERS checks whether to check the triggers and whether the triggers' 
+! thresholds are reached. 
 !===============================================================================
-  subroutine check_batch()
+  subroutine check_triggers()
     implicit none
-    integer :: n1   ! # number of predicted batches where trigger is reached
+    integer :: n_pred_batches   ! # predicted number of batches till all triggers are satisfied
     
     ! Check the batches when current_batch meet following requirements
-      ! 1. Current_batch is not smaller than n_basic_batches
-      ! 2. Trigger_on equals true
-      ! 3. Current_batch can be expressed as (n_basic_batches + n * batch_interval)
+      ! 1. current_batch is not smaller than n_basic_batches
+      ! 2. trigger_on equals true
+      ! 3. current_batch can be expressed as (n_basic_batches + n * batch_interval)
       !    or current_batch equals n_batches
     if((current_batch >= n_basic_batches) .and. trigger_on) then
       if(mod((current_batch - n_basic_batches), n_batch_interval) == 0 .or. &
       current_batch == n_batches) then
         ! Get the combined keff and compare it with trigger threshold if needed
         call calculate_combined_keff()
-        ! Check the trigger and out put the result
+        ! Check the trigger and output the result
         call check_for_trigger()
        
         ! When trigger threshold is reached, write information 
-        if(reach_trigger) then
-          message = "Trigger has been reached in batch " &
+        if(satisfy_triggers) then
+          message = "Trigger is satisfied for batch " &
                  // trim(to_str(current_batch))
           call write_message()
       
         ! When trigger is not reached write information   
-        elseif(trig_dis % temp_name == CHAR_EIGENVALUE) then
+        elseif(trig_dist % temp_name == CHAR_EIGENVALUE) then
           message = "Trigger isn't reached, the max uncertainty/threshold is " &
-          // trim(to_str(trig_dis % max_ratio)) // " for " &
-          // trim(trig_dis % temp_name)
+          // trim(to_str(trig_dist % max_ratio)) // " for " &
+          // trim(trig_dist % temp_name)
           call write_message()
-        elseif (trig_dis % temp_nuclide /= NO_NUCLIDE) then
+        elseif (trig_dist % temp_nuclide /= NO_NUCLIDE) then
           message = "Trigger isn't reached, the max uncertainty/threshold is " &
-            // trim(to_str(trig_dis % max_ratio)) // " of " & 
-            // trim(trig_dis % temp_nuclide) // " for " &
-            // trim(trig_dis % temp_name) // " in tally " &
-            // trim(to_str(trig_dis % id))
+            // trim(to_str(trig_dist % max_ratio)) // " of " & 
+            // trim(trig_dist % temp_nuclide) // " for " &
+            // trim(trig_dist % temp_name) // " in tally " &
+            // trim(to_str(trig_dist % id))
           call write_message()
         else
           message =  "Trigger isn't reached, the max uncertainty/threshold is " &
-          // trim(to_str(trig_dis % max_ratio)) //" for "&
-          // trim(trig_dis % temp_name) //" in tally "// trim(to_str(trig_dis % id))
+          // trim(to_str(trig_dist % max_ratio)) //" for "&
+          // trim(trig_dist % temp_name) //" in tally "// trim(to_str(trig_dist % id))
           call write_message()
         end if 
     
-        if(reach_trigger .or. current_batch == n_batches) then
+        if (satisfy_triggers .or. current_batch == n_batches) then
            ! Get n_batches for state_point file
            n_batches = current_batch
         call write_last_state_point()
-         ! If batch_interval is not set, then estimate it.
+         ! If batch_interval is not set, then then estimate the number of 
+         ! batches till tally threshold is satisfied
         else if (no_batch_interval) then
-          n_batch_interval = int((current_batch-n_inactive)*(trig_dis%max_ratio**2)) &
+          n_batch_interval = int((current_batch-n_inactive)*(trig_dist%max_ratio**2)) &
                             + n_inactive-n_basic_batches + 1
-          n1 = n_batch_interval + n_basic_batches
-         ! If the number of estimated batch is bigger than the n_batches print 
-         ! it and stop. 
-          if(n_batches < n1) then 
+          n_pred_batches = n_batch_interval + n_basic_batches
+         ! If predicted number of batches to convergence is bigger than then
+         ! n_batches print it and stop. 
+          if(n_batches < n_pred_batches) then 
             call write_last_state_point()
-            message = "The estimated number of batches is " // trim(to_str(n1)) &
+            message = "The estimated number of batches is " // trim(to_str(n_pred_batches)) &
                    // "---bigger than max batches, please reset max batches."
             call write_message
             call free_memory()
@@ -319,32 +320,32 @@ contains
 #endif
 
             else
-            message = "The estimated number of batches is "// trim(to_str(n1)) &
+            message = "The estimated number of batches is "// trim(to_str(n_pred_batches)) &
                    //"---check there"
             call write_message
           end if    
         end if
       end if
     end if  
-  end subroutine check_batch
+  end subroutine check_triggers
  
 !===============================================================================
 ! Write_last_state_point writes the statepoint file when the caculation is 
-! stopper due to trigger
+! stopped when all triggers are satisfied or terminated by the trigger
 !===============================================================================
      
   subroutine write_last_state_point()
       if (master) call calculate_combined_keff()
    
-     ! Add current batch in statepoint_batch
-     if (.not.statepoint_batch % contains(current_batch)) then
+     ! Update statepoint_batch to current batch
+     if (.not. statepoint_batch % contains(current_batch)) then
        call statepoint_batch % add(current_batch) 
        call write_state_point()
      else
        call write_state_point()
      end if
      
-     if (.not.sourcepoint_batch % contains(current_batch)) then 
+     if (.not. sourcepoint_batch % contains(current_batch)) then 
        call sourcepoint_batch % add(current_batch)
        call write_source_point()
      else if ((sourcepoint_batch % contains(current_batch) .or. source_latest) &

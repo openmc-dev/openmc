@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES,N_SCORE_TYPES_1,N_SCORE_MINUM
+  use constants, only: NONE, N_FILTER_TYPES, N_SCORE_MAX, N_SCORE_MINIMUM
 
   implicit none
 
@@ -62,7 +62,8 @@ module tally_header
   end type TallyFilter
 
 !===============================================================================
-! TRIGGEROBJECT describes a trigger that stores different information
+! TRIGGEROBJECT describes a trigger that stores the variance, relative error and
+! standard deviration of the uncertainty
 !===============================================================================
    type TriggerObject
      real(8) :: t1=0.0
@@ -71,7 +72,8 @@ module tally_header
    end type TriggerObject
 
 !===============================================================================
-! TRIGGERRESULT describes a score that stores different information
+! TRIGGERRESULT describes accumulation of results in a particular tally bin when
+! trigger is applied
 !===============================================================================
    type TriggerResult
      real(8) :: trigger_sum=0.
@@ -86,7 +88,8 @@ module tally_header
    end type TempTrigger
 
 !===============================================================================
-! SCOREOBJECT describes a score that stores different information
+! SCOREOBJECT describes a score that stores the position, the type and value of 
+! threshold and the name  
 !===============================================================================
    type ScoreObject
       integer :: position = 0 
@@ -145,7 +148,7 @@ module tally_header
     ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
-    integer :: find_score (N_SCORE_MINUM:N_SCORE_TYPES_1) = 0
+    integer :: find_score (N_SCORE_MINIMUM:N_SCORE_MAX) = 0
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
@@ -176,9 +179,9 @@ module tally_header
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
     
-    ! Trigger information
-    type(ScoreObject), allocatable :: score(:)
-    character(len =52),allocatable :: score_for_all(:)
+    ! Trigger informati on
+    type(ScoreObject),  allocatable :: score(:)
+    character(len =52), allocatable :: score_for_all(:)
     integer :: n_user_triggers = 0
     logical :: trigger_for_all = .false.
     ! Type-Bound procedures

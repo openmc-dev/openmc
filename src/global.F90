@@ -145,15 +145,17 @@ module global
   logical :: confidence_intervals = .false.
   
   ! Check whether reach the trigger 
-  logical :: reach_trigger = .false.
-  ! Temporary trig_dis to see how far the result is from trigger threshold
-  type(Temp_trig) :: trig_dis
+  logical :: satisfy_triggers = .false.
+  ! Temporary trig_dist to see how far the result is from trigger threshold
+  type(Temp_trig) :: trig_dist
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
-  integer    :: n_basic_batches   ! # of basic batches
+  integer    :: n_basic_batches   ! # of basic batches ,when trigger is applied, 
+                                  !   it represents the minimum number of batches
+                                  !   the OpenMC will run
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch

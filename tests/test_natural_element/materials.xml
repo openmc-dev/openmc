@@ -46,11 +46,12 @@
   <!-- Duralumin top cylindrical shell -->
   <material id="5">
     <density value="0.417" units="g/cm3" />
-    <element name="Al" ao="8.7115e-03" />
-    <element name="Mg" ao="1.5498e-04" />
-    <element name="Mn" ao="2.7426e-05" />
-    <element name="Cu" ao="1.6993e-04" />
+    <element name="Al" wo="9.3600e-01" />
+    <element name="Mg" wo="1.5000e-02" />
+    <element name="Mn" wo="6.0000e-03" />
+    <element name="Cu" wo="4.3001e-02" />
   </material>
+     
 
   <!-- Duralumin bottom cylindrical shell -->
   <material id="6">

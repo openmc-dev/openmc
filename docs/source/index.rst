@@ -1,6 +1,6 @@
 ===========================
 The OpenMC Monte Carlo Code
-===========================
+===========================  
 
 OpenMC is a Monte Carlo particle transport simulation code focused on neutron
 criticality calculations. It is capable of simulating 3D models based on

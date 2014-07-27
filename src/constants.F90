@@ -298,7 +298,7 @@ module constants
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS        = -20, & ! number of events
-       N_SCORE_MINIMUM     = -20, & ! This is the index used to find 
+       N_SCORE_MIN         = -20, & ! This is the index used to find 
                                     ! in which scores trigger is applied,
                                     ! combined with N_SCORE_MAX 
        N_SCORE_MAX         =  60    ! This is the index used to find 

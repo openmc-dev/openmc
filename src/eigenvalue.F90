@@ -20,7 +20,7 @@ module eigenvalue
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result,check_for_trigger
+                          reset_result,check_tally_triggers
   use tracking,     only: transport
 
   private
@@ -262,7 +262,7 @@ contains
         ! Get the combined keff and compare it with trigger threshold if needed
         call calculate_combined_keff()
         ! Check the trigger and output the result
-        call check_for_trigger()
+        call check_tally_triggers()
        
         ! When trigger threshold is reached, write information 
         if(satisfy_triggers) then

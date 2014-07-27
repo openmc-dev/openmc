@@ -2301,274 +2301,287 @@ contains
   end function get_next_bin
   
 !===============================================================================
-! CHECK FOR reach the threshold, get the max ratio
+! CHECK whether uncertainty reach the threshold, find the maximum 
+! uncertainty/threshold ratio for all triggers
 !=============================================================================== 
- subroutine check_for_trigger() 
+ subroutine check_tally_triggers() 
     
-    integer :: i            ! index in tallies array
-    integer :: j            ! level in tally hierarchy
-    integer :: k            ! loop index for scoring bins
-    integer :: n            ! loop index for nuclides
-    integer :: l            ! loop index for user scores
-    integer :: filter_index ! index in results array for filters
-    integer :: score_index  ! scoring bin index
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_listing    ! index in xs_listings array
-    integer :: n_order      ! loop index for moment orders
-    integer :: nm_order     ! loop index for Ynm moment orders
-    integer :: amount       ! the number of uncertainty bigger than threshold
-    real(8), allocatable :: temp_trig(:,:)
-    real(8) :: temp_ratio
-    real(8) :: temp_keff_trig
-    character(len=52), allocatable :: temp_nuclide_name(:)
-    type(Temptrigger), target      :: tempresult
-    type(TriggerObject), allocatable :: temp_real(:,:)
+    integer :: i              ! index in tallies array
+    integer :: j              ! level in tally hierarchy
+    integer :: k              ! loop index for scoring bins
+    integer :: n              ! loop index for nuclides
+    integer :: l              ! loop index for user scores
+    integer :: filter_index   ! index in results array for filters
+    integer :: score_index    ! scoring bin index
+    integer :: i_nuclide      ! index in nuclides array
+    integer :: i_listing      ! index in xs_listings array
+    integer :: n_order        ! loop index for moment orders
+    integer :: nm_order       ! loop index for Ynm moment orders
+    integer :: amount         ! the number of uncertainty bigger than threshold
+    real(8) :: temp_ratio     ! the ratio of the uncertainty/trigger
+    real(8) :: temp_keff_trig ! the temporary trigger of keff   
+    real(8) :: temp_rel_err         ! temporary relative error of result
+    real(8) :: temp_std_dev         ! temporary standard deviration of result
+    real(8) :: temp_variance        ! temporary variance of result
+    real(8), allocatable :: temp_trig(:,:)  ! temporary trigger of results for 
+                                            ! scores
+    character(len=52), allocatable   :: temp_nuclide_name(:) ! temporary nuclide names
+    type(Temptrigger), target        :: temp_result          ! get the tempory 
+                                                             ! result 
+    type(TriggerObject), allocatable :: temp_real(:,:)       ! the temporary standard deviation
+                                                             ! relative error and 
+                                                             ! variance of the results
     type(TallyObject), pointer :: t => null()
     type(Temptrigger), pointer :: temp_t => null()
     
     trig_dist % max_ratio = 0
-    amount = 0
-   ! Calculate statistics and get 
-     if (master) then
-        if (keff_trigger % trigger_type > 0) then
-          
-          select case (keff_trigger % trigger_type)        
-          case(VARIANCE) 
-          temp_keff_trig=k_combined(2) ** 2
-          case(RELATIVE_ERROR)      
-          temp_keff_trig=k_combined(2) / k_combined(1)
-          case default
-          temp_keff_trig=k_combined(2)
-          end select
-         
-          if (temp_keff_trig > keff_trigger%threshold) then
-            amount = amount + 1 
-            temp_ratio = temp_keff_trig / keff_trigger%threshold
-            if(trig_dist % max_ratio < temp_ratio) then
-               trig_dist % max_ratio = temp_ratio
-               trig_dist % temp_name = CHAR_EIGENVALUE
-            end if 
-          end if 
-     
-        end if
-      temp_t => tempresult              
-   ! Check the trigger 
-    TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
-      allocate(temp_t % results(t % total_score_bins, t % total_filter_bins))
-     
-      if (n_realizations > 1) call tally_trigger_statistics(t,temp_t)
-      allocate (temp_trig(t % n_user_score_bins,t % n_nuclide_bins))
-      allocate (temp_real(t % n_user_score_bins,t % n_nuclide_bins))
-      allocate(temp_nuclide_name(t % n_nuclide_bins))
-       if (t % type == TALLY_SURFACE_CURRENT) then
-        call check_for_current(t,temp_t,temp_real(1,1))
-       else
-      ! Get the result
-      
-      ! WARNING: Admittedly, the logic for moving for printing results is
-      ! extremely confusing and took quite a bit of time to get correct. The
-      ! logic is structured this way since it is not practical to have a do
-      ! loop for each filter variable (given that only a few filters are likely
-      ! to be used for a given tally.
-
-      ! Initialize bins, filter level, and indentation
-      matching_bins(1:t % n_filters) = 0
-      j = 1
-
-      print_bin: do
-        find_bin: do
-          if (t % n_filters == 0) exit find_bin
-             matching_bins(j) = matching_bins(j) + 1
-          if (matching_bins(j) > t % filters(j) % n_bins) then
-             if (j == 1) exit print_bin
-             matching_bins(j) = 0
-             j = j - 1
-          else
-             if (j == t % n_filters) exit find_bin
-          end if
-        end do find_bin
-        
-        if (t % n_filters > 0) then
-           filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
-        else
-           filter_index = 1
-        end if
-           score_index = 0
-           
-        do n = 1, t % n_nuclide_bins
-          i_nuclide = t % nuclide_bins(n)
-          if (i_nuclide == -1) then
-                temp_nuclide_name(n) = "Total Material"
-          else
-                i_listing = nuclides(i_nuclide) % listing
-                temp_nuclide_name(n) = xs_listings(i_listing) % alias
-          end if
-           k = 0
-          do l = 1, t % n_user_score_bins
-            k = k + 1
-            score_index = score_index + 1
-           
-            select case(t % score_bins(k))
-            
-            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-            
-            if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
-              temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
-            end if
-            if (temp_real(l,n) % t2< temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                            temp_t % results(score_index,filter_index) % trigger_sum) then 
-              temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 temp_t % results(score_index,filter_index) % trigger_sum
-            end if
-            temp_real(l,n) % t3=temp_real(l,n) % t1**2
-            
-            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-              score_index = score_index - 1
-              
-            do n_order = 0, t % moment_order(k)
-                score_index = score_index + 1
-                if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then 
-                   temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
-                end if
-                if (temp_real(l,n) % t2 < temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 temp_t % results(score_index,filter_index) % trigger_sum ) then
-                temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 temp_t % results(score_index,filter_index) % trigger_sum
-                end if
-                temp_real(l,n) % t3 = temp_real(l,n) % t1**2
-            end do
-              k = k + t % moment_order(k)
-              
-            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                  SCORE_TOTAL_YN)
-              score_index = score_index - 1
-              do n_order = 0, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
-                   temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
-                   end if
-                   if (temp_real(l,n) % t2 < temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 temp_t % results(score_index,filter_index) % trigger_sum) then
-                       temp_real(l,n) % t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                 temp_t % results(score_index,filter_index) % trigger_sum
-                   end if
-                   temp_real(l,n) % t3 = temp_real(l,n) % t1**2 
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-           
-            case default
-               if(temp_real(l,n) % t1 < temp_t % results(score_index,filter_index) % trigger_sum_sq) then
-                  temp_real(l,n) % t1 = temp_t % results(score_index,filter_index) % trigger_sum_sq
-               end if
-               if(temp_real(l,n) % t2 < (temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                             temp_t % results(score_index,filter_index) % trigger_sum)) then
-                   temp_real(l,n)%t2 = temp_t % results(score_index,filter_index) % trigger_sum_sq / &
-                                temp_t % results(score_index,filter_index) % trigger_sum
-               end if
-               temp_real(l,n) % t3 = temp_real(l,n) % t1**2    
-            end select
-          end do         
-        end do
-     
-      if (t % n_filters == 0) exit print_bin
-      end do print_bin
-      end if 
-     
-    do n = 1, t % n_nuclide_bins
-     do l = 1, t % n_user_score_bins
-       do k = 1 ,t % n_user_triggers 
-       if (.not.t % trigger_for_all .and. (t % type /=TALLY_SURFACE_CURRENT)) then
-        if( t % score(k) % position == l ) then
-         select case (t % score(k) % type)        
+    amount = 0 
+    if (master) then
+       if (keff_trigger % trigger_type > 0) then
+         select case (keff_trigger % trigger_type)        
          case(VARIANCE) 
-         temp_trig(l,n) = temp_real(l,n) % t3
+           temp_keff_trig=k_combined(2) ** 2
          case(RELATIVE_ERROR)      
-         temp_trig(l,n) = temp_real(l,n) % t2
+           temp_keff_trig=k_combined(2) / k_combined(1)
          case default
-         temp_trig(l,n) = temp_real(l,n) % t1
-         end select
-        
-         if (temp_trig(l,n) > t % score(k) % threshold) then
-          amount = amount + 1 
-          temp_ratio = temp_trig(l,n) / t % score(k) % threshold
-          if(trig_dist % max_ratio < temp_ratio) then
-          trig_dist % max_ratio = temp_ratio
-          trig_dist % temp_name = t % score(k) % score_name
-          trig_dist % id = t % id
-          trig_dist % temp_nuclide = temp_nuclide_name(n)
-          end if 
-          end if
-        else 
-        cycle
-        end if
-       else if(t % trigger_for_all .and. t % type /= TALLY_SURFACE_CURRENT) then
-         select case (t % score(k) % type)        
-         case(VARIANCE) 
-         temp_trig(l,n) = temp_real(l,n) % t3
-         case(RELATIVE_ERROR)      
-         temp_trig(l,n) = temp_real(l,n) % t2
-         case default
-         temp_trig(l,n) = temp_real(l,n) % t1
+           temp_keff_trig=k_combined(2)
          end select
          
-         if (temp_trig(l,n) > t % score(1)%threshold) then
-          amount = amount + 1 
-          temp_ratio = temp_trig(l,n) / t % score(1)%threshold
-          if(trig_dist % max_ratio < temp_ratio) then
-          trig_dist % max_ratio = temp_ratio
-          trig_dist % temp_name  = t % score_for_all(l)
-          trig_dist % id = t % id
-          trig_dist % temp_nuclide = temp_nuclide_name(n)
-          end if 
+         if (temp_keff_trig > keff_trigger%threshold) then
+           amount = amount + 1 
+           temp_ratio = temp_keff_trig / keff_trigger%threshold
+           if(trig_dist % max_ratio < temp_ratio) then
+             trig_dist % max_ratio = temp_ratio
+             trig_dist % temp_name = CHAR_EIGENVALUE
+           end if 
          end if 
-       else
-         select case (t % score(k) % type)        
-         case(VARIANCE) 
-         temp_trig(l,n) = temp_real(l,n) % t3
-         case(RELATIVE_ERROR)      
-         temp_trig(l,n) = temp_real(l,n) % t2
-         case default
-         temp_trig(l,n) = temp_real(l,n) % t1
-         end select
+     
+       end if
+       temp_t => temp_result              
+   ! Compute uncertainties for all tallies, scores with triggers
+       TALLY_LOOP: do i = 1, n_tallies
+         t => tallies(i)
+         allocate(temp_t % results(t % total_score_bins, t % total_filter_bins))
+         ! Calculate statistics and get the tempoorary result
+         if (n_realizations > 1) call tally_trigger_statistics(t,temp_t)
+         allocate (temp_trig(t % n_user_score_bins,t % n_nuclide_bins))
+         allocate (temp_real(t % n_user_score_bins,t % n_nuclide_bins))
+         allocate(temp_nuclide_name(t % n_nuclide_bins))
+         if (t % type == TALLY_SURFACE_CURRENT) then
+           call compute_tally_current(t,temp_t,temp_real(1,1))
+         else
+         ! Get the result
+      
+         ! WARNING: Admittedly, the logic for moving for printing results is
+         ! extremely confusing and took quite a bit of time to get correct. The
+         ! logic is structured this way since it is not practical to have a do
+         ! loop for each filter variable (given that only a few filters are likely
+         ! to be used for a given tally.
+
+         ! Initialize bins, filter level, and indentation
+           matching_bins(1:t % n_filters) = 0
+           j = 1
+
+           print_bin: do
+             find_bin: do
+               if (t % n_filters == 0) exit find_bin
+               matching_bins(j) = matching_bins(j) + 1
+               if (matching_bins(j) > t % filters(j) % n_bins) then
+                 if (j == 1) exit print_bin
+                 matching_bins(j) = 0
+                 j = j - 1
+               else
+                 if (j == t % n_filters) exit find_bin
+               end if
+             end do find_bin
         
-         if (temp_trig(l,n)>t % score(1) % threshold) then
-          amount = amount + 1 
-          temp_ratio = temp_trig(l,n)/t % score(1) % threshold
-          if(trig_dist % max_ratio < temp_ratio) then
-          trig_dist % max_ratio = temp_ratio
-          trig_dist % temp_name  = t % score_for_all(l)
-          trig_dist % id = t % id
-          trig_dist % temp_nuclide = NO_NUCLIDE
-          end if
-        end if
-      end if
-     end do
-    end do  
-  end do 
-   deallocate (temp_trig)
-   deallocate (temp_real)
-   deallocate (temp_nuclide_name)
-   deallocate (temp_t % results)
- end do TALLY_LOOP
+             if (t % n_filters > 0) then
+               filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * &
+                            t % stride) + 1
+             else
+               filter_index = 1
+             end if
+               score_index = 0
+           
+             do n = 1, t % n_nuclide_bins
+               i_nuclide = t % nuclide_bins(n)
+               if (i_nuclide == -1) then
+                 temp_nuclide_name(n) = "Total Material"
+               else
+                 i_listing = nuclides(i_nuclide) % listing
+                 temp_nuclide_name(n) = xs_listings(i_listing) % alias
+               end if
+               k = 0
+               do l = 1, t % n_user_score_bins
+                 k = k + 1
+                 score_index = score_index + 1
+           
+               select case(t % score_bins(k))
+               case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)         
+                   score_index = score_index + 1
+                   temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
+                   temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
+                   temp_variance = temp_std_dev**2
+                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                     temp_real(l,n) % std_dev = temp_std_dev
+                   end if
+                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                     temp_real(l,n)% rel_err = temp_rel_err
+                   end if
+                   temp_real(l,n) % variance = temp_variance       
+            
+               case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+                 score_index = score_index - 1
+              
+                 do n_order = 0, t % moment_order(k)
+                   score_index = score_index + 1
+                   temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
+                   temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
+                   temp_variance = temp_std_dev**2
+                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                     temp_real(l,n) % std_dev = temp_std_dev
+                   end if
+                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                     temp_real(l,n)% rel_err = temp_rel_err
+                   end if
+                   temp_real(l,n) % variance = temp_variance       
+                 end do
+                 k = k + t % moment_order(k)
+              
+               case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                     SCORE_TOTAL_YN)
+                 score_index = score_index - 1
+                 do n_order = 0, t % moment_order(k)
+                   do nm_order = -n_order, n_order
+                   score_index = score_index + 1
+                   temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
+                   temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
+                   temp_variance = temp_std_dev**2
+                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                     temp_real(l,n) % std_dev = temp_std_dev
+                   end if
+                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                     temp_real(l,n)% rel_err = temp_rel_err
+                   end if
+                   temp_real(l,n) % variance = temp_variance       
+                   end do
+                 end do
+                 k = k + (t % moment_order(k) + 1)**2 - 1
+           
+               case default
+                   score_index = score_index + 1
+                   temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
+                   temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
+                   temp_variance = temp_std_dev**2
+                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                     temp_real(l,n) % std_dev = temp_std_dev
+                   end if
+                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                     temp_real(l,n)% rel_err = temp_rel_err
+                   end if
+                   temp_real(l,n) % variance = temp_variance       
+               end select
+             end do         
+           end do
+     
+           if (t % n_filters == 0) exit print_bin
+         end do print_bin
+       end if 
+     
+       do n = 1, t % n_nuclide_bins
+         do l = 1, t % n_user_score_bins
+           do k = 1 ,t % n_user_triggers 
+             if (.not.t % trigger_for_all .and. (t % type /= &
+                TALLY_SURFACE_CURRENT)) then
+               if( t % score(k) % position == l ) then
+                 select case (t % score(k) % type)        
+                 case(VARIANCE) 
+                   temp_trig(l,n) = temp_real(l,n) % variance
+                 case(RELATIVE_ERROR)      
+                   temp_trig(l,n) = temp_real(l,n) % rel_err
+                 case default
+                   temp_trig(l,n) = temp_real(l,n) % std_dev
+                 end select
+        
+               if (temp_trig(l,n) > t % score(k) % threshold) then
+                 amount = amount + 1 
+                 temp_ratio = temp_trig(l,n) / t % score(k) % threshold
+                   if(trig_dist % max_ratio < temp_ratio) then
+                     trig_dist % max_ratio = temp_ratio
+                     trig_dist % temp_name = t % score(k) % score_name
+                     trig_dist % id = t % id
+                     trig_dist % temp_nuclide = temp_nuclide_name(n)
+                   end if 
+               end if
+               else 
+               cycle
+               end if
+             elseif(t % trigger_for_all .and. t % type /= TALLY_SURFACE_CURRENT) then
+               select case (t % score(k) % type)        
+               case(VARIANCE) 
+                 temp_trig(l,n) = temp_real(l,n) % variance
+               case(RELATIVE_ERROR)      
+                 temp_trig(l,n) = temp_real(l,n) % rel_err
+               case default
+                 temp_trig(l,n) = temp_real(l,n) % std_dev
+               end select
+         
+               if (temp_trig(l,n) > t % score(1)%threshold) then
+                 amount = amount + 1 
+                 temp_ratio = temp_trig(l,n) / t % score(1)%threshold
+                 if(trig_dist % max_ratio < temp_ratio) then
+                   trig_dist % max_ratio = temp_ratio
+                   trig_dist % temp_name  = t % score_for_all(l)
+                   trig_dist % id = t % id
+                   trig_dist % temp_nuclide = temp_nuclide_name(n)
+                 end if 
+               end if 
+             else
+               select case (t % score(k) % type)        
+               case(VARIANCE) 
+                 temp_trig(l,n) = temp_real(l,n) % variance
+               case(RELATIVE_ERROR)      
+                 temp_trig(l,n) = temp_real(l,n) % rel_err
+               case default
+                 temp_trig(l,n) = temp_real(l,n) % std_dev
+               end select
+        
+               if (temp_trig(l,n)>t % score(1) % threshold) then
+                 amount = amount + 1 
+                 temp_ratio = temp_trig(l,n)/t % score(1) % threshold
+                 if(trig_dist % max_ratio < temp_ratio) then
+                   trig_dist % max_ratio = temp_ratio
+                   trig_dist % temp_name  = t % score_for_all(l)
+                   trig_dist % id = t % id
+                   trig_dist % temp_nuclide = NO_NUCLIDE
+                 end if
+               end if
+             end if
+           end do
+         end do  
+       end do 
+       deallocate (temp_trig)
+       deallocate (temp_real)
+       deallocate (temp_nuclide_name)
+       deallocate (temp_t % results)
+     end do TALLY_LOOP
    
-   if(amount == 0 ) then
-   satisfy_triggers = .true. 
-   else 
-   satisfy_triggers = .false.
+     if(amount == 0 ) then
+       satisfy_triggers = .true. 
+     else 
+      satisfy_triggers = .false.
+     end if
    end if
- end if
    
      
- end subroutine check_for_trigger
+ end subroutine check_tally_triggers
 
 !===============================================================================
-! CHECK_FOR_CURRENT get the temporary result of current
+! compute_tally_current get the temporary result of current when type of the scores
+! is current
 !===============================================================================
  
- subroutine check_for_current(t,temp_t,s)
+ subroutine compute_tally_current(t,temp_t,s)
 
     type(TallyObject), pointer :: t
     type(TempTrigger), pointer :: temp_t
@@ -2585,6 +2598,9 @@ contains
     integer :: len2                 ! length of string
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
+    real(8) :: temp_rel_err         ! temporary relative error of result
+    real(8) :: temp_std_dev         ! temporary standard deviration of result
+    real(8) :: temp_variance        ! temporary variance of result
     type(TriggerObject)   :: s
     type(StructuredMesh), pointer :: m => null()
 
@@ -2596,7 +2612,7 @@ contains
     ! initialize bins array
     matching_bins(1:t%n_filters) = 1
 
-    ! determine how many energy in bins there are
+    ! determine how many energyin bins there are
     i_filter_ein = t % find_filter(FILTER_ENERGYIN)
     if (i_filter_ein > 0) then
       print_ebin = .true.
@@ -2620,81 +2636,86 @@ contains
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+           if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3=s % t1**2
+            s % variance = temp_variance
 
             ! Right Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+           if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
-
+            s % variance = temp_variance
             ! Back Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3=s % t1**2
+            s % variance = temp_variance
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
 
 
             ! Front Surface
@@ -2702,28 +2723,28 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-           
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3=s % t1**2
-
+            s % variance = temp_variance
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3=s % t1**2
+            s % variance = temp_variance
 
 
             ! Bottom Surface
@@ -2731,62 +2752,66 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+           if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2< temp_t % results(1,filter_index) % trigger_sum_sq / &
-                             temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3=s % t1**2
+            s % variance = temp_variance
 
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s%t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
 
             ! Top Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s%t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            if(s % t1 < temp_t % results(1,filter_index) % trigger_sum_sq) then 
-                   s % t1 = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
+            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            temp_variance = temp_std_dev**2
+            if(s % std_dev < temp_std_dev) then 
+                   s % std_dev = temp_std_dev
             end if
-            if (s % t2 < temp_t % results(1,filter_index) % trigger_sum_sq / &
-                            temp_t % results(1,filter_index) % trigger_sum) then 
-            s % t2 = temp_t % results(1,filter_index) % trigger_sum_sq / &
-                              temp_t % results(1,filter_index) % trigger_sum
+            if (s % rel_err <temp_rel_err) then 
+              s % rel_err = temp_rel_err
             end if
-            s % t3 = s % t1**2
+            s % variance = temp_variance
           end do
 
         end do
       end do
     end do
 
-  end subroutine check_for_current
+  end subroutine compute_tally_current
   
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
@@ -3041,6 +3066,7 @@ contains
          that % trigger_sum) / (n - 1))
 
   end subroutine statistics_trigger_result
+  
 !===============================================================================
 ! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a
 ! single TallyResult.

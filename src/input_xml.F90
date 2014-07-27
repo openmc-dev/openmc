@@ -2831,14 +2831,14 @@ contains
     
           select case (trim(score_name))
           case ('all')
-          if(t%n_user_triggers /= 1) then
-            message = "Cannot set trigger for all and other scoring functions &
+            if(t%n_user_triggers /= 1) then
+              message = "Cannot set trigger for all and other scoring functions &
                        &in the same tally. Separate scoring functions into &
                        &distinct tallies"
-            call fatal_error()
-          else 
-          t % trigger_for_all = .true.
-          end if
+              call fatal_error()
+            else 
+              t % trigger_for_all = .true.
+            end if
           case ('flux')
             t % score(trig_ind) % position =  t % find_score(SCORE_FLUX)
            
@@ -2933,11 +2933,11 @@ contains
      
           select case (temp_str)
           case ('std_dev')
-          t % score(trig_ind) % type = STANDARD_DEVIATION
+            t % score(trig_ind) % type = STANDARD_DEVIATION
           case ('variance')
-          t % score(trig_ind) % type = VARIANCE
+            t % score(trig_ind) % type = VARIANCE
           case ('rel_err')
-          t % score(trig_ind) % type = RELATIVE_ERROR
+            t % score(trig_ind) % type = RELATIVE_ERROR
           case default 
             message = "Unknown trigger type "//trim(temp_str)//& 
                       " in tally " //trim(to_str(t%id))

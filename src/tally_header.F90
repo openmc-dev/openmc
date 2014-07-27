@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES, N_SCORE_MAX, N_SCORE_MINIMUM
+  use constants, only: NONE, N_FILTER_TYPES, N_SCORE_MAX, N_SCORE_MIN
 
   implicit none
 
@@ -66,9 +66,9 @@ module tally_header
 ! standard deviration of the uncertainty
 !===============================================================================
    type TriggerObject
-     real(8) :: t1=0.0
-     real(8) :: t2=0.0
-     real(8) :: t3=0.0
+     real(8) :: rel_err =0.0
+     real(8) :: std_dev =0.0
+     real(8) :: variance=0.0
    end type TriggerObject
 
 !===============================================================================
@@ -99,22 +99,22 @@ module tally_header
    end type ScoreObject
 
 !===============================================================================
-! TEMP_TRIG describes the search for the max uncertainty/trigger ratio
+! TEMPTRIG describes the search for the max uncertainty/trigger ratio
 !===============================================================================
-   type Temp_trig
+   type TempTrig
       integer    :: id
       real(8)    :: max_ratio = 0
       character(len=52) :: temp_name
       character(len=52) :: temp_nuclide 
-   end type Temp_trig
+   end type TempTrig
    
 !===============================================================================
-! K_TRIGGER describes a trigger for k
+! KTRIGGER describes a trigger for k
 !===============================================================================
-   type K_trigger
+   type KTrigger
      integer    :: trigger_type = 0
      real(8)    :: threshold    = 0 
-   end type K_trigger
+   end type KTrigger
       
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -148,7 +148,7 @@ module tally_header
     ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
-    integer :: find_score (N_SCORE_MINIMUM:N_SCORE_MAX) = 0
+    integer :: find_score (N_SCORE_MIN:N_SCORE_MAX) = 0
 
     ! Individual nuclides to tally
     integer              :: n_nuclide_bins = 0
@@ -179,11 +179,13 @@ module tally_header
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
     
-    ! Trigger informati on
+    ! Trigger information
     type(ScoreObject),  allocatable :: score(:)
-    character(len =52), allocatable :: score_for_all(:)
+    character(len =52), allocatable :: score_for_all(:) ! The names of scores 
+                                                        ! when "all" are used in scores
     integer :: n_user_triggers = 0
-    logical :: trigger_for_all = .false.
+    logical :: trigger_for_all = .false.                ! All scores share the 
+                                                        ! same trigger
     ! Type-Bound procedures
     contains
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject

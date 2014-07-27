@@ -12,8 +12,8 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult , Temp_trig , &
-                              K_trigger
+  use tally_header,     only: TallyObject, TallyMap, TallyResult , TempTrig , &
+                              KTrigger
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -147,7 +147,7 @@ module global
   ! Check whether reach the trigger 
   logical :: satisfy_triggers = .false.
   ! Temporary trig_dist to see how far the result is from trigger threshold
-  type(Temp_trig) :: trig_dist
+  type(TempTrig) :: trig_dist
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
@@ -167,10 +167,9 @@ module global
   
   ! Flag for turning trigger on
   logical:: trigger_on = .false. 
-  logical:: temp_state = .false.                                                        
   
   ! Trigger for k-effective
-  type(K_trigger) keff_trigger
+  type(KTrigger) keff_trigger
 
   ! External source
   type(ExtSource), target :: external_source

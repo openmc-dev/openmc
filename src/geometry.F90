@@ -145,6 +145,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
+    type(Material),  pointer, save :: mat => null()  ! pointer to material
 !$omp threadprivate(c, lat, univ)
 
     ! Remove coordinates for any lower levels
@@ -365,6 +366,16 @@ contains
         ! Found cell so we can return
         found = .true.
         call p % sum_maps(n_maps)
+        
+        p % last_inst = p % inst
+        
+        ! make sure there is a current material  
+        if (p % material > 0 .and. .not. (run_mode == MODE_PLOTTING)) then
+          mat => materials(p % material)
+          p % inst = p % mapping(mat % map)
+        else
+          p % inst = 0
+        end if
         return
       end if
     end do

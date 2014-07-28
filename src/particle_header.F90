@@ -83,7 +83,9 @@ module particle_header
     logical    :: write_track = .false.
     
     ! Distributed Mapping Info
-    integer, allocatable :: mapping(:)
+    integer, allocatable :: mapping(:)  ! records the current value in all maps
+    integer              :: inst        ! records the current material instance
+    integer              :: last_inst   ! records the previous material instance
 
   contains
     procedure :: initialize => initialize_particle
@@ -135,6 +137,7 @@ contains
     this % cell_born     = NONE
     this % material      = NONE
     this % last_material = NONE
+    this % last_inst     = NONE
     this % wgt           = ONE
     this % last_wgt      = ONE
     this % absorb_wgt    = ZERO
@@ -182,16 +185,18 @@ contains
       allocate(this % mapping(n_maps))
     end if
     
-    do i = 1, n_maps
-      this % mapping(i) = 1
+    do i = 1, n_maps    
+      this % mapping(i) = 1      
     end do
+    
     coord => this % coord0
-    do while(associated(coord))
-      if (allocated(coord % mapping)) then
-        
-    do i = 1, n_maps
-     this % mapping(i) = this % mapping(i) + coord % mapping(i)
-    end do
+    
+    do while(associated(coord))    
+      if (allocated(coord % mapping)) then       
+        ! The last map should always be 1, so we don't touch it here 
+        do i = 1, n_maps - 1
+         this % mapping(i) = this % mapping(i) + coord % mapping(i)
+        end do
       end if
       coord => coord % next
     end do

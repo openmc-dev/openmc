@@ -35,9 +35,7 @@ contains
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
-    logical :: distrib         ! material is distribute
     type(LocalCoord), pointer, save :: coord => null()
-    type(Material),   pointer, save :: mat => null()
 !$omp threadprivate(coord)
 
     ! Display message if high verbosity or trace is on
@@ -87,13 +85,9 @@ contains
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-      if (p % material > 0) then 
-        mat => materials(p % material)
-        distrib = mat % distrib_comp
-      else
-        distrib = .false.
-      end if
-      if (p % material /= p % last_material .or. distrib) call calculate_xs(p)
+      
+      if (p % material /= p % last_material &
+            & .or. p % inst /= p % last_inst) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)

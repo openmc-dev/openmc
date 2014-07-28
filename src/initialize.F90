@@ -977,6 +977,7 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(Universe),       pointer :: univ
     type(Cell),           pointer :: c
+    type(Material),       pointer :: mat
     
     ! begin with filters    
     ! Loop over tallies    
@@ -1078,11 +1079,20 @@ contains
   ! Verify correct xml input of distributed materials
   call verify_distribmats()
     
-  do i = 1, n_maps
+  ! Calculate the numbers to be stored for all maps except the special end one  
+  do i = 1, n_maps - 1
     do j = 1, n_universes  
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
     end do
+  end do
+  
+  do i = 1, n_materials
+    mat => materials(i)
+    if (.not. mat % distrib_comp) then
+      write (*,*) "writing map number:",n_maps
+      mat % map = n_maps
+    end if
   end do
 
   deallocate(univ_list)
@@ -1105,6 +1115,7 @@ end subroutine prepare_distribution
     type(DictIntInt) :: cell_list
     
     type(Cell),        pointer :: c => null()         ! pointer to cell
+    type(Cell),        pointer :: c2 => null()      ! pointer to cell
     type(Lattice),     pointer :: lat => null()       ! pointer to lattice
     type(Universe),    pointer :: u => null()         ! pointer to universe
     type(Material),    pointer :: mat => null()       ! pointer to material
@@ -1168,9 +1179,27 @@ end subroutine prepare_distribution
         if (mat % cell < 1) then        
           message = "Failed to find the cell for material: " // to_str(mat % id)
           call fatal_error()        
-        end if
+        end if        
+        
       end if
 
+    end do
+    
+    do i = 1, n_cells - 1
+      c => cells(i)
+      do j = i + 1, n_cells
+        c2 => cells(j)
+
+        if (c % material == c2 % material  &
+                & .and. (c % distributed .or. c2 % distributed)) then
+
+          message = "Two cells share the same distributed material. &
+                    &This is forbidden."
+          call fatal_error()   
+               
+        end if
+        
+      end do
     end do
     
     ! Add targets from distributed materials
@@ -1224,6 +1253,9 @@ end subroutine prepare_distribution
       end do
     
     end do    
+    
+    ! We create an extra map for non-distributed materials
+    maps = maps + 1
     
     ! Build the list of unique universes
     allocate(univ_list(maps))    
@@ -1371,10 +1403,8 @@ end subroutine prepare_distribution
           mat % comp(j) % atom_density = atom_density          
         end do
         deallocate(atom_density)
-        
-      end if
-      
-      if (mat % distrib_comp) then
+              
+      else if (mat % distrib_comp) then
         c => cells(cell_dict % get_key(mat % cell))
       
         num = mat % n_comp
@@ -1405,6 +1435,8 @@ end subroutine prepare_distribution
           
         end if
         
+      else 
+        mat % map = n_maps  
       end if
       
     end do

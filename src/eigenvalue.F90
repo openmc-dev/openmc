@@ -305,7 +305,7 @@ contains
           if(n_batches < n_pred_batches) then 
             call write_last_state_point()
             message = "The estimated number of batches is " // trim(to_str(n_pred_batches)) &
-                   // "---bigger than max batches, please reset max batches."
+                   // "---bigger than max batches, please reset max batches or threshold."
             call write_message
             call free_memory()
 #ifdef MPI

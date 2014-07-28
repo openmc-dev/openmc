@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult , TempTrig , &
+  use tally_header,     only: TallyObject, TallyMap, TallyResult , TriggerDistance, &
                               KTrigger
   use timer_header,     only: Timer
 
@@ -147,7 +147,7 @@ module global
   ! Check whether reach the trigger 
   logical :: satisfy_triggers = .false.
   ! Temporary trig_dist to see how far the result is from trigger threshold
-  type(TempTrig) :: trig_dist
+  type(TriggerDistance) :: trig_dist
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 

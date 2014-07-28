@@ -99,14 +99,14 @@ module tally_header
    end type ScoreObject
 
 !===============================================================================
-! TEMPTRIG describes the search for the max uncertainty/trigger ratio
+! TRIGGERDISTANCE describes the search for the max uncertainty/trigger ratio
 !===============================================================================
-   type TempTrig
+   type TriggerDistance
       integer    :: id
       real(8)    :: max_ratio = 0
       character(len=52) :: temp_name
       character(len=52) :: temp_nuclide 
-   end type TempTrig
+   end type TriggerDistance
    
 !===============================================================================
 ! KTRIGGER describes a trigger for k

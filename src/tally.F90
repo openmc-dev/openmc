@@ -2320,9 +2320,9 @@ contains
     integer :: amount         ! the number of uncertainty bigger than threshold
     real(8) :: temp_ratio     ! the ratio of the uncertainty/trigger
     real(8) :: temp_keff_trig ! the temporary trigger of keff   
-    real(8) :: temp_rel_err         ! temporary relative error of result
-    real(8) :: temp_std_dev         ! temporary standard deviration of result
-    real(8) :: temp_variance        ! temporary variance of result
+    real(8) :: temp_rel_err = 0.0         ! temporary relative error of result
+    real(8) :: temp_std_dev = 0.0         ! temporary standard deviration of result
+    real(8) :: temp_variance = 0.0        ! temporary variance of result
     real(8), allocatable :: temp_trig(:,:)  ! temporary trigger of results for 
                                             ! scores
     character(len=52), allocatable   :: temp_nuclide_name(:) ! temporary nuclide names
@@ -2347,10 +2347,10 @@ contains
            temp_keff_trig=k_combined(2)
          end select
          
-         if (temp_keff_trig > keff_trigger%threshold) then
+         if (temp_keff_trig > keff_trigger % threshold) then
            amount = amount + 1 
-           temp_ratio = temp_keff_trig / keff_trigger%threshold
-           if(trig_dist % max_ratio < temp_ratio) then
+           temp_ratio = temp_keff_trig / keff_trigger % threshold
+           if (trig_dist % max_ratio < temp_ratio) then
              trig_dist % max_ratio = temp_ratio
              trig_dist % temp_name = CHAR_EIGENVALUE
            end if 
@@ -2422,10 +2422,10 @@ contains
                    temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
                    temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
                    temp_variance = temp_std_dev**2
-                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                   if (temp_real(l,n) % std_dev < temp_std_dev) then 
                      temp_real(l,n) % std_dev = temp_std_dev
                    end if
-                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                   if (temp_real(l,n)% rel_err <temp_rel_err) then 
                      temp_real(l,n)% rel_err = temp_rel_err
                    end if
                    temp_real(l,n) % variance = temp_variance       
@@ -2438,10 +2438,10 @@ contains
                    temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
                    temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
                    temp_variance = temp_std_dev**2
-                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                   if (temp_real(l,n) % std_dev < temp_std_dev) then 
                      temp_real(l,n) % std_dev = temp_std_dev
                    end if
-                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                   if (temp_real(l,n)% rel_err <temp_rel_err) then 
                      temp_real(l,n)% rel_err = temp_rel_err
                    end if
                    temp_real(l,n) % variance = temp_variance       
@@ -2457,10 +2457,10 @@ contains
                    temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
                    temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
                    temp_variance = temp_std_dev**2
-                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
+                   if (temp_real(l,n) % std_dev < temp_std_dev) then 
                      temp_real(l,n) % std_dev = temp_std_dev
                    end if
-                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
+                   if (temp_real(l,n)% rel_err <temp_rel_err) then 
                      temp_real(l,n)% rel_err = temp_rel_err
                    end if
                    temp_real(l,n) % variance = temp_variance       
@@ -2469,16 +2469,16 @@ contains
                  k = k + (t % moment_order(k) + 1)**2 - 1
            
                case default
-                   score_index = score_index + 1
-                   temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
-                   temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
-                   temp_variance = temp_std_dev**2
-                   if(temp_real(l,n) % std_dev < temp_std_dev) then 
-                     temp_real(l,n) % std_dev = temp_std_dev
-                   end if
-                   if(temp_real(l,n)% rel_err <temp_rel_err) then 
-                     temp_real(l,n)% rel_err = temp_rel_err
-                   end if
+                 score_index = score_index + 1
+                 temp_std_dev = temp_t % results(score_index,filter_index) % trigger_sum_sq
+                 temp_rel_err = temp_std_dev / temp_t % results(score_index,filter_index) % trigger_sum
+                 temp_variance = temp_std_dev**2
+                 if (temp_real(l,n) % std_dev < temp_std_dev) then 
+                   temp_real(l,n) % std_dev = temp_std_dev
+                 end if
+                 if (temp_real(l,n)% rel_err <temp_rel_err) then 
+                   temp_real(l,n)% rel_err = temp_rel_err
+                 end if
                    temp_real(l,n) % variance = temp_variance       
                end select
              end do         
@@ -2491,9 +2491,9 @@ contains
        do n = 1, t % n_nuclide_bins
          do l = 1, t % n_user_score_bins
            do k = 1 ,t % n_user_triggers 
-             if (.not.t % trigger_for_all .and. (t % type /= &
+             if (.not. t % trigger_for_all .and. (t % type /= &
                 TALLY_SURFACE_CURRENT)) then
-               if( t % score(k) % position == l ) then
+               if (t % score(k) % position == l ) then
                  select case (t % score(k) % type)        
                  case(VARIANCE) 
                    temp_trig(l,n) = temp_real(l,n) % variance
@@ -2506,7 +2506,7 @@ contains
                if (temp_trig(l,n) > t % score(k) % threshold) then
                  amount = amount + 1 
                  temp_ratio = temp_trig(l,n) / t % score(k) % threshold
-                   if(trig_dist % max_ratio < temp_ratio) then
+                   if (trig_dist % max_ratio < temp_ratio) then
                      trig_dist % max_ratio = temp_ratio
                      trig_dist % temp_name = t % score(k) % score_name
                      trig_dist % id = t % id
@@ -2516,7 +2516,7 @@ contains
                else 
                cycle
                end if
-             elseif(t % trigger_for_all .and. t % type /= TALLY_SURFACE_CURRENT) then
+             elseif (t % trigger_for_all .and. t % type /= TALLY_SURFACE_CURRENT) then
                select case (t % score(k) % type)        
                case(VARIANCE) 
                  temp_trig(l,n) = temp_real(l,n) % variance
@@ -2526,10 +2526,10 @@ contains
                  temp_trig(l,n) = temp_real(l,n) % std_dev
                end select
          
-               if (temp_trig(l,n) > t % score(1)%threshold) then
+               if (temp_trig(l,n) > t % score(1)% threshold) then
                  amount = amount + 1 
-                 temp_ratio = temp_trig(l,n) / t % score(1)%threshold
-                 if(trig_dist % max_ratio < temp_ratio) then
+                 temp_ratio = temp_trig(l,n) / t % score(1)% threshold
+                 if (trig_dist % max_ratio < temp_ratio) then
                    trig_dist % max_ratio = temp_ratio
                    trig_dist % temp_name  = t % score_for_all(l)
                    trig_dist % id = t % id
@@ -2549,7 +2549,7 @@ contains
                if (temp_trig(l,n)>t % score(1) % threshold) then
                  amount = amount + 1 
                  temp_ratio = temp_trig(l,n)/t % score(1) % threshold
-                 if(trig_dist % max_ratio < temp_ratio) then
+                 if (trig_dist % max_ratio < temp_ratio) then
                    trig_dist % max_ratio = temp_ratio
                    trig_dist % temp_name  = t % score_for_all(l)
                    trig_dist % id = t % id
@@ -2566,7 +2566,7 @@ contains
        deallocate (temp_t % results)
      end do TALLY_LOOP
    
-     if(amount == 0 ) then
+     if (amount == 0) then
        satisfy_triggers = .true. 
      else 
       satisfy_triggers = .false.
@@ -2577,8 +2577,8 @@ contains
  end subroutine check_tally_triggers
 
 !===============================================================================
-! compute_tally_current get the temporary result of current when type of the scores
-! is current
+! compute_tally_current "compute the current for a tally with a current score to 
+! compare to trigger threshold
 !===============================================================================
  
  subroutine compute_tally_current(t,temp_t,s)
@@ -2598,9 +2598,9 @@ contains
     integer :: len2                 ! length of string
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
-    real(8) :: temp_rel_err         ! temporary relative error of result
-    real(8) :: temp_std_dev         ! temporary standard deviration of result
-    real(8) :: temp_variance        ! temporary variance of result
+    real(8) :: temp_rel_err  = 0.0         ! temporary relative error of result
+    real(8) :: temp_std_dev  = 0.0         ! temporary standard deviration of result
+    real(8) :: temp_variance = 0.0         ! temporary variance of result
     type(TriggerObject)   :: s
     type(StructuredMesh), pointer :: m => null()
 
@@ -2639,7 +2639,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2652,7 +2652,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-           if(s % std_dev < temp_std_dev) then 
+           if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2668,7 +2668,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-           if(s % std_dev < temp_std_dev) then 
+           if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2681,7 +2681,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2696,7 +2696,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2709,7 +2709,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2726,7 +2726,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2738,7 +2738,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2755,7 +2755,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-           if(s % std_dev < temp_std_dev) then 
+           if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2769,7 +2769,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2785,7 +2785,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2798,7 +2798,7 @@ contains
             temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
             temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
             temp_variance = temp_std_dev**2
-            if(s % std_dev < temp_std_dev) then 
+            if (s % std_dev < temp_std_dev) then 
                    s % std_dev = temp_std_dev
             end if
             if (s % rel_err <temp_rel_err) then 
@@ -2997,7 +2997,7 @@ contains
     type(TallyObject), pointer :: t 
     type(TempTrigger), pointer :: s 
 
-    call statistics_trigger_result(t % results, t % n_realizations, s % results)
+    call trigger_statistics_result(t % results, t % n_realizations, s % results)
 
   end subroutine tally_trigger_statistics
   
@@ -3051,7 +3051,7 @@ contains
 ! deviation of the mean for a TriggerResult for a trigger .
 !===============================================================================
 
-  elemental subroutine statistics_trigger_result(this, n, that)
+  elemental subroutine trigger_statistics_result(this, n, that)
 
     type(TallyResult), intent(inout)   :: this
     type(TriggerResult), intent(inout) :: that
@@ -3065,7 +3065,7 @@ contains
     that % trigger_sum_sq = sqrt((this % sum_sq/n - that % trigger_sum * &
          that % trigger_sum) / (n - 1))
 
-  end subroutine statistics_trigger_result
+  end subroutine trigger_statistics_result
   
 !===============================================================================
 ! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a

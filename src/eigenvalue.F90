@@ -95,13 +95,13 @@ contains
       call finalize_batch()
       
       ! Check batches to find whether to compare the result with trigger, check 
-      ! the trigger, write the statepoint file
-      if(master) then
+      ! the trigger and write the statepoint file
+      if (master) then
         call check_triggers()
         if (satisfy_triggers) then
           exit  BATCH_LOOP
         end if
-     end if  
+      end if  
     
     end do BATCH_LOOP
     call time_active % stop()
@@ -249,79 +249,78 @@ contains
 !===============================================================================
   subroutine check_triggers()
     implicit none
-    integer :: n_pred_batches   ! # predicted number of batches till all triggers are satisfied
+    integer :: n_pred_batches   ! # predicted number of batches till all 
+                                ! triggers are satisfied
     
     ! Check the batches when current_batch meet following requirements
       ! 1. current_batch is not smaller than n_basic_batches
       ! 2. trigger_on equals true
-      ! 3. current_batch can be expressed as (n_basic_batches + n * batch_interval)
-      !    or current_batch equals n_batches
-    if((current_batch >= n_basic_batches) .and. trigger_on) then
-      if(mod((current_batch - n_basic_batches), n_batch_interval) == 0 .or. &
-      current_batch == n_batches) then
+      ! 3. current_batch can be expressed as (n_basic_batches + 
+      ! n * batch_interval) or current_batch equals n_batches
+    if ((current_batch >= n_basic_batches) .and. trigger_on) then
+      if (mod((current_batch - n_basic_batches), n_batch_interval) == 0 .or. & 
+           current_batch == n_batches) then
+        
         ! Get the combined keff and compare it with trigger threshold if needed
         call calculate_combined_keff()
         ! Check the trigger and output the result
         call check_tally_triggers()
        
         ! When trigger threshold is reached, write information 
-        if(satisfy_triggers) then
+        if (satisfy_triggers) then
           message = "Trigger is satisfied for batch " &
-                 // trim(to_str(current_batch))
+               // trim(to_str(current_batch))
           call write_message()
       
         ! When trigger is not reached write information   
-        elseif(trig_dist % temp_name == CHAR_EIGENVALUE) then
+        elseif (trig_dist % temp_name == CHAR_EIGENVALUE) then
           message = "Trigger isn't reached, the max uncertainty/threshold is " &
-          // trim(to_str(trig_dist % max_ratio)) // " for " &
-          // trim(trig_dist % temp_name)
+               // trim(to_str(trig_dist % max_ratio)) // " for " &
+               // trim(trig_dist % temp_name)
           call write_message()
         elseif (trig_dist % temp_nuclide /= NO_NUCLIDE) then
-          message = "Trigger isn't reached, the max uncertainty/threshold is " &
-            // trim(to_str(trig_dist % max_ratio)) // " of " & 
-            // trim(trig_dist % temp_nuclide) // " for " &
-            // trim(trig_dist % temp_name) // " in tally " &
-            // trim(to_str(trig_dist % id))
+          message = "Trigger isn't reached, the max uncertainty/threshold is " & 
+               // trim(to_str(trig_dist % max_ratio)) // " of " & 
+               // trim(trig_dist % temp_nuclide) // " for " & 
+               // trim(trig_dist % temp_name) // " in tally " &
+               // trim(to_str(trig_dist % id))
           call write_message()
         else
-          message =  "Trigger isn't reached, the max uncertainty/threshold is " &
-          // trim(to_str(trig_dist % max_ratio)) //" for "&
-          // trim(trig_dist % temp_name) //" in tally "// trim(to_str(trig_dist % id))
+          message = "Trigger isn't reached, the max uncertainty/threshold is " &
+               // trim(to_str(trig_dist % max_ratio)) // " for " &
+               // trim(trig_dist % temp_name) // " in tally " &
+               // trim(to_str(trig_dist % id))
           call write_message()
         end if 
     
         if (satisfy_triggers .or. current_batch == n_batches) then
+           
            ! Get n_batches for state_point file
            n_batches = current_batch
-        call write_last_state_point()
+           call write_last_state_point()
+        
          ! If batch_interval is not set, then then estimate the number of 
          ! batches till tally threshold is satisfied
-        else if (no_batch_interval) then
-          n_batch_interval = int((current_batch-n_inactive)*(trig_dist%max_ratio**2)) &
-                            + n_inactive-n_basic_batches + 1
+        elseif (no_batch_interval) then
+         
+          ! Estimate the number of batch interval and batches
+          n_batch_interval = int((current_batch-n_inactive) * &
+               (trig_dist % max_ratio ** 2)) + n_inactive-n_basic_batches + 1
           n_pred_batches = n_batch_interval + n_basic_batches
-         ! If predicted number of batches to convergence is bigger than then
-         ! n_batches print it and stop. 
-          if(n_batches < n_pred_batches) then 
+         
+          
+          ! If predicted number of batches to convergence is bigger than then
+          ! n_batches print it and stop. 
+          if (n_batches < n_pred_batches) then 
             call write_last_state_point()
-            message = "The estimated number of batches is " // trim(to_str(n_pred_batches)) &
-                   // "---bigger than max batches, please reset max batches or threshold."
-            call write_message
-            call free_memory()
-#ifdef MPI
-            ! Abort MPI
-            call MPI_ABORT(MPI_COMM_WORLD, code, mpi_err)
-#endif
-            ! Abort program
-#ifdef NO_F2008
-            stop
-#else
-            error stop 
-#endif
-
+            message = "The estimated number of batches is " &
+                 // trim(to_str(n_pred_batches)) & 
+                 // "---bigger than max batches, please reset max batches."
+            call warning()
             else
-            message = "The estimated number of batches is "// trim(to_str(n_pred_batches)) &
-                   //"---check there"
+            message = "The estimated number of batches is " &
+                 // trim(to_str(n_pred_batches)) &
+                 // "---check there"
             call write_message
           end if    
         end if
@@ -335,7 +334,9 @@ contains
 !===============================================================================
      
   subroutine write_last_state_point()
-      if (master) call calculate_combined_keff()
+     
+     ! Get the combined keff
+     if (master) call calculate_combined_keff()
    
      ! Update statepoint_batch to current batch
      if (.not. statepoint_batch % contains(current_batch)) then
@@ -345,10 +346,11 @@ contains
        call write_state_point()
      end if
      
+     ! Update sourcepoint_batch to current batch
      if (.not. sourcepoint_batch % contains(current_batch)) then 
        call sourcepoint_batch % add(current_batch)
        call write_source_point()
-     else if ((sourcepoint_batch % contains(current_batch) .or. source_latest) &
+     elseif ((sourcepoint_batch % contains(current_batch) .or. source_latest) & 
           .and. source_write) then
        call write_source_point()
      end if

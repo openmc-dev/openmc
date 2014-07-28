@@ -240,7 +240,7 @@ contains
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
         if (nuc % zaid == 92238) then
-          if (E > 1.25E-1_8 .and. E < 1.35E-1_8) then
+          if (E > nuc % urr_data % energy(1) .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
             jt = jt + ONE
             xst = xst + micro_xs(i_nuclide) % total
             jf = jf + ONE

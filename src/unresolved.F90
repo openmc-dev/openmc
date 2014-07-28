@@ -185,6 +185,26 @@ module unresolved
     1.1357E+01,&
     1.1258E+01/)
 
+  real(8), parameter :: xsidg(18) = (/&
+    5.2939E-01,&
+    4.9618E-01,&
+    4.6839E-01,&
+    4.3772E-01,&
+    4.0706E-01,&
+    3.8270E-01,&
+    3.6302E-01,&
+    3.6270E-01,&
+    3.1951E-01,&
+    2.8902E-01,&
+    2.6452E-01,&
+    2.2879E-01,&
+    2.0449E-01,&
+    1.8716E-01,&
+    1.7431E-01,&
+    1.5691E-01,&
+    1.4626E-01,&
+    1.4270E-01/)
+
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -212,6 +232,7 @@ contains
     real(8) :: f      ! interpolation factor
     integer :: i_energy
     real(8) :: xsidval
+    real(8) :: xsidgval
 
 !$omp threadprivate(nuc) 
 
@@ -328,12 +349,15 @@ contains
     ! determine energy table
     i_energy = 1
     do
-      if (E < Eid(i_energy + 1)) exit
+      if (E <= Eid(i_energy + 1)) exit
       i_energy = i_energy + 1
     end do
     xsidval = xsid(i_energy) &
       & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
       & * (xsid(i_energy+1) - xsid(i_energy))
+    xsidgval = xsidg(i_energy) &
+      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+      & * (xsidg(i_energy+1) - xsidg(i_energy))
 
     ! interpret MF3 data according to ENDF self-shielding flag (LSSF)
     if (nuc % LSSF == 0) then ! MF3 contains background xs values (add to MF2
@@ -345,9 +369,12 @@ contains
       micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
     elseif (nuc % LSSF == 1) then ! MF3 contains infinite dilute xs values
                                   ! (so the calculated xs is correct, as is)
-      micro_xs(i_nuc) % total      = sig_t % val - sig_n % val
+      micro_xs(i_nuc) % total      = sig_t % val - sig_n % val - sig_gam % val
       micro_xs(i_nuc) % elastic    = sig_n % val / xsidval * micro_xs(i_nuc) % elastic
-      micro_xs(i_nuc) % total      = micro_xs(i_nuc) % total + micro_xs(i_nuc) % elastic
+      sig_gam % val = sig_gam % val / xsidgval * (micro_xs(i_nuc) % absorption &
+        - micro_xs(i_nuc) % fission)
+      micro_xs(i_nuc) % total      = micro_xs(i_nuc) % total &
+        + micro_xs(i_nuc) % elastic + sig_gam % val
       micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val
       micro_xs(i_nuc) % fission    = sig_f % val
     else
@@ -363,7 +390,7 @@ contains
       call warning()
     end if
 
-    if (E > 1.25E5_8 .and. E < 1.35E5_8) then
+    if (E > nuc%EL .and. E < nuc%EH) then
       jt = jt + ONE
       xst = xst + micro_xs(i_nuc) % total
       jf = jf + ONE

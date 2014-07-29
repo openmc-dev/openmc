@@ -162,7 +162,7 @@ contains
       ! the nuclide energy grid in order to determine which points to
       ! interpolate between
 
-      if (E <= nuc % energy(1)) then
+      if (E < nuc % energy(1)) then
         i_grid = 1
       elseif (E > nuc % energy(nuc % n_grid)) then
         i_grid = nuc % n_grid - 1
@@ -171,9 +171,15 @@ contains
           i_grid = binary_search(nuc % energy(1:nuc % i_E_last), &
                                & nuc % i_E_last, E)
         else
-          i_grid = nuc % i_E_last - 1 &
-            & + binary_search(nuc % energy(nuc % i_E_last:nuc % n_grid), &
-            & nuc % n_grid - nuc % i_E_last + 1, E)
+          if (E < nuc % energy(nuc % i_upscat)) then
+            i_grid = nuc % i_E_last - 1 &
+              & + binary_search(nuc % energy(nuc % i_E_last:nuc % i_upscat), &
+              & nuc % i_upscat - nuc % i_E_last + 1, E)
+          else
+            i_grid = nuc % i_E_last - 1 &
+              & + binary_search(nuc % energy(nuc % i_E_last:nuc % n_grid), &
+              & nuc % n_grid - nuc % i_E_last + 1, E)
+          end if
         end if
       end if
 
@@ -488,8 +494,15 @@ contains
       if (E < e_grid(i_E_last)) then
         union_grid_index = binary_search(e_grid(1:i_E_last), i_E_last, E)
       else
-        union_grid_index = i_E_last - 1 &
-          & + binary_search(e_grid(i_E_last:n_grid), n_grid - i_E_last + 1, E)
+        if (E < e_grid(i_upscat)) then
+          union_grid_index = i_E_last - 1 &
+            & + binary_search(e_grid(i_E_last:i_upscat), &
+            & i_upscat - i_E_last + 1, E)
+        else
+          union_grid_index = i_E_last - 1 &
+            & + binary_search(e_grid(i_E_last:n_grid), &
+            & n_grid - i_E_last + 1, E)
+        end if
       end if
     end if
 

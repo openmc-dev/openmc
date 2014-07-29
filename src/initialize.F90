@@ -4,7 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: unionized_grid
+  use energy_grid,      only: unionized_grid, kinematic_constraint
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
@@ -110,6 +110,9 @@ contains
         call unionized_grid()
         call time_unionize % stop()
       end if
+
+      ! Set indices for kinematic constraint on energy grid searches
+      call kinematic_constraint()
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

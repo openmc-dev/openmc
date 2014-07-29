@@ -82,6 +82,8 @@ module global
   integer :: n_grid      ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
   integer :: i_E_last    ! last evaluated energy index
+  integer :: i_upscat    ! max energy index after upscatter
+  real(8) :: max_kT      ! max kT value for the problem
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.

@@ -200,7 +200,7 @@ function zero_padded(num, n_digits) result(str)
   ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
   ! largest integer(4).
   if (n_digits > 10) then
-    message = 'int4_to_padstr called with unreasonably large n_digits (>10)'
+    message = 'zero_padded called with an unreasonably large n_digits (>10)'
     call fatal_error()
   end if
 

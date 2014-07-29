@@ -6,81 +6,89 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
+REVISION_STATEPOINT = 12
+
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
 
 score_types = {-1: 'flux',
-                -2: 'total',
-                -3: 'scatter',
-                -4: 'nu-scatter',
-                -5: 'scatter-n',
-                -6: 'scatter-pn',
-                -7: 'transport',
-                -8: 'n1n',
-                -9: 'absorption',
-                -10: 'fission',
-                -11: 'nu-fission',
-                -12: 'kappa-fission',
-                -13: 'current',
-                -14: 'events',
-                1: '(n,total)',
-                2: '(n,elastic)',
-                4: '(n,level)',
-                11: '(n,2nd)',
-                16: '(n,2n)',
-                17: '(n,3n)',
-                18: '(n,fission)',
-                19: '(n,f)',
-                20: '(n,nf)',
-                21: '(n,2nf)',
-                22: '(n,na)',
-                23: '(n,n3a)',
-                24: '(n,2na)',
-                25: '(n,3na)',
-                28: '(n,np)',
-                29: '(n,n2a)',
-                30: '(n,2n2a)',
-                32: '(n,nd)',
-                33: '(n,nt)',
-                34: '(n,nHe-3)',
-                35: '(n,nd2a)',
-                36: '(n,nt2a)',
-                37: '(n,4n)',
-                38: '(n,3nf)',
-                41: '(n,2np)',
-                42: '(n,3np)',
-                44: '(n,n2p)',
-                45: '(n,npa)',
-                91: '(n,nc)',
-                101: '(n,disappear)',
-                102: '(n,gamma)',
-                103: '(n,p)',
-                104: '(n,d)',
-                105: '(n,t)',
-                106: '(n,3He)',
-                107: '(n,a)',
-                108: '(n,2a)',
-                109: '(n,3a)',
-                111: '(n,2p)',
-                112: '(n,pa)',
-                113: '(n,t2a)',
-                114: '(n,d2a)',
-                115: '(n,pd)',
-                116: '(n,pt)',
-                117: '(n,da)',
-                201: '(n,Xn)',
-                202: '(n,Xgamma)',
-                203: '(n,Xp)',
-                204: '(n,Xd)',
-                205: '(n,Xt)',
-                206: '(n,X3He)',
-                207: '(n,Xa)',
-                444: '(damage)',
-                649: '(n,pc)',
-                699: '(n,dc)',
-                749: '(n,tc)',
-                799: '(n,3Hec)',
-                849: '(n,tc)'}
+               -2: 'total',
+               -3: 'scatter',
+               -4: 'nu-scatter',
+               -5: 'scatter-n',
+               -6: 'scatter-pn',
+               -7: 'nu-scatter-n',
+               -8: 'nu-scatter-pn',
+               -9: 'transport',
+               -10: 'n1n',
+               -11: 'absorption',
+               -12: 'fission',
+               -13: 'nu-fission',
+               -14: 'kappa-fission',
+               -15: 'current',
+               -16: 'flux-yn',
+               -17: 'total-yn',
+               -18: 'scatter-yn',
+               -19: 'nu-scatter-yn',
+               -20: 'events',
+               1: '(n,total)',
+               2: '(n,elastic)',
+               4: '(n,level)',
+               11: '(n,2nd)',
+               16: '(n,2n)',
+               17: '(n,3n)',
+               18: '(n,fission)',
+               19: '(n,f)',
+               20: '(n,nf)',
+               21: '(n,2nf)',
+               22: '(n,na)',
+               23: '(n,n3a)',
+               24: '(n,2na)',
+               25: '(n,3na)',
+               28: '(n,np)',
+               29: '(n,n2a)',
+               30: '(n,2n2a)',
+               32: '(n,nd)',
+               33: '(n,nt)',
+               34: '(n,nHe-3)',
+               35: '(n,nd2a)',
+               36: '(n,nt2a)',
+               37: '(n,4n)',
+               38: '(n,3nf)',
+               41: '(n,2np)',
+               42: '(n,3np)',
+               44: '(n,n2p)',
+               45: '(n,npa)',
+               91: '(n,nc)',
+               101: '(n,disappear)',
+               102: '(n,gamma)',
+               103: '(n,p)',
+               104: '(n,d)',
+               105: '(n,t)',
+               106: '(n,3He)',
+               107: '(n,a)',
+               108: '(n,2a)',
+               109: '(n,3a)',
+               111: '(n,2p)',
+               112: '(n,pa)',
+               113: '(n,t2a)',
+               114: '(n,d2a)',
+               115: '(n,pd)',
+               116: '(n,pt)',
+               117: '(n,da)',
+               201: '(n,Xn)',
+               202: '(n,Xgamma)',
+               203: '(n,Xp)',
+               204: '(n,Xd)',
+               205: '(n,Xt)',
+               206: '(n,X3He)',
+               207: '(n,Xa)',
+               444: '(damage)',
+               649: '(n,pc)',
+               699: '(n,dc)',
+               749: '(n,tc)',
+               799: '(n,3Hec)',
+               849: '(n,tc)'}
 score_types.update({MT: '(n,n' + str(MT-50) + ')' for MT in range(51,91)})
 score_types.update({MT: '(n,p' + str(MT-600) + ')' for MT in range(600,649)})
 score_types.update({MT: '(n,d' + str(MT-650) + ')' for MT in range(650,699)})
@@ -151,7 +159,7 @@ class StatePoint(object):
 
         # Read statepoint revision
         self.revision = self._get_int(path='revision')[0]
-        if self.revision != 11:
+        if self.revision != REVISION_STATEPOINT:
           raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
@@ -287,7 +295,7 @@ class StatePoint(object):
             t.n_scores = self._get_int(path=base+'n_score_bins')[0]
             t.scores = [score_types[j] for j in self._get_int(
                     t.n_scores, path=base+'score_bins')]
-            t.scatt_order = self._get_int(t.n_scores, path=base+'scatt_order')
+            t.moment_order = self._get_int(t.n_scores, path=base+'moment_order')
 
             # Read number of user score bins
             t.n_user_scores = self._get_int(path=base+'n_user_score_bins')[0]
@@ -301,7 +309,7 @@ class StatePoint(object):
         # Source bank present
         source_present = self._get_int(path='source_present')[0]
         if source_present == 1:
-            self.source_present = True       
+            self.source_present = True
         else:
             self.source_present = False
 

@@ -20,7 +20,6 @@
   </material>
 
   <material id="2">
-    <!--<density value="1.5" units="g/cc" />-->
     <distributed_density> 
       <values>
        1.5

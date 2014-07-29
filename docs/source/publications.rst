@@ -28,23 +28,25 @@ Publications
 - Paul K. Romano, Benoit Forget, Kord Smith, and Andrew Siegel, "On the use of
   tally servers in Monte Carlo simulations of light-water reactors,"
   *Proc. Joint International Conference on Supercomputing in Nuclear
-  Applications and Monte Carlo*, Paris, France, Oct. 27--31 (2013).
+  Applications and Monte Carlo*, Paris, France, Oct. 27--31
+  (2013). `<http://dx.doi.org/10.1051/snamc/201404301>`_
 
 - Paul K. Romano, Nicholas E. Horelik, Bryan R. Herman, Adam G. Nelson, Benoit
   Forget, and Kord Smith, "OpenMC: A State-of-the-Art Monte Carlo Code for
   Research and Development," *Proc. Joint International Conference on
   Supercomputing in Nuclear Applications and Monte Carlo*, Paris, France,
-  Oct. 27--31 (2013).
+  Oct. 27--31 (2013). `<http://dx.doi.org/10.1051/snamc/201406016>`_
 
 - Kyle G. Felker, Andrew R. Siegel, Kord S. Smith, Paul K. Romano, and Benoit
   Forget, "The energy band memory server algorithm for parallel Monte Carlo
   calculations," *Proc. Joint International Conference on Supercomputing in
-  Nuclear Applications and Monte Carlo*, Paris, France, Oct. 27--31 (2013).
+  Nuclear Applications and Monte Carlo*, Paris, France, Oct. 27--31
+  (2013). `<http://dx.doi.org/10.1051/snamc/201404207>`_
 
 - John R. Tramm and Andrew R. Siegel, "Memory Bottlenecks and Memory Contention
   in Multi-Core Monte Carlo Transport Codes," *Proc. Joint International
   Conference on Supercomputing in Nuclear Applications and Monte Carlo*, Paris,
-  France, Oct. 27--31 (2013).
+  France, Oct. 27--31 (2013). `<http://dx.doi.org/10.1051/snamc/201404208>`_
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "Multi-core performance studies of a Monte Carlo neutron transport code,"

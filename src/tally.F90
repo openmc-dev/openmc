@@ -2550,7 +2550,7 @@ contains
                   temp_trig(l, n) = temp_real(l, n) % std_dev
                 end select
         
-                if (temp_trig(l, n)>t % score(1) % threshold) then
+                if (temp_trig(l, n) > t % score(1) % threshold) then
                   satisfy_triggers = .false.
                   temp_ratio = temp_trig(l, n)/t % score(1) % threshold
                   if (trig_dist % max_ratio < temp_ratio) then
@@ -2569,7 +2569,7 @@ contains
         deallocate (temp_nuclide_name)
         deallocate (temp_t % results)
       end do TALLY_LOOP
-   end if    
+    end if    
  end subroutine check_tally_triggers
 
 !===============================================================================

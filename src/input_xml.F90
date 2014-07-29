@@ -2721,6 +2721,7 @@ contains
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
+            t % find_score(SCORE_EVENTS) = l
 
           case default
             ! Assume that user has specified an MT number
@@ -2919,6 +2920,9 @@ contains
            
             case ('current')
               t % score(trig_ind) % position = t % find_score(SCORE_CURRENT)
+              
+            case ('events')
+              t % score(trig_ind) % position = t % find_score(SCORE_EVENTS)
             end select
          
             if (.not. t % trigger_for_all .and. t % score(trig_ind) % position & 

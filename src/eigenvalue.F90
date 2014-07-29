@@ -20,7 +20,7 @@ module eigenvalue
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result,check_tally_triggers
+                          reset_result, check_tally_triggers
   use tracking,     only: transport
 
   private
@@ -256,7 +256,7 @@ contains
       ! 1. current_batch is not smaller than n_basic_batches
       ! 2. trigger_on equals true
       ! 3. current_batch can be expressed as (n_basic_batches + 
-      ! n * batch_interval) or current_batch equals n_batches
+      !    n * batch_interval) or current_batch equals n_batches
     if ((current_batch >= n_basic_batches) .and. trigger_on) then
       if (mod((current_batch - n_basic_batches), n_batch_interval) == 0 .or. & 
            current_batch == n_batches) then
@@ -336,7 +336,7 @@ contains
   subroutine write_last_state_point()
      
      ! Get the combined keff
-     if (master) call calculate_combined_keff()
+     call calculate_combined_keff()
    
      ! Update statepoint_batch to current batch
      if (.not. statepoint_batch % contains(current_batch)) then

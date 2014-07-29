@@ -303,7 +303,7 @@ module constants
                                     ! combined with N_SCORE_MAX 
        N_SCORE_MAX         =  60    ! This is the index used to find 
                                     ! in which scores trigger is applied,
-                                    ! combined with N_SCORE_MINIMUM 
+                                    ! combined with N_SCORE_MIN 
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

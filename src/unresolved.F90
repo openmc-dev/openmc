@@ -422,6 +422,10 @@ contains
       micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
     elseif (nuc % LSSF == 1) then ! MF3 contains evaluator-supplied infinite
                                   ! dilute xs values
+      inelastic_val = micro_xs(i_nuc) % total &
+        & - micro_xs(i_nuc) % absorption &
+        & - micro_xs(i_nuc) % elastic
+
       micro_xs(i_nuc) % elastic = sig_n % val / xsidnval &
         & * micro_xs(i_nuc) % elastic
 
@@ -435,18 +439,17 @@ contains
       capture_val = sig_gam % val / xsidgval &
         & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
 
-      if (xsidxval > ZERO) then
-        rxn => nuc % reactions(nuc % urr_inelastic)
-        i_energy = micro_xs(i_nuc) % index_grid
-        f = micro_xs(i_nuc) % interp_factor
-        if (i_energy >= rxn % threshold) then
-          inelastic_val = sig_x % val / xsidxval &
-            & * ((ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
-            f * rxn % sigma(i_energy - rxn%threshold + 2))
-        end if
-      else
-        inelastic_val = ZERO
-      end if
+!      if (xsidxval > ZERO) then
+!        rxn => nuc % reactions(nuc % urr_inelastic)
+!        i_energy = micro_xs(i_nuc) % index_grid
+!        f = micro_xs(i_nuc) % interp_factor
+!        inelastic_val = sig_x % val / xsidxval &
+!          & * ((ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+!          f * rxn % sigma(i_energy - rxn%threshold + 2))
+!        inelastic_val = sig_x % val
+!      else
+!        inelastic_val = ZERO
+!      end if
 
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_val
 
@@ -467,7 +470,7 @@ contains
       call warning()
     end if
 
-    if (E > nuc%EL .and. E < nuc%EH) then
+    if (E > 7.25e4_8 .and. E < 7.75e4_8) then
       jt = jt + ONE
       xst = xst + micro_xs(i_nuc) % total
       jf = jf + ONE

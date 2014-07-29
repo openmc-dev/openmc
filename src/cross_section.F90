@@ -240,7 +240,7 @@ contains
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
         if (nuc % zaid == 92238) then
-          if (E > nuc % urr_data % energy(1) .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+          if (E > 7.25e-2_8 .and. E < 7.75e-2_8) then
             jt = jt + ONE
             xst = xst + micro_xs(i_nuclide) % total
             jf = jf + ONE
@@ -253,7 +253,7 @@ contains
             xsx = xsx + micro_xs(i_nuclide) % total &
               & - micro_xs(i_nuclide) % elastic &
               & - micro_xs(i_nuclide) % absorption
-!            write(*,'(ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') xst/jt,xsf/jf,xsn/jn,&
+!            write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsf/jf,xsn/jn,&
 !              & xsg/jg,xsx/jx
           end if
         end if

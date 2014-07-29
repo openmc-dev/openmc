@@ -5,6 +5,8 @@ module endf_reader
   use global
   use output,     only: write_message
 
+  implicit none
+
   integer :: in = 11     ! input unit
 
 contains
@@ -23,6 +25,7 @@ contains
     integer       :: MAT         ! MAT material #
     integer       :: MF          ! MF file number
     integer       :: MT          ! MT type number
+    integer       :: NS          ! line #
 
     inquire(file = trim(path_endf)//trim(filename), &
       & exist = file_exists, read = readable)
@@ -191,6 +194,9 @@ contains
   subroutine print_shit(i_nuc)
 
     integer :: i_nuc
+    integer :: iL
+    integer :: iJ
+    integer :: iE
     type(Nuclide), pointer :: nuc => null()
 
     nuc => nuclides(i_nuc)

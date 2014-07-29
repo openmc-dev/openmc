@@ -319,8 +319,7 @@ contains
             call warning()
             else
             message = "The estimated number of batches is " &
-                 // trim(to_str(n_pred_batches)) &
-                 // "---check there"
+                 // trim(to_str(n_pred_batches)) 
             call write_message
           end if    
         end if

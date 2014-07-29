@@ -276,7 +276,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20  
+  integer, parameter :: N_SCORE_TYPES = 20
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate

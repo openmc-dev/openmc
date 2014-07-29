@@ -1321,7 +1321,10 @@ contains
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
     integer :: k             ! loop index for compositions
+    integer :: l             ! loop index for post expansion nuclides
     integer :: n             ! number of nuclides
+    integer :: n_nuclide     ! number of nuclides entered
+    integer :: n_element     ! number of elements entered
     integer :: n_comp        ! number of compositions
     integer :: n_sab         ! number of sab tables for a material
     integer :: index_list    ! index in xs_listings array
@@ -1340,6 +1343,9 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
+    type(ListChar) :: ele_names    ! temporary list of nuclide names
+    type(ListChar) :: comp_names   ! temporary list of nuclide names
+    type(ListReal) :: comp_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -1392,6 +1398,8 @@ contains
       ! set default values
       mat % cell = 0
       mat % map = 0
+      n_nuclide = 0
+      n_element = 0
 
       ! Get pointer to i-th material node
       call get_list_item(node_mat_list, i, node_mat)
@@ -1462,10 +1470,8 @@ contains
           mat % density % density = mat % density % density
         case ('atom/cm3', 'atom/cc')
           mat % density % density = 1.0e-24 * mat % density % density
-        case ('sum')
-          message = "Units = 'sum' not permitted on distributed material " &
-               // trim(to_str(mat % id))
-          call fatal_error()
+        case ('sum')          
+          sum_density = .true.
         case default
           message = "Unknown units '" // trim(units) &
                // "' specified on distributed material " &
@@ -1528,7 +1534,7 @@ contains
           case ('atom/cm3', 'atom/cc')
             mat % density % density(1) = 1.0e-24 * val
           case default
-            message = "Unkwown units '" // trim(units) &
+            message = "Unknown units '" // trim(units) &
                  // "' specified on material " // trim(to_str(mat % id))
             call fatal_error()
           end select
@@ -1550,10 +1556,33 @@ contains
         ! Get pointer to composition node
         call get_node_ptr(node_mat, "compositions", node_comp)
 
-        if (.not. check_for_node(node_comp, "nuclide")) then
-          message = "No nuclides specified on distributed composition. " &
-                    // "Natural elements not yet supported. Material " &
-                    // trim(to_str(mat % id))
+        ! Get units
+        call get_node_value(node_comp, "units", units)
+
+        call lower_case(units)
+        units = trim(units)
+        if (units == "wo") then
+          if (check_for_node(node_comp, "element")) then
+            message = "The ability to expand a natural element based on weight &
+                 &percentage is not yet supported."
+            call fatal_error()
+          end if
+        else if (units == "ao") then
+          ! Do nothing here
+        else
+          message = "Unknown units '" // trim(units) &
+               // "' specified on material " // trim(to_str(mat % id))
+          call fatal_error()
+        end if
+        
+        ! =======================================================================
+        ! READ AND PARSE <nuclide> TAGS
+
+        ! Check to ensure material has at least one nuclide
+        if (.not. check_for_node(node_comp, "nuclide") .and. &
+             .not. check_for_node(node_comp, "element")) then
+          message = "No nuclides or natural elements specified on material " // &
+               trim(to_str(mat % id))
           call fatal_error()
         end if
 
@@ -1561,6 +1590,8 @@ contains
         call get_node_list(node_comp, "nuclide", node_nuc_list)
 
         n = get_list_size(node_nuc_list)
+        n_nuclide = n
+        
         ! Create list of nuclides based on those specified plus natural elements
         COMPOSITION_NUCLIDES: do j = 1, n
           ! Combine nuclide identifier and cross section and copy into names
@@ -1592,22 +1623,64 @@ contains
 
           ! save name and density to list
           call list_names % append(name)        
-
+          
         end do COMPOSITION_NUCLIDES
+        
+        ! =======================================================================
+        ! READ AND PARSE <element> TAGS
 
+        ! Get pointer list of XML <element>
+        call get_node_list(node_comp, "element", node_ele_list)
+        
+        n = get_list_size(node_ele_list)
+        n_element = n
+        
+        COMPOSITION_ELEMENTS: do j = 1, n
+          call get_list_item(node_ele_list, j, node_ele)
+
+          ! Check for empty name on natural element
+          if (.not.check_for_node(node_ele, "name")) then
+            message = "No name specified on nuclide in material " // &
+                 trim(to_str(mat % id))
+            call fatal_error()
+          end if
+          call get_node_value(node_ele, "name", name)
+
+          ! Check for cross section
+          if (check_for_node(node_ele, "xs")) then
+            call get_node_value(node_ele, "xs", temp_str)
+          else
+            if (default_xs == '') then
+              message = "No cross section specified for nuclide in material " &
+                   // trim(to_str(mat % id))
+              call fatal_error()
+            else
+              temp_str = trim(default_xs)
+            end if
+          end if
+
+          ! maintain a list of expanded elements
+          call ele_names % append(name)
+          
+          ! Expand element into naturally-occurring isotopes
+          call expand_natural_element(name, temp_str, 1.0_8, &
+               list_names, list_density)
+               
+        end do COMPOSITION_ELEMENTS
+        
         ! Verify that the input matches the number of nuclides
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
-        mat % n_comp = n_comp / n
-        if (mod(n_comp,n) /= 0) then
+        mat % n_comp = n_comp / (n_nuclide + n_element)
+        if (mod(n_comp,n_nuclide + n_element) /= 0) then
           message = "Number of composition values not divisible by " // &
-                    "number of nuclides." // &
+                    "number of nuclides + elements." // &
                     trim(to_str(mat % id))
           call fatal_error()
         end if
 
         ! Store the number of actual compositions in the input
-        mat % n_comp = n_comp / n
+        mat % n_comp = n_comp / (n_nuclide + n_element)
 
         allocate(temp_real_array(n_comp))
         call get_node_array(node_comp, "values", temp_real_array)
@@ -1615,15 +1688,80 @@ contains
         ! Allocate distribution vectors
         allocate(mat % comp(mat % n_comp))
         do j = 1, mat % n_comp
-          allocate(mat % comp(j) % atom_density(n))
+          allocate(mat % comp(j) % atom_density(list_names % size()))
         end do
-
+        
         ! Write composition values
         do j = 1, mat % n_comp
-          do k = 1, n
-            mat % comp(j) % atom_density(k) = temp_real_array(k + (j - 1) * n)
+          do k = 1, n_nuclide + n_element
+          
+            ! Set index in array of composition values
+            temp_dble = temp_real_array(k + (j - 1) * (n_nuclide + n_element))
+            
+            if (k <= n_nuclide) then
+              ! nuclide, normal handling
+              mat % comp(j) % atom_density(k) = temp_dble
+            else
+              ! element, need to expand it
+              ! clear temp lists
+              call comp_names % clear()
+              call comp_density % clear()
+              ! need to get expansion with current composition density
+              call expand_natural_element(ele_names % get_item(k - n_nuclide), & 
+                    "", temp_dble, comp_names, comp_density)
+              ! loop over this element's isotopes
+              do l = 0, comp_names % size() - 1
+                ! store the current isotope to the correct index
+                mat % comp(j) % atom_density(k + l) = &
+                      comp_density % get_item(l+1)
+              end do
+            end if
           end do
         end do
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       else
         ! NOT USING DISTRIBUTED COMPOSITIONS

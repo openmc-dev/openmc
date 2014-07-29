@@ -7,6 +7,7 @@
   <material id="1">
     <density value="4.5" units="g/cc" /> 
     <compositions>
+      <units>ao</units>
       <nuclide name="U-235" xs="71c"/>   
       <nuclide name="U-238" xs="71c"/> 
       <values>

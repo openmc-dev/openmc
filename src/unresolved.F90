@@ -1,6 +1,6 @@
 module unresolved
 
-  use ace_header,   only: Nuclide
+  use ace_header,   only: Nuclide, Reaction
   use constants,    only: ZERO, ONE, SQRT_PI, TWO, THREE, PI, FOUR, C_1, &
                           K_BOLTZMANN
   use error,        only: fatal_error, warning
@@ -165,7 +165,7 @@ module unresolved
     1.400000E+5,&
     1.490288E+5/)
 
-  real(8), parameter :: xsid(18) = (/&
+  real(8), parameter :: xsidn(18) = (/&
     1.3796E+01,&
     1.3643E+01,&
     1.3517E+01,&
@@ -184,6 +184,26 @@ module unresolved
     1.1596E+01,&
     1.1357E+01,&
     1.1258E+01/)
+
+  real(8), parameter :: xsidf(18) = (/&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO,&
+    ZERO/)
 
   real(8), parameter :: xsidg(18) = (/&
     5.2939E-01,&
@@ -205,6 +225,26 @@ module unresolved
     1.4626E-01,&
     1.4270E-01/)
 
+  real(8), parameter :: xsidx(18) = (/&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    0.0000E+00,&
+    7.8649E-02,&
+    1.4429E-01,&
+    2.0994E-01,&
+    3.0452E-01,&
+    3.6843E-01,&
+    4.3122E-01,&
+    4.9409E-01,&
+    6.1918E-01,&
+    7.3973E-01,&
+    7.9105E-01/)
+
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -222,6 +262,7 @@ contains
     type(CrossSection) :: sig_gam ! radiative capture xs object
     type(CrossSection) :: sig_f   ! fission xs object
     type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    type(Reaction), pointer, save :: rxn => null()
     integer :: i_nuc  ! nuclide index
     real(8) :: E      ! neutron energy [eV]
     integer :: i_E    ! energy grid index
@@ -231,8 +272,12 @@ contains
     integer :: i_r    ! resonance index
     real(8) :: f      ! interpolation factor
     integer :: i_energy
-    real(8) :: xsidval
+    real(8) :: xsidnval
+    real(8) :: xsidfval
     real(8) :: xsidgval
+    real(8) :: xsidxval
+    real(8) :: inelastic_val
+    real(8) :: capture_val
 
 !$omp threadprivate(nuc) 
 
@@ -352,31 +397,63 @@ contains
       if (E <= Eid(i_energy + 1)) exit
       i_energy = i_energy + 1
     end do
-    xsidval = xsid(i_energy) &
+    xsidnval = xsidn(i_energy) &
       & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
-      & * (xsid(i_energy+1) - xsid(i_energy))
+      & * (xsidn(i_energy+1) - xsidn(i_energy))
+    xsidfval = xsidf(i_energy) &
+      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+      & * (xsidf(i_energy+1) - xsidf(i_energy))
     xsidgval = xsidg(i_energy) &
       & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
       & * (xsidg(i_energy+1) - xsidg(i_energy))
+    xsidxval = xsidx(i_energy) &
+      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+      & * (xsidx(i_energy+1) - xsidx(i_energy))
 
     ! interpret MF3 data according to ENDF self-shielding flag (LSSF)
     if (nuc % LSSF == 0) then ! MF3 contains background xs values (add to MF2
                               ! contributions)
+      message = 'you got here'
+      call fatal_error()
       micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
       micro_xs(i_nuc) % elastic    = sig_n % val + micro_xs(i_nuc) % elastic
       micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val &
                                  & + micro_xs(i_nuc) % absorption
       micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
-    elseif (nuc % LSSF == 1) then ! MF3 contains infinite dilute xs values
-                                  ! (so the calculated xs is correct, as is)
-      micro_xs(i_nuc) % total      = sig_t % val - sig_n % val - sig_gam % val
-      micro_xs(i_nuc) % elastic    = sig_n % val / xsidval * micro_xs(i_nuc) % elastic
-      sig_gam % val = sig_gam % val / xsidgval * (micro_xs(i_nuc) % absorption &
-        - micro_xs(i_nuc) % fission)
-      micro_xs(i_nuc) % total      = micro_xs(i_nuc) % total &
-        + micro_xs(i_nuc) % elastic + sig_gam % val
-      micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val
-      micro_xs(i_nuc) % fission    = sig_f % val
+    elseif (nuc % LSSF == 1) then ! MF3 contains evaluator-supplied infinite
+                                  ! dilute xs values
+      micro_xs(i_nuc) % elastic = sig_n % val / xsidnval &
+        & * micro_xs(i_nuc) % elastic
+
+      if (xsidfval > ZERO) then
+        micro_xs(i_nuc) % fission = sig_f % val / xsidfval &
+          & * micro_xs(i_nuc) % fission
+      else
+        micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
+      end if
+
+      capture_val = sig_gam % val / xsidgval &
+        & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
+
+      if (xsidxval > ZERO) then
+        rxn => nuc % reactions(nuc % urr_inelastic)
+        i_energy = micro_xs(i_nuc) % index_grid
+        f = micro_xs(i_nuc) % interp_factor
+        if (i_energy >= rxn % threshold) then
+          inelastic_val = sig_x % val / xsidxval &
+            & * ((ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+            f * rxn % sigma(i_energy - rxn%threshold + 2))
+        end if
+      else
+        inelastic_val = ZERO
+      end if
+
+      micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_val
+
+      micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
+        & + micro_xs(i_nuc) % absorption &
+        & + inelastic_val
+
     else
       message = 'Self-shielding flag (LSSF) not allowed - must be 0 or 1.'
       call fatal_error()
@@ -546,8 +623,8 @@ contains
 
     ! sample indices into table of equiprobable chi-squared function values
     i_tabn = ceiling(prn() * 20.0_8)
-    i_tabg = ceiling(prn() * 20.0_8)
     i_tabf = ceiling(prn() * 20.0_8)
+    i_tabg = ceiling(prn() * 20.0_8)
     i_tabx = ceiling(prn() * 20.0_8)
 
     ! compute factors needed to go from the mean reduced width amplitude that is
@@ -557,26 +634,36 @@ contains
 
     ! use the sampled tabulated chi-squared values to calculate sample widths
     ! neutron width
-    this % Gam_n   = nuc % GN0 * sqrt(this % E_lam) * nu &
-      & * chi2(i_tabn, nuc % AMUN)
-    if (nuc % AMUN > 0) this % Gam_n = this % Gam_n / dble(nuc % AMUN)
-
-    ! constant radiative width
-    ! (many channels -> many degrees of freedom -> Dirac delta)
-    this % Gam_gam = nuc % GG
+    if (nuc % AMUN > 0) then
+      this % Gam_n = nuc % GN0 * sqrt(this % E_lam) * nu &
+        & * chi2(i_tabn, nuc % AMUN)
+      this % Gam_n = this % Gam_n / dble(nuc % AMUN)
+    else
+      this % Gam_n = ZERO
+    end if
 
     ! fission width
     if (nuc % AMUF > 0) then
       this % Gam_f = nuc % GF  * chi2(i_tabf, nuc % AMUF)
       this % Gam_f = this % Gam_f / dble(nuc % AMUF)
+    else 
+      this % Gam_f = ZERO
     end if
 
+    ! constant radiative width
+    ! (many channels -> many degrees of freedom -> Dirac delta)
+    this % Gam_gam = nuc % GG
+
     ! competitive width
-    this % Gam_x = nuc % GX  * chi2(i_tabx, nuc % AMUX)
-    if (nuc % AMUX > 0) this % Gam_x = this % Gam_x / dble(nuc % AMUX)
+    if (nuc % AMUX > 0) then
+      this % Gam_x = nuc % GX  * chi2(i_tabx, nuc % AMUX)
+      this % Gam_x = this % Gam_x / dble(nuc % AMUX)
+    else
+      this % Gam_x = ZERO
+    end if
 
     ! total width (sum of partials)
-    this % Gam_t = this % Gam_n + this % Gam_gam + this % Gam_f + this % Gam_x
+    this % Gam_t = this % Gam_n + this % Gam_f + this % Gam_gam + this % Gam_x
 
   end subroutine channel_width
 
@@ -681,12 +768,33 @@ contains
 ! TODO: Compute competitive xs contribution correctly
 
     ! this particular form comes from the NJOY2012 manual
-    this % dsig_n   = sig_lam * &
-      & ((cos(TWO * phase_shift(L, k_n*AP)) - (ONE - Gam_n_n / Gam_t_n)) &
-      & * psi(theta, x) + sin(TWO * phase_shift(L, k_n*AP)) * chi(theta, x))
-    this % dsig_gam = sig_lam * Gam_gam / Gam_t_n * psi(theta, x)
-    this % dsig_f   = sig_lam * Gam_f   / Gam_t_n * psi(theta, x)
-    this % dsig_x   = sig_lam * Gam_x   / Gam_t_n * psi(theta, x)
+    if (Gam_n_n > ZERO) then
+      this % dsig_n = sig_lam * &
+        & ((cos(TWO * phase_shift(L, k_n*AP)) - (ONE - Gam_n_n / Gam_t_n)) &
+        & * psi(theta, x) + sin(TWO * phase_shift(L, k_n*AP)) * chi(theta, x))
+    else
+      message = 'Encountered a non-positive elastic scattering width in the URR'
+      call fatal_error()
+    end if
+
+    if (Gam_gam > ZERO) then
+      this % dsig_gam = sig_lam * Gam_gam / Gam_t_n * psi(theta, x)
+    else
+      this % dsig_gam = ZERO
+    end if
+
+    if (Gam_f > ZERO) then
+      this % dsig_f   = sig_lam * Gam_f   / Gam_t_n * psi(theta, x)
+    else
+      this % dsig_f   = ZERO
+    end if
+
+    if (Gam_x > ZERO) then
+      this % dsig_x   = sig_lam * Gam_x   / Gam_t_n * psi(theta, x)
+    else
+      this % dsig_x   = ZERO
+    end if
+
     this % dsig_t = this % dsig_n   &
                 & + this % dsig_gam &
                 & + this % dsig_f   &
@@ -847,15 +955,15 @@ contains
 ! TODO: Allow option of using different Faddeeva evaluations?
 
     ! call S.G. Johnson's Faddeeva evaluation
-!    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
 
     ! compute psi
-!    psi_val = SQRT_PI / TWO * theta &
-!      & * real(real(w_val, 8), 8)
+    psi_val = SQRT_PI / TWO * theta &
+      & * real(real(w_val, 8), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-    psi_val = SQRT_PI / TWO * theta &
-      & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
+!    psi_val = SQRT_PI / TWO * theta &
+!      & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
 
   end function psi
 
@@ -878,15 +986,15 @@ contains
 ! TODO: Allow option of using different Faddeeva evaluations?
 
     ! call S.G. Johnson's Faddeeva evaluation
-!    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
 
     ! compute chi
-!    chi_val = SQRT_PI / TWO * theta &
-!      & * real(aimag(w_val), 8)
+    chi_val = SQRT_PI / TWO * theta &
+      & * real(aimag(w_val), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-    chi_val = SQRT_PI / TWO * theta &
-      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+!    chi_val = SQRT_PI / TWO * theta &
+!      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
 
   end function chi
 
@@ -973,10 +1081,6 @@ contains
 
     ! add the potential scattering xs to this xs
     this % val = this % val + sig_pot
-
-!    jpot = jpot + ONE
-!    xspot = xspot + sig_pot
-!    write(*,'(ES10.3)') xspot/jpot
 
   end subroutine pot_scatter_xs
 

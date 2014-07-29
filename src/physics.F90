@@ -363,9 +363,11 @@ contains
       i = 1
       do while (prob < cutoff)
 
-        if (p%E>nuc%EL/1.0E6 .and. p%E<nuc%EH/1.0E6) then
-          rxn => nuc % reactions(nuc % urr_inelastic)
-          exit
+        if (nuc % zaid == 92238) then
+          if (p%E>nuc%EL/1.0E6_8 .and. p%E<nuc%EH/1.0E6_8) then
+            rxn => nuc % reactions(nuc % urr_inelastic)
+            exit
+          end if
         end if
 
         i = i + 1
@@ -374,7 +376,7 @@ contains
         if (i > nuc % n_reaction) then
           call write_particle_restart(p)
           message = "Did not sample any reaction for nuclide " // &
-               trim(nuc % name)
+            trim(nuc % name)
           call fatal_error()
         end if
 

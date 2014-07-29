@@ -91,7 +91,7 @@ contains
         call finalize_generation()
 
       end do GENERATION_LOOP
-      
+
       call finalize_batch()
       
       ! Check batches to find whether to compare the result with trigger, check 
@@ -240,7 +240,7 @@ contains
       ! batch in case no state point is written
       call calculate_combined_keff()
     end if
-    
+
   end subroutine finalize_batch
   
 !===============================================================================

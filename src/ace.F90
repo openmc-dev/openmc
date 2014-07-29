@@ -367,8 +367,6 @@ contains
     NE = NXS(3)
     nuc % n_grid = NE
 
-    nuc % i_E_last = nuc % n_grid
-
     ! allocate storage for energy grid and cross section arrays
     allocate(nuc % energy(NE))
     allocate(nuc % total(NE))

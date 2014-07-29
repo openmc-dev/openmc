@@ -177,20 +177,20 @@ contains
 
     class(Particle) :: this
     integer, intent(in) :: n_maps
-    
+
     integer :: i
     type(LocalCoord), pointer, save :: coord => null()
-    
+
     if (.not. allocated(this % mapping)) then
       allocate(this % mapping(n_maps))
     end if
-    
+
     do i = 1, n_maps    
       this % mapping(i) = 1      
     end do
-    
+
     coord => this % coord0
-    
+
     do while(associated(coord))    
       if (allocated(coord % mapping)) then       
         ! The last map should always be 1, so we don't touch it here 

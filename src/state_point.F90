@@ -140,7 +140,7 @@ contains
       call sp % write_data(n_lattices, "n_lattices", group="geometry")
       call sp % write_data(n_surfaces, "n_surfaces", group="geometry")
       call sp % write_data(n_materials, "n_materials", group="geometry")
-      
+
       if (n_lattices > 0) then
         ! Print list of lattice IDs
         allocate(temp_array(n_lattices))
@@ -337,7 +337,7 @@ contains
         else
           n_z = 1
         end if
-          
+
         ! Write lattice universes
         allocate(lattice_universes(n_x, n_y, n_z))
         do j = 1, n_x
@@ -370,14 +370,14 @@ contains
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
         call sp % write_data(s % bc, "bc", &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
-        
+
         call sp % write_data(size(s % coeffs), "n_coeffs", &
              group="geometry/surfaces/surface " // trim(to_str(s % id)))
         if (size(s % coeffs) > 0) then
           call sp % write_data(s % coeffs, "coeffs", length=size(s % coeffs), &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
         end if
-        
+
         if (allocated(s % neighbor_pos)) then
           call sp % write_data(size(s % neighbor_pos), "n_neighbor_pos", &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
@@ -389,7 +389,7 @@ contains
           call sp % write_data(j, "n_neighbor_pos", &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
         endif
-        
+
         if (allocated(s % neighbor_neg)) then
           call sp % write_data(size(s % neighbor_neg), "n_neighbor_neg", &
                group="geometry/surfaces/surface " // trim(to_str(s % id)))
@@ -502,16 +502,16 @@ contains
 
         ! Write id
         call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
-        
+
         ! Write label                       
         call sp % write_data(len(t % label), "labellen", group="tallies/tally" // to_str(i))
         if (len(t % label) > 0) then
           call sp % write_data(t % label, "label", group="tallies/tally" // to_str(i))
         endif
-        
+
         ! Write estimator type                                                                      
         call sp % write_data(t % estimator, "estimator", group="tallies/tally" // to_str(i))
-        
+
         ! Write number of realizations
         call sp % write_data(t % n_realizations, "n_realizations", &
              group="tallies/tally" // to_str(i))
@@ -1092,7 +1092,6 @@ contains
     ! =========================================================================
     ! READ INFORMATION ON LATTICES
 
-
     ! Read information on each lattice
     LATTICE_LOOP: do i = 1, n_lat
 
@@ -1101,7 +1100,7 @@ contains
            group="geometry/lattices/lattice ")
       
       ! Read lattice dimensions, number of offset maps, and offsets
-      
+
       call sp % read_data(int_array, "dimension", &
            length=3, &
            group="geometry/lattices/lattice ")
@@ -1120,7 +1119,7 @@ contains
       end if
 
       ! Determine dimensions of lattice
-        
+
       ! Read lattice universes
       allocate(temp_array3D(int_array(1), int_array(2), int_array(3)))
       call sp % read_data(temp_array3D, "universes", &

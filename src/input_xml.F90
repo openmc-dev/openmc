@@ -1433,11 +1433,11 @@ contains
           call load_depletion_isotopes()
           depletion = .true.
         end if
-        
+
         ! Add the depletion isotopes to this list
         ! TODO
       end if
-      
+
       ! Check for distributed densities
       if (check_for_node(node_mat, "distributed_density")) then
 
@@ -1478,13 +1478,13 @@ contains
                // trim(to_str(mat % id))
           call fatal_error()
         end select
-        
+
       else
         ! Not using distributed densities
         allocate(mat % density % density(1))
         mat % distrib_dens = .false.
         mat % density % num = 1
-      
+
         ! =======================================================================
         ! READ AND PARSE <density> TAG
 
@@ -1545,7 +1545,7 @@ contains
       ! Check for distributed compositions
       if (check_for_node(node_mat, "compositions")) then
         mat % distrib_comp = .true.
-        
+
         ! Enforce only composition is distributed
         if (mat % distrib_dens) then
           message = "Material " // trim(to_str(mat % id)) // &
@@ -1574,7 +1574,7 @@ contains
                // "' specified on material " // trim(to_str(mat % id))
           call fatal_error()
         end if
-        
+
         ! =======================================================================
         ! READ AND PARSE <nuclide> TAGS
 
@@ -1591,7 +1591,7 @@ contains
 
         n = get_list_size(node_nuc_list)
         n_nuclide = n
-        
+
         ! Create list of nuclides based on those specified plus natural elements
         COMPOSITION_NUCLIDES: do j = 1, n
           ! Combine nuclide identifier and cross section and copy into names
@@ -1623,18 +1623,18 @@ contains
 
           ! save name and density to list
           call list_names % append(name)        
-          
+
         end do COMPOSITION_NUCLIDES
-        
+
         ! =======================================================================
         ! READ AND PARSE <element> TAGS
 
         ! Get pointer list of XML <element>
         call get_node_list(node_comp, "element", node_ele_list)
-        
+
         n = get_list_size(node_ele_list)
         n_element = n
-        
+
         COMPOSITION_ELEMENTS: do j = 1, n
           call get_list_item(node_ele_list, j, node_ele)
 
@@ -1661,13 +1661,13 @@ contains
 
           ! maintain a list of expanded elements
           call ele_names % append(name)
-          
+
           ! Expand element into naturally-occurring isotopes
           call expand_natural_element(name, temp_str, 1.0_8, &
                list_names, list_density)
-               
+
         end do COMPOSITION_ELEMENTS
-        
+
         ! Verify that the input matches the number of nuclides
         ! Get number of composition values
         n_comp = get_arraysize_double(node_comp, "values")
@@ -1690,14 +1690,14 @@ contains
         do j = 1, mat % n_comp
           allocate(mat % comp(j) % atom_density(list_names % size()))
         end do
-        
+
         ! Write composition values
         do j = 1, mat % n_comp
           do k = 1, n_nuclide + n_element
-          
+
             ! Set index in array of composition values
             temp_dble = temp_real_array(k + (j - 1) * (n_nuclide + n_element))
-            
+
             if (k <= n_nuclide) then
               ! nuclide, normal handling
               mat % comp(j) % atom_density(k) = temp_dble
@@ -1718,50 +1718,6 @@ contains
             end if
           end do
         end do
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
       else
         ! NOT USING DISTRIBUTED COMPOSITIONS
@@ -1955,7 +1911,7 @@ contains
       if (.not. (all(mat % comp(1) % atom_density > ZERO) .or. & 
          all(mat % comp(1) % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
-        to_str(mat % id)
+             to_str(mat % id)
         call fatal_error()
       end if
         
@@ -1975,6 +1931,7 @@ contains
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
+
       ! Get pointer list to XML <sab>
       call get_node_list(node_mat, "sab", node_sab_list)
 

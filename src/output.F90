@@ -2083,7 +2083,7 @@ contains
     end select
 
   end function get_label
-  
+
 !===============================================================================
 ! FIND_OFFSET uses a given map number, a target cell ID, and a target offset 
 ! to build a string which is the path from the base universe to the target cell
@@ -2100,7 +2100,6 @@ contains
     integer, intent(inout) :: offset             ! current offset, starts at 0
     character(100) :: path                       ! path to offset
     logical, intent(in), optional :: mat         ! material instead of cell?
-    
     
     integer :: i,j                  ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
@@ -2120,7 +2119,7 @@ contains
     if (present(mat)) material = mat
 
     n = univ % n_cells
-    
+
     ! write to the geometry stack
     if (univ%id == 0) then
       path = trim(path) // to_str(univ%id)
@@ -2134,7 +2133,7 @@ contains
       index_cell = univ % cells(i)        
       ! get pointer to cell
       c => cells(index_cell)
-      
+
       if (material) then
         ! If the material matches the goal and the offset matches final, we're done
         if (c % material == goal .AND. offset == final) then
@@ -2150,9 +2149,9 @@ contains
           return
         end if
       end if
-      
+
     end do
-    
+
     ! Loop over all cells
     ! Find the fill cell or lattice cell that we need to enter
     do i = 1, n
@@ -2211,14 +2210,14 @@ contains
         index_cell = univ % cells(i)
         c => cells(index_cell)
         path = trim(path) // "->" // to_str(c%id)
-        
+
         if (c % type == CELL_NORMAL) then      
           ! ====================================================================
           ! AT LOWEST UNIVERSE, TERMINATE SEARCH
           ! NOTE: THIS SHOULD NOT HAPPEN
           message = "Unexpected end of search with normal cell: " // path
           call fatal_error()          
-          
+
         elseif (c % type == CELL_FILL) then
           ! ====================================================================
           ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
@@ -2226,21 +2225,21 @@ contains
           ! if we got here, we are going into this cell
           ! update the current offset
           offset = c % offset(map) + offset
-          
+
           univ_next => universes(c % fill)
           call find_offset(map, goal, univ_next, final, offset, path, material)
           return
-          
+
         elseif (c % type == CELL_LATTICE) then
           ! ====================================================================
           ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
 
           ! Set current lattice
           lat => lattices(c % fill)
-          
+
           ! write to the geometry stack
           path = trim(path) // "->" // to_str(lat%id)
-    
+
           n_x = lat % dimension(1)
           n_y = lat % dimension(2)
           if (lat % n_dimension == 3) then
@@ -2268,23 +2267,23 @@ contains
                   if (final >= latoffset + offset) then
                     cycle
                   end if      
-                  
+
                 end if
                 if (latoffset == offset .and. (i_x /= n_x .or. i_y /= n_y .or. i_z /= n_z)) then
                   cycle
                 end if
-                
+
                 ! target is at this lattice position
                 latoffset = lat % offset(map,i_x,i_y,i_z)
                 offset = offset + latoffset
-                
+
                 univ_next => universes(lat % universes(i_x,i_y,i_z))  
                 path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
 
                 call find_offset(map, goal, univ_next, final, offset, path, material)
-                
+
                 return
-                
+
               end do
             end do
           end do

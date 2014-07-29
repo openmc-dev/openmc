@@ -372,8 +372,6 @@ contains
              // trim(to_str(m % id)) // "/compositions")
       end do COMPOSITION_LOOP
 
-
-
       ! Write S(a,b) information if present
       if (m % n_sab > 0) then
         call su % write_data(m % i_sab_nuclides, "i_sab_nuclides", &

@@ -33,7 +33,7 @@ contains
     integer :: j             ! index in mat % i_sab_nuclides
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
-    type(Material), pointer, save   :: mat => null()   ! current material
+    type(Material), pointer, save :: mat => null()   ! current material
 !$omp threadprivate(mat)
 
     ! Set all material macroscopic cross sections to zero
@@ -102,7 +102,7 @@ contains
 
       ! Copy atom density of nuclide in material
       atom_density = mat % get_density(p % mapping(mat % map), i)
-      
+
       ! Add contributions to material macroscopic total cross section
       material_xs % total = material_xs % total + &
            atom_density * micro_xs(i_nuclide) % total

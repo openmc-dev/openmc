@@ -252,7 +252,7 @@ contains
             i_z = 1
             n_z = 1
           end if
-          
+
           ! Check if lattice coordinates are within bounds
           if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
                i_z < 1 .or. i_z > n_z) then

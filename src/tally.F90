@@ -524,7 +524,7 @@ contains
             end do NUCLIDE_MAT_LOOP
 
             atom_density = mat % get_density(p % mapping(mat % map), j)
-            
+
           end if
 
           ! Determine score for each bin
@@ -667,7 +667,7 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     atom_density = mat % get_density(p % mapping(mat % map), l)
-                                        
+
                     ! Get index in nuclides array
                     i_nuc = mat % nuclide(l)
 
@@ -777,7 +777,7 @@ contains
       i_nuclide = mat % nuclide(i)    
 
       atom_density = mat % get_density(p % mapping(mat % map), i)
-      
+
       ! Loop over score types for each bin
       SCORE_LOOP: do j = 1, t % n_score_bins
         ! determine what type of score bin
@@ -914,7 +914,7 @@ contains
             ! Get atom density           
 
             atom_density = mat % get_density(p % mapping(mat % map), i)
-            
+
             ! Get index in nuclides array
             i_nuclide = mat % nuclide(i)
 
@@ -1198,7 +1198,7 @@ contains
               end do NUCLIDE_MAT_LOOP
 
               atom_density = mat % get_density(p % mapping(mat % map), j)
-                            
+
             end if
 
             ! Determine score for each bin

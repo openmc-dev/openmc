@@ -108,7 +108,7 @@ contains
         ! exit
         return
       end if
-    
+
       ! With the AWRs from the xs_listings, change all material specifications
       ! so that they contain atom percents summing to 1
       call normalize_ao()
@@ -144,7 +144,6 @@ contains
       if (restart_run) call load_state_point()
     end if
 
-    
     if (master) then
       if (run_mode == MODE_PLOTTING) then
         ! Display plotting information
@@ -978,34 +977,33 @@ contains
     type(Universe),       pointer :: univ
     type(Cell),           pointer :: c
     type(Material),       pointer :: mat
-    
+
     ! begin with filters    
     ! Loop over tallies    
     do i = 1, n_tallies
-    
+
       extra = 0
-  
+
       ! Get pointer to tally
       t => tallies(i)      
-   
+
       n_filt = t % n_filters
-      
+
       ! Loop over the filters      
       ! This loop, we will be determining how many additional filters
       ! need to be added to this tally
-      
+
       do j = 1, t % n_filters
-   
+
         ! Determine type of filter
         if (t % filters(j) % type == FILTER_DISTRIBCELL) then
           extra = extra + size(t % filters(j) % int_bins) - 1
         end if
-        
+
       end do
-      
-      
+
       if (extra > 0) then
-        
+
         message = "At least one Distribcell filter was specified with& 
                    &multiple bins. This feature is not yet supported."
         call fatal_error()
@@ -1013,17 +1011,17 @@ contains
         allocate(filters(extra + t % n_filters))
         ! Move old filters into the new array
         filters(1:n_filt) = t % filters
-        
+
         ! Update the filter array with the new filters
         t % n_filters = t % n_filters + extra
-        
+
         k = n_filt + 1
         do j = 1, n_filt
-     
+
           if (filters(j) % type == FILTER_DISTRIBCELL) then
-            
+
             n_words = size(filters(j) % int_bins)
-            
+
             do l = 2, n_words
               ! Move int_bin(l) from filter j to filter k            
               filters(k) % type = FILTER_DISTRIBCELL
@@ -1031,54 +1029,54 @@ contains
               filters(k) % int_bins(1) = filters(j) % int_bins(l)
               k = k + 1
             end do
-            
+
             ! Once all excess int_bins have been moved, shrink this filter
             l = filters(j) % int_bins(1)
             deallocate(filters(j) % int_bins)
             allocate(filters(j) % int_bins(1))
             filters(j) % int_bins(1) = l
-            
+
           end if
-          
+
         end do
-      
+
       ! Move the tally filter array back into the real tally object
       call move_alloc(filters,t % filters)
-        
+
       end if
-      
+
       ! Now it's time to finally initialize the filters now
       ! that the tally filters array has been updated
-      
+
       do j = 1, t % n_filters
         ! Determine type of filter
         if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-        
+
           ! Determine the number of occurrences of the listed cells
           l = 0
           univ => universes(BASE_UNIVERSE)
 
           ! sum the number of occurrences of all cells requested
           call count_instance(univ,t % filters(j) % int_bins(1),l)
-          
+
           ! Set number of bins      
           t % filters(j) % n_bins = l 
-          
+
           ! Set the number of instances of this cell
           c => cells(t % filters(j) % int_bins(1))
           c % instances = l
 
         end if
-    
+
       end do
-      
+
     end do
-  
+
   call allocate_offsets(univ_list)
-  
+
   ! Verify correct xml input of distributed materials
   call verify_distribmats()
-    
+
   ! Calculate the numbers to be stored for all maps except the special end one  
   do i = 1, n_maps - 1
     do j = 1, n_universes  
@@ -1086,7 +1084,7 @@ contains
       call calc_offsets(univ_list(i),i,univ)
     end do
   end do
-  
+
   do i = 1, n_materials
     mat => materials(i)
     if (.not. mat % distrib_comp) then
@@ -1096,11 +1094,9 @@ contains
   end do
 
   deallocate(univ_list)
-  
+
 end subroutine prepare_distribution
 
-
-  
 !===============================================================================
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates the 
 ! required memory, in addition to a few other pre-processing steps related
@@ -1113,7 +1109,7 @@ end subroutine prepare_distribution
     integer :: i,j,k,l,m
     integer :: maps   
     type(DictIntInt) :: cell_list
-    
+
     type(Cell),        pointer :: c => null()         ! pointer to cell
     type(Cell),        pointer :: c2 => null()      ! pointer to cell
     type(Lattice),     pointer :: lat => null()       ! pointer to lattice
@@ -1121,45 +1117,45 @@ end subroutine prepare_distribution
     type(Material),    pointer :: mat => null()       ! pointer to material
     type(TallyObject), pointer :: t => null()         ! pointer to tally
     type(TallyFilter), pointer :: tf => null()        ! pointer to filter
-    
+
     ! Begin gathering list of cells in distribcell tallies
     maps = 0
-    
+
     ! Loop over all tallies    
     do i = 1, n_tallies
-    
+
       t => tallies(i)
-      
+
       do j = 1, t % n_filters
-      
+
         tf => t % filters(j)
-        
+
         ! Loop over only distribcell filters
         if (tf % type == FILTER_DISTRIBCELL) then
-        
+
           ! Add new targets to the list
           if (.not. cell_list % has_key(tf % int_bins(1))) then
 
             call cell_list % add_key(tf % int_bins(1),0)
 
           end if
-        
+
         end if 
-        
+
       end do
-    
+
     end do
-    
+
     ! Assign cell to distributed materials    
     do i = 1, n_materials
-    
+
       mat => materials(i)
-      
+
       ! Only need to assign cell for distributed materials
       if (mat % distrib_dens .or. mat % distrib_comp) then
-      
+
         do j = 1, n_cells
-      
+
           c => cells(j)
           if (.not. (c % type == CELL_NORMAL)) cycle
           if (c % material == material_dict % get_key(mat % id)) then
@@ -1180,11 +1176,11 @@ end subroutine prepare_distribution
           message = "Failed to find the cell for material: " // to_str(mat % id)
           call fatal_error()        
         end if        
-        
+
       end if
 
     end do
-    
+
     do i = 1, n_cells - 1
       c => cells(i)
       do j = i + 1, n_cells
@@ -1196,19 +1192,19 @@ end subroutine prepare_distribution
           message = "Two cells share the same distributed material. &
                     &This is forbidden."
           call fatal_error()   
-               
+
         end if
-        
+
       end do
     end do
-    
+
     ! Add targets from distributed materials
     do i = 1, n_materials
-    
+
       mat => materials(i)
-      
+
       if (mat % distrib_dens .or. mat % distrib_comp) then
-        
+
         ! Add any cells which contain distributed materials. This will cause 
         ! a map to be created for them
         if (.not. cell_list % has_key(cell_dict % get_key(mat % cell))) then
@@ -1216,14 +1212,14 @@ end subroutine prepare_distribution
             call cell_list % add_key(cell_dict % get_key(mat % cell),0)
 
         end if
-        
+
       end if  
-    
-    end do    
-    
+
+    end do
+
     ! Finish counting the instances of all target cells
     do i = 1, n_cells
-      
+
       c => cells(i)
       if (cell_list % has_key(cell_dict % get_key(c % id)) .and. c % instances == 0) then
 
@@ -1233,89 +1229,89 @@ end subroutine prepare_distribution
           ! sum the number of occurrences of all cells requested
           call count_instance(u,cell_dict % get_key(c % id),j)
           c % instances = j
-          
+
       end if          
-          
+
     end do
-    
+
     ! Determine the number of unique universes containing these cells
     do i = 1, n_universes
-    
+
       u => universes(i)
-      
+
       do j = 1, u % n_cells
-      
+
         if (cell_list % has_key(u % cells(j))) then
           maps = maps + 1
           cycle
         end if          
-          
+
       end do
-    
+
     end do    
-    
+
     ! We create an extra map for non-distributed materials
     maps = maps + 1
-    
+
     ! Build the list of unique universes
     allocate(univ_list(maps))    
     k = 1
     do i = 1, n_universes
-    
+
       u => universes(i)
-      
+
       do j = 1, u % n_cells
-      
+
         if (cell_list % has_key(u % cells(j))) then
-          
+
             ! Loop over all tallies    
             do l = 1, n_tallies
-            
+
               t => tallies(l)
-              
+
               do m = 1, t % n_filters
-              
+
                 tf => t % filters(m)
-                
+
                 ! Loop over only distribcell filters
                 if (tf % type == FILTER_DISTRIBCELL) then
-                  
+
                   ! If this filter points to the cell we just found, set the 
                   ! offset index
                   if (tf % int_bins(1) == u % cells(j)) then
                     tf % offset = k
                   end if
-                
+
                 end if 
-                
+
               end do
-            
+
             end do          
 
             ! Loop over all materials
             do l = 1, n_materials
-            
+
               mat => materials(l)
               ! If this material is in the current cell, store its corresponding
               ! map index
               if (cell_dict % get_key(mat % cell) == u % cells(j)) then
                 mat % map = k
               end if
-          
+
             end do
           univ_list(k) = u % id
           k = k + 1
           cycle
         end if          
-          
+
       end do
-    
+
     end do
-    
+
     ! Allocate the offset array on all fill cells and lattices
-    
+
     do i = 1, n_lattices
-    
+
       lat => lattices(i)
       if (lat % n_dimension == 3) then
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), &
@@ -1323,21 +1319,21 @@ end subroutine prepare_distribution
       else
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), 1))
       end if
-    
+
     end do
-    
+
     do i = 1, n_cells
-    
+
       c => cells(i)
       if (c % material == NONE) then
         allocate(c % offset(maps))
       end if
-    
+
     end do
-    
+
     ! Store the number of maps to global
     n_maps = maps
-    
+
   end subroutine allocate_offsets
 
 !===============================================================================
@@ -1354,30 +1350,30 @@ end subroutine prepare_distribution
     real(8),allocatable  :: atom_density(:)         ! composition to use
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Material), pointer, save :: mat => null()  ! pointer to material
-    
+
     ! Verify that all distributed materials have a composition / density length
     ! equal to either 1 or the number of instance
     do i = 1, n_materials
-    
+
       mat => materials(i)
-      
+
       if (mat % distrib_dens) then
-      
+
         c => cells(cell_dict % get_key(mat % cell))
-      
+
         num = mat % density % num
         ! Ensure that there are a sensible number of densities specified
         if (.not.(num == 1 .or. num == c % instances)) then  
-                
+
           message = "Invalid number of densities specified for material " & 
           // to_str(mat % id)
           call fatal_error()      
-          
+
         end if
-        
+
         ! If num == 1, set all densities equal to the one given
         if (num == 1) then
-        
+
           density = mat % density % density(1)
           deallocate(mat % density % density)
           allocate(mat % density % density(c % instances))
@@ -1385,9 +1381,9 @@ end subroutine prepare_distribution
             mat % density % density(j) = density          
           end do          
           mat % density % num = c % instances
-          
+
         end if
-        
+
         ! Distribute the density by creating a fake composition distribution
         ! of the composition provided. Later the normalize_ao function will
         ! distribute the densities on the composition
@@ -1403,24 +1399,24 @@ end subroutine prepare_distribution
           mat % comp(j) % atom_density = atom_density          
         end do
         deallocate(atom_density)
-              
+
       else if (mat % distrib_comp) then
         c => cells(cell_dict % get_key(mat % cell))
-      
+
         num = mat % n_comp
-        
+
         ! Ensure that there are a sensible number of compositions specified
         if (.not.(num == 1 .or. num == c % instances)) then 
-                 
+
           message = "Invalid number of compositions specified for material " & 
           // to_str(mat % id)
           call fatal_error()    
-      
+
         end if
-        
+
         ! If num == 1, set all compositions equal to the one given
         if (num == 1) then
-        
+
           mat % n_comp = c % instances
           allocate(atom_density(mat % n_nuclides))
           atom_density = mat % comp(1) % atom_density
@@ -1432,15 +1428,15 @@ end subroutine prepare_distribution
             mat % comp(j) % atom_density = atom_density          
           end do
           deallocate(atom_density)
-          
+
         end if
-        
+
       else 
         mat % map = n_maps  
       end if
-      
+
     end do
-  
+
 end subroutine verify_distribmats
 
 !===============================================================================
@@ -1449,7 +1445,7 @@ end subroutine verify_distribmats
 !===============================================================================
 
   subroutine distribution_help()
-  
+
     integer :: i      ! materials loop
     integer :: j      ! instances loop
     integer :: offset ! offset parameter for path generation
@@ -1464,18 +1460,18 @@ end subroutine verify_distribmats
 
     ! Open log file for writing
     open(UNIT=UNIT_HELP, FILE=path, STATUS='replace', ACTION='write')
-    
+
     do i = 1, n_materials
-    
+
       mat => materials(i)
-      
+
       if (mat % distrib_dens .or. mat % distrib_comp) then
-      
+
         c => cells(cell_dict % get_key(mat % cell))
-        
+
         write(UNIT_HELP,*) 'Distributed Material:', mat % id
         write(UNIT_HELP,*) 'Number of Instances:', c % instances
-        
+
         do j = 1, c % instances
 
           offset = 0
@@ -1483,14 +1479,13 @@ end subroutine verify_distribmats
           univ => universes(BASE_UNIVERSE)
           call find_offset(mat % map, material_dict % get_key(mat % id), univ, j - 1, offset, label, .true.)
           write(UNIT_HELP,*) label
-        
+
         end do
-        
-      
+
       end if
-      
+
     end do      
-  
+
   end subroutine distribution_help
 
 end module initialize

@@ -1887,10 +1887,10 @@ contains
 
     ! Get pointer list to XML <mesh>
     call get_node_list(doc, "mesh", node_mesh_list)
- 
+
     ! Get pointer list to XML <tally>
     call get_node_list(doc, "tally", node_tal_list)
-    
+
     ! Check for user meshes
     n_user_meshes = get_list_size(node_mesh_list)
     if (cmfd_run) then
@@ -1921,7 +1921,7 @@ contains
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         assume_separate = .true.
     end if
-    
+
     ! ==========================================================================
     ! READ MESH DATA
 

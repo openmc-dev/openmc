@@ -132,18 +132,12 @@ contains
     integer,        optional      :: search_cells(:)
 
     integer :: i                       ! index over cells
-    integer :: i_x, i_y, i_z, i_alpha  ! indices in lattice
-    integer :: n_x, n_y, n_z, n_rings  ! size of lattice
+    integer :: i_xyz(3)                ! indices in lattice
     integer :: n                       ! number of cells to search
     integer :: index_cell              ! index in cells array
     real(8) :: xyz(3)                  ! temporary location
-    real(8) :: x_rem, y_rem            ! location remainders
-    real(8) :: alpha, alpha_rem        ! skewed location and remainder
-    real(8) :: beta, beta_rem          ! skewed location and remainder
-    real(8) :: upper_right(3)          ! lattice upper_right
     logical :: use_search_cells        ! use cells provided as argument
     logical :: outside_lattice         ! if particle not inside lattice bounds
-    logical :: lattice_edge            ! if particle is on a lattice edge
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
@@ -230,301 +224,51 @@ contains
           lat => lattices(c % fill)
 
           outside_lattice = .false.
-          lattice_edge = .false.
 
-          ! determine lattice index based on position
-          if (lat % type == LATTICE_RECT) then
-            xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-            i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
-            i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
-            n_x = lat % dimension(1)
-            n_y = lat % dimension(2)
-            if (lat % n_dimension == 3) then
-              i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
-              n_z = lat % dimension(3)
-            else
-              i_z = 1
-              n_z = 1
-            end if
+          ! We're in a lattice cell, which is conceptually just a fill cell
+          ! where we set the translation here programatically
 
+          ! Index calculations are done a TINY_BIT forwards to get off surfaces
+          xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+
+          ! Determine lattice indices
+          i_xyz = get_latt_indices(lat, xyz)
+          if (.not. is_valid_latt_index(lat, i_xyz)) then
+            ! We're outside the lattice, so treat this as a normal cell with
+            ! the material specified for the outside
+            outside_lattice = .true.
+            p % last_material = p % material
+            p % material = c % material
+
+            ! We'll still make a new coordinate for the particle, as 
+            ! distance_to_boundary will still need to track through lattice
+            ! widths even though there's nothing in them but this material
+          end if
+
+          ! Create new level of coordinates
+          allocate(p % coord % next)
+          p % coord % next % xyz = get_latt_trans(lat, p % coord % xyz, i_xyz)
+          p % coord % next % uvw = p % coord % uvw
+
+          ! set particle lattice indices
+          p % coord % next% lattice   = c % fill
+          p % coord % next% lattice_x = i_xyz(1)
+          p % coord % next% lattice_y = i_xyz(2)
+          p % coord % next% lattice_z = i_xyz(3)
+          if (.not. outside_lattice) then
+            p % coord % next % universe = &
+                                   lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
           else
-            ! Lattice is hexagonal.
-            ! Convert coordinates into skewed bases.  The (x, alpha) basis is
-            ! used to find the index of the particle coordinates to within 4
-            ! cells.  The (b, y) basis is used to pick the correct cell from the
-            ! set of 4.
-            xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-            alpha = xyz(2) - xyz(1) / sqrt(3.0)
-            i_x = floor(xyz(1) / (sqrt(3.0) * lat % width(1)))
-            x_rem = modulo(xyz(1), sqrt(3.0) * lat % width(1))
-            i_alpha = floor(alpha / (2.0 * lat % width(1)))
-            alpha_rem = modulo(alpha, 2.0 * lat % width(1))
-            y_rem = alpha_rem + x_rem/sqrt(3.0)
-            beta_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
-            n_rings = lat % dimension(1)
+            ! Set universe as the same for subsequent calls to find_cell
+            p % coord % next % universe = p % coord % universe
 
-            ! Add offset to indecies (the center cell is (i_x, i_alpha) = (0, 0)
-            ! but the array is offset so that the indecies never go below 1).
-            i_x = i_x + n_rings
-            i_alpha = i_alpha + n_rings
-
-            ! Check for when particle is on lattice edge.
-            ! Check (i_x, i_alpha)-(i_x + 1, i_alpha) border.
-            if (valid_hex_lat_index(lat, i_x, i_alpha, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha, 1)) then
-              if (y_rem < lat % width(1) + FP_COINCIDENT &
-                   &.and. abs(beta_rem - lat % width(1)) < FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-            end if
-
-            ! Check (i_x, i_alpha)-(i_x, i_alpha + 1) border.
-            if (valid_hex_lat_index(lat, i_x, i_alpha, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x, i_alpha + 1, 1)) then
-              if (abs(y_rem - lat % width(1)) < FP_COINCIDENT &
-                   &.and. beta_rem < lat % width(1) + FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-            end if
-
-            ! Check (i_x, i_alpha + 1)-(i_x + 1, i_alpha) border.
-            if (valid_hex_lat_index(lat, i_x, i_alpha + 1, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha, 1)) then
-              if (y_rem > lat % width(1) - FP_COINCIDENT &
-                   &.and. y_rem < 2 * lat % width(1) + FP_COINCIDENT &
-                   &.and. abs(y_rem - beta_rem) < FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-            end if
-
-            ! Check (i_x, i_alpha + 1)-(i_x + 1, i_alpha + 1) border.
-            if (valid_hex_lat_index(lat, i_x, i_alpha + 1, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha + 1, 1)) then
-              if (y_rem > 2 * lat % width(1) - FP_COINCIDENT &
-                   &.and. abs(beta_rem - 2 * lat % width(1)) < FP_COINCIDENT) &
-                   &then
-                lattice_edge = .true.
-              end if
-            end if
-
-            ! Check (i_x + 1, i_alpha)-(i_x + 1, i_alpha + 1) border.
-            if (valid_hex_lat_index(lat, i_x + 1, i_alpha, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha + 1, 1)) then
-              if (abs(y_rem - 2 * lat % width(1)) < FP_COINCIDENT &
-                   &.and. beta_rem > 2 * lat % width(1) - FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-            end if
-
-            ! Fix indexing based on (beta, y) remainder values.
-            if (y_rem < lat % width(1)) then
-              if (beta_rem > lat % width(1)) then
-                i_x = i_x + 1
-              end if
-            else if (y_rem < 2 * lat % width(1)) then
-              if (y_rem > beta_rem) then
-                i_alpha = i_alpha + 1
-              else
-                i_x = i_x + 1
-              end if
-            else
-              if (beta_rem < 2 * lat % width(1)) then
-                i_alpha = i_alpha + 1
-              else
-                i_x = i_x + 1
-                i_alpha = i_alpha + 1
-              end if
-            end if
-
-            ! Index z direction.
-            if (lat % n_dimension == 2) then
-              i_z = ceiling((xyz(3) - lat % lower_left(3)) / lat % width(2))
-              n_z = lat % dimension(2)
-            else
-              i_z = 1
-              n_z = 1
-            end if
+            ! Set coord cell for calls to distance_to_boundary
+            p % coord % next % cell = index_cell
 
           end if
 
-          ! Check if lattice coordinates are within bounds
-          if (lat % type == LATTICE_RECT) then
-            if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-                 i_z < 1 .or. i_z > n_z) then
-
-              ! Check for when particle is on lattice edge
-              upper_right(1) = lat % lower_left(1) + &
-                               lat % width(1) * dble(lat % dimension(1))
-              upper_right(2) = lat % lower_left(2) + &
-                               lat % width(2) * dble(lat % dimension(2))
-              if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
-                   abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
-                   abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
-                   abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-              if (lat % n_dimension == 3) then
-                upper_right(3) = lat % lower_left(3) + &
-                                 lat % width(3) * dble(lat % dimension(3))
-                if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
-                    abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
-                  lattice_edge = .true.
-                end if
-              end if
-            
-              if (lattice_edge) then
-              
-                ! In this case the neutron is leaving the lattice, so we move it
-                ! out, remove all lower coordinate levels and then search from
-                ! universe 0.
-            
-                p % coord => p % coord0
-                call deallocate_coord(p % coord % next)
-
-                ! Reset surface and advance particle a tiny bit
-                p % surface = NONE
-                p % coord % xyz = xyz
-
-              else
-
-                ! We're outside the lattice, so treat this as a normal cell with
-                ! the material specified for the outside
-
-                outside_lattice = .true.
-                p % last_material = p % material
-                p % material = c % material
-
-                ! We'll still make a new coordinate for the particle, as 
-                ! distance_to_boundary will still need to track through lattice
-                ! widths even though there's nothing in them but this material
-
-              end if
-
-            end if
-
-          else
-            ! Lattice is hexagonal.  Check for when particle is on lattice edge.
-            if (.not. valid_hex_lat_index(lat, i_x, i_alpha, i_z)) then
-
-              ! Lattice edge checking for the x-y plane happened when the xyz
-              ! was indexed.  Now check the z axis.
-              if (lat % n_dimension == 2) then
-                upper_right(3) = lat % lower_left(3) + &
-                                 lat % width(2) * dble(lat % dimension(2))
-                if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
-                    abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
-                  lattice_edge = .true.
-                end if
-              end if
-
-              if (lattice_edge) then
-              
-                ! In this case the neutron is leaving the lattice, so we move it
-                ! out, remove all lower coordinate levels and then search from
-                ! universe 0.
-            
-                p % coord => p % coord0
-                call deallocate_coord(p % coord % next)
-
-                ! Reset surface and advance particle a tiny bit
-                p % surface = NONE
-                p % coord % xyz = xyz
-
-              else
-
-                ! We're outside the lattice, so treat this as a normal cell with
-                ! the material specified for the outside
-
-                outside_lattice = .true.
-                p % last_material = p % material
-                p % material = c % material
-
-                ! We'll still make a new coordinate for the particle, as 
-                ! distance_to_boundary will still need to track through lattice
-                ! widths even though there's nothing in them but this material
-
-              end if
-
-            end if
-
-
-          end if
-
-          if (.not. lattice_edge) then
-
-            ! Create new level of coordinates
-            allocate(p % coord % next)
-
-            if (lat % type == LATTICE_RECT) then
-              ! adjust local position of particle
-              p % coord % next % xyz(1) = p % coord % xyz(1) - &
-                   (lat % lower_left(1) + (i_x - 0.5_8)*lat % width(1))
-              p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                   (lat % lower_left(2) + (i_y - 0.5_8)*lat % width(2))
-              if (lat % n_dimension == 3) then
-                p % coord % next % xyz(3) = p % coord % xyz(3) - &
-                   (lat % lower_left(3) + (i_z - 0.5_8)*lat % width(3))
-              else
-                p % coord % next % xyz(3) = p % coord % xyz(3)
-              end if
-              p % coord % next % uvw = p % coord % uvw
-
-              ! set particle lattice indices
-              p % coord % next% lattice   = c % fill
-              p % coord % next% lattice_x = i_x
-              p % coord % next% lattice_y = i_y
-              p % coord % next% lattice_z = i_z
-              if (.not. outside_lattice) then
-                p % coord % next % universe = lat % universes(i_x,i_y,i_z)
-              else
-
-                ! Set universe as the same for subsequent calls to find_cell
-                p % coord % next % universe = p % coord % universe
-
-                ! Set coord cell for calls to distance_to_boundary
-                p % coord % next % cell = index_cell
-
-              end if
-
-            else
-              ! adjust local position of particle
-              p % coord % next % xyz(1) = p % coord % xyz(1) &
-                   &- (lat % lower_left(1) &
-                   &+ sqrt(3.0) * (i_x - n_rings) * lat % width(1))
-              p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                   &(lat % lower_left(2) &
-                   &+ 2 * (i_alpha - n_rings) * lat % width(1) &
-                   &+ (i_x - n_rings) * lat % width(1))
-              if (lat % n_dimension == 3) then
-                p % coord % next % xyz(3) = p % coord % xyz(3) - &
-                   (lat % lower_left(3) + (i_z - 0.5_8)*lat % width(3))
-              else
-                p % coord % next % xyz(3) = p % coord % xyz(3)
-              end if
-              p % coord % next % uvw = p % coord % uvw
-
-              ! set particle lattice indices
-              p % coord % next% lattice   = c % fill
-              p % coord % next% lattice_x = i_x
-              p % coord % next% lattice_y = i_alpha
-              p % coord % next% lattice_z = i_z
-              if (.not. outside_lattice) then
-                p % coord % next % universe = lat % universes(i_x, i_alpha, i_z)
-              else
-
-                ! Set universe as the same for subsequent calls to find_cell
-                p % coord % next % universe = p % coord % universe
-
-                ! Set coord cell for calls to distance_to_boundary
-                p % coord % next % cell = index_cell
-
-              end if
-            end if
-
-            ! Move particle to next level
-            p % coord => p % coord % next
-
-          end if
+          ! Move particle to next level
+          p % coord => p % coord % next
 
           if (.not. outside_lattice) then
             call find_cell(p, found)
@@ -544,29 +288,168 @@ contains
   end subroutine find_cell
 
 !===============================================================================
-! VALID_HEX_LAT_INDEX returns .true. if the given lattice indecies fit within
-! the bounds of the given hexagonal lattice.  Returns false otherwise.
+! GET_LATT_TRANS returns the translated xyz coordinates in the specified lattice
+! cell for a particle currently at the given xyz coordinates.
 !===============================================================================
 
-  function valid_hex_lat_index(lat, i_x, i_a, i_z)
-    type(Lattice), pointer, intent(in)  :: lat            ! Hexagonal lattice
-    integer, intent(in)                 :: i_x, i_a, i_z  ! Indecies
-    Logical                             :: valid_hex_lat_index
+  function get_latt_trans(lat, xyz, i_xyz) result(xyz_t)
+    type(Lattice), pointer, intent(in)  :: lat
+    real(8)               , intent(in)  :: xyz(3)
+    integer               , intent(in)  :: i_xyz(3)
 
-    integer  :: n_rings, n_z
+    real(8) :: xyz_t(3)
 
-    n_rings = lat % dimension(1)
+    integer :: n_rings
 
-    if (lat % n_dimension == 2) then
-      n_z = lat % dimension(2)
-    else
-      n_z = 1
+    if (lat % type == LATTICE_RECT) then
+      xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
+          (i_xyz(1) - 0.5_8)*lat % width(1))
+      xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
+          (i_xyz(2) - 0.5_8)*lat % width(2))
+      if (lat % n_dimension == 3) then
+        xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
+            (i_xyz(3) - 0.5_8)*lat % width(3))
+      else
+        xyz_t(3) = xyz(3)
+      end if
+ 
+    else if (lat % type == LATTICE_HEX) then
+      n_rings = lat % dimension(1)
+ 
+      xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
+          sqrt(3.0) * (i_xyz(1) - n_rings) * lat % width(1))
+      xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
+          2 * (i_xyz(2) - n_rings) * lat % width(1) + &
+          (i_xyz(1) - n_rings) * lat % width(1))
+      if (lat % n_dimension == 3) then
+        xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
+            (i_xyz(3) - 0.5_8)*lat % width(3))
+      else
+        xyz_t(3) = xyz(3)
+      end if
+
     end if
 
-    valid_hex_lat_index = (i_x > 0 .and. i_x < 2*n_rings .and. i_a > 0 &
-         &.and. i_a < 2*n_rings .and. i_x + i_a > n_rings &
-         &.and. i_x + i_a < 3*n_rings .and. i_z > 0 .and. i_z < n_z + 1)
-  end function valid_hex_lat_index
+  end function get_latt_trans
+
+!===============================================================================
+! IS_VALID_LATT_INDEX returns .true. if the given lattice indices fit within
+! the bounds of the given lattice.  Returns false otherwise.
+!===============================================================================
+
+  function is_valid_latt_index(lat, i_xyz) result(is_valid)
+    type(Lattice), pointer, intent(in)  :: lat
+    integer               , intent(in)  :: i_xyz(3)
+    logical                             :: is_valid
+
+    integer  :: n_rings, n_x, n_y, n_z
+
+    if (lat % type == LATTICE_RECT) then
+      n_x = lat % dimension(1)
+      n_y = lat % dimension(2)
+      if (lat % n_dimension == 3) then
+        n_z = lat % dimension(3)
+      else
+        n_z = 1
+      end if
+ 
+      is_valid = i_xyz(1) > 0 .and. i_xyz(1) <= n_x .and. &
+                &i_xyz(2) > 0 .and. i_xyz(2) <= n_y .and. &
+                &i_xyz(3) > 0 .and. i_xyz(3) <= n_z
+
+    else if (lat % type == LATTICE_HEX) then
+      n_rings = lat % dimension(1)
+
+      if (lat % n_dimension == 2) then
+        n_z = lat % dimension(2)
+      else
+        n_z = 1
+      end if
+
+      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) < 2*n_rings .and. &
+                 &i_xyz(2) > 0 .and. i_xyz(2) < 2*n_rings .and. &
+                 &i_xyz(1) + i_xyz(2) > n_rings .and. &
+                 &i_xyz(1) + i_xyz(2) < 3*n_rings .and. &
+                 &i_xyz(3) > 0 .and. i_xyz(3) < n_z + 1)
+
+    end if
+
+  end function is_valid_latt_index
+
+!===============================================================================
+! GET_LATT_INDICES returns the indices in a lattice for the given xyz
+! coordinates.
+!===============================================================================
+
+  function get_latt_indices(lat, xyz) result(i_xyz)
+    type(Lattice), pointer, intent(in) :: lat
+    real(8)               , intent(in) :: xyz(3)
+
+    integer :: i_xyz(3)
+
+    real(8) :: x_rem, y_rem            ! location remainders
+    real(8) :: alpha, alpha_rem        ! skewed location and remainder
+    real(8) :: beta_rem                ! skewed location remainder
+    integer :: n_rings
+ 
+    if (lat % type == LATTICE_RECT) then
+      i_xyz(1) = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
+      i_xyz(2) = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
+      if (lat % n_dimension == 3) then
+        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+      else
+        i_xyz(3) = 1
+      end if
+
+    else if (lat % type == LATTICE_HEX) then
+      ! Convert coordinates into skewed bases.  The (x, alpha) basis is
+      ! used to find the index of the particle coordinates to within 4
+      ! cells.  The (b, y) basis is used to pick the correct cell from the
+      ! set of 4.
+      alpha = xyz(2) - xyz(1) / sqrt(3.0)
+      i_xyz(1) = floor(xyz(1) / (sqrt(3.0) * lat % width(1)))
+      x_rem = modulo(xyz(1), sqrt(3.0) * lat % width(1))
+      i_xyz(2) = floor(alpha / (2.0 * lat % width(1)))
+      alpha_rem = modulo(alpha, 2.0 * lat % width(1))
+      y_rem = alpha_rem + x_rem/sqrt(3.0)
+      beta_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
+      n_rings = lat % dimension(1)
+
+      ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0)
+      ! but the array is offset so that the indices never go below 1).
+      i_xyz(1) = i_xyz(1) + n_rings
+      i_xyz(2) = i_xyz(2) + n_rings
+
+      ! Fix indexing based on (beta, y) remainder values.
+      if (y_rem < lat % width(1)) then
+        if (beta_rem > lat % width(1)) then
+          i_xyz(1) = i_xyz(1) + 1
+        end if
+      else if (y_rem < 2 * lat % width(1)) then
+        if (y_rem > beta_rem) then
+          i_xyz(2) = i_xyz(2) + 1
+        else
+          i_xyz(1) = i_xyz(1) + 1
+        end if
+      else
+        if (beta_rem < 2 * lat % width(1)) then
+          i_xyz(2) = i_xyz(2) + 1
+        else
+          i_xyz(1) = i_xyz(1) + 1
+          i_xyz(2) = i_xyz(2) + 1
+        end if
+      end if
+ 
+      ! Index z direction.
+      if (lat % n_dimension == 2) then
+        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3)) / lat % width(2))
+      else
+        i_xyz(3) = 1
+      end if
+ 
+    end if
+
+  end function get_latt_indices
 
 !===============================================================================
 ! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
@@ -876,11 +759,9 @@ contains
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_translation(3)
 
-    integer :: i_x, i_y, i_z  ! indices in lattice
-    integer :: n_x, n_y, n_z  ! size of lattice
+    integer :: i_xyz(3)       ! indices in lattice
     real(8) :: x0, y0, z0     ! half width of lattice element
     real(8) :: half_pitch     ! half pitch of a hexagonal lattice
-    logical :: out_of_lattice ! particle still in lattice?
     logical :: found          ! particle found in cell?
     type(Lattice), pointer, save :: lat => null()
 !$omp threadprivate(lat)
@@ -937,26 +818,10 @@ contains
       end if
     end if
 
-    ! Check to make sure still in lattice
-    out_of_lattice = .false.
-    i_x = p % coord % lattice_x
-    i_y = p % coord % lattice_y
-    i_z = p % coord % lattice_z
-    if (lat % type == LATTICE_RECT) then
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
-      if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-           i_z < 1 .or. i_z > n_z) out_of_lattice = .true.
-    else if (lat % type == LATTICE_HEX) then
-      if (.not. valid_hex_lat_index(lat, i_x, i_y, i_z)) out_of_lattice = .true.
-    end if
-
-    if (out_of_lattice) then
+    i_xyz(1) = p % coord % lattice_x 
+    i_xyz(2) = p % coord % lattice_y 
+    i_xyz(3) = p % coord % lattice_z 
+    if (.not. is_valid_latt_index(lat, i_xyz)) then
       call deallocate_coord(p % coord0 % next)
       p % coord => p % coord0
 
@@ -970,7 +835,7 @@ contains
       end if
     else
       ! Find universe for next lattice element
-      p % coord % universe = lat % universes(i_x, i_y, i_z)
+      p % coord % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
       ! Find cell in next lattice element
       call find_cell(p, found)

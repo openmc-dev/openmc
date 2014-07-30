@@ -311,7 +311,10 @@ end function zero_padded
     integer             :: n_digits
 
     n_digits = 1
-    do while (num / 10**(n_digits) /= 0 .and. abs(num / 10 **(n_digits-1)) /= 1)
+    do while (num / 10**(n_digits) /= 0 .and. abs(num / 10 **(n_digits-1)) /= 1&
+              &.and. n_digits /= 10)
+      ! Note that 10 digits is the maximum needed to represent an integer(4) so
+      ! the loop automatically exits when n_digits = 10.
       n_digits = n_digits + 1
     end do
   

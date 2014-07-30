@@ -293,7 +293,7 @@ contains
           call write_message()
         end if 
     
-        if (satisfy_triggers .or. current_batch == n_batches) then
+        if (satisfy_triggers) then
            
            ! Get n_batches for state_point file
            n_batches = current_batch
@@ -312,16 +312,19 @@ contains
           ! If predicted number of batches to convergence is bigger than then
           ! n_batches print it and stop. 
           if (n_batches < n_pred_batches) then 
-            call write_last_state_point()
             message = "The estimated number of batches is " &
                  // trim(to_str(n_pred_batches)) & 
-                 // "---bigger than max batches, please reset max batches."
+                 // "---bigger than max batches. "
             call warning()
-            else
+          else
             message = "The estimated number of batches is " &
-                 // trim(to_str(n_pred_batches)) 
+                 // trim(to_str(n_pred_batches))
             call write_message
-          end if    
+          end if
+          
+          if (current_batch == n_batches) then
+            call write_last_state_point()
+          end if
         end if
       end if
     end if  

@@ -2771,7 +2771,8 @@ contains
       n_triggers = n_triggers + t % n_user_triggers
       
       if (n_triggers == 0) then
-        message = "Trigger is set and no trigger is found in tally XML file."
+        message = "Trigger is set and no trigger is found in tally XML or & 
+             & settings XML file."
         call fatal_error()
       end if
       

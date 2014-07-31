@@ -5,6 +5,7 @@ module unresolved
                           K_BOLTZMANN
   use error,        only: fatal_error, warning
   use faddeeva,     only: quickw, faddeeva_w
+  use fission,      only: nu_total
   use global
   use output,       only: write_message
   use random_lcg,   only: prn
@@ -255,7 +256,7 @@ contains
 
   subroutine calculate_urr_xs_otf(i_nuc, E)
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
     type(Resonance)    :: res     ! resonance object
     type(CrossSection) :: sig_t   ! total xs object
     type(CrossSection) :: sig_n   ! elastic scattering xs object
@@ -279,7 +280,9 @@ contains
     real(8) :: inelastic_val
     real(8) :: capture_val
 
-!$omp threadprivate(nuc) 
+!$omp threadprivate(nuc, rxn) 
+
+    micro_xs(i_nuc) % use_ptable = .true.
 
     ! Set pointer to nuclide
     nuc => nuclides(i_nuc)
@@ -343,20 +346,34 @@ contains
         else if (nuc % INT == LOG_LOG) then
           nuc % D = exp((ONE - f) * log(nuc % D_means(i_E, i_l) % vals(i_J)) &
             & + f * log(nuc % D_means(i_E + 1, i_l) % vals(i_J)))
+
           nuc % GN0 = exp((ONE - f) * log(nuc % Gam_n_means(i_E, i_l) % vals(i_J)) &
             & + f * log(nuc % Gam_n_means(i_E + 1, i_l) % vals(i_J)))
+
           nuc % GG = exp((ONE - f) * log(nuc % Gam_gam_means(i_E, i_l) % vals(i_J)) &
             & + f * log(nuc % Gam_gam_means(i_E + 1, i_l) % vals(i_J)))
-          nuc % GF = exp((ONE - f) * log(nuc % Gam_f_means(i_E, i_l) % vals(i_J)) &
-            & + f * log(nuc % Gam_f_means(i_E + 1, i_l) % vals(i_J)))
-          nuc % GX = exp((ONE - f) * log(nuc % Gam_x_means(i_E, i_l) % vals(i_J)) &
-            & + f * log(nuc % Gam_x_means(i_E + 1, i_l) % vals(i_J)))
+
+          if (nuc % Gam_f_means(i_E, i_l) % vals(i_J) /= ZERO &
+            & .and. nuc % Gam_f_means(i_E + 1, i_l) % vals(i_J) /= ZERO) then
+            nuc % GF = exp((ONE - f) * log(nuc % Gam_f_means(i_E, i_l) % vals(i_J)) &
+              & + f * log(nuc % Gam_f_means(i_E + 1, i_l) % vals(i_J)))
+          else
+            nuc % GF = ZERO
+          end if
+
+          if (nuc % Gam_x_means(i_E, i_l) % vals(i_J) /= ZERO &
+            & .and. nuc % Gam_x_means(i_E + 1, i_l) % vals(i_J) /= ZERO) then
+            nuc % GX = exp((ONE - f) * log(nuc % Gam_x_means(i_E, i_l) % vals(i_J)) &
+              & + f * log(nuc % Gam_x_means(i_E + 1, i_l) % vals(i_J)))
+          else
+            nuc % GX = ZERO
+          end if
+
         else
           message = 'Interpolations other than lin-lin or log-log currently not &
             & supported in OTF URR treatments'
           call fatal_error()
         end if
-
 
         ! reset the resonance object for a new spin sequence
         call res % reset(i_nuc, E)
@@ -396,7 +413,17 @@ contains
     do
       if (E <= Eid(i_energy + 1)) exit
       i_energy = i_energy + 1
+      if (i_energy >= size(Eid)) then
+        i_energy = size(Eid) - 1
+        message = 'Energy exceeds URR upper bound but URR xs values are being &
+          & calculated'
+        write(*,'(ES20.13,ES20.13)') E
+        call warning()
+        exit
+      end if
     end do
+
+! TODO: LOG_LOG?
     xsidnval = xsidn(i_energy) &
       & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
       & * (xsidn(i_energy+1) - xsidn(i_energy))
@@ -426,8 +453,38 @@ contains
         & - micro_xs(i_nuc) % absorption &
         & - micro_xs(i_nuc) % elastic
 
+!      rxn => nuc % reactions(nuc % urr_inelastic)
+!      if (micro_xs(i_nuc) % index_grid >= rxn % threshold) then
+
+!        if (abs(inelastic_val - &
+!          & ((ONE - micro_xs(i_nuc) % interp_factor) &
+!          & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 1) &
+!          & + micro_xs(i_nuc) % interp_factor &
+!          & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 2))) &
+!          & > 1.0e-12_8) then
+
+!          write(*,'(ES23.16,ES23.16)') inelastic_val, &
+!            & (ONE - micro_xs(i_nuc) % interp_factor) &
+!            & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 1) &
+!            & + micro_xs(i_nuc) % interp_factor &
+!            & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 2)
+
+!        end if
+!      else
+!        if (inelastic_val /= ZERO) write(*,'(ES20.13,ES20.13)') inelastic_val
+!      end if
+
       micro_xs(i_nuc) % elastic = sig_n % val / xsidnval &
         & * micro_xs(i_nuc) % elastic
+
+      if (micro_xs(i_nuc) % elastic < ZERO) then
+        micro_xs(i_nuc) % elastic = ZERO
+        message = 'Encountered a negative elastic scattering xs in the URR'
+        call warning()
+      end if
+
+      capture_val = sig_gam % val / xsidgval &
+        & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
 
       if (xsidfval > ZERO) then
         micro_xs(i_nuc) % fission = sig_f % val / xsidfval &
@@ -435,21 +492,6 @@ contains
       else
         micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
       end if
-
-      capture_val = sig_gam % val / xsidgval &
-        & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
-
-!      if (xsidxval > ZERO) then
-!        rxn => nuc % reactions(nuc % urr_inelastic)
-!        i_energy = micro_xs(i_nuc) % index_grid
-!        f = micro_xs(i_nuc) % interp_factor
-!        inelastic_val = sig_x % val / xsidxval &
-!          & * ((ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
-!          f * rxn % sigma(i_energy - rxn%threshold + 2))
-!        inelastic_val = sig_x % val
-!      else
-!        inelastic_val = ZERO
-!      end if
 
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_val
 
@@ -462,27 +504,25 @@ contains
       call fatal_error()
     end if
 
-    if (micro_xs(i_nuc) % elastic < ZERO) then
-      micro_xs(i_nuc) % total   = micro_xs(i_nuc) % total &
-                              & + abs(micro_xs(i_nuc) % elastic)
-      micro_xs(i_nuc) % elastic = ZERO
-      message = 'Encountered a negative elastic scattering xs in the URR'
-      call warning()
-    end if
-
-    if (E > 7.25e4_8 .and. E < 7.75e4_8) then
-      jt = jt + ONE
-      xst = xst + micro_xs(i_nuc) % total
-      jf = jf + ONE
-      xsf = xsf + micro_xs(i_nuc) % fission
-      jn = jn + ONE
-      xsn = xsn + micro_xs(i_nuc) % elastic
-      jg = jg + ONE
-      xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-      jx = jx + ONE
-      xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
+!    if (E > 7.25e4_8 .and. E < 7.75e4_8) then
+!      jt = jt + ONE
+!      xst = xst + micro_xs(i_nuc) % total
+!      jf = jf + ONE
+!      xsf = xsf + micro_xs(i_nuc) % fission
+!      jn = jn + ONE
+!      xsn = xsn + micro_xs(i_nuc) % elastic
+!      jg = jg + ONE
+!      xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+!      jx = jx + ONE
+!      xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
 !      write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsn/jn,xsf/jf,&
 !        & xsg/jg,xsx/jx
+!    end if
+
+    ! Determine nu-fission cross section
+    if (nuc % fissionable) then
+      micro_xs(i_nuc) % nu_fission = nu_total(nuc, E/1.0e6_8) * &
+           micro_xs(i_nuc) % fission
     end if
 
   end subroutine calculate_urr_xs_otf

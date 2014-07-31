@@ -239,24 +239,24 @@ contains
       if (E > nuc % urr_data % energy(1) .and. &
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
-        if (nuc % zaid == 92238) then
-          if (E > 7.25e-2_8 .and. E < 7.75e-2_8) then
-            jt = jt + ONE
-            xst = xst + micro_xs(i_nuclide) % total
-            jf = jf + ONE
-            xsf = xsf + micro_xs(i_nuclide) % fission
-            jn = jn + ONE
-            xsn = xsn + micro_xs(i_nuclide) % elastic
-            jg = jg + ONE
-            xsg = xsg + micro_xs(i_nuclide) % absorption - micro_xs(i_nuclide) % fission
-            jx = jx + ONE
-            xsx = xsx + micro_xs(i_nuclide) % total &
-              & - micro_xs(i_nuclide) % elastic &
-              & - micro_xs(i_nuclide) % absorption
+!        if (nuc % zaid == 92238) then
+!          if (E > 7.25e-2_8 .and. E < 7.75e-2_8) then
+!            jt = jt + ONE
+!            xst = xst + micro_xs(i_nuclide) % total
+!            jf = jf + ONE
+!            xsf = xsf + micro_xs(i_nuclide) % fission
+!            jn = jn + ONE
+!            xsn = xsn + micro_xs(i_nuclide) % elastic
+!            jg = jg + ONE
+!            xsg = xsg + micro_xs(i_nuclide) % absorption - micro_xs(i_nuclide) % fission
+!            jx = jx + ONE
+!            xsx = xsx + micro_xs(i_nuclide) % total &
+!              & - micro_xs(i_nuclide) % elastic &
+!              & - micro_xs(i_nuclide) % absorption
 !            write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsf/jf,xsn/jn,&
 !              & xsg/jg,xsx/jx
-          end if
-        end if
+!          end if
+!        end if
       end if
     end if
 

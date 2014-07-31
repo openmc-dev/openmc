@@ -233,7 +233,7 @@ contains
       prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-      ! Create fission bank sites if fission occus
+      ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
@@ -320,7 +320,10 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
+    logical :: INELASTIC
 !$omp threadprivate(nuc, rxn)
+
+    INELASTIC = .false.
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -358,17 +361,21 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
+      if (nuc % otf_urr) then
+        if (p%E>=nuc%EL/1.0E6_8 .and. p%E<=nuc%EH/1.0E6_8) then
+          rxn => nuc % reactions(nuc % urr_inelastic)
+          if (micro_xs(i_nuclide) % index_grid < rxn % threshold) then
+            message = 'fuck this shit'
+            call fatal_error()
+          end if
+          goto 69
+        end if
+      end if
+
       ! note that indexing starts from 2 since nuc % reactions(1) is elastic
       ! scattering
       i = 1
       do while (prob < cutoff)
-
-        if (nuc % zaid == 92238) then
-          if (p%E>nuc%EL/1.0E6_8 .and. p%E<nuc%EH/1.0E6_8) then
-            rxn => nuc % reactions(nuc % urr_inelastic)
-            exit
-          end if
-        end if
 
         i = i + 1
 
@@ -400,11 +407,22 @@ contains
 
       end do
 
-      ! Perform collision physics for inelastics scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
-           p % mu, p % wgt)
-      p % event_MT = rxn % MT
+      if (nuc % zaid == 92238) then
+        if (p%E >= nuc % urr_data % energy(1) .and. &
+           p%E <= nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+          if (rxn % MT /= 51) then
+            message = 'A non-inelastic competitive reaction event occurred in &
+              & the URR'
+            call fatal_error()
+          end if
+        end if
+      end if
 
+      ! Perform collision physics for inelastic scattering
+69    call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
+        p % mu, p % wgt)
+      p % event_MT = rxn % MT
+      
     end if
 
     ! Set event component

@@ -196,7 +196,7 @@ contains
         if (nuclides(j) % zaid == urr_zaids(i)) then
           nuclides(j) % otf_urr = .true.
           call read_endf(urr_endf_filenames(i) % filename, j)
-          call print_shit(j)
+!          call print_shit(j)
         end if
       end do
     end do

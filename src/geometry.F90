@@ -190,7 +190,8 @@ contains
           ! set material
           p % last_material = p % material
           p % material = c % material
-          materials(p % material) % first_E = p % E
+          if(p % material /= MATERIAL_VOID) &
+            & materials(p % material) % first_E = p % E
 
         elseif (c % type == CELL_FILL) then
           ! ====================================================================

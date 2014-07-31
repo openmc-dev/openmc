@@ -374,8 +374,10 @@ contains
          (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
     ! sample probability table using the cumulative distribution
+
     ! (if we're dealing with an isotope that we've previously encountered at
-    ! this energy but a different temperature, use the original random number to    ! preserve correlation of temperature in probability tables)
+    ! this energy but a different temperature, use the original random number to
+    ! preserve correlation of temperature in probability tables)
     if (E /= ZERO .and. E == first_E .and. &
       & minval(dble(abs(nuclides(:) % zaid - nuclides(i_nuclide) % zaid)) &
       & + abs(micro_xs(:) % last_E - E)) == ZERO) then

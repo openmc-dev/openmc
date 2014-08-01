@@ -12,7 +12,6 @@ module material_header
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
-    real(8)              :: first_E         ! particle energy upon entering mat
 
     ! S(a,b) data references
     integer              :: n_sab = 0         ! number of S(a,b) tables

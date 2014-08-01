@@ -657,6 +657,20 @@ contains
       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
+      ! If multiplicity is energy-dependent (absolute value > 100), set it based
+      ! on the MT value
+      if (rxn % multiplicity > 100) then
+        if (any(rxn%MT == [11, 16, 24, 30, 41])) then
+          rxn % multiplicity = 2
+        elseif (any(rxn%MT == [17, 25, 42])) then
+          rxn % multiplicity = 3
+        elseif (rxn%MT == 37) then
+          rxn % multiplicity = 4
+        else
+          rxn % multiplicity = 1
+        end if
+      end if
+
       ! read starting energy index
       LOCA = int(XSS(LXS + i - 1))
       IE   = int(XSS(JXS7 + LOCA - 1))

@@ -254,6 +254,15 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
+      
+      if (allocated(this % score)) &
+           deallocate (this % score)
+      if (allocated(this % score_for_all))
+           deallocate (this % score_for_all) &
+      
+      this % n_user_triggers = 0
+      
+      this % trigger_for_all = .false.
 
     end subroutine tallyobject_clear
 

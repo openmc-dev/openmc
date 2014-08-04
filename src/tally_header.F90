@@ -257,8 +257,8 @@ module tally_header
       
       if (allocated(this % score)) &
            deallocate (this % score)
-      if (allocated(this % score_for_all))
-           deallocate (this % score_for_all) &
+      if (allocated(this % score_for_all)) &
+           deallocate (this % score_for_all) 
       
       this % n_user_triggers = 0
       

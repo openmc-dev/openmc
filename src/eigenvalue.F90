@@ -96,17 +96,23 @@ contains
       
       ! Check batches to find whether to compare the result with trigger, check 
       ! the trigger and write the statepoint file
+#ifdef MPI        
       if (master) then
         call check_triggers()
       end if
-        
-      if (satisfy_triggers) then
-        call write_last_state_point()
-        if(master) exit BATCH_LOOP
-      elseif (trigger_on .and. n_batches == current_batch) then
-        call write_last_state_point()
+        call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
+        call MPI_BCAST(n_batches, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+#else
+      if (master) then
+        call check_triggers()
       end if  
+#endif
+      if(trigger_on .and. n_batches == current_batch) then
+        call write_last_state_point()
+        exit BATCH_LOOP
+      end if
     end do BATCH_LOOP
+    
     call time_active % stop()
 
     ! ==========================================================================

@@ -98,11 +98,14 @@ contains
       ! the trigger and write the statepoint file
       if (master) then
         call check_triggers()
-        if (satisfy_triggers) then
-          exit  BATCH_LOOP
-        end if
+      end if
+        
+      if (satisfy_triggers) then
+        call write_last_state_point()
+        if(master) exit BATCH_LOOP
+      elseif (trigger_on .and. n_batches == current_batch) then
+        call write_last_state_point()
       end if  
-    
     end do BATCH_LOOP
     call time_active % stop()
 
@@ -297,7 +300,6 @@ contains
            
            ! Get n_batches for state_point file
            n_batches = current_batch
-           call write_last_state_point()
         
          ! If batch_interval is not set, then then estimate the number of 
          ! batches till tally threshold is satisfied
@@ -321,10 +323,6 @@ contains
                  // trim(to_str(n_pred_batches))
             call write_message
           end if
-          
-          if (current_batch == n_batches) then
-            call write_last_state_point()
-          end if
         end if
       end if
     end if  
@@ -337,12 +335,10 @@ contains
      
   subroutine write_last_state_point()
      
-     ! Get the combined keff
-     call calculate_combined_keff()
-   
      ! Update statepoint_batch to current batch
      if (.not. statepoint_batch % contains(current_batch)) then
        call statepoint_batch % add(current_batch) 
+       if(master) call calculate_combined_keff()
        call write_state_point()
      else
        call write_state_point()

@@ -657,6 +657,20 @@ contains
       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
+      ! If multiplicity is energy-dependent (absolute value > 100), set it based
+      ! on the MT value
+      if (rxn % multiplicity > 100) then
+        if (any(rxn%MT == [11, 16, 24, 30, 41])) then
+          rxn % multiplicity = 2
+        elseif (any(rxn%MT == [17, 25, 42])) then
+          rxn % multiplicity = 3
+        elseif (rxn%MT == 37) then
+          rxn % multiplicity = 4
+        else
+          rxn % multiplicity = 1
+        end if
+      end if
+
       ! read starting energy index
       LOCA = int(XSS(LXS + i - 1))
       IE   = int(XSS(JXS7 + LOCA - 1))
@@ -789,14 +803,19 @@ contains
       ! read angular distribution -- currently this does not actually parse the
       ! angular distribution tables for each incoming energy, that must be done
       ! on-the-fly
-      LC = rxn % adist % location(1)
-      XSS_index = JXS9 + abs(LC) - 1
+      XSS_index = JXS9 + LOCB + 2 * NE
       rxn % adist % data = get_real(length)
 
       ! change location pointers since they are currently relative to JXS(9)
-      LC = abs(rxn % adist % location(1))
-      rxn % adist % location = abs(rxn % adist % location) - LC
-
+      LC = LOCB + 2 * NE + 1
+      do j = 1, NE
+        ! For consistency, leave location as 0 if type is isotropic.
+        ! This is not necessary for current correctness, but can avoid
+        ! future issues
+        if (rxn % adist % location(j) /= 0) then
+          rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
+        end if
+      end do
     end do
 
   end subroutine read_angular_dist
@@ -942,6 +961,7 @@ contains
     integer :: NEa   ! number of energies for Watt 'a'
     integer :: NRb   ! number of interpolation regions for Watt 'b'
     integer :: NEb   ! number of energies for Watt 'b'
+    real(8), allocatable :: L(:)  ! locations of distributions for each Ein
 
     ! initialize length
     length = 0
@@ -966,8 +986,23 @@ contains
       ! Continuous tabular distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust location for this block
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
         ! determine length
         NP = int(XSS(lc + length + 2))
         length = length + 2 + 3*NP
@@ -976,6 +1011,7 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
+      deallocate(L)
 
     case (5)
       ! General evaporation spectrum
@@ -1008,8 +1044,23 @@ contains
       ! Kalbach-Mann correlated scattering
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust location for this block
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
         NP = int(XSS(lc + length + 2))
         length = length + 2 + 5*NP
 
@@ -1017,13 +1068,30 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
+      deallocate(L)
 
     case (61)
       ! Correlated energy and angle distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
+        ! Some older data sets use the same LDAT for multiple Ein tables.
+        ! If this is the case, we should skip incrementing length when it is
+        ! not needed.
+        if (i < NE) then
+          if (any(L(i) == L(i + 1: NE))) then
+            ! adjust locators for energy distribution
+            j = lc + 2 + 2*NR + NE + i
+            XSS(j) = XSS(j) - LOCC - lid
+            cycle
+          end if
+        end if
+
         ! outgoing energy distribution
         NP = int(XSS(lc + length + 2))
 
@@ -1045,7 +1113,7 @@ contains
         j = lc + 2 + 2*NR + NE + i
         XSS(j) = XSS(j) - LOCC - lid
       end do
-
+      deallocate(L)
     case (66)
       ! N-body phase space distribution
       length = 2
@@ -1054,6 +1122,14 @@ contains
       ! Laboratory energy-angle law
       NR  = int(XSS(lc + 1))
       NE  = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      ! Don't currently do anything with L
+      deallocate(L)
+      ! Continue with finding data length
       NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
       length = 4 + 2*(NR + NE + NMU)
 
@@ -1265,7 +1341,7 @@ contains
 
       ! Now we can fill the inelastic_data(i) attributes
       do i = 1, NE_in
-        XSS_index = LOCC(i)
+        XSS_index = int(LOCC(i))
         NE_out = table % inelastic_data(i) % n_e_out
         do j = 1, NE_out
           table % inelastic_data(i) % e_out(j) = XSS(XSS_index + 1)

@@ -17,7 +17,7 @@ module eigenvalue
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
   use source,       only: get_source_particle
-  use state_point,  only: write_state_point
+  use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
@@ -39,7 +39,7 @@ contains
   subroutine run_eigenvalue()
 
     type(Particle) :: p
-    integer        :: i_work
+    integer(8)     :: i_work
 
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
@@ -222,6 +222,12 @@ contains
       call write_state_point()
     end if
 
+    ! Write out source point if it's been specified for this batch
+    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+        source_write) then
+      call write_source_point()
+    end if
+
     if (master .and. current_batch == n_batches) then
       ! Make sure combined estimate of k-effective is calculated at the last
       ! batch in case no state point is written
@@ -250,7 +256,7 @@ contains
          & temp_sites(:)       ! local array of extra sites on each node
 
 #ifdef MPI
-    integer    :: n            ! number of sites to send/recv
+    integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
     integer    :: request(20)  ! communication request for send/recving sites
     integer    :: n_request    ! number of communication requests
@@ -828,8 +834,8 @@ contains
 
   subroutine join_bank_from_threads()
 
-    integer :: total ! total number of fission bank sites
-    integer :: i     ! loop index for threads
+    integer(8) :: total ! total number of fission bank sites
+    integer    :: i     ! loop index for threads
 
     ! Initialize the total number of fission bank sites
     total = 0

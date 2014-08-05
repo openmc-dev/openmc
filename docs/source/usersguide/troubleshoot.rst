@@ -107,8 +107,8 @@ have many particles travelling through them there will not be many locations
 where overlaps are checked for in that region.  The user should refer to the
 output after a geometry debug run to see how many checks were performed in each
 cell, and then adjust the number of starting particles or starting source
-distributions accordingly to achieve good coverage. 
- 
+distributions accordingly to achieve good coverage.
+
 ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

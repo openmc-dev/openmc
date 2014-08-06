@@ -258,6 +258,8 @@ module global
 
   ! Fixed source particle bank
   type(Bank), pointer :: source_site => null()
+!$omp threadprivate(source_site)
+
 
   ! Restart run
   logical :: restart_run = .false.

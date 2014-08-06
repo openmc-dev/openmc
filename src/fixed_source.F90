@@ -11,8 +11,6 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
-!$omp threadprivate(source_site)
-
 contains
 
   subroutine run_fixedsource()
@@ -67,11 +65,6 @@ contains
 
         ! grab source particle from bank
         call sample_source_particle(p)
-
-        ! Reset random number seed (it was changed during source sampling and
-        ! it should be set before transport is called to make it consistent
-        ! with eigenvalue and particle_restart).
-        call set_particle_seed(p % id)
 
         ! transport particle
         call transport(p)

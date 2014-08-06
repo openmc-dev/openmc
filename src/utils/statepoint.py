@@ -302,7 +302,7 @@ class StatePoint(object):
 
             # Set up stride
             stride = 1
-            for f in t.filters.values()[::-1]:
+            for f in list(t.filters.values())[::-1]:
                 f.stride = stride
                 stride *= f.length
 
@@ -501,15 +501,15 @@ class StatePoint(object):
         try:
             tally = self.tallies[tally_id-1]
         except:
-            print 'Tally does not exist'
+            print('Tally does not exist')
             return
 
         # get the score index if it is present
         try:
             idx = tally.scores.index(score_str)
         except ValueError:
-            print 'Score does not exist'
-            print tally.scores
+            print('Score does not exist')
+            print(tally.scores)
             return
 
         # create numpy array for mean and 95% CI
@@ -543,7 +543,7 @@ class StatePoint(object):
 
         # get bounds of filter bins
         for akey in tally.filters.keys():
-            idx = tally.filters.keys().index(akey)
+            idx = list(tally.filters.keys()).index(akey)
             filtmax[n_filters - idx] = tally.filters[akey].length
 
         # compute bin info
@@ -554,11 +554,11 @@ class StatePoint(object):
                    np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
 
             # append in dictionary bin with filter
-            data.update({tally.filters.keys()[n_filters - i - 1]:
-                         filters[:,n_filters - i - 1]})
+            data.update({list(tally.filters.keys())[n_filters - i - 1]:
+                             filters[:,n_filters - i - 1]})
 
             # check for mesh
-            if tally.filters.keys()[n_filters - i - 1] == 'mesh':
+            if list(tally.filters.keys())[n_filters - i - 1] == 'mesh':
                 dims = list(self.meshes[tally.filters['mesh'].bins[0] - 1].dimension)
                 dims.reverse()
                 dims = np.asarray(dims)
@@ -572,12 +572,12 @@ class StatePoint(object):
                             np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
                 mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) %
                             np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
-                data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],
-                            mesh_bins[:,2])})
+                data.update({'mesh': list(zip(mesh_bins[:,0], mesh_bins[:,1],
+                                              mesh_bins[:,2]))})
             i += 1
 
         # add in maximum bin filters and order
-        b = tally.filters.keys()
+        b = list(tally.filters.keys())
         b.reverse()
         filtmax = list(filtmax[1:])
         try:
@@ -604,9 +604,9 @@ class StatePoint(object):
 
     def _get_long(self, n=1, path=None):
         if self._hdf5:
-            return [long(v) for v in self._f[path].value]
+            return [int(v) for v in self._f[path].value]
         else:
-            return [long(v) for v in self._get_data(n, 'q', 8)]
+            return [int(v) for v in self._get_data(n, 'q', 8)]
 
     def _get_float(self, n=1, path=None):
         if self._hdf5:

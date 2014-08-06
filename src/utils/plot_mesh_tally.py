@@ -206,7 +206,7 @@ class MeshPlotter(tk.Frame):
 
         # Create spec_list
         spec_list = []
-        for f in list(selectedTally.filters.values()):
+        for f in selectedTally.filters.values():
             if f.type == 'mesh':
                 continue
             index = self.filterBoxes[f.type].current()

@@ -9,7 +9,7 @@ module particle_restart
   use output,           only: write_message, print_particle
   use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
-  use random_lcg,       only: set_particle_seed, prn
+  use random_lcg,       only: set_particle_seed
   use tracking,         only: transport
 
   implicit none

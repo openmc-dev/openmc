@@ -10,7 +10,6 @@ import numpy as np
 import statepoint
 
 def main(tally_id, score_id, batch_start, batch_end, name):
-
   # read in statepoint header data
   sp = statepoint.StatePoint('statepoint.ref.binary')
 
@@ -52,7 +51,7 @@ def main(tally_id, score_id, batch_start, batch_end, name):
     norms[i - batch_start] = norm
 
     # print
-    print 'Batch: '+str(i)+' Histories: '+str(n_histories)+' Norm: '+str(norm)
+    print('Batch: {0} Histories: {1} Norm: {2}'.format(i, n_histories, norm))
 
     i += 1
 

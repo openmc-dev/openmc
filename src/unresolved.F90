@@ -423,23 +423,9 @@ contains
       end if
     end do
 
-! TODO: LOG_LOG?
-    xsidnval = xsidn(i_energy) &
-      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
-      & * (xsidn(i_energy+1) - xsidn(i_energy))
-    xsidfval = xsidf(i_energy) &
-      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
-      & * (xsidf(i_energy+1) - xsidf(i_energy))
-    xsidgval = xsidg(i_energy) &
-      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
-      & * (xsidg(i_energy+1) - xsidg(i_energy))
-    xsidxval = xsidx(i_energy) &
-      & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
-      & * (xsidx(i_energy+1) - xsidx(i_energy))
-
-    ! interpret MF3 data according to ENDF self-shielding flag (LSSF)
-    if (nuc % LSSF == 0) then ! MF3 contains background xs values (add to MF2
-                              ! contributions)
+    ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
+    ! MF3 contains background xs values (add to MF2 resonance contributions)
+    if (nuc % LSSF == 0) then
       message = 'you got here'
       call fatal_error()
       micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
@@ -447,32 +433,35 @@ contains
       micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val &
                                  & + micro_xs(i_nuc) % absorption
       micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
-    elseif (nuc % LSSF == 1) then ! MF3 contains evaluator-supplied infinite
-                                  ! dilute xs values
-      inelastic_val = micro_xs(i_nuc) % total &
-        & - micro_xs(i_nuc) % absorption &
-        & - micro_xs(i_nuc) % elastic
+    
+    ! MF3 contains evaluator-supplied infinite dilute xs values that we multipy
+    ! the self-shielding factors computed from MF2 by
+    elseif (nuc % LSSF == 1) then
 
-!      rxn => nuc % reactions(nuc % urr_inelastic)
-!      if (micro_xs(i_nuc) % index_grid >= rxn % threshold) then
+      ! TODO: LOG_LOG?
+      xsidnval = xsidn(i_energy) &
+        & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+        & * (xsidn(i_energy+1) - xsidn(i_energy))
+      xsidfval = xsidf(i_energy) &
+        & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+        & * (xsidf(i_energy+1) - xsidf(i_energy))
+      xsidgval = xsidg(i_energy) &
+        & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+        & * (xsidg(i_energy+1) - xsidg(i_energy))
+      xsidxval = xsidx(i_energy) &
+        & + (E - Eid(i_energy)) / (Eid(i_energy+1) - Eid(i_energy)) &
+        & * (xsidx(i_energy+1) - xsidx(i_energy))
 
-!        if (abs(inelastic_val - &
-!          & ((ONE - micro_xs(i_nuc) % interp_factor) &
-!          & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 1) &
-!          & + micro_xs(i_nuc) % interp_factor &
-!          & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 2))) &
-!          & > 1.0e-12_8) then
-
-!          write(*,'(ES23.16,ES23.16)') inelastic_val, &
-!            & (ONE - micro_xs(i_nuc) % interp_factor) &
-!            & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 1) &
-!            & + micro_xs(i_nuc) % interp_factor &
-!            & * rxn % sigma(micro_xs(i_nuc) % index_grid - rxn%threshold + 2)
-
-!        end if
-!      else
-!        if (inelastic_val /= ZERO) write(*,'(ES20.13,ES20.13)') inelastic_val
-!      end if
+      if (xsidxval > ZERO) then
+        inelastic_val = sig_x % val / xsidxval &
+          & * (micro_xs(i_nuc) % total &
+          & - micro_xs(i_nuc) % absorption &
+          & - micro_xs(i_nuc) % elastic)
+      else
+        inelastic_val = micro_xs(i_nuc) % total &
+          & - micro_xs(i_nuc) % absorption &
+          & - micro_xs(i_nuc) % elastic
+      end if
 
       micro_xs(i_nuc) % elastic = sig_n % val / xsidnval &
         & * micro_xs(i_nuc) % elastic
@@ -503,21 +492,6 @@ contains
       message = 'Self-shielding flag (LSSF) not allowed - must be 0 or 1.'
       call fatal_error()
     end if
-
-!    if (E > 7.25e4_8 .and. E < 7.75e4_8) then
-!      jt = jt + ONE
-!      xst = xst + micro_xs(i_nuc) % total
-!      jf = jf + ONE
-!      xsf = xsf + micro_xs(i_nuc) % fission
-!      jn = jn + ONE
-!      xsn = xsn + micro_xs(i_nuc) % elastic
-!      jg = jg + ONE
-!      xsg = xsg + micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-!      jx = jx + ONE
-!      xsx = xsx + micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic - micro_xs(i_nuc) % absorption
-!      write(*,'(ES11.4,ES11.4,ES11.4,ES11.4,ES11.4)') xst/jt,xsn/jn,xsf/jf,&
-!        & xsg/jg,xsx/jx
-!    end if
 
     ! Determine nu-fission cross section
     if (nuc % fissionable) then

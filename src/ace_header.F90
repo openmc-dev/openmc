@@ -133,7 +133,7 @@ module ace_header
 
     ! Unresolved resonance information
     logical                :: otf_urr = .false.
-    integer                :: n_resonances = 40
+    integer                :: n_resonances = 10
     logical                :: urr_present
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()

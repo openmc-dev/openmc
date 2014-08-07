@@ -22,9 +22,6 @@ module global
   implicit none
   save
 
-  real(8) :: xst, xsf, xsn, xsx, xsg, xspot, sig_nmax
-  real(8) ::  jt,  jf,  jn,  jx,  jg,  jpot
-
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES
 

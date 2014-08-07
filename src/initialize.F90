@@ -113,20 +113,6 @@ contains
         call initialize_w_tabulated()
       end if
 
-      sig_nmax = ZERO
-      xst = ZERO
-      xsf = ZERO
-      xsn = ZERO
-      xsg = ZERO
-      xsx = ZERO
-      xspot = ZERO
-      jt = ZERO
-      jf = ZERO
-      jn = ZERO
-      jg = ZERO
-      jx = ZERO
-      jpot = ZERO
-
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
         call time_unionize % start()

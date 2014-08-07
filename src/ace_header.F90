@@ -132,7 +132,7 @@ module ace_header
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
     ! Unresolved resonance information
-    logical                :: otf_urr
+    logical                :: otf_urr = .false.
     integer                :: n_resonances = 40
     logical                :: urr_present
     integer                :: urr_inelastic

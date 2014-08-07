@@ -193,7 +193,7 @@ contains
 
     do i = 1, n_otf_urr_nuclides
       do j = 1, n_nuclides_total
-        if (nuclides(j) % zaid == urr_zaids(i)) then
+        if (allocated(urr_zaids) .and. nuclides(j) % zaid == urr_zaids(i)) then
           nuclides(j) % otf_urr = .true.
           call read_endf(urr_endf_filenames(i) % filename, j)
 !          call print_shit(j)

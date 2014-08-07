@@ -231,6 +231,16 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
 
+!    if (nuc % zaid == 92238) then
+!      print*,nuc%zaid
+!      print*,nuc%otf_urr
+!      print*,urr_ptables_on
+!      print*,nuc % urr_present
+!      print*,nuc % urr_data % energy(1)
+!      print*,nuc % urr_data % energy(nuc % urr_data % n_energy)
+!      print*,'================================='
+!    end if
+
     if (nuc % otf_urr) then
       if (E * 1.0E6_8 >= nuc % EL .and. E * 1.0E6_8 <= nuc % EH) then
         call calculate_urr_xs_otf(i_nuclide, E * 1.0E6_8)
@@ -239,7 +249,7 @@ contains
       if (E > nuc % urr_data % energy(1) .and. &
            E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
-!        if (nuc % zaid == 92238) then
+!        if (nuc % zaid == 92238) print*,nuc%zaid
 !          if (E > 7.25e-2_8 .and. E < 7.75e-2_8) then
 !            jt = jt + ONE
 !            xst = xst + micro_xs(i_nuclide) % total

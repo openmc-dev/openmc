@@ -342,9 +342,9 @@ foreach(test ${TESTS})
 
         # Handle restart tests separately
         if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.7.h5)
+          set(RESTART_FILE statepoint.07.h5)
         elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.7.h5 source.7.h5)
+          set(RESTART_FILE statepoint.07.h5 source.07.h5)
         elseif(${test} MATCHES "test_particle_restart")
           set(RESTART_FILE particle_12_192.h5)
         else(${test} MATCHES "test_statepoint_restart")
@@ -355,9 +355,9 @@ foreach(test ${TESTS})
 
         # Handle restart tests separately
         if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.7.binary)
+          set(RESTART_FILE statepoint.07.binary)
         elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.7.binary source.7.binary)
+          set(RESTART_FILE statepoint.07.binary source.07.binary)
         elseif(${test} MATCHES "test_particle_restart")
           set(RESTART_FILE particle_12_192.binary)
         else(${test} MATCHES "test_statepoint_restart")

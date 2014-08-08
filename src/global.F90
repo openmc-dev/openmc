@@ -260,7 +260,6 @@ module global
   type(Bank), pointer :: source_site => null()
 !$omp threadprivate(source_site)
 
-
   ! Restart run
   logical :: restart_run = .false.
   integer :: restart_batch

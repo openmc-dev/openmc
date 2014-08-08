@@ -25,20 +25,20 @@ def test_run():
     assert returncode == 0, 'OpenMC did not exit successfully.'
 
 def test_statepoints_exist():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.2.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint.2 files exist.'
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.02.*'))
+    assert len(statepoint) == 1, 'Either multiple or no statepoint.02 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.2 file is not a binary or hdf5 file.'
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.4.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint.4 files exist.'
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.04.*'))
+    assert len(statepoint) == 1, 'Either multiple or no statepoint.04 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.4 file is not a binary or hdf5 file.'
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.6.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint.6 files exist.'
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.06.*'))
+    assert len(statepoint) == 1, 'Either multiple or no statepoint.06 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.6 file is not a binary or hdf5 file.'
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.8.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint.8 files exist.'
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.08.*'))
+    assert len(statepoint) == 1, 'Either multiple or no statepoint.08 files exist.'
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
         'Statepoint.8 file is not a binary or hdf5 file.'
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))

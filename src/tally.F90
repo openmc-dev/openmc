@@ -2351,7 +2351,11 @@ contains
          
         if (temp_keff_trig > keff_trigger % threshold) then
           satisfy_triggers = .false.
-          temp_ratio = temp_keff_trig / keff_trigger % threshold
+          if (keff_trigger % trigger_type == VARIANCE) then
+            temp_ratio = sqrt(temp_keff_trig / keff_trigger % threshold)
+          else
+            temp_ratio = temp_keff_trig / keff_trigger % threshold
+          end if
           if (trig_dist % max_ratio < temp_ratio) then
             trig_dist % max_ratio = temp_ratio             
             trig_dist % temp_name = CHAR_EIGENVALUE
@@ -2508,7 +2512,11 @@ contains
         
                   if (temp_trig(l, n) > t % score(k) % threshold) then
                     satisfy_triggers = .false.
-                    temp_ratio = temp_trig(l, n) / t % score(k) % threshold
+                    if (t % score(k) % type == VARIANCE) then
+                      temp_ratio = sqrt(temp_trig(l, n) / t % score(k) % threshold)
+                    else
+                      temp_ratio = temp_trig(l, n) / t % score(k) % threshold
+                    end if 
                     if (trig_dist % max_ratio < temp_ratio) then
                       trig_dist % max_ratio = temp_ratio
                       trig_dist % temp_name = t % score(k) % score_name
@@ -2530,9 +2538,13 @@ contains
                   temp_trig(l, n) = temp_real(l, n) % std_dev
                 end select
          
-                if (temp_trig(l, n) > t % score(1) % threshold) then
+                if (temp_trig(l, n) > t % score(k) % threshold) then
                   satisfy_triggers = .false. 
-                  temp_ratio = temp_trig(l, n) / t % score(1) % threshold
+                  if (t % score(k) % type == VARIANCE) then
+                    temp_ratio = sqrt(temp_trig(l, n) / t % score(k) % threshold)
+                  else
+                    temp_ratio = temp_trig(l, n) / t % score(k) % threshold
+                  end if
                   if (trig_dist % max_ratio < temp_ratio) then
                     trig_dist % max_ratio = temp_ratio
                     trig_dist % temp_name = t % score_for_all(l)
@@ -2550,9 +2562,13 @@ contains
                   temp_trig(l, n) = temp_real(l, n) % std_dev
                 end select
         
-                if (temp_trig(l, n) > t % score(1) % threshold) then
+                if (temp_trig(l, n) > t % score(k) % threshold) then
                   satisfy_triggers = .false.
-                  temp_ratio = temp_trig(l, n)/t % score(1) % threshold
+                  if (t % score(k) % type == VARIANCE) then
+                    temp_ratio = sqrt(temp_trig(l, n) / t % score(k) % threshold)
+                  else
+                    temp_ratio = temp_trig(l, n) / t % score(k) % threshold
+                  end if 
                   if (trig_dist % max_ratio < temp_ratio) then
                     trig_dist % max_ratio = temp_ratio
                     trig_dist % temp_name  = t % score_for_all(l)

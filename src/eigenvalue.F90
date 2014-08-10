@@ -100,14 +100,19 @@ contains
       if (master) then
         call check_triggers()
       end if
-        call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
-        call MPI_BCAST(n_batches, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+        call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
+             mpi_err)
+        if(satisfy_triggers)
+        call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
+             mpi_err)
+        end if             
 #else
       if (master) then
         call check_triggers()
       end if  
 #endif
-      if(trigger_on .and. n_batches == current_batch) then
+      if (satisfy_triggers .or. (trigger_on .and. n_batches == current_batch)) &
+           then
         call write_last_state_point()
         exit BATCH_LOOP
       end if
@@ -269,7 +274,7 @@ contains
     if ((current_batch >= n_basic_batches) .and. trigger_on) then
       if (mod((current_batch - n_basic_batches), n_batch_interval) == 0 .or. & 
            current_batch == n_batches) then
-        
+  
         ! Get the combined keff and compare it with trigger threshold if needed
         call calculate_combined_keff()
         ! Check the trigger and output the result

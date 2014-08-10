@@ -5,6 +5,7 @@ module cross_section
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global
+  use list_header,     only: ListElemInt
   use material_header, only: Material
   use particle_header, only: Particle
   use random_lcg,      only: prn
@@ -349,9 +350,11 @@ contains
     real(8) :: capture    ! (n,gamma) cross section
     real(8) :: fission    ! fission cross section
     real(8) :: inelastic  ! inelastic cross section
-    type(UrrData),  pointer, save :: urr => null()
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
+    logical :: same_nuc   ! do we know the xs for this nuclide at this energy?
+    type(UrrData),  pointer, save :: urr      => null()
+    type(Nuclide),  pointer, save :: nuc      => null()
+    type(Reaction), pointer, save :: rxn      => null()
+    type(ListElemInt), pointer    :: nuc_list => null()
 !$omp threadprivate(urr, nuc, rxn)
 
     micro_xs(i_nuclide) % use_ptable = .true.
@@ -373,15 +376,22 @@ contains
 
     ! sample probability table using the cumulative distribution
 
-    ! (if we're dealing with an isotope that we've previously encountered at
+    ! if we're dealing with a nuclide that we've previously encountered at
     ! this energy but a different temperature, use the original random number to
-    ! preserve correlation of temperature in probability tables)
-    if (E /= ZERO .and. &
-      & minval(dble(abs(nuclides(:) % zaid - nuclides(i_nuclide) % zaid)) &
-      & + abs(micro_xs(:) % last_E - E)) == ZERO) then
-      r = micro_xs(minloc(dble(abs(nuclides(:) % zaid &
-        & - nuclides(i_nuclide) % zaid)) + abs(micro_xs(:) % last_E &
-        & - E),1)) % last_prn
+    ! preserve correlation of temperature in probability tables
+    same_nuc = .false.
+    nuc_list => nuc % nuc_list
+    do
+      if (E /= ZERO .and. E == micro_xs(nuc_list % data) % last_E) then
+        same_nuc = .true.
+        exit
+      end if
+      nuc_list => nuc_list % next
+      if (.not. associated(nuc_list % next)) exit
+    end do
+
+    if (same_nuc) then
+      r = micro_xs(nuc_list % data) % last_prn
     else
       r = prn()
       micro_xs(i_nuclide) % last_prn = r

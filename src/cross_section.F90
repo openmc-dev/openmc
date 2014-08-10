@@ -356,7 +356,7 @@ contains
     type(Nuclide),  pointer, save :: nuc      => null()
     type(Reaction), pointer, save :: rxn      => null()
     type(ListElemInt), pointer    :: nuc_list => null()
-!$omp threadprivate(urr, nuc, rxn)
+!$omp threadprivate(urr, nuc, rxn, nuc_list)
 
     micro_xs(i_nuclide) % use_ptable = .true.
 

@@ -105,6 +105,12 @@ contains
       coord => p % coord0
       do while (associated(coord))
         coord % xyz = coord % xyz + distance * coord % uvw
+        !if ((verbosity == 10 .or. trace) .and. coord % lattice /= NONE) then
+        !  write(*, *) 'b, y, g', &
+        !      &coord%xyz(1)*sqrt(3.0_8)/2.0_8 + coord%xyz(2)/2.0_8, &
+        !      &coord%xyz(2), &
+        !      &coord%xyz(1)*sqrt(3.0_8)/2.0_8 - coord%xyz(2)/2.0_8
+        !end if
         coord => coord % next
       end do
 

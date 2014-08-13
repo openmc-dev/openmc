@@ -64,7 +64,7 @@
   <ace_table alias="Fe-57.71c" awr="56.446" location="1" name="26057.71c" path="293.6K/Fe_057_293.6K.ace" temperature="2.53e-08" zaid="26057"/>
   <ace_table alias="Fe-58.71c" awr="57.436" location="1" name="26058.71c" path="293.6K/Fe_058_293.6K.ace" temperature="2.53e-08" zaid="26058"/>
   <ace_table alias="Co-58.71c" awr="57.4381" location="1" name="27058.71c" path="293.6K/Co_058_293.6K.ace" temperature="2.53e-08" zaid="27058"/>
-  <ace_table alias="Co-59.71c" awr="57.4381" location="1" name="27059.71c" path="293.6K/Co_058m1_293.6K.ace" temperature="2.53e-08" zaid="27059"/>
+  <ace_table alias="Co-58m.71c" awr="57.4381" location="1" name="27059.71c" path="293.6K/Co_058m1_293.6K.ace" temperature="2.53e-08" zaid="27059"/>
   <ace_table alias="Co-59.71c" awr="58.4269" location="1" name="27059.71c" path="293.6K/Co_059_293.6K.ace" temperature="2.53e-08" zaid="27059"/>
   <ace_table alias="Ni-58.71c" awr="57.438" location="1" name="28058.71c" path="293.6K/Ni_058_293.6K.ace" temperature="2.53e-08" zaid="28058"/>
   <ace_table alias="Ni-59.71c" awr="58.4281" location="1" name="28059.71c" path="293.6K/Ni_059_293.6K.ace" temperature="2.53e-08" zaid="28059"/>
@@ -157,7 +157,7 @@
   <ace_table alias="Pd-110.71c" awr="108.961" location="1" name="46110.71c" path="293.6K/Pd_110_293.6K.ace" temperature="2.53e-08" zaid="46110"/>
   <ace_table alias="Ag-107.71c" awr="105.987" location="1" name="47107.71c" path="293.6K/Ag_107_293.6K.ace" temperature="2.53e-08" zaid="47107"/>
   <ace_table alias="Ag-109.71c" awr="107.969" location="1" name="47109.71c" path="293.6K/Ag_109_293.6K.ace" temperature="2.53e-08" zaid="47109"/>
-  <ace_table alias="Ag-119.71c" awr="108.962" location="1" name="47119.71c" path="293.6K/Ag_110m1_293.6K.ace" temperature="2.53e-08" zaid="47119"/>
+  <ace_table alias="Ag-110m.71c" awr="108.962" location="1" name="47119.71c" path="293.6K/Ag_110m1_293.6K.ace" temperature="2.53e-08" zaid="47119"/>
   <ace_table alias="Ag-111.71c" awr="109.953" location="1" name="47111.71c" path="293.6K/Ag_111_293.6K.ace" temperature="2.53e-08" zaid="47111"/>
   <ace_table alias="Cd-106.71c" awr="104.996" location="1" name="48106.71c" path="293.6K/Cd_106_293.6K.ace" temperature="2.53e-08" zaid="48106"/>
   <ace_table alias="Cd-108.71c" awr="106.977" location="1" name="48108.71c" path="293.6K/Cd_108_293.6K.ace" temperature="2.53e-08" zaid="48108"/>
@@ -166,7 +166,7 @@
   <ace_table alias="Cd-112.71c" awr="110.942" location="1" name="48112.71c" path="293.6K/Cd_112_293.6K.ace" temperature="2.53e-08" zaid="48112"/>
   <ace_table alias="Cd-113.71c" awr="111.93" location="1" name="48113.71c" path="293.6K/Cd_113_293.6K.ace" temperature="2.53e-08" zaid="48113"/>
   <ace_table alias="Cd-114.71c" awr="112.925" location="1" name="48114.71c" path="293.6K/Cd_114_293.6K.ace" temperature="2.53e-08" zaid="48114"/>
-  <ace_table alias="Cd-119.71c" awr="113.918" location="1" name="48119.71c" path="293.6K/Cd_115m1_293.6K.ace" temperature="2.53e-08" zaid="48119"/>
+  <ace_table alias="Cd-115m.71c" awr="113.918" location="1" name="48119.71c" path="293.6K/Cd_115m1_293.6K.ace" temperature="2.53e-08" zaid="48119"/>
   <ace_table alias="Cd-116.71c" awr="114.909" location="1" name="48116.71c" path="293.6K/Cd_116_293.6K.ace" temperature="2.53e-08" zaid="48116"/>
   <ace_table alias="In-113.71c" awr="111.934" location="1" name="49113.71c" path="293.6K/In_113_293.6K.ace" temperature="2.53e-08" zaid="49113"/>
   <ace_table alias="In-115.71c" awr="113.917" location="1" name="49115.71c" path="293.6K/In_115_293.6K.ace" temperature="2.53e-08" zaid="49115"/>
@@ -195,9 +195,9 @@
   <ace_table alias="Te-124.71c" awr="122.839" location="1" name="52124.71c" path="293.6K/Te_124_293.6K.ace" temperature="2.53e-08" zaid="52124"/>
   <ace_table alias="Te-125.71c" awr="123.831" location="1" name="52125.71c" path="293.6K/Te_125_293.6K.ace" temperature="2.53e-08" zaid="52125"/>
   <ace_table alias="Te-126.71c" awr="124.821" location="1" name="52126.71c" path="293.6K/Te_126_293.6K.ace" temperature="2.53e-08" zaid="52126"/>
-  <ace_table alias="Te-129.71c" awr="125.815" location="1" name="52129.71c" path="293.6K/Te_127m1_293.6K.ace" temperature="2.53e-08" zaid="52129"/>
+  <ace_table alias="Te-127m.71c" awr="125.815" location="1" name="52129.71c" path="293.6K/Te_127m1_293.6K.ace" temperature="2.53e-08" zaid="52129"/>
   <ace_table alias="Te-128.71c" awr="126.805" location="1" name="52128.71c" path="293.6K/Te_128_293.6K.ace" temperature="2.53e-08" zaid="52128"/>
-  <ace_table alias="Te-129.71c" awr="127.8" location="1" name="52129.71c" path="293.6K/Te_129m1_293.6K.ace" temperature="2.53e-08" zaid="52129"/>
+  <ace_table alias="Te-129m.71c" awr="127.8" location="1" name="52129.71c" path="293.6K/Te_129m1_293.6K.ace" temperature="2.53e-08" zaid="52129"/>
   <ace_table alias="Te-130.71c" awr="128.79" location="1" name="52130.71c" path="293.6K/Te_130_293.6K.ace" temperature="2.53e-08" zaid="52130"/>
   <ace_table alias="Te-132.71c" awr="130.775" location="1" name="52132.71c" path="293.6K/Te_132_293.6K.ace" temperature="2.53e-08" zaid="52132"/>
   <ace_table alias="I-127.71c" awr="125.8143" location="1" name="53127.71c" path="293.6K/I_127_293.6K.ace" temperature="2.53e-08" zaid="53127"/>
@@ -255,7 +255,7 @@
   <ace_table alias="Nd-150.71c" awr="148.633" location="1" name="60150.71c" path="293.6K/Nd_150_293.6K.ace" temperature="2.53e-08" zaid="60150"/>
   <ace_table alias="Pm-147.71c" awr="145.653" location="1" name="61147.71c" path="293.6K/Pm_147_293.6K.ace" temperature="2.53e-08" zaid="61147"/>
   <ace_table alias="Pm-148.71c" awr="146.646" location="1" name="61148.71c" path="293.6K/Pm_148_293.6K.ace" temperature="2.53e-08" zaid="61148"/>
-  <ace_table alias="Pm-149.71c" awr="146.65" location="1" name="61149.71c" path="293.6K/Pm_148m1_293.6K.ace" temperature="2.53e-08" zaid="61149"/>
+  <ace_table alias="Pm-148m.71c" awr="146.65" location="1" name="61149.71c" path="293.6K/Pm_148m1_293.6K.ace" temperature="2.53e-08" zaid="61149"/>
   <ace_table alias="Pm-149.71c" awr="147.639" location="1" name="61149.71c" path="293.6K/Pm_149_293.6K.ace" temperature="2.53e-08" zaid="61149"/>
   <ace_table alias="Pm-151.71c" awr="149.625" location="1" name="61151.71c" path="293.6K/Pm_151_293.6K.ace" temperature="2.53e-08" zaid="61151"/>
   <ace_table alias="Sm-144.71c" awr="142.676" location="1" name="62144.71c" path="293.6K/Sm_144_293.6K.ace" temperature="2.53e-08" zaid="62144"/>
@@ -292,7 +292,7 @@
   <ace_table alias="Dy-163.71c" awr="161.529" location="1" name="66163.71c" path="293.6K/Dy_163_293.6K.ace" temperature="2.53e-08" zaid="66163"/>
   <ace_table alias="Dy-164.71c" awr="162.521" location="1" name="66164.71c" path="293.6K/Dy_164_293.6K.ace" temperature="2.53e-08" zaid="66164"/>
   <ace_table alias="Ho-165.71c" awr="163.513" location="1" name="67165.71c" path="293.6K/Ho_165_293.6K.ace" temperature="2.53e-08" zaid="67165"/>
-  <ace_table alias="Ho-169.71c" awr="164.507" location="1" name="67169.71c" path="293.6K/Ho_166m1_293.6K.ace" temperature="2.53e-08" zaid="67169"/>
+  <ace_table alias="Ho-166m.71c" awr="164.507" location="1" name="67169.71c" path="293.6K/Ho_166m1_293.6K.ace" temperature="2.53e-08" zaid="67169"/>
   <ace_table alias="Er-162.71c" awr="160.538" location="1" name="68162.71c" path="293.6K/Er_162_293.6K.ace" temperature="2.53e-08" zaid="68162"/>
   <ace_table alias="Er-164.71c" awr="162.521" location="1" name="68164.71c" path="293.6K/Er_164_293.6K.ace" temperature="2.53e-08" zaid="68164"/>
   <ace_table alias="Er-166.71c" awr="164.505" location="1" name="68166.71c" path="293.6K/Er_166_293.6K.ace" temperature="2.53e-08" zaid="68166"/>
@@ -387,11 +387,11 @@
   <ace_table alias="Pu-246.71c" awr="243.956" location="1" name="94246.71c" path="293.6K/Pu_246_293.6K.ace" temperature="2.53e-08" zaid="94246"/>
   <ace_table alias="Am-240.71c" awr="237.993" location="1" name="95240.71c" path="293.6K/Am_240_293.6K.ace" temperature="2.53e-08" zaid="95240"/>
   <ace_table alias="Am-241.71c" awr="238.986" location="1" name="95241.71c" path="293.6K/Am_241_293.6K.ace" temperature="2.53e-08" zaid="95241"/>
-  <ace_table alias="Am-242m.71c" awr="239.9801" location="1" metastable="1" name="95242.71c" path="293.6K/Am_242_293.6K.ace" temperature="2.53e-08" zaid="95242"/>
-  <ace_table alias="Am-249.71c" awr="239.9801" location="1" name="95249.71c" path="293.6K/Am_242m1_293.6K.ace" temperature="2.53e-08" zaid="95249"/>
+  <ace_table alias="Am-242.71c" awr="239.9801" location="1" metastable="1" name="95242.71c" path="293.6K/Am_242_293.6K.ace" temperature="2.53e-08" zaid="95242"/>
+  <ace_table alias="Am-242m.71c" awr="239.9801" location="1" name="95249.71c" path="293.6K/Am_242m1_293.6K.ace" temperature="2.53e-08" zaid="95249"/>
   <ace_table alias="Am-243.71c" awr="240.9734" location="1" name="95243.71c" path="293.6K/Am_243_293.6K.ace" temperature="2.53e-08" zaid="95243"/>
   <ace_table alias="Am-244.71c" awr="241.968" location="1" name="95244.71c" path="293.6K/Am_244_293.6K.ace" temperature="2.53e-08" zaid="95244"/>
-  <ace_table alias="Am-249.71c" awr="241.968" location="1" name="95249.71c" path="293.6K/Am_244m1_293.6K.ace" temperature="2.53e-08" zaid="95249"/>
+  <ace_table alias="Am-244m.71c" awr="241.968" location="1" name="95249.71c" path="293.6K/Am_244m1_293.6K.ace" temperature="2.53e-08" zaid="95249"/>
   <ace_table alias="Cm-240.71c" awr="237.993" location="1" name="96240.71c" path="293.6K/Cm_240_293.6K.ace" temperature="2.53e-08" zaid="96240"/>
   <ace_table alias="Cm-241.71c" awr="238.987" location="1" name="96241.71c" path="293.6K/Cm_241_293.6K.ace" temperature="2.53e-08" zaid="96241"/>
   <ace_table alias="Cm-242.71c" awr="239.979" location="1" name="96242.71c" path="293.6K/Cm_242_293.6K.ace" temperature="2.53e-08" zaid="96242"/>
@@ -421,7 +421,7 @@
   <ace_table alias="Es-252.71c" awr="249.917" location="1" name="99252.71c" path="293.6K/Es_252_293.6K.ace" temperature="2.53e-08" zaid="99252"/>
   <ace_table alias="Es-253.71c" awr="250.911" location="1" name="99253.71c" path="293.6K/Es_253_293.6K.ace" temperature="2.53e-08" zaid="99253"/>
   <ace_table alias="Es-254.71c" awr="251.905" location="1" name="99254.71c" path="293.6K/Es_254_293.6K.ace" temperature="2.53e-08" zaid="99254"/>
-  <ace_table alias="Es-259.71c" awr="251.905" location="1" name="99259.71c" path="293.6K/Es_254m1_293.6K.ace" temperature="2.53e-08" zaid="99259"/>
+  <ace_table alias="Es-254m.71c" awr="251.905" location="1" name="99259.71c" path="293.6K/Es_254m1_293.6K.ace" temperature="2.53e-08" zaid="99259"/>
   <ace_table alias="Es-255.71c" awr="252.899" location="1" name="99255.71c" path="293.6K/Es_255_293.6K.ace" temperature="2.53e-08" zaid="99255"/>
   <ace_table alias="Fm-255.71c" awr="252.899" location="1" name="100255.71c" path="293.6K/Fm_255_293.6K.ace" temperature="2.53e-08" zaid="100255"/>
   <ace_table alias="H-1.72c" awr="0.999167" location="1" name="1001.72c" path="300K/H_001_300K.ace" temperature="2.585e-08" zaid="1001"/>

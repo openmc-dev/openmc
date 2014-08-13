@@ -2,7 +2,8 @@ module geometry
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Surface, Universe, Lattice
+  use geometry_header,        only: Cell, Surface, Universe, Lattice, &
+                                    &RectLattice, HexLattice
   use global
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, deallocate_coord, Particle
@@ -138,7 +139,7 @@ contains
     real(8) :: xyz(3)                  ! temporary location
     logical :: use_search_cells        ! use cells provided as argument
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    class(Lattice), pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
 !$omp threadprivate(c, lat, univ)
 
@@ -222,7 +223,7 @@ contains
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
 
         ! Set current lattice
-        lat => lattices(c % fill)
+        lat => lattices(c % fill) % obj
 
         ! Determine lattice indices
         i_xyz = get_lat_indices(lat, &
@@ -279,15 +280,17 @@ contains
 !===============================================================================
 
   function get_lat_trans(lat, xyz, i_xyz) result(xyz_t)
-    type(Lattice), pointer, intent(in)  :: lat
-    real(8)               , intent(in)  :: xyz(3)
-    integer               , intent(in)  :: i_xyz(3)
+    class(Lattice), pointer, intent(in)  :: lat
+    real(8)                , intent(in)  :: xyz(3)
+    integer                , intent(in)  :: i_xyz(3)
 
     real(8) :: xyz_t(3)
 
     integer :: n_rings
 
-    if (lat % type == LATTICE_RECT) then
+    select type(lat)
+
+    type is (RectLattice)
       xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
           &(i_xyz(1) - 0.5_8)*lat % width(1))
       xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
@@ -299,7 +302,7 @@ contains
         xyz_t(3) = xyz(3)
       end if
  
-    else if (lat % type == LATTICE_HEX) then
+    type is (HexLattice)
       n_rings = lat % dimension(1)
  
       xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
@@ -314,7 +317,7 @@ contains
         xyz_t(3) = xyz(3)
       end if
 
-    end if
+    end select
 
   end function get_lat_trans
 
@@ -324,13 +327,15 @@ contains
 !===============================================================================
 
   function is_valid_lat_index(lat, i_xyz) result(is_valid)
-    type(Lattice), pointer, intent(in)  :: lat
-    integer               , intent(in)  :: i_xyz(3)
-    logical                             :: is_valid
+    class(Lattice), pointer, intent(in)  :: lat
+    integer                , intent(in)  :: i_xyz(3)
+    logical                              :: is_valid
 
     integer  :: n_rings, n_x, n_y, n_z
 
-    if (lat % type == LATTICE_RECT) then
+    select type(lat)
+
+    type is (RectLattice)
       n_x = lat % dimension(1)
       n_y = lat % dimension(2)
       if (lat % n_dimension == 3) then
@@ -343,7 +348,7 @@ contains
                 &i_xyz(2) > 0 .and. i_xyz(2) <= n_y .and. &
                 &i_xyz(3) > 0 .and. i_xyz(3) <= n_z
 
-    else if (lat % type == LATTICE_HEX) then
+    type is (HexLattice)
       n_rings = lat % dimension(1)
 
       if (lat % n_dimension == 2) then
@@ -358,7 +363,7 @@ contains
                  &i_xyz(1) + i_xyz(2) < 3*n_rings .and. &
                  &i_xyz(3) > 0 .and. i_xyz(3) < n_z + 1)
 
-    end if
+    end select
 
   end function is_valid_lat_index
 
@@ -368,9 +373,9 @@ contains
 !===============================================================================
 
   function get_lat_indices(lat, xyz, uvw) result(i_xyz)
-    type(Lattice), pointer, intent(in) :: lat
-    real(8)               , intent(in) :: xyz(3)
-    real(8)               , intent(in) :: uvw(3)
+    class(Lattice), pointer, intent(in) :: lat
+    real(8)                , intent(in) :: xyz(3)
+    real(8)                , intent(in) :: uvw(3)
 
     integer :: i_xyz(3)
 
@@ -379,8 +384,10 @@ contains
     real(8) :: dists(4)
     integer :: n_rings
     integer :: i, j, k, loc(1)
- 
-    if (lat % type == LATTICE_RECT) then
+
+    select type(lat)
+
+    type is (RectLattice)
       ! Find approximate indices using ceiling division.
       i_xyz(1) = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
       i_xyz(2) = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
@@ -416,7 +423,7 @@ contains
       !  end if
       !end if
 
-    else if (lat % type == LATTICE_HEX) then
+    type is (HexLattice)
       ! Index z direction.
       if (lat % n_dimension == 2) then
         i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3)) / lat % width(2))
@@ -533,7 +540,7 @@ contains
 
       end if
  
-    end if
+    end select
 
   end function get_lat_indices
 
@@ -849,11 +856,11 @@ contains
     real(8) :: x0, y0, z0     ! half width of lattice element
     real(8) :: half_pitch     ! half pitch of a hexagonal lattice
     logical :: found          ! particle found in cell?
-    type(Lattice), pointer, save :: lat => null()
+    class(Lattice), pointer, save :: lat => null()
     type(LocalCoord), pointer :: parent_coord
 !$omp threadprivate(lat)
 
-    lat => lattices(p % coord % lattice)
+    lat => lattices(p % coord % lattice) % obj
 
     if (verbosity >= 10 .or. trace) then
       message = "    Crossing lattice " // trim(to_str(lat % id)) // &
@@ -952,7 +959,7 @@ contains
     logical :: on_surface        ! is particle on surface?
     type(Cell),       pointer, save :: cl => null()
     type(Surface),    pointer, save :: surf => null()
-    type(Lattice),    pointer, save :: lat => null()
+    class(Lattice),   pointer, save :: lat => null()
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
 
@@ -1413,8 +1420,11 @@ contains
       ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
 
       LAT_COORD: if (coord % lattice /= NONE) then
-        lat => lattices(coord % lattice)
-        LAT_TYPE: if (lat % type == LATTICE_RECT) then
+        lat => lattices(coord % lattice) % obj
+
+        LAT_TYPE: select type(lat)
+
+        type is (RectLattice)
           ! copy local coordinates
           x = coord % xyz(1)
           y = coord % xyz(2)
@@ -1480,7 +1490,7 @@ contains
             end if
           end if
 
-        elseif (lat % type == LATTICE_HEX) then LAT_TYPE
+        type is (HexLattice) LAT_TYPE
           ! Copy local coordinates.
           x = coord % xyz(1)
           y = coord % xyz(2)
@@ -1592,7 +1602,7 @@ contains
               end if
             end if
           end if
-        end if LAT_TYPE
+        end select LAT_TYPE
 
         ! If the lattice boundary is coincident with the parent cell boundary,
         ! we need to make sure that the lattice is not selected. This is

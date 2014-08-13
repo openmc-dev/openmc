@@ -105,7 +105,7 @@ contains
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
-    type(Lattice),  pointer :: lat => null()
+    class(Lattice), pointer :: lat => null()
 
     ! Use H5LT interface to write number of geometry objects
     call su % write_data(n_cells, "n_cells", group="geometry")
@@ -275,11 +275,11 @@ contains
       lat => lattices(i)
 
       ! Write lattice type
-      select case(lat % type)
-      case (LATTICE_RECT)
+      select type (lat)
+      type is (LatticeRect)
         call su % write_data("rectangular", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      case (LATTICE_HEX)
+      type is (LatticeHex)
         call su % write_data("hexagonal", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       end select

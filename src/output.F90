@@ -256,7 +256,7 @@ contains
     type(Cell),       pointer :: c => null()
     type(Surface),    pointer :: s => null()
     type(Universe),   pointer :: u => null()
-    type(Lattice),    pointer :: l => null()
+    class(Lattice),   pointer :: l => null()
     type(LocalCoord), pointer :: coord => null()
 
     ! display type of particle
@@ -292,7 +292,7 @@ contains
 
       ! Print information on lattice
       if (coord % lattice /= NONE) then
-        l => lattices(coord % lattice)
+        l => lattices(coord % lattice) % obj
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
              p % coord % lattice_x)) // ',' // trim(to_str(&
@@ -355,7 +355,7 @@ contains
     integer :: unit_      ! unit to write to
     character(MAX_LINE_LEN) :: string
     type(Universe), pointer :: u => null()
-    type(Lattice),  pointer :: l => null()
+    class(Lattice), pointer :: l => null()
     type(Material), pointer :: m => null()
 
     ! Set unit to stdout if not already set
@@ -384,7 +384,7 @@ contains
       u => universes(c % fill)
       write(unit_,*) '    Fill = Universe ' // to_str(u % id)
     case (CELL_LATTICE)
-      l => lattices(c % fill)
+      l => lattices(c % fill) % obj
       write(unit_,*) '    Fill = Lattice ' // to_str(l % id)
     end select
 
@@ -471,8 +471,8 @@ contains
 
   subroutine print_lattice(lat, unit)
 
-    type(Lattice), pointer :: lat
-    integer,      optional :: unit
+    class(Lattice), pointer :: lat
+    integer,       optional :: unit
 
     integer :: i     ! loop index
     integer :: unit_ ! unit to write to
@@ -919,7 +919,7 @@ contains
     type(Surface),     pointer :: s => null()
     type(Cell),        pointer :: c => null()
     type(Universe),    pointer :: u => null()
-    type(Lattice),     pointer :: l => null()
+    class(Lattice),    pointer :: l => null()
 
     ! print summary of surfaces
     call header("SURFACE SUMMARY", unit=UNIT_SUMMARY)
@@ -946,7 +946,7 @@ contains
     if (n_lattices > 0) then
       call header("LATTICE SUMMARY", unit=UNIT_SUMMARY)
       do i = 1, n_lattices
-        l => lattices(i)
+        l => lattices(i) % obj
         call print_lattice(l, unit=UNIT_SUMMARY)
       end do
     end if

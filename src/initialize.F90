@@ -7,7 +7,8 @@ module initialize
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
-  use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
+  use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
+                              &BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
@@ -566,7 +567,7 @@ contains
     integer :: i_array                ! index in surfaces/materials array 
     integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
-    type(Lattice),     pointer :: lat => null()
+    class(Lattice),    pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
@@ -622,7 +623,7 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          mid = lattices(lid) % outside
+          mid = lattices(lid) % obj % outside
           c % type = CELL_LATTICE
           c % fill = lid
           if (mid == MATERIAL_VOID) then
@@ -647,9 +648,10 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i)
+      lat => lattices(i) % obj
+      select type (lat)
 
-      if (lat % type == LATTICE_RECT) then
+      type is (RectLattice)
         n_x = lat % dimension(1)
         n_y = lat % dimension(2)
         if (lat % n_dimension == 3) then
@@ -673,7 +675,7 @@ contains
           end do
         end do
 
-      else
+      type is (HexLattice)
         n_rings = lat % dimension(1)
         if (lat % n_dimension == 2) then
           n_z = lat % dimension(2)
@@ -701,7 +703,7 @@ contains
           end do
         end do
 
-      end if
+      end select
 
     end do
 

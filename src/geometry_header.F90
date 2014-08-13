@@ -21,17 +21,27 @@ module geometry_header
 ! triangular)
 !===============================================================================
 
-  type Lattice
-     integer :: id          ! Universe number for lattice
-     integer :: type        ! Type of lattice (rectangular, hex, etc)
-     integer :: level       ! Level of lattice
-     integer :: n_dimension ! Number of dimensions
-     integer, allocatable :: dimension(:)     ! number of cells in each direction
-     real(8), allocatable :: lower_left(:)    ! lower-left corner of lattice
-     real(8), allocatable :: width(:)         ! width of each lattice cell
-     integer, allocatable :: universes(:,:,:) ! specified universes
-     integer              :: outside          ! material to fill area outside
+  type, abstract :: Lattice
+    integer :: id          ! Universe number for lattice
+    integer :: type        ! Type of lattice (rectangular, hex, etc)
+    integer :: level       ! Level of lattice
+    integer :: n_dimension ! Number of dimensions
+    integer, allocatable :: dimension(:)     ! number of cells in each direction
+    real(8), allocatable :: lower_left(:)    ! lower-left corner of lattice
+    real(8), allocatable :: width(:)         ! width of each lattice cell
+    integer, allocatable :: universes(:,:,:) ! specified universes
+    integer              :: outside          ! material to fill area outside
   end type Lattice
+
+  type, extends(Lattice) :: RectLattice
+  end type RectLattice
+
+  type, extends(Lattice) :: HexLattice
+  end type HexLattice
+
+  type LatticeContainer
+    class(Lattice), allocatable :: obj
+  end type LatticeContainer
 
 !===============================================================================
 ! SURFACE type defines a first- or second-order surface that can be used to

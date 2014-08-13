@@ -1,6 +1,6 @@
 module initialize
 
-  use ace,              only: read_xs
+  use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -103,6 +103,9 @@ contains
       call time_read_xs % start()
       call read_xs()
       call time_read_xs % stop()
+
+      ! Create linked lists for multiple instances of the same nuclide
+      call same_nuclide_list()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then

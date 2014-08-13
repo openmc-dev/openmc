@@ -5,7 +5,8 @@ module hdf5_summary
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: Cell, Surface, Universe, Lattice
+  use geometry_header, only: Cell, Surface, Universe, Lattice, RectLattice, &
+                             &HexLattice
   use global
   use material_header, only: Material
   use mesh_header,     only: StructuredMesh
@@ -148,7 +149,7 @@ contains
       case (CELL_LATTICE)
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(lattices(c % fill) % id, "lattice", &
+        call su % write_data(lattices(c % fill) % obj % id, "lattice", &
              group="geometry/cells/cell " // trim(to_str(c % id))) 
       end select
 
@@ -272,14 +273,14 @@ contains
 
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
-      lat => lattices(i)
+      lat => lattices(i) % obj
 
       ! Write lattice type
       select type (lat)
-      type is (LatticeRect)
+      type is (RectLattice)
         call su % write_data("rectangular", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      type is (LatticeHex)
+      type is (HexLattice)
         call su % write_data("hexagonal", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       end select

@@ -280,9 +280,9 @@ contains
 !===============================================================================
 
   function get_lat_trans(lat, xyz, i_xyz) result(xyz_t)
-    class(Lattice), pointer, intent(in)  :: lat
-    real(8)                , intent(in)  :: xyz(3)
-    integer                , intent(in)  :: i_xyz(3)
+    class(Lattice), intent(in)  :: lat
+    real(8)       , intent(in)  :: xyz(3)
+    integer       , intent(in)  :: i_xyz(3)
 
     real(8) :: xyz_t(3)
 
@@ -327,9 +327,9 @@ contains
 !===============================================================================
 
   function is_valid_lat_index(lat, i_xyz) result(is_valid)
-    class(Lattice), pointer, intent(in)  :: lat
-    integer                , intent(in)  :: i_xyz(3)
-    logical                              :: is_valid
+    class(Lattice), intent(in)  :: lat
+    integer       , intent(in)  :: i_xyz(3)
+    logical                     :: is_valid
 
     integer  :: n_rings, n_x, n_y, n_z
 
@@ -373,9 +373,9 @@ contains
 !===============================================================================
 
   function get_lat_indices(lat, xyz, uvw) result(i_xyz)
-    class(Lattice), pointer, intent(in) :: lat
-    real(8)                , intent(in) :: xyz(3)
-    real(8)                , intent(in) :: uvw(3)
+    class(Lattice), intent(in) :: lat
+    real(8)       , intent(in) :: xyz(3)
+    real(8)       , intent(in) :: uvw(3)
 
     integer :: i_xyz(3)
 

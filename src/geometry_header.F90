@@ -23,20 +23,21 @@ module geometry_header
 
   type, abstract :: Lattice
     integer :: id          ! Universe number for lattice
-    integer :: type        ! Type of lattice (rectangular, hex, etc)
-    integer :: level       ! Level of lattice
-    integer :: n_dimension ! Number of dimensions
-    integer, allocatable :: dimension(:)     ! number of cells in each direction
-    real(8), allocatable :: lower_left(:)    ! lower-left corner of lattice
-    real(8), allocatable :: width(:)         ! width of each lattice cell
-    integer, allocatable :: universes(:,:,:) ! specified universes
-    integer              :: outside          ! material to fill area outside
+    real(8), allocatable :: pitch(:)         ! Pitch along each axis
+    integer, allocatable :: universes(:,:,:) ! Specified universes
+    integer              :: outside          ! Material to fill area outside
+    logical              :: is_3d            ! Lattice has cells on z axis
   end type Lattice
 
   type, extends(Lattice) :: RectLattice
+    integer               :: n_cells(3)     ! Number of cells along each axis
+    real(8), allocatable  :: lower_left(:)  ! Global lower-left corner of lat
   end type RectLattice
 
   type, extends(Lattice) :: HexLattice
+    integer               :: n_rings   ! Number of radial ring cell positoins
+    integer               :: n_axial   ! Number of axial cell positions
+    real(8), allocatable  :: center(:) ! Global center of lattice
   end type HexLattice
 
   type LatticeContainer

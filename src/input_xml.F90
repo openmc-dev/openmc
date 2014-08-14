@@ -1200,6 +1200,8 @@ contains
     RECT_LATTICES: do i = 1, n_rlats
       allocate(RectLattice::lattices(i) % obj)
       lat => lattices(i) % obj
+      select type(lat)
+      type is (RectLattice)
 
       ! Get pointer to i-th lattice
       call get_list_item(node_rlat_list, i, node_lat)
@@ -1221,18 +1223,20 @@ contains
 
       ! Read number of lattice cells in each dimension
       n = get_arraysize_integer(node_lat, "dimension")
-      if (n /= 2 .and. n /= 3) then
+      if (n == 2) then
+        call get_node_array(node_lat, "dimension", lat % n_cells(1:2))
+        lat % n_cells(3) = 1
+        lat % is_3d = .false.
+      else if (n == 3) then
+        call get_node_array(node_lat, "dimension", lat % n_cells)
+        lat % is_3d = .true.
+      else
         message = "Rectangular lattice must be two or three dimensions."
         call fatal_error()
       end if
 
-      lat % n_dimension = n
-      allocate(lat % dimension(n))
-      call get_node_array(node_lat, "dimension", lat % dimension)
-
       ! Read lattice lower-left location
-      if (size(lat % dimension) /= &
-           &get_arraysize_double(node_lat, "lower_left")) then
+      if (get_arraysize_double(node_lat, "lower_left") /= n) then
         message = "Number of entries on <lower_left> must be the same as &
              &the number of entries on <dimension>."
         call fatal_error()
@@ -1241,25 +1245,20 @@ contains
       allocate(lat % lower_left(n))
       call get_node_array(node_lat, "lower_left", lat % lower_left)
 
-      ! Read lattice widths
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "width")) then
-        message = "Number of entries on <width> must be the same as &
+      ! Read lattice pitches
+      if (get_arraysize_double(node_lat, "pitch") /= n) then
+        message = "Number of entries on <pitch> must be the same as &
              &the number of entries on <dimension>."
         call fatal_error()
       end if
 
-      allocate(lat % width(n))
-      call get_node_array(node_lat, "width", lat % width)
+      allocate(lat % pitch(n))
+      call get_node_array(node_lat, "pitch", lat % pitch)
 
       ! Copy number of dimensions
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+      n_x = lat % n_cells(1)
+      n_y = lat % n_cells(2)
+      n_z = lat % n_cells(3)
       allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
@@ -1298,11 +1297,14 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 
+      end select
     end do RECT_LATTICES
 
     HEX_LATTICES: do i = 1, n_hlats
       allocate(HexLattice::lattices(i) % obj)
       lat => lattices(i) % obj
+      select type (lat)
+      type is (HexLattice)
 
       ! Get pointer to i-th lattice
       call get_list_item(node_hlat_list, i, node_lat)
@@ -1323,45 +1325,48 @@ contains
       end if
 
       ! Read number of lattice cells in each dimension
-      n = get_arraysize_integer(node_lat, "dimension")
-      if (n /= 1 .and. n/= 2) then
-        message = "Hexagonal lattice must be one or two dimension(s)."
-        call fatal_error()
+      call get_node_value(node_lat, "n_rings", lat % n_rings)
+      if (check_for_node(node_lat, "n_axial")) then
+        call get_node_value(node_lat, "n_axial", lat % n_axial)
+        lat % is_3d = .true.
+      else
+        lat % n_axial = 1
+        lat % is_3d = .false.
       end if
-
-      lat % n_dimension = n
-      allocate(lat % dimension(n))
-      call get_node_array(node_lat, "dimension", lat % dimension)
 
       ! Read lattice lower-left location
-      if (size(lat % dimension) /= &
-           &get_arraysize_double(node_lat, "lower_left") - 1) then
-        message = "Number of entries on <lower_left> must be one greater &
-             &than the number of entries on <dimension>."
+      n = get_arraysize_double(node_lat, "center")
+      if (lat % is_3d .and. n /= 3) then
+        message = "A hexagonal lattice with <n_axial> must have <center> &
+            &specified by 3 numbers."
+        call fatal_error()
+      else if ((.not. lat % is_3d) .and. n /= 2) then
+        message = "A hexagonal lattice without <n_axial> must have <center> &
+            &specified by 2 numbers."
         call fatal_error()
       end if
 
-      allocate(lat % lower_left(n+1))
-      call get_node_array(node_lat, "lower_left", lat % lower_left)
+      allocate(lat % center(n))
+      call get_node_array(node_lat, "center", lat % center)
 
-      ! Read lattice widths
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "width")) then
-        message = "Number of entries on <width> must be the same as &
-             &the number of entries on <dimension>."
+      ! Read lattice pitches
+      n = get_arraysize_double(node_lat, "pitch")
+      if (lat % is_3d .and. n /= 2) then
+        message = "A hexagonal lattice with <n_axial> must have <pitch> &
+            &specified by 2 numbers."
+        call fatal_error()
+      else if ((.not. lat % is_3d) .and. n /= 1) then
+        message = "A hexagonal lattice without <n_axial> must have <pitch> &
+            &specified by 1 number."
         call fatal_error()
       end if
 
-      allocate(lat % width(n))
-      call get_node_array(node_lat, "width", lat % width)
+      allocate(lat % pitch(n))
+      call get_node_array(node_lat, "pitch", lat % pitch)
 
       ! Copy number of dimensions
-      n_rings = lat % dimension(1)
-      if (lat % n_dimension == 2) then
-        n_z = lat % dimension(2)
-      else
-        n_z = 1
-      end if
+      n_rings = lat % n_rings
+      n_z = lat % n_axial
       allocate(lat % universes(2*n_rings - 1, 2*n_rings - 1, n_z))
 
       ! Check that number of universes matches size
@@ -1474,6 +1479,7 @@ contains
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 
+      end select
     end do HEX_LATTICES
 
     ! Close geometry XML file

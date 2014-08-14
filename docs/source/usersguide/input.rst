@@ -715,19 +715,12 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 ---------------------
 
 The ``<lattice>`` can be used to represent repeating structures (e.g. fuel pins
-in an assembly) or other geometry which naturally fits into a two- or
-three-dimensional structured mesh. Each cell within the lattice is filled with a
-specified universe. A ``<lattice>`` accepts the following attributes or
-sub-elements:
+in an assembly) or other geometry which fits onto a rectilinear grid. Each cell
+within the lattice is filled with a specified universe. A ``<lattice>`` accepts
+the following attributes or sub-elements:
 
   :id:
-    A unique integer that can be used to identify the surface.
-
-  :type:
-    A string indicating the arrangement of lattice cells. Currently, the only
-    accepted option is "rectangular".
-
-    *Default*: rectangular
+    A unique integer that can be used to identify the lattice.
 
   :dimension:
     Two or three integers representing the number of lattice cells in the x- and
@@ -741,8 +734,8 @@ sub-elements:
 
     *Default*: None
 
-  :width:
-    The width of the lattice cell in the x- and y- (and z-) directions.
+  :pitch:
+    The pitch between lattice cells in the x- and y- (and z-) directions.
 
     *Default*: None
 
@@ -756,6 +749,88 @@ sub-elements:
     A list of the universe numbers that fill each cell of the lattice.
 
     *Default*: None
+
+Here is an example of a properly defined 2d rectangular lattice:
+
+.. code-block:: xml
+
+    <lattice id="10" dimension="3 3" outside="1">
+        <lower_left> -1.5 -1.5 </lower_left>
+        <width> 1.0 1.0 </width>
+        <universes>
+          2 2 2
+          2 1 2
+          2 2 2
+        </universes>
+    </lattice>
+
+``<hex_lattice>`` Element
+---------------------
+
+The ``<hex_lattice>`` can be used to represent repeating structures (e.g. fuel
+pins in an assembly) or other geometry which naturally fits onto a hexagonal
+grid or hexagonal prism grid. Each cell within the lattice is filled with a
+specified universe. This lattice uses the "flat-topped hexagon" scheme where two
+of the six edges are perpendicular to the y-axis.  A ``<hex_lattice>`` accepts
+the following attributes or sub-elements:
+
+  :id:
+    A unique integer that can be used to identify the lattice.
+
+  :n_rings:
+    An integer representing the number of radial ring positions in the xy-plane.
+    Note that this number includes the degenerate center ring which only has one
+    element.
+
+    *Default*: None
+
+  :n_axial:
+    An integer representing the number of positions along the z-axis.  This
+    element is optional.
+
+    *Default*: None
+
+  :center:
+    The coordinates of the center of the lattice. If the lattice does not have
+    axial sections then only the x- and y-coordinates are specified.
+
+    *Default*: None
+
+  :pitch:
+    The pitch between lattice cells in the x- and y- (and z-) directions.
+
+    *Default*: None
+
+  :outside:
+    The unique integer identifier of a material that is to be used to fill all
+    space outside of the lattice. This element is optional.
+
+    *Default*: The region outside the defined lattice is treated as void.
+
+  :universes:
+    A list of the universe numbers that fill each cell of the lattice.
+
+    *Default*: None
+
+Here is an example of a properly defined 2d hexagonal lattice:
+
+.. code-block:: xml
+
+    <hex_lattice id="10" n_rings="3" outside="1">
+        <center> 0.0 0.0 </center>
+        <pitch> 1.0 </pitch>
+        <universes>
+                  202
+               202   202 
+            202   202   202
+               202   202
+            202   101   202
+               202   202
+            202   202   202
+               202   202
+                  202
+        </universes>
+    </hex_lattice>
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 

@@ -286,33 +286,30 @@ contains
 
     real(8) :: xyz_t(3)
 
-    integer :: n_rings
-
     select type(lat)
 
     type is (RectLattice)
       xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
-          &(i_xyz(1) - 0.5_8)*lat % width(1))
+          &(i_xyz(1) - 0.5_8)*lat % pitch(1))
       xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
-          &(i_xyz(2) - 0.5_8)*lat % width(2))
-      if (lat % n_dimension == 3) then
+          &(i_xyz(2) - 0.5_8)*lat % pitch(2))
+      if (lat % is_3d) then
         xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
-            &(i_xyz(3) - 0.5_8)*lat % width(3))
+            &(i_xyz(3) - 0.5_8)*lat % pitch(3))
       else
         xyz_t(3) = xyz(3)
       end if
  
     type is (HexLattice)
-      n_rings = lat % dimension(1)
- 
-      xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
-          &sqrt(3.0_8) * (i_xyz(1) - n_rings) * lat % width(1))
-      xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
-          &(2 * (i_xyz(2) - n_rings)) * lat % width(1) + &
-          &(i_xyz(1) - n_rings) * lat % width(1))
-      if (lat % n_dimension == 3) then
-        xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
-            &(i_xyz(3) - 0.5_8) * lat % width(3))
+      xyz_t(1) = xyz(1) - (lat % center(1) + &
+          &sqrt(3.0_8) * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
+      xyz_t(2) = xyz(2) - (lat % center(2) + &
+          &(2 * (i_xyz(2) - lat % n_rings)) * lat % pitch(1) + &
+          &(i_xyz(1) - lat % n_rings) * lat % pitch(1))
+      ! TODO transition to center from lower_left
+      if (lat % is_3d) then
+        xyz_t(3) = xyz(3) - (lat % center(3) + &
+            &(i_xyz(3) - 0.5_8) * lat % pitch(3))
       else
         xyz_t(3) = xyz(3)
       end if
@@ -331,37 +328,19 @@ contains
     integer       , intent(in)  :: i_xyz(3)
     logical                     :: is_valid
 
-    integer  :: n_rings, n_x, n_y, n_z
-
     select type(lat)
 
     type is (RectLattice)
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
- 
-      is_valid = i_xyz(1) > 0 .and. i_xyz(1) <= n_x .and. &
-                &i_xyz(2) > 0 .and. i_xyz(2) <= n_y .and. &
-                &i_xyz(3) > 0 .and. i_xyz(3) <= n_z
+      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) <= lat % n_cells(1) .and. &
+                 &i_xyz(2) > 0 .and. i_xyz(2) <= lat % n_cells(2) .and. &
+                 &i_xyz(3) > 0 .and. i_xyz(3) <= lat % n_cells(3))
 
     type is (HexLattice)
-      n_rings = lat % dimension(1)
-
-      if (lat % n_dimension == 2) then
-        n_z = lat % dimension(2)
-      else
-        n_z = 1
-      end if
-
-      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) < 2*n_rings .and. &
-                 &i_xyz(2) > 0 .and. i_xyz(2) < 2*n_rings .and. &
-                 &i_xyz(1) + i_xyz(2) > n_rings .and. &
-                 &i_xyz(1) + i_xyz(2) < 3*n_rings .and. &
-                 &i_xyz(3) > 0 .and. i_xyz(3) < n_z + 1)
+      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) < 2*lat % n_rings .and. &
+                 &i_xyz(2) > 0 .and. i_xyz(2) < 2*lat % n_rings .and. &
+                 &i_xyz(1) + i_xyz(2) > lat % n_rings .and. &
+                 &i_xyz(1) + i_xyz(2) < 3*lat % n_rings .and. &
+                 &i_xyz(3) > 0 .and. i_xyz(3) <= lat % n_axial)
 
     end select
 
@@ -389,10 +368,10 @@ contains
 
     type is (RectLattice)
       ! Find approximate indices using ceiling division.
-      i_xyz(1) = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
-      i_xyz(2) = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
-      if (lat % n_dimension == 3) then
-        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+      i_xyz(1) = ceiling((xyz(1) - lat % lower_left(1))/lat % pitch(1))
+      i_xyz(2) = ceiling((xyz(2) - lat % lower_left(2))/lat % pitch(2))
+      if (lat % is_3d) then
+        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3))/lat % pitch(3))
       else
         i_xyz(3) = 1
       end if
@@ -425,8 +404,9 @@ contains
 
     type is (HexLattice)
       ! Index z direction.
-      if (lat % n_dimension == 2) then
-        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3)) / lat % width(2))
+      ! TODO transition to center from lower_left
+      if (lat % is_3d) then
+        i_xyz(3) = ceiling((xyz(3) - lat % center(3)) / lat % pitch(2))
       else
         i_xyz(3) = 1
       end if
@@ -435,14 +415,13 @@ contains
       ! used to find the index of the particle coordinates to within 4
       ! cells.
       alpha = xyz(2) - xyz(1) / sqrt(3.0_8)
-      i_xyz(1) = floor(xyz(1) / (sqrt(3.0_8) * lat % width(1)))
-      i_xyz(2) = floor(alpha / (2.0_8 * lat % width(1)))
+      i_xyz(1) = floor(xyz(1) / (sqrt(3.0_8) * lat % pitch(1)))
+      i_xyz(2) = floor(alpha / (2.0_8 * lat % pitch(1)))
 
       ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0)
       ! but the array is offset so that the indices never go below 1).
-      n_rings = lat % dimension(1)
-      i_xyz(1) = i_xyz(1) + n_rings
-      i_xyz(2) = i_xyz(2) + n_rings
+      i_xyz(1) = i_xyz(1) + lat % n_rings
+      i_xyz(2) = i_xyz(2) + lat % n_rings
 
       ! Calculate the (squared) distance between the particle and the centers of
       ! the four possible cells.  Regular hexagonal tiles form a centroidal
@@ -1431,8 +1410,8 @@ contains
           z = coord % xyz(3)
 
           ! determine oncoming edge
-          x0 = sign(lat % width(1) * 0.5_8, u)
-          y0 = sign(lat % width(2) * 0.5_8, v)
+          x0 = sign(lat % pitch(1) * 0.5_8, u)
+          y0 = sign(lat % pitch(2) * 0.5_8, v)
 
           ! left and right sides
           if (abs(x - x0) < FP_PRECISION) then
@@ -1468,8 +1447,8 @@ contains
             end if
           end if
 
-          if (lat % n_dimension == 3) then
-            z0 = -sign(lat % width(3) * 0.5_8, w)
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(3) * 0.5_8, w)
 
             ! top and bottom sides
             if (abs(z - z0) < FP_PRECISION) then
@@ -1510,7 +1489,7 @@ contains
           gama_dir = -v/2.0_8 + sqrt(3.0_8)*u/2.0_8
 
           ! Upper right and lower left sides.
-          edge = -sign(lat % width(1), beta_dir)  ! Oncoming edge
+          edge = -sign(lat % pitch(1), beta_dir)  ! Oncoming edge
           if (beta_dir > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, 0, 0/))
           else
@@ -1533,7 +1512,7 @@ contains
           end if
 
           ! Lower right and upper left sides.
-          edge = -sign(lat % width(1), gama_dir)  ! Oncoming edge
+          edge = -sign(lat % pitch(1), gama_dir)  ! Oncoming edge
           if (gama_dir > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, -1, 0/))
           else
@@ -1558,7 +1537,7 @@ contains
           end if
 
           ! Upper and lower sides.
-          edge = -sign(lat % width(1), v)  ! Oncoming edge
+          edge = -sign(lat % pitch(1), v)  ! Oncoming edge
           if (v > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/0, 1, 0/))
           else
@@ -1582,8 +1561,8 @@ contains
           end if
 
           ! Top and bottom sides.
-          if (lat % n_dimension == 2) then
-            z0 = sign(lat % width(3) * 0.5_8, w)
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(3) * 0.5_8, w)
 
             if (abs(z - z0) < FP_PRECISION) then
               d = INFINITY

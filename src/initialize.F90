@@ -563,7 +563,6 @@ contains
     integer :: k                      ! loop index for lattices
     integer :: m                      ! loop index for lattices
     integer :: mid, lid               ! material and lattice IDs
-    integer :: n_x, n_y, n_z, n_rings ! size of lattice
     integer :: i_array                ! index in surfaces/materials array 
     integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
@@ -652,17 +651,9 @@ contains
       select type (lat)
 
       type is (RectLattice)
-        n_x = lat % dimension(1)
-        n_y = lat % dimension(2)
-        if (lat % n_dimension == 3) then
-          n_z = lat % dimension(3)
-        else
-          n_z = 1
-        end if
-
-        do m = 1, n_z
-          do k = 1, n_y
-            do j = 1, n_x
+        do m = 1, lat % n_cells(3)
+          do k = 1, lat % n_cells(2)
+            do j = 1, lat % n_cells(1)
               id = lat % universes(j,k,m)
               if (universe_dict % has_key(id)) then
                 lat % universes(j,k,m) = universe_dict % get_key(id)
@@ -676,19 +667,12 @@ contains
         end do
 
       type is (HexLattice)
-        n_rings = lat % dimension(1)
-        if (lat % n_dimension == 2) then
-          n_z = lat % dimension(2)
-        else
-          n_z = 1
-        end if
-
-        do m = 1, n_z
-          do k = 1, 2*n_rings - 1
-            do j = 1, 2*n_rings - 1
-              if (j + k < n_rings + 1) then
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
                 cycle
-              else if (j + k > 3*n_rings - 1) then
+              else if (j + k > 3*lat % n_rings - 1) then
                 cycle
               end if
               id = lat % universes(j, k, m)

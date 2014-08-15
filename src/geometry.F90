@@ -946,10 +946,15 @@ contains
     real(8) :: xyz_t(3)
     type(LocalCoord), pointer :: parent_coord
     real(8) :: d_lat
+    real(8) :: d_surf
+    integer :: level_surf_cross
+    integer :: level_lat_trans(3)
 !$omp threadprivate(cl, surf, lat, coord, final_coord)
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
+    d_lat = INFINITY
+    d_surf = INFINITY
     lattice_translation = (/0, 0, 0/)
     nullify(final_coord)
 
@@ -1384,12 +1389,10 @@ contains
         end select
 
         ! Check is calculated distance is new minimum
-        if (d < dist) then
-          if (abs(d - dist)/dist >= FP_PRECISION) then
-            dist = d
-            surface_crossed = -cl % surfaces(i)
-            lattice_translation = (/0, 0, 0/)
-            final_coord => coord
+        if (d < d_surf) then
+          if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
+            d_surf = d
+            level_surf_cross = -cl % surfaces(i)
           end if
         end if
 
@@ -1424,9 +1427,9 @@ contains
 
           d_lat = d
           if (u > 0) then
-            lattice_translation = (/ 1, 0, 0 /)
+            level_lat_trans = (/ 1, 0, 0 /)
           else
-            lattice_translation = (/ -1, 0, 0 /)
+            level_lat_trans = (/ -1, 0, 0 /)
           end if
 
           ! front and back sides
@@ -1441,9 +1444,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              lattice_translation = (/ 0, 1, 0 /)
+              level_lat_trans = (/ 0, 1, 0 /)
             else
-              lattice_translation = (/ 0, -1, 0 /)
+              level_lat_trans = (/ 0, -1, 0 /)
             end if
           end if
 
@@ -1462,9 +1465,9 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                lattice_translation = (/ 0, 0, 1 /)
+                level_lat_trans = (/ 0, 0, 1 /)
               else
-                lattice_translation = (/ 0, 0, -1 /)
+                level_lat_trans = (/ 0, 0, -1 /)
               end if
             end if
           end if
@@ -1482,11 +1485,16 @@ contains
             parent_coord => parent_coord % next
           end do
 
-          ! Compute skewed coordinates and velocities.
-          beta = y/2.0_8 + sqrt(3.0_8)*x/2.0_8
-          beta_dir = v/2.0_8 + sqrt(3.0_8)*u/2.0_8
-          gama = -y/2.0_8 + sqrt(3.0_8)*x/2.0_8
-          gama_dir = -v/2.0_8 + sqrt(3.0_8)*u/2.0_8
+          ! Compute velocities along the hexagonal axes.
+          beta_dir = sqrt(3.0_8)*u/2.0_8 + v/2.0_8
+          gama_dir = sqrt(3.0_8)*u/2.0_8 - v/2.0_8
+
+          ! Note that hexagonal lattice distance calculations are performed
+          ! using the particle's coordinates relative to the neighbor lattice
+          ! cells, not relative to the particle's current cell.  This is done
+          ! because there is significant disagreement between neighboring cells
+          ! on where the lattice boundary is due to the worse finite precision
+          ! of hex lattices.
 
           ! Upper right and lower left sides.
           edge = -sign(lat % pitch(1), beta_dir)  ! Oncoming edge
@@ -1506,9 +1514,9 @@ contains
 
           d_lat = d
           if (beta_dir > 0) then
-            lattice_translation = (/1, 0, 0/)
+            level_lat_trans = (/1, 0, 0/)
           else
-            lattice_translation = (/-1, 0, 0/)
+            level_lat_trans = (/-1, 0, 0/)
           end if
 
           ! Lower right and upper left sides.
@@ -1530,9 +1538,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (gama_dir > 0) then
-              lattice_translation = (/1, -1, 0/)
+              level_lat_trans = (/1, -1, 0/)
             else
-              lattice_translation = (/-1, 1, 0/)
+              level_lat_trans = (/-1, 1, 0/)
             end if
           end if
 
@@ -1554,9 +1562,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              lattice_translation = (/0, 1, 0/)
+              level_lat_trans = (/0, 1, 0/)
             else
-              lattice_translation = (/0, -1, 0/)
+              level_lat_trans = (/0, -1, 0/)
             end if
           end if
 
@@ -1575,26 +1583,13 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                lattice_translation = (/ 0, 0, 1 /)
+                level_lat_trans = (/ 0, 0, 1 /)
               else
-                lattice_translation = (/ 0, 0, -1 /)
+                level_lat_trans = (/ 0, 0, -1 /)
               end if
             end if
           end if
         end select LAT_TYPE
-
-        ! If the lattice boundary is coincident with the parent cell boundary,
-        ! we need to make sure that the lattice is not selected. This is
-        ! complicated by the fact that floating point may determine that one
-        ! is closer than the other (can't check direct equality). Thus, the
-        ! logic here checks whether the relative difference is within floating
-        ! point precision.
-        if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
-          dist = d_lat
-          final_coord => coord
-        else
-          lattice_translation = (/0, 0, 0/)
-        end if
 
         if (d_lat < 0.0) then
           message = "Particle " // trim(to_str(p % id)) // &
@@ -1603,6 +1598,26 @@ contains
           call handle_lost_particle(p)
         end if
       end if LAT_COORD
+
+      ! If the boundary on this lattice level is coincident with a boundary on
+      ! a higher level then we need to make sure that the higher level boundary
+      ! is selected.  This logic must include consideration of floating point
+      ! precision.
+      if (d_surf < d_lat) then
+        if (abs(dist - d_surf)/dist >= FP_REL_PRECISION) then
+          dist = d_surf
+          surface_crossed = level_surf_cross
+          lattice_translation = (/0, 0, 0/)
+          final_coord => coord
+        end if
+      else
+        if (abs(dist - d_lat)/dist >= FP_REL_PRECISION) then
+          dist = d_lat
+          surface_crossed = None
+          lattice_translation = level_lat_trans
+          final_coord => coord
+        end if
+      end if
 
       coord => coord % next
 

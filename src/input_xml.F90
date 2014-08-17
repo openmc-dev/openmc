@@ -4,6 +4,7 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
+  use dict_header,      only: DictIntInt
   use geometry_header,  only: Cell, Surface, Lattice
   use global
   use list_header,      only: ListChar, ListReal
@@ -1852,10 +1853,11 @@ contains
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
+    type(DictIntInt) :: find_score
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
-    type(TallyFilter), allocatable :: filters(:) ! temporary filters
+    type(TallyFilter), allocatable :: filters(:) ! temporary filters    
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
@@ -2503,7 +2505,7 @@ contains
             end if
 
             t % score_bins(j) = SCORE_FLUX
-            t % find_score(SCORE_FLUX) = l
+            call find_score % add_key(SCORE_FLUX, l)
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally flux with an outgoing energy filter."
               call fatal_error()
@@ -2524,11 +2526,11 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins  - 1
-            t % find_score(SCORE_FLUX_YN) = l
+            call find_score % add_key(SCORE_FLUX_YN, l)
 
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
-            t % find_score(SCORE_TOTAL) = l
+            call find_score % add_key(SCORE_TOTAL, l)
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally total reaction rate with an &
                    &outgoing energy filter."
@@ -2543,29 +2545,29 @@ contains
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
-            t % find_score(SCORE_TOTAL_YN) = l
+            call find_score % add_key(SCORE_TOTAL_YN, l)
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
 
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
-            t % find_score(SCORE_SCATTER) = l
+            call find_score % add_key(SCORE_SCATTER, l)
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
-            t % find_score(SCORE_NU_SCATTER) = l
+            call find_score % add_key(SCORE_NU_SCATTER, l)
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('scatter-n')
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
-              t % find_score(SCORE_SCATTER) = l
+              call find_score % add_key(SCORE_SCATTER, l)
             else
               t % score_bins(j) = SCORE_SCATTER_N
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
-              t % find_score(SCORE_SCATTER_N) = l
+              call find_score % add_key(SCORE_SCATTER_N, l)
             end if
             t % moment_order(j) = n_order
 
@@ -2574,10 +2576,10 @@ contains
             t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
               t % score_bins(j) = SCORE_NU_SCATTER
-               t % find_score(SCORE_NU_SCATTER) = l
+              call find_score % add_key(SCORE_NU_SCATTER, l)
             else
               t % score_bins(j) = SCORE_NU_SCATTER_N
-              t % find_score(SCORE_NU_SCATTER_N) = l
+              call find_score % add_key(SCORE_NU_SCATTER_N, l)
             end if
             t % moment_order(j) = n_order
 
@@ -2587,7 +2589,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
-            t % find_score(SCORE_SCATTER_PN) = l
+            call find_score % add_key(SCORE_SCATTER_PN, l)
 
           case ('nu-scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2595,7 +2597,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
-            t % find_score(SCORE_NU_SCATTER_PN) = l
+            call find_score % add_key(SCORE_NU_SCATTER_PN, l)
 
           case ('scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2603,7 +2605,7 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
-            t % find_score(SCORE_SCATTER_YN) = l
+            call find_score % add_key(SCORE_SCATTER_YN, l)
 
           case ('nu-scatter-yn')
             t % estimator = ESTIMATOR_ANALOG
@@ -2611,11 +2613,11 @@ contains
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins - 1
-            t % find_score(SCORE_NU_SCATTER_YN) = l
+            call find_score % add_key(SCORE_NU_SCATTER_YN, l)
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
-            t % find_score(SCORE_TRANSPORT) = l
+            call find_score % add_key(SCORE_TRANSPORT, l)
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
@@ -2625,25 +2627,25 @@ contains
             call fatal_error()
           case ('n1n')
             t % score_bins(j) = SCORE_N_1N
-            t % find_score(SCORE_N_1N) = l
+            call find_score % add_key(SCORE_N_1N, l)
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('n2n')
             t % score_bins(j) = N_2N
-            t % find_score(N_2N) = l
+            call find_score % add_key(N_2N, l)
 
           case ('n3n')
             t % score_bins(j) = N_3N
-            t % find_score(N_3N) = l
+            call find_score % add_key(N_3N, l)
 
           case ('n4n')
             t % score_bins(j) = N_4N
-            t % find_score(N_4N) = l
+            call find_score % add_key(N_4N, l)
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
-            t % find_score(SCORE_ABSORPTION) = l
+            call find_score % add_key(SCORE_ABSORPTION, l)
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally absorption rate with an outgoing &
                    &energy filter."
@@ -2651,7 +2653,7 @@ contains
             end if
           case ('fission')
             t % score_bins(j) = SCORE_FISSION
-            t % find_score(SCORE_FISSION) = l 
+            call find_score % add_key(SCORE_FISSION, l) 
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally fission rate with an outgoing &
                    &energy filter."
@@ -2659,18 +2661,18 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
-            t % find_score(SCORE_NU_FISSION) = l 
+            call find_score % add_key(SCORE_NU_FISSION, l) 
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
-            t % find_score(SCORE_KAPPA_FISSION) = l
+            call find_score % add_key(SCORE_KAPPA_FISSION, l)
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT
-            t % find_score(SCORE_CURRENT) = l
+            call find_score % add_key(SCORE_CURRENT, l)
 
             ! Check to make sure that current is the only desired response
             ! for this tally
@@ -2721,7 +2723,7 @@ contains
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
-            t % find_score(SCORE_EVENTS) = l
+            call find_score % add_key(SCORE_EVENTS, l)
 
           case default
             ! Assume that user has specified an MT number
@@ -2731,6 +2733,7 @@ contains
               ! Specified score was an integer
               if (MT > 1) then
                 t % score_bins(j) = MT
+                call find_score % add_key(MT, l)
               else
                 message = "Invalid MT on <scores>: " // &
                      trim(sarray(l))
@@ -2849,81 +2852,81 @@ contains
                 t % trigger_for_all = .true.
               end if
             case ('flux')
-              t % score(trig_ind) % position =  t % find_score(SCORE_FLUX)
+              t % score(trig_ind) % position =  find_score % get_key(SCORE_FLUX)
            
             case ('flux-yn')
-              t % score(trig_ind) % position =  t % find_score(SCORE_FLUX_YN)
+              t % score(trig_ind) % position =  find_score % get_key(SCORE_FLUX_YN)
 
             case ('total')
-              t % score(trig_ind) % position =  t % find_score(SCORE_TOTAL)
+              t % score(trig_ind) % position =  find_score % get_key(SCORE_TOTAL)
    
             case ('total-yn')
-              t % score(trig_ind) % position =  t % find_score(SCORE_TOTAL_YN)
+              t % score(trig_ind) % position =  find_score % get_key(SCORE_TOTAL_YN)
       
             case ('scatter')
-              t % score(trig_ind) % position = t % find_score(SCORE_SCATTER)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER)
            
             case ('nu-scatter')
-              t % score(trig_ind) % position = t % find_score(SCORE_NU_SCATTER)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER)
             
             case ('scatter-n')
               if (n_order == 0) then
-                t % score(trig_ind) % position = t % find_score(SCORE_SCATTER)
+                t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER)
               else   
-                t % score(trig_ind) % position = t % find_score(SCORE_SCATTER_N)
+                t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_N)
               end if
 
             case ('nu-scatter-n')
               if (n_order == 0) then
-                t % score(trig_ind) % position = t % find_score(SCORE_NU_SCATTER)
+                t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER)
               else
-                t % score(trig_ind) % position = t % find_score(SCORE_NU_SCATTER_N)
+                t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER_N)
               end if
 
             case ('scatter-pn')
-              t % score(trig_ind) % position = t % find_score(SCORE_SCATTER_PN)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_PN)
 
             case ('nu-scatter-pn')
-              t % score(trig_ind) % position = t % find_score(SCORE_NU_SCATTER_PN)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER_PN)
  
             case ('scatter-yn')
-              t % score(trig_ind) % position = t % find_score(SCORE_SCATTER_YN)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_YN)
 
             case ('nu-scatter-yn')
-              t % score(trig_ind) % position = t % find_score(SCORE_NU_SCATTER_YN)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER_YN)
 
             case('transport')
-              t % score(trig_ind) % position = t % find_score(SCORE_TRANSPORT)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_TRANSPORT)
         
             case ('n1n')
-              t % score(trig_ind) % position = t % find_score(SCORE_N_1N)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_N_1N)
 
             case ('n2n')
-              t % score(trig_ind) % position = t % find_score(N_2N)
+              t % score(trig_ind) % position = find_score % get_key(N_2N)
 
             case ('n3n')
-              t % score(trig_ind) % position = t % find_score(N_3N)
+              t % score(trig_ind) % position = find_score % get_key(N_3N)
 
             case ('n4n')
-              t % score(trig_ind) % position = t % find_score(N_4N)
+              t % score(trig_ind) % position = find_score % get_key(N_4N)
 
             case ('absorption')
-              t % score(trig_ind) % position = t % find_score(SCORE_ABSORPTION)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_ABSORPTION)
            
             case ('fission')
-              t % score(trig_ind) % position = t % find_score(SCORE_FISSION)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_FISSION)
           
             case ('nu-fission')
-              t % score(trig_ind) % position = t % find_score(SCORE_NU_FISSION)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_NU_FISSION)
             
             case ('kappa-fission')
-              t % score(trig_ind) % position = t % find_score(SCORE_KAPPA_FISSION)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_KAPPA_FISSION)
            
             case ('current')
-              t % score(trig_ind) % position = t % find_score(SCORE_CURRENT)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_CURRENT)
               
             case ('events')
-              t % score(trig_ind) % position = t % find_score(SCORE_EVENTS)
+              t % score(trig_ind) % position = find_score % get_key(SCORE_EVENTS)
             end select
          
             if (.not. t % trigger_for_all .and. t % score(trig_ind) % position & 
@@ -2971,6 +2974,7 @@ contains
                 // trim(to_str(t % id)) // " in tally XML file."
             call fatal_error()
           end if 
+          call find_score % clear()
         end do Trigger_Loop
       end if 
     end if 

@@ -139,62 +139,23 @@ should be performed. It has the following attributes/sub-elements:
      and "rel_err".
      
      :rel_err:
-      Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
+       Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
       
      :std_dev:
-      Standard deviation of the batch mean :math:`\sigma` 
+       Standard deviation of the batch mean :math:`\sigma` 
     
      :variance: 
-      Variance of the batch mean :math:`\sigma^2` 
+       Variance of the batch mean :math:`\sigma^2` 
 
      *Default*: None
         
     :threshold:
-     The value of the keff_trigger.    
+      The value of the keff_trigger.    
     
-     *Default*: None
+      *Default*: None
     
-    .. note:: See section on the ``<trigger>`` element for more information.
-    
-``<trigger>`` Element
--------------------------
-
-OpenMC includes tally precision triggers which allow the user to define 
-uncertainty thresholds on :math:`k_{eff}` and/or other tallies. When using 
-triggers, OpenMC will run until it completes as many batches as are defined
-by ``<batches>`` . At this point, the uncertainties on all tallied values are 
-computed and compared with their corresponding trigger thresholds. If any
-triggers have not been met, OpenMC will continue until either 1) all trigger
-thresholds have been satisfied or 2) ``<max_batches>`` has been reached.
-
-The ``<trigger>`` element describes the status of the trigger (i.e. whether or 
-not to use the trigger), the max number of batches and the batch interval. 
-It has the following attributes/sub-elements: 
-  
-  :status:
-    This determines whether or not to use trigger. Set this tag to 
-    "true" when using trigger and "false" for not.
- 
-  :max_batches:
-    This describes the max number of batches when using trigger.
-    
-    .. note:: When max_batches is set, the number of tag ``batches`` shown in 
-              ``<eigenvalue>`` element represents minimum number of batches to 
-              simulate when using the triggers.
-    
-  :batch_interval:
-   This tag describes the number of  batches in between convergence checks. 
-   OpenMC will check if the trigger has been reached at each batch defined 
-   by batch_interval after the minimum number of batches is reached.
-   
-   *Default*: If this tag is not present, the ``batch_interval`` is predicted 
-   dynamically by OpenMC for each convergence check. 
-   
-   This predictive model assumes no correlation between fission sources 
-   distributions from batch-to-batch. This assumption is reasonable for fixed 
-   source and small criticality calculations, but is very optimistic for highly 
-   coupled full-core reactor problems.
- 
+    .. note:: See section on the :ref:`trigger` for more information.
+     
 ``<energy_grid>`` Element
 -------------------------
 
@@ -541,6 +502,47 @@ integers: the batch number, generation number, and particle number.
 The ``<track>`` element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.
 
   *Default*: None
+
+.. _trigger:
+
+``<trigger>`` Element
+-------------------------
+
+OpenMC includes tally precision triggers which allow the user to define 
+uncertainty thresholds on :math:`k_{eff}` and/or other tallies. When using 
+triggers, OpenMC will run until it completes as many batches as are defined
+by ``<batches>`` . At this point, the uncertainties on all tallied values are 
+computed and compared with their corresponding trigger thresholds. If any
+triggers have not been met, OpenMC will continue until either 1) all trigger
+thresholds have been satisfied or 2) ``<max_batches>`` has been reached.
+
+The ``<trigger>`` element describes the status of the trigger (i.e. whether or 
+not to use the trigger), the max number of batches and the batch interval. 
+It has the following attributes/sub-elements: 
+  
+  :status:
+    This determines whether or not to use trigger. Set this tag to 
+    "true" when using trigger and "false" for not.
+ 
+  :max_batches:
+    This describes the max number of batches when using trigger.
+    
+    .. note:: When max_batches is set, the number of tag ``batches`` shown in 
+              ``<eigenvalue>`` element represents minimum number of batches to 
+              simulate when using the triggers.
+    
+  :batch_interval:
+   This tag describes the number of  batches in between convergence checks. 
+   OpenMC will check if the trigger has been reached at each batch defined 
+   by batch_interval after the minimum number of batches is reached.
+   
+   *Default*: If this tag is not present, the ``batch_interval`` is predicted 
+   dynamically by OpenMC for each convergence check. 
+   
+   This predictive model assumes no correlation between fission sources 
+   distributions from batch-to-batch. This assumption is reasonable for fixed 
+   source and small criticality calculations, but is very optimistic for highly 
+   coupled full-core reactor problems.
 
 ``<uniform_fs>`` Element
 ------------------------
@@ -1131,7 +1133,7 @@ The ``<tally>`` element accepts the following sub-elements:
     
     .. note:: The ``scores`` in ``trigger`` must have been defined in ``scores``
               in ``tally``. And each trigger just includes a scores. An optional
-              "all" is also allowed. But this means all the scores in this tally
+              "all" is also allowed. This means all the scores in this tally
               share the same trigger.   
    
    *Default*:None

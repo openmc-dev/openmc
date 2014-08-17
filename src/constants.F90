@@ -297,13 +297,7 @@ module constants
        SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
        SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS        = -20, & ! number of events
-       N_SCORE_MIN         = -20, & ! This is the index used to find 
-                                    ! in which scores trigger is applied,
-                                    ! combined with N_SCORE_MAX 
-       N_SCORE_MAX         =  60    ! This is the index used to find 
-                                    ! in which scores trigger is applied,
-                                    ! combined with N_SCORE_MIN 
+       SCORE_EVENTS        = -20    ! number of events
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

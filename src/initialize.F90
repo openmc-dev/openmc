@@ -1,6 +1,6 @@
 module initialize
 
-  use ace,              only: read_xs
+  use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -104,6 +104,9 @@ contains
       call time_read_xs % start()
       call read_xs()
       call time_read_xs % stop()
+
+      ! Create linked lists for multiple instances of the same nuclide
+      call same_nuclide_list()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
@@ -316,12 +319,8 @@ contains
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
     integer :: filetype
-    character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
     type(BinaryOutput) :: sp
-
-    ! Get working directory
-    call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
 
     ! Check number of command line arguments and allocate argv
     argc = COMMAND_ARGUMENT_COUNT()
@@ -462,16 +461,12 @@ contains
     ! Determine directory where XML input files are
     if (argc > 0 .and. last_flag < argc) then
       path_input = argv(last_flag + 1)
-      ! Need to add working directory if the given path is a relative path
-      if (.not. starts_with(path_input, "/")) then
-        path_input = trim(pwd) // "/" // trim(path_input)
-      end if
     else
-      path_input = pwd
+      path_input = ''
     end if
 
     ! Add slash at end of directory if it isn't there
-    if (.not. ends_with(path_input, "/")) then
+    if (.not. ends_with(path_input, "/") .and. len_trim(path_input) > 0) then
       path_input = trim(path_input) // "/"
     end if
 

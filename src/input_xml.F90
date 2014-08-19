@@ -11,7 +11,7 @@ module input_xml
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
-  use string,           only: lower_case, to_str, str_to_int, str_to_real, &
+  use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
@@ -287,8 +287,7 @@ contains
         type = ''
         if (check_for_node(node_dist, "type")) &
              call get_node_value(node_dist, "type", type)
-        call lower_case(type)
-        select case (trim(type))
+        select case (to_lower(type))
         case ('box')
           external_source % type_space = SRC_SPACE_BOX
           coeffs_reqd = 6
@@ -337,8 +336,7 @@ contains
         type = ''
         if (check_for_node(node_dist, "type")) &
              call get_node_value(node_dist, "type", type)
-        call lower_case(type)
-        select case (trim(type))
+        select case (to_lower(type))
         case ('isotropic')
           external_source % type_angle = SRC_ANGLE_ISOTROPIC
           coeffs_reqd = 0
@@ -389,8 +387,7 @@ contains
         type = ''
         if (check_for_node(node_dist, "type")) &
           call get_node_value(node_dist, "type", type)
-        call lower_case(type)
-        select case (trim(type))
+        select case (to_lower(type))
         case ('monoenergetic')
           external_source % type_energy = SRC_ENERGY_MONO
           coeffs_reqd = 1
@@ -440,7 +437,7 @@ contains
     ! Survival biasing
     if (check_for_node(doc, "survival_biasing")) then
       call get_node_value(doc, "survival_biasing", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            survival_biasing = .true.
     end if
@@ -448,7 +445,7 @@ contains
     ! Probability tables
     if (check_for_node(doc, "ptables")) then
       call get_node_value(doc, "ptables", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
            urr_ptables_on = .false.
     end if
@@ -679,19 +676,19 @@ contains
       ! Check if the user has specified to write binary source file
       if (check_for_node(node_sp, "separate")) then
         call get_node_value(node_sp, "separate", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. &
              trim(temp_str) == '1') source_separate = .true.
       end if
       if (check_for_node(node_sp, "write")) then
         call get_node_value(node_sp, "write", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'false' .or. &
              trim(temp_str) == '0') source_write = .false.
       end if
       if (check_for_node(node_sp, "overwrite_latest")) then
         call get_node_value(node_sp, "overwrite_latest", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. &
              trim(temp_str) == '1') then
           source_latest = .true.
@@ -726,7 +723,7 @@ contains
     ! batch
     if (check_for_node(doc, "no_reduce")) then
       call get_node_value(doc, "no_reduce", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         reduce_tallies = .false.
     end if
@@ -735,7 +732,7 @@ contains
     ! uncertainties rather than standard deviations
     if (check_for_node(doc, "confidence_intervals")) then
       call get_node_value(doc, "confidence_intervals", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. &
            trim(temp_str) == '1') confidence_intervals = .true.
     end if
@@ -749,7 +746,7 @@ contains
       ! Check for summary option
       if (check_for_node(node_output, "summary")) then
         call get_node_value(node_output, "summary", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. &
              trim(temp_str) == '1') output_summary = .true.
       end if
@@ -757,7 +754,7 @@ contains
       ! Check for cross sections option
       if (check_for_node(node_output, "cross_sections")) then
         call get_node_value(node_output, "cross_sections", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. &
              trim(temp_str) == '1') output_xs = .true.
       end if
@@ -765,7 +762,7 @@ contains
       ! Check for ASCII tallies output option
       if (check_for_node(node_output, "tallies")) then
         call get_node_value(node_output, "tallies", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'false' .or. &
              trim(temp_str) == '0') output_tallies = .false.
       end if
@@ -774,7 +771,7 @@ contains
     ! Check for cmfd run
     if (check_for_node(doc, "run_cmfd")) then
       call get_node_value(doc, "run_cmfd", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
         cmfd_run = .true.
 #ifndef PETSC
@@ -789,8 +786,7 @@ contains
     ! Natural element expansion option
     if (check_for_node(doc, "natural_elements")) then
       call get_node_value(doc, "natural_elements", temp_str)
-      call lower_case(temp_str)
-      select case (temp_str)
+      select case (to_lower(temp_str))
       case ('endf/b-vii.0')
         default_expand = ENDF_BVII0
       case ('endf/b-vii.1')
@@ -923,8 +919,7 @@ contains
       word = ''
       if (check_for_node(node_cell, "material")) &
         call get_node_value(node_cell, "material", word)
-      call lower_case(word)
-      select case(word)
+      select case(to_lower(word))
       case ('void')
         c % material = MATERIAL_VOID
 
@@ -1093,8 +1088,7 @@ contains
       word = ''
       if (check_for_node(node_surf, "type")) &
         call get_node_value(node_surf, "type", word)
-      call lower_case(word)
-      select case(trim(word))
+      select case(to_lower(word))
       case ('x-plane')
         s % type = SURF_PX
         coeffs_reqd  = 1
@@ -1155,8 +1149,7 @@ contains
       word = ''
       if (check_for_node(node_surf, "boundary")) &
         call get_node_value(node_surf, "boundary", word)
-      call lower_case(word)
-      select case (trim(word))
+      select case (to_lower(word))
       case ('transmission', 'transmit', '')
         s % bc = BC_TRANSMIT
       case ('vacuum')
@@ -1218,8 +1211,7 @@ contains
       word = ''
       if (check_for_node(node_lat, "type")) &
         call get_node_value(node_lat, "type", word)
-      call lower_case(word)
-      select case (trim(word))
+      select case (to_lower(word))
       case ('rect', 'rectangle', 'rectangular')
         lat % type = LATTICE_RECT
       case ('hex', 'hexagon', 'hexagonal')
@@ -1450,8 +1442,7 @@ contains
         end if
 
         ! Adjust material density based on specified units
-        call lower_case(units)
-        select case(trim(units))
+        select case(to_lower(units))
         case ('g/cc', 'g/cm3')
           mat % density = -val
         case ('kg/m3')
@@ -1606,7 +1597,7 @@ contains
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
         name = trim(list_names % get_item(j))
-        if (.not. xs_listing_dict % has_key(name)) then
+        if (.not. xs_listing_dict % has_key(to_lower(name))) then
           message = "Could not find nuclide " // trim(name) // &
                " in cross_sections.xml file!"
           call fatal_error()
@@ -1621,20 +1612,20 @@ contains
         end if
 
         ! Find xs_listing and set the name/alias according to the listing
-        index_list = xs_listing_dict % get_key(name)
+        index_list = xs_listing_dict % get_key(to_lower(name))
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
-        if (.not. nuclide_dict % has_key(name)) then
+        if (.not. nuclide_dict % has_key(to_lower(name))) then
           index_nuclide    = index_nuclide + 1
           mat % nuclide(j) = index_nuclide
 
-          call nuclide_dict % add_key(name, index_nuclide)
-          call nuclide_dict % add_key(alias, index_nuclide)
+          call nuclide_dict % add_key(to_lower(name), index_nuclide)
+          call nuclide_dict % add_key(to_lower(alias), index_nuclide)
         else
-          mat % nuclide(j) = nuclide_dict % get_key(name)
+          mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
         end if
 
         ! Copy name and atom/weight percent
@@ -1693,7 +1684,7 @@ contains
           mat % sab_names(j) = name
 
           ! Check that this nuclide is listed in the cross_sections.xml file
-          if (.not. xs_listing_dict % has_key(name)) then
+          if (.not. xs_listing_dict % has_key(to_lower(name))) then
             message = "Could not find S(a,b) table " // trim(name) // &
                  " in cross_sections.xml file!"
             call fatal_error()
@@ -1701,17 +1692,17 @@ contains
 
           ! Find index in xs_listing and set the name and alias according to the
           ! listing
-          index_list = xs_listing_dict % get_key(name)
+          index_list = xs_listing_dict % get_key(to_lower(name))
           name       = xs_listings(index_list) % name
 
           ! If this S(a,b) table hasn't been encountered yet, we need to add its
           ! name and alias to the sab_dict
-          if (.not. sab_dict % has_key(name)) then
+          if (.not. sab_dict % has_key(to_lower(name))) then
             index_sab = index_sab + 1
             mat % i_sab_tables(j) = index_sab
-            call sab_dict % add_key(name, index_sab)
+            call sab_dict % add_key(to_lower(name), index_sab)
           else
-            mat % i_sab_tables(j) = sab_dict % get_key(name)
+            mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
           end if
         end do
       end if
@@ -1822,7 +1813,7 @@ contains
     ! Check for <assume_separate> setting
     if (check_for_node(doc, "assume_separate")) then
       call get_node_value(doc, "assume_separate", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         assume_separate = .true.
     end if
@@ -1855,8 +1846,7 @@ contains
       temp_str = ''
       if (check_for_node(node_mesh, "type")) &
         call get_node_value(node_mesh, "type", temp_str)
-      call lower_case(temp_str)
-      select case (trim(temp_str))
+      select case (to_lower(temp_str))
       case ('rect', 'rectangle', 'rectangular')
         m % type = LATTICE_RECT
       case ('hex', 'hexagon', 'hexagonal')
@@ -2036,7 +2026,7 @@ contains
           temp_str = ''
           if (check_for_node(node_filt, "type")) &
             call get_node_value(node_filt, "type", temp_str)
-          call lower_case(temp_str)
+          temp_str = to_lower(temp_str)
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
@@ -2264,14 +2254,14 @@ contains
             end if
 
             ! Check to make sure nuclide specified is in problem
-            if (.not. nuclide_dict % has_key(word)) then
+            if (.not. nuclide_dict % has_key(to_lower(word))) then
               message = "The nuclide " // trim(word) // " from tally " // &
                    trim(to_str(t % id)) // " is not present in any material."
               call fatal_error()
             end if
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get_key(word)
+            t % nuclide_bins(j) = nuclide_dict % get_key(to_lower(word))
           end do
 
           ! Set number of nuclide bins
@@ -2302,7 +2292,7 @@ contains
         ! (i.e., scatter-p#, flux-y#)
         n_new = 0
         do j = 1, n_words
-          call lower_case(sarray(j))
+          sarray(j) = to_lower(sarray(j))
           ! Find if scores(j) is of the form 'moment-p' or 'moment-y' present in
           ! MOMENT_STRS(:)
           ! If so, check the order, store if OK, then reset the number to 'n'
@@ -2744,7 +2734,7 @@ contains
       temp_str = 'slice'
       if (check_for_node(node_plot, "type")) &
         call get_node_value(node_plot, "type", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("slice")
         pl % type = PLOT_TYPE_SLICE
@@ -2811,7 +2801,7 @@ contains
         temp_str = 'xy'
         if (check_for_node(node_plot, "basis")) &
           call get_node_value(node_plot, "basis", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         select case (trim(temp_str))
         case ("xy")
           pl % basis = PLOT_BASIS_XY
@@ -2858,7 +2848,7 @@ contains
       temp_str = "cell"
       if (check_for_node(node_plot, "color")) &
         call get_node_value(node_plot, "color", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("cell")
 
@@ -3181,9 +3171,9 @@ contains
        end if
 
        ! create dictionary entry for both name and alias
-       call xs_listing_dict % add_key(listing % name, i)
+       call xs_listing_dict % add_key(to_lower(listing % name), i)
        if (check_for_node(node_ace, "alias")) then
-         call xs_listing_dict % add_key(listing % alias, i)
+         call xs_listing_dict % add_key(to_lower(listing % alias), i)
        end if
     end do
 
@@ -3212,9 +3202,8 @@ contains
     character(2) :: element_name
 
     element_name = name(1:2)
-    call lower_case(element_name)
 
-    select case (element_name)
+    select case (to_lower(element_name))
     case ('h')
       call list_names % append('1001.' // xs)
       call list_density % append(density * 0.999885_8)

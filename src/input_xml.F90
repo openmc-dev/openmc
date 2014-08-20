@@ -2683,7 +2683,7 @@ contains
   subroutine read_plots_xml()
 
     integer i, j
-    integer n_cols, col_id, n_comp, n_masks
+    integer n_cols, col_id, n_comp, n_masks, n_meshlines
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -2693,9 +2693,11 @@ contains
     type(Node), pointer :: node_plot => null()
     type(Node), pointer :: node_col => null()
     type(Node), pointer :: node_mask => null()
+    type(Node), pointer :: node_meshlines => null()
     type(NodeList), pointer :: node_plot_list => null()
     type(NodeList), pointer :: node_col_list => null()
     type(NodeList), pointer :: node_mask_list => null()
+    type(NodeList), pointer :: node_meshline_list => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2947,6 +2949,67 @@ contains
         end do
       end if
 
+      ! Deal with meshlines
+      call get_node_list(node_plot, "meshlines", node_meshline_list)
+      n_meshlines = get_list_size(node_meshline_list)
+      if (n_meshlines /= 0) then
+
+        if (pl % type == PLOT_TYPE_VOXEL) then
+          message = "Meshlines ignored in voxel plot " // & 
+                     trim(to_str(pl % id))
+          call warning()
+        end if
+        
+        select case(n_meshlines)
+          case default
+            message = "Mutliple meshlines" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+          case (0)
+          case (1)
+
+            ! Get pointer to meshlines
+            call get_list_item(node_meshline_list, 1, node_meshlines)
+            
+            ! Ensure that there is a mesh id for this meshlines specification
+            if (check_for_node(node_meshlines, "mesh")) then
+              call get_node_value(node_meshlines, "mesh", pl % meshlines_id)
+            else
+              message = "Must specify a mesh id for meshlines " // &
+                        "specification in plot " // trim(to_str(pl % id))
+              call fatal_error()
+            end if
+            
+            ! Ensure that there is a linewidth for this meshlines specification
+            if (check_for_node(node_meshlines, "linewidth")) then
+              call get_node_value(node_meshlines, "linewidth", &
+                  pl % meshlines_width)
+            else
+              message = "Must specify a linewidth for meshlines " // &
+                        "specification in plot " // trim(to_str(pl % id))
+              call fatal_error()
+            end if
+
+            ! Check if the specified tally mesh exists
+            if (mesh_dict % has_key(pl % meshlines_id)) then
+              pl % meshlines_id = mesh_dict % get_key(pl % meshlines_id)
+              if (meshes(pl % meshlines_id) % type /= LATTICE_RECT) then
+                message = "Non-rectangular mesh specified in meshlines for" // &
+                          " plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+            else
+              message = "Could not find tally mesh " // &
+                        trim(to_str(pl % meshlines_id)) // &
+                        " specified in meshlines for plot " // &
+                        trim(to_str(pl % id))
+              call fatal_error()
+            end if
+            
+        end select
+        
+      end if
+      
       ! Deal with masks
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)

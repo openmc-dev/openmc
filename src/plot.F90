@@ -5,6 +5,7 @@ module plot
   use geometry,        only: find_cell, check_cell_overlap
   use geometry_header, only: Cell, BASE_UNIVERSE
   use global
+  use mesh,            only: get_mesh_indices
   use output,          only: write_message
   use particle_header, only: deallocate_coord, Particle
   use plot_header
@@ -118,27 +119,24 @@ contains
     call init_image(img)
     call allocate_image(img, pl % pixels(1), pl % pixels(2))
 
+    in_pixel  = pl % width(1)/dble(pl % pixels(1))
+    out_pixel = pl % width(2)/dble(pl % pixels(2))
+
     if (pl % basis == PLOT_BASIS_XY) then
       in_i  = 1
       out_i = 2
-      in_pixel  = pl % width(1)/dble(pl % pixels(1))
-      out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1) - pl % width(1) / 2.0
       xyz(2) = pl % origin(2) + pl % width(2) / 2.0
       xyz(3) = pl % origin(3)
     else if (pl % basis == PLOT_BASIS_XZ) then
       in_i  = 1
       out_i = 3
-      in_pixel  = pl % width(1)/dble(pl % pixels(1))
-      out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1) - pl % width(1) / 2.0
       xyz(2) = pl % origin(2)
       xyz(3) = pl % origin(3) + pl % width(2) / 2.0
     else if (pl % basis == PLOT_BASIS_YZ) then
       in_i  = 2
       out_i = 3
-      in_pixel  = pl % width(1)/dble(pl % pixels(1))
-      out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1)
       xyz(2) = pl % origin(2) - pl % width(1) / 2.0
       xyz(3) = pl % origin(3) + pl % width(2) / 2.0
@@ -169,6 +167,9 @@ contains
       p % coord0 % xyz(out_i) = p % coord0 % xyz(out_i) - out_pixel
     end do
 
+    ! Draw tally mesh boundaries on the image if requested
+    if (pl % meshlines_id > 0) call draw_mesh_lines(pl, img)
+
     ! Write out the ppm to a file
     call output_ppm(pl,img)
 
@@ -179,6 +180,107 @@ contains
     call p % clear()
 
   end subroutine create_ppm
+
+!===============================================================================
+! DRAW_MESH_LINES draws mesh line boundaries on an image
+!===============================================================================
+  subroutine draw_mesh_lines(pl, img)
+  
+    type(ObjectPlot), pointer :: pl
+    type(Image)               :: img
+    
+    logical :: in_mesh
+    integer :: n
+    integer :: x, y       ! pixel location
+    integer :: xrange(2), yrange(2) ! range of pixel locations
+    integer :: i, j       ! loop indices
+    integer :: ijk(3)
+    integer :: plus
+    integer :: ijk_ll(3)  ! mesh bin ijk indicies of plot lower left
+    integer :: ijk_ur(3)  ! mesh bin ijk indicies of plot upper right
+    real(8) :: frac
+    real(8) :: width(3)   ! real widths of the plot
+    real(8) :: xyz_ll_plot(3)  ! lower left xyz of plot image
+    real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
+    real(8) :: xyz_ll(3)  ! lower left xyz
+    real(8) :: xyz_ur(3)  ! upper right xyz
+    type(StructuredMesh), pointer :: m => null()
+  
+    m => meshes(pl % meshlines_id)
+    n = m % n_dimension
+    
+    select case (pl % basis)
+      case(PLOT_BASIS_XY)
+        xyz_ll_plot(1) = pl % origin(1) - pl % width(1) / 2.0
+        xyz_ll_plot(2) = pl % origin(2) - pl % width(2) / 2.0
+        xyz_ll_plot(3) = pl % origin(3)
+        xyz_ur_plot(1) = pl % origin(1) + pl % width(1) / 2.0
+        xyz_ur_plot(2) = pl % origin(2) + pl % width(2) / 2.0
+        xyz_ur_plot(3) = pl % origin(3)
+        
+        width = xyz_ur_plot - xyz_ll_plot
+        
+        call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
+        call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+        
+        ! sweep through all meshbins on this plane and draw borders
+        ijk(3) = 0
+        do i = ijk_ll(1), ijk_ur(1)
+          do j = ijk_ll(2), ijk_ur(2)
+            ! check if we're in the mesh for this ijk
+            if (i > 0 .and. i <= m % dimension(1) .and. &
+                j > 0 .and. j <= m % dimension(2)) then
+              
+              ! get xyz's of lower left and upper right of this mesh cell
+              ijk(1) = i
+              ijk(2) = j
+              xyz_ll(:m % n_dimension) = &
+                  m % lower_left + m % width * (ijk(:m % n_dimension) - 1)
+              xyz_ur(:m % n_dimension) = &
+                  m % lower_left + m % width * ijk(:m % n_dimension)
+              
+              ! map the xyz to pixel locations
+              frac = (xyz_ll(1) - xyz_ll_plot(1)) / width(1)
+              xrange(1) = int(frac * real(img % width,8))
+              frac = (xyz_ur(1) - xyz_ll_plot(1)) / width(1)
+              xrange(2) = int(frac * real(img % width,8))
+              
+              frac = (xyz_ll(2) - xyz_ll_plot(2)) / width(2)
+              yrange(1) = img % height - int(frac * real(img % height,8))
+              frac = (xyz_ur(2) - xyz_ll_plot(2)) / width(2)
+              yrange(2) = img % height - int(frac * real(img % height,8))
+              
+              ! draw black lines
+              do x = xrange(1), xrange(2)
+                do plus = 0, pl % meshlines_width
+                  call set_pixel(img, x, yrange(1) + plus, 0, 0, 0)
+                  call set_pixel(img, x, yrange(2) + plus, 0, 0, 0)
+                  call set_pixel(img, x, yrange(1) - plus, 0, 0, 0)
+                  call set_pixel(img, x, yrange(2) - plus, 0, 0, 0)
+                end do
+              end do
+              do y = yrange(2), yrange(1)
+                do plus = 0, pl % meshlines_width
+                  call set_pixel(img, xrange(1) + plus, y, 0, 0, 0)
+                  call set_pixel(img, xrange(2) + plus, y, 0, 0, 0)
+                  call set_pixel(img, xrange(1) - plus, y, 0, 0, 0)
+                  call set_pixel(img, xrange(2) - plus, y, 0, 0, 0)
+                end do
+              end do
+              
+            end if
+          end do
+        end do
+        
+      case(PLOT_BASIS_XZ)
+        message = "Meshline plotting currently only implemented for basis xy"
+        call fatal_error()
+      case(PLOT_BASIS_YZ)
+        message = "Meshline plotting currently only implemented for basis xy"
+        call fatal_error()
+    end select
+    
+  end subroutine draw_mesh_lines
 
 !===============================================================================
 ! OUTPUT_PPM writes out a previously generated image to a PPM file

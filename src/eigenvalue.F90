@@ -271,7 +271,6 @@ contains
       ! 2. trigger_on equals true
       ! 3. current_batch can be expressed as (n_basic_batches + 
       !    n * batch_interval) or current_batch equals n_batches
-      
     if (current_batch < n_basic_batches .or. (.not. trigger_on)) return
     if (mod((current_batch - n_basic_batches), n_batch_interval) /= 0 .and. &
          current_batch /= n_batches) return

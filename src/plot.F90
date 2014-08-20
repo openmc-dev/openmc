@@ -190,7 +190,6 @@ contains
     type(Image)               :: img
     
     logical :: in_mesh
-    integer :: n
     integer :: x, y       ! pixel location
     integer :: xrange(2), yrange(2) ! range of pixel locations
     integer :: i, j       ! loop indices
@@ -207,7 +206,6 @@ contains
     type(StructuredMesh), pointer :: m => null()
   
     m => meshes(pl % meshlines_id)
-    n = m % n_dimension
     
     select case (pl % basis)
       case(PLOT_BASIS_XY)

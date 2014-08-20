@@ -2990,6 +2990,24 @@ contains
               call fatal_error()
             end if
 
+            ! Check for color
+            if (check_for_node(node_meshlines, "color")) then
+              
+              ! Check and make sure 3 values are specified for RGB
+              if (get_arraysize_double(node_meshlines, "color") /= 3) then
+                message = "Bad RGB for meshlines color " &
+                     // "in plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              call get_node_array(node_meshlines, "color", &
+                  pl % meshlines_color % rgb)
+            else
+              
+              pl % meshlines_color % rgb = (/ 0, 0, 0 /)
+            
+            end if
+
             ! Check if the specified tally mesh exists
             if (mesh_dict % has_key(pl % meshlines_id)) then
               pl % meshlines_id = mesh_dict % get_key(pl % meshlines_id)

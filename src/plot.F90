@@ -191,6 +191,7 @@ contains
     
     logical :: in_mesh
     integer :: x, y       ! pixel location
+    integer :: r, g, b    ! RGB color for meshlines pixels
     integer :: xrange(2), yrange(2) ! range of pixel locations
     integer :: i, j       ! loop indices
     integer :: ijk(3)
@@ -206,6 +207,10 @@ contains
     type(StructuredMesh), pointer :: m => null()
   
     m => meshes(pl % meshlines_id)
+    
+    r = pl % meshlines_color % rgb(1)
+    g = pl % meshlines_color % rgb(2)
+    b = pl % meshlines_color % rgb(3)
     
     select case (pl % basis)
       case(PLOT_BASIS_XY)
@@ -251,18 +256,18 @@ contains
               ! draw black lines
               do x = xrange(1), xrange(2)
                 do plus = 0, pl % meshlines_width
-                  call set_pixel(img, x, yrange(1) + plus, 0, 0, 0)
-                  call set_pixel(img, x, yrange(2) + plus, 0, 0, 0)
-                  call set_pixel(img, x, yrange(1) - plus, 0, 0, 0)
-                  call set_pixel(img, x, yrange(2) - plus, 0, 0, 0)
+                  call set_pixel(img, x, yrange(1) + plus, r, g, b)
+                  call set_pixel(img, x, yrange(2) + plus, r, g, b)
+                  call set_pixel(img, x, yrange(1) - plus, r, g, b)
+                  call set_pixel(img, x, yrange(2) - plus, r, g, b)
                 end do
               end do
               do y = yrange(2), yrange(1)
                 do plus = 0, pl % meshlines_width
-                  call set_pixel(img, xrange(1) + plus, y, 0, 0, 0)
-                  call set_pixel(img, xrange(2) + plus, y, 0, 0, 0)
-                  call set_pixel(img, xrange(1) - plus, y, 0, 0, 0)
-                  call set_pixel(img, xrange(2) - plus, y, 0, 0, 0)
+                  call set_pixel(img, xrange(1) + plus, y, r, g, b)
+                  call set_pixel(img, xrange(2) + plus, y, r, g, b)
+                  call set_pixel(img, xrange(1) - plus, y, r, g, b)
+                  call set_pixel(img, xrange(2) - plus, y, r, g, b)
                 end do
               end do
               

@@ -27,6 +27,7 @@ module plot_header
     integer :: pixels(3)             ! pixel width/height of plot slice
     integer :: meshlines_id = -1     ! id of the mesh to plot lines of
     integer :: meshlines_width       ! pixel width of meshlines
+    type(ObjectColor) :: meshlines_color ! Color for meshlines
     type(ObjectColor) :: not_found   ! color for positions where no cell found
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
   end type ObjectPlot

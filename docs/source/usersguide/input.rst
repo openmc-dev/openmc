@@ -1189,7 +1189,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     Specifies the RGB color of the regions where no OpenMC cell can be found.
     Should be three integers separated by spaces.
 
-    *Default*: 0 0 0 (white)
+    *Default*: 0 0 0 (black)
 
   :col_spec:
     Any number of this optional tag may be included in each ``<plot>`` element,
@@ -1233,15 +1233,23 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     The special ``meshlines`` sub-element allows for plotting the boundaries of
     a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
     ``plot`` element, and it must contain as attributes or sub-elements a mesh
-    id and a linewidth:
+    id and a linewidth, as well as an optional color:
 
     :mesh:
       A single integer id number for the mesh specified on ``tallies.xml`` that
       should be plotted.
 
     :linewidth:
-      A single integer number of pixels to specify the linewidth of the mesh
-      boundaries.
+      A single integer number of pixels of linewidth to specify for the mesh
+      boundaries. Specifying this as 0 indicates that lines will be 1 pixel
+      thick, specifying 1 indicates 3 pixels thick, specifying 2 indicates
+      5 pixels thick, etc.
+    
+    :color:
+      Specifies the custom color for the meshlines boundaries. Should be 3
+      integers separated by spaces.  This element is optional.
+    
+      *Default*: 0 0 0 (black)
 
     *Default*: None
 

@@ -3147,6 +3147,27 @@ contains
     ! Set up our distribution storage so we can add the components up
     ndpp_outgoing(thread_id, l, gmin: gmax) = ZERO
 
+    ! Now we can interpolate on the elastic data and put it in ndpp_outgoing
+    ! Do lower point
+    if (allocated(el(el_igrid) % outgoing)) then
+      el_one_f = el_one_f * sigs_el
+      do g = lbound(el(el_igrid) % outgoing, dim=2), &
+             ubound(el(el_igrid) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = el_one_f * &
+          el(el_igrid) % outgoing(l, g)
+      end do
+    end if
+    ! Do upper point
+    if (allocated( el(el_igrid + 1) % outgoing)) then
+      el_f = el_f * sigs_el
+      do g = lbound(el( el_igrid + 1) % outgoing, dim=2), &
+             ubound(el( el_igrid + 1) % outgoing, dim=2)
+        ndpp_outgoing(thread_id, l, g) = &
+          ndpp_outgoing(thread_id, l, g) + &
+          el_f * el(el_igrid + 1) % outgoing(l, g)
+      end do
+    end if
+
     ! And do the same for inelastic, if necessary
     if (inel_gmin /= huge(0)) then
       ! Do lower point

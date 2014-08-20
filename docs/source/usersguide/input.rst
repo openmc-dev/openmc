@@ -1229,6 +1229,25 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: None
 
+  :meshlines:
+    The special ``meshlines`` sub-element allows for plotting the boundaries of
+    a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
+    ``plot`` element, and it must contain as attributes or sub-elements a mesh
+    id and a linewidth:
+
+    :mesh:
+      A single integer id number for the mesh specified on ``tallies.xml`` that
+      should be plotted.
+
+    :linewidth:
+      A single integer number of pixels to specify the linewidth of the mesh
+      boundaries.
+
+    *Default*: None
+
+    .. warning:: Meshline plotting is currently only implemented for plots with
+                 an "xy" basis.
+
 ------------------------------
 CMFD Specification -- cmfd.xml
 ------------------------------

@@ -5,6 +5,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
+  use dd_header
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
@@ -216,6 +217,15 @@ module global
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
+
+  ! ============================================================================
+  ! DOMAIN DECOMPOSITION VARIABLES
+
+  ! Main object
+  type(dd_type) :: domain_decomp
+
+  ! Is domain decomposition active
+  logical :: dd_run  = .false.
 
   ! ============================================================================
   ! TIMING VARIABLES

@@ -369,6 +369,21 @@ module constants
        SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
        SRC_ENERGY_TABULAR = 4    ! Tabular distribution
 
+  !=============================================================================
+  ! DOMAIN DECOMPOSITION CONSTANTS
+  
+  ! Indicate that a particle didn't scatter out after a stage
+  integer, parameter :: NO_OUTSCATTER = -1
+  
+  ! Constants for looping around local neighbor bins 
+  integer, parameter :: N_CARTESIAN_NEIGHBORS = 6
+  integer, parameter :: N_DD_COMM_NEIGHBORS = 36
+  integer, parameter :: N_DD_NEIGHBORS = 42
+  
+  ! Banks and buffers are allocated slightly larger than expected for perfect
+  ! load balance by this ratio, and then resized again later if needed
+  real(8), parameter :: DD_BUFFER_HEADROOM = 1.1_8
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 

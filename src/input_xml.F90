@@ -61,12 +61,15 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
+    type(dd_type), pointer :: dd => domain_decomp
     type(Node), pointer :: doc          => null()
     type(Node), pointer :: node_mode    => null()
     type(Node), pointer :: node_source  => null()
     type(Node), pointer :: node_dist    => null()
     type(Node), pointer :: node_cutoff  => null()
     type(Node), pointer :: node_entropy => null()
+    type(Node), pointer :: node_dd      => null()
+    type(Node), pointer :: node_dd_mesh => null()
     type(Node), pointer :: node_ufs     => null()
     type(Node), pointer :: node_sp      => null()
     type(Node), pointer :: node_output  => null()
@@ -541,6 +544,109 @@ contains
 
       ! Turn on Shannon entropy calculation
       entropy_on = .true.
+    end if
+
+    ! deomain decomposition
+    if (check_for_node(doc, "domain_decomposition")) then
+    
+      ! Set domain decomposition flag
+      dd_run = .true.
+      
+      ! Get pointer to dd node
+      call get_node_ptr(doc, "domain_decomposition", node_dd)
+
+      ! Read the DD mesh
+      if (check_for_node(node_dd, "mesh")) then
+
+        ! Get pointer to dd mesh
+        call get_node_ptr(node_dd, "mesh", node_dd_mesh)
+
+        allocate(dd % mesh)
+        
+        ! Get mesh dimensions
+        if (check_for_node(node_dd_mesh, "dimension")) then
+        
+          n = get_arraysize_integer(node_dd_mesh, "dimension")
+          
+          allocate(dd % mesh % dimension(n))
+          allocate(dd % mesh % lower_left(n))
+          allocate(dd % mesh % upper_right(n))
+          dd % mesh % n_dimension = n
+          
+          ! Check that dimensions are all greater than zero
+          call get_node_array(node_dd_mesh, "dimension", temp_int_array3(1:n))
+          if (any(temp_int_array3(1:n) <= 0)) then
+            message = "All entries on the <dimension> element for the &
+                 &domain decomposition mesh must be positive."
+            call fatal_error()
+          end if
+
+          ! Read dimensions in each direction
+          dd % mesh % dimension = temp_int_array3(1:n)
+          
+          dd % n_domains = product(dd % mesh % dimension)
+          
+        else
+          message = "No <dimension> specified for domain decomposition mesh"
+          call fatal_error()    
+        end if
+        
+        ! Get mesh lower left
+        if (check_for_node(node_dd_mesh, "lower_left")) then
+          if (n /= get_arraysize_double(node_dd_mesh, "lower_left")) then
+            message = "Number of entries on <lower_left> must be the same as &
+                 &the number of entries on <dimension> for domain &
+                 &decomposition mesh."
+            call fatal_error()
+          end if
+          call get_node_array(node_dd_mesh, "lower_left", &
+              dd % mesh % lower_left)
+        else
+          message = "No <lower_left> specified for domain decomposition mesh"
+          call fatal_error()
+        end if
+        
+        ! Get mesh upper right
+        if (check_for_node(node_dd_mesh, "upper_right")) then
+          if (n /= get_arraysize_double(node_dd_mesh, "upper_right")) then
+            message = "Number of entries on <upper_right> must be the same as &
+                 &the number of entries on <dimension> for domain &
+                 &decomposition mesh."
+            call fatal_error()
+          end if
+          call get_node_array(node_dd_mesh, "upper_right", &
+              dd % mesh % upper_right)
+        else
+          message = "No <upper_right> specified for domain decomposition mesh"
+          call fatal_error()
+        end if
+
+      else
+        message = "No <mesh> specified for domain decomposition"
+        call fatal_error()
+      end if
+
+      ! Read nodemap
+      if (check_for_node(node_dd, "nodemap")) then
+
+        if (dd % n_domains /= get_arraysize_double(node_dd, "nodemap")) then
+          message = "Incorrect number of domains specified on domain &
+              &decomposition <nodemap>."
+          call fatal_error()
+        end if
+        
+        allocate(dd % domain_load_dist(dd % n_domains))
+        
+        call get_node_array(node_dd, "nodemap", dd % domain_load_dist)
+
+        if (any(dd % domain_load_dist < 0.0_8 )) then
+          message = "Negative value specified in domain decomposition &
+                    &<nodemap>."
+          call fatal_error()
+        end if
+
+      end if
+
     end if
 
     ! Uniform fission source weighting mesh

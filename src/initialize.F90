@@ -3,6 +3,7 @@ module initialize
   use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
+  use dd_init,          only: initialize_domain_decomp
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
@@ -83,6 +84,8 @@ contains
     ! Read plots.xml if it exists -- this has to be done separate from the other
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
+
+    call initialize_domain_decomp()
 
     ! Set up universe structures
     call prepare_universes()

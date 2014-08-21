@@ -222,7 +222,7 @@ module global
   ! DOMAIN DECOMPOSITION VARIABLES
 
   ! Main object
-  type(dd_type) :: domain_decomp
+  type(dd_type), target :: domain_decomp
 
   ! Is domain decomposition active
   logical :: dd_run  = .false.

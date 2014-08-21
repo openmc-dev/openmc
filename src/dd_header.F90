@@ -13,7 +13,7 @@ module dd_header
     ! Domain mesh information
     type(StructuredMesh), pointer :: mesh => null()
     integer :: n_domains
-    integer :: meshbin = 1           ! mesh domain of current processor
+    integer :: meshbin               ! mesh domain of current processor
     integer :: ijk(3)                ! ijk corresponding to the meshbin
     
     ! Info about the local 2nd-order neighborhood
@@ -27,7 +27,10 @@ module dd_header
     integer :: n_domain_procs       ! number of processors in domain sub-comm
     integer :: max_domain_procs     ! max number of procs in any other sub-comm
     
-    ! User-specified number of procs per domain
+    ! User-specified ditribution of load
+    real(8), allocatable :: domain_load_dist(:) ! index is domain meshbin
+    
+    ! Calculated number of procs per domain
     integer, allocatable :: domain_n_procs(:) ! index is domain meshbin
     
     ! Global ranks of the local masters in each domain, used for computing send
@@ -73,6 +76,8 @@ contains
 
     type(dd_type), intent(inout) :: this ! dd instance
 
+    if (associated(this % mesh)) deallocate(this % mesh)
+    if (allocated(this % domain_load_dist)) deallocate(this % domain_load_dist)
     if (allocated(this % domain_n_procs)) deallocate(this % domain_n_procs)
     if (allocated(this % domain_masters)) deallocate(this % domain_masters)
     if (allocated(this % send_buffer)) deallocate(this % send_buffer)
@@ -82,7 +87,8 @@ contains
     if (allocated(this % proc_finish)) deallocate(this % proc_finish)
     if (allocated(this % n_scatters_neighborhood)) &
       deallocate(this % n_scatters_neighborhood)
-    if (allocated(this % n_scatters_domain)) deallocate(this % n_scatters_domain)
+    if (allocated(this % n_scatters_domain)) &
+      deallocate(this % n_scatters_domain)
     if (allocated(this % n_scatters_local)) deallocate(this % n_scatters_local)
     if (allocated(this % scatter_offest)) deallocate(this % scatter_offest)
 

@@ -1,27 +1,28 @@
 module initialize
 
-  use ace,              only: read_xs, same_nuclide_list
-  use bank_header,      only: Bank
+  use ace,                only: read_xs, same_nuclide_list
+  use bank_header,        only: Bank
   use constants
-  use dd_init,          only: initialize_domain_decomp
-  use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: unionized_grid
-  use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists
-  use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
+  use dd_init,            only: initialize_domain_decomp
+  use dict_header,        only: DictIntInt, ElemKeyValueII
+  use energy_grid,        only: unionized_grid
+  use error,              only: fatal_error, warning
+  use geometry,           only: neighbor_lists
+  use geometry_header,    only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict, read_plots_xml
-  use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, write_xs_summary, print_plot,       &
-                              write_message
+  use input_xml,          only: read_input_xml, read_cross_sections_xml,       &
+                                cells_in_univ_dict, read_plots_xml
+  use output,             only: title, header, write_summary, print_version,   &
+                               print_usage, write_xs_summary, print_plot,      &
+                                write_message
   use output_interface
-  use random_lcg,       only: initialize_prng
-  use source,           only: initialize_source
-  use state_point,      only: load_state_point
-  use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject, TallyResult
-  use tally_initialize, only: configure_tallies
+  use random_lcg,         only: initialize_prng
+  use random_lcg_header,  only: N_STREAMS
+  use source,             only: initialize_source
+  use state_point,        only: load_state_point
+  use string,             only: to_str, str_to_int, starts_with, ends_with
+  use tally_header,       only: TallyObject, TallyResult
+  use tally_initialize,   only: configure_tallies
 
 #ifdef MPI
   use mpi
@@ -178,9 +179,9 @@ contains
 
   subroutine initialize_mpi()
 
-    integer                   :: bank_blocks(4)  ! Count for each datatype
-    integer                   :: bank_types(4)   ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer                   :: bank_blocks(5)  ! Count for each datatype
+    integer                   :: bank_types(5)   ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(5)    ! Displacements
     integer                   :: temp_type       ! temporary derived type
     integer                   :: result_blocks(1) ! Count for each datatype
     integer                   :: result_types(1)  ! Datatypes
@@ -188,7 +189,7 @@ contains
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
     integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
     integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
-    type(Bank)       :: b
+    type(Bank)        :: b
     type(TallyResult) :: tr
 
     ! Indicate that MPI is turned on
@@ -212,18 +213,19 @@ contains
     ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt,       bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz,       bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw,       bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,         bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % prn_seed,  bank_disp(5), mpi_err)
 
     ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 3, 3, 1 /)
-    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
+    bank_blocks = (/ 1, 3, 3, 1, N_STREAMS /)
+    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER8 /)
+    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 

@@ -1,15 +1,18 @@
 module tracking
 
   use cross_section,   only: calculate_xs
+  use dd_header,       only: dd_type
+  use dd_tracking,     only: cross_domain_boundary
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
-                             cross_lattice, check_cell_overlap
+                             cross_lattice, check_cell_overlap, &
+                             distance_to_mesh_surface
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
-  use random_lcg,      only: prn
+  use random_lcg,      only: prn, prn_seed
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_surface_current
@@ -32,8 +35,10 @@ contains
     integer :: n_event         ! number of collisions/crossings
     real(8) :: d_boundary      ! distance to nearest boundary
     real(8) :: d_collision     ! sampled distance to collision
+    real(8) :: d_dd_mesh       ! sampled distance to boundary on the DD mesh
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
+    type(dd_type), pointer :: dd => domain_decomp
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
@@ -74,6 +79,18 @@ contains
       call initialize_particle_track()
     endif
 
+    if (dd_run) then
+      ! For DD runs, if we normally wouldn't have to recalculate the cross
+      ! section after a scatter then we need to make sure that we recalculate it
+      ! here with the same random number seed so we get the same thing as before
+      ! (because URR ptables)
+      if (p % material == p % last_material .and. p % material /= NONE) then
+        prn_seed = p % xs_seed
+        call calculate_xs(p)
+        prn_seed = p % prn_seed
+      end if
+    end if
+
     do while (p % alive)
 
       ! Write particle track.
@@ -100,6 +117,12 @@ contains
       ! Select smaller of the two distances
       distance = min(d_boundary, d_collision)
 
+      ! Check domain mesh boundary
+      if (dd_run) then
+        call distance_to_mesh_surface(p, dd % mesh, distance, d_dd_mesh)
+        distance = min(distance, d_dd_mesh)
+      end if
+
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))
@@ -117,6 +140,26 @@ contains
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
 !$omp end critical
+
+      if (dd_run .and. &
+          d_dd_mesh <= d_boundary .and. d_dd_mesh < d_collision) then
+        ! ======================================================================
+        ! PARTICLE CROSSES DOMAIN BOUNDARY
+
+        ! Check for coincidence with a reflective surface - in this case we
+        ! don't need to communicate the particle
+        if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
+            surfaces(abs(surface_crossed)) % bc == BC_REFLECT)) then
+
+          ! Prepare particle for communication
+          call cross_domain_boundary(p, d_collision - distance)
+
+          ! Exit the particle tracking loop
+          exit
+          
+        end if
+
+      end if
 
       if (d_collision > d_boundary) then
         ! ====================================================================

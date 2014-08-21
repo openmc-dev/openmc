@@ -8,7 +8,7 @@ module cross_section
   use list_header,     only: ListElemInt
   use material_header, only: Material
   use particle_header, only: Particle
-  use random_lcg,      only: prn
+  use random_lcg,      only: prn, prn_seed
   use search,          only: binary_search
 
   implicit none
@@ -36,6 +36,8 @@ contains
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material), pointer, save :: mat => null() ! current material
 !$omp threadprivate(mat)
+
+    p % xs_seed = prn_seed
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO

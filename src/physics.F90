@@ -13,7 +13,7 @@ module physics
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
-  use random_lcg,             only: prn
+  use random_lcg,             only: prn, prn_seed
   use search,                 only: binary_search
   use string,                 only: to_str
 
@@ -828,6 +828,7 @@ contains
     real(8) :: mu           ! fission neutron angular cosine
     real(8) :: phi          ! fission neutron azimuthal angle
     real(8) :: weight       ! weight adjustment for ufs method
+    real(8) :: tmp
     logical :: in_mesh      ! source site in ufs mesh?
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
@@ -904,6 +905,11 @@ contains
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
       fission_bank(i) % E = sample_fission_energy(nuc, rxn, p % E)
+
+      ! Store random number seed to continue this site with      
+      fission_bank(i) % prn_seed = prn_seed
+      tmp = prn() ! burn this random number so the seed isn't reused
+      
     end do
 
     ! increment number of bank sites

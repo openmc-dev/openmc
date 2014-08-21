@@ -1,7 +1,8 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO
-  use geometry_header, only: BASE_UNIVERSE
+  use constants,         only: NEUTRON, ONE, NONE, ZERO
+  use geometry_header,   only: BASE_UNIVERSE
+  use random_lcg_header, only: N_STREAMS
 
   implicit none
 
@@ -87,8 +88,8 @@ module particle_header
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
     real(8)    :: stored_distance ! sampled distance to go after changing domain
-    integer(8) :: prn_seed        ! the  next random number seed 
-    integer(8) :: xs_seed         ! the previously seed used for xs gen
+    integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed 
+    integer(8) :: xs_seed(N_STREAMS)  ! the previously seed used for xs gen
 
     ! Domain information
     integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next
@@ -110,8 +111,8 @@ module particle_header
     sequence
 
     integer(8) :: id
-    integer(8) :: prn_seed
-    integer(8) :: xs_seed
+    integer(8) :: prn_seed(N_STREAMS)
+    integer(8) :: xs_seed(N_STREAMS)
     real(8)    :: wgt
     real(8)    :: E
     real(8)    :: mu

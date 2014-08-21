@@ -1,5 +1,7 @@
 module bank_header
 
+  use random_lcg_header, only: N_STREAMS
+
   implicit none
 
 !===============================================================================
@@ -14,10 +16,12 @@ module bank_header
     ! sites are sent from one processor to another.
     sequence
 
-    real(8)    :: wgt    ! weight of bank site
-    real(8)    :: xyz(3) ! location of bank particle
-    real(8)    :: uvw(3) ! diretional cosines
-    real(8)    :: E      ! energy
+    real(8)    :: wgt                 ! weight of bank site
+    real(8)    :: xyz(3)              ! location of bank particle
+    real(8)    :: uvw(3)              ! diretional cosines
+    real(8)    :: E                   ! energy
+    integer(8) :: prn_seed(N_STREAMS) ! random number seeds to continue site
+    
   end type Bank
 
 end module bank_header

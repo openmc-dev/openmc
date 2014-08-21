@@ -4,6 +4,9 @@ module geometry
   use error,                  only: fatal_error, warning
   use geometry_header,        only: Cell, Surface, Universe, Lattice
   use global
+  use mesh,                   only: get_mesh_bin, bin_to_mesh_indices, &
+                                    distance_to_mesh_intersection_3d, &
+                                    distance_to_mesh_intersection_2d
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, deallocate_coord, Particle
   use particle_restart_write, only: write_particle_restart
@@ -1352,6 +1355,110 @@ contains
     if (associated(final_coord)) p % coord => final_coord
 
   end subroutine distance_to_boundary
+
+!===============================================================================
+! DISTANCE_TO_MESH_SURFACE returns the distance to the nearest mesh surface for
+! a particle travelling in a certain direction
+!===============================================================================
+
+  subroutine distance_to_mesh_surface(p, m, testdist, dist)
+
+    type(Particle),                intent(in) :: p
+    type(StructuredMesh), pointer, intent(in) :: m
+    real(8), intent(in)           :: testdist  ! dist for testing intersection
+    real(8), intent(out)          :: dist
+    
+    integer :: bin        ! bin in mesh of particle
+    integer :: ijk(3)     ! indices in mesh
+    real(8) :: xyz1(3)    ! point for testing mesh intersection
+    real(8) :: x, y, z    ! copy of particle position
+    real(8) :: u, v, w    ! copy of particle direction
+    real(8) :: x0, y0, z0 ! oncoming edges of the mesh cell
+    real(8) :: d          ! temporary distance
+    
+    dist = INFINITY
+    
+    call get_mesh_bin(m, p % coord0 % xyz, bin)
+    
+    if (bin /= NO_BIN_FOUND .and. &
+        (bin < 1 .or. bin > product(m % dimension))) then
+      message = "Invalid meshbin: " // trim(to_str(bin))
+      call fatal_error()
+    end if
+    
+    if (bin == NO_BIN_FOUND) then
+    
+      ! If we're not in the mesh, we test for intersection
+      
+      xyz1 = p % coord0 % xyz + testdist * p % coord0 % uvw
+      if (m % n_dimension == 3) then
+        dist = distance_to_mesh_intersection_3d(m, p % coord0 % xyz, xyz1)
+      else
+        dist = distance_to_mesh_intersection_2d(m, p % coord0 % xyz, xyz1)
+      end if
+
+    else
+    
+      ! We're in the mesh
+    
+      call bin_to_mesh_indices(m, bin, ijk)
+      
+      ! Copy particle position and direction
+      x = p % coord0 % xyz(1)
+      y = p % coord0 % xyz(2)
+      z = p % coord0 % xyz(3)
+      u = p % coord0 % uvw(1)
+      v = p % coord0 % uvw(2)
+      w = p % coord0 % uvw(3)
+      
+      ! determine cell center
+      x0 = m % lower_left(1) + m % width(1) * (0.5_8 + dble(ijk(1) - 1))
+      y0 = m % lower_left(2) + m % width(2) * (0.5_8 + dble(ijk(2) - 1))
+      
+      ! determine oncoming edge
+      x0 = x0 + sign(0.5_8, u) * m % width(1)
+      y0 = y0 + sign(0.5_8, v) * m % width(2)
+      
+      ! left and right sides
+      if (abs(x - x0) < FP_PRECISION) then
+        d = INFINITY
+      elseif (u == ZERO) then
+        d = INFINITY
+      else
+        d = (x0 - x)/u
+      end if
+      if (d < dist) dist = d
+      
+      ! front and back sides
+      if (abs(y - y0) < FP_PRECISION) then
+        d = INFINITY
+      elseif (v == ZERO) then
+        d = INFINITY
+      else
+        d = (y0 - y)/v
+      end if
+      if (d < dist) dist = d
+      
+      if (m % n_dimension == 3) then
+      
+        z0 = m % lower_left(3) + m % width(3) * (0.5_8 + dble(ijk(3) - 1))
+        z0 = z0 + sign(0.5_8, w) * m % width(3)
+        
+        ! top and bottom sides
+        if (abs(z - z0) < FP_PRECISION) then
+          d = INFINITY
+        elseif (w == ZERO) then
+          d = INFINITY
+        else
+          d = (z0 - z)/w
+        end if
+        if (d < dist) dist = d
+      
+      end if
+      
+    end if
+
+  end subroutine distance_to_mesh_surface
 
 !===============================================================================
 ! SENSE determines whether a point is on the 'positive' or 'negative' side of a

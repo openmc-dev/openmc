@@ -571,6 +571,7 @@ contains
           allocate(dd % mesh % dimension(n))
           allocate(dd % mesh % lower_left(n))
           allocate(dd % mesh % upper_right(n))
+          allocate(dd % mesh % width(n))
           dd % mesh % n_dimension = n
           
           ! Check that dimensions are all greater than zero
@@ -620,6 +621,10 @@ contains
           message = "No <upper_right> specified for domain decomposition mesh"
           call fatal_error()
         end if
+
+        ! Set the width
+        dd % mesh % width = (dd % mesh % upper_right - &
+            dd % mesh % lower_left) / dd % mesh % dimension
 
       else
         message = "No <mesh> specified for domain decomposition"

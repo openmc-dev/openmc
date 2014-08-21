@@ -816,7 +816,6 @@ contains
     end do
     write(unit_,*)
 
-
     ! Write score bins
     string   = ""
     j = 0
@@ -904,6 +903,22 @@ contains
         string = trim(string) // pn_string
         do n = 1, t % moment_order(j)
           pn_string = ' ndpp-nu-scatter-' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_NDPP_SCATT_YN)
+        pn_string = ' ndpp-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' ndpp-scatter-y' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_NDPP_NU_SCATT_YN)
+        pn_string = ' ndpp-nu-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % moment_order(j)
+          pn_string = ' ndpp-nu-scatter-y' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
         j = j + n - 1
@@ -1733,8 +1748,10 @@ contains
     score_names(abs(SCORE_SCATTER_PN))       = "Scattering Rate Moment"
     score_names(abs(SCORE_NDPP_SCATT_N))     = "Scattering Rate Moment"
     score_names(abs(SCORE_NDPP_SCATT_PN))    = "Scattering Rate Moment"
+    score_names(abs(SCORE_NDPP_SCATT_YN))    = "Scattering Rate Moment"
     score_names(abs(SCORE_NDPP_NU_SCATT_N))  = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NDPP_NU_SCATT_YN)) = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NDPP_CHI))         = "Total Fission Prod. Rate"
     score_names(abs(SCORE_NDPP_CHI_P))       = "Prompt Fission Prod. Rate"
     score_names(abs(SCORE_NDPP_CHI_D))       = "Delayed Fission Prod. Rate"
@@ -1885,7 +1902,7 @@ contains
               end do
               k = k + t % moment_order(k)
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                  SCORE_TOTAL_YN)
+                  SCORE_TOTAL_YN, SCORE_NDPP_SCATT_YN, SCORE_NDPP_NU_SCATT_YN)
               score_index = score_index - 1
               do n_order = 0, t % moment_order(k)
                 do nm_order = -n_order, n_order

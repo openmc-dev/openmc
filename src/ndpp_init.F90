@@ -6,7 +6,7 @@ module ndpp_initialize
   use error,        only: fatal_error, warning
   use global
   use ndpp_header,  only: Ndpp
-  use ndpp_ops,     only: ndpp_init
+  use ndpp_ops,     only: ndpp_read
   use output,       only: write_message
   use search
   use string,       only: ends_with, lower_case, starts_with, to_str
@@ -74,7 +74,7 @@ contains
       message = "Loading NDPP data library: " // ndpp_listing % name
       call write_message(6)
 
-      call ndpp_init(ndpp_nuc_data(i_nuclide), ndpp_listing, get_scatt, &
+      call ndpp_read(ndpp_nuc_data(i_nuclide), ndpp_listing, get_scatt, &
                      get_nuscatt, get_chi_t, get_chi_p, get_chi_d,  &
                      scatt_order, .True.)
     end do
@@ -95,7 +95,7 @@ contains
       message = "Loading NDPP data library: " // ndpp_listing % name
       call write_message(6)
 
-      call ndpp_init(ndpp_sab_data(i_sab), ndpp_listing, get_scatt, &
+      call ndpp_read(ndpp_sab_data(i_sab), ndpp_listing, get_scatt, &
                      get_nuscatt, get_chi_t, get_chi_p, get_chi_d, &
                      scatt_order, .False.)
     end do
@@ -218,26 +218,34 @@ contains
       SCORE_LOOP: do k = 1, t % n_user_score_bins
         j = j + 1
         select case (t % score_bins(j))
-          case (SCORE_NDPP_SCATT_N, SCORE_NDPP_SCATT_PN)
+          case (SCORE_NDPP_SCATT_N, SCORE_NDPP_SCATT_PN, SCORE_NDPP_SCATT_YN)
             get_scatt = .true.
             if (t % moment_order(j) > scatt_order) then
               scatt_order = t % moment_order(j)
             end if
 
+            ! Skip the others to save cycles
             if (t % score_bins(j) == SCORE_NDPP_SCATT_PN) then
               j = j + t % moment_order(j)
-              cycle SCORE_LOOP ! Skip the others to save cycles
+              cycle SCORE_LOOP
+            else if (t % score_bins(j) == SCORE_NDPP_SCATT_YN) then
+              j = j + (t % moment_order(j) + 1)**2 - 1
+              cycle SCORE_LOOP
             end if
 
-          case (SCORE_NDPP_NU_SCATT_N, SCORE_NDPP_NU_SCATT_PN)
+          case (SCORE_NDPP_NU_SCATT_N, SCORE_NDPP_NU_SCATT_PN, SCORE_NDPP_NU_SCATT_YN)
             get_nuscatt = .true.
             if (t % moment_order(j) > scatt_order) then
               scatt_order = t % moment_order(j)
             end if
 
+            ! Skip the others to save cycles
             if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_PN) then
               j = j + t % moment_order(j)
-              cycle SCORE_LOOP ! Skip the others to save cycles
+              cycle SCORE_LOOP
+            else if (t % score_bins(j) == SCORE_NDPP_NU_SCATT_YN) then
+              j = j + (t % moment_order(j) + 1)**2 - 1
+              cycle SCORE_LOOP
             end if
 
           case (SCORE_NDPP_CHI)
@@ -248,10 +256,12 @@ contains
             get_chi_d = .true.
 
           ! Cycle through j if necessary
-          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN, SCORE_FLUX_YN, &
-                SCORE_TOTAL_YN, SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
+          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
             j = j + t % moment_order(j)
-            cycle SCORE_LOOP ! Skip the others to save cycles
+            cycle SCORE_LOOP
+          case (SCORE_FLUX_YN, SCORE_TOTAL_YN, SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
+            j = j + (t % moment_order(j) + 1)**2 - 1
+            cycle SCORE_LOOP
         end select
       end do SCORE_LOOP
     end do TALLY_LOOP

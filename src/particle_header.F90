@@ -43,7 +43,7 @@ module particle_header
 
     ! Particle coordinates
     type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
-    type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
+    type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest univ
 
     ! Other physical data
     real(8)    :: wgt           ! particle weight
@@ -80,10 +80,61 @@ module particle_header
     ! Track output
     logical    :: write_track = .false.
 
+    ! Was this particle just created?
+    logical    :: new_particle = .true.
+    
+    ! Data needed to restart a particle stored in a bank after changing domains
+    real(8)    :: stored_xyz(3)
+    real(8)    :: stored_uvw(3)
+    real(8)    :: stored_distance ! sampled distance to go after changing domain
+    integer(8) :: prn_seed        ! the  next random number seed 
+    integer(8) :: xs_seed         ! the previously seed used for xs gen
+
+    ! Domain information
+    integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next
+    integer    :: outscatter_destination ! Which domain to transmit particle to
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
   end type Particle
+
+!===============================================================================
+! PARTICLEBUFFER is a copy of the particle data structure for sending to other
+! processes via MPI - it's needed to get proper alignment of fields, and it
+! provides a way to cut down on some of the info we need to send
+!===============================================================================
+
+  type ParticleBuffer
+  
+    sequence
+
+    integer(8) :: id
+    integer(8) :: prn_seed
+    integer(8) :: xs_seed
+    real(8)    :: wgt
+    real(8)    :: E
+    real(8)    :: mu
+    real(8)    :: last_wgt
+    real(8)    :: last_E
+    real(8)    :: absorb_wgt
+    real(8)    :: wgt_bank
+    real(8)    :: stored_distance
+    real(8)    :: last_xyz(3)
+    real(8)    :: stored_xyz(3)
+    real(8)    :: stored_uvw(3)
+    integer    :: type
+    integer    :: event
+    integer    :: event_nuclide
+    integer    :: event_MT
+    integer    :: n_bank
+    integer    :: surface
+    integer    :: cell_born
+    integer    :: n_collision
+    integer    :: material
+    integer    :: last_material
+
+  end type ParticleBuffer
 
 contains
 
@@ -124,17 +175,19 @@ contains
     this % alive = .true.
 
     ! clear attributes
-    this % surface       = NONE
-    this % cell_born     = NONE
-    this % material      = NONE
-    this % last_material = NONE
-    this % wgt           = ONE
-    this % last_wgt      = ONE
-    this % absorb_wgt    = ZERO
-    this % n_bank        = 0
-    this % wgt_bank      = ZERO
-    this % n_collision   = 0
-    this % fission       = .false.
+    this % surface         = NONE
+    this % cell_born       = NONE
+    this % material        = NONE
+    this % last_material   = NONE
+    this % wgt             = ONE
+    this % last_wgt        = ONE
+    this % absorb_wgt      = ZERO
+    this % n_bank          = 0
+    this % wgt_bank        = ZERO
+    this % n_collision     = 0
+    this % fission         = .false.
+    this % new_particle    = .true.
+    this % stored_distance = ZERO
 
     ! Set up base level coordinates
     allocate(this % coord0)
@@ -142,6 +195,84 @@ contains
     this % coord             => this % coord0
 
   end subroutine initialize_particle
+
+!===============================================================================
+! PARTICLE_TO_BUFFER copies particle information to the ParticleBuffer data type
+! for sending via MPI
+!===============================================================================
+
+  subroutine particle_to_buffer(part, buf)
+  
+    type(Particle),       intent(in)  :: part
+    type(ParticleBuffer), intent(out) :: buf
+    
+    buf % id              = part % id
+    buf % type            = part % type
+    buf % wgt             = part % wgt
+    buf % E               = part % E
+    buf % mu              = part % mu
+    buf % last_xyz        = part % last_xyz
+    buf % last_wgt        = part % last_wgt
+    buf % last_E          = part % last_E
+    buf % absorb_wgt      = part % absorb_wgt
+    buf % event           = part % event
+    buf % event_nuclide   = part % event_nuclide
+    buf % event_MT        = part % event_MT
+    buf % n_bank          = part % n_bank
+    buf % wgt_bank        = part % wgt_bank
+    buf % surface         = part % surface
+    buf % cell_born       = part % cell_born
+    buf % n_collision     = part % n_collision
+    buf % stored_xyz      = part % stored_xyz
+    buf % stored_uvw      = part % stored_uvw
+    buf % material        = part % material
+    buf % last_material   = part % last_material
+    buf % prn_seed        = part % prn_seed
+    buf % xs_seed         = part % xs_seed
+    buf % stored_distance = part % stored_distance
+  
+  end subroutine particle_to_buffer
+
+!===============================================================================
+! BUFFER_TO_PARTICLE copies particle information out of ParticleBuffer type
+! received via MPI back into a particle data type
+!===============================================================================
+
+  subroutine buffer_to_particle(buf, part)
+  
+    type(ParticleBuffer), intent(in)  :: buf
+    type(Particle),       intent(out) :: part
+  
+    part % id              = buf % id
+    part % type            = buf % type
+    part % wgt             = buf % wgt
+    part % E               = buf % E
+    part % mu              = buf % mu
+    part % alive           = .true.
+    part % last_xyz        = buf % last_xyz
+    part % last_wgt        = buf % last_wgt
+    part % last_E          = buf % last_E
+    part % absorb_wgt      = buf % absorb_wgt
+    part % event           = buf % event
+    part % event_nuclide   = buf % event_nuclide
+    part % event_MT        = buf % event_MT
+    part % n_bank          = buf % n_bank
+    part % wgt_bank        = buf % wgt_bank
+    part % surface         = NONE
+    part % cell_born       = buf % cell_born
+    part % material        = NONE
+    part % last_material   = NONE
+    part % n_collision     = buf % n_collision
+    part % new_particle    = .false.
+    part % stored_xyz      = buf % stored_xyz
+    part % stored_uvw      = buf % stored_uvw
+    part % material        = buf % material
+    part % last_material   = buf % last_material
+    part % prn_seed        = buf % prn_seed
+    part % xs_seed         = buf % xs_seed
+    part % stored_distance = buf % stored_distance
+
+  end subroutine buffer_to_particle
 
 !===============================================================================
 ! CLEAR_PARTICLE

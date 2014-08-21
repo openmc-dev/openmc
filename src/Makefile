@@ -1,6 +1,8 @@
 all:
+	export FC=mpif90
+	export CXX=mpicxx
 	mkdir -p build
-	cmake -H. -Bbuild
+	cmake -H. -Bbuild -Ddebug:BOOL=ON
 	make -s -C build
 clean:
 	make -s -C build clean

@@ -4,8 +4,9 @@ module ndpp_ops
   use constants
   use dict_header,  only: DictCharInt, DICT_NULL
   use error,        only: fatal_error
-  use global!,       only: message
+  use global
   use list_header,  only: ListElemInt
+  use math,         only: calc_rn
   use ndpp_header,  only: GrpTransfer, Ndpp
   use search
   use string,       only: ends_with, lower_case, starts_with, to_str
@@ -411,7 +412,6 @@ module ndpp_ops
     if (is_nuc) then
       if (.not. get_scatt) then
         if (associated(this % inel)) then
-          write(*,*) associated(this % inel)
           deallocate(this % inel)
         end if
       end if
@@ -476,10 +476,10 @@ module ndpp_ops
   end subroutine ndpp_init
 
 !===============================================================================
-! TALLY_NDPP_N determines the scattering moments which were
+! NDPP_TALLY_NDPP_SCATT_N determines the scattering moments which were
 ! previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
+! this method applies to ndpp-scatter-n tally types (including nu-scatter)
 !===============================================================================
 
   subroutine ndpp_tally_scatt_n(this, i_nuclide, gin, score_index, &
@@ -571,10 +571,10 @@ module ndpp_ops
   end subroutine ndpp_tally_scatt_n
 
 !===============================================================================
-! TALLY_NDPP_PN determines the scattering moments which were
+! NDPP_TALLY_NDPP_SCATT_PN determines the scattering moments which were
 ! previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
+! this method applies to ndpp-scatter-pn tally types (including nu-scatter)
 !===============================================================================
 
   subroutine ndpp_tally_scatt_pn(this, i_nuclide, gin, score_index, &
@@ -666,6 +666,110 @@ module ndpp_ops
       end do
     end do
   end subroutine ndpp_tally_scatt_pn
+
+!===============================================================================
+! NDPP_TALLY_NDPP_SCATT_YN determines the scattering moments which were
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
+! this method applies to ndpp-scatter-yn tally types (including nu-scatter)
+! which incorporate the angular flux moments.
+!===============================================================================
+
+  subroutine ndpp_tally_scatt_yn(this, i_nuclide, gin, score_index, &
+                                 filter_index, t_order, mult, is_analog, Ein, &
+                                 uvw, results, nuscatt)
+
+    type(Ndpp), intent(inout) :: this ! Ndpp object to act on
+    integer, intent(in) :: i_nuclide ! index into nuclides array
+    integer, intent(in) :: gin       ! Incoming group index
+    integer, intent(in) :: score_index ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order ! # of scattering orders to tally
+    real(8), intent(in) :: mult ! wgt or wgt * atom_density * flux
+    logical, intent(in) :: is_analog ! Is this an analog or TL event?
+    real(8), intent(in) :: Ein ! Incoming energy
+    real(8), intent(in) :: uvw(3)   ! direction coordinates
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    integer :: g ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer, save :: i_score ! index of score dimension of results
+    integer, save :: l ! legendre moment index
+    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+    real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
+    real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
+    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
+    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
+    integer, save          :: num_lm            ! Number of m for this l
+
+!$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
+!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax,n, num_lm)
+
+    ! Find if we have an sab table
+    if (.not. this % is_nuc) then
+      ! We have a collision in the S(a,b) range
+      el_Ein => this % el_Ein
+      el_Ein_srch => this % el_Ein_srch
+      el => this % el
+      inel_Ein => null()
+      inel_Ein_srch => null()
+      inel => null()
+    else
+      ! Normal scattering (non-S(a,b))
+      el_Ein => this % el_Ein
+      el_Ein_srch => this % el_Ein_srch
+      el => this % el
+      if (associated(this % inel_Ein)) then
+        inel_Ein => this % inel_Ein
+        inel_Ein_srch => this % inel_Ein_srch
+        if (present(nuscatt)) then
+          if (nuscatt) then
+            inel => this % nuinel
+          else
+            inel => this % inel
+          end if
+        else
+          inel => this % inel
+        end if
+      else
+        inel_Ein => null()
+        inel_Ein_srch => null()
+        inel => null()
+      end if
+    end if
+
+    call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, el_Ein_srch, &
+                                  el, inel_Ein, inel_Ein_srch, inel, &
+                                  norm, gmin, gmax)
+
+    ! Apply mult to the normalization constant, norm
+    norm = norm * mult
+    ! Now apply sigS if we are in tracklength mode
+    if (.not. is_analog) then
+      norm = norm * (micro_xs(i_nuclide) % total - &
+        micro_xs(i_nuclide) % absorption)
+    end if
+
+    ! Add the combined distribution to our tally for each order
+    do g = gmin, gmax
+      g_filter = filter_index + g - 1
+      num_lm = 1
+      do l = 0, t_order
+        i_score = score_index + num_lm
+        num_lm = 2 * l + 1
+!$omp critical
+        results(i_score: i_score + num_lm - 1, g_filter) % value = &
+          results(i_score: i_score + num_lm - 1, g_filter) % value + &
+          ndpp_outgoing(thread_id, l + 1, g) * norm * calc_rn(l, uvw)
+!$omp end critical
+      end do
+    end do
+  end subroutine ndpp_tally_scatt_yn
 
 !===============================================================================
 ! TALLY_NDPP_CHI determines the fission spectra which were

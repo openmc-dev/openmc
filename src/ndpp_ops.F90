@@ -486,7 +486,7 @@ module ndpp_ops
                                 filter_index, t_order, mult, is_analog, Ein, &
                                 results, nuscatt)
 
-    type(Ndpp), intent(inout) :: this ! Ndpp object to act on
+    type(Ndpp), intent(in) :: this ! Ndpp object to act on
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
@@ -516,38 +516,10 @@ module ndpp_ops
 
     l = t_order + 1
 
-    ! Find if we have an sab table
-    if (.not. this % is_nuc) then
-      ! We have a collision in the S(a,b) range
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      inel_Ein => null()
-      inel_Ein_srch => null()
-      inel => null()
-    else
-      ! Normal scattering (non-S(a,b))
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      if (associated(this % inel_Ein)) then
-        inel_Ein => this % inel_Ein
-        inel_Ein_srch => this % inel_Ein_srch
-        if (present(nuscatt)) then
-          if (nuscatt) then
-            inel => this % nuinel
-          else
-            inel => this % inel
-          end if
-        else
-          inel => this % inel
-        end if
-      else
-        inel_Ein => null()
-        inel_Ein_srch => null()
-        inel => null()
-      end if
-    end if
+    ! set our pointers
+    call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &
+                           inel_Ein_srch, inel, nuscatt)
+
     call generate_ndpp_distrib_n(i_nuclide, gin, l, Ein, el_Ein, &
                                  el_Ein_srch, el, inel_Ein, inel_Ein_srch, &
                                  inel, norm, gmin, gmax)
@@ -581,7 +553,7 @@ module ndpp_ops
                                  filter_index, t_order, mult, is_analog, Ein, &
                                  results, nuscatt)
 
-    type(Ndpp), intent(inout) :: this ! Ndpp object to act on
+    type(Ndpp), intent(in) :: this ! Ndpp object to act on
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
@@ -610,38 +582,9 @@ module ndpp_ops
 !$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
 !$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax)
 
-    ! Find if we have an sab table
-    if (.not. this % is_nuc) then
-      ! We have a collision in the S(a,b) range
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      inel_Ein => null()
-      inel_Ein_srch => null()
-      inel => null()
-    else
-      ! Normal scattering (non-S(a,b))
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      if (associated(this % inel_Ein)) then
-        inel_Ein => this % inel_Ein
-        inel_Ein_srch => this % inel_Ein_srch
-        if (present(nuscatt)) then
-          if (nuscatt) then
-            inel => this % nuinel
-          else
-            inel => this % inel
-          end if
-        else
-          inel => this % inel
-        end if
-      else
-        inel_Ein => null()
-        inel_Ein_srch => null()
-        inel => null()
-      end if
-    end if
+    ! set our pointers
+    call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &
+                           inel_Ein_srch, inel, nuscatt)
 
     call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, el_Ein_srch, &
                                   el, inel_Ein, inel_Ein_srch, inel, &
@@ -679,7 +622,7 @@ module ndpp_ops
                                  filter_index, t_order, mult, is_analog, Ein, &
                                  uvw, results, nuscatt)
 
-    type(Ndpp), intent(inout) :: this ! Ndpp object to act on
+    type(Ndpp), intent(in) :: this ! Ndpp object to act on
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: gin       ! Incoming group index
     integer, intent(in) :: score_index ! dim = 1 starting index in results
@@ -710,38 +653,9 @@ module ndpp_ops
 !$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
 !$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax,n, num_lm)
 
-    ! Find if we have an sab table
-    if (.not. this % is_nuc) then
-      ! We have a collision in the S(a,b) range
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      inel_Ein => null()
-      inel_Ein_srch => null()
-      inel => null()
-    else
-      ! Normal scattering (non-S(a,b))
-      el_Ein => this % el_Ein
-      el_Ein_srch => this % el_Ein_srch
-      el => this % el
-      if (associated(this % inel_Ein)) then
-        inel_Ein => this % inel_Ein
-        inel_Ein_srch => this % inel_Ein_srch
-        if (present(nuscatt)) then
-          if (nuscatt) then
-            inel => this % nuinel
-          else
-            inel => this % inel
-          end if
-        else
-          inel => this % inel
-        end if
-      else
-        inel_Ein => null()
-        inel_Ein_srch => null()
-        inel => null()
-      end if
-    end if
+    ! set our pointers
+    call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &
+                           inel_Ein_srch, inel, nuscatt)
 
     call generate_ndpp_distrib_pn(i_nuclide, gin, t_order, Ein, el_Ein, el_Ein_srch, &
                                   el, inel_Ein, inel_Ein_srch, inel, &
@@ -781,7 +695,7 @@ module ndpp_ops
   subroutine ndpp_tally_chi(this, i_nuclide, score_index, filter_index, mult, &
                             is_analog, Ein, score_type, results)
 
-    type(Ndpp), intent(inout) :: this ! Ndpp object to act on
+    type(Ndpp), intent(in) :: this ! Ndpp object to act on
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: score_index ! dim = 1 starting index in results
     integer, intent(in) :: filter_index ! dim = 2 starting index (incoming E filter)
@@ -850,6 +764,56 @@ module ndpp_ops
 !===============================================================================
 ! HELPER SUBROUTINES
 !===============================================================================
+
+!===============================================================================
+! SET_NDPP_POINTERS sets the inelastic and elastic pointers as they should be
+! depending on if sab or nuc, and if nuscatt or not.
+!===============================================================================
+  subroutine set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &
+                               inel_Ein_srch, inel, nuscatt)
+    type(Ndpp), intent(in) :: this ! Ndpp object to act on
+    real(8), pointer, intent(inout) :: el_Ein(:)         ! Energy grid of elastic data
+    integer, pointer, intent(inout) :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, intent(inout) :: el(:)   ! Elastic data to tally
+    real(8), pointer, intent(inout) :: inel_Ein(:)       ! Energy grid of inelastic data
+    integer, pointer, intent(inout) :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, intent(inout) :: inel(:) ! Inelastic data to tally
+    logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
+
+    ! Find if we have an sab table
+    if (.not. this % is_nuc) then
+      ! We have a collision in the S(a,b) range
+      el_Ein => this % el_Ein
+      el_Ein_srch => this % el_Ein_srch
+      el => this % el
+      inel_Ein => null()
+      inel_Ein_srch => null()
+      inel => null()
+    else
+      ! Normal scattering (non-S(a,b))
+      el_Ein => this % el_Ein
+      el_Ein_srch => this % el_Ein_srch
+      el => this % el
+      if (associated(this % inel_Ein)) then
+        inel_Ein => this % inel_Ein
+        inel_Ein_srch => this % inel_Ein_srch
+        if (present(nuscatt)) then
+          if (nuscatt) then
+            inel => this % nuinel
+          else
+            inel => this % inel
+          end if
+        else
+          inel => this % inel
+        end if
+      else
+        inel_Ein => null()
+        inel_Ein_srch => null()
+        inel => null()
+      end if
+    end if
+
+  end subroutine set_ndpp_pointers
 
 !===============================================================================
 ! FIND_NDPP_INDICES determines the group boundaries of relevant data in both

@@ -84,15 +84,6 @@ module ace_header
   end type UrrData
 
 !===============================================================================
-! GRPTRANSFER contains probability tables for the unresolved resonance range.
-!===============================================================================
-
-  type GrpTransfer
-    real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
-                                          ! Dimension of (moments, gmin:gmax)
-  end type GrpTransfer
-
-!===============================================================================
 ! NUCLIDE contains all the data for an ACE-format continuous-energy cross
 ! section. The ACE format (A Compact ENDF format) is used in MCNP and several
 ! other Monte Carlo codes.
@@ -120,22 +111,6 @@ module ace_header
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
-
-    ! NDPP pre-processed data for use only with
-    ! integrated tallies (scatter, nu-scatter, and chi)
-    real(8), allocatable :: ndpp_el_Ein(:)           ! Incoming elastic energy grid
-    integer, allocatable :: ndpp_el_Ein_srch(:)      ! Incoming elastic energy grid search bounds
-    type(GrpTransfer), allocatable :: ndpp_el(:)     ! Elastic Data, Dimension is # of Ein
-    real(8), allocatable :: ndpp_inel_Ein(:)         ! Incoming inelastic energy grid
-    integer, allocatable :: ndpp_inel_Ein_srch(:)    ! Incoming inelastic energy grid search bounds
-    type(GrpTransfer), allocatable :: ndpp_inel(:)   ! Inelastic Data, Dimension is # of Ein
-    type(GrpTransfer), allocatable :: ndpp_nuinel(:) ! Inelastic Data, Dimension is # of Ein
-    real(8), allocatable :: ndpp_chi_Ein(:)          ! Ein grid for all chi
-    real(8), allocatable :: ndpp_chi(:,:)            ! Data grid for ndpp chi data
-                                                     ! dimensions of chi: (g, Ein)
-    real(8), allocatable :: ndpp_chi_p(:,:)          ! Same for prompt only
-    real(8), allocatable :: ndpp_chi_d(:,:,:)        ! Same, but additional dimension
-                                                     ! for precursor group
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -225,12 +200,6 @@ module ace_header
     real(8), allocatable :: elastic_e_in(:)
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
-
-    ! NDPP scattering data for use only with
-    ! integrated scattering tallies
-    real(8), allocatable :: ndpp_el_Ein(:)       ! Ein grid for scatter
-    integer, allocatable :: ndpp_el_Ein_srch(:)  ! Incoming energy grid search bounds
-    type(GrpTransfer), allocatable :: ndpp_el(:) ! Dimension is # of Ein
   end type SAlphaBeta
 
 !===============================================================================
@@ -399,34 +368,6 @@ module ace_header
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
-      end if
-
-      if (allocated(this % ndpp_el_Ein)) then
-        deallocate(this % ndpp_el_Ein)
-      end if
-
-      if (allocated(this % ndpp_el_Ein_srch)) then
-        deallocate(this % ndpp_el_Ein_srch)
-      end if
-
-      if (allocated(this % ndpp_el)) then
-        deallocate(this % ndpp_el)
-      end if
-
-      if (allocated(this % ndpp_inel_Ein)) then
-        deallocate(this % ndpp_inel_Ein)
-      end if
-
-      if (allocated(this % ndpp_inel_Ein_srch)) then
-        deallocate(this % ndpp_inel_Ein_srch)
-      end if
-
-      if (allocated(this % ndpp_inel)) then
-        deallocate(this % ndpp_inel)
-      end if
-
-      if (allocated(this % ndpp_nuinel)) then
-        deallocate(this % ndpp_nuinel)
       end if
 
       if (associated(this % reactions)) then

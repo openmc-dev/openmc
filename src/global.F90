@@ -9,6 +9,7 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
+  use ndpp_header,      only: Ndpp
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
@@ -156,6 +157,12 @@ module global
   ! case of NDPP scattering.
   ! Dimensions are: (Thread Id, Scattering Order, Incoming Energy)
   real(8), allocatable :: ndpp_outgoing(:,:,:)
+
+  ! The Ndpp data which contains the data to tally, for nuclides and sab data
+  ! The index of each matches the index of nuclides and sabs in nuclides(:)
+  ! and sab_tables(:)
+  type(Ndpp), allocatable, target :: ndpp_nuc_data(:)
+  type(Ndpp), allocatable, target :: ndpp_sab_data(:)
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -460,6 +467,18 @@ contains
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
     if (allocated(ndpp_outgoing)) deallocate(ndpp_outgoing)
+    if (allocated(ndpp_nuc_data)) then
+      do i = 1, size(ndpp_nuc_data)
+        call ndpp_nuc_data(i) % clear()
+      end do
+      deallocate(ndpp_nuc_data)
+    end if
+    if (allocated(ndpp_sab_data)) then
+      do i = 1, size(ndpp_sab_data)
+        call ndpp_sab_data(i) % clear()
+      end do
+      deallocate(ndpp_sab_data)
+    end if
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)

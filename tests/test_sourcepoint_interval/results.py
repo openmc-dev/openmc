@@ -10,7 +10,7 @@ import statepoint
 if len(sys.argv) > 1:
     sp = statepoint.StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.8.binary')
+    sp = statepoint.StatePoint('statepoint.08.binary')
 sp.read_results()
 sp.read_source()
 

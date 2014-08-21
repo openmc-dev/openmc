@@ -32,7 +32,10 @@ for f in files:
     req = urlopen(url)
 
     # Get file size from header
-    file_size = int(req.info().getheaders('Content-Length')[0])
+    if sys.version_info[0] < 3:
+        file_size = int(req.info().getheaders('Content-Length')[0])
+    else:
+        file_size = req.length
     downloaded = 0
 
     # Check if file already downloaded

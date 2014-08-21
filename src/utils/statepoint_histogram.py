@@ -1,5 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
+from __future__ import print_function
 from sys import argv
 from math import sqrt
 

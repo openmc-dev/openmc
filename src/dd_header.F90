@@ -1,26 +1,69 @@
 module dd_header 
 
+  use dict_header,      only: DictIntInt
+  use mesh_header,      only: StructuredMesh
+  use particle_header,  only: ParticleBuffer
+
   implicit none
   private
-  public :: allocate_dd, deallocate_dd
+  public :: deallocate_dd
 
   type, public :: dd_type
 
+    ! Domain mesh information
+    type(StructuredMesh), pointer :: mesh => null()
+    integer :: n_domains
+    integer :: meshbin = 1           ! mesh domain of current processor
+    integer :: ijk(3)                ! ijk corresponding to the meshbin
+    
+    ! Info about the local 2nd-order neighborhood
+    integer :: neighbor_meshbins(42) ! domain meshbins
+    type(DictIntInt) :: bins_dict    ! reverse of neighbor_meshbins
+    
+    ! DD communication information
+    integer :: comm   ! communicator for fission bank and tallies in this domain
+    integer :: rank   ! this processes's rank in domain sub-communicator
+    logical :: local_master         ! master process in this domain?
+    integer :: n_domain_procs       ! number of processors in domain sub-comm
+    integer :: max_domain_procs     ! max number of procs in any other sub-comm
+    
+    ! User-specified number of procs per domain
+    integer, allocatable :: domain_n_procs(:) ! index is domain meshbin
+    
+    ! Global ranks of the local masters in each domain, used for computing send
+    ! ranks
+    integer, allocatable :: domain_masters(:) ! index is domain meshbin
+    
+    ! For DD the source_bank is replaced with a Particle bank, since it needs to
+    ! contain both fission and in-scatter particles
+!    type(Particle), allocatable, target :: psource_bank(:)
+!    integer :: size_psource_bank ! size of psource_bank, resized if needed
+    
+    ! During simulation we keep track of where particles will scatter out to
+    ! with p % outscatter_destination, and then send them later during
+    ! syncronize_banks
+    type(ParticleBuffer), allocatable :: send_buffer(:)
+    type(ParticleBuffer), allocatable :: recv_buffer(:)
+    integer :: size_send_buffer ! size of buffer, resized if needed
+    integer :: size_recv_buffer ! size of buffer, resized if needed
 
+    ! Scatter information
+    integer              :: n_global_scatters ! # of scatters in last DD stage
+    integer, allocatable :: send_rank_info(:) ! # of particles to send to bin
+    integer, allocatable :: recv_rank_info(:) ! # of particles to recv from bin
+    integer(8)           :: n_inscatt         ! # of particles received
+    integer, allocatable :: proc_finish(:)    ! finish idx in scatt array
+    
+    ! Before synchronizing scatters, all processors need to know how many
+    ! particles are going everywhere
+    integer, allocatable :: n_scatters_neighborhood(:,:) ! (from_bin, to_bin)
+    integer, allocatable :: n_scatters_domain(:) ! (to_bin) just this domain
+    integer, allocatable :: n_scatters_local(:) ! (to bin) just this processor
+    integer, allocatable :: scatter_offest(:) ! (to bin) offset this processor
+    
   end type dd_type
 
 contains
-
-!==============================================================================
-! ALLOCATE_DD allocates all data in dd type
-!==============================================================================
-
-  subroutine allocate_dd(this)
-
-    type(dd_type), intent(inout) :: this      ! dd instance
-
-
-  end subroutine allocate_dd
 
 !===============================================================================
 ! DEALLOCATE_DD frees all memory of dd type 
@@ -30,6 +73,18 @@ contains
 
     type(dd_type), intent(inout) :: this ! dd instance
 
+    if (allocated(this % domain_n_procs)) deallocate(this % domain_n_procs)
+    if (allocated(this % domain_masters)) deallocate(this % domain_masters)
+    if (allocated(this % send_buffer)) deallocate(this % send_buffer)
+    if (allocated(this % recv_buffer)) deallocate(this % recv_buffer)
+    if (allocated(this % send_rank_info)) deallocate(this % send_rank_info)
+    if (allocated(this % recv_rank_info)) deallocate(this % recv_rank_info)
+    if (allocated(this % proc_finish)) deallocate(this % proc_finish)
+    if (allocated(this % n_scatters_neighborhood)) &
+      deallocate(this % n_scatters_neighborhood)
+    if (allocated(this % n_scatters_domain)) deallocate(this % n_scatters_domain)
+    if (allocated(this % n_scatters_local)) deallocate(this % n_scatters_local)
+    if (allocated(this % scatter_offest)) deallocate(this % scatter_offest)
 
   end subroutine deallocate_dd
 

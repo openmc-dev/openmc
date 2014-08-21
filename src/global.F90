@@ -5,7 +5,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use dd_header
+  use dd_header,        only: dd_type
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material

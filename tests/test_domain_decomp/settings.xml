@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<settings>
+
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>800</particles>
+  </eigenvalue>
+
+  <source>
+    <space type="box">
+      <parameters>
+        -160 -160 -183
+         160  160  183
+      </parameters>
+    </space>
+  </source>
+
+  <domain_decomposition>
+
+    <mesh>
+      <dimension> 2 2 1 </dimension>
+      <lower_left> -250 -250 -230 </lower_left>
+      <upper_right> 250  250  224 </upper_right>
+    </mesh>
+
+    <nodemap>
+        1 1
+        1 1
+    </nodemap>
+
+  </domain_decomposition>
+
+
+
+</settings>

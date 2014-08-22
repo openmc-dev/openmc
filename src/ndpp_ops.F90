@@ -498,21 +498,20 @@ module ndpp_ops
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer, save :: g ! outgoing energy group index
-    integer, save :: g_filter ! outgoing energy group index
-    integer, save :: l ! tally order index to score
-    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+    integer :: g        ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: l        ! tally order index to score
+    real(8) :: norm     ! Interpolation constant, multiplied by sigS (if in TL)
     real(8), pointer, save :: el_Ein(:) => null()         ! Energy grid of elastic data
     integer, pointer, save :: el_Ein_srch(:) => null()    ! Energy grid boundaries of elastic data
     type(GrpTransfer), pointer, save :: el(:) => null()   ! Elastic data to tally
     real(8), pointer, save :: inel_Ein(:) => null()       ! Energy grid of inelastic data
     integer, pointer, save :: inel_Ein_srch(:) => null()  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) => null() ! Inelastic data to tally
-    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
-    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
+    integer :: gmin     ! Minimum group transfer in ndpp_outgoing
+    integer :: gmax     ! Maximum group transfer in ndpp_outgoing
 
-!$omp threadprivate(g,g_filter,l,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax)
+!$omp threadprivate(el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel)
 
     l = t_order + 1
 
@@ -565,22 +564,21 @@ module ndpp_ops
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer :: g ! outgoing energy group index
+    integer :: g        ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
-    integer, save :: i_score ! index of score dimension of results
-    integer, save :: l ! legendre moment index
-    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+    integer :: i_score  ! index of score dimension of results
+    integer :: l        ! legendre moment index
+    real(8) :: norm     ! Interpolation constant, multiplied by sigS (if in TL)
     real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
     type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
     real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
-    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
-    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
+    integer :: gmin     ! Minimum group transfer in ndpp_outgoing
+    integer :: gmax     ! Maximum group transfer in ndpp_outgoing
 
-!$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax)
+!$omp threadprivate(el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel)
 
     ! set our pointers
     call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &
@@ -635,23 +633,22 @@ module ndpp_ops
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
     logical, optional, intent(in) :: nuscatt ! Is this for nuscatter?
 
-    integer :: g ! outgoing energy group index
+    integer :: g        ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
-    integer, save :: i_score ! index of score dimension of results
-    integer, save :: l ! legendre moment index
-    real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
+    integer :: i_score  ! index of score dimension of results
+    integer :: l        ! legendre moment index
+    real(8) :: norm     ! Interpolation constant, multiplied by sigS (if in TL)
     real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
     integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
     type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
     real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
     integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
     type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
-    integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
-    integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
-    integer, save          :: num_lm            ! Number of m for this l
+    integer :: gmin     ! Minimum group transfer in ndpp_outgoing
+    integer :: gmax     ! Maximum group transfer in ndpp_outgoing
+    integer :: num_lm   ! Number of m for this l
 
-!$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax,num_lm)
+!$omp threadprivate(el_Ein,el_Ein_srch,el,inel_Ein,inel_Ein_srch,inel)
 
     ! set our pointers
     call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &

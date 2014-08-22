@@ -344,8 +344,9 @@ contains
 
     ! Test metadata to ensure this library matches the problem definition
     ! First test to see if we have a legendre scattering type and not tabular
-    !!! (This will be removed at an undefined data when OpenMC supports
-    !!! tabular scattering distributions as opposed to Legendres.
+    ! (This will be removed at an undefined date when OpenMC supports
+    ! tabular scattering distributions as opposed to just Legendres.
+    ! Note that the authors have no immediate plans for this).
     if (check_for_node(doc, "scatt_type")) &
       call get_node_value(doc, "scatt_type", scatt_type)
     if (scatt_type /= SCATT_TYPE_LEGENDRE) then

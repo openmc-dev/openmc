@@ -3200,7 +3200,7 @@ contains
 ! TALLY_NDPP_PN determines the scattering moments which were
 ! previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
+! this method applies to ndpp-scatter-pn tally types
 !===============================================================================
 
   subroutine tally_ndpp_pn(i_nuclide, gin, score_index, filter_index, t_order, &
@@ -3278,10 +3278,10 @@ contains
   end subroutine tally_macro_ndpp_pn
 
 !===============================================================================
-! TALLY_NDPP_YN determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP;
+! TALLY_NDPP_YN determines the scattering moments with angular flux moment
+! weighting which were previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-n tally types
+! this method applies to ndpp-scatter-yn tally types
 !===============================================================================
 
   subroutine tally_ndpp_yn(i_nuclide, gin, score_index, filter_index, t_order, &
@@ -3320,9 +3320,10 @@ contains
 
 
 !===============================================================================
-! TALLY_MACRO_NDPP_YN determines the macroscopic scattering moments which were
+! TALLY_MACRO_NDPP_YN determines the macroscopic scattering moments
+! with angular flux moment weighting which were
 ! previously calculated with a pre-processor such as NDPP;
-! this method applies to ndpp-scatter-pn tally types
+! this method applies to ndpp-scatter-yn tally types
 !===============================================================================
 
   subroutine tally_macro_ndpp_yn(mat, gin, score_index, filter_index, t_order, flux, &
@@ -3365,7 +3366,7 @@ contains
 ! TALLY_NDPP_CHI determines the fission spectra which were
 ! previously calculated with a pre-processor such as NDPP;
 ! this can be used for analog and tracklength estimators;
-! this method applies to ndpp-scatter-chi tally types
+! this method applies to ndpp-chi tally types
 !===============================================================================
 
   subroutine tally_ndpp_chi(i_nuclide, score_index, filter_index, mult, &
@@ -3395,7 +3396,7 @@ contains
 !===============================================================================
 ! TALLY_MACRO_NDPP_CHI determines the material-wise Chi spectra which were
 ! previously calculated with a pre-processor such as NDPP;
-! this method applies to ndpp-scatter-pn tally types
+! this method applies to ndpp-chi tally types
 !===============================================================================
 
   subroutine tally_macro_ndpp_chi(mat, score_index, filter_index, flux, Ein, &

@@ -240,7 +240,7 @@ module ndpp_ops
       ! Open file
       open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', ACCESS='stream')
       rewind(UNIT=in)
-      !!! right now binary files dont have the capability to do location /= 1!
+      ! right now binary files dont have the capability to do location /= 1!
 
       ! Read the header information to make sure this is the correct file
       read(UNIT=in) name, kT, NG
@@ -392,7 +392,9 @@ module ndpp_ops
     else if (listing % filetype == H5) then
       ! =======================================================================
       ! READ NDPP DATA IN HDF5 FORMAT
-      !!! TBI
+
+      ! NOT YET IMPLEMENTED
+
     end if ! No default needed - read_ndpp_xml() already checked filetype
 
     ! Finally, the above code read in all data since NDPP libs are sequential

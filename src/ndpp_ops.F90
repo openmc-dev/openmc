@@ -502,12 +502,12 @@ module ndpp_ops
     integer, save :: g_filter ! outgoing energy group index
     integer, save :: l ! tally order index to score
     real(8), save :: norm ! Interpolation constant, multiplied by sigS (if in TL)
-    real(8), pointer, save :: el_Ein(:)         ! Energy grid of elastic data
-    integer, pointer, save :: el_Ein_srch(:)    ! Energy grid boundaries of elastic data
-    type(GrpTransfer), pointer, save :: el(:)   ! Elastic data to tally
-    real(8), pointer, save :: inel_Ein(:)       ! Energy grid of inelastic data
-    integer, pointer, save :: inel_Ein_srch(:)  ! Energy grid boundaries of inelastic data
-    type(GrpTransfer), pointer, save :: inel(:) ! Inelastic data to tally
+    real(8), pointer, save :: el_Ein(:) => null()         ! Energy grid of elastic data
+    integer, pointer, save :: el_Ein_srch(:) => null()    ! Energy grid boundaries of elastic data
+    type(GrpTransfer), pointer, save :: el(:) => null()   ! Elastic data to tally
+    real(8), pointer, save :: inel_Ein(:) => null()       ! Energy grid of inelastic data
+    integer, pointer, save :: inel_Ein_srch(:) => null()  ! Energy grid boundaries of inelastic data
+    type(GrpTransfer), pointer, save :: inel(:) => null() ! Inelastic data to tally
     integer, save          :: gmin              ! Minimum group transfer in ndpp_outgoing
     integer, save          :: gmax              ! Maximum group transfer in ndpp_outgoing
 
@@ -651,7 +651,7 @@ module ndpp_ops
     integer, save          :: num_lm            ! Number of m for this l
 
 !$omp threadprivate(i_score,l,norm,el_Ein,el_Ein_srch,el, &
-!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax,n, num_lm)
+!$omp&              inel_Ein,inel_Ein_srch,inel,gmin,gmax,num_lm)
 
     ! set our pointers
     call set_ndpp_pointers(this, el_Ein, el_Ein_srch, el, inel_Ein, &

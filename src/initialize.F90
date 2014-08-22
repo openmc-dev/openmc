@@ -865,6 +865,7 @@ contains
 
     ! Allocate source bank
     allocate(source_bank(work), STAT=alloc_err)
+    size_source = work
 
     ! Check for allocation errors
     if (alloc_err /= 0) then

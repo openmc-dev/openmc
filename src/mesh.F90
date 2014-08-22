@@ -106,6 +106,11 @@ contains
     integer :: n_y ! number of mesh cells in y direction
     integer :: n_z ! number of mesh cells in z direction
 
+    if (any(ijk < (/1, 1, 1/)) .or. any(ijk > m % dimension)) then
+      bin = NO_BIN_FOUND
+      return
+    end if
+
     if (present(surface_current)) then
       n_y = m % dimension(2) + 1
     else

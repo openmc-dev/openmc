@@ -231,31 +231,52 @@ contains
     src => source_bank(index_source)
     call copy_source_attributes(p, src)
 
-    ! set identifier for particle
-    p % id = work_index(rank) + index_source
+    if (.not. dd_run) then
+    
+      ! set identifier for particle
+      p % id = work_index(rank) + index_source
+      
+      ! set random number seed
+      particle_seed = (overall_gen - 1)*n_particles + p % id
+      call set_particle_seed(particle_seed)
+    
+      ! set particle trace
+      trace = .false.
+      if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
+           p % id == trace_particle) trace = .true.
 
-    ! set random number seed
-    particle_seed = (overall_gen - 1)*n_particles + p % id
-    call set_particle_seed(particle_seed)
+      ! Set particle track.
+      p % write_track = .false.
+      if (write_all_tracks) then
+        p % write_track = .true.
+      else if (allocated(track_identifiers)) then
+        do i=1, size(track_identifiers(1,:))
+          if (current_batch == track_identifiers(1,i) .and. &
+               &current_gen == track_identifiers(2,i) .and. &
+               &p % id == track_identifiers(3,i)) then
+            p % write_track = .true.
+            exit
+          end if
+        end do
+      end if
+      
+    else
 
-    ! set particle trace
-    trace = .false.
-    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-         p % id == trace_particle) trace = .true.
+      ! The order of the source bank is scrambled for domain-decomposed runs, so
+      ! unless we want to do a distributed sort over all n_partcles, we're not
+      ! going to have particle id numbers that are reproducible with different
+      ! numbers of processes.  Results will still be reproducible for DD runs
+      ! with vary numbers of domains/proceses since we're carrying around the
+      ! random number streams, but particle ids will not be consistent and
+      ! results will not match the non-DD version of the same run (unless you
+      ! run in DD mode with one domain).
 
-    ! Set particle track.
-    p % write_track = .false.
-    if (write_all_tracks) then
-      p % write_track = .true.
-    else if (allocated(track_identifiers)) then
-      do i=1, size(track_identifiers(1,:))
-        if (current_batch == track_identifiers(1,i) .and. &
-             &current_gen == track_identifiers(2,i) .and. &
-             &p % id == track_identifiers(3,i)) then
-          p % write_track = .true.
-          exit
-        end if
-      end do
+      p % id = index_source
+      prn_seed = p % prn_seed
+
+      ! TODO: Add support for writing particle tracks during DD runs
+      p % write_track = .false.
+
     end if
 
   end subroutine get_source_particle
@@ -278,6 +299,8 @@ contains
     p % last_uvw    = src % uvw
     p % E           = src % E
     p % last_E      = src % E
+    p % prn_seed    = src % prn_seed
+    p % xs_seed     = src % prn_seed
 
   end subroutine copy_source_attributes
 

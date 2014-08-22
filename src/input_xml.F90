@@ -2418,6 +2418,23 @@ contains
               message = "Cannot tally flux with an outgoing energy filter."
               call fatal_error()
             end if
+          case ('flux-yn')
+            ! Prohibit user from tallying flux for an individual nuclide
+            if (.not. (t % n_nuclide_bins == 1 .and. &
+                 t % nuclide_bins(1) == -1)) then
+              message = "Cannot tally flux for an individual nuclide."
+              call fatal_error()
+            end if
+
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              message = "Cannot tally flux with an outgoing energy filter."
+              call fatal_error()
+            end if
+
+            t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins  - 1
+
           case ('total')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -2425,6 +2442,18 @@ contains
                    &outgoing energy filter."
               call fatal_error()
             end if
+
+          case ('total-yn')
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              message = "Cannot tally total reaction rate with an &
+                   &outgoing energy filter."
+              call fatal_error()
+            end if
+
+            t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
+            t % moment_order(j : j + n_bins - 1) = n_order
+            j = j + n_bins - 1
+
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
 

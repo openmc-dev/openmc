@@ -2,6 +2,7 @@ module source
 
   use bank_header,      only: Bank
   use constants
+  use dd_comm,          only: distribute_source
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
@@ -10,7 +11,7 @@ module source
   use output,           only: write_message
   use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
-  use random_lcg,       only: prn, set_particle_seed
+  use random_lcg,       only: prn, set_particle_seed, prn_seed
   use string,           only: to_str
 
 #ifdef MPI
@@ -40,6 +41,12 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
+      if (dd_run) then
+        message = "Reading source from binary file not implemented for " // &
+                  "domain decomposition."
+        call fatal_error()
+      end if
+
       message = 'Reading source file from ' // trim(path_source) // '...'
       call write_message(6)
 
@@ -63,17 +70,29 @@ contains
 
     else
       ! Generation source sites from specified distribution in user input
+      
       do i = 1, work
+      
         ! Get pointer to source bank site
         src => source_bank(i)
 
-        ! initialize random number seed
+        ! Initialize random number seed
         id = work_index(rank) + i
         call set_particle_seed(id)
 
-        ! sample external source distribution
+        ! Sample external source distribution
         call sample_external_source(src)
+        
+        ! Store the LCG seed for the particle
+        src % prn_seed = prn_seed
+        
       end do
+
+      if (dd_run) then
+        ! Send source sites to the processes they'll be transported on
+        call distribute_source()
+      end if
+      
     end if
 
   end subroutine initialize_source

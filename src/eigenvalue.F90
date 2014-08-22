@@ -6,12 +6,13 @@ module eigenvalue
 
   use cmfd_execute, only: cmfd_init_batch, execute_cmfd
   use constants,    only: ZERO
+  use dd_comm,      only: synchronize_bank_dd
   use error,        only: fatal_error, warning
   use global
   use math,         only: t_percentile
   use mesh,         only: count_bank_sites
   use mesh_header,  only: StructuredMesh
-  use output,       only: write_message, header, print_columns,              &
+  use output,       only: write_message, header, print_columns,                &
                           print_batch_keff, print_generation
   use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
@@ -19,7 +20,7 @@ module eigenvalue
   use source,       only: get_source_particle
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_usertallies, &
+  use tally,        only: synchronize_tallies, setup_active_usertallies,       &
                           reset_result
   use tracking,     only: transport
 
@@ -173,7 +174,11 @@ contains
 
     ! Distribute fission bank across processors evenly
     call time_bank % start()
-    call synchronize_bank()
+    if (.not. dd_run) then
+      call synchronize_bank()
+    else
+      call synchronize_bank_dd()
+    end if
     call time_bank % stop()
 
     ! Calculate shannon entropy

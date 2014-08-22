@@ -88,7 +88,7 @@ module ndpp_ops
       ! Read the header information to make sure this is the correct file
       read(UNIT=in, FMT='(A20,1PE20.12,I20,A20)') name, kT, NG
       dkT = abs(kT - listing % kT) / kT
-      if ((adjustl(trim(name)) /= listing % name) .or. (dkT < 0.01_8)) then
+      if ((adjustl(trim(name)) /= listing % name) .or. (dkT > 0.001_8)) then
         message = "NDPP library '" // trim(filename) // "' does not &
                   &contain the correct data set where expected!"
         call fatal_error()
@@ -109,7 +109,7 @@ module ndpp_ops
       ! Start with elastic data
       ! Get Ein information
 
-      ! First find our data length, doesnt depend on nuc or sab
+      ! First find our data length
       read(UNIT=in, FMT='(I20)') NEin
       ! Now allocate all that will be filled
       allocate(this % el_Ein(NEin))
@@ -117,8 +117,8 @@ module ndpp_ops
       allocate(this % el(NEin))
 
       ! Now read in el_Ein and el_Ein_srch
-      read(UNIT=in, FMT=*) this % el_Ein_srch
       read(UNIT=in, FMT=*) this % el_Ein
+      read(UNIT=in, FMT=*) this % el_Ein_srch
 
       ! Get the elastic moments themselves
       do iE = 1, NEin
@@ -126,7 +126,7 @@ module ndpp_ops
         read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
         if ((gmin > 0) .and. (gmax > 0)) then
-          ! Then we can allocate the space. Do it to ndpp_el_order
+          ! Then we can allocate the space. Do it to lib_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
@@ -162,18 +162,18 @@ module ndpp_ops
             read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
             if ((gmin > 0) .and. (gmax > 0)) then
-              ! Then we can allocate the space. Do it to ndpp_el_order
+              ! Then we can allocate the space. Do it to lib_order
               ! since this is the largest order requested in the tallies.
               ! Since we only need to store up to the maximum, we also need to have
               ! an array for reading the file which we can later truncate to fit
-              ! in to this % el(iE) % outgoing.
+              ! in to this % inel(iE) % outgoing.
               allocate(temp_outgoing(lib_order, gmin : gmax))
 
               ! Now we have a space to store the data, get it.
               read(UNIT=in, FMT=*) temp_outgoing
               ! And copy in to this % el
-              allocate(this % el(iE) % outgoing(scatt_order, gmin : gmax))
-              this % el(iE) % outgoing(:, gmin : gmax) = &
+              allocate(this % inel(iE) % outgoing(scatt_order, gmin : gmax))
+              this % inel(iE) % outgoing(:, gmin : gmax) = &
                 temp_outgoing(1 : scatt_order, gmin : gmax)
               deallocate(temp_outgoing)
             end if
@@ -187,11 +187,11 @@ module ndpp_ops
               read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
               if ((gmin > 0) .and. (gmax > 0)) then
-                ! Then we can allocate the space. Do it to ndpp_el_order
+                ! Then we can allocate the space. Do it to lib_order
                 ! since this is the largest order requested in the tallies.
                 ! Since we only need to store up to the maximum, we also need to have
                 ! an array for reading the file which we can later truncate to fit
-                ! in to this % el(iE) % outgoing.
+                ! in to this % nuinel(iE) % outgoing.
                 allocate(temp_outgoing(lib_order, gmin : gmax))
 
                 ! Now we have a space to store the data, get it.
@@ -215,7 +215,7 @@ module ndpp_ops
           allocate(this % chi_Ein(NEin))
           allocate(this % chi(size(energy_bins) - 1, NEin))
           allocate(this % chi_p(size(energy_bins) - 1, NEin))
-          allocate(this % chi_d(NP, size(energy_bins) - 1, NEin))
+          allocate(this % chi_d(size(energy_bins) - 1, NP, NEin))
 
           ! Get Ein Grid
           read(UNIT=in, FMT=*) this % chi_Ein
@@ -227,13 +227,7 @@ module ndpp_ops
           read(UNIT=in, FMT=*) this % chi_p
 
           ! Get Chi-Delayed
-          do i = 1, NP
-            do iE = 1, NEin
-              do g = 1, size(energy_bins) - 1
-                read(UNIT=in, FMT=*) this % chi_d(i, g, iE)
-              end do
-            end do
-          end do
+          read(UNIT=in, FMT=*) this % chi_d
         end if
       end if
 
@@ -287,7 +281,7 @@ module ndpp_ops
         read(UNIT=in) gmin, gmax
 
         if ((gmin > 0) .and. (gmax > 0)) then
-          ! Then we can allocate the space. Do it to ndpp_el_order
+          ! Then we can allocate the space. Do it to lib_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
@@ -323,7 +317,7 @@ module ndpp_ops
             read(UNIT=in) gmin, gmax
 
             if ((gmin > 0) .and. (gmax > 0)) then
-              ! Then we can allocate the space. Do it to ndpp_inel_order
+              ! Then we can allocate the space. Do it to lib_order
               ! since this is the largest order requested in the tallies.
               ! Since we only need to store up to the maximum, we also need to have
               ! an array for reading the file which we can later truncate to fit
@@ -348,7 +342,7 @@ module ndpp_ops
               read(UNIT=in) gmin, gmax
 
               if ((gmin > 0) .and. (gmax > 0)) then
-                ! Then we can allocate the space. Do it to ndpp_el_order
+                ! Then we can allocate the space. Do it to lib_order
                 ! since this is the largest order requested in the tallies.
                 ! Since we only need to store up to the maximum, we also need to have
                 ! an array for reading the file which we can later truncate to fit
@@ -377,7 +371,7 @@ module ndpp_ops
           allocate(this % chi_Ein(NEin))
           allocate(this % chi(size(energy_bins) - 1, NEin))
           allocate(this % chi_p(size(energy_bins) - 1, NEin))
-          allocate(this % chi_d(NP, size(energy_bins) - 1, NEin))
+          allocate(this % chi_d(size(energy_bins) - 1, NP, NEin))
 
           ! Get Ein Grid
           read(UNIT=in) this % chi_Ein
@@ -389,13 +383,7 @@ module ndpp_ops
           read(UNIT=in) this % chi_p
 
           ! Get Chi-Delayed
-          do i = 1, NP
-            do iE = 1, NEin
-              do g = 1, size(energy_bins) - 1
-                read(UNIT=in) this % chi_d(i, g, iE)
-              end do
-            end do
-          end do
+          read(UNIT=in) this % chi_p
         end if
       end if
 
@@ -454,7 +442,7 @@ module ndpp_ops
           deallocate(this % chi_Ein)
         end if
       end if
-    else ! Do similar for S(a,b) tables
+    else ! Do similar for S(a,b) tables, dont need to check inel here
       if ((.not. get_scatt) .and. (.not. get_nuscatt)) then
         if (associated(this % el)) then
           deallocate(this % el)

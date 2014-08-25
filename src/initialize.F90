@@ -22,6 +22,7 @@ module initialize
   use source,             only: initialize_source
   use state_point,        only: load_state_point
   use string,             only: to_str, str_to_int, starts_with, ends_with
+  use testing,            only: run_tests
   use tally_header,       only: TallyObject, TallyResult
   use tally_initialize,   only: configure_tallies
 
@@ -72,6 +73,12 @@ contains
       ! Display title and initialization header
       call title()
       call header("INITIALIZATION", level=1)
+    end if
+
+    ! Skip all other initialization if running tests
+    if (run_mode == MODE_TESTING) then
+      call run_tests()
+      return
     end if
 
     ! Read XML input files
@@ -387,6 +394,10 @@ contains
       ! Check for flags
       if (starts_with(argv(i), "-")) then
         select case (argv(i))
+        case ('-u', '-unittest', '--unittest')
+        
+          run_mode = MODE_TESTING
+          
         case ('-p', '-plot', '--plot')
           run_mode = MODE_PLOTTING
           check_overlaps = .true.

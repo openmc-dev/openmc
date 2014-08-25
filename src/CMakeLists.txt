@@ -19,13 +19,14 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
-option(profile  "Compile with profiling flags"                   OFF)
-option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
-option(debug    "Compile with debug flags"                       OFF)
-option(optimize "Turn on all compiler optimization flags"        OFF)
-option(verbose  "Create verbose Makefiles"                       OFF)
-option(coverage "Compile with flags"                             OFF)
+option(openmp    "Enable shared-memory parallelism with OpenMP"   OFF)
+option(profile   "Compile with profiling flags"                   OFF)
+option(petsc     "Enable PETSC for use in CMFD acceleration"      OFF)
+option(debug     "Compile with debug flags"                       OFF)
+option(optimize  "Turn on all compiler optimization flags"        OFF)
+option(verbose   "Create verbose Makefiles"                       OFF)
+option(coverage  "Compile with flags"                             OFF)
+option(unittests "Compile unit tests"                             OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -233,8 +234,14 @@ add_subdirectory(xml/fox)
 # Build OpenMC executable
 #===============================================================================
 
+
+if(unittests)
+  add_definitions(-DTESTING)
+  file(GLOB test_source unittests/*.F90)
+endif()
+
 set(program "openmc")
-file(GLOB source *.F90 xml/openmc_fox.F90)
+file(GLOB source *.F90 xml/openmc_fox.F90 ${test_source})
 add_executable(${program} ${source})
 target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES

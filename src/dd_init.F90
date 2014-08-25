@@ -22,15 +22,21 @@ contains
 ! INITIALIZE_DOMAIN_DECOMP
 !===============================================================================
 
-  subroutine initialize_domain_decomp()
+  subroutine initialize_domain_decomp(dd)
+
+    type(dd_type), intent(inout) :: dd
     
     integer :: d, nd            ! neighbor and 2nd-neighbor indices
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
-    type(dd_type), pointer :: dd => domain_decomp
 
     message = "Initializing domain decomposition parameters..."
     call write_message(6)
+
+#ifdef _OPENMP
+    message = "Domain decomposition not implemented in conjunction with OpenMP."
+    call fatal_error()
+#endif
 
     if (n_procs < dd % n_domains) then
       message = "Not enough processors for domain decomposition. Must have" // &

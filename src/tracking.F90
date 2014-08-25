@@ -42,6 +42,8 @@ contains
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
+!    print *, rank, "Tracking particle", p % id
+
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
       message = "Simulating Particle " // trim(to_str(p % id))

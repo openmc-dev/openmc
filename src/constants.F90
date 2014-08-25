@@ -402,11 +402,12 @@ module constants
        GRID_LETHARGY = 3    ! lethargy mapping
 
   ! Running modes
-  integer, parameter ::        &
-       MODE_FIXEDSOURCE = 1, & ! Fixed source mode
-       MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
-       MODE_PLOTTING    = 3, & ! Plotting mode
-       MODE_PARTICLE    = 4    ! Particle restart mode
+  integer, parameter ::       &
+       MODE_TESTING     = 0,  & ! Fixed source mode
+       MODE_FIXEDSOURCE = 1,  & ! Fixed source mode
+       MODE_EIGENVALUE  = 2,  & ! K eigenvalue mode
+       MODE_PLOTTING    = 3,  & ! Plotting mode
+       MODE_PARTICLE    = 4     ! Particle restart mode
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file

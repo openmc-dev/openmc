@@ -196,10 +196,16 @@ contains
   
     current_stage = current_stage + 1
 
+    print *, rank, 'stage', current_stage, 'work', work
+
     if (dd_run) then
     
       domain_decomp % n_scatters_local = 0
       domain_decomp % n_scatters_domain = 0
+
+      domain_decomp % particle_buffer % id = -1
+      domain_decomp % particle_buffer % outscatter_destination = NO_OUTSCATTER
+
 
     end if
 
@@ -211,12 +217,19 @@ contains
 
   subroutine finalize_stage()
 
-      if (.false.) then!if (dd_run) then
+      if (current_stage > 15) then
+        message = "Debug stop - too many stages"
+        call fatal_error()
+      end if
+
+      if (dd_run) then
       
         ! Send and receive scatter particles
         call time_dd_sync % start()
         call synchronize_particles()
         call time_dd_sync % stop()
+
+!        if (master) print *, current_stage, domain_decomp % n_global_scatters
         
         ! We only stop transporting particles if all domains are finished
         if (domain_decomp % n_global_scatters == 0) &
@@ -236,7 +249,11 @@ contains
 !===============================================================================
 
   subroutine finalize_generation()
-
+  
+  
+    message = "debug stop"
+    call fatal_error()
+  
 #ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()

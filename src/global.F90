@@ -163,9 +163,9 @@ module global
 
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
-  integer                         :: size_source_bank
+  integer(8)                      :: size_source_bank
   type(Bank), allocatable, target :: fission_bank(:)
-  integer                         :: size_fission_bank
+  integer(8)                      :: size_fission_bank
 #ifdef _OPENMP
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
@@ -213,7 +213,8 @@ module global
   integer :: mpi_err               ! MPI error code
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
-
+  integer :: MPI_PARTICLEBUFFER    ! MPI datatype for sending Particles
+  
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread

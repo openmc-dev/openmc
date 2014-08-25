@@ -16,6 +16,7 @@ module initialize
                                 print_usage, write_xs_summary, print_plot,     &
                                 write_message
   use output_interface
+  use particle_header,    only: ParticleBuffer
   use random_lcg,         only: initialize_prng
   use random_lcg_header,  only: N_STREAMS
   use source,             only: initialize_source
@@ -86,7 +87,7 @@ contains
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
-    call initialize_domain_decomp()
+    call initialize_domain_decomp(domain_decomp)
 
     ! Set up universe structures
     call prepare_universes()
@@ -189,8 +190,12 @@ contains
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
     integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
     integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
-    type(Bank)        :: b
-    type(TallyResult) :: tr
+    integer                   :: part_blocks(24) ! ParticleBuffer counts
+    integer                   :: part_types(24)  ! ParticleBuffer datatypes
+    integer(MPI_ADDRESS_KIND) :: part_disp(24)   ! ParticleBuffer displacements
+    type(Bank)           :: b
+    type(TallyResult)    :: tr
+    type(ParticleBuffer) :: ptmp
 
     ! Indicate that MPI is turned on
     mpi_enabled = .true.
@@ -256,6 +261,53 @@ contains
 
     ! Free temporary MPI type
     call MPI_TYPE_FREE(temp_type, mpi_err)
+
+    ! ==========================================================================
+    ! CREATE MPI_SENDPARTICLE TYPE
+    ! Determine displacements for MPI_PARTICLE type
+    call MPI_GET_ADDRESS(ptmp % id,              part_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % wgt,             part_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % prn_seed,        part_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % xs_seed,         part_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % E,               part_disp(5), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % mu,              part_disp(6), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % last_wgt,        part_disp(7), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % last_E,          part_disp(8), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % absorb_wgt,      part_disp(9), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % wgt_bank,        part_disp(10), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % stored_distance, part_disp(11), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % last_xyz,        part_disp(12), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % stored_xyz,      part_disp(13), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % stored_uvw,      part_disp(14), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % type,            part_disp(15), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % event,           part_disp(16), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % event_nuclide,   part_disp(17), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % event_MT,        part_disp(18), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % n_bank,          part_disp(19), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % surface,         part_disp(20), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % cell_born,       part_disp(21), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % n_collision,     part_disp(22), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % material,        part_disp(23), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % last_material,   part_disp(24), mpi_err)
+
+    ! Adjust displacements 
+    part_disp = part_disp - part_disp(1)
+
+    ! Define particle type
+    part_blocks = (/ 1, N_STREAMS, N_STREAMS, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, &
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
+    part_types = (/ MPI_INTEGER8, MPI_INTEGER8, MPI_INTEGER8, MPI_REAL8, &
+        MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, &
+        MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER, MPI_INTEGER, &
+        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
+        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
+    call MPI_TYPE_CREATE_STRUCT(24, part_blocks, part_disp, part_types, &
+        MPI_PARTICLEBUFFER, mpi_err)
+
+    ! Commit derived type for particles
+    call MPI_TYPE_COMMIT(MPI_PARTICLEBUFFER, mpi_err)
+
+
 
   end subroutine initialize_mpi
 #endif

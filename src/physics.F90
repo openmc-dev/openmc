@@ -872,6 +872,7 @@ contains
       nu = int(nu_t) + 1
     end if
 
+!    print *, rank, size(fission_bank), n_bank
     ! Check for fission bank size getting hit
     if (n_bank + nu > size(fission_bank)) then
       message = "Maximum number of sites in fission bank reached. This can &

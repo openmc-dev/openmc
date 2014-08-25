@@ -41,7 +41,7 @@ module dd_header
     ! history, but for DD runs we need to store particles if they would be
     ! transmitted to a neighboring domain.
     type(Particle), allocatable :: particle_buffer(:)
-    integer :: size_particle_buffer ! size of particle_buffer, resized if needed
+    integer :: size_particle_buffer ! size of particle_buffer
     
     ! During simulation we keep track of where particles will scatter out to
     ! with p % outscatter_destination, and then send them later during
@@ -55,7 +55,7 @@ module dd_header
     integer              :: n_global_scatters ! # of scatters in last DD stage
     integer, allocatable :: send_rank_info(:) ! # of particles to send to bin
     integer, allocatable :: recv_rank_info(:) ! # of particles to recv from bin
-    integer(8)           :: n_inscatt         ! # of particles received
+    integer              :: n_inscatt         ! # of particles received
     integer, allocatable :: proc_finish(:)    ! finish idx in scatt array
     
     ! Before synchronizing scatters, all processors need to know how many

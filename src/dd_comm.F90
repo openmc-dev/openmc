@@ -21,11 +21,7 @@ module dd_comm
   use mpi
   
   implicit none
-  private
-  
-  public :: distribute_source
-  public :: synchronize_bank_dd
-  public :: synchronize_particles
+  public
 
 contains
 
@@ -430,26 +426,16 @@ contains
   end subroutine synchronize_bank_dd
 
 
-  subroutine test_synchronize_info()
+!===============================================================================
+! SYNCHRONIZE_SCATTER_INFO communicates all required scattering information to
+! the local domain neighborhood
+!===============================================================================
+
+  subroutine synchronize_transfer_info(dd)
   
-    type(dd_type) :: dd
+    type(dd_type), intent(inout) :: dd
   
-    if (.not. n_procs == 4) then
-      message = "This test must be run with MPI 4 processes"
-    end if
-    
-    select case(rank)
-      case (0)
-        
-      case (1)
-      case (2)
-      case (3)
-    end select
-    
-    
-  
-  
-  end subroutine test_synchronize_info
+  end subroutine synchronize_transfer_info
 
 
 !===============================================================================
@@ -458,7 +444,9 @@ contains
 ! recieve particles from other domains.
 !===============================================================================
 
-  subroutine synchronize_particles()
+  subroutine synchronize_particles(dd)
+  
+    type(dd_type), intent(inout) :: dd
   
     integer(8) :: i8
     integer :: i              ! loop index over particle buffer
@@ -489,7 +477,6 @@ contains
     integer :: size_buff
     integer :: mod_
     integer :: alloc_err
-    type(dd_type), pointer  :: dd => domain_decomp
     
     ! This subroutine operates in a manner similar to synchronize_bank for the
     ! fission bank, where the group of processors that operate on a certain

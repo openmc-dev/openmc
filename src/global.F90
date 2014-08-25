@@ -163,11 +163,12 @@ module global
 
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
+  integer                         :: size_source_bank
   type(Bank), allocatable, target :: fission_bank(:)
+  integer                         :: size_fission_bank
 #ifdef _OPENMP
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
-  integer(8) :: size_source  ! size of the source_bank array
   integer(8) :: n_bank       ! # of sites in fission bank
   integer(8) :: work         ! number of particles per processor
   integer(8), allocatable :: work_index(:) ! starting index in source bank for each process

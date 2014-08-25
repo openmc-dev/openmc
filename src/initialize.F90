@@ -13,7 +13,7 @@ module initialize
   use input_xml,          only: read_input_xml, read_cross_sections_xml,       &
                                 cells_in_univ_dict, read_plots_xml
   use output,             only: title, header, write_summary, print_version,   &
-                               print_usage, write_xs_summary, print_plot,      &
+                                print_usage, write_xs_summary, print_plot,     &
                                 write_message
   use output_interface
   use random_lcg,         only: initialize_prng
@@ -865,7 +865,7 @@ contains
 
     ! Allocate source bank
     allocate(source_bank(work), STAT=alloc_err)
-    size_source = work
+    size_source_bank = work
 
     ! Check for allocation errors
     if (alloc_err /= 0) then
@@ -886,13 +886,17 @@ contains
 
     if (thread_id == 0) then
        allocate(fission_bank(3*work))
+       size_fission_bank = 3*work
     else
        allocate(fission_bank(3*work/n_threads))
+       size_fission_bank = 3*work/n_threads
     end if
 !$omp end parallel
     allocate(master_fission_bank(3*work), STAT=alloc_err)
+    
 #else
     allocate(fission_bank(3*work), STAT=alloc_err)
+    size_fission_bank = 3*work
 #endif
 
     ! Check for allocation errors

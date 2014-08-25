@@ -3,7 +3,8 @@ module dd_init
   use constants
   use dd_header,  only: dd_type
   use error,      only: fatal_error, warning
-  use global,     only: domain_decomp, n_procs, rank, message, mpi_err
+  use global,     only: domain_decomp, n_procs, n_particles, rank, message,    &
+                        mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -25,6 +26,7 @@ contains
     
     integer :: d, nd            ! neighbor and 2nd-neighbor indices
     integer :: neighbor_meshbin
+    integer :: alloc_err        ! allocation error code
     type(dd_type), pointer :: dd => domain_decomp
 
     message = "Initializing domain decomposition parameters..."
@@ -95,7 +97,7 @@ contains
       dd % local_master = .false.
     end if
     
-    ! Allocate scattering information arrays and buffers
+    ! Allocate particle inter-domain transfer information arrays
     allocate(dd % n_scatters_neighborhood(N_DD_NEIGHBORS,N_CARTESIAN_NEIGHBORS))
     allocate(dd % n_scatters_domain(N_CARTESIAN_NEIGHBORS)) 
     allocate(dd % n_scatters_local(N_CARTESIAN_NEIGHBORS))
@@ -104,8 +106,46 @@ contains
     allocate(dd % recv_rank_info(dd % max_domain_procs * N_CARTESIAN_NEIGHBORS))
     allocate(dd % proc_finish(dd % max_domain_procs))
 
-    dd % n_scatters_local = 0
-    dd % n_scatters_domain = 0
+    ! Allocate buffers
+    
+    ! While the theoretical maximum this processor could have to deal
+    ! with if all particles transfer in n_particles/n_procs_on_this_domain, in 
+    ! practice the number is much smaller. In a perfectly load balanced run
+    ! (e.g. infinite medium), each domain should run on average
+    ! n_particles/n_domains particles/n_procs_on_this_domain. So in an effort to
+    ! not waste memory, we allocate the buffers to this amount with some
+    ! headroom, and then resize them later if need be.
+    dd % size_particle_buffer = ceiling(dble(n_particles) / &
+                                    dble(dd % n_domains) / &
+                                    dble(dd % domain_n_procs(dd % meshbin)) * &
+                                    DD_BUFFER_HEADROOM)
+    allocate(dd % particle_buffer(dd % size_particle_buffer), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+      message = "Failed to allocate initial DD particle buffer."
+      call fatal_error()
+    end if
+
+    ! Allocate send buffer
+    dd % size_send_buffer = dd % size_particle_buffer
+    allocate(dd % send_buffer(dd % size_send_buffer), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+      message = "Failed to allocate initial DD send buffer."
+      call fatal_error()
+    end if
+    
+    ! Allocate receive buffer
+    dd % size_recv_buffer = dd % size_particle_buffer
+    allocate(dd % recv_buffer(dd % size_recv_buffer), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+      message = "Failed to allocate initial DD receive bank."
+      call fatal_error()
+    end if
   
   end subroutine initialize_domain_decomp
 
@@ -118,14 +158,9 @@ contains
   subroutine calculate_domain_n_procs()
 
     integer                :: d
-    integer                :: max_
-    logical                :: forward
-    real(8), allocatable   :: frac_nodes(:)
     type(dd_type), pointer :: dd => domain_decomp
 
     allocate(dd % domain_n_procs(dd % n_domains))
-
-    allocate(frac_nodes(dd % n_domains))
 
     if (.not. allocated(dd % domain_load_dist)) then
 
@@ -136,6 +171,7 @@ contains
         call warning()
       end if
 
+      ! Evenly distribute processes across domains
       dd % domain_n_procs = n_procs / dd % n_domains
       do d = 1, dd % n_domains
         if (d - 1 < mod(n_procs, dd % n_domains)) &
@@ -144,59 +180,78 @@ contains
       
     else
 
-      ! Normalize load distribution
-      dd % domain_load_dist = dd % domain_load_dist / sum(dd % domain_load_dist)
-
-      ! Determine exact fractional number of nodes required
-      frac_nodes = dd % domain_load_dist * real(n_procs, 8)
-      
-      ! Assign at least one processes per domain
-      ! TODO: add support for allowing no processes to waste time on a domain
-      ! with a user-input load of exactly zero.  For those domains, a fatal
-      ! error would need to be thrown if a particle happened travel there. This
-      ! feature would make sense if a domain is completely unreachable, outside
-      ! of the problem boundary conditions (e.g., corner nodes with BEAVRS when
-      ! using a StructuredMesh domain mesh
-      dd % domain_n_procs = max(1, ceiling(frac_nodes))
-      
-      ! Perform a simple symmetric peak-shaving to make it match
-      ! TODO: different matching strategies need to be explored, and support for
+      ! TODO: different matching strategies can to be explored, and support for
       ! having one processes handle multiple domains needs to be added.
-      forward = .true.
-      do while (sum(dd % domain_n_procs) > n_procs)
-        max_ = maxval(dd % domain_n_procs)
-        
-        if (forward) then
-
-          do d = 1, dd % n_domains
-            if (dd % domain_n_procs(d) == max_) then
-              dd % domain_n_procs(d) = dd % domain_n_procs(d) - 1
-              exit
-            end if
-          end do
-          
-          forward = .false.
-
-        else
-
-          do d = dd % n_domains, 1, -1
-            if (dd % domain_n_procs(d) == max_) then
-              dd % domain_n_procs(d) = dd % domain_n_procs(d) - 1
-              exit
-            end if
-          end do
-
-          forward = .true.
-
-        end if
-        
-      end do
+      call distribute_load_peak_shaving()
 
     end if
-
-    deallocate(frac_nodes)
     
   end subroutine calculate_domain_n_procs
+
+!===============================================================================
+! DISTRIBUTE_LOAD_PEAK_SHAVING attempts to distribute avialable processes across
+! domains according to an un-normalized distribution specified at runtime
+!===============================================================================
+
+  subroutine distribute_load_peak_shaving()
+  
+    integer                :: d
+    integer                :: max_
+    logical                :: forward
+    real(8), allocatable   :: frac_nodes(:)
+    type(dd_type), pointer :: dd => domain_decomp
+
+    allocate(frac_nodes(dd % n_domains))
+
+    ! Normalize load distribution
+    dd % domain_load_dist = dd % domain_load_dist / sum(dd % domain_load_dist)
+
+    ! Determine exact fractional number of nodes required
+    frac_nodes = dd % domain_load_dist * real(n_procs, 8)
+    
+    ! Assign at least one processes per domain
+    ! TODO: add support for allowing no processes to waste time on a domain with
+    ! a user-input load of exactly zero. For those domains, a fatal error would
+    ! need to be thrown if a particle happened travel there. This feature would
+    ! make sense if a domain is completely unreachable, outside of the problem
+    ! boundary conditions (e.g., corner nodes with BEAVRS when using a
+    ! StructuredMesh domain mesh
+    dd % domain_n_procs = max(1, ceiling(frac_nodes))
+    
+    ! Perform a simple symmetric peak-shaving to make it match
+    forward = .true.
+    do while (sum(dd % domain_n_procs) > n_procs)
+      max_ = maxval(dd % domain_n_procs)
+      
+      if (forward) then
+
+        do d = 1, dd % n_domains
+          if (dd % domain_n_procs(d) == max_) then
+            dd % domain_n_procs(d) = dd % domain_n_procs(d) - 1
+            exit
+          end if
+        end do
+        
+        forward = .false.
+
+      else
+
+        do d = dd % n_domains, 1, -1
+          if (dd % domain_n_procs(d) == max_) then
+            dd % domain_n_procs(d) = dd % domain_n_procs(d) - 1
+            exit
+          end if
+        end do
+
+        forward = .true.
+
+      end if
+      
+    end do
+    
+    deallocate(frac_nodes)
+
+  end subroutine distribute_load_peak_shaving
 
 !===============================================================================
 ! SET_NEIGHBOR_BINS determines the domian meshbins for the neighbors of the

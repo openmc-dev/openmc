@@ -187,6 +187,7 @@ contains
     this % wgt_bank        = ZERO
     this % n_collision     = 0
     this % fission         = .false.
+    this % write_track     = .false.
     this % new_particle    = .true.
     this % stored_distance = ZERO
 

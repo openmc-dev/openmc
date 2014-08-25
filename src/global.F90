@@ -155,7 +155,9 @@ module global
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
-
+  integer    :: current_stage = 0 ! current scatter stage within a generation
+  logical    :: generation_incomplete = .true. ! flag signaling generation end
+  
   ! External source
   type(ExtSource), target :: external_source
 
@@ -243,6 +245,9 @@ module global
   type(Timer) :: time_active        ! timer for active batches
   type(Timer) :: time_transport     ! timer for transport only
   type(Timer) :: time_finalize      ! timer for finalization
+  type(Timer) :: time_dd_sync       ! timer for DD total scatter sync
+  type(Timer) :: time_dd_info       ! timer for DD information sync only
+  type(Timer) :: time_dd_sendrecv   ! timer for DD particle SEND/RECV
 
   ! ===========================================================================
   ! VARIANCE REDUCTION VARIABLES

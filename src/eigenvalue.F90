@@ -6,7 +6,7 @@ module eigenvalue
 
   use cmfd_execute, only: cmfd_init_batch, execute_cmfd
   use constants,    only: ZERO
-  use dd_comm,      only: synchronize_bank_dd
+  use dd_comm,      only: synchronize_bank_dd, synchronize_particles
   use error,        only: fatal_error, warning
   use global
   use math,         only: t_percentile
@@ -62,32 +62,55 @@ contains
         cycle BATCH_LOOP
       end if
 
-      ! =======================================================================
+      ! ========================================================================
       ! LOOP OVER GENERATIONS
       GENERATION_LOOP: do current_gen = 1, gen_per_batch
 
         call initialize_generation()
 
-        ! Start timer for transport
-        call time_transport % start()
+        ! ======================================================================
+        ! LOOP UNTIL ALL PARTICLES COMPLETE (DOMAIN DECOMPOSITION LOOP)
+        STAGE_LOOP: do while (generation_incomplete)
 
-        ! ====================================================================
-        ! LOOP OVER PARTICLES
+          call initialize_stage()
+
+          ! Start timer for transport
+          call time_transport % start()
+
+          ! ====================================================================
+          ! LOOP OVER PARTICLES
 !$omp parallel do schedule(static) firstprivate(p)
-        PARTICLE_LOOP: do i_work = 1, work
-          current_work = i_work
+          PARTICLE_LOOP: do i_work = 1, work
+            current_work = i_work
 
-          ! grab source particle from bank
-          call get_source_particle(p, current_work)
+            if (dd_run) then
+            
+              ! Initialize particle in buffer
+              call get_source_particle( &
+                  domain_decomp % particle_buffer(i_work), current_work)
 
-          ! transport particle
-          call transport(p)
+              ! Transport particle
+              call transport(domain_decomp % particle_buffer(i_work))
+              
+            else
 
-        end do PARTICLE_LOOP
+              ! Copy source particle from bank
+              call get_source_particle(p, current_work)
+              
+              ! Transport particle
+              call transport(p)
+              
+            end if
+            
+          end do PARTICLE_LOOP
 !$omp end parallel do
 
-        ! Accumulate time for transport
-        call time_transport % stop()
+          ! Accumulate time for transport
+          call time_transport % stop()
+
+          call finalize_stage()
+
+        end do STAGE_LOOP
 
         call finalize_generation()
 
@@ -153,6 +176,10 @@ contains
     ! Reset number of fission bank sites
     n_bank = 0
 
+    ! Set control flags
+    current_stage = 0
+    generation_incomplete = .true.
+    
     ! Count source sites if using uniform fission source weighting
     if (ufs) call count_source_for_ufs()
 
@@ -160,6 +187,49 @@ contains
     keff_generation = global_tallies(K_TRACKLENGTH) % value
 
   end subroutine initialize_generation
+
+!===============================================================================
+! INITIALIZE_STAGE
+!===============================================================================
+
+  subroutine initialize_stage()
+  
+    current_stage = current_stage + 1
+
+    if (dd_run) then
+    
+      domain_decomp % n_scatters_local = 0
+      domain_decomp % n_scatters_domain = 0
+
+    end if
+
+  end subroutine initialize_stage
+
+!===============================================================================
+! FINALIZE_STAGE
+!===============================================================================
+
+  subroutine finalize_stage()
+
+      if (.false.) then!if (dd_run) then
+      
+        ! Send and receive scatter particles
+        call time_dd_sync % start()
+        call synchronize_particles()
+        call time_dd_sync % stop()
+        
+        ! We only stop transporting particles if all domains are finished
+        if (domain_decomp % n_global_scatters == 0) &
+            generation_incomplete = .false.
+        
+      else
+      
+        ! Non domain-decomposed runs are always done after the first stage
+        generation_incomplete = .false.
+      
+      end if
+
+  end subroutine finalize_stage
 
 !===============================================================================
 ! FINALIZE_GENERATION

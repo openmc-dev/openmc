@@ -2,7 +2,7 @@ module dd_header
 
   use dict_header,      only: DictIntInt
   use mesh_header,      only: StructuredMesh
-  use particle_header,  only: ParticleBuffer
+  use particle_header,  only: Particle, ParticleBuffer
 
   implicit none
   private
@@ -37,10 +37,11 @@ module dd_header
     ! ranks
     integer, allocatable :: domain_masters(:) ! index is domain meshbin
     
-    ! For DD the source_bank is replaced with a Particle bank, since it needs to
-    ! contain both fission and in-scatter particles
-!    type(Particle), allocatable, target :: psource_bank(:)
-!    integer :: size_psource_bank ! size of psource_bank, resized if needed
+    ! For non-DD runs we re-ruse the same particle data structure for each
+    ! history, but for DD runs we need to store particles if they would be
+    ! transmitted to a neighboring domain.
+    type(Particle), allocatable :: particle_buffer(:)
+    integer :: size_particle_buffer ! size of particle_buffer, resized if needed
     
     ! During simulation we keep track of where particles will scatter out to
     ! with p % outscatter_destination, and then send them later during

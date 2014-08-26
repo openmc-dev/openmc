@@ -3,8 +3,7 @@ module dd_init
   use constants
   use dd_header,  only: dd_type
   use error,      only: fatal_error, warning
-  use global,     only: domain_decomp, n_procs, n_particles, rank, message,    &
-                        mpi_err
+  use global,     only: n_procs, n_particles, rank, message, mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -13,8 +12,7 @@ module dd_init
   use mpi
   
   implicit none
-  private
-  public :: initialize_domain_decomp
+  public
 
 contains
 
@@ -26,7 +24,7 @@ contains
 
     type(dd_type), intent(inout) :: dd
     
-    integer :: d, nd            ! neighbor and 2nd-neighbor indices
+    integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
 
@@ -47,7 +45,7 @@ contains
     end if
 
     ! Determine number of processors per domain
-    call calculate_domain_n_procs()
+    call calculate_domain_n_procs(dd)
 
     ! Determine master ranks local to each domain
     allocate(dd % domain_masters(dd % n_domains))
@@ -68,26 +66,17 @@ contains
     call bin_to_mesh_indices(dd % mesh, dd % meshbin, dd % ijk)
     
     ! Determine meshbins of domains in the local neighborhood
-    call set_neighbor_meshbins()
+    call set_neighbor_meshbins(dd)
  
     ! Find the maximum number of processors working on any domain   
     dd % max_domain_procs = maxval(dd % domain_n_procs)
 
     ! Set mapping dict of mesh bin indices --> relative neighbor indices
-    ! This is the reverse of dd_neighbor_meshbins
+    ! This is the reverse of dd % neighbor_meshbins
     do d = 1, N_CARTESIAN_NEIGHBORS
       neighbor_meshbin = dd % neighbor_meshbins(d)
       if (neighbor_meshbin == NO_BIN_FOUND) cycle
       call dd % bins_dict % add_key(neighbor_meshbin, d)
-      do nd = 1, N_CARTESIAN_NEIGHBORS
-        neighbor_meshbin = &
-            dd % neighbor_meshbins(d * N_CARTESIAN_NEIGHBORS + nd)
-        if (neighbor_meshbin == NO_BIN_FOUND) cycle
-        if (neighbor_meshbin /= dd % meshbin) then
-          call dd % bins_dict % add_key(neighbor_meshbin, &
-              d * N_CARTESIAN_NEIGHBORS + nd)
-        end if
-      end do
     end do
     
     ! Initialize different MPI communicators for each domain, for fission bank
@@ -161,10 +150,11 @@ contains
 ! processors accross all domains if that wasn't specified
 !===============================================================================
 
-  subroutine calculate_domain_n_procs()
+  subroutine calculate_domain_n_procs(dd)
+
+    type(dd_type), intent(inout) :: dd
 
     integer                :: d
-    type(dd_type), pointer :: dd => domain_decomp
 
     allocate(dd % domain_n_procs(dd % n_domains))
 
@@ -188,7 +178,7 @@ contains
 
       ! TODO: different matching strategies can to be explored, and support for
       ! having one processes handle multiple domains needs to be added.
-      call distribute_load_peak_shaving()
+      call distribute_load_peak_shaving(dd)
 
     end if
     
@@ -199,13 +189,14 @@ contains
 ! domains according to an un-normalized distribution specified at runtime
 !===============================================================================
 
-  subroutine distribute_load_peak_shaving()
+  subroutine distribute_load_peak_shaving(dd)
+  
+    type(dd_type), intent(inout) :: dd
   
     integer                :: d
     integer                :: max_
     logical                :: forward
     real(8), allocatable   :: frac_nodes(:)
-    type(dd_type), pointer :: dd => domain_decomp
 
     allocate(frac_nodes(dd % n_domains))
 
@@ -264,10 +255,10 @@ contains
 ! current domain with 1 and 2 degrees of separation
 !===============================================================================
 
-  subroutine set_neighbor_meshbins()
+  subroutine set_neighbor_meshbins(dd)
   
-    type(dd_type), pointer :: dd => domain_decomp
-    
+    type(dd_type), intent(inout) :: dd
+  
     dd % neighbor_meshbins = (/ &
       ! First-order neighbors
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  0/)), &  !-x
@@ -279,13 +270,13 @@ contains
       ! Second-order neighbors (neighbors of the first-order neighbors)
       ! -x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-2,  0,  0/)), & !-x
-      dd % meshbin                                           , & !+x
+      dd % meshbin                                             , & !+x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !+y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !+z
       ! +x
-      dd % meshbin                                           , & !-x
+      dd % meshbin                                             , & !-x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 2,  0,  0/)), & !+x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !-y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+y
@@ -295,13 +286,13 @@ contains
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !+x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -2,  0/)), & !-y
-      dd % meshbin                                           , & !+y
+      dd % meshbin                                             , & !+y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !+z
       ! +y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !-x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+x
-      dd % meshbin                                           , & !-y
+      dd % meshbin                                             , & !-y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  2,  0/)), & !+y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !-z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+z
@@ -311,13 +302,13 @@ contains
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !+y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -2/)), & !-z
-      dd % meshbin                                           , & !+z
+      dd % meshbin                                             , & !+z
       ! +z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !-x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !-y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+y
-      dd % meshbin                                           , & !-z
+      dd % meshbin                                             , & !-z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  2/))  & !+z
     /)
 

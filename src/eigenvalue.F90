@@ -226,7 +226,7 @@ contains
       
         ! Send and receive scatter particles
         call time_dd_sync % start()
-        call synchronize_particles(domain_decomp)
+        work = synchronize_particles(domain_decomp)
         call time_dd_sync % stop()
 
 !        if (master) print *, current_stage, domain_decomp % n_global_scatters

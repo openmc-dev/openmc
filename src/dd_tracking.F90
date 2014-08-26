@@ -62,6 +62,14 @@ contains
       call write_message()
     end if
 
+    ! Check if we're scattering further than a direct neighbor - bug if so
+    if (.not. dd % bins_dict % has_key(to_meshbin)) then
+      message = "Not transferring to direct neighbor! From domain " // &
+                trim(to_str(dd % meshbin)) // ' to ' // &
+                trim(to_str(to_meshbin)) // ' pid = ' // trim(to_str(p % id))
+      call fatal_error()
+    end if
+
     ! Convert destination domain meshbin to relative local bin
     to_bin = dd % bins_dict % get_key(to_meshbin)
 

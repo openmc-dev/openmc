@@ -91,7 +91,7 @@ contains
       if (dd_run) then
 
         ! Send source sites to the processes they'll be transported on
-        call distribute_source()
+        call distribute_source(domain_decomp)
         
       end if
       

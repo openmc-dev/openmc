@@ -4,16 +4,15 @@ module dd_comm
   use constants
   use dd_header,        only: dd_type
   use error,            only: fatal_error
-  use global,           only: domain_decomp, MPI_BANK, MPI_PARTICLEBUFFER, n_procs, &
-                              rank, mpi_err, work, message, &
-                              n_particles, work_index, &
+  use global,           only: MPI_BANK, MPI_PARTICLEBUFFER, n_procs, rank, &
+                              mpi_err, work, message, n_particles, work_index, &
                               source_bank, fission_bank, size_source_bank, &
-                              size_fission_bank, &
-                              time_dd_sendrecv, time_dd_info, &
-                              current_batch, current_stage
+                              size_fission_bank, time_dd_sendrecv, &
+                              time_dd_info, current_batch, current_stage
   use mesh,             only: get_mesh_bin
   use output,           only: write_message
   use particle_header,  only: buffer_to_particle, particle_to_buffer
+  use random_lcg,       only: prn, prn_seed
   use resize_arr,       only: resize_array, extend_array
   use search,           only: binary_search
   use string,           only: to_str
@@ -32,7 +31,9 @@ contains
 ! source bank, overwriting the previous values.
 !===============================================================================
 
-  subroutine distribute_source()
+  subroutine distribute_source(dd)
+  
+    type(dd_type), intent(inout)  :: dd
   
     integer(8) :: i           ! loop index over initially-sampled source sites
     integer :: n_source_sites ! number of sites that will start in this domain
@@ -44,7 +45,6 @@ contains
     integer, allocatable    :: request(:) ! communication requests
     integer, allocatable    :: n_send_domain(:) ! number sent to each domain
     integer, allocatable    :: n_send_rank(:) ! number sent to each process
-    type(dd_type), pointer  :: dd => domain_decomp
     type(Bank), allocatable :: buffer(:)
 
     ! Since remote domains could have more than one process working on them, we
@@ -102,11 +102,11 @@ contains
       else
         ! This site needs to be sent
         
+        ! We'll pick a process at random on that domain to send it to, using
+        ! the seed stored in the site for random number reproducibility
+        prn_seed = buffer(i) % prn_seed
         to_rank = dd % domain_masters(to_domain) + &
-            mod(n_send_domain(to_domain), dd % domain_n_procs(to_domain))
-        
-!        print *, rank, work_index(rank)+i, dd % meshbin, "sending", to_domain, n_send_domain(to_domain), to_rank, &
-!            dd % domain_n_procs(to_domain)
+            int(prn() * real(dd % domain_n_procs(to_domain), 8))
         
         ! Increment send counters
         n_send_rank(to_rank + 1) = n_send_rank(to_rank + 1) + 1
@@ -138,8 +138,8 @@ contains
     
       n_source_sites = n_source_sites + 1
       n_request = n_request + 1
-      call MPI_IRECV(source_bank(n_source_sites), 1, MPI_BANK, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &
-                 request(n_request), mpi_err)
+      call MPI_IRECV(source_bank(n_source_sites), 1, MPI_BANK, MPI_ANY_SOURCE, &
+          MPI_ANY_TAG, MPI_COMM_WORLD, request(n_request), mpi_err)
     end do
 
     ! Wait for all sends/recvs to complete
@@ -154,6 +154,540 @@ contains
     deallocate(buffer)
   
   end subroutine distribute_source
+
+!===============================================================================
+! SYNCHRONIZE_PARTICLES is a high-level function that contains the whole
+! process of sending and receiving particles that need to transfer between
+! domains.  It returns the number of particles to run from the particle buffer
+! for the next stage
+!===============================================================================
+
+  function synchronize_particles(dd) result(work)
+  
+    type(dd_type), intent(inout) :: dd
+    integer(8) :: work
+  
+    ! These subroutines operate in a manner similar to synchronize_bank for the
+    ! fission bank, where the group of processors that operate on a certain
+    ! domain should be thought of as sharing arrays ('global' to just this
+    ! domain). We want scattered particles to be distributed evenly across all
+    ! processors that operate on each domain, so to do that we figure out where
+    ! the current particles to transmit are located in this 'global' scattering
+    ! array.  The steps followed are:
+    !   Determine for this domain how many particles are going to each other one
+    !   Synchronize domain-to-domains transfer info to 2nd order neighborhood
+    !   Determine how many particles this process sends to each other process
+    !   Synchronize the process-to-process send info
+    !   Send/recv particles using the process-to-process send info
+    !   Rebuild the particle buffer for transport in the next stage
+    
+    ! This barrier isn't necessary since every rank will wait at the first
+    ! allreduce, but this allows for a more honest assessment of the
+    ! communication costs in the algorithm.  (i.e. if we don't have the barrier,
+    ! profilers will show the allreduce as taking the majority of the runtime).
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+
+    call time_dd_info % start()
+
+    ! Synchronize particle transfer info in the local neighborhood
+    call synchronize_transfer_info(dd)
+
+    ! Determine which processes on neighboring domains to send particles to, and
+    ! communicate that to the local neighborhood
+    call synchronize_destination_info(dd)
+
+    call time_dd_info % stop()
+
+    ! Ensure send buffers are sized appropriately
+    call verify_buffers(dd)
+
+    ! Execute particle transfer
+    call send_recv_particles(dd)
+
+    ! Copy particles back out of the receiving buffer
+    call rebuild_particle_buffer(dd)
+    
+    work = dd % n_inscatt
+
+  end function synchronize_particles
+
+!===============================================================================
+! SYNCHRONIZE_TRANSFER_INFO communicates all required particle transfer
+! information to the local domain neighborhood.  Uses dd % n_scatters_local to 
+! produce dd % n_scatters_neighborhood
+!===============================================================================
+
+  subroutine synchronize_transfer_info(dd)
+
+    type(dd_type), intent(inout) :: dd
+
+    integer :: pr             ! loop index over processors to send to
+    integer :: nd             ! loop index over neighbor domains
+    integer :: direct_neighbor_meshbin
+    integer :: second_neighbor_meshbin
+    integer :: direct_neighbor_bin
+    integer :: second_neighbor_bin
+    integer :: to_rank        ! global rank of the processor to send to
+    integer :: from_rank      ! global rank of the processor to recv from
+    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
+    integer :: n_request      ! number of communication requests
+
+    !===========================================================================
+    ! SYNCHRONIZE SCATTER INFORMATION
+    
+    ! First find the global number of scatters, using dd_n_scatters_domain as
+    ! a temp holder - the order doesn't matter for this global sum
+    dd % n_global_scatters = 0
+    call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
+        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, mpi_err)
+    dd % n_global_scatters = sum(dd % n_scatters_domain)
+
+    ! Now reduce to find how many particles are leaving this domain to each of
+    ! the neighbors
+    call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
+        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, dd % comm, mpi_err)
+
+    ! Communicate domain scatter information to all 2nd neighbors in 2nd order
+    ! neighborhood. The first processor in each domain sends this information
+    ! to all other processors in the neighborhood.
+    
+    ! send info
+    n_request = 0
+    if (dd % local_master) then
+      do direct_neighbor_bin = 1, N_CARTESIAN_NEIGHBORS
+        direct_neighbor_meshbin = dd % neighbor_meshbins(direct_neighbor_bin)
+        if (direct_neighbor_meshbin == NO_BIN_FOUND) cycle
+        do nd = 1, N_CARTESIAN_NEIGHBORS
+          second_neighbor_bin = direct_neighbor_bin*N_CARTESIAN_NEIGHBORS + nd
+          second_neighbor_meshbin = dd % neighbor_meshbins(second_neighbor_bin)
+          if (second_neighbor_meshbin == NO_BIN_FOUND) cycle
+          if (second_neighbor_meshbin == dd % meshbin) cycle
+          
+          do pr = 1, dd % domain_n_procs(second_neighbor_meshbin)
+              to_rank = dd % domain_masters(second_neighbor_meshbin) + pr - 1
+
+!              print *, 'send', rank, '-->', to_rank, &
+!                  dd % meshbin, '-->', direct_neighbor_meshbin
+            
+              n_request = n_request + 1
+              call MPI_ISEND(dd % n_scatters_domain(direct_neighbor_bin), 1, &
+                  MPI_INTEGER, to_rank, direct_neighbor_meshbin, &
+                  MPI_COMM_WORLD, request(n_request), mpi_err)
+                  
+          end do
+        end do
+      end do
+    end if
+
+    ! Receive info
+    dd % n_scatters_neighborhood = 0
+    do direct_neighbor_bin = 1, N_CARTESIAN_NEIGHBORS
+        direct_neighbor_meshbin = dd % neighbor_meshbins(direct_neighbor_bin)
+        if (direct_neighbor_meshbin == NO_BIN_FOUND) cycle
+        do nd = 1, N_CARTESIAN_NEIGHBORS
+          second_neighbor_bin = direct_neighbor_bin*N_CARTESIAN_NEIGHBORS + nd
+          second_neighbor_meshbin = dd % neighbor_meshbins(second_neighbor_bin)
+          if (second_neighbor_meshbin == NO_BIN_FOUND) cycle
+          if (second_neighbor_meshbin == dd % meshbin) cycle
+          from_rank = dd % domain_masters(second_neighbor_meshbin)
+
+!          print *, 'recv', from_rank,'-->',rank, &
+!              second_neighbor_meshbin,'-->',direct_neighbor_meshbin
+
+          n_request = n_request + 1
+          call MPI_IRECV(dd % n_scatters_neighborhood(second_neighbor_bin, &
+              direct_neighbor_bin), 1, MPI_INTEGER, from_rank, &
+              direct_neighbor_meshbin, MPI_COMM_WORLD, request(n_request), &
+              mpi_err)
+          
+        end do
+      end do
+    
+    ! Wait for the scatter information to be synchronized
+    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+  
+  end subroutine synchronize_transfer_info
+
+!===============================================================================
+! SYNCHRONIZE_DESTINATION_INFO determines which remote processes to send
+! and receive partcles to/from
+!===============================================================================
+
+  subroutine synchronize_destination_info(dd)
+
+    integer :: i              ! loop index over particle buffer
+    integer :: j
+    integer :: pr             ! loop index over processors to send to
+    integer :: nd             ! loop index over neighbor domains
+    integer :: to_bin         ! domain bin to send particles to
+    integer :: to_meshbin     ! domain meshbin to send particles to
+    integer :: from_bin       ! domain bin to receive particles from
+    integer :: from_meshbin   ! domain meshbin to receive particles from
+    integer :: neighbor_meshbin
+    integer :: to_ddrank      ! rank of the processor to send to inside its domain communicator group
+    integer :: to_rank        ! global rank of the processor to send to
+    integer :: from_rank      ! global rank of the processor to recv from
+    integer :: neighbor_bin   ! domain meshbin of a neighbor to to_bin
+    integer :: index_scatt    ! index in the 'global' scatter array
+    integer :: domain_start
+    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
+    integer :: n_request      ! number of communication requests
+    integer :: n_recv
+    integer :: pr_bin
+    integer :: mod_
+
+    type(dd_type), intent(inout)  :: dd
+  
+    n_request = 0
+
+    !===========================================================================
+    ! DETERMINE PARTICLE SEND INFORMATION
+    
+    ! First get processor offsets - we do this here to ensure that every process
+    ! calls the exscan in the same order
+    dd % scatter_offest = 0
+    do to_bin = 1, N_CARTESIAN_NEIGHBORS
+      to_meshbin = dd % neighbor_meshbins(to_bin)
+      if (to_meshbin == NO_BIN_FOUND) cycle
+      call MPI_EXSCAN(dd % n_scatters_local(to_bin), &
+          dd % scatter_offest(to_bin), 1, MPI_INTEGER, MPI_SUM, dd % comm, &
+          mpi_err)
+      if (dd % local_master) dd % scatter_offest(to_bin) = 0
+    end do
+    
+      ! Now figure out where to send the particles
+    dd % send_rank_info = 0
+    do to_bin = 1, N_CARTESIAN_NEIGHBORS
+      ! loop over each of the neighbors we need to send to
+
+      to_meshbin = dd % neighbor_meshbins(to_bin)
+      if (to_meshbin == NO_BIN_FOUND) cycle
+
+      if (dd % n_scatters_local(to_bin) == 0) cycle ! no outscat to this domain
+
+      ! To determine which processor (or processors) to send to, and how many to
+      ! send to each, we first need to figure out which parts of the 'global'
+      ! inscatter array of the target domain are made up of particles on this
+      ! processor
+      
+      domain_start = 0
+      do nd = 1, N_CARTESIAN_NEIGHBORS
+        neighbor_bin = to_bin*N_CARTESIAN_NEIGHBORS + nd
+        neighbor_meshbin = dd % neighbor_meshbins(neighbor_bin)
+        if (neighbor_meshbin == NO_BIN_FOUND) cycle
+        if (neighbor_meshbin == dd % meshbin) exit
+        domain_start = domain_start + &
+            dd % n_scatters_neighborhood(neighbor_bin, to_bin)
+      end do
+      
+      ! At this point domain_start is the start of the scatter array for this
+      ! domain.  We need it for this processer within the domain, so we do a
+      ! scan like what's done in synchronize_bank, but for the domain group
+      ! communicator, and add the result to domain_start. (done previously)
+      index_scatt = domain_start + dd % scatter_offest(to_bin)
+
+      ! Now we determine which parts of the array are owned by the receiving
+      ! processors
+
+      n_recv = sum(dd % n_scatters_neighborhood(:, to_bin))
+      mod_ = modulo(n_recv, dd % domain_n_procs(to_meshbin))
+      do j = 1, dd % domain_n_procs(to_meshbin)
+        dd % proc_finish(j) = j * n_recv/dd % domain_n_procs(to_meshbin)
+        if (j-1 < mod_) then
+          dd % proc_finish(j) = dd % proc_finish(j) + j
+        else
+          dd % proc_finish(j) = dd % proc_finish(j) + mod_
+        end if
+      end do
+
+      ! Determine which receiving processor this starting index corresponds to
+      if (index_scatt <= dd % proc_finish(1)) then
+        to_ddrank = 0
+      else
+        to_ddrank = binary_search(dd % proc_finish, &
+            dd % domain_n_procs(to_meshbin), index_scatt)
+      end if
+
+      ! Now we can loop through particles to send and build up send information
+      pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
+      do i = 1, dd % size_particle_buffer
+        
+        if (dd % particle_buffer(i) % outscatter_destination == to_bin) then
+
+          ! Accumulate send info
+          dd % send_rank_info(pr_bin) = dd % send_rank_info(pr_bin) + 1
+          index_scatt = index_scatt + 1
+          
+          ! Increment the processor rank and bin if we're now on the next proc
+          if (to_ddrank + 1 < dd % domain_n_procs(to_meshbin) .and. &
+              index_scatt + 1 > dd % proc_finish(to_ddrank + 1)) then
+            to_ddrank = to_ddrank + 1
+            pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
+          end if
+            
+        end if
+        
+      end do
+      
+    end do
+    
+    !===========================================================================
+    ! COMMUNICATE SEND INFORMATION
+    
+    ! Send particle communication info
+    do to_bin = 1, N_CARTESIAN_NEIGHBORS
+      ! Loop over each of the neighbors we might need to send to
+      to_meshbin = dd % neighbor_meshbins(to_bin)
+      if (to_meshbin == NO_BIN_FOUND) cycle
+
+      do pr = 1, dd % domain_n_procs(to_meshbin)
+        ! Loop over each processor in the receiving bin
+        
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
+        n_request = n_request + 1
+        to_rank = dd % domain_masters(to_meshbin) + pr - 1
+        call MPI_ISEND(dd % send_rank_info(pr_bin), 1, MPI_INTEGER, to_rank, &
+          rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+
+      end do
+    end do
+    
+    ! Receive particle communication info
+    dd % recv_rank_info = 0
+    do from_bin = 1, N_CARTESIAN_NEIGHBORS
+      ! Loop over each of the neighbors we might need to receive from
+      from_meshbin = dd % neighbor_meshbins(from_bin)
+      if (from_meshbin == NO_BIN_FOUND) cycle
+
+      do pr = 1, dd % domain_n_procs(from_meshbin)
+        ! Loop over each processor in the sending bin
+        
+        pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
+        n_request = n_request + 1
+        from_rank = dd % domain_masters(from_meshbin) + pr - 1
+        call MPI_IRECV(dd % recv_rank_info(pr_bin), 1, MPI_INTEGER, from_rank, &
+          from_rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+        
+      end do
+    end do
+    
+    ! Wait for the scatter information to be synchronized
+    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+  
+  !call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!    debug = 0
+!    do to_bin = 1, 6
+!        to_meshbin = dd % neighbor_meshbins(to_bin)
+!        if (to_meshbin == NO_BIN_FOUND) cycle
+!        debug(to_meshbin) = dd % n_scatters_local(to_bin)
+!    end do
+!    print *, dd % meshbin, debug
+!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+  
+  
+  end subroutine synchronize_destination_info
+
+!===============================================================================
+! VERIFY_BUFFERS checks how many particles we expect to send and receive on this
+! stages and the resizes them if necessary
+!===============================================================================
+
+  subroutine verify_buffers(dd)
+
+    type(dd_type), intent(inout)  :: dd
+
+    integer :: n_recv, n_send
+    integer :: alloc_err      ! allocation error code
+
+    ! There are certainly more efficient ways to use memory than to have two
+    ! separate buffers like what's done here, but this helps for clarity
+
+    ! First check that we have enough space in the inscatter bank
+    n_recv = sum(dd % recv_rank_info)
+    if (n_recv > dd % size_recv_buffer) then
+    
+      ! Resize the receive buffer
+      n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM)
+      call resize_array(dd % recv_buffer, dd % size_recv_buffer, n_recv, &
+          alloc_err)
+      
+    end if
+
+    ! Also ensure we have enough space in the send buffer
+    n_send = sum(dd % n_scatters_local)
+    if (n_send > dd % size_send_buffer) then
+    
+      ! Resize the send buffer
+      n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM)
+      call resize_array(dd % send_buffer, dd % size_send_buffer, n_send, &
+          alloc_err)
+      
+    end if
+
+  end subroutine verify_buffers
+
+!===============================================================================
+! SEND_RECV_PARTICLES uses the previously-determined and synchronized
+! destination information to send and recieve particles
+!===============================================================================
+
+  subroutine send_recv_particles(dd)
+
+    type(dd_type), intent(inout)  :: dd
+
+    integer(8) :: i8
+    integer :: pr             ! loop index over processors to send to
+    integer :: to_bin         ! domain bin to send particles to
+    integer :: to_meshbin     ! domain meshbin to send particles to
+    integer :: from_bin       ! domain bin to receive particles from
+    integer :: from_meshbin   ! domain meshbin to receive particles from
+    integer :: to_rank        ! global rank of the processor to send to
+    integer :: from_rank      ! global rank of the processor to recv from
+    integer :: index_pbuffer  ! index in the particle buffer
+    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
+    integer :: n_request      ! number of communication requests
+    integer :: n_recv
+    integer :: n_send
+    integer(8) :: start
+    integer :: local_start
+    integer :: pbuffer_start
+    integer :: pr_bin
+
+    !===========================================================================
+    ! RECEIVE PARTICLES
+ 
+    ! We post the receives first so that we can match sends as soon as possible.
+    ! Supposedly there is an upper limit on the number of sends that can be
+    ! outstanding at once.
+   
+    call time_dd_sendrecv % start()
+
+    local_start = 1
+    do from_bin = 1, N_CARTESIAN_NEIGHBORS
+      ! Loop through each neighbor we might need to receive from
+      from_meshbin = dd % neighbor_meshbins(from_bin)
+      if (from_meshbin == NO_BIN_FOUND) cycle
+      
+      do pr = 1, dd % domain_n_procs(from_meshbin)
+        ! Loop over each processor in the sending bin
+        
+        pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
+        n_recv = dd % recv_rank_info(pr_bin)
+        if (n_recv == 0) cycle
+
+        n_request = n_request + 1
+        from_rank = dd % domain_masters(from_meshbin) + pr - 1
+        call MPI_IRECV(dd % recv_buffer(local_start), n_recv, &
+            MPI_PARTICLEBUFFER, from_rank, from_rank, MPI_COMM_WORLD, &
+            request(n_request), mpi_err)
+        local_start = local_start + n_recv
+
+        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
+
+      end do
+    end do
+
+    dd % n_inscatt = local_start - 1
+
+    !===========================================================================
+    ! SEND PARTICLES
+
+    index_pbuffer = 1
+
+    do to_bin = 1, N_CARTESIAN_NEIGHBORS
+      ! Loop over each of the neighbors we might need to send to
+      to_meshbin = dd % neighbor_meshbins(to_bin)
+      if (to_meshbin == NO_BIN_FOUND) cycle
+
+      start = 1_8
+      do pr = 1, dd % domain_n_procs(to_meshbin)
+        ! Loop over each processor in the receiving bin
+        
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
+        if (dd % send_rank_info(pr_bin) == 0) cycle 
+
+        pbuffer_start = index_pbuffer
+        n_send = 0
+        do i8 = start, work
+        
+          ! Add outscatter particles to send buffer
+          if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then
+          
+            if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
+              message = "Trying to send particle that didn't leave domain!"
+              call fatal_error()
+            end if
+            
+            call particle_to_buffer(dd % particle_buffer(i8), &
+                                    dd % send_buffer(index_pbuffer))
+            index_pbuffer = index_pbuffer + 1
+            n_send = n_send + 1
+          end if
+          
+          if (n_send == dd % send_rank_info(pr_bin)) then
+            start = i8
+            exit
+          end if
+          
+        end do
+
+        n_request = n_request + 1
+        to_rank = dd % domain_masters(to_meshbin) + pr - 1
+        call MPI_ISEND(dd % send_buffer(pbuffer_start), n_send, &
+            MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
+            request(n_request), mpi_err)
+
+        print *, current_stage,'send',rank,'-->',to_rank, n_send
+
+      end do
+      
+    end do
+
+    ! Wait for the particles to be sent
+    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+
+    call time_dd_sendrecv % stop()
+
+  end subroutine send_recv_particles
+
+!===============================================================================
+! REBUILD_PARTICLE_BUFFER copies the particles sent over the network (which were
+! sent in a slightly compressed form) back to the particle buffer to be
+! transported in the next stage.  
+!===============================================================================
+
+  subroutine rebuild_particle_buffer(dd)
+
+    type(dd_type), intent(inout)  :: dd
+
+    integer :: i
+    integer :: size_buff
+    integer :: alloc_err      ! allocation error code
+
+    ! Grow the particle buffer if we don't have enough space
+    if (dd % n_inscatt > dd % size_particle_buffer) then
+    
+      size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM)
+      call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
+          size_buff, alloc_err)
+      
+      ! We also need to resize the source bank and fission bank now that we
+      ! have more particles
+      call resize_array(source_bank, size_source_bank, int(size_buff, 8), &
+          alloc_err)
+      call extend_array(fission_bank, size_fission_bank, int(3*size_buff, 8), &
+          alloc_err)
+      !TODO: fission bank might not be big enough! This only covers the particle
+      ! buffer from this stage!
+      
+    end if
+    
+    ! Populate the particle particle buffer from the receive buffer
+    do i = 1, dd % n_inscatt
+      call buffer_to_particle(dd % recv_buffer(i), dd % particle_buffer(i))
+    end do
+
+  end subroutine rebuild_particle_buffer
 
 !===============================================================================
 ! SYNCHRONIZE_BANK_DD does the same thing as the non-domain-decomposed
@@ -424,465 +958,5 @@ contains
 !         deallocate(temp_sites)
 
   end subroutine synchronize_bank_dd
-
-
-!===============================================================================
-! SYNCHRONIZE_SCATTER_INFO communicates all required scattering information to
-! the local domain neighborhood
-!===============================================================================
-
-  subroutine synchronize_transfer_info(dd)
-  
-    type(dd_type), intent(inout) :: dd
-  
-  end subroutine synchronize_transfer_info
-
-
-!===============================================================================
-! SYNCHRONIZE_PARTICLES contains the logic to send particles that moved out of
-! this domain to the processors that handle the receiving domains, as well as
-! recieve particles from other domains.
-!===============================================================================
-
-  subroutine synchronize_particles(dd)
-  
-    type(dd_type), intent(inout) :: dd
-  
-    integer(8) :: i8
-    integer :: i              ! loop index over particle buffer
-    integer :: j
-    integer :: pr             ! loop index over processors to send to
-    integer :: nd             ! loop index over neighbor domains
-    integer :: to_bin         ! domain bin to send particles to
-    integer :: to_meshbin     ! domain meshbin to send particles to
-    integer :: from_bin       ! domain bin to receive particles from
-    integer :: from_meshbin   ! domain meshbin to receive particles from
-    integer :: neighbor_meshbin
-    integer :: to_ddrank      ! rank of the processor to send to inside its domain communicator group
-    integer :: to_rank        ! global rank of the processor to send to
-    integer :: from_rank      ! global rank of the processor to recv from
-    integer :: neighbor_bin   ! domain meshbin of a neighbor to to_bin
-    integer :: index_scatt    ! index in the 'global' scatter array
-    integer :: index_pbuffer  ! index in the particle buffer
-    integer :: domain_start
-    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
-    integer :: n_request      ! number of communication requests
-    integer :: n_recv
-    integer :: n_send
-    integer(8) :: start
-    integer :: local_start
-    integer :: pbuffer_start
-    integer :: debug(4)
-    integer :: pr_bin
-    integer :: size_buff
-    integer :: mod_
-    integer :: alloc_err
-    
-    ! This subroutine operates in a manner similar to synchronize_bank for the
-    ! fission bank, where the group of processors that operate on a certain
-    ! domain should be thought of as sharing arrays ('global' to just this
-    ! domain). We want scattered particles to be distributed evenly across all
-    ! processors that operate on each domain, so to do that we figure out where
-    ! the current particles to transmit are located in this 'global' scattering
-    ! array.  The steps followed are:
-    !   Determine for this domain how many particles are going to each other one
-    !   Synchronize domain-to-domains scatter info in the 2nd order neighborhood
-    !   Determine how many particles this process sends to each other process
-    !   Synchronize the process-to-process send info
-    !   Send/recv particles using the process-to-process send info
-    
-    ! This barrier isn't necessary since everyone will wait at the first
-    ! allreduce, but this allows for a more honest assessment of the
-    ! communication costs in the algorithm.  (i.e. if we don't have the barrier,
-    ! profilers will show the allreduce as taking the majority of the runtime)
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
-    call time_dd_info % start()
-    
-    !===========================================================================
-    ! SYNCHRONIZE SCATTER INFORMATION
-    
-    ! First find the global number of scatters, using dd_n_scatters_domain as
-    ! a temp holder - the order doesn't matter for this global sum
-    dd % n_global_scatters = 0
-    call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
-        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, mpi_err)
-    dd % n_global_scatters = sum(dd % n_scatters_domain)
-
-    ! Now reduce to find how many particles are leaving this domain to each of
-    ! the neighbors
-    call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
-        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, dd % comm, mpi_err)
-
-!    ! +++++++++++ DD DEBUG PRINT +++++++++++
-!    if (dd % local_master) call write_leakage_info()
-!    ! +++++++++++ DD DEBUG PRINT +++++++++++
-
-    ! Communicate domain scatter information to all 2nd neighbors in 2nd order
-    ! neighborhood. The first processor in each domain sends this information
-    ! to all other processors in the neighborhood.
-    
-    ! Send scatter info
-    n_request = 0
-    if (dd % local_master) then
-      do to_bin = 1, N_CARTESIAN_NEIGHBORS
-        to_meshbin = dd % neighbor_meshbins(to_bin)
-        if (to_meshbin == NO_BIN_FOUND) cycle
-        
-        ! Send to neighbors neighbors
-        do nd = 1, N_CARTESIAN_NEIGHBORS
-          neighbor_bin = to_bin*N_CARTESIAN_NEIGHBORS + nd
-          
-          neighbor_meshbin = dd % neighbor_meshbins(neighbor_bin)
-          if (neighbor_meshbin == NO_BIN_FOUND) cycle
-          if (neighbor_meshbin == dd % meshbin) cycle ! don't send to ourself
-          
-          ! We need to send this info to each process on the receiving domain
-          do pr = 1, dd % domain_n_procs(neighbor_meshbin)
-            to_rank = dd % domain_masters(neighbor_meshbin) + pr - 1
-          
-            n_request = n_request + 1
-            call MPI_ISEND(dd % n_scatters_domain(to_bin), 1, MPI_INTEGER, &
-                to_rank, to_meshbin, MPI_COMM_WORLD, request(n_request), &
-                mpi_err)
-          
-          end do
-            
-        end do
-      end do
-    end if
-    
-    ! Receive scatter info
-    dd % n_scatters_neighborhood = 0
-    do to_bin = 1, N_CARTESIAN_NEIGHBORS
-      to_meshbin = dd % neighbor_meshbins(to_bin)
-      if (to_meshbin == NO_BIN_FOUND) cycle
-        
-      do nd = 1, N_CARTESIAN_NEIGHBORS
-        from_bin = to_bin*N_CARTESIAN_NEIGHBORS + nd
-        from_meshbin = dd % neighbor_meshbins(from_bin)
-        if (from_meshbin == NO_BIN_FOUND) cycle
-        
-        if (from_meshbin == dd % meshbin) then
-          dd % n_scatters_neighborhood(from_bin, to_bin) = &
-              dd % n_scatters_domain(to_bin)
-        else
-          from_rank = dd % domain_masters(from_meshbin)
-          n_request = n_request + 1
-          call MPI_IRECV(dd % n_scatters_neighborhood(from_bin, to_bin), 1, &
-              MPI_INTEGER, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &
-              request(n_request), mpi_err)
-         end if
-                 
-      end do
-    end do
-    
-    ! Wait for the scatter information to be synchronized
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-    n_request = 0
-
-    !===========================================================================
-    ! DETERMINE PARTICLE SEND INFORMATION
-    
-    ! First get processor offsets - we do this here to ensure that every process
-    ! calls the exscan in the same order
-    dd % scatter_offest = 0
-    do to_bin = 1, N_CARTESIAN_NEIGHBORS
-      to_meshbin = dd % neighbor_meshbins(to_bin)
-      if (to_meshbin == NO_BIN_FOUND) cycle
-      call MPI_EXSCAN(dd % n_scatters_local(to_bin), &
-          dd % scatter_offest(to_bin), 1, MPI_INTEGER, MPI_SUM, dd % comm, &
-          mpi_err)
-      if (dd % local_master) dd % scatter_offest(to_bin) = 0
-    end do
-    
-      ! Now figure out where to send the particles
-    dd % send_rank_info = 0
-    do to_bin = 1, N_CARTESIAN_NEIGHBORS
-      ! loop over each of the neighbors we need to send to
-
-      to_meshbin = dd % neighbor_meshbins(to_bin)
-      if (to_meshbin == NO_BIN_FOUND) cycle
-
-      if (dd % n_scatters_local(to_bin) == 0) cycle ! no outscat to this domain
-
-      ! To determine which processor (or processors) to send to, and how many to
-      ! send to each, we first need to figure out which parts of the 'global'
-      ! inscatter array of the target domain are made up of particles on this
-      ! processor
-      
-      domain_start = 0
-      do nd = 1, N_CARTESIAN_NEIGHBORS
-        neighbor_bin = to_bin*N_CARTESIAN_NEIGHBORS + nd
-        neighbor_meshbin = dd % neighbor_meshbins(neighbor_bin)
-        if (neighbor_meshbin == NO_BIN_FOUND) cycle
-        if (neighbor_meshbin == dd % meshbin) exit
-        domain_start = domain_start + &
-            dd % n_scatters_neighborhood(neighbor_bin, to_bin)
-      end do
-      
-      ! At this point domain_start is the start of the scatter array for this
-      ! domain.  We need it for this processer within the domain, so we do a
-      ! scan like what's done in synchronize_bank, but for the domain group
-      ! communicator, and add the result to domain_start. (done previously)
-      index_scatt = domain_start + dd % scatter_offest(to_bin)
-
-      ! Now we determine which parts of the array are owned by the receiving
-      ! processors
-
-      n_recv = sum(dd % n_scatters_neighborhood(:, to_bin))
-      mod_ = modulo(n_recv, dd % domain_n_procs(to_meshbin))
-      do j = 1, dd % domain_n_procs(to_meshbin)
-        dd % proc_finish(j) = j * n_recv/dd % domain_n_procs(to_meshbin)
-        if (j-1 < mod_) then
-          dd % proc_finish(j) = dd % proc_finish(j) + j
-        else
-          dd % proc_finish(j) = dd % proc_finish(j) + mod_
-        end if
-      end do
-
-      ! Determine which receiving processor this starting index corresponds to
-      if (index_scatt <= dd % proc_finish(1)) then
-        to_ddrank = 0
-      else
-        to_ddrank = binary_search(dd % proc_finish, &
-            dd % domain_n_procs(to_meshbin), index_scatt)
-      end if
-
-      ! Now we can loop through particles to send and build up send information
-      pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
-      do i = 1, dd % size_particle_buffer
-        
-        if (dd % particle_buffer(i) % outscatter_destination == to_bin) then
-
-          ! Accumulate send info
-          dd % send_rank_info(pr_bin) = dd % send_rank_info(pr_bin) + 1
-          index_scatt = index_scatt + 1
-          
-          ! Increment the processor rank and bin if we're now on the next proc
-          if (to_ddrank + 1 < dd % domain_n_procs(to_meshbin) .and. &
-              index_scatt + 1 > dd % proc_finish(to_ddrank + 1)) then
-            to_ddrank = to_ddrank + 1
-            pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
-          end if
-            
-        end if
-        
-      end do
-      
-    end do
-    
-    !===========================================================================
-    ! COMMUNICATE SEND INFORMATION
-    
-    ! Send particle communication info
-    do to_bin = 1, N_CARTESIAN_NEIGHBORS
-      ! Loop over each of the neighbors we might need to send to
-      to_meshbin = dd % neighbor_meshbins(to_bin)
-      if (to_meshbin == NO_BIN_FOUND) cycle
-
-      do pr = 1, dd % domain_n_procs(to_meshbin)
-        ! Loop over each processor in the receiving bin
-        
-        pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
-        n_request = n_request + 1
-        to_rank = dd % domain_masters(to_meshbin) + pr - 1
-        call MPI_ISEND(dd % send_rank_info(pr_bin), 1, MPI_INTEGER, to_rank, &
-          rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-
-      end do
-    end do
-    
-    ! Receive particle communication info
-    dd % recv_rank_info = 0
-    do from_bin = 1, N_CARTESIAN_NEIGHBORS
-      ! Loop over each of the neighbors we might need to receive from
-      from_meshbin = dd % neighbor_meshbins(from_bin)
-      if (from_meshbin == NO_BIN_FOUND) cycle
-
-      do pr = 1, dd % domain_n_procs(from_meshbin)
-        ! Loop over each processor in the sending bin
-        
-        pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
-        n_request = n_request + 1
-        from_rank = dd % domain_masters(from_meshbin) + pr - 1
-        call MPI_IRECV(dd % recv_rank_info(pr_bin), 1, MPI_INTEGER, from_rank, &
-          from_rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-        
-      end do
-    end do
-    
-    ! Wait for the scatter information to be synchronized
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-    n_request = 0
-
-
-!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-!    debug = 0
-!    do to_bin = 1, 6
-!        to_meshbin = dd % neighbor_meshbins(to_bin)
-!        if (to_meshbin == NO_BIN_FOUND) cycle
-!        debug(to_meshbin) = dd % n_scatters_local(to_bin)
-!    end do
-!    print *, dd % meshbin, debug
-!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
-    call time_dd_info % stop()
-
-    !===========================================================================
-    ! VERIFY BUFFERS
-
-    ! There are certainly more efficient ways to use memory than to have two
-    ! separate buffers like what's done here, but this helps for clarity
-
-    ! First check that we have enough space in the inscatter bank
-    n_recv = sum(dd % recv_rank_info)
-    if (n_recv > dd % size_recv_buffer) then
-    
-      ! Resize the receive buffer
-      n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM)
-      call resize_array(dd % recv_buffer, dd % size_recv_buffer, n_recv, &
-          alloc_err)
-      
-    end if
-
-    ! Also ensure we have enough space in the send buffer
-    n_send = sum(dd % n_scatters_local)
-    if (n_send > dd % size_send_buffer) then
-    
-      ! Resize the send buffer
-      n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM)
-      call resize_array(dd % send_buffer, dd % size_send_buffer, n_send, &
-          alloc_err)
-      
-    end if
-
-    !===========================================================================
-    ! RECEIVE PARTICLES
- 
-    ! We post the receives first so that we can match sends as soon as possible.
-    ! Supposedly there is an upper limit on the number of sends that can be
-    ! outstanding at once.
-   
-    call time_dd_sendrecv % start()
-
-    local_start = 1
-    do from_bin = 1, N_CARTESIAN_NEIGHBORS
-      ! Loop through each neighbor we might need to receive from
-      from_meshbin = dd % neighbor_meshbins(from_bin)
-      if (from_meshbin == NO_BIN_FOUND) cycle
-      
-      do pr = 1, dd % domain_n_procs(from_meshbin)
-        ! Loop over each processor in the sending bin
-        
-        pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
-        n_recv = dd % recv_rank_info(pr_bin)
-        if (n_recv == 0) cycle
-
-        n_request = n_request + 1
-        from_rank = dd % domain_masters(from_meshbin) + pr - 1
-        call MPI_IRECV(dd % recv_buffer(local_start), n_recv, &
-            MPI_PARTICLEBUFFER, from_rank, from_rank, MPI_COMM_WORLD, &
-            request(n_request), mpi_err)
-        local_start = local_start + n_recv
-
-        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
-
-      end do
-    end do
-
-    dd % n_inscatt = local_start - 1
-
-    !===========================================================================
-    ! SEND PARTICLES
-
-    index_pbuffer = 1
-
-    do to_bin = 1, N_CARTESIAN_NEIGHBORS
-      ! Loop over each of the neighbors we might need to send to
-      to_meshbin = dd % neighbor_meshbins(to_bin)
-      if (to_meshbin == NO_BIN_FOUND) cycle
-
-      start = 1_8
-      do pr = 1, dd % domain_n_procs(to_meshbin)
-        ! Loop over each processor in the receiving bin
-        
-        pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
-        if (dd % send_rank_info(pr_bin) == 0) cycle 
-
-        pbuffer_start = index_pbuffer
-        n_send = 0
-        do i8 = start, work
-        
-          ! Add outscatter particles to send buffer
-          if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then
-          
-            if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
-              message = "Trying to send particle that didn't leave domain!"
-              call fatal_error()
-            end if
-            
-            call particle_to_buffer(dd % particle_buffer(i8), &
-                                    dd % send_buffer(index_pbuffer))
-            index_pbuffer = index_pbuffer + 1
-            n_send = n_send + 1
-          end if
-          
-          if (n_send == dd % send_rank_info(pr_bin)) then
-            start = i8
-            exit
-          end if
-          
-        end do
-
-        n_request = n_request + 1
-        to_rank = dd % domain_masters(to_meshbin) + pr - 1
-        call MPI_ISEND(dd % send_buffer(pbuffer_start), n_send, &
-            MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
-            request(n_request), mpi_err)
-
-        print *, current_stage,'send',rank,'-->',to_rank, n_send
-
-      end do
-      
-    end do
-
-    ! Wait for the particles to be sent
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-
-    call time_dd_sendrecv % stop()
-
-    !===========================================================================
-    ! REBUILD PARTICLE BUFFER
-    
-    ! Grow the particle buffer if we don't have enough space
-    if (dd % n_inscatt > dd % size_particle_buffer) then
-    
-      size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM)
-      call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-          size_buff, alloc_err)
-      
-      ! We also need to resize the source bank and fission bank now that we
-      ! have more particles
-      call resize_array(source_bank, size_source_bank, int(size_buff, 8), &
-          alloc_err)
-      call extend_array(fission_bank, size_fission_bank, int(3*size_buff, 8), &
-          alloc_err)
-      !TODO: fission bank might not be big enough! This only covers the particle
-      ! buffer from this stage!
-      
-    end if
-
-    ! Populate the particle source bank from the receive buffer
-    do i = 1, dd % n_inscatt
-      call buffer_to_particle(dd % recv_buffer(i), dd % particle_buffer(i))
-    end do
-    
-    work = dd % n_inscatt
-    
-    print *, rank, current_stage, 'n_scatt', dd % n_inscatt
-
-  end subroutine synchronize_particles
-
 
 end module dd_comm

@@ -81,6 +81,7 @@ contains
     if (allocated(this % domain_load_dist)) deallocate(this % domain_load_dist)
     if (allocated(this % domain_n_procs)) deallocate(this % domain_n_procs)
     if (allocated(this % domain_masters)) deallocate(this % domain_masters)
+    if (allocated(this % particle_buffer)) deallocate(this % particle_buffer)
     if (allocated(this % send_buffer)) deallocate(this % send_buffer)
     if (allocated(this % recv_buffer)) deallocate(this % recv_buffer)
     if (allocated(this % send_rank_info)) deallocate(this % send_rank_info)

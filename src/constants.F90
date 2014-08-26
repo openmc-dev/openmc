@@ -403,7 +403,7 @@ module constants
 
   ! Running modes
   integer, parameter ::       &
-       MODE_TESTING     = 0,  & ! Fixed source mode
+       MODE_TESTING     = -1, & ! Unit Testing mode
        MODE_FIXEDSOURCE = 1,  & ! Fixed source mode
        MODE_EIGENVALUE  = 2,  & ! K eigenvalue mode
        MODE_PLOTTING    = 3,  & ! Plotting mode

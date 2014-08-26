@@ -1136,7 +1136,7 @@ The ``<tally>`` element accepts the following sub-elements:
               "all" is also allowed. This means all the scores in this tally
               share the same trigger.   
    
-   *Default*:None
+   *Default*:All
 
 ``<mesh>`` Element
 ------------------

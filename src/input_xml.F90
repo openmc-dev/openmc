@@ -2928,6 +2928,7 @@ contains
             case ('events')
               t % score(trig_ind) % position = find_score % get_key(SCORE_EVENTS)
             end select
+              
          
             if (.not. t % trigger_for_all .and. t % score(trig_ind) % position & 
                  == 0) then 
@@ -2970,9 +2971,14 @@ contains
             end if
     
           else
-            message = "Must specify scores for trigger of tally " &
-                // trim(to_str(t % id)) // " in tally XML file."
-            call fatal_error()
+            if (t % n_user_triggers /= 1) then
+              message = "Cannot set trigger for all and other scoring &
+                    &functions in the same tally. Separate scoring &
+                    &functions into distinct tallies"
+            call fatal_error()             
+            else 
+              t % trigger_for_all = .true.
+            end if
           end if 
           call find_score % clear()
         end do Trigger_Loop

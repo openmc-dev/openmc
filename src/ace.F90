@@ -3,7 +3,7 @@ module ace
   use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
                               DistEnergy
   use constants
-  use endf,             only: reaction_name, is_fission
+  use endf,             only: reaction_name, is_fission, is_disappearance
   use error,            only: fatal_error, warning
   use fission,          only: nu_total
   use global
@@ -696,25 +696,24 @@ contains
       IE = rxn % threshold
       NE = size(rxn % sigma)
 
-      ! Skip redundant reactions -- this includes total inelastic level
-      ! scattering, gas production cross sections (MT=200+), and (n,p), (n,d),
-      ! etc. reactions leaving the nucleus in an excited state
+      ! Skip total inelastic level scattering, gas production cross sections
+      ! (MT=200+), etc.
       if (rxn % MT == N_LEVEL) cycle
-      if (rxn % MT > 200 .and. rxn % MT < 600) cycle
+      if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
 
       ! Skip level cross sections if total is available
-      if (rxn % MT >= 600 .and. rxn % MT < 650 .and. MTs % contains(N_P)) cycle
-      if (rxn % MT >= 650 .and. rxn % MT < 700 .and. MTs % contains(N_D)) cycle
-      if (rxn % MT >= 700 .and. rxn % MT < 750 .and. MTs % contains(N_T)) cycle
-      if (rxn % MT >= 750 .and. rxn % MT < 800 .and. MTs % contains(N_3HE)) cycle
-      if (rxn % MT >= 800 .and. rxn % MT < 850 .and. MTs % contains(N_A)) cycle
+      if (rxn % MT >= N_P0 .and. rxn % MT <= N_PC .and. MTs % contains(N_P)) cycle
+      if (rxn % MT >= N_D0 .and. rxn % MT <= N_DC .and. MTs % contains(N_D)) cycle
+      if (rxn % MT >= N_T0 .and. rxn % MT <= N_TC .and. MTs % contains(N_T)) cycle
+      if (rxn % MT >= N_3HE0 .and. rxn % MT <= N_3HEC .and. MTs % contains(N_3HE)) cycle
+      if (rxn % MT >= N_A0 .and. rxn % MT <= N_AC .and. MTs % contains(N_A)) cycle
+      if (rxn % MT >= N_2N0 .and. rxn % MT <= N_2NC .and. MTs % contains(N_2N)) cycle
 
       ! Add contribution to total cross section
       nuc % total(IE:IE+NE-1) = nuc % total(IE:IE+NE-1) + rxn % sigma
 
       ! Add contribution to absorption cross section
-      if ((rxn % MT >= N_GAMMA .and. rxn % MT <= N_DA) .or. &
-           (rxn % MT >= 600 .and. rxn % MT < 850)) then
+      if (is_disappearance(rxn % MT)) then
         nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
       end if
 

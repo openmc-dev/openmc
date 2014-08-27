@@ -47,6 +47,9 @@ contains
     allocate(dd % domain_load_dist(4))
     dd % domain_load_dist = (/ 2.0, 1.0, 1.0, 1.0/)
 
+    ! Set n_particles so buffers are properly allocated
+    n_particles = 97 ! we will have 55 transferring
+
   end subroutine dd_simple_four_domains
 
 !===============================================================================

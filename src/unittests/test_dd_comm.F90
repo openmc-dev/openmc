@@ -168,149 +168,17 @@ contains
   end subroutine test_distribute_source
 
 !===============================================================================
-! TEST_SYNCHRONIZE_INFO
+! DD_SIMPLE_FOUR_DOMAIN_SCATTERS hardcodes in a few particles to transfer
 !===============================================================================
 
-  subroutine test_synchronize_transfer_info()
-
-    logical :: failure = .false.
+  subroutine dd_simple_four_domain_scatters(dd)
+  
+    type(dd_type), intent(inout) :: dd
     integer :: bin
-    integer :: mpi_err
 
-    if (master) call header("test_synchronize_transfer_info", level=2)
-
-    if (check_procs()) return
-
-    ! EXECUTE
-
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
-
-    ! Get generic DD setup with 4 domains for 5 MPI ranks
-    call dd_simple_four_domains(dd)
-    ! TODO: this should test the whole neighborhood: 4 domains is not enough
-
-    ! Initialize dd_type
-    call initialize_domain_decomp(dd)
-
-    ! Set up n_scatters_local
-    dd % n_scatters_local = 0
-    select case(rank)
-      case (0)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  7 !  7 from 1 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  5 !  5 from 1 -> 3
-      case (1)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  2 !  2 from 1 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  9 !  9 from 1 -> 3
-      case (2)
-        dd % n_scatters_local(dd % bins_dict % get_key(1)) = 12 ! 12 from 2 -> 1
-        dd % n_scatters_local(dd % bins_dict % get_key(4)) =  3 !  3 from 2 -> 4
-      case (3)
-        dd % n_scatters_local(dd % bins_dict % get_key(1)) =  7 !  7 from 3 -> 1
-        dd % n_scatters_local(dd % bins_dict % get_key(4)) =  1 !  1 from 3 -> 4
-      case (4)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  0 !  0 from 4 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  9 !  9 from 4 -> 3
-    end select
-
-    ! EXECUTE
-
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
-
-    ! Invoke test method
-    call synchronize_transfer_info(dd)
-
-    ! CHECK
-
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
-
-    select case(rank)
-      case(0, 1)
-        bin = dd % bins_dict % get_key(2)
-        if (any(dd % n_scatters_neighborhood(:, bin) /= 0)) failure = .true.
-        bin = dd % bins_dict % get_key(3)
-        if (dd % n_scatters_neighborhood(16, bin) /= 9) failure = .true.
-      case(2)
-        bin = dd % bins_dict % get_key(1)
-        if (dd % n_scatters_neighborhood(20, bin) /= 7) failure = .true.
-        bin = dd % bins_dict % get_key(4)
-        if (dd % n_scatters_neighborhood(15, bin) /= 1) failure = .true.
-      case(3)
-        bin = dd % bins_dict % get_key(1)
-        if (dd % n_scatters_neighborhood(10, bin) /= 12) failure = .true.
-        bin = dd % bins_dict % get_key(4)
-        if (dd % n_scatters_neighborhood(25, bin) /= 3) failure = .true.
-      case(4)
-        bin = dd % bins_dict % get_key(2)
-        if (dd % n_scatters_neighborhood(9, bin) /= 9) failure = .true.
-        bin = dd % bins_dict % get_key(3)
-        if (dd % n_scatters_neighborhood(19, bin) /= 14) failure = .true.
-    end select    
-
-    if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank)) // &
-          " didn't receive all the info it should have about its neighbors."
-      call fatal_error()
-    end if
-
-#ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-#endif
-    
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
-
-    ! Clean up
-    call deallocate_dd(dd)
-
-  end subroutine test_synchronize_transfer_info
-
-!===============================================================================
-! TEST_SYNCHRONIZE_DESTINATION_INFO
-!===============================================================================
-
-  subroutine test_synchronize_destination_info()
-
-    logical :: failure = .false.
-    integer :: bin
-    integer :: mpi_err
-    integer :: to_bin, pr_bin
-
-    if (master) call header("test_synchronize_destination_info", level=2)
-
-    if (check_procs()) return
-
-    ! EXECUTE
-
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
-
-    ! Get generic DD setup with 4 domains for 5 MPI ranks
-    call dd_simple_four_domains(dd)
-    ! TODO: this should test the whole neighborhood: 4 domains is not enough
-
-    ! Set n_particles so the particle buffer is properly allocated
-    n_particles = 97 ! we have 55 transferring
-
-    ! Initialize dd_type
-    call initialize_domain_decomp(dd)
-
-    ! Setup particle buffer
+    ! Initialize particle buffer
     dd % particle_buffer % outscatter_destination = NO_OUTSCATTER
 
-    ! Set up the scattering information
     dd % n_scatters_local = 0
     select case(rank)
       case (0)
@@ -395,6 +263,133 @@ contains
         dd % particle_buffer(27) % outscatter_destination = bin
     end select
 
+  end subroutine dd_simple_four_domain_scatters
+
+!===============================================================================
+! TEST_SYNCHRONIZE_INFO
+!===============================================================================
+
+  subroutine test_synchronize_transfer_info()
+
+    logical :: failure = .false.
+    integer :: bin
+    integer :: mpi_err
+
+    if (master) call header("test_synchronize_transfer_info", level=2)
+
+    if (check_procs()) return
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Setting up..."
+      call write_message(1)
+    end if
+
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    ! TODO: this should test the whole neighborhood: 4 domains is not enough
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    ! Set up local outscatter
+    call dd_simple_four_domain_scatters(dd)
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Invoking test..."
+      call write_message(1)
+    end if
+
+    ! Invoke test method
+    call synchronize_transfer_info(dd)
+
+    ! CHECK
+
+    if (master) then
+      message = "Checking results..."
+      call write_message(1)
+    end if
+
+    select case(rank)
+      case(0, 1)
+        bin = dd % bins_dict % get_key(2)
+        if (any(dd % n_scatters_neighborhood(:, bin) /= 0)) failure = .true.
+        bin = dd % bins_dict % get_key(3)
+        if (dd % n_scatters_neighborhood(16, bin) /= 9) failure = .true.
+      case(2)
+        bin = dd % bins_dict % get_key(1)
+        if (dd % n_scatters_neighborhood(20, bin) /= 7) failure = .true.
+        bin = dd % bins_dict % get_key(4)
+        if (dd % n_scatters_neighborhood(15, bin) /= 1) failure = .true.
+      case(3)
+        bin = dd % bins_dict % get_key(1)
+        if (dd % n_scatters_neighborhood(10, bin) /= 12) failure = .true.
+        bin = dd % bins_dict % get_key(4)
+        if (dd % n_scatters_neighborhood(25, bin) /= 3) failure = .true.
+      case(4)
+        bin = dd % bins_dict % get_key(2)
+        if (dd % n_scatters_neighborhood(9, bin) /= 9) failure = .true.
+        bin = dd % bins_dict % get_key(3)
+        if (dd % n_scatters_neighborhood(19, bin) /= 14) failure = .true.
+    end select    
+
+    if (failure) then
+      message = "FAILED: Rank " // trim(to_str(rank)) // &
+          " didn't receive all the info it should have about its neighbors."
+      call fatal_error()
+    end if
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+    
+    if (master) then
+      message = "PASSED"
+      call write_message(1)
+    end if
+
+    ! Clean up
+    call deallocate_dd(dd)
+
+  end subroutine test_synchronize_transfer_info
+
+!===============================================================================
+! TEST_SYNCHRONIZE_DESTINATION_INFO
+!===============================================================================
+
+  subroutine test_synchronize_destination_info()
+
+    logical :: failure = .false.
+    integer :: mpi_err
+    integer :: to_bin, pr_bin
+
+    if (master) call header("test_synchronize_destination_info", level=2)
+
+    if (check_procs()) return
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Setting up..."
+      call write_message(1)
+    end if
+
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    ! TODO: this should test the whole neighborhood: 4 domains is not enough
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    ! Setup particle buffer
+    dd % particle_buffer % outscatter_destination = NO_OUTSCATTER
+
+    ! Set up local outscatter
+    call dd_simple_four_domain_scatters(dd)
+
     ! Get dd % n_scatters_neighborhood
     call synchronize_transfer_info(dd)
 
@@ -476,7 +471,76 @@ contains
 
   end subroutine test_synchronize_destination_info
 
+!===============================================================================
+! TEST_SEND_RECV_PARTICLES
+!===============================================================================
 
+  subroutine test_send_recv_particles()
 
+    logical :: failure = .false.
+    integer :: mpi_err
+
+    if (master) call header("test_send_recv_particles", level=2)
+
+    if (check_procs()) return
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Setting up..."
+      call write_message(1)
+    end if
+
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    ! TODO: this should test the whole neighborhood: 4 domains is not enough
+
+    ! Set n_particles so the particle buffer is properly allocated
+    n_particles = 97 ! we have 55 transferring
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    ! Set up local outscatter
+    call dd_simple_four_domain_scatters(dd)
+
+    ! Get dd % n_scatters_neighborhood
+    call synchronize_transfer_info(dd)
+
+    ! Set renc/recv info
+    call synchronize_destination_info(dd)
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Invoking test..."
+      call write_message(1)
+    end if
+
+    ! CHECK
+
+    if (master) then
+      message = "Checking results..."
+      call write_message(1)
+    end if
+
+    if (failure) then
+      message = "FAILED: Rank " // trim(to_str(rank))
+      call fatal_error()
+    end if
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+    
+    if (master) then
+      message = "PASSED"
+      call write_message(1)
+    end if
+
+    ! Clean up
+    call deallocate_dd(dd)
+
+  end subroutine test_send_recv_particles
 
 end module test_dd_comm

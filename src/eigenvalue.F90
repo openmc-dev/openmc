@@ -196,7 +196,7 @@ contains
   
     current_stage = current_stage + 1
 
-    print *, rank, 'stage', current_stage, 'work', work
+    if (master) print *, 'stage', current_stage, 'scatters', domain_decomp % n_global_scatters
 
     if (dd_run) then
     

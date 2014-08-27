@@ -206,7 +206,6 @@ contains
       domain_decomp % particle_buffer % id = -1
       domain_decomp % particle_buffer % outscatter_destination = NO_OUTSCATTER
 
-
     end if
 
   end subroutine initialize_stage
@@ -251,7 +250,7 @@ contains
   subroutine finalize_generation()
   
   
-    message = "debug stop"
+    message = "debug stop - good stop"
     call fatal_error()
   
 #ifdef _OPENMP

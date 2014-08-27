@@ -1,6 +1,8 @@
 module test_dd_comm
 
-  use dd_comm,          only: distribute_source, synchronize_transfer_info
+  use constants
+  use dd_comm,          only: distribute_source, synchronize_transfer_info, &
+                              synchronize_destination_info
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_tracking,      only: cross_domain_boundary
@@ -150,7 +152,9 @@ contains
       call fatal_error()
     end if
 
+#ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
     
     if (master) then
       message = "PASSED"
@@ -164,7 +168,7 @@ contains
   end subroutine test_distribute_source
 
 !===============================================================================
-! TEST_SYNCHRONIZE_INFO depends on test_distribute_source
+! TEST_SYNCHRONIZE_INFO
 !===============================================================================
 
   subroutine test_synchronize_transfer_info()
@@ -195,20 +199,20 @@ contains
     dd % n_scatters_local = 0
     select case(rank)
       case (0)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) = 7 ! 7 from 1 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) = 5 ! 5 from 1 -> 3
+        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  7 !  7 from 1 -> 2
+        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  5 !  5 from 1 -> 3
       case (1)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) = 2 ! 2 from 1 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) = 9 ! 9 from 1 -> 3
+        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  2 !  2 from 1 -> 2
+        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  9 !  9 from 1 -> 3
       case (2)
-        dd % n_scatters_local(dd % bins_dict % get_key(1)) = 0 ! 0 from 2 -> 1
-        dd % n_scatters_local(dd % bins_dict % get_key(4)) = 3 ! 3 from 2 -> 4
+        dd % n_scatters_local(dd % bins_dict % get_key(1)) = 12 ! 12 from 2 -> 1
+        dd % n_scatters_local(dd % bins_dict % get_key(4)) =  3 !  3 from 2 -> 4
       case (3)
-        dd % n_scatters_local(dd % bins_dict % get_key(1)) = 2 ! 2 from 3 -> 1
-        dd % n_scatters_local(dd % bins_dict % get_key(4)) = 1 ! 1 from 3 -> 4
+        dd % n_scatters_local(dd % bins_dict % get_key(1)) =  7 !  7 from 3 -> 1
+        dd % n_scatters_local(dd % bins_dict % get_key(4)) =  1 !  1 from 3 -> 4
       case (4)
-        dd % n_scatters_local(dd % bins_dict % get_key(2)) = 0 ! 0 from 4 -> 2
-        dd % n_scatters_local(dd % bins_dict % get_key(3)) = 9 ! 0 from 4 -> 3
+        dd % n_scatters_local(dd % bins_dict % get_key(2)) =  0 !  0 from 4 -> 2
+        dd % n_scatters_local(dd % bins_dict % get_key(3)) =  9 !  9 from 4 -> 3
     end select
 
     ! EXECUTE
@@ -224,7 +228,7 @@ contains
     ! CHECK
 
     if (master) then
-      message = "Checking RESULTS"
+      message = "Checking results..."
       call write_message(1)
     end if
 
@@ -236,12 +240,12 @@ contains
         if (dd % n_scatters_neighborhood(16, bin) /= 9) failure = .true.
       case(2)
         bin = dd % bins_dict % get_key(1)
-        if (dd % n_scatters_neighborhood(20, bin) /= 2) failure = .true.
+        if (dd % n_scatters_neighborhood(20, bin) /= 7) failure = .true.
         bin = dd % bins_dict % get_key(4)
         if (dd % n_scatters_neighborhood(15, bin) /= 1) failure = .true.
       case(3)
         bin = dd % bins_dict % get_key(1)
-        if (any(dd % n_scatters_neighborhood(:, bin) /= 0)) failure = .true.
+        if (dd % n_scatters_neighborhood(10, bin) /= 12) failure = .true.
         bin = dd % bins_dict % get_key(4)
         if (dd % n_scatters_neighborhood(25, bin) /= 3) failure = .true.
       case(4)
@@ -257,7 +261,9 @@ contains
       call fatal_error()
     end if
 
+#ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
     
     if (master) then
       message = "PASSED"
@@ -267,7 +273,210 @@ contains
     ! Clean up
     call deallocate_dd(dd)
 
-
   end subroutine test_synchronize_transfer_info
+
+!===============================================================================
+! TEST_SYNCHRONIZE_DESTINATION_INFO
+!===============================================================================
+
+  subroutine test_synchronize_destination_info()
+
+    logical :: failure = .false.
+    integer :: bin
+    integer :: mpi_err
+    integer :: to_bin, pr_bin
+
+    if (master) call header("test_synchronize_destination_info", level=2)
+
+    if (check_procs()) return
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Setting up..."
+      call write_message(1)
+    end if
+
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    ! TODO: this should test the whole neighborhood: 4 domains is not enough
+
+    ! Set n_particles so the particle buffer is properly allocated
+    n_particles = 97 ! we have 55 transferring
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    ! Setup particle buffer
+    dd % particle_buffer % outscatter_destination = NO_OUTSCATTER
+
+    ! Set up the scattering information
+    dd % n_scatters_local = 0
+    select case(rank)
+      case (0)
+        bin = dd % bins_dict % get_key(2)
+        dd % n_scatters_local(bin) =  7 !  7 from 1 -> 2
+        dd % particle_buffer(2) % outscatter_destination = bin
+        dd % particle_buffer(5) % outscatter_destination = bin
+        dd % particle_buffer(7) % outscatter_destination = bin
+        dd % particle_buffer(8) % outscatter_destination = bin
+        dd % particle_buffer(9) % outscatter_destination = bin
+        dd % particle_buffer(11) % outscatter_destination = bin
+        dd % particle_buffer(12) % outscatter_destination = bin
+        bin = dd % bins_dict % get_key(3)
+        dd % n_scatters_local(bin) =  5 !  5 from 1 -> 3
+        dd % particle_buffer(1) % outscatter_destination = bin
+        dd % particle_buffer(3) % outscatter_destination = bin
+        dd % particle_buffer(4) % outscatter_destination = bin
+        dd % particle_buffer(10) % outscatter_destination = bin
+        dd % particle_buffer(14) % outscatter_destination = bin
+      case (1)
+        bin = dd % bins_dict % get_key(2)
+        dd % n_scatters_local(bin) =  2 !  2 from 1 -> 2
+        dd % particle_buffer(2) % outscatter_destination = bin
+        dd % particle_buffer(13) % outscatter_destination = bin
+        bin = dd % bins_dict % get_key(3)
+        dd % n_scatters_local(bin) =  9 !  9 from 1 -> 3
+        dd % particle_buffer(1) % outscatter_destination = bin
+        dd % particle_buffer(3) % outscatter_destination = bin
+        dd % particle_buffer(4) % outscatter_destination = bin
+        dd % particle_buffer(5) % outscatter_destination = bin
+        dd % particle_buffer(7) % outscatter_destination = bin
+        dd % particle_buffer(8) % outscatter_destination = bin
+        dd % particle_buffer(9) % outscatter_destination = bin
+        dd % particle_buffer(12) % outscatter_destination = bin
+        dd % particle_buffer(14) % outscatter_destination = bin
+      case (2)
+        bin = dd % bins_dict % get_key(1)
+        dd % n_scatters_local(bin) = 12 ! 12 from 2 -> 1
+        dd % particle_buffer(3) % outscatter_destination = bin
+        dd % particle_buffer(4) % outscatter_destination = bin
+        dd % particle_buffer(6) % outscatter_destination = bin
+        dd % particle_buffer(7) % outscatter_destination = bin
+        dd % particle_buffer(13) % outscatter_destination = bin
+        dd % particle_buffer(15) % outscatter_destination = bin
+        dd % particle_buffer(17) % outscatter_destination = bin
+        dd % particle_buffer(18) % outscatter_destination = bin
+        dd % particle_buffer(19) % outscatter_destination = bin
+        dd % particle_buffer(21) % outscatter_destination = bin
+        dd % particle_buffer(22) % outscatter_destination = bin
+        dd % particle_buffer(24) % outscatter_destination = bin
+        bin = dd % bins_dict % get_key(4)
+        dd % n_scatters_local(bin) =  3 !  3 from 2 -> 4
+        dd % particle_buffer(8) % outscatter_destination = bin
+        dd % particle_buffer(16) % outscatter_destination = bin
+        dd % particle_buffer(20) % outscatter_destination = bin
+      case (3)
+        bin = dd % bins_dict % get_key(1)
+        dd % n_scatters_local(bin) =  7 !  7 from 3 -> 1
+        dd % particle_buffer(1) % outscatter_destination = bin
+        dd % particle_buffer(4) % outscatter_destination = bin
+        dd % particle_buffer(5) % outscatter_destination = bin
+        dd % particle_buffer(7) % outscatter_destination = bin
+        dd % particle_buffer(8) % outscatter_destination = bin
+        dd % particle_buffer(19) % outscatter_destination = bin
+        dd % particle_buffer(26) % outscatter_destination = bin
+        bin = dd % bins_dict % get_key(4)
+        dd % n_scatters_local(bin) =  1 !  1 from 3 -> 4
+        dd % particle_buffer(14) % outscatter_destination = bin
+      case (4)
+        bin = dd % bins_dict % get_key(2)
+        dd % n_scatters_local(bin) =  0 !  0 from 4 -> 2
+        bin = dd % bins_dict % get_key(3)
+        dd % n_scatters_local(bin) =  9 !  9 from 4 -> 3
+        dd % particle_buffer(14) % outscatter_destination = bin
+        dd % particle_buffer(15) % outscatter_destination = bin
+        dd % particle_buffer(16) % outscatter_destination = bin
+        dd % particle_buffer(19) % outscatter_destination = bin
+        dd % particle_buffer(21) % outscatter_destination = bin
+        dd % particle_buffer(23) % outscatter_destination = bin
+        dd % particle_buffer(24) % outscatter_destination = bin
+        dd % particle_buffer(25) % outscatter_destination = bin
+        dd % particle_buffer(27) % outscatter_destination = bin
+    end select
+
+    ! Get dd % n_scatters_neighborhood
+    call synchronize_transfer_info(dd)
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Invoking test..."
+      call write_message(1)
+    end if
+
+    call synchronize_destination_info(dd)
+
+    ! CHECK
+    select case(rank)
+      case(0)
+        to_bin = dd % bins_dict % get_key(2)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 7) failure = .true.
+        to_bin = dd % bins_dict % get_key(3)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 5) failure = .true.
+      case(1)
+        to_bin = dd % bins_dict % get_key(2)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 2) failure = .true.
+        to_bin = dd % bins_dict % get_key(3)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 9) failure = .true.
+      case(2)
+        to_bin = dd % bins_dict % get_key(1)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 3) failure = .true.
+        pr_bin = pr_bin + 1
+        if (.not. dd % send_rank_info(pr_bin) == 9) failure = .true.
+        to_bin = dd % bins_dict % get_key(4)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 3) failure = .true.
+      case(3)
+        to_bin = dd % bins_dict % get_key(1)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 7) failure = .true.
+        pr_bin = pr_bin + 1
+        if (.not. dd % send_rank_info(pr_bin) == 0) failure = .true.
+        to_bin = dd % bins_dict % get_key(4)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 1) failure = .true.
+      case(4)
+        to_bin = dd % bins_dict % get_key(2)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 0) failure = .true.
+        to_bin = dd % bins_dict % get_key(3)
+        pr_bin = (to_bin - 1) * dd % max_domain_procs + 1
+        if (.not. dd % send_rank_info(pr_bin) == 9) failure = .true.
+    end select
+
+    if (master) then
+      message = "Checking results..."
+      call write_message(1)
+    end if
+
+    if (failure) then
+      message = "FAILED: Rank " // trim(to_str(rank)) // " calculated the " // &
+                " wrong number of particles to send to a process on a " // &
+                "neighboring domain."
+      call fatal_error()
+    end if
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+    
+    if (master) then
+      message = "PASSED"
+      call write_message(1)
+    end if
+
+    ! Clean up
+    call deallocate_dd(dd)
+
+  end subroutine test_synchronize_destination_info
+
+
+
 
 end module test_dd_comm

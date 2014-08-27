@@ -214,7 +214,8 @@ contains
 !===============================================================================
 ! SYNCHRONIZE_TRANSFER_INFO communicates all required particle transfer
 ! information to the local domain neighborhood.  Uses dd % n_scatters_local to 
-! produce dd % n_scatters_neighborhood
+! produce dd % n_scatters_neighborhood, which contains how many particles each
+! of the second neighbors is sending to each of the direct neighbors
 !===============================================================================
 
   subroutine synchronize_transfer_info(dd)
@@ -315,6 +316,8 @@ contains
 
   subroutine synchronize_destination_info(dd)
 
+    type(dd_type), intent(inout)  :: dd
+
     integer :: i              ! loop index over particle buffer
     integer :: j
     integer :: pr             ! loop index over processors to send to
@@ -336,8 +339,6 @@ contains
     integer :: pr_bin
     integer :: mod_
 
-    type(dd_type), intent(inout)  :: dd
-  
     n_request = 0
 
     !===========================================================================
@@ -386,10 +387,16 @@ contains
       ! communicator, and add the result to domain_start. (done previously)
       index_scatt = domain_start + dd % scatter_offest(to_bin)
 
+!      print *, rank, to_meshbin, domain_start, index_scatt
+
       ! Now we determine which parts of the array are owned by the receiving
       ! processors
 
-      n_recv = sum(dd % n_scatters_neighborhood(:, to_bin))
+      ! The number of particles received by this direct neighbor is equal to the
+      ! number sent by all other second neighbors plus the number send by this
+      ! domain
+      n_recv = sum(dd % n_scatters_neighborhood(:, to_bin)) + &
+          dd % n_scatters_domain(to_bin)
       mod_ = modulo(n_recv, dd % domain_n_procs(to_meshbin))
       do j = 1, dd % domain_n_procs(to_meshbin)
         dd % proc_finish(j) = j * n_recv/dd % domain_n_procs(to_meshbin)
@@ -400,7 +407,9 @@ contains
         end if
       end do
 
-      ! Determine which receiving processor this starting index corresponds to
+!      if (rank == 2 .and. to_meshbin == 1) print *, dd % proc_finish
+
+      ! Determine which receiving processes this starting index corresponds to
       if (index_scatt <= dd % proc_finish(1)) then
         to_ddrank = 0
       else
@@ -473,18 +482,7 @@ contains
     
     ! Wait for the scatter information to be synchronized
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-  
-  !call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-!    debug = 0
-!    do to_bin = 1, 6
-!        to_meshbin = dd % neighbor_meshbins(to_bin)
-!        if (to_meshbin == NO_BIN_FOUND) cycle
-!        debug(to_meshbin) = dd % n_scatters_local(to_bin)
-!    end do
-!    print *, dd % meshbin, debug
-!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-  
-  
+
   end subroutine synchronize_destination_info
 
 !===============================================================================
@@ -562,6 +560,8 @@ contains
    
     call time_dd_sendrecv % start()
 
+    n_request = 0
+
     local_start = 1
     do from_bin = 1, N_CARTESIAN_NEIGHBORS
       ! Loop through each neighbor we might need to receive from
@@ -582,7 +582,7 @@ contains
             request(n_request), mpi_err)
         local_start = local_start + n_recv
 
-        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
+!        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
 
       end do
     end do
@@ -637,7 +637,7 @@ contains
             MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
             request(n_request), mpi_err)
 
-        print *, current_stage,'send',rank,'-->',to_rank, n_send
+!        print *, current_stage,'send',rank,'-->',to_rank, n_send
 
       end do
       

@@ -221,8 +221,10 @@ contains
       call fatal_error()
     end if
 
+#ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-    
+#endif
+
     if (master) then
       message = "PASSED"
       call write_message(1)
@@ -295,7 +297,9 @@ contains
       call fatal_error()
     end if
 
+#ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
     
     if (master) then
       message = "PASSED"

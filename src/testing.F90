@@ -6,7 +6,8 @@ module testing
 
 #ifdef TESTING
   use test_dd_comm,       only: test_distribute_source, &
-                                test_synchronize_transfer_info
+                                test_synchronize_transfer_info, &
+                                test_synchronize_destination_info
   use test_dd_init,       only: test_set_neighbor_meshbins, &
                                 test_bins_dict
 #endif
@@ -31,6 +32,7 @@ contains
     call test_bins_dict()
     call test_distribute_source()
     call test_synchronize_transfer_info()
+    call test_synchronize_destination_info()
     
 #else
     message = "Must be compiled with testing mode enabled to run tests."

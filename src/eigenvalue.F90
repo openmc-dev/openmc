@@ -100,8 +100,6 @@ contains
       if (master) then
         call check_triggers()
       end if
-        call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
-             mpi_err)
         if (satisfy_triggers) then
         call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
              mpi_err)

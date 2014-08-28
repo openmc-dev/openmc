@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from __future__ import division
+from __future__ import division, print_function
 
 import sys
 import itertools
@@ -17,7 +17,7 @@ err = False
 def parse_options():
   """Process command line arguments"""
 
-  
+
 
   def tallies_callback(option, opt, value, parser):
     """Option parser function for list of tallies"""
@@ -42,7 +42,7 @@ def parse_options():
     except:
       p.print_help()
       err = True
-  
+
   def filters_callback(option, opt, value, parser):
     """Option parser function for list of filters"""
     global err
@@ -59,7 +59,7 @@ def parse_options():
     except:
       p.print_help()
       err = True
-  
+
   from optparse import OptionParser
   usage = r"""%prog [options] <statepoint_file>
 
@@ -98,12 +98,12 @@ You can list the available tallies, scores, and filters with the -l option:
   p.add_option('-o', '--output', action='store', dest='output',
                default='tally', help='path to output SILO file.')
   p.add_option('-e', '--error', dest='valerr', default=False,
-               action='store_true', 
+               action='store_true',
                help='Flag to extract errors instead of values.')
   p.add_option('-v', '--vtk', action='store_true', dest='vtk',
                default=False, help='Flag to convert to VTK instead of SILO.')
   parsed = p.parse_args()
-  
+
   if not parsed[1]:
     p.print_help()
     return parsed, err
@@ -118,35 +118,35 @@ You can list the available tallies, scores, and filters with the -l option:
 ################################################################################
 def main(file_, o):
   """Main program"""
-  
+
   sp = StatePoint(file_)
   sp.read_results()
 
   validate_options(sp, o)
-  
+
   if o.list:
     print_available(sp)
     return
-  
+
   if o.vtk:
     if not o.output[-4:] == ".vtm": o.output += ".vtm"
   else:
     if not o.output[-5:] == ".silo": o.output += ".silo"
-    
+
   if o.vtk:
     try:
       import vtk
     except:
-      print 'The vtk python bindings do not appear to be installed properly.\n'+\
-            'On Ubuntu: sudo apt-get install python-vtk\n'+\
-            'See: http://www.vtk.org/'
+      print('The vtk python bindings do not appear to be installed properly.\n'
+            'On Ubuntu: sudo apt-get install python-vtk\n'
+            'See: http://www.vtk.org/')
       return
   else:
     try:
       import silomesh
     except:
-      print 'The silomesh package does not appear to be installed properly.\n'+\
-            'See: https://github.com/nhorelik/silomesh/'
+      print('The silomesh package does not appear to be installed properly.\n'
+            'See: https://github.com/nhorelik/silomesh/')
       return
 
   if o.vtk:
@@ -158,20 +158,20 @@ def main(file_, o):
 
   # Tally loop #################################################################
   for tally in sp.tallies:
-  
+
     # skip non-mesh tallies or non-user-specified tallies
     if o.tallies and not tally.id in o.tallies: continue
     if not 'mesh' in tally.filters: continue
-    
-    print "Processing Tally {}...".format(tally.id)
-    
+
+    print("Processing Tally {}...".format(tally.id))
+
     # extract filter options and mesh parameters for this tally
     filtercombos = get_filter_combos(tally)
     meshparms = get_mesh_parms(sp, tally)
     nx,ny,nz = meshparms[:3]
     ll = meshparms[3:6]
     ur = meshparms[6:9]
-    
+
     if o.vtk:
       ww = [(u-l)/n for u,l,n in zip(ur,ll,(nx,ny,nz))]
       grid = grid = vtk.vtkImageData()
@@ -180,17 +180,17 @@ def main(file_, o):
       grid.SetSpacing(*ww)
     else:
       silomesh.init_mesh('Tally_{}'.format(tally.id), *meshparms)
-    
+
     # Score loop ###############################################################
     for sid,score in enumerate(tally.scores):
-    
+
       # skip non-user-specified scrores for this tally
       if o.scores and tally.id in o.scores and not sid in o.scores[tally.id]:
         continue
-      
+
       # Filter loop ############################################################
       for filterspec in filtercombos:
-        
+
         # skip non-user-specified filter bins
         skip = False
         if o.filters and tally.id in o.filters:
@@ -200,7 +200,7 @@ def main(file_, o):
               skip = True
               break
         if skip: continue
-        
+
         # find and sanitize the variable name for this score
         varname = get_sanitized_filterspec_name(tally, score, filterspec)
         if o.vtk:
@@ -209,9 +209,9 @@ def main(file_, o):
           dataforvtk = {}
         else:
           silomesh.init_var(varname)
-        
+
         lbl = "\t Score {}.{} {}:\t\t{}".format(tally.id, sid+1, score, varname)
-        
+
         # Mesh fill loop #######################################################
         for x in range(1,nx+1):
           sys.stdout.write(lbl+" {0}%\r".format(int(x/nx*100)))
@@ -226,27 +226,27 @@ def main(file_, o):
                 dataforvtk[i] = float(val)
               else:
                 silomesh.set_value(float(val), x, y, z)
-        
+
         # end mesh fill loop
-        print
+        print()
         if o.vtk:
           for i in range(nx*ny*nz):
             vtkdata.InsertNextValue(dataforvtk[i])
           grid.GetCellData().AddArray(vtkdata)
           del vtkdata
-          
+
         else:
           silomesh.finalize_var()
-        
+
       # end filter loop
-      
+
     # end score loop
     if o.vtk:
       blocks.SetBlock(block_idx, grid)
       block_idx += 1
     else:
       silomesh.finalize_mesh()
-    
+
   # end tally loop
   if o.vtk:
     writer = vtk.vtkXMLMultiBlockDataWriter()
@@ -259,7 +259,7 @@ def main(file_, o):
 ################################################################################
 def get_sanitized_filterspec_name(tally, score, filterspec):
   """Returns a name fit for silo vars for a given filterspec, tally and score"""
-  
+
   comboname = "_"+" ".join(["{}_{}".format(filter_, bin)
                         for filter_, bin in filterspec[1:]])
   if len(filterspec[1:]) == 0: comboname = ''
@@ -274,16 +274,16 @@ def get_filter_combos(tally):
   Each combo has the mesh spec as the first element, to be set later.
   These filter specs correspond with the second argument to StatePoint.get_value
   """
-  
+
   specs = []
 
   if len(tally.filters) == 1:
     return [[['mesh', [1, 1, 1]]]]
-  
-  filters = tally.filters.keys()
+
+  filters = list(tally.filters.keys())
   filters.pop(filters.index('mesh'))
   nbins = [tally.filters[f].length for f in filters]
-  
+
   combos = [ [b] for b in range(nbins[0])]
   for i,b in enumerate(nbins[1:]):
     prod = list(itertools.product(combos, range(b)))
@@ -311,25 +311,25 @@ def get_mesh_parms(sp, tally):
 ################################################################################
 def print_available(sp):
   """Prints available tallies/scores in a statepoint"""
-  
-  print "Available tally and score indices:"
+
+  print("Available tally and score indices:")
   for tally in sp.tallies:
     mesh = ""
     if not 'mesh' in tally.filters: mesh = "(no mesh)"
-    print "\tTally {} {}".format(tally.id, mesh)
-    scores = ["{}.{}: {}".format(tally.id, sid, score) 
+    print("\tTally {} {}".format(tally.id, mesh))
+    scores = ["{}.{}: {}".format(tally.id, sid, score)
               for sid, score in enumerate(tally.scores)]
     for score in scores:
-      print "\t\tScore {}".format(score)
+      print("\t\tScore {}".format(score))
       for filter_ in tally.filters:
         if filter_ == 'mesh': continue
         for bin in range(tally.filters[filter_].length):
-          print "\t\t\tFilters: {}.{}.{}".format(tally.id, filter_, bin)
+          print("\t\t\tFilters: {}.{}.{}".format(tally.id, filter_, bin))
 
 ################################################################################
 def validate_options(sp,o):
   """Validates specified tally/score options for the current statepoint"""
-  
+
   available_tallies = [t.id for t in sp.tallies]
   if o.tallies:
     for otally in o.tallies:
@@ -345,7 +345,7 @@ def validate_options(sp,o):
         for oscore in o.scores[otally]:
           if oscore > len(tally.scores):
             warnings.warn('No score {} in tally {}'.format(oscore, otally))
-              
+
   if o.scores:
     for otally in o.scores.keys():
       if not otally in available_tallies:
@@ -355,7 +355,7 @@ def validate_options(sp,o):
         warnings.warn(
           'Skipping scores for tally {}, excluded by tally list'.format(otally))
         continue
-        
+
   if o.filters:
     for otally in o.filters.keys():
       if not otally in available_tallies:
@@ -380,7 +380,7 @@ def validate_options(sp,o):
             warnings.warn(
                  'No bin {} in tally {} filter {}'.format(bin, otally, filter_))
 
-################################################################################  
+################################################################################
 # monkeypatch to suppress the source echo produced by warnings
 def formatwarning(message, category, filename, lineno, line):
   return "{}:{}: {}: {}\n".format(filename, lineno, category.__name__, message)

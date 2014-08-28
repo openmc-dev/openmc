@@ -16,7 +16,6 @@ module tally
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement,&
                               TriggerObject, TallyObject, TempTrigger, &
                               TriggerResult
-                              
 
 #ifdef MPI
   use mpi
@@ -2299,7 +2298,7 @@ contains
     end do
 
   end function get_next_bin
-  
+
 !===============================================================================
 ! CHECK whether uncertainty reach the threshold, find the maximum 
 ! uncertainty/threshold ratio for all triggers
@@ -2959,14 +2958,12 @@ contains
 
       call statistics_result(t % results, t % n_realizations)
     end do
-      
-      
+
     ! Calculate statistics for global tallies
     call statistics_result(global_tallies, n_realizations)
-    
 
   end subroutine tally_statistics
-  
+
 !===============================================================================
 ! TALLY_TRIGGER_STATISTICS just computes the mean and standard deviation of the  
 ! mean of each tally and stores them in the val_sq attributes of the 
@@ -2982,8 +2979,6 @@ contains
 
   end subroutine tally_trigger_statistics
   
-
-
 !===============================================================================
 ! ACCUMULATE_RESULT accumulates results from many histories (or many generations)
 ! into a single realization of a random variable.
@@ -3021,6 +3016,7 @@ contains
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
+
     this % sum    = this % sum/n
     this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
          this % sum) / (n - 1))

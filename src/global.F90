@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult , TriggerDistance, &
+  use tally_header,     only: TallyObject, TallyMap, TallyResult, TriggerDistance, &
                               KTrigger
   use timer_header,     only: Timer
 
@@ -143,11 +143,13 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-  
+
   ! Check whether reach the trigger 
   logical :: satisfy_triggers = .false.
+ 
   ! Temporary trig_dist to see how far the result is from trigger threshold
   type(TriggerDistance) :: trig_dist
+  
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
@@ -164,13 +166,13 @@ module global
   integer    :: overall_gen   = 0 ! overall generation in the run
   integer    :: n_batch_interval = 1 ! # the batch interval 
   logical    :: no_batch_interval = .false.  ! whether to predict batches
-  
+
   ! Flag for turning trigger on
   logical:: trigger_on = .false. 
   
   ! Trigger for k-effective
   type(KTrigger) keff_trigger
-
+  
   ! External source
   type(ExtSource), target :: external_source
 

@@ -4,7 +4,6 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
-  use dict_header,      only: DictIntInt
   use geometry_header,  only: Cell, Surface, Lattice
   use global
   use list_header,      only: ListChar, ListReal

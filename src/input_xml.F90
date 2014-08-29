@@ -1734,8 +1734,8 @@ contains
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
-      if (.not. (all(mat % atom_density > ZERO) .or. &
-           all(mat % atom_density < ZERO))) then
+      if (.not. (all(mat % atom_density >= ZERO) .or. &
+           all(mat % atom_density <= ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
              to_str(mat % id)
         call fatal_error()

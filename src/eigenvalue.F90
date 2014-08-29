@@ -93,7 +93,7 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-     
+      
       ! Check batches to find whether to compare the result with trigger, check 
       ! the trigger and write the statepoint file
 #ifdef MPI        
@@ -115,8 +115,7 @@ contains
         exit BATCH_LOOP
       end if
     end do BATCH_LOOP
-
-
+    
     call time_active % stop()
 
     ! ==========================================================================
@@ -227,7 +226,6 @@ contains
       call reset_result(global_tallies)
       n_realizations = 0
     end if
-
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
 
@@ -256,7 +254,7 @@ contains
     end if
 
   end subroutine finalize_batch
-
+  
 !===============================================================================
 ! CHECK_TRIGGERS checks whether to check the triggers and whether the triggers' 
 ! thresholds are reached. 
@@ -995,5 +993,6 @@ contains
 
   end subroutine join_bank_from_threads
 #endif
+
 
 end module eigenvalue

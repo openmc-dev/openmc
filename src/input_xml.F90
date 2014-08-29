@@ -4,6 +4,7 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
+  use dict_header,      only: DictIntInt
   use geometry_header,  only: Cell, Surface, Lattice
   use global
   use list_header,      only: ListChar, ListReal
@@ -63,8 +64,8 @@ contains
     character(MAX_LINE_LEN) :: filename
     type(Node), pointer :: doc          => null()
     type(Node), pointer :: node_mode    => null()
-    type(Node), pointer :: node_source  => null()
     type(Node), pointer :: node_trigger => null()
+    type(Node), pointer :: node_source  => null()
     type(Node), pointer :: node_dist    => null()
     type(Node), pointer :: node_cutoff  => null()
     type(Node), pointer :: node_entropy => null()
@@ -126,6 +127,7 @@ contains
            path_output = trim(path_output) // "/"
     end if
     
+     
     ! Check for the node trigger_on to find the trigger status and get the
     ! trigger information, i.e. max_batches, batch_interval and basic batches
     if (check_for_node(doc, "trigger")) then
@@ -194,7 +196,7 @@ contains
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
-
+        
       ! Get number of basic batches.
       if (check_for_node(node_mode, "batches")) then
         call get_node_value(node_mode, "batches", n_basic_batches)
@@ -219,7 +221,7 @@ contains
       allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
       
-      ! Get the trigger information for keff   
+     ! Get the trigger information for keff   
       if (check_for_node(node_mode, "keff_trigger")) then
         call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
         if (check_for_node(node_keff_trigger, "type")) then
@@ -254,7 +256,6 @@ contains
           end if
         end if
       end if
- 
 
     ! Fixed source calculation information
     if (check_for_node(doc, "fixed_source")) then
@@ -1734,8 +1735,8 @@ contains
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
-      if (.not. (all(mat % atom_density >= ZERO) .or. &
-           all(mat % atom_density <= ZERO))) then
+      if (.not. (all(mat % atom_density > ZERO) .or. &
+           all(mat % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
              to_str(mat % id)
         call fatal_error()
@@ -1856,7 +1857,7 @@ contains
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
-    type(TallyFilter), allocatable :: filters(:) ! temporary filters
+    type(TallyFilter), allocatable :: filters(:) ! temporary filters    
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
@@ -2493,7 +2494,6 @@ contains
               end if
             end do
           end if
-
           t % score_for_all(l) = score_name
           select case (trim(score_name))
           case ('flux')
@@ -2737,15 +2737,16 @@ contains
               else
                 message = "Invalid MT on <scores>: " // &
                      trim(sarray(l))
-              call fatal_error()
+                call fatal_error()
               end if
-         
+
             else
               ! Specified score was not an integer
               message = "Unknown scoring function: " // &
                    trim(sarray(l))
               call fatal_error()
             end if
+
           end select
         end do
         t % n_score_bins = n_scores
@@ -2758,7 +2759,7 @@ contains
              // "."
         call fatal_error()
       end if
-      
+    
     !Read the trigger information
  
     if (keff_trigger % trigger_type > 0) then

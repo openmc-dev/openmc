@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function, division
+#!/usr/bin/env python2
 
 from sys import argv
 from math import sqrt
@@ -58,7 +56,7 @@ for t in sp.tallies:
         nx, ny, nz = m.dimension
 
     # Calculate number of score bins
-    ns = t.total_score_bins * t.total_filter_bins // (nx*ny*nz)
+    ns = t.total_score_bins * t.total_filter_bins / (nx*ny*nz)
     assert n_bins == nx*ny*nz*ns
 
     # Create lists for tallies

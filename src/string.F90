@@ -1,7 +1,7 @@
 module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
-  use error,     only: fatal_error, warning
+  use error,     only: warning
   use global,    only: message
 
   implicit none
@@ -185,39 +185,6 @@ contains
   end subroutine upper_case
 
 !===============================================================================
-! ZERO_PADDED returns a string of the input integer padded with zeros to the
-! desired number of digits.  Do not include the sign in n_digits for negative
-! integers.
-!===============================================================================
-
-function zero_padded(num, n_digits) result(str)
-  integer, intent(in) :: num
-  integer, intent(in) :: n_digits
-  character(11)       :: str
-
-  character(8)        :: zp_form
-
-  ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
-  ! largest integer(4).
-  if (n_digits > 10) then
-    message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error()
-  end if
-
-  ! Write a format string of the form '(In.m)' where n is the max width and
-  ! m is the min width.  If a sign is present, then n must be one greater
-  ! than m.
-  if (num < 0) then
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
-  else
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
-  end if
-
-  ! Format the number.
-  write(str, zp_form) num
-end function zero_padded
-
-!===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters
 !===============================================================================
 
@@ -300,25 +267,6 @@ end function zero_padded
     end if
 
   end function ends_with
-
-!===============================================================================
-! COUNT_DIGITS returns the number of digits needed to represent the input
-! integer.
-!===============================================================================
-
-  function count_digits(num) result(n_digits)
-    integer, intent(in) :: num
-    integer             :: n_digits
-
-    n_digits = 1
-    do while (num / 10**(n_digits) /= 0 .and. abs(num / 10 **(n_digits-1)) /= 1&
-              &.and. n_digits /= 10)
-      ! Note that 10 digits is the maximum needed to represent an integer(4) so
-      ! the loop automatically exits when n_digits = 10.
-      n_digits = n_digits + 1
-    end do
-  
-  end function count_digits
 
 !===============================================================================
 ! INT4_TO_STR converts an integer(4) to a string.

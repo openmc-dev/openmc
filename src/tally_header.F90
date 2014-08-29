@@ -39,9 +39,9 @@ module tally_header
 !===============================================================================
 
   type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
+    real(8) :: value          = 0.
+    real(8) :: sum            = 0.
+    real(8) :: sum_sq         = 0.
   end type TallyResult
 
 !===============================================================================
@@ -115,7 +115,7 @@ module tally_header
      integer    :: trigger_type = 0
      real(8)    :: threshold    = 0 
    end type KTrigger
-
+      
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -177,7 +177,7 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-
+    
     ! Trigger information
     type(ScoreObject),  allocatable :: score(:)
     character(len =52), allocatable :: score_for_all(:) ! The names of scores 
@@ -253,6 +253,7 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
+      
       if (allocated(this % score)) &
            deallocate (this % score)
       if (allocated(this % score_for_all)) &

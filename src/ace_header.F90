@@ -2,7 +2,6 @@ module ace_header
 
   use constants,   only: MAX_FILE_LEN
   use endf_header, only: Tab1
-  use list_header, only: ListElemInt
 
   implicit none
 
@@ -95,9 +94,6 @@ module ace_header
     integer       :: listing ! index in xs_listings
     real(8)       :: awr     ! weight of nucleus in neutron masses
     real(8)       :: kT      ! temperature in MeV (k*T)
-
-    ! Linked list of indices in nuclides array of instances of this same nuclide
-    type(ListElemInt), pointer :: nuc_list => null()
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
@@ -245,7 +241,6 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
-    real(8) :: last_prn
   end type NuclideMicroXS
 
 !===============================================================================

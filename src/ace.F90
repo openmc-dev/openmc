@@ -7,7 +7,6 @@ module ace
   use error,            only: fatal_error, warning
   use fission,          only: nu_total
   use global
-  use list_header,      only: ListElemInt
   use material_header,  only: Material
   use output,           only: write_message
   use set_header,       only: SetChar
@@ -657,20 +656,6 @@ contains
       rxn % Q_value       = XSS(JXS4 + i - 1)
       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
-
-      ! If multiplicity is energy-dependent (absolute value > 100), set it based
-      ! on the MT value
-      if (rxn % multiplicity > 100) then
-        if (any(rxn%MT == [11, 16, 24, 30, 41])) then
-          rxn % multiplicity = 2
-        elseif (any(rxn%MT == [17, 25, 42])) then
-          rxn % multiplicity = 3
-        elseif (rxn%MT == 37) then
-          rxn % multiplicity = 4
-        else
-          rxn % multiplicity = 1
-        end if
-      end if
 
       ! read starting energy index
       LOCA = int(XSS(LXS + i - 1))
@@ -1428,32 +1413,5 @@ contains
     XSS_index = XSS_index + n_values
 
   end function get_real
-
-!===============================================================================
-! SAME_NUCLIDE_LIST creates a linked list for each nuclide containing the
-! indices in the nuclides array of all other instances of that nuclide.  For
-! example, the same nuclide may exist at multiple temperatures resulting
-! in multiple entries in the nuclides array for a single zaid number.
-!===============================================================================
-
-  subroutine same_nuclide_list()
-
-    integer :: i ! index in nuclides array
-    integer :: j ! index in nuclides array
-    type(ListElemInt), pointer :: nuc_list => null() ! pointer to nuclide list
-
-    do i = 1, n_nuclides_total
-      allocate(nuclides(i) % nuc_list)
-      nuc_list => nuclides(i) % nuc_list
-      do j = 1, n_nuclides_total
-        if (nuclides(i) % zaid == nuclides(j) % zaid) then
-          nuc_list % data = j
-          allocate(nuc_list % next)
-          nuc_list => nuc_list % next
-        end if
-      end do
-    end do
-
-  end subroutine same_nuclide_list
 
 end module ace

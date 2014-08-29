@@ -38,7 +38,6 @@ contains
     filename = trim(filename) // '.binary'
 #endif
 
-!$omp critical
     ! Create file
     call pr % file_create(filename)
 
@@ -60,7 +59,6 @@ contains
 
     ! Close file
     call pr % file_close()
-!$omp end critical
 
   end subroutine write_particle_restart
 

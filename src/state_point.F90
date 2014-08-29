@@ -16,7 +16,7 @@ module state_point
   use error,              only: fatal_error, warning
   use global
   use output,             only: write_message, time_stamp
-  use string,             only: to_str, zero_padded, count_digits
+  use string,             only: to_str
   use output_interface
   use tally_header,       only: TallyObject
 
@@ -44,7 +44,7 @@ contains
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-        & zero_padded(current_batch, count_digits(n_batches))
+               trim(to_str(current_batch))
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -305,9 +305,7 @@ contains
       if (source_separate) then
 
         ! Set filename
-        filename = trim(path_output) // 'source.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
- 
+        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -328,7 +326,7 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+                   trim(to_str(current_batch))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else

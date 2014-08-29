@@ -339,7 +339,7 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-
+  
   ! Tally trigger types and threshold
   integer, parameter :: &
        VARIANCE           = 1, &
@@ -351,7 +351,7 @@ module constants
   character(*), parameter :: &
        CHAR_EIGENVALUE = "eigenvalue", &
        NO_NUCLIDE      = "a"        ! Just for comparing in tally
-       
+          
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

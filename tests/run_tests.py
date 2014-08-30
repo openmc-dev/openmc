@@ -8,7 +8,7 @@ import shutil
 import re
 import glob
 import socket
-from subprocess import call 
+from subprocess import call
 from collections import OrderedDict
 from optparse import OptionParser
 
@@ -25,7 +25,7 @@ parser.add_option('-C', '--build-config', dest='build_config',
                         Specific build configurations can be printed out with \
                         optional argument -p, --print. This uses standard \
                         regex syntax to select build configurations.")
-parser.add_option('-l', '--list', action="store_true", 
+parser.add_option('-l', '--list', action="store_true",
                   dest="list_build_configs", default=False,
                   help="List out build configurations.")
 parser.add_option("-p", "--project", dest="project", default="",
@@ -117,7 +117,7 @@ class Test(object):
         self.success = True
         self.msg = None
         self.skipped = False
-        self.valgrind_cmd = "" 
+        self.valgrind_cmd = ""
         self.gcov_cmd = ""
         self.cmake = ['cmake', '-H../src', '-Bbuild']
 
@@ -263,7 +263,7 @@ class Test(object):
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False, valgrind=False, coverage=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, 
+    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc,
     valgrind, coverage)})
 
 # List of all tests that may be run. User can add -C to command line to specify
@@ -330,7 +330,7 @@ if options.build_config is not None:
             del tests[key]
 
 # Check for dashboard and determine whether to push results to server
-# Note that there are only 3 basic dashboards: 
+# Note that there are only 3 basic dashboards:
 # Experimental, Nightly, Continuous. On the CDash end, these can be
 # reorganized into groups when a hostname, dashboard and build name
 # are matched.
@@ -349,7 +349,7 @@ else:
     update = ''
 
 # Check for CTest scipts mode
-# Sets up whether we should use just the basic ctest command or use 
+# Sets up whether we should use just the basic ctest command or use
 # CTest scripting to perform tests.
 if not options.dash is None or options.script:
     script_mode = True
@@ -394,7 +394,7 @@ if not script_mode:
             del tests[key]
 
 # Check if tests empty
-if len(tests.keys()) == 0:
+if len(list(tests.keys())) == 0:
     print('No tests to run.')
     exit()
 
@@ -416,7 +416,7 @@ for key in iter(tests):
     if not test.success:
         continue
 
-    # Get valgrind command 
+    # Get valgrind command
     if test.valgrind:
         test.find_valgrind()
     if not test.success:
@@ -427,7 +427,7 @@ for key in iter(tests):
         test.find_coverage()
     if not test.success:
         continue
- 
+
     # Set test specific CTest script vars. Not used in non-script mode
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})

@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from __future__ import division
+from __future__ import division, print_function
 
 import struct
 import sys
@@ -25,7 +25,7 @@ def parse_options():
 ################################################################################
 def main(file_, o):
 
-  print file_
+  print(file_)
   fh = open(file_,'rb')
   header = get_header(fh)
   meshparms = header['dimension'] + header['lower_left'] + header['upper_right']
@@ -36,18 +36,18 @@ def main(file_, o):
     try:
       import vtk
     except:
-      print 'The vtk python bindings do not appear to be installed properly.\n'+\
-            'On Ubuntu: sudo apt-get install python-vtk\n'+\
-            'See: http://www.vtk.org/'
+      print('The vtk python bindings do not appear to be installed properly.\n'
+            'On Ubuntu: sudo apt-get install python-vtk\n'
+            'See: http://www.vtk.org/')
       return
-    
+
     origin = [(l+w*n/2.) for n,l,w in zip((nx,ny,nz),ll,header['width'])]
-    
+
     grid = vtk.vtkImageData()
     grid.SetDimensions(nx+1,ny+1,nz+1)
     grid.SetOrigin(*ll)
     grid.SetSpacing(*header['width'])
-    
+
     data = vtk.vtkDoubleArray()
     data.SetName("id")
     data.SetNumberOfTuples(nx*ny*nz)
@@ -60,7 +60,7 @@ def main(file_, o):
           id_ = get_int(fh)[0]
           data.SetValue(i, id_)
     grid.GetCellData().AddArray(data)
-    
+
     writer = vtk.vtkXMLImageDataWriter()
     writer.SetInput(grid)
     if not o.output[-4:] == ".vti": o.output += ".vti"
@@ -72,8 +72,8 @@ def main(file_, o):
     try:
       import silomesh
     except:
-      print 'The silomesh package does not appear to be installed properly.\n'+\
-            'See: https://github.com/nhorelik/silomesh/'
+      print('The silomesh package does not appear to be installed properly.\n'
+            'See: https://github.com/nhorelik/silomesh/')
       return
     if not o.output[-5:] == ".silo": o.output += ".silo"
     silomesh.init_silo(o.output)
@@ -86,10 +86,10 @@ def main(file_, o):
         for z in range(1,nz+1):
           id_ = get_int(fh)[0]
           silomesh.set_value(float(id_), x, y, z)
-    print
+    print()
     silomesh.finalize_var()
     silomesh.finalize_mesh()
-    silomesh.finalize_silo()  
+    silomesh.finalize_silo()
 
 ################################################################################
 def get_header(file_):

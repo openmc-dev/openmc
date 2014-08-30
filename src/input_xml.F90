@@ -2682,8 +2682,9 @@ contains
 
   subroutine read_plots_xml()
 
-    integer i, j
-    integer n_cols, col_id, n_comp, n_masks, n_meshlines
+    integer :: i, j
+    integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
+    integer :: meshid
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -2973,7 +2974,7 @@ contains
             
             ! Ensure that there is a mesh id for this meshlines specification
             if (check_for_node(node_meshlines, "mesh")) then
-              call get_node_value(node_meshlines, "mesh", pl % meshlines_id)
+              call get_node_value(node_meshlines, "mesh", meshid)
             else
               message = "Must specify a mesh id for meshlines " // &
                         "specification in plot " // trim(to_str(pl % id))
@@ -3009,16 +3010,16 @@ contains
             end if
 
             ! Check if the specified tally mesh exists
-            if (mesh_dict % has_key(pl % meshlines_id)) then
-              pl % meshlines_id = mesh_dict % get_key(pl % meshlines_id)
-              if (meshes(pl % meshlines_id) % type /= LATTICE_RECT) then
+            if (mesh_dict % has_key(meshid)) then
+              pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
+              if (meshes(meshid) % type /= LATTICE_RECT) then
                 message = "Non-rectangular mesh specified in meshlines for" // &
                           " plot " // trim(to_str(pl % id))
                 call fatal_error()
               end if
             else
-              message = "Could not find tally mesh " // &
-                        trim(to_str(pl % meshlines_id)) // &
+              message = "Could not find mesh " // &
+                        trim(to_str(meshid)) // &
                         " specified in meshlines for plot " // &
                         trim(to_str(pl % id))
               call fatal_error()

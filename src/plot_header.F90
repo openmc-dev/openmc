@@ -1,6 +1,7 @@
 module plot_header
 
   use constants
+  use mesh_header,  only: StructuredMesh
 
   implicit none
 
@@ -25,8 +26,8 @@ module plot_header
     real(8) :: width(3)              ! xyz widths of plot
     integer :: basis                 ! direction of plot slice 
     integer :: pixels(3)             ! pixel width/height of plot slice
-    integer :: meshlines_id = -1     ! id of the mesh to plot lines of
     integer :: meshlines_width       ! pixel width of meshlines
+    type(StructuredMesh), pointer :: meshlines_mesh => null() ! mesh to plot
     type(ObjectColor) :: meshlines_color ! Color for meshlines
     type(ObjectColor) :: not_found   ! color for positions where no cell found
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats

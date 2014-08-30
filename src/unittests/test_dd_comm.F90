@@ -279,7 +279,7 @@ contains
 
     if (check_procs()) return
 
-    ! EXECUTE
+    ! SETUP
 
     if (master) then
       message = "Setting up..."
@@ -370,7 +370,7 @@ contains
 
     if (check_procs()) return
 
-    ! EXECUTE
+    ! SETUP
 
     if (master) then
       message = "Setting up..."
@@ -484,7 +484,13 @@ contains
 
     if (check_procs()) return
 
-    ! EXECUTE
+    ! SETUP
+
+    if (master) then
+      message = "TEST NOT IMPLEMENTED"
+      call warning(force=.true.)
+    end if
+    return
 
     if (master) then
       message = "Setting up..."
@@ -542,5 +548,83 @@ contains
     call deallocate_dd(dd)
 
   end subroutine test_send_recv_particles
+
+!===============================================================================
+! TEST_SYNCHRONIZE_BANK_DD
+!===============================================================================
+
+  subroutine test_synchronize_bank_dd()
+
+    logical :: failure = .false.
+    integer :: mpi_err
+
+    if (master) call header("test_synchronize_bank_dd", level=2)
+
+    if (master) then
+      message = "TEST NOT IMPLEMENTED"
+      call warning(force=.true.)
+    end if
+    return
+
+    if (check_procs()) return
+
+    ! SETUP
+
+    if (master) then
+      message = "Setting up..."
+      call write_message(1)
+    end if
+
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    ! TODO: this should test the whole neighborhood: 4 domains is not enough
+
+    ! Set n_particles so the particle buffer is properly allocated
+    n_particles = 97 ! we have 55 transferring
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    ! Set up local outscatter
+    call dd_simple_four_domain_scatters(dd)
+
+    ! Get dd % n_scatters_neighborhood
+    call synchronize_transfer_info(dd)
+
+    ! Set renc/recv info
+    call synchronize_destination_info(dd)
+
+    ! EXECUTE
+
+    if (master) then
+      message = "Invoking test..."
+      call write_message(1)
+    end if
+
+    ! CHECK
+
+    if (master) then
+      message = "Checking results..."
+      call write_message(1)
+    end if
+
+    if (failure) then
+      message = "FAILED: Rank " // trim(to_str(rank))
+      call fatal_error()
+    end if
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+    
+    if (master) then
+      message = "PASSED"
+      call write_message(1)
+    end if
+
+    ! Clean up
+    call deallocate_dd(dd)
+
+  end subroutine test_synchronize_bank_dd
 
 end module test_dd_comm

@@ -190,14 +190,14 @@ contains
     type(Image)               :: img
     
     logical :: in_mesh
-    integer :: x, y       ! pixel location
+    integer :: out_, in_  ! pixel location
     integer :: r, g, b    ! RGB color for meshlines pixels
-    integer :: xrange(2), yrange(2) ! range of pixel locations
+    integer :: outrange(2), inrange(2) ! range of pixel locations
     integer :: i, j       ! loop indices
-    integer :: ijk(3)
     integer :: plus
     integer :: ijk_ll(3)  ! mesh bin ijk indicies of plot lower left
     integer :: ijk_ur(3)  ! mesh bin ijk indicies of plot upper right
+    integer :: outer, inner
     real(8) :: frac
     real(8) :: width(3)   ! real widths of the plot
     real(8) :: xyz_ll_plot(3)  ! lower left xyz of plot image
@@ -214,74 +214,75 @@ contains
     
     select case (pl % basis)
       case(PLOT_BASIS_XY)
-        xyz_ll_plot(1) = pl % origin(1) - pl % width(1) / 2.0
-        xyz_ll_plot(2) = pl % origin(2) - pl % width(2) / 2.0
-        xyz_ll_plot(3) = pl % origin(3)
-        xyz_ur_plot(1) = pl % origin(1) + pl % width(1) / 2.0
-        xyz_ur_plot(2) = pl % origin(2) + pl % width(2) / 2.0
-        xyz_ur_plot(3) = pl % origin(3)
-        
-        width = xyz_ur_plot - xyz_ll_plot
-        
-        call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-        call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
-        
-        ! sweep through all meshbins on this plane and draw borders
-        ijk(3) = 0
-        do i = ijk_ll(1), ijk_ur(1)
-          do j = ijk_ll(2), ijk_ur(2)
-            ! check if we're in the mesh for this ijk
-            if (i > 0 .and. i <= m % dimension(1) .and. &
-                j > 0 .and. j <= m % dimension(2)) then
-              
-              ! get xyz's of lower left and upper right of this mesh cell
-              ijk(1) = i
-              ijk(2) = j
-              xyz_ll(:m % n_dimension) = &
-                  m % lower_left + m % width * (ijk(:m % n_dimension) - 1)
-              xyz_ur(:m % n_dimension) = &
-                  m % lower_left + m % width * ijk(:m % n_dimension)
-              
-              ! map the xyz to pixel locations
-              frac = (xyz_ll(1) - xyz_ll_plot(1)) / width(1)
-              xrange(1) = int(frac * real(img % width,8))
-              frac = (xyz_ur(1) - xyz_ll_plot(1)) / width(1)
-              xrange(2) = int(frac * real(img % width,8))
-              
-              frac = (xyz_ll(2) - xyz_ll_plot(2)) / width(2)
-              yrange(1) = img % height - int(frac * real(img % height,8))
-              frac = (xyz_ur(2) - xyz_ll_plot(2)) / width(2)
-              yrange(2) = img % height - int(frac * real(img % height,8))
-              
-              ! draw black lines
-              do x = xrange(1), xrange(2)
-                do plus = 0, pl % meshlines_width
-                  call set_pixel(img, x, yrange(1) + plus, r, g, b)
-                  call set_pixel(img, x, yrange(2) + plus, r, g, b)
-                  call set_pixel(img, x, yrange(1) - plus, r, g, b)
-                  call set_pixel(img, x, yrange(2) - plus, r, g, b)
-                end do
-              end do
-              do y = yrange(2), yrange(1)
-                do plus = 0, pl % meshlines_width
-                  call set_pixel(img, xrange(1) + plus, y, r, g, b)
-                  call set_pixel(img, xrange(2) + plus, y, r, g, b)
-                  call set_pixel(img, xrange(1) - plus, y, r, g, b)
-                  call set_pixel(img, xrange(2) - plus, y, r, g, b)
-                end do
-              end do
-              
-            end if
-          end do
-        end do
-        
+        outer = 1
+        inner = 2
       case(PLOT_BASIS_XZ)
-        message = "Meshline plotting currently only implemented for basis xy"
-        call fatal_error()
+        outer = 1
+        inner = 3
       case(PLOT_BASIS_YZ)
-        message = "Meshline plotting currently only implemented for basis xy"
-        call fatal_error()
+        outer = 2
+        inner = 3
     end select
+
+    xyz_ll_plot = pl % origin
+    xyz_ur_plot = pl % origin
+
+    xyz_ll_plot(outer) = pl % origin(1) - pl % width(1) / 2.0
+    xyz_ll_plot(inner) = pl % origin(2) - pl % width(2) / 2.0
+    xyz_ur_plot(outer) = pl % origin(1) + pl % width(1) / 2.0
+    xyz_ur_plot(inner) = pl % origin(2) + pl % width(2) / 2.0
+
+    width = xyz_ur_plot - xyz_ll_plot
+
+    call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
+    call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+
+    ! sweep through all meshbins on this plane and draw borders
+    do i = ijk_ll(outer), ijk_ur(outer)
+      do j = ijk_ll(inner), ijk_ur(inner)
+        ! check if we're in the mesh for this ijk
+        if (i > 0 .and. i <= m % dimension(outer) .and. &
+            j > 0 .and. j <= m % dimension(inner)) then
+          
+          ! get xyz's of lower left and upper right of this mesh cell
+          xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
+          xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
+          xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
+          xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
+          
+          ! map the xyz ranges to pixel ranges
+          
+          frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
+          outrange(1) = int(frac * real(img % width, 8))
+          frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
+          outrange(2) = int(frac * real(img % width, 8))
+          
+          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
+          inrange(1) = int(frac * real(img % height, 8))
+          frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
+          inrange(2) = int(frac * real(img % height, 8))
+
+          ! draw lines
+          do out_ = outrange(1), outrange(2)
+            do plus = 0, pl % meshlines_width
+              call set_pixel(img, out_, inrange(1) + plus, r, g, b)
+              call set_pixel(img, out_, inrange(2) + plus, r, g, b)
+              call set_pixel(img, out_, inrange(1) - plus, r, g, b)
+              call set_pixel(img, out_, inrange(2) - plus, r, g, b)
+            end do
+          end do
+          do in_ = inrange(1), inrange(2)
+            do plus = 0, pl % meshlines_width
+              call set_pixel(img, outrange(1) + plus, in_, r, g, b)
+              call set_pixel(img, outrange(2) + plus, in_, r, g, b)
+              call set_pixel(img, outrange(1) - plus, in_, r, g, b)
+              call set_pixel(img, outrange(2) - plus, in_, r, g, b)
+            end do
+          end do
+          
+        end if
+      end do
+    end do
     
   end subroutine draw_mesh_lines
 

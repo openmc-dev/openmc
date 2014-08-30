@@ -81,10 +81,12 @@ contains
     
     ! Initialize different MPI communicators for each domain, for fission bank
     ! and tally synchronization
+#ifdef MPI
     call MPI_COMM_SPLIT(MPI_COMM_WORLD, dd % meshbin, rank, dd % comm, mpi_err)
     call MPI_COMM_SIZE(dd % comm, dd % n_domain_procs, mpi_err)
     call MPI_COMM_RANK(dd % comm, dd % rank, mpi_err)
-    
+#endif    
+
     ! Set local_master
     if (dd % rank == 0) then
       dd % local_master = .true.

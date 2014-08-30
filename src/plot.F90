@@ -168,7 +168,7 @@ contains
     end do
 
     ! Draw tally mesh boundaries on the image if requested
-    if (pl % meshlines_id > 0) call draw_mesh_lines(pl, img)
+    if (associated(pl % meshlines_mesh)) call draw_mesh_lines(pl, img)
 
     ! Write out the ppm to a file
     call output_ppm(pl,img)
@@ -206,7 +206,7 @@ contains
     real(8) :: xyz_ur(3)  ! upper right xyz
     type(StructuredMesh), pointer :: m => null()
   
-    m => meshes(pl % meshlines_id)
+    m => pl % meshlines_mesh
     
     r = pl % meshlines_color % rgb(1)
     g = pl % meshlines_color % rgb(2)

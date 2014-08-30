@@ -1604,6 +1604,24 @@ contains
   end subroutine print_overlap_check
 
 !===============================================================================
+! PRINT_TESTING displays the pass/skip/fail unit testing results
+!===============================================================================
+
+  subroutine print_testing()
+    ! dsiplay the header block
+    call header("UNIT TESTING COMPLETED", level=1)
+    
+    write(ou,100) 'No. Passed', 'No. Skipped', 'No. Failed'
+    write(ou,101) unittests % n_passed, unittests % n_skipped, &
+        unittests % n_failed
+    
+    ! format for write statements
+100 format (1X,A,T15,A,T15,A)
+101 format (1X,I8,T15,I8,T15,I8)
+
+  end subroutine print_testing
+
+!===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all
 ! tallies and their standard deviations
 !===============================================================================

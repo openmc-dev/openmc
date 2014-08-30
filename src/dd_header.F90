@@ -41,7 +41,7 @@ module dd_header
     ! history, but for DD runs we need to store particles if they would be
     ! transmitted to a neighboring domain.
     type(Particle), allocatable :: particle_buffer(:)
-    integer :: size_particle_buffer ! size of particle_buffer
+    integer(8) :: size_particle_buffer ! size of particle_buffer
     
     ! During simulation we keep track of where particles will scatter out to
     ! with p % outscatter_destination, and then send them later during

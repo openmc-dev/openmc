@@ -2,7 +2,7 @@ module finalize
 
   use global
   use output,         only: header, print_runtime, print_results, &
-                            print_overlap_check, write_tallies
+                            print_overlap_check, write_tallies, print_testing
   use tally,          only: tally_statistics
 
 #ifdef MPI
@@ -25,7 +25,7 @@ contains
   subroutine finalize_run()
 
     if (run_mode == MODE_TESTING) then
-      if (master) call header("ALL UNIT TESTS COMPLETED SUCCESSFULLY", level=1)
+      if (master) call print_testing()
 #ifdef MPI
       call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 #endif

@@ -9,10 +9,11 @@ module test_dd_comm
   use error,            only: fatal_error, warning
   use global,           only: master, n_procs, rank, message, work, &
                               n_particles, source_bank, size_source_bank
-  use output,           only: header, write_message
+  use output,           only: header
   use random_lcg,       only: initialize_prng, set_particle_seed, prn_seed
   use string,           only: to_str
   use test_dd_init,     only: check_procs, dd_simple_four_domains
+  use testing_header,   only: testing_type
 
 #ifdef MPI
   use mpi
@@ -29,22 +30,27 @@ contains
 ! TEST_DISTRIBUTE_SOURCE
 !===============================================================================
 
-  subroutine test_distribute_source()
+  subroutine test_distribute_source(suite)
 
+    type(testing_type), intent(inout) :: suite
+    
     integer(8) :: i
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_distribute_source", level=2)
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
@@ -83,20 +89,14 @@ contains
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! Invoke test method
     call distribute_source(dd)
 
     ! CHECK
     
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
+    if (master) call suite % check()
 
     select case(rank)
       case (0)
@@ -147,19 +147,16 @@ contains
     end select
     
     if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank)) // &
-          " doesn't have all the particles it should."
-      call fatal_error()
+      call suite % fail("Rank " // trim(to_str(rank)) // &
+        " doesn't have all the particles it should.")
     end if
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     deallocate(source_bank)    
@@ -269,22 +266,27 @@ contains
 ! TEST_SYNCHRONIZE_INFO
 !===============================================================================
 
-  subroutine test_synchronize_transfer_info()
+  subroutine test_synchronize_transfer_info(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
     integer :: bin
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_synchronize_transfer_info", level=2)
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
@@ -298,20 +300,14 @@ contains
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! Invoke test method
     call synchronize_transfer_info(dd)
 
     ! CHECK
 
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
+    if (master) call suite % check()
 
     select case(rank)
       case(0, 1)
@@ -337,19 +333,16 @@ contains
     end select    
 
     if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank)) // &
-          " didn't receive all the info it should have about its neighbors."
-      call fatal_error()
+      call suite % fail("Rank " // trim(to_str(rank)) // &
+          " didn't receive all the info it should have about its neighbors.")
     end if
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)
@@ -360,22 +353,27 @@ contains
 ! TEST_SYNCHRONIZE_DESTINATION_INFO
 !===============================================================================
 
-  subroutine test_synchronize_destination_info()
+  subroutine test_synchronize_destination_info(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
     integer :: to_bin, pr_bin
 
     if (master) call header("test_synchronize_destination_info", level=2)
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
@@ -395,10 +393,7 @@ contains
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     call synchronize_destination_info(dd)
 
@@ -445,26 +440,20 @@ contains
         if (.not. dd % send_rank_info(pr_bin) == 9) failure = .true.
     end select
 
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
+    if (master) call suite % check()
 
     if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank)) // " calculated the " // &
+      call suite % fail("Rank " // trim(to_str(rank)) // " calculated the " // &
                 " wrong number of particles to send to a process on a " // &
-                "neighboring domain."
-      call fatal_error()
+                "neighboring domain.")
     end if
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)
@@ -475,27 +464,33 @@ contains
 ! TEST_SEND_RECV_PARTICLES
 !===============================================================================
 
-  subroutine test_send_recv_particles()
+  subroutine test_send_recv_particles(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_send_recv_particles", level=2)
-
-    if (check_procs()) return
-
-    ! SETUP
 
     if (master) then
       message = "TEST NOT IMPLEMENTED"
       call warning(force=.true.)
+      call suite % skip()
     end if
     return
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
     end if
+
+    ! SETUP
+
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
@@ -518,31 +513,18 @@ contains
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! CHECK
 
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
-
-    if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank))
-      call fatal_error()
-    end if
+    if (master) call suite % check()
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)
@@ -553,27 +535,33 @@ contains
 ! TEST_SYNCHRONIZE_BANK_DD
 !===============================================================================
 
-  subroutine test_synchronize_bank_dd()
+  subroutine test_synchronize_bank_dd(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_synchronize_bank_dd", level=2)
 
     if (master) then
       message = "TEST NOT IMPLEMENTED"
       call warning(force=.true.)
+      call suite % skip()
     end if
     return
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
@@ -596,31 +584,18 @@ contains
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! CHECK
 
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
-
-    if (failure) then
-      message = "FAILED: Rank " // trim(to_str(rank))
-      call fatal_error()
-    end if
+    if (master) call suite % check()
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)

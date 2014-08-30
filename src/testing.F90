@@ -1,6 +1,6 @@
 module testing
 
-  use global,             only: master, message
+  use global,             only: master, message, unittests
   use error,              only: fatal_error
   use output,             only: header
 
@@ -27,16 +27,17 @@ contains
   subroutine run_tests()
   
 #ifdef TESTING
+
     if (master) call header("UNIT TESTING MODE", level=1)
     
     ! Domain decomposition tests
-    call test_set_neighbor_meshbins()
-    call test_bins_dict()
-    call test_distribute_source()
-    call test_synchronize_transfer_info()
-    call test_synchronize_destination_info()
-    call test_send_recv_particles()
-    call test_synchronize_bank_dd()
+    call test_set_neighbor_meshbins(unittests)
+    call test_bins_dict(unittests)
+    call test_distribute_source(unittests)
+    call test_synchronize_transfer_info(unittests)
+    call test_synchronize_destination_info(unittests)
+    call test_send_recv_particles(unittests)
+    call test_synchronize_bank_dd(unittests)
 
 #else
     message = "Must be compiled with testing mode enabled to run tests."

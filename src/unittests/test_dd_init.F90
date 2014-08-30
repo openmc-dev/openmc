@@ -10,6 +10,7 @@ module test_dd_init
   use output,           only: header, write_message
   use random_lcg,       only: initialize_prng, set_particle_seed, prn_seed
   use string,           only: to_str
+  use testing_header,   only: testing_type
 
 #ifdef MPI
   use mpi
@@ -79,31 +80,33 @@ contains
 ! TEST_SET_NEIGHBOR_MESHBINS
 !===============================================================================
 
-  subroutine test_set_neighbor_meshbins()
+  subroutine test_set_neighbor_meshbins(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_set_neighbor_meshbins", level=2)
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! Invoke test method
 
@@ -111,10 +114,7 @@ contains
 
     ! CHECK
     
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
+    if (master) call suite % check()
 
     select case(rank)
       case(0, 1)
@@ -220,18 +220,16 @@ contains
     end select
 
     if (failure) then
-      message = "FAILED: domain meshbin mapping is incorrect"
-      call fatal_error()
+      call suite % fail("Domain meshbin mapping is incorrect on rank " // &
+          trim(to_str(rank))) 
     end if
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
 
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)
@@ -243,31 +241,33 @@ contains
 ! TEST_BINS_DICT
 !===============================================================================
 
-  subroutine test_bins_dict()
+  subroutine test_bins_dict(suite)
+
+    type(testing_type), intent(inout) :: suite
 
     logical :: failure = .false.
+#ifdef MPI
     integer :: mpi_err
+    logical :: any_fail
+#endif
 
     if (master) call header("test_bins_dict", level=2)
 
-    if (check_procs()) return
+    if (check_procs()) then
+      if (master) call suite % skip()
+      return
+    end if
 
     ! SETUP
 
-    if (master) then
-      message = "Setting up..."
-      call write_message(1)
-    end if
+    if (master) call suite % setup()
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
 
     ! EXECUTE
 
-    if (master) then
-      message = "Invoking test..."
-      call write_message(1)
-    end if
+    if (master) call suite % execute()
 
     ! Invoke test method
 
@@ -275,10 +275,7 @@ contains
 
     ! CHECK
     
-    if (master) then
-      message = "Checking results..."
-      call write_message(1)
-    end if
+    if (master) call suite % check()
 
     select case(rank)
       case(0, 1)
@@ -296,18 +293,16 @@ contains
     end select
 
     if (failure) then
-      message = "FAILED: domain bins_dict is incorrect"
-      call fatal_error()
+      call suite % fail("Domain bins_dict is incorrect on rank " // &
+          trim(to_str(rank))) 
     end if
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
 #endif
     
-    if (master) then
-      message = "PASSED"
-      call write_message(1)
-    end if
+    if (master .and. .not. any_fail) call suite % pass()
 
     ! Clean up
     call deallocate_dd(dd)

@@ -496,8 +496,8 @@ contains
 
     type(dd_type), intent(inout)  :: dd
 
-    integer :: n_recv, n_send
-    integer :: alloc_err      ! allocation error code
+    integer(8) :: n_recv, n_send
+    integer    :: alloc_err      ! allocation error code
 
     ! There are certainly more efficient ways to use memory than to have two
     ! separate buffers like what's done here, but this helps for clarity
@@ -507,7 +507,7 @@ contains
     if (n_recv > dd % size_recv_buffer) then
     
       ! Resize the receive buffer
-      n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM)
+      n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM, 8)
       call resize_array(dd % recv_buffer, dd % size_recv_buffer, n_recv, &
           alloc_err)
       
@@ -518,7 +518,7 @@ contains
     if (n_send > dd % size_send_buffer) then
     
       ! Resize the send buffer
-      n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM)
+      n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM, 8)
       call resize_array(dd % send_buffer, dd % size_send_buffer, n_send, &
           alloc_err)
       
@@ -1071,6 +1071,7 @@ contains
     ! Deallocate space for the temporary source bank on the last generation
     if (current_batch == n_batches .and. current_gen == gen_per_batch) &
          deallocate(temp_sites)
+
   end subroutine synchronize_bank_dd
 
 end module dd_comm

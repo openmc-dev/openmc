@@ -48,8 +48,8 @@ module dd_header
     ! syncronize_banks
     type(ParticleBuffer), allocatable :: send_buffer(:)
     type(ParticleBuffer), allocatable :: recv_buffer(:)
-    integer :: size_send_buffer ! size of buffer, resized if needed
-    integer :: size_recv_buffer ! size of buffer, resized if needed
+    integer(8) :: size_send_buffer ! size of buffer, resized if needed
+    integer(8) :: size_recv_buffer ! size of buffer, resized if needed
 
     ! Scatter information
     integer              :: n_global_scatters ! # of scatters in last DD stage

@@ -26,6 +26,7 @@ module resize_arr
     module procedure resize_array_bank, &
                      resize8_array_bank, &
                      resize_array_particle, &
+                     resize8_array_particle, &
                      resize_array_particlebuffer, &
                      resize8_array_particlebuffer
   end interface
@@ -182,7 +183,7 @@ contains
   end subroutine resize8_array_bank
 
 !===============================================================================
-! RESIZE_ARRAY_BANK
+! RESIZE_ARRAY_PARTICLE
 !===============================================================================
 
   subroutine resize_array_particle(array, current_size, requested_size, alloc_err)
@@ -204,6 +205,30 @@ contains
     current_size = requested_size
 
   end subroutine resize_array_particle
+
+!===============================================================================
+! RESIZE8_ARRAY_PARTICLE
+!===============================================================================
+
+  subroutine resize8_array_particle(array, current_size, requested_size, alloc_err)
+
+    type(Particle), allocatable, intent(inout)     :: array(:)
+    integer(8), intent(inout)                      :: current_size
+    integer(8), intent(in)                         :: requested_size
+    integer, intent(out)                           :: alloc_err
+
+    type(PArticle), allocatable                    :: tmp(:)
+
+    if (requested_size > current_size) then
+
+      allocate(tmp(requested_size), STAT=alloc_err)
+      call move_alloc(FROM=tmp, TO=array)
+
+    end if
+
+    current_size = requested_size
+
+  end subroutine resize8_array_particle
 
 !===============================================================================
 ! RESIZE_ARRAY_PARTICLEBUFFER

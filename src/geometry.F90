@@ -306,10 +306,9 @@ contains
       xyz_t(2) = xyz(2) - (lat % center(2) + &
           &(2 * (i_xyz(2) - lat % n_rings)) * lat % pitch(1) + &
           &(i_xyz(1) - lat % n_rings) * lat % pitch(1))
-      ! TODO transition to center from lower_left
       if (lat % is_3d) then
-        xyz_t(3) = xyz(3) - (lat % center(3) + &
-            &(i_xyz(3) - 0.5_8) * lat % pitch(3))
+        xyz_t(3) = xyz(3) - lat % center(3) &
+            &+ (lat % n_axial/2 - i_xyz(3) + 1) * lat % pitch(2)
       else
         xyz_t(3) = xyz(3)
       end if
@@ -404,9 +403,9 @@ contains
 
     type is (HexLattice)
       ! Index z direction.
-      ! TODO transition to center from lower_left
       if (lat % is_3d) then
-        i_xyz(3) = ceiling((xyz(3) - lat % center(3)) / lat % pitch(2))
+        i_xyz(3) = ceiling((xyz(3) - lat % center(3))/lat % pitch(2) + 0.5_8) &
+            &+ lat % n_axial/2
       else
         i_xyz(3) = 1
       end if

@@ -1603,14 +1603,14 @@ contains
       ! is selected.  This logic must include consideration of floating point
       ! precision.
       if (d_surf < d_lat) then
-        if (abs(dist - d_surf)/dist >= FP_REL_PRECISION) then
+        if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
           dist = d_surf
           surface_crossed = level_surf_cross
           lattice_translation = (/0, 0, 0/)
           final_coord => coord
         end if
       else
-        if (abs(dist - d_lat)/dist >= FP_REL_PRECISION) then
+        if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
           dist = d_lat
           surface_crossed = None
           lattice_translation = level_lat_trans

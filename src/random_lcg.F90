@@ -1,6 +1,7 @@
 module random_lcg
 
   use random_lcg_header
+  use constants
 
   implicit none
 
@@ -18,7 +19,7 @@ module random_lcg
   real(8)    :: prn_norm   ! 2^(-M)
   integer    :: stream     ! current RNG stream
 
-!$omp threadprivate(prn_seed)
+!$omp threadprivate(prn_seed, stream)
 
   public :: prn
   public :: initialize_prng
@@ -60,11 +61,13 @@ contains
 
     integer :: i
 
-    stream     = STREAM_TRACKING
     prn_seed0  = seed
+!$omp parallel
     do i = 1, N_STREAMS
       prn_seed(i) = prn_seed0 + i - 1
     end do
+    stream     = STREAM_TRACKING
+!$omp end parallel
     prn_mult   = 2806196910506780709_8
     prn_add    = 1_8
     prn_bits   = 63

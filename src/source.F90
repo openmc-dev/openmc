@@ -10,7 +10,7 @@ module source
   use output,           only: write_message
   use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
-  use random_lcg,       only: prn, set_particle_seed
+  use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use string,           only: to_str
 
 #ifdef MPI
@@ -101,6 +101,9 @@ contains
     ! Set weight to one by default
     site % wgt = ONE
 
+    ! Set the random number generator to the source stream.
+    call prn_set_stream(STREAM_SOURCE)
+
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
@@ -188,6 +191,9 @@ contains
       message = "No energy distribution specified for external source!"
       call fatal_error()
     end select
+
+    ! Set the random number generator back to the tracking stream.
+    call prn_set_stream(STREAM_TRACKING)
 
   end subroutine sample_external_source
 

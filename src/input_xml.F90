@@ -1301,8 +1301,8 @@ contains
     end do RECT_LATTICES
 
     HEX_LATTICES: do i = 1, n_hlats
-      allocate(HexLattice::lattices(i) % obj)
-      lat => lattices(i) % obj
+      allocate(HexLattice::lattices(n_rlats + i) % obj)
+      lat => lattices(n_rlats + i) % obj
       select type (lat)
       type is (HexLattice)
 
@@ -1477,7 +1477,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % add_key(lat % id, i)
+      call lattice_dict % add_key(lat % id, n_rlats + i)
 
       end select
     end do HEX_LATTICES

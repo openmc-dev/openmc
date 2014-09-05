@@ -10,7 +10,7 @@ module source
   use output,           only: write_message
   use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
-  use random_lcg,       only: prn, set_particle_seed
+  use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use string,           only: to_str
 
 #ifdef MPI
@@ -101,6 +101,9 @@ contains
     ! Set weight to one by default
     site % wgt = ONE
 
+    ! Set the random number generator to the source stream.
+    call prn_set_stream(STREAM_SOURCE)
+
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
@@ -131,6 +134,39 @@ contains
         end if
       end do
       call p % clear()
+
+    case (SRC_SPACE_FISSION)
+      ! Set particle defaults
+      call p % initialize()
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+          cycle
+        end if
+        if (.not. materials(p % material) % fissionable) then
+          found = .false.
+          call p % initialize()
+        end if
+      end do
 
     case (SRC_SPACE_POINT)
       ! Point source
@@ -188,6 +224,9 @@ contains
       message = "No energy distribution specified for external source!"
       call fatal_error()
     end select
+
+    ! Set the random number generator back to the tracking stream.
+    call prn_set_stream(STREAM_TRACKING)
 
   end subroutine sample_external_source
 

@@ -167,6 +167,7 @@ contains
           call p % initialize()
         end if
       end do
+      call p % clear()
 
     case (SRC_SPACE_POINT)
       ! Point source

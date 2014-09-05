@@ -94,21 +94,12 @@ contains
 
       call finalize_batch()
       
+      if (satisfy_triggers) exit BATCH_LOOP
+      
       ! Check batches to find whether to compare the result with trigger, check 
       ! the trigger and write the statepoint file
 
-      if (master) then
-        call check_triggers()
-      end if
-#ifdef MPI        
-      call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
-             mpi_err)              
-#endif
-      if (satisfy_triggers .or. (trigger_on .and. n_batches == current_batch)) &
-           then
-        call write_last_state_point()
-        exit BATCH_LOOP
-      end if
+
     end do BATCH_LOOP
     
     call time_active % stop()
@@ -226,6 +217,20 @@ contains
 
     ! Display output
     if (master) call print_batch_keff()
+    
+    ! Check_triggers
+    if (master) then
+        call check_triggers()
+      end if
+#ifdef MPI        
+      call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
+             mpi_err)              
+#endif
+      if (satisfy_triggers .or. (trigger_on .and. n_batches == current_batch)) &
+           then
+        call statepoint_batch % add(current_batch)
+        call sourcepoint_batch % add(current_batch)
+      end if
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
@@ -333,33 +338,6 @@ contains
     end if
   end subroutine check_triggers
  
-!===============================================================================
-! Write_last_state_point writes the statepoint file when the caculation is 
-! stopped when all triggers are satisfied or terminated by the trigger
-!===============================================================================
-     
-  subroutine write_last_state_point()
-     
-     ! Update statepoint_batch to current batch
-     if (.not. statepoint_batch % contains(current_batch)) then
-       call statepoint_batch % add(current_batch) 
-       if(master) call calculate_combined_keff()
-       call write_state_point()
-     else
-       call write_state_point()
-     end if
-     
-     ! Update sourcepoint_batch to current batch
-     if (.not. sourcepoint_batch % contains(current_batch)) then 
-       call sourcepoint_batch % add(current_batch)
-       call write_source_point()
-     elseif ((sourcepoint_batch % contains(current_batch) .or. source_latest) & 
-          .and. source_write) then
-       call write_source_point()
-     end if
-  
- end subroutine write_last_state_point
-
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
 ! accumulated during the generation. This routine is what allows this Monte

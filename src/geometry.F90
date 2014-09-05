@@ -1569,7 +1569,7 @@ contains
 
           ! Top and bottom sides.
           if (lat % is_3d) then
-            z0 = sign(lat % pitch(3) * 0.5_8, w)
+            z0 = sign(lat % pitch(2) * 0.5_8, w)
 
             if (abs(z - z0) < FP_PRECISION) then
               d = INFINITY

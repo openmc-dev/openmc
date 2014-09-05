@@ -162,14 +162,14 @@ module global
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
-  integer    :: n_batch_interval = 1 ! # the batch interval 
+  integer    :: n_batch_interval = 1 ! # the batch interval
   logical    :: no_batch_interval = .false.  ! whether to predict batches
-  
+
   ! Flag for turning trigger on
-  logical    :: trigger_on = .false. 
-  
+  logical    :: trigger_on = .false.
+
   ! Trigger for k-effective
-  type(KTrigger) :: keff_trigger      
+  type(KTrigger) :: keff_trigger
 
   ! External source
   type(ExtSource), target :: external_source

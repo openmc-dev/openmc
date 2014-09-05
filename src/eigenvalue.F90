@@ -310,6 +310,9 @@ contains
     elseif (no_batch_interval) then
          
       ! Estimate the number of batch interval and batches
+      ! The prediction can be done because variances of the tally results are 
+      ! proportional to 1/N in theroy, where N is the number of the batches or 
+      ! particles in theory. 
       n_batch_interval = int((current_batch-n_inactive) * &
            (trig_dist % max_ratio ** 2)) + n_inactive-n_basic_batches + 1
       n_pred_batches = n_batch_interval + n_basic_batches
@@ -325,7 +328,7 @@ contains
       else
         message = "The estimated number of batches is " &
              // trim(to_str(n_pred_batches))
-        call write_message
+        call write_message()
       end if
     end if
   end subroutine check_triggers

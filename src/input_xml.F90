@@ -238,7 +238,7 @@ contains
           case default 
             message= "Unknown trigger type " // trim(temp_str) // & 
                  " in eigenvalue"
-          call fatal_error()
+            call fatal_error()
           end select
          
           else 
@@ -2974,7 +2974,7 @@ contains
               message = "Cannot set trigger for all and other scoring &
                     &functions in the same tally. Separate scoring &
                     &functions into distinct tallies"
-            call fatal_error()             
+              call fatal_error()             
             else 
               t % trigger_for_all = .true.
             end if

@@ -99,6 +99,8 @@ default. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
+.. _eigenvalue:
+
 ``<eigenvalue>`` Element
 ------------------------
 
@@ -186,7 +188,7 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
-  :upper_right:
+  :upper_right
     The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
@@ -509,23 +511,24 @@ The ``<track>`` element specifies particles for which OpenMC will output binary 
 -------------------------
 
 OpenMC includes tally precision triggers which allow the user to define 
-uncertainty thresholds on :math:`k_{eff}` and/or other tallies. When using 
-triggers, OpenMC will run until it completes as many batches as are defined
-by ``<batches>`` . At this point, the uncertainties on all tallied values are 
-computed and compared with their corresponding trigger thresholds. If any
-triggers have not been met, OpenMC will continue until either 1) all trigger
-thresholds have been satisfied or 2) ``<max_batches>`` has been reached.
+uncertainty thresholds on :math:`k_{eff}` in :ref:`eigenvalue` and/or other 
+tallies in :ref:`tally`. When using triggers, OpenMC will run until it completes 
+as many batches as are defined by ``<batches>`` . At this point, the 
+uncertainties on all tallied values are computed and compared with their 
+corresponding trigger thresholds. If any triggers have not been met, OpenMC 
+will continue until either 1) all trigger thresholds have been satisfied or 
+2) ``<max_batches>`` has been reached.
 
 The ``<trigger>`` element describes the status of the trigger (i.e. whether or 
-not to use the trigger), the max number of batches and the batch interval. 
+not to use the trigger), the maximum number of batches and the batch interval. 
 It has the following attributes/sub-elements: 
   
   :status:
-    This determines whether or not to use trigger. Set this tag to 
-    "true" when using trigger and "false" for not.
+    This determines whether or not to use trigger. Triggers are used when this 
+    tag is set to "true".
  
   :max_batches:
-    This describes the max number of batches when using trigger.
+    This describes the maximum number of batches when using trigger.
     
     .. note:: When max_batches is set, the number of tag ``batches`` shown in 
               ``<eigenvalue>`` element represents minimum number of batches to 
@@ -938,6 +941,8 @@ post-collision energy, and an arbitrary structured mesh.
 
 The three valid elements in the tallies.xml file are ``<tally>``, ``<mesh>``,
 and ``<assume_separate>``.
+
+.. _tally:
 
 ``<tally>`` Element
 -------------------

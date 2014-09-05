@@ -311,6 +311,12 @@ attributes/sub-elements:
       parallelepiped and the last three of which specify the upper-right
       corner. Source sites are sampled uniformly through that parallelepiped.
 
+      To filter a "box" spatial distribution by fissionable material, specify
+      "fission" tag instead of "box". The ``parameters`` should be given as six
+      real numbers, the first three of which specify the lower-left corner of a
+      parallelepiped and the last three of which specify the upper-right
+      corner. Source sites are sampled uniformly through that parallelepiped.
+
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
       point source

@@ -1245,15 +1245,41 @@ contains
       allocate(lat % lower_left(n))
       call get_node_array(node_lat, "lower_left", lat % lower_left)
 
-      ! Read lattice pitches
-      if (get_arraysize_double(node_lat, "pitch") /= n) then
+      ! Read lattice pitches.
+      ! TODO: Remove this deprecation warning in a future release.
+      if (check_for_node(node_lat, "width")) then
+        message = "The use of 'width' is deprecated and will be disallowed in &
+            &a future release.  Use 'pitch' instead.  The utility openmc/src/&
+            &utils/update_lattices.py can be used to automatically update &
+            &geometry.xml files."
+        call warning(deprecation=.true.)
+        if (get_arraysize_double(node_lat, "width") /= n) then
+          message = "Number of entries on <pitch> must be the same as &
+               &the number of entries on <dimension>."
+          call fatal_error()
+        end if
+
+      else if (get_arraysize_double(node_lat, "pitch") /= n) then
         message = "Number of entries on <pitch> must be the same as &
              &the number of entries on <dimension>."
         call fatal_error()
       end if
 
       allocate(lat % pitch(n))
-      call get_node_array(node_lat, "pitch", lat % pitch)
+      ! TODO: Remove the 'width' code in a future release.
+      if (check_for_node(node_lat, "width")) then
+        call get_node_array(node_lat, "width", lat % pitch)
+      else
+        call get_node_array(node_lat, "pitch", lat % pitch)
+      end if
+
+      ! TODO: Remove deprecation warning in a future release.
+      if (check_for_node(node_lat, "type")) then
+        message = "The use of 'type' is no longer needed.  The utility &
+            &openmc/src/utils/update_lattices.py can be used to automatically &
+            &update geometry.xml files."
+        call warning(deprecation=.true.)
+      end if
 
       ! Copy number of dimensions
       n_x = lat % n_cells(1)

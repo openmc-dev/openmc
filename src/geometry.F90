@@ -302,10 +302,10 @@ contains
  
     type is (HexLattice)
       xyz_t(1) = xyz(1) - (lat % center(1) + &
-          &sqrt(3.0_8) * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
+          &sqrt(3.0_8) / 2.0_8 * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
       xyz_t(2) = xyz(2) - (lat % center(2) + &
-          &(2 * (i_xyz(2) - lat % n_rings)) * lat % pitch(1) + &
-          &(i_xyz(1) - lat % n_rings) * lat % pitch(1))
+          &(i_xyz(2) - lat % n_rings) * lat % pitch(1) + &
+          &(i_xyz(1) - lat % n_rings) * lat % pitch(1) / 2.0_8)
       if (lat % is_3d) then
         xyz_t(3) = xyz(3) - lat % center(3) &
             &+ (lat % n_axial/2 - i_xyz(3) + 1) * lat % pitch(2)
@@ -375,32 +375,6 @@ contains
         i_xyz(3) = 1
       end if
 
-      ! Adjust indices if particle is very close to a boundary and moving toward
-      ! that boundary.
-      !xyz_t = get_lat_trans(lat, xyz, i_xyz)
-      !if (abs(xyz_t(1) - 0.5_8*lat % width(1)) &
-      !    &< FP_REL_PRECISION*lat % width(1) .and. uvw(1) > 0.0) then
-      !  i_xyz = i_xyz + (/1, 0, 0/)
-      !else if (abs(xyz_t(1) + 0.5_8*lat % width(1)) &
-      !    &< FP_REL_PRECISION*lat % width(1) .and. uvw(1) < 0.0) then
-      !  i_xyz = i_xyz + (/-1, 0, 0/)
-      !else if (abs(xyz_t(2) - 0.5_8*lat % width(2)) &
-      !    &< FP_REL_PRECISION*lat % width(2) .and. uvw(2) > 0.0) then
-      !  i_xyz = i_xyz + (/0, 1, 0/)
-      !else if (abs(xyz_t(2) + 0.5_8*lat % width(2)) &
-      !    &< FP_REL_PRECISION*lat % width(2) .and. uvw(2) < 0.0) then
-      !  i_xyz = i_xyz + (/0, -1, 0/)
-      !end if
-      !if (lat % n_dimension == 3) then
-      !  if (abs(xyz_t(3) - 0.5_8*lat % width(3)) &
-      !      &< FP_REL_PRECISION*lat % width(3) .and. uvw(3) > 0.0) then
-      !    i_xyz = i_xyz + (/0, 0, 1/)
-      !  else if (abs(xyz_t(3) + 0.5_8*lat % width(3)) &
-      !      &< FP_REL_PRECISION*lat % width(3) .and. uvw(3) < 0.0) then
-      !    i_xyz = i_xyz + (/0, 0, -1/)
-      !  end if
-      !end if
-
     type is (HexLattice)
       ! Index z direction.
       if (lat % is_3d) then
@@ -410,15 +384,14 @@ contains
         i_xyz(3) = 1
       end if
 
-      ! Convert coordinates into skewed bases.  The (x, alpha) basis is
-      ! used to find the index of the particle coordinates to within 4
-      ! cells.
+      ! Convert coordinates into skewed bases.  The (x, alpha) basis is used to
+      ! find the index of the particle coordinates to within 4 cells.
       alpha = xyz(2) - xyz(1) / sqrt(3.0_8)
-      i_xyz(1) = floor(xyz(1) / (sqrt(3.0_8) * lat % pitch(1)))
-      i_xyz(2) = floor(alpha / (2.0_8 * lat % pitch(1)))
+      i_xyz(1) = floor(xyz(1) / (sqrt(3.0_8) / 2.0_8 * lat % pitch(1)))
+      i_xyz(2) = floor(alpha / lat % pitch(1))
 
-      ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0)
-      ! but the array is offset so that the indices never go below 1).
+      ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
+      ! the array is offset so that the indices never go below 1).
       i_xyz(1) = i_xyz(1) + lat % n_rings
       i_xyz(2) = i_xyz(2) + lat % n_rings
 
@@ -438,84 +411,12 @@ contains
         end do
       end do
 
-      ! Now the lattice indices will be adjusted to one of the four possible
-      ! lattice cells.  First we will check the special cases where the particle
-      ! is in one cell but is very close to the cell that it is going towards.
-      loc = minloc(dists)
-      beta_dir = uvw(1)*sqrt(3.0_8)/2.0_8 + uvw(2)/2.0_8
-
-      !! Check 1-2-3 corner.
-      !if (abs(dists(1) - dists(2)) < FP_REL_PRECISION*dists(1) .and. &
-      !    &abs(dists(3) - dists(1)) < FP_REL_PRECISION*dists(1)) then
-      !  if (beta_dir > 0.0 .and. beta_dir > uvw(2)) then
-      !    i_xyz = i_xyz + (/1, 0, 0/)
-      !  else if (uvw(2) > 0.0) then
-      !    i_xyz = i_xyz + (/0, 1, 0/)
-      !  end if
-
-      !! Check 2-3-4 corner.
-      !else if (abs(dists(2) - dists(3)) < FP_REL_PRECISION*dists(2) .and. &
-      !    &abs(dists(2) - dists(4)) < FP_REL_PRECISION*dists(2)) then
-      !  if (beta_dir - uvw(2) > 0.0 .and. beta_dir - uvw(2) > beta_dir) then
-      !    i_xyz = i_xyz + (/1, 0, 0/)
-      !  else if (beta_dir > 0.0) then
-      !    i_xyz = i_xyz + (/1, 1, 0/)
-      !  else
-      !    i_xyz = i_xyz + (/0, 1, 0/)
-      !  end if
-
-      !! Check 1-2 border.
-      !else if (abs(dists(1) - dists(2)) < FP_REL_PRECISION*dists(1) .and. &
-      !    &(loc(1) == 1 .or. loc(1) == 2)) then
-      !  if (uvw(1)*sqrt(3.0_8)/2.0_8 + uvw(2)/2.0_8 > 0.0) then
-      !    i_xyz = i_xyz + (/1, 0, 0/)
-      !  end if
-
-      !! Check 1-3 border.
-      !else if (abs(dists(1) - dists(3)) < FP_REL_PRECISION*dists(1) .and. &
-      !    &(loc(1) == 1 .or. loc(1) == 3)) then
-      !  if (uvw(2) > 0.0) then
-      !    i_xyz = i_xyz + (/0, 1, 0/)
-      !  end if
-
-      !! Check 2-3 border.
-      !else if (abs(dists(2) - dists(3)) < FP_REL_PRECISION*dists(2) .and. &
-      !    &(loc(1) == 2 .or. loc(1) == 3)) then
-      !  if (uvw(1)*sqrt(3.0_8)/2.0_8 - uvw(2)/2.0_8 > 0.0) then
-      !    i_xyz = i_xyz + (/1, 0, 0/)
-      !  else
-      !    i_xyz = i_xyz + (/0, 1, 0/)
-      !  end if
-
-      !! Check 2-4 border.
-      !else if (abs(dists(2) - dists(4)) < FP_REL_PRECISION*dists(2) .and. &
-      !    &(loc(1) == 2 .or. loc(1) == 4)) then
-      !  if (uvw(2) > 0.0) then
-      !    i_xyz = i_xyz + (/1, 1, 0/)
-      !  else
-      !    i_xyz = i_xyz + (/1, 0, 0/)
-      !  end if
-
-      !! Check 3-4 border.
-      !else if (abs(dists(3) - dists(4)) < FP_REL_PRECISION*dists(3) .and. &
-      !    &(loc(1) == 3 .or. loc(1) == 4)) then
-      !  if (uvw(1)*sqrt(3.0_8)/2.0_8 + uvw(2)/2.0_8 > 0.0) then
-      !    i_xyz = i_xyz + (/1, 1, 0/)
-      !  else
-      !    i_xyz = i_xyz + (/0, 1, 0/)
-      !  end if
-
-      ! The particle is not close to any of the lattice borders or corners.  It
-      ! is in the cell that we would expect from the distance calculation.
       if (loc(1) == 2) then
         i_xyz = i_xyz + (/1, 0, 0/)
-
       else if (loc(1) == 3) then
         i_xyz = i_xyz + (/0, 1, 0/)
-
       else if (loc(1) == 4) then
         i_xyz = i_xyz + (/1, 1, 0/)
-
       end if
  
     end select
@@ -831,8 +732,6 @@ contains
     integer,        intent(in)    :: lattice_translation(3)
 
     integer :: i_xyz(3)       ! indices in lattice
-    real(8) :: x0, y0, z0     ! half width of lattice element
-    real(8) :: half_pitch     ! half pitch of a hexagonal lattice
     logical :: found          ! particle found in cell?
     class(Lattice), pointer, save :: lat => null()
     type(LocalCoord), pointer :: parent_coord
@@ -851,7 +750,7 @@ contains
       call write_message()
     end if
 
-    ! Find the coordiante just above the current one.
+    ! Find the coordiante level just above the current one.
     parent_coord => p % coord0
     do while(.not. associated(parent_coord % next, p % coord))
       parent_coord => parent_coord % next
@@ -865,7 +764,7 @@ contains
     i_xyz(2) = p % coord % lattice_y 
     i_xyz(3) = p % coord % lattice_z 
 
-    ! Set the coordinate position.
+    ! Set the new coordinate position.
     p % coord % xyz = get_lat_trans(lat, parent_coord % xyz, i_xyz)
 
     OUTSIDE_LAT: if (.not. is_valid_lat_index(lat, i_xyz)) then
@@ -1485,8 +1384,8 @@ contains
           end do
 
           ! Compute velocities along the hexagonal axes.
-          beta_dir = sqrt(3.0_8)*u/2.0_8 + v/2.0_8
-          gama_dir = sqrt(3.0_8)*u/2.0_8 - v/2.0_8
+          beta_dir = u*sqrt(3.0_8)/2.0_8 + v/2.0_8
+          gama_dir = u*sqrt(3.0_8)/2.0_8 - v/2.0_8
 
           ! Note that hexagonal lattice distance calculations are performed
           ! using the particle's coordinates relative to the neighbor lattice
@@ -1496,7 +1395,7 @@ contains
           ! of hex lattices.
 
           ! Upper right and lower left sides.
-          edge = -sign(lat % pitch(1), beta_dir)  ! Oncoming edge
+          edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
           if (beta_dir > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, 0, 0/))
           else
@@ -1519,7 +1418,7 @@ contains
           end if
 
           ! Lower right and upper left sides.
-          edge = -sign(lat % pitch(1), gama_dir)  ! Oncoming edge
+          edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
           if (gama_dir > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, -1, 0/))
           else
@@ -1544,7 +1443,7 @@ contains
           end if
 
           ! Upper and lower sides.
-          edge = -sign(lat % pitch(1), v)  ! Oncoming edge
+          edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
           if (v > 0.0) then
             xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/0, 1, 0/))
           else

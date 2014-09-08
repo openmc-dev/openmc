@@ -1,0 +1,2 @@
+/usr/bin/ar cr ../../../lib/libfox_dom.a  CMakeFiles/fox_dom.dir/FoX_dom.f90.o CMakeFiles/fox_dom.dir/m_dom_error.f90.o CMakeFiles/fox_dom.dir/m_dom_parse.f90.o CMakeFiles/fox_dom.dir/m_dom_utils.f90.o CMakeFiles/fox_dom.dir/m_dom_dom.F90.o CMakeFiles/fox_dom.dir/m_dom_extras.F90.o
+/usr/bin/ranlib ../../../lib/libfox_dom.a

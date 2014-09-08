@@ -9,7 +9,7 @@
   <tally id="2">
     <nuclides>Pu-239</nuclides>
     <scores>total absorption fission scatter</scores>
-    <trigger type = 'rel_err' threshold = '0.0075' scores = 'all'/>
+    <trigger type = 'rel_err' threshold = '0.0095' scores = 'all'/>
   </tally>
 
 </tallies>

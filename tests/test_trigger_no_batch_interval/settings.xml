@@ -6,13 +6,13 @@
     <particles>1000</particles>
     <keff_trigger>
       <type>std_dev</type>
-      <threshold>0.009</threshold>
+      <threshold>0.00445</threshold>
     </keff_trigger>
   </eigenvalue>
   
   <trigger>
     <status>true</status>
-    <max_batches>20</max_batches>
+    <max_batches>30</max_batches>
   </trigger>
 
   <source>

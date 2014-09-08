@@ -6,7 +6,7 @@
     <particles>1000</particles>
     <keff_trigger>
       <type>std_dev</type>
-      <threshold>0.009</threshold>
+      <threshold>0.02</threshold>
     </keff_trigger>
   </eigenvalue>
   

@@ -687,9 +687,6 @@ contains
   subroutine finalize()
 
     ! Destroy all objects 
-#ifdef PETSC
-    call gmres  % destroy()
-#endif
     call loss   % destroy() 
     call prod   % destroy()
     call phi_n  % destroy()

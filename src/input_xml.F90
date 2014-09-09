@@ -840,12 +840,24 @@ contains
             call get_node_value(node_scatterer, "E_min", &
               nuclides_0K(i) % E_min)
           end if
-          
+
+          ! check that E_min is non-negative
+          if (E_min < ZERO) then
+            message = "Lower resonance scattering energy bound is negative"
+            call fatal_error()
+          end if
+
           if (check_for_node(node_scatterer, "E_max")) then
             call get_node_value(node_scatterer, "E_max", &
               nuclides_0K(i) % E_max)
           end if
           
+          ! check that E_max is not less than E_min
+          if (E_max < E_min) then
+            message = "Lower resonance scattering energy bound exceeds upper"
+            call fatal_error()
+          end if
+
           nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
           nuclides_0K(i) % scheme  = trim(nuclides_0K(i) % scheme)
           call lower_case(nuclides_0K(i) % scheme)

@@ -102,8 +102,11 @@ contains
 
     use constants, only: ONE, ZERO
     use error,     only: fatal_error
-    use global,    only: cmfd, cmfd_write_matrices, message, cmfd_shift, keff, &
+    use global,    only: cmfd, message, cmfd_shift, keff, &
                          cmfd_ktol, cmfd_stol
+#ifdef PETSC
+    use global,    only: cmfd_write_matrices
+#endif
 
     logical :: adjoint
 
@@ -177,6 +180,9 @@ contains
 
   subroutine compute_adjoint()
 
+    use error,   only: fatal_error
+    use global,  only: message
+#ifdef PETSC
     use global,  only: cmfd_write_matrices
 
     ! Transpose matrices
@@ -188,6 +194,10 @@ contains
       call loss % write_petsc_binary('adj_lossmat.bin')
       call prod % write_petsc_binary('adj_prodmat.bin')
     end if
+#else
+    message = 'Adjoint calculations only allowed with PETSc'
+    call fatal_error()
+#endif
 
   end subroutine compute_adjoint
 
@@ -624,42 +634,12 @@ contains
       else
         filename = 'fluxvec.bin'
       end if
+#ifdef PETSC
       call phi_n % write_petsc_binary(filename)
+#endif
     end if
 
   end subroutine extract_results
-
-!===============================================================================
-! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix
-!===============================================================================
-
-  subroutine indices_to_matrix(g, i, j, k, matidx, ng, nx, ny)
-
-    use global,  only: cmfd, cmfd_coremap
-
-    integer :: matidx ! the index location in matrix
-    integer :: i      ! current x index
-    integer :: j      ! current y index
-    integer :: k      ! current z index
-    integer :: g      ! current group index
-    integer :: nx     ! maximum number of x cells
-    integer :: ny     ! maximum number of y cells
-    integer :: ng     ! maximum number of groups
-
-    ! Check if coremap is used
-    if (cmfd_coremap) then
-
-      ! Get idx from core map
-      matidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
-
-    else
-
-      ! Compute index
-      matidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
-
-    end if
-
-  end subroutine indices_to_matrix
 
 !===============================================================================
 ! MATRIX_TO_INDICES converts a matrix index to spatial and group indicies

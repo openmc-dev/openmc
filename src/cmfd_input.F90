@@ -190,7 +190,7 @@ contains
 
     ! Output logicals
     if (check_for_node(doc, "write_matrices")) then
-      call get_node_value(doc, "write_matices", temp_str)
+      call get_node_value(doc, "write_matrices", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
         cmfd_write_matrices = .true.

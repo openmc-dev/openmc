@@ -173,7 +173,7 @@ contains
         dhat_reset = .true.
     end if
 
-    ! Enforce perfect neutorn balance
+    ! Enforce perfect neutron balance
     if (check_for_node(doc, "balance")) then
       call get_node_value(doc, "balance", temp_str)
       call lower_case(temp_str)
@@ -218,20 +218,16 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+#ifndef PETSC
+        message = 'Must use PETSc when running adjoint option.'
+        call fatal_error()
+#endif
         cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
     if (check_for_node(doc, "begin")) &
       call get_node_value(doc, "begin", cmfd_begin)
-
-    ! Tally during inactive batches
-    if (check_for_node(doc, "inactive")) then
-      call get_node_value(doc, "inactive", temp_str)
-      call lower_case(temp_str)
-      if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
-        cmfd_tally_on = .false.
-    end if
 
     ! Check for cmfd tally resets
     if (check_for_node(doc, "tally_reset")) then

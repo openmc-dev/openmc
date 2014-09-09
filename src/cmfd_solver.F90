@@ -104,9 +104,7 @@ contains
     use error,     only: fatal_error
     use global,    only: cmfd, message, cmfd_shift, keff, &
                          cmfd_ktol, cmfd_stol
-#ifdef PETSC
     use global,    only: cmfd_write_matrices
-#endif
 
     logical :: adjoint
 
@@ -150,8 +148,10 @@ contains
     ! Setup petsc for everything
     call loss % assemble()
     call prod % assemble()
-    call loss % write('loss.dat')
-    call prod % write('prod.dat')
+    if (cmfd_write_matrices) then
+      call loss % write('loss.dat')
+      call prod % write('prod.dat')
+    end if
 
     ! Set norms to 0
     norm_n = ZERO

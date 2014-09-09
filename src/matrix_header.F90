@@ -27,13 +27,15 @@ module matrix_header
      procedure :: assemble           => matrix_assemble
      procedure :: get_row            => matrix_get_row
      procedure :: get_col            => matrix_get_col
-     procedure :: setup_petsc        => matrix_setup_petsc
-     procedure :: write_petsc_binary => matrix_write_petsc_binary
-     procedure :: transpose          => matrix_transpose
      procedure :: vector_multiply    => matrix_vector_multiply
      procedure :: search_indices     => matrix_search_indices
      procedure :: write              => matrix_write
      procedure :: copy               => matrix_copy
+#  ifdef PETSC
+     procedure :: setup_petsc        => matrix_setup_petsc
+     procedure :: write_petsc_binary => matrix_write_petsc_binary
+     procedure :: transpose          => matrix_transpose
+#  endif
   end type matrix
 
 #ifdef PETSC

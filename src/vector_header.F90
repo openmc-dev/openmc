@@ -21,9 +21,11 @@ module vector_header
      procedure :: create       => vector_create
      procedure :: destroy      => vector_destroy
      procedure :: add_value    => vector_add_value
+     procedure :: copy         => vector_copy
+#  ifdef PETSC
      procedure :: setup_petsc  => vector_setup_petsc
      procedure :: write_petsc_binary => vector_write_petsc_binary
-     procedure :: copy         => vector_copy
+#  endif
   end type Vector
 
   integer :: petsc_err ! petsc error code

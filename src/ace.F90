@@ -172,6 +172,25 @@ contains
     ! Avoid some valgrind leak errors
     call already_read % clear()
 
+    ! Loop around material
+    MAT: do i = 1, n_materials
+
+      ! Get material
+      m => materials(i)
+
+      ! Loop around nuclides in material
+      NUC: do j = 1, m % n_nuclides
+
+        ! Check for fission in nuclide
+        if (nuclides(m % nuclide(j)) % fissionable) then
+          m % fissionable = .true.
+          exit NUC
+        end if
+
+      end do NUC
+
+    end do MAT
+
   end subroutine read_xs
 
 !===============================================================================

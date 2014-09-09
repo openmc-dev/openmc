@@ -16,7 +16,9 @@ module cmfd_jfnk_solver
   type(Matrix)     :: jac_prec     ! Jacobian preconditioner object
   type(Matrix)     :: loss         ! CMFD loss matrix
   type(Matrix)     :: prod         ! CMFD production matrix
+#ifdef PETSC
   type(JFNKSolver) :: jfnk         ! JFNK solver object
+#endif
   type(Vector)     :: resvec       ! JFNK residual vector
   type(Vector)     :: xvec         ! JFNK solution vector
 
@@ -51,9 +53,9 @@ contains
 #endif
 
     ! Set up residual and jacobian routines
+#ifdef PETSC
     jfnk_data % res_proc_ptr => compute_nonlinear_residual
     jfnk_data % jac_proc_ptr => build_jacobian_matrix
-#ifdef PETSC
     call jfnk % set_functions(jfnk_data, resvec, jac_prec)
 #endif
 
@@ -104,8 +106,10 @@ contains
     ! Assemble matrices and use PETSc
     call loss % assemble()
     call prod % assemble()
+#ifdef PETSC
     call loss % setup_petsc()
     call prod % setup_petsc()
+#endif
 
     ! Check for mathematical adjoint
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
@@ -133,14 +137,18 @@ contains
     end if
 
     ! Set up vectors for PETSc 
+#ifdef PETSC
     call resvec   % setup_petsc()
     call xvec     % setup_petsc()
+#endif
 
     ! Build jacobian from initial guess
     call build_jacobian_matrix(xvec)
 
     ! Set up Jacobian for PETSc
+#ifdef PETSC
     call jac_prec % setup_petsc()
+#endif
 
     ! Set dominance ratio to 0
     cmfd % dom(current_batch) = ZERO
@@ -262,7 +270,7 @@ contains
 !===============================================================================
 ! COMPUTE_NONLINEAR_RESIDUAL computes the residual of the nonlinear equations
 !===============================================================================
-
+#ifdef PETSC
   subroutine compute_nonlinear_residual(x, res)
 
     use global,       only: cmfd_write_matrices
@@ -310,7 +318,9 @@ contains
       else
         filename = 'res.bin'
       end if
+#ifdef PETSC
       call res % write_petsc_binary(filename)
+#endif
 
       ! Write out solution vector
       if (adjoint_calc) then
@@ -318,11 +328,14 @@ contains
       else
         filename = 'x.bin'
       end if
+#ifdef PETSC
       call x % write_petsc_binary(filename)
+#endif
 
     end if
 
   end subroutine compute_nonlinear_residual
+#endif
 
 !===============================================================================
 ! COMPUTE_ADJOINT calculates mathematical adjoint by taking transposes
@@ -333,13 +346,17 @@ contains
     use global,  only: cmfd_write_matrices
 
     ! Transpose matrices
+#ifdef PETSC
     call loss % transpose()
     call prod % transpose()
+#endif
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
+#ifdef PETSC
       call loss % write_petsc_binary('adj_lossmat.bin')
       call loss % write_petsc_binary('adj_prodmat.bin')
+#endif
     end if
 
   end subroutine compute_adjoint

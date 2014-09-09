@@ -3,7 +3,7 @@
 
   <!-- pu-met-fast-019 -->
 
-  <default_xs>70c</default_xs>
+  <default_xs>71c</default_xs>
 
   <!-- Plutonium -->
   <material id="1">
@@ -41,7 +41,7 @@
     <nuclide name="Fe-56" ao="4.6739e-05" />
     <nuclide name="Fe-57" ao="1.0794e-06" />
     <nuclide name="Fe-58" ao="1.4365e-07" />
-    <sab name="be" xs="10t" />
+    <sab name="Be" xs="71t" />
   </material>
 
   <!-- Steel Diaphragm and Steel Shaft -->

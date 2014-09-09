@@ -30,7 +30,7 @@ module particle_header
     ! Pointer to next (more local) set of coordinates
     type(LocalCoord), pointer :: next => null()
   end type LocalCoord
-     
+
 !===============================================================================
 ! PARTICLE describes the state of a particle being transported through the
 ! geometry
@@ -53,6 +53,7 @@ module particle_header
 
     ! Pre-collision physical data
     real(8)    :: last_xyz(3)   ! previous coordinates
+    real(8)    :: last_uvw(3)   ! previous direction coordinates
     real(8)    :: last_wgt      ! pre-collision particle weight
     real(8)    :: last_E        ! pre-collision energy
     real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
@@ -96,7 +97,7 @@ contains
 
     type(LocalCoord), pointer :: coord
 
-    if (associated(coord)) then 
+    if (associated(coord)) then
       ! recursively deallocate lower coordinates
       if (associated(coord % next)) call deallocate_coord(coord%next)
 

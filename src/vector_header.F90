@@ -89,40 +89,40 @@ contains
 ! VECTOR_SETUP_PETSC links the data to a PETSc vector
 !===============================================================================
 
+#ifdef PETSC
   subroutine vector_setup_petsc(self)
 
     class(Vector), intent(inout) :: self ! vector instance
 
     ! Link to PETSc 
-#ifdef PETSC
     call VecCreateSeqWithArray(PETSC_COMM_WORLD, 1, self % n, self % val, &
          self % petsc_vec, petsc_err) 
-#endif
 
     ! Set that PETSc is now active
     self % petsc_active = .true.
 
   end subroutine vector_setup_petsc
+#endif
 
 !===============================================================================
 ! VECTOR_WRITE_PETSC_BINARY writes the PETSc vector to a binary file
 !===============================================================================
 
+#ifdef PETSC
   subroutine vector_write_petsc_binary(self, filename)
 
     character(*), intent(in)  :: filename ! name of file to write to
     class(Vector), intent(in) :: self     ! vector instance
 
-#ifdef PETSC
     type(PetscViewer) :: viewer ! PETSc viewer instance
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)
     call VecView(self % petsc_vec, viewer, petsc_err)
     call PetscViewerDestroy(viewer, petsc_err)
-#endif
 
   end subroutine vector_write_petsc_binary
+#endif
 
 !===============================================================================
 ! VECTOR_COPY allocates a separate vector and copies

@@ -36,7 +36,9 @@ module matrix_header
      procedure :: copy               => matrix_copy
   end type matrix
 
+#ifdef PETSC
   integer :: petsc_err
+#endif
 
 contains
 
@@ -270,6 +272,7 @@ contains
 ! MATRIX_SETUP_PETSC configures the row/col vectors and links to a PETSc object
 !===============================================================================
 
+#ifdef PETSC
   subroutine matrix_setup_petsc(self)
 
     class(Matrix), intent(inout) :: self ! matrix instance
@@ -279,50 +282,49 @@ contains
     self % col = self % col - 1
 
     ! Link to petsc
-#ifdef PETSC
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
             self % row, self % col, self % val, self % petsc_mat, petsc_err)
-#endif
 
     ! Petsc is now active
     self % petsc_active = .true.
 
   end subroutine matrix_setup_petsc
+#endif
 
 !===============================================================================
 ! MATRIX_WRITE_PETSC_BINARY writes a PETSc matrix binary file
 !===============================================================================
 
+#ifdef PETSC
   subroutine matrix_write_petsc_binary(self, filename)
 
     character(*), intent(in)  :: filename ! file name to write to
     class(Matrix), intent(in) :: self     ! matrix instance
 
-#ifdef PETSC
     type(PetscViewer) :: viewer ! a petsc viewer instance
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)
     call MatView(self % petsc_mat, viewer, petsc_err)
     call PetscViewerDestroy(viewer, petsc_err)
-#endif
 
   end subroutine matrix_write_petsc_binary
+#endif
 
 !===============================================================================
 ! MATRIX_TRANSPOSE uses PETSc to transpose a matrix
 !===============================================================================
 
+#ifdef PETSC
   subroutine matrix_transpose(self)
 
     class(Matrix), intent(inout) :: self ! matrix instance
 
-#ifdef PETSC
     call MatTranspose(self % petsc_mat, MAT_REUSE_MATRIX, self % petsc_mat, &
          petsc_err)
-#endif
 
   end subroutine matrix_transpose
+#endif
 
 !===============================================================================
 ! MATRIX_VECTOR_MULTIPLY allow a vector to multiply the matrix

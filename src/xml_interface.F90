@@ -3,7 +3,7 @@ module xml_interface
   use constants, only: MAX_LINE_LEN
   use error,     only: fatal_error
   use global,    only: message 
-  use fox_dom
+  use openmc_fox
 
   implicit none
   private

@@ -16,7 +16,7 @@ module state_point
   use error,              only: fatal_error, warning
   use global
   use output,             only: write_message, time_stamp
-  use string,             only: to_str
+  use string,             only: to_str, zero_padded, count_digits
   use output_interface
   use tally_header,       only: TallyObject
 
@@ -44,7 +44,7 @@ contains
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-               trim(to_str(current_batch))
+        & zero_padded(current_batch, count_digits(n_batches))
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -58,7 +58,7 @@ contains
     call write_message(1)
 
     if (master) then
-      ! Create statepoint file 
+      ! Create statepoint file
       call sp % file_create(filename)
 
       ! Write file type
@@ -216,12 +216,12 @@ contains
              group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
         deallocate(temp_array)
 
-        ! Write number of score bins, score bins, and scatt order
+        ! Write number of score bins, score bins, and moment order
         call sp % write_data(t % n_score_bins, "n_score_bins", &
              group="tallies/tally" // to_str(i))
         call sp % write_data(t % score_bins, "score_bins", &
              group="tallies/tally" // to_str(i), length=t % n_score_bins)
-        call sp % write_data(t % scatt_order, "scatt_order", &
+        call sp % write_data(t % moment_order, "moment_order", &
              group="tallies/tally" // to_str(i), length=t % n_score_bins)
 
         ! Write number of user score bins
@@ -305,7 +305,9 @@ contains
       if (source_separate) then
 
         ! Set filename
-        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
+        filename = trim(path_output) // 'source.' // &
+            & zero_padded(current_batch, count_digits(n_batches))
+ 
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -326,7 +328,7 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-                   trim(to_str(current_batch))
+            & zero_padded(current_batch, count_digits(n_batches))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -409,7 +411,7 @@ contains
     ! Copy global tallies into temporary array for reducing
     n_bins = 2 * N_GLOBAL_TALLIES
     global_temp(1,:) = global_tallies(:) % sum
-    global_temp(2,:) = global_tallies(:) % sum_sq 
+    global_temp(2,:) = global_tallies(:) % sum_sq
 
     if (master) then
       ! The MPI_IN_PLACE specifier allows the master to copy values into a
@@ -430,7 +432,7 @@ contains
       tallyresult_temp(:,1) % sum    = global_temp(1,:)
       tallyresult_temp(:,1) % sum_sq = global_temp(2,:)
 
-   
+
       ! Write out global tallies sum and sum_sq
       call sp % write_tally_result(tallyresult_temp, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
@@ -484,7 +486,7 @@ contains
          allocate(tallyresult_temp(m,n))
          tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
          tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
- 
+
          ! Write reduced tally results to file
           call sp % write_tally_result(t % results, "results", &
                group="tallies/tally" // to_str(i), n1=m, n2=n)
@@ -525,7 +527,7 @@ contains
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     logical                 :: source_present
-    real(8)                 :: real_array(3) 
+    real(8)                 :: real_array(3)
     type(TallyObject), pointer :: t => null()
 
     ! Write message
@@ -720,7 +722,7 @@ contains
            group="tallies/tally" // to_str(i))
       call sp % read_data(t % score_bins, "score_bins", &
            group="tallies/tally" // to_str(i), length=t % n_score_bins)
-      call sp % read_data(t % scatt_order, "scatt_order", &
+      call sp % read_data(t % moment_order, "moment_order", &
            group="tallies/tally" // to_str(i), length=t % n_score_bins)
 
       ! Write number of user score bins
@@ -741,7 +743,7 @@ contains
     if (path_source_point == path_state_point .and. .not. source_present) then
       message = "Source bank must be contained in statepoint restart file"
       call fatal_error()
-    end if 
+    end if
 
     ! Read tallies to master
     if (master) then
@@ -779,20 +781,20 @@ contains
       end if
     end if
 
-    ! Read source if in eigenvalue mode 
+    ! Read source if in eigenvalue mode
     if (run_mode == MODE_EIGENVALUE) then
 
       ! Check if source was written out separately
       if (.not. source_present) then
 
-        ! Close statepoint file 
+        ! Close statepoint file
         call sp % file_close()
 
         ! Write message
         message = "Loading source file " // trim(path_source_point) // "..."
         call write_message(1)
 
-        ! Open source file 
+        ! Open source file
         call sp % file_open(path_source_point, 'r', serial = .false.)
 
         ! Read file type

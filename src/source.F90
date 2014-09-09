@@ -162,6 +162,7 @@ contains
           end if
           cycle
         end if
+        if (p % material == MATERIAL_VOID) cycle
         if (.not. materials(p % material) % fissionable) then
           found = .false.
           call p % initialize()

@@ -367,7 +367,6 @@ module global
 
   ! CMFD run logicals
   logical :: cmfd_on             = .false.
-  logical :: cmfd_tally_on       = .true. 
 
   ! CMFD display info
   character(len=25) :: cmfd_display = 'balance'

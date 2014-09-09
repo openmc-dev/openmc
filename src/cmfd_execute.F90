@@ -82,7 +82,7 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,            only: cmfd_begin, cmfd_on, cmfd_tally_on, &
+    use global,            only: cmfd_begin, cmfd_on, &
                                  cmfd_reset, cmfd_run,               &
                                  current_batch, cmfd_hold_weights
 
@@ -91,7 +91,6 @@ contains
     ! accumulated
     if (cmfd_run .and. cmfd_begin == current_batch) then
       cmfd_on = .true.
-      cmfd_tally_on = .true.
     end if
 
     ! If this is a restart run and we are just replaying batches leave

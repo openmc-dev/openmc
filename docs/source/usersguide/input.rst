@@ -1238,14 +1238,26 @@ Currently, it allows users to accelerate fission source convergence during
 inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
 
-``<active_flush>`` Element
---------------------------
+``<atoli>`` Element
+--------------------
 
-The ``<active_flush>`` element controls the batch where CMFD tallies should be
-reset. CMFD tallies should be reset before active batches so they are accumulated
-without bias.
+The ``<atoli>`` element specifies the absolute inner tolerance on the Gauss-Seidel
+when performing CMFD calculations. It is only used in the standalone CMFD solver
+and not when PETSc is active. 
 
-  *Default*: 0
+  *Default*: 1.e-10
+
+``<balance>`` Element
+-------------------
+
+The ``<balance>`` element controls whether exact neutron balance should be enforced
+from CMFD tallies before creating CMFD matrices. This changes effective downscatter
+cross section and thermal flux to create exact balance. It should be noted that 
+this option has led to instabilities when performing CMFD. It can be turned on
+with "true" and off with "false".
+
+  *Default*: false
+
 
 ``<begin>`` Element
 -------------------
@@ -1268,7 +1280,25 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
 * "source" - prints the RMS [%] between the OpenMC fission source and CMFD
   fission source.
 
-  *Default*: None
+  *Default*: balance
+
+``<dhat_reset>`` Element
+-------------------
+
+The ``<dhat_reset>`` element controls whether dhat nonlinear CMFD parameters
+should be reset to zero before solving CMFD eigenproblem. It can be turned on with 
+"true" and off with "false".
+
+  *Default*: false
+
+``<downscatter>`` Element
+-------------------
+
+The ``<downscatter>`` element controls whether an effective downscatter cross
+section should be used when using 2-group CMFD. It can be turned on with "true"
+and off with "false".
+
+  *Default*: false
 
 ``<feedback>`` Element
 ----------------------
@@ -1279,25 +1309,6 @@ It can be turned on with "true" and off with "false".
 
   *Default*: false
 
-``<inactive>`` Element
-----------------------
-
-The ``<inactive>`` element controls if cmfd tallies should be accumulated
-during inactive batches. For some applications, CMFD tallies may not be
-needed until the start of active batches. This option can be turned on
-with "true" and off with "false"
-
-  *Default*: true
-
-``<inactive_flush>`` Element
-----------------------------
-
-The ``<inactive_flush>`` element controls when CMFD tallies are reset during
-inactive batches. The integer set here is the interval at which this reset
-occurs. The amout of resets is controlled with the ``<num_flushes>`` element.
-
-  *Defualt*: 9999
-
 ``<ksp_monitor>`` Element
 -------------------------
 
@@ -1305,8 +1316,15 @@ The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES
 iterations in PETSc. This option can be turned on with "true" and turned off
 with "false".
 
-
   *Default*: false
+
+``<ktol>`` Element
+--------------------
+
+The ``<ktol>`` element specifies the tolerance on the eigenvalue when performing
+CMFD power iteration.
+
+  *Default*: 1.e-8
 
 ``<mesh>`` Element
 ------------------
@@ -1376,14 +1394,6 @@ not impact the calculation.
 
   *Default*: 1.0
 
-``<num_flushes>`` Element
--------------------------
-
-The ``<num_flushes>`` element controls the number of CMFD tally resets that
-occur during inactive CMFD batches.
-
-  *Default*: 9999
-
 ``<power_monitor>`` Element
 ---------------------------
 
@@ -1392,20 +1402,21 @@ This option can be turned on with "true" and turned off with "false".
 
   *Default*: false
 
+``<rtoli>`` Element
+--------------------
+
+The ``<rtoli>`` element specifies the relative inner tolerance on the Gauss-Seidel
+when performing CMFD calculations. It is only used in the standalone CMFD solver
+and not when PETSc is active. 
+
+  *Default*: 1.e-5
+
 ``<run_adjoint>`` Element
 -------------------------
 
 The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
-calculation be performed on the last batch when CMFD is active.
-
-  *Default*: false
-
-``<snes_monitor>`` Element
---------------------------
-
-The ``<snes_monitor>`` element is used to view the convergence of the nonlinear SNES
-function in PETSc. This option can be turned on with "true" and turned off with "false".
-
+calculation be performed on the last batch when CMFD is active. OpenMC should be
+compiled with PETSc when using this option.
 
   *Default*: false
 
@@ -1417,6 +1428,41 @@ standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
 By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
 
   *Default*: power
+
+``<shift>`` Element
+--------------------
+
+The ``<shfit>`` element specifies an optional Wielandt shift parameter for
+accelerating power iterations. It can only be used when PETSc is not active.
+It is by default very large so the impact of the shift is effectively zero.
+
+  *Default*: 1e6
+
+``<spectral>`` Element
+--------------------
+
+The ``<spectral>`` element specifies an optional spectral radius that can be set to
+accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
+solve. Note this is only used in the standalone CMFD solver and does not affect
+the calculation when PETSc is active.
+
+  *Default*: power
+
+``<stol>`` Element
+--------------------
+
+The ``<stol>`` element specifies the tolerance on the fission source when performing
+CMFD power iteration.
+
+  *Default*: 1.e-8
+
+``<tally_reset>`` Element
+--------------------
+
+The ``<tally_reset>`` element contains a list of batch numbers in which CMFD tallies
+should be reset.
+
+  *Default*: None
 
 ``<write_matrices>`` Element
 ----------------------------

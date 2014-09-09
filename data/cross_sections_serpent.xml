@@ -453,12 +453,12 @@
   <ace_table alias="Co-59.12c" awr="58.426899" location="1" name="27059.12c" path="27059ENDF7.ace" temperature="1.034e-07" zaid="27059"/>
   <ace_table alias="Co-59.15c" awr="58.426899" location="47907" name="27059.15c" path="27059ENDF7.ace" temperature="1.293e-07" zaid="27059"/>
   <ace_table alias="Co-59.18c" awr="58.426899" location="95695" name="27059.18c" path="27059ENDF7.ace" temperature="1.551e-07" zaid="27059"/>
-  <ace_table alias="Co-158m.03c" awr="57.438099" location="9465" metastable="1" name="27358.03c" path="27358ENDF7.ace" temperature="2.585e-08" zaid="27358"/>
-  <ace_table alias="Co-158m.06c" awr="57.438099" location="12631" metastable="1" name="27358.06c" path="27358ENDF7.ace" temperature="5.17e-08" zaid="27358"/>
-  <ace_table alias="Co-158m.09c" awr="57.438099" location="15789" metastable="1" name="27358.09c" path="27358ENDF7.ace" temperature="7.756e-08" zaid="27358"/>
-  <ace_table alias="Co-158m.12c" awr="57.438099" location="1" metastable="1" name="27358.12c" path="27358ENDF7.ace" temperature="1.034e-07" zaid="27358"/>
-  <ace_table alias="Co-158m.15c" awr="57.438099" location="3152" metastable="1" name="27358.15c" path="27358ENDF7.ace" temperature="1.293e-07" zaid="27358"/>
-  <ace_table alias="Co-158m.18c" awr="57.438099" location="6305" metastable="1" name="27358.18c" path="27358ENDF7.ace" temperature="1.551e-07" zaid="27358"/>
+  <ace_table alias="Co-58m.03c" awr="57.438099" location="9465" metastable="1" name="27358.03c" path="27358ENDF7.ace" temperature="2.585e-08" zaid="27358"/>
+  <ace_table alias="Co-58m.06c" awr="57.438099" location="12631" metastable="1" name="27358.06c" path="27358ENDF7.ace" temperature="5.17e-08" zaid="27358"/>
+  <ace_table alias="Co-58m.09c" awr="57.438099" location="15789" metastable="1" name="27358.09c" path="27358ENDF7.ace" temperature="7.756e-08" zaid="27358"/>
+  <ace_table alias="Co-58m.12c" awr="57.438099" location="1" metastable="1" name="27358.12c" path="27358ENDF7.ace" temperature="1.034e-07" zaid="27358"/>
+  <ace_table alias="Co-58m.15c" awr="57.438099" location="3152" metastable="1" name="27358.15c" path="27358ENDF7.ace" temperature="1.293e-07" zaid="27358"/>
+  <ace_table alias="Co-58m.18c" awr="57.438099" location="6305" metastable="1" name="27358.18c" path="27358ENDF7.ace" temperature="1.551e-07" zaid="27358"/>
   <ace_table alias="Ni-Nat.03c" awr="58.1838" location="309404" name="28000.03c" path="28000JNDL32.ace" temperature="2.585e-08" zaid="28000"/>
   <ace_table alias="Ni-Nat.06c" awr="58.1838" location="413232" name="28000.06c" path="28000JNDL32.ace" temperature="5.17e-08" zaid="28000"/>
   <ace_table alias="Ni-Nat.09c" awr="58.1838" location="516809" name="28000.09c" path="28000JNDL32.ace" temperature="7.756e-08" zaid="28000"/>
@@ -2422,12 +2422,12 @@
   <ace_table alias="Am-241.12c" awr="238.985992" location="1" name="95241.12c" path="95241ENDF7.ace" temperature="1.034e-07" zaid="95241"/>
   <ace_table alias="Am-241.15c" awr="238.985992" location="31077" name="95241.15c" path="95241ENDF7.ace" temperature="1.293e-07" zaid="95241"/>
   <ace_table alias="Am-241.18c" awr="238.985992" location="61491" name="95241.18c" path="95241ENDF7.ace" temperature="1.551e-07" zaid="95241"/>
-  <ace_table alias="Am-242.03c" awr="239.980103" location="94457" metastable="1" name="95242.03c" path="95242ENDF7.ace" temperature="2.585e-08" zaid="95242"/>
-  <ace_table alias="Am-242.06c" awr="239.980103" location="126665" metastable="1" name="95242.06c" path="95242ENDF7.ace" temperature="5.17e-08" zaid="95242"/>
-  <ace_table alias="Am-242.09c" awr="239.980103" location="158587" metastable="1" name="95242.09c" path="95242ENDF7.ace" temperature="7.756e-08" zaid="95242"/>
-  <ace_table alias="Am-242.12c" awr="239.980103" location="1" metastable="1" name="95242.12c" path="95242ENDF7.ace" temperature="1.034e-07" zaid="95242"/>
-  <ace_table alias="Am-242.15c" awr="239.980103" location="31580" metastable="1" name="95242.15c" path="95242ENDF7.ace" temperature="1.293e-07" zaid="95242"/>
-  <ace_table alias="Am-242.18c" awr="239.980103" location="63058" metastable="1" name="95242.18c" path="95242ENDF7.ace" temperature="1.551e-07" zaid="95242"/>
+  <ace_table alias="Am-242.03c" awr="239.980103" location="94457" name="95242.03c" path="95242ENDF7.ace" temperature="2.585e-08" zaid="95242"/>
+  <ace_table alias="Am-242.06c" awr="239.980103" location="126665" name="95242.06c" path="95242ENDF7.ace" temperature="5.17e-08" zaid="95242"/>
+  <ace_table alias="Am-242.09c" awr="239.980103" location="158587" name="95242.09c" path="95242ENDF7.ace" temperature="7.756e-08" zaid="95242"/>
+  <ace_table alias="Am-242.12c" awr="239.980103" location="1" name="95242.12c" path="95242ENDF7.ace" temperature="1.034e-07" zaid="95242"/>
+  <ace_table alias="Am-242.15c" awr="239.980103" location="31580" name="95242.15c" path="95242ENDF7.ace" temperature="1.293e-07" zaid="95242"/>
+  <ace_table alias="Am-242.18c" awr="239.980103" location="63058" name="95242.18c" path="95242ENDF7.ace" temperature="1.551e-07" zaid="95242"/>
   <ace_table alias="Am-243.03c" awr="240.973404" location="101763" name="95243.03c" path="95243ENDF7.ace" temperature="2.585e-08" zaid="95243"/>
   <ace_table alias="Am-243.06c" awr="240.973404" location="142713" name="95243.06c" path="95243ENDF7.ace" temperature="5.17e-08" zaid="95243"/>
   <ace_table alias="Am-243.09c" awr="240.973404" location="180357" name="95243.09c" path="95243ENDF7.ace" temperature="7.756e-08" zaid="95243"/>

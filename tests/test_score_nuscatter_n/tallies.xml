@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filter type="cell" bins="21 22 23" />
+    <scores>nu-scatter nu-scatter-1 nu-scatter-2 nu-scatter-3 nu-scatter-4</scores>
+  </tally>
+
+</tallies>

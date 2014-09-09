@@ -2,6 +2,7 @@ module ace_header
 
   use constants,   only: MAX_FILE_LEN
   use endf_header, only: Tab1
+  use list_header, only: ListElemInt
 
   implicit none
 
@@ -94,6 +95,9 @@ module ace_header
     integer       :: listing ! index in xs_listings
     real(8)       :: awr     ! weight of nucleus in neutron masses
     real(8)       :: kT      ! temperature in MeV (k*T)
+
+    ! Linked list of indices in nuclides array of instances of this same nuclide
+    type(ListElemInt), pointer :: nuc_list => null()
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
@@ -241,6 +245,7 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+    real(8) :: last_prn
   end type NuclideMicroXS
 
 !===============================================================================
@@ -337,26 +342,18 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % grid_index)) &
-           deallocate(this % grid_index)
+      if (allocated(this % grid_index)) deallocate(this % grid_index)
 
       if (allocated(this % energy)) &
-           deallocate(this % total, this % elastic, this % fission,  &
-          this % nu_fission, this % absorption)
-      if (allocated(this % heating)) &
-           deallocate(this % heating)
+           deallocate(this % energy, this % total, this % elastic, &
+           this % fission, this % nu_fission, this % absorption)
+      if (allocated(this % heating)) deallocate(this % heating)
 
-      if (allocated(this % index_fission)) &
-           deallocate(this % index_fission)
+      if (allocated(this % index_fission)) deallocate(this % index_fission)
 
-      if (allocated(this % nu_t_data)) &
-           deallocate(this % nu_t_data)
-
-      if (allocated(this % nu_p_data)) &
-           deallocate(this % nu_p_data)
-
-      if (allocated(this % nu_d_data)) &
-           deallocate(this % nu_d_data)
+      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
+      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
+      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
 
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)

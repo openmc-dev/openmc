@@ -411,6 +411,7 @@ contains
         end do
       end do
 
+      loc = minloc(dists)
       if (loc(1) == 2) then
         i_xyz = i_xyz + (/1, 0, 0/)
       else if (loc(1) == 3) then

@@ -173,23 +173,23 @@ contains
     call already_read % clear()
 
     ! Loop around material
-    MAT: do i = 1, n_materials
+    MATERIAL_LOOP3: do i = 1, n_materials
 
       ! Get material
-      m => materials(i)
+      mat => materials(i)
 
       ! Loop around nuclides in material
-      NUC: do j = 1, m % n_nuclides
+      NUCLIDE_LOOP2: do j = 1, mat % n_nuclides
 
         ! Check for fission in nuclide
-        if (nuclides(m % nuclide(j)) % fissionable) then
-          m % fissionable = .true.
-          exit NUC
+        if (nuclides(mat % nuclide(j)) % fissionable) then
+          mat % fissionable = .true.
+          exit NUCLIDE_LOOP2
         end if
 
-      end do NUC
+      end do NUCLIDE_LOOP2
 
-    end do MAT
+    end do MATERIAL_LOOP3
 
   end subroutine read_xs
 

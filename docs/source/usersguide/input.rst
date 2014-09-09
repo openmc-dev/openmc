@@ -1248,7 +1248,7 @@ and not when PETSc is active.
   *Default*: 1.e-10
 
 ``<balance>`` Element
--------------------
+---------------------
 
 The ``<balance>`` element controls whether exact neutron balance should be enforced
 from CMFD tallies before creating CMFD matrices. This changes effective downscatter
@@ -1283,7 +1283,7 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
   *Default*: balance
 
 ``<dhat_reset>`` Element
--------------------
+------------------------
 
 The ``<dhat_reset>`` element controls whether dhat nonlinear CMFD parameters
 should be reset to zero before solving CMFD eigenproblem. It can be turned on with 
@@ -1292,7 +1292,7 @@ should be reset to zero before solving CMFD eigenproblem. It can be turned on wi
   *Default*: false
 
 ``<downscatter>`` Element
--------------------
+-------------------------
 
 The ``<downscatter>`` element controls whether an effective downscatter cross
 section should be used when using 2-group CMFD. It can be turned on with "true"
@@ -1439,7 +1439,7 @@ It is by default very large so the impact of the shift is effectively zero.
   *Default*: 1e6
 
 ``<spectral>`` Element
---------------------
+----------------------
 
 The ``<spectral>`` element specifies an optional spectral radius that can be set to
 accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
@@ -1449,7 +1449,7 @@ the calculation when PETSc is active.
   *Default*: power
 
 ``<stol>`` Element
---------------------
+------------------
 
 The ``<stol>`` element specifies the tolerance on the fission source when performing
 CMFD power iteration.
@@ -1457,7 +1457,7 @@ CMFD power iteration.
   *Default*: 1.e-8
 
 ``<tally_reset>`` Element
---------------------
+-------------------------
 
 The ``<tally_reset>`` element contains a list of batch numbers in which CMFD tallies
 should be reset.

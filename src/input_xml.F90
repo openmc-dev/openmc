@@ -125,8 +125,8 @@ contains
       if (.not. ends_with(path_output, "/")) &
            path_output = trim(path_output) // "/"
     end if
-    
-     
+
+
     ! Check for the node trigger_on to find the trigger status and get the
     ! trigger information, i.e. max_batches, batch_interval and basic batches
     if (check_for_node(doc, "trigger")) then
@@ -134,17 +134,16 @@ contains
       ! Get trigger status
       call get_node_value(node_trigger, "status", temp_str)
       call lower_case(temp_str)
-        
-      select case(temp_str)
-      case ('true') 
+
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
         trigger_on = .true.
-      case ('false') 
+      elseif (trim(temp_str) == 'false' .or. trim(temp_str) == '0') then
         trigger_on = .false.
-      case default
+      else
         message = "Unknown trigger status: " // trim(temp_str)
         call fatal_error()
-      end select
-        
+      end if
+
       if (trigger_on) then
         ! Get number of max_batches
         if (.not. check_for_node(node_trigger, "max_batches") )then
@@ -153,18 +152,18 @@ contains
         else
           call get_node_value(node_trigger, "max_batches", n_batches)
         end if
-        
+
         ! Get number of batch_interval
         if (.not. check_for_node(node_trigger, "batch_interval"))then
           no_batch_interval = .true.
-        else 
+        else
           call get_node_value(node_trigger, "batch_interval", temp_int)
           n_batch_interval = temp_int
           if (.not. (n_batch_interval > 0)) then
             message = "Batch_interval must be a positive integer."
             call fatal_error()
           end if
-        end if 
+        end if
       end if
     end if
 
@@ -195,19 +194,19 @@ contains
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
-        
+
       ! Get number of basic batches.
       if (check_for_node(node_mode, "batches")) then
         call get_node_value(node_mode, "batches", n_basic_batches)
         if (.not. trigger_on) then
           n_batches = n_basic_batches
         end if
-      else 
+      else
         message = "Minimum number of batches is not specified when trigger is &
              & applied."
         call fatal_error()
       end if
-      
+
       !Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
@@ -219,15 +218,15 @@ contains
       allocate(k_generation(n_batches*gen_per_batch))
       allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
-      
-     ! Get the trigger information for keff   
+
+     ! Get the trigger information for keff
       if (check_for_node(node_mode, "keff_trigger")) then
         call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
         if (check_for_node(node_keff_trigger, "type")) then
           temp_str=' '
           call get_node_value(node_keff_trigger, "type", temp_str)
           call lower_case(temp_str)
-         
+
           select case (temp_str)
           case ('std_dev')
             keff_trigger%trigger_type = STANDARD_DEVIATION
@@ -235,22 +234,23 @@ contains
             keff_trigger%trigger_type = VARIANCE
           case ('rel_err')
             keff_trigger%trigger_type = RELATIVE_ERROR
-          case default 
-            message= "Unknown trigger type " // trim(temp_str) // & 
+          case default
+            message= "Unknown trigger type " // trim(temp_str) // &
                  " in eigenvalue"
             call fatal_error()
           end select
-         
-          else 
+
+          else
             message = "Must specify the type for keff_trigger in settings XML"
             call fatal_error()
           end if
-    
+
           if (check_for_node(node_keff_trigger, "threshold")) then
-            call get_node_value(node_keff_trigger, "threshold", & 
+            call get_node_value(node_keff_trigger, "threshold", &
                  keff_trigger%threshold)
-          else 
-            message = "Must specify the threshold for keff_trigger in settings XML"
+          else
+            message = "Must specify the threshold for keff_trigger in " // &
+                      " settings XML"
             call fatal_error()
           end if
         end if
@@ -1856,7 +1856,7 @@ contains
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
-    type(TallyFilter), allocatable :: filters(:) ! temporary filters    
+    type(TallyFilter), allocatable :: filters(:) ! temporary filters
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
@@ -2660,7 +2660,7 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
-            call find_score % add_key(SCORE_NU_FISSION, l) 
+            call find_score % add_key(SCORE_NU_FISSION, l)
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
@@ -2758,47 +2758,47 @@ contains
              // "."
         call fatal_error()
       end if
-    
+
     !Read the trigger information
- 
+
     if (keff_trigger % trigger_type > 0) then
       n_triggers = 1
-    else 
+    else
       n_triggers = 0
     end if
-    
+
     if (trigger_on) then
       call get_node_list(node_tal, "trigger", node_trigger_list)
       t % n_user_triggers = get_list_size(node_trigger_list)
       n_triggers = n_triggers + t % n_user_triggers
-      
+
       if (n_triggers == 0) then
-        message = "Trigger is set and no trigger is found in tally XML or & 
+        message = "Trigger is set and no trigger is found in tally XML or &
              & settings XML file."
         call fatal_error()
       end if
-      
+
       if (t % n_user_triggers > 0) then
         allocate(t % score(t % n_user_triggers))
         ! Get the scores for each trigger
         Trigger_Loop: do trig_ind =1, t % n_user_triggers
-  
+
         ! Get pointer to trigger mode
           call get_list_item(node_trigger_list, trig_ind , node_trigger)
-     
+
           ! Get scores information
           if (check_for_node(node_trigger, "scores")) then
-            call get_node_value(node_trigger, "scores", score_name)     
+            call get_node_value(node_trigger, "scores", score_name)
             do imomstr = 1, size(MOMENT_STRS)
               if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
                 n_order_pos = scan(score_name,'0123456789')
                 n_order = int(str_to_int( &
                 score_name(n_order_pos:(len_trim(score_name)))),4)
                 if (n_order > MAX_ANG_ORDER) then
-                  ! User requested too many orders; throw a warning and set to the
-                  ! maximum order.
+                  ! User requested too many orders; throw a warning and
+                  ! set to the maximum order.
                   ! The above scheme will essentially take the absolute value
-                  message = "Invalid scattering order of " & 
+                  message = "Invalid scattering order of " &
                       // trim(to_str(n_order)) // " requested. Setting to the &
                       & maximum permissible value, " &
                       // trim(to_str(MAX_ANG_ORDER))
@@ -2815,7 +2815,7 @@ contains
                 exit
               end if
             end do
-            ! Now check the Moment_N_Strs, but only if we werent successful above
+            ! Check the Moment_N_Strs, but only if we werent successful above
             if (imomstr > size(MOMENT_STRS)) then
               do imomstr = 1, size(MOMENT_N_STRS)
                 if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
@@ -2823,12 +2823,12 @@ contains
                   n_order = int(str_to_int( &
                   score_name(n_order_pos:(len_trim(score_name)))),4)
                   if (n_order > MAX_ANG_ORDER) then
-                    ! User requested too many orders; throw a warning and set to 
+                    ! User requested too many orders; throw a warning and set to
                     ! the maximum order.
                     ! The above scheme will essentially take the absolute value
-                    message = "Invalid scattering order of " & 
+                    message = "Invalid scattering order of " &
                          // trim(to_str(n_order)) // " requested. Setting to &
-                         & the maximum permissible value, " & 
+                         & the maximum permissible value, " &
                          // trim(to_str(MAX_ANG_ORDER))
                     call warning()
                     n_order = MAX_ANG_ORDER
@@ -2839,7 +2839,7 @@ contains
               end do
             end if
             t % score(trig_ind) % score_name = score_name
-    
+
             select case (trim(score_name))
             case ('all')
               if (t % n_user_triggers /= 1) then
@@ -2847,31 +2847,26 @@ contains
                        & functions in the same tally. Separate scoring &
                        & functions into distinct tallies"
                 call fatal_error()
-              else 
+              else
                 t % trigger_for_all = .true.
               end if
             case ('flux')
               t % score(trig_ind) % position =  find_score % get_key(SCORE_FLUX)
-           
+
             case ('flux-yn')
               t % score(trig_ind) % position =  find_score % get_key(SCORE_FLUX_YN)
-
             case ('total')
               t % score(trig_ind) % position =  find_score % get_key(SCORE_TOTAL)
-   
             case ('total-yn')
-              t % score(trig_ind) % position =  find_score % get_key(SCORE_TOTAL_YN)
-      
+              t % score(trig_ind) % position = find_score % get_key(SCORE_TOTAL_YN)
             case ('scatter')
               t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER)
-           
             case ('nu-scatter')
               t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER)
-            
             case ('scatter-n')
               if (n_order == 0) then
                 t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER)
-              else   
+              else
                 t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_N)
               end if
 
@@ -2884,19 +2879,14 @@ contains
 
             case ('scatter-pn')
               t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_PN)
-
             case ('nu-scatter-pn')
               t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER_PN)
- 
             case ('scatter-yn')
               t % score(trig_ind) % position = find_score % get_key(SCORE_SCATTER_YN)
-
             case ('nu-scatter-yn')
               t % score(trig_ind) % position = find_score % get_key(SCORE_NU_SCATTER_YN)
-
             case('transport')
               t % score(trig_ind) % position = find_score % get_key(SCORE_TRANSPORT)
-        
             case ('n1n')
               t % score(trig_ind) % position = find_score % get_key(SCORE_N_1N)
 
@@ -2911,31 +2901,26 @@ contains
 
             case ('absorption')
               t % score(trig_ind) % position = find_score % get_key(SCORE_ABSORPTION)
-           
             case ('fission')
               t % score(trig_ind) % position = find_score % get_key(SCORE_FISSION)
-          
             case ('nu-fission')
               t % score(trig_ind) % position = find_score % get_key(SCORE_NU_FISSION)
-            
             case ('kappa-fission')
               t % score(trig_ind) % position = find_score % get_key(SCORE_KAPPA_FISSION)
-           
             case ('current')
               t % score(trig_ind) % position = find_score % get_key(SCORE_CURRENT)
-              
             case ('events')
               t % score(trig_ind) % position = find_score % get_key(SCORE_EVENTS)
             end select
-              
-         
-            if (.not. t % trigger_for_all .and. t % score(trig_ind) % position & 
-                 == 0) then 
+
+
+            if (.not. t % trigger_for_all .and. t % score(trig_ind) % position &
+                 == 0) then
               message = "The score " // trim(score_name) // " has not been set &
                    & in tally " // trim(to_str(t % id)) // " in tally XML file."
-              call fatal_error() 
-            end if   
-          
+              call fatal_error()
+            end if
+
             temp_str = ''
             if (check_for_node(node_trigger, "type")) then
               call get_node_value(node_trigger, "type", temp_str)
@@ -2944,9 +2929,9 @@ contains
                    // trim(to_str(t % id)) // " in tally XML file."
               call fatal_error()
             end if
-     
+
             call lower_case(temp_str)
-     
+
             select case (temp_str)
             case ('std_dev')
               t % score(trig_ind) % type = STANDARD_DEVIATION
@@ -2954,35 +2939,35 @@ contains
               t % score(trig_ind) % type = VARIANCE
             case ('rel_err')
               t % score(trig_ind) % type = RELATIVE_ERROR
-            case default 
-              message = "Unknown trigger type " // trim(temp_str) // & 
+            case default
+              message = "Unknown trigger type " // trim(temp_str) // &
                    " in tally " // trim(to_str(t % id))
               call fatal_error()
             end select
-    
+
             if (check_for_node(node_trigger, "threshold")) then
-              call get_node_value(node_trigger, "threshold", & 
+              call get_node_value(node_trigger, "threshold", &
                    t % score(trig_ind) % threshold)
             else
               message = "Must specify threshold for trigger of tally " &
                   // trim(to_str(t % id)) // " in tally XML file."
               call fatal_error()
             end if
-    
+
           else
             if (t % n_user_triggers /= 1) then
               message = "Cannot set trigger for all and other scoring &
                     &functions in the same tally. Separate scoring &
                     &functions into distinct tallies"
-              call fatal_error()             
-            else 
+              call fatal_error()
+            else
               t % trigger_for_all = .true.
             end if
-          end if 
+          end if
           call find_score % clear()
         end do Trigger_Loop
-      end if 
-    end if 
+      end if
+    end if
 
       ! =======================================================================
       ! SET TALLY ESTIMATOR

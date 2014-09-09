@@ -884,13 +884,24 @@ contains
       i_E_up = nuc % grid_index_0K(union_grid_index)
 
       ! interpolate xs CDF since we're not exactly at the energy indices
-      m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
-        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-      cdf_low = nuc % xs_cdf(i_E_low - 1) + m * (E_low - nuc % energy_0K(i_E_low))
-      if (i_E_low == 1) cdf_low = ZERO
+      ! cdf value at lower bound attainable energy
+      if (i_E_low > 1) then
+        m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
+          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+        cdf_low = nuc % xs_cdf(i_E_low - 1) &
+          & + m * (E_low - nuc % energy_0K(i_E_low))
+      else
+        m = nuc % xs_cdf(i_E_low) &
+          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+        cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
+        if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
+      end if
+
+      ! cdf value at upper bound attainable energy
       m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
         & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
-      cdf_up = nuc % xs_cdf(i_E_up - 1) + m * (E_up - nuc % energy_0K(i_E_up))
+      cdf_up = nuc % xs_cdf(i_E_up - 1) &
+        & + m * (E_up - nuc % energy_0K(i_E_up))
 
       ! values used to sample the Maxwellian
       E_mode = kT

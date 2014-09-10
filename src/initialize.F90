@@ -12,6 +12,7 @@ module initialize
   use global
   use input_xml,          only: read_input_xml, read_cross_sections_xml,       &
                                 cells_in_univ_dict, read_plots_xml
+  use material_header,    only: Material
   use output,             only: title, header, write_summary, print_version,   &
                                 print_usage, write_xs_summary, print_plot,     &
                                 write_message

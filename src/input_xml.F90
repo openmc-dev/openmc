@@ -33,10 +33,10 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
-    if ((run_mode /= MODE_PLOTTING)) call read_cross_sections_xml()
+    if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
-    call read_tallies_xml()
+    if (run_mode /= MODE_PLOTTING) call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
@@ -293,6 +293,9 @@ contains
         select case (trim(type))
         case ('box')
           external_source % type_space = SRC_SPACE_BOX
+          coeffs_reqd = 6
+        case ('fission')
+          external_source % type_space = SRC_SPACE_FISSION
           coeffs_reqd = 6
         case ('point')
           external_source % type_space = SRC_SPACE_POINT

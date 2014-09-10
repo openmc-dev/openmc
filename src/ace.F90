@@ -3,11 +3,11 @@ module ace
   use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
                               DistEnergy
   use constants
-  use endf,             only: reaction_name
+  use endf,             only: reaction_name, is_fission, is_disappearance
   use error,            only: fatal_error, warning
   use fission,          only: nu_total
   use global
-  use list_header,      only: ListElemInt
+  use list_header,      only: ListElemInt, ListInt
   use material_header,  only: Material
   use output,           only: write_message
   use set_header,       only: SetChar
@@ -171,6 +171,25 @@ contains
 
     ! Avoid some valgrind leak errors
     call already_read % clear()
+
+    ! Loop around material
+    MATERIAL_LOOP3: do i = 1, n_materials
+
+      ! Get material
+      mat => materials(i)
+
+      ! Loop around nuclides in material
+      NUCLIDE_LOOP2: do j = 1, mat % n_nuclides
+
+        ! Check for fission in nuclide
+        if (nuclides(mat % nuclide(j)) % fissionable) then
+          mat % fissionable = .true.
+          exit NUCLIDE_LOOP2
+        end if
+
+      end do NUCLIDE_LOOP2
+
+    end do MATERIAL_LOOP3
 
   end subroutine read_xs
 
@@ -610,6 +629,7 @@ contains
     integer :: IE        ! reaction's starting index on energy grid
     integer :: NE        ! number of energies for reaction
     type(Reaction), pointer :: rxn => null()
+    type(ListInt) :: MTs
 
     LMT  = JXS(3)
     JXS4 = JXS(4)
@@ -682,17 +702,37 @@ contains
       allocate(rxn % sigma(NE))
       XSS_index = JXS7 + LOCA + 1
       rxn % sigma = get_real(NE)
+    end do
 
-      ! Skip redundant reactions -- this includes total inelastic level
-      ! scattering, gas production cross sections (MT=200+), and (n,p), (n,d),
-      ! etc. reactions leaving the nucleus in an excited state
-      if (rxn % MT == N_LEVEL .or. rxn % MT > N_DA) cycle
+    ! Create set of MT values
+    do i = 1, size(nuc % reactions)
+      call MTs % append(nuc % reactions(i) % MT)
+    end do
+
+    ! Create total, absorption, and fission cross sections
+    do i = 2, size(nuc % reactions)
+      rxn => nuc % reactions(i)
+      IE = rxn % threshold
+      NE = size(rxn % sigma)
+
+      ! Skip total inelastic level scattering, gas production cross sections
+      ! (MT=200+), etc.
+      if (rxn % MT == N_LEVEL) cycle
+      if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
+
+      ! Skip level cross sections if total is available
+      if (rxn % MT >= N_P0 .and. rxn % MT <= N_PC .and. MTs % contains(N_P)) cycle
+      if (rxn % MT >= N_D0 .and. rxn % MT <= N_DC .and. MTs % contains(N_D)) cycle
+      if (rxn % MT >= N_T0 .and. rxn % MT <= N_TC .and. MTs % contains(N_T)) cycle
+      if (rxn % MT >= N_3HE0 .and. rxn % MT <= N_3HEC .and. MTs % contains(N_3HE)) cycle
+      if (rxn % MT >= N_A0 .and. rxn % MT <= N_AC .and. MTs % contains(N_A)) cycle
+      if (rxn % MT >= N_2N0 .and. rxn % MT <= N_2NC .and. MTs % contains(N_2N)) cycle
 
       ! Add contribution to total cross section
       nuc % total(IE:IE+NE-1) = nuc % total(IE:IE+NE-1) + rxn % sigma
 
       ! Add contribution to absorption cross section
-      if (rxn % MT >= N_GAMMA .and. rxn % MT <= N_DA) then
+      if (is_disappearance(rxn % MT)) then
         nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
       end if
 
@@ -705,8 +745,7 @@ contains
       end if
 
       ! Add contribution to fission cross section
-      if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-           .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) then
+      if (is_fission(rxn % MT)) then
         nuc % fissionable = .true.
         nuc % fission(IE:IE+NE-1) = nuc % fission(IE:IE+NE-1) + rxn % sigma
 
@@ -719,10 +758,13 @@ contains
 
         ! Keep track of this reaction for easy searching later
         i_fission = i_fission + 1
-        nuc % index_fission(i_fission) = i + 1
+        nuc % index_fission(i_fission) = i
         nuc % n_fission = nuc % n_fission + 1
       end if
     end do
+
+    ! Clear MTs set
+    call MTs % clear()
 
   end subroutine read_reactions
 

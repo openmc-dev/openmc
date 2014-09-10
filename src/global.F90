@@ -275,6 +275,10 @@ module global
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
+  ! Fixed source particle bank
+  type(Bank), pointer :: source_site => null()
+!$omp threadprivate(source_site)
+
   ! Restart run
   logical :: restart_run = .false.
   integer :: restart_batch

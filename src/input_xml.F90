@@ -61,7 +61,6 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
-    type(dd_type), pointer :: dd => domain_decomp
     type(Node), pointer :: doc          => null()
     type(Node), pointer :: node_mode    => null()
     type(Node), pointer :: node_source  => null()
@@ -561,18 +560,18 @@ contains
         ! Get pointer to dd mesh
         call get_node_ptr(node_dd, "mesh", node_dd_mesh)
 
-        allocate(dd % mesh)
+        allocate(domain_decomp % mesh)
         
         ! Get mesh dimensions
         if (check_for_node(node_dd_mesh, "dimension")) then
         
           n = get_arraysize_integer(node_dd_mesh, "dimension")
           
-          allocate(dd % mesh % dimension(n))
-          allocate(dd % mesh % lower_left(n))
-          allocate(dd % mesh % upper_right(n))
-          allocate(dd % mesh % width(n))
-          dd % mesh % n_dimension = n
+          allocate(domain_decomp % mesh % dimension(n))
+          allocate(domain_decomp % mesh % lower_left(n))
+          allocate(domain_decomp % mesh % upper_right(n))
+          allocate(domain_decomp % mesh % width(n))
+          domain_decomp % mesh % n_dimension = n
           
           ! Check that dimensions are all greater than zero
           call get_node_array(node_dd_mesh, "dimension", temp_int_array3(1:n))
@@ -583,9 +582,9 @@ contains
           end if
 
           ! Read dimensions in each direction
-          dd % mesh % dimension = temp_int_array3(1:n)
+          domain_decomp % mesh % dimension = temp_int_array3(1:n)
           
-          dd % n_domains = product(dd % mesh % dimension)
+          domain_decomp % n_domains = product(domain_decomp % mesh % dimension)
           
         else
           message = "No <dimension> specified for domain decomposition mesh"
@@ -601,7 +600,7 @@ contains
             call fatal_error()
           end if
           call get_node_array(node_dd_mesh, "lower_left", &
-              dd % mesh % lower_left)
+              domain_decomp % mesh % lower_left)
         else
           message = "No <lower_left> specified for domain decomposition mesh"
           call fatal_error()
@@ -616,15 +615,15 @@ contains
             call fatal_error()
           end if
           call get_node_array(node_dd_mesh, "upper_right", &
-              dd % mesh % upper_right)
+              domain_decomp % mesh % upper_right)
         else
           message = "No <upper_right> specified for domain decomposition mesh"
           call fatal_error()
         end if
 
         ! Set the width
-        dd % mesh % width = (dd % mesh % upper_right - &
-            dd % mesh % lower_left) / dd % mesh % dimension
+        domain_decomp % mesh % width = (domain_decomp % mesh % upper_right - &
+            domain_decomp % mesh % lower_left) / domain_decomp % mesh % dimension
 
       else
         message = "No <mesh> specified for domain decomposition"
@@ -634,17 +633,17 @@ contains
       ! Read nodemap
       if (check_for_node(node_dd, "nodemap")) then
 
-        if (dd % n_domains /= get_arraysize_double(node_dd, "nodemap")) then
+        if (domain_decomp % n_domains /= get_arraysize_double(node_dd, "nodemap")) then
           message = "Incorrect number of domains specified on domain &
               &decomposition <nodemap>."
           call fatal_error()
         end if
         
-        allocate(dd % domain_load_dist(dd % n_domains))
+        allocate(domain_decomp % domain_load_dist(domain_decomp % n_domains))
         
-        call get_node_array(node_dd, "nodemap", dd % domain_load_dist)
+        call get_node_array(node_dd, "nodemap", domain_decomp % domain_load_dist)
 
-        if (any(dd % domain_load_dist < 0.0_8 )) then
+        if (any(domain_decomp % domain_load_dist < 0.0_8 )) then
           message = "Negative value specified in domain decomposition &
                     &<nodemap>."
           call fatal_error()

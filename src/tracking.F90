@@ -38,7 +38,6 @@ contains
     real(8) :: d_dd_mesh       ! sampled distance to boundary on the DD mesh
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
-    type(dd_type), pointer :: dd => domain_decomp
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
@@ -121,7 +120,8 @@ contains
 
       ! Check domain mesh boundary
       if (dd_run) then
-        call distance_to_mesh_surface(p, dd % mesh, distance, d_dd_mesh)
+        call distance_to_mesh_surface(p, domain_decomp % mesh, &
+                                      distance, d_dd_mesh)
         distance = min(distance, d_dd_mesh)
       end if
 
@@ -154,7 +154,7 @@ contains
             surfaces(abs(surface_crossed)) % bc == BC_REFLECT)) then
 
           ! Prepare particle for communication
-          call cross_domain_boundary(p, d_collision - distance)
+          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
 
           ! Exit the particle tracking loop
           exit

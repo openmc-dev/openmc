@@ -429,7 +429,6 @@ contains
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
       its = igs
-!print *, igs, err, w
       if (err < tol) exit
 
       ! Calculation new overrelaxation parameter
@@ -569,8 +568,6 @@ contains
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
       its = igs
-!print *, igs, err, w
-!read *
       if (err < tol) exit
 
       ! Calculation new overrelaxation parameter

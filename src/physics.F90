@@ -835,13 +835,26 @@ contains
       E_red = sqrt((awr * E) / kT)
       E_low = (((E_red - 4.0_8)**2) * kT) / awr
       E_up  = (((E_red + 4.0_8)**2) * kT) / awr
-      
+
       ! find lower and upper energy bound indices
-      call find_energy_index(E_low)
-      i_E_low = nuc % grid_index_0K(union_grid_index)
-      call find_energy_index(E_up)
-      i_E_up = nuc % grid_index_0K(union_grid_index)
-      
+      ! lower index
+      if (E_low < nuc % energy_0K(1)) then
+        i_E_low = 1
+      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_low = nuc % n_grid_0K - 1
+      else
+        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+      end if
+
+      ! upper index
+      if (E_up < nuc % energy_0K(1)) then
+        i_E_up = 1
+      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_up = nuc % n_grid_0K - 1
+      else
+        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+      end if
+
       ! interpolate xs since we're not exactly at the energy indices
       xs_low = nuc % elastic_0K(i_E_low)
       m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
@@ -878,10 +891,23 @@ contains
       E_up  = (((E_red + 4.0_8)**2) * kT) / awr
 
       ! find lower and upper energy bound indices
-      call find_energy_index(E_low)
-      i_E_low = nuc % grid_index_0K(union_grid_index)
-      call find_energy_index(E_up)
-      i_E_up = nuc % grid_index_0K(union_grid_index)
+      ! lower index
+      if (E_low < nuc % energy_0K(1)) then
+        i_E_low = 1
+      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_low = nuc % n_grid_0K - 1
+      else
+        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+      end if
+
+      ! upper index
+      if (E_up < nuc % energy_0K(1)) then
+        i_E_up = 1
+      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_up = nuc % n_grid_0K - 1
+      else
+        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+      end if
 
       ! interpolate xs CDF since we're not exactly at the energy indices
       ! cdf value at lower bound attainable energy

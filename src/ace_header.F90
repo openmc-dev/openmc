@@ -117,7 +117,6 @@ module ace_header
     character(10)        :: name_0K ! name of 0K nuclide, e.g. 92235.00c
     character(16)        :: scheme ! target velocity sampling scheme
     integer              :: n_grid_0K ! number of 0K energy grid points
-    integer, allocatable :: grid_index_0K(:) ! pointers to union grid
     real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
     real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
     real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
@@ -372,9 +371,6 @@ module ace_header
 
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
-      
-      if (allocated(this % grid_index_0K)) &
-           deallocate(this % grid_index_0K)
 
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &

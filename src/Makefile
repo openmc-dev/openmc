@@ -1,6 +1,4 @@
 all:
-	export FC=mpif90
-	export CXX=mpicxx
 	mkdir -p build
 	cmake -H. -Bbuild -Ddebug:BOOL=ON -Dunittests:BOOL=ON
 	make -s -C build

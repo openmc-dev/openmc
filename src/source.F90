@@ -136,11 +136,12 @@ contains
       call p % clear()
 
     case (SRC_SPACE_FISSION)
-      ! Set particle defaults
-      call p % initialize()
       ! Repeat sampling source location until a good site has been found
       found = .false.
       do while (.not.found)
+        ! Set particle defaults
+        call p % initialize()
+
         ! Coordinates sampled uniformly over a box
         p_min = external_source % params_space(1:3)
         p_max = external_source % params_space(4:6)
@@ -162,11 +163,8 @@ contains
           end if
           cycle
         end if
-        if (p % material == MATERIAL_VOID) cycle
-        if (.not. materials(p % material) % fissionable) then
-          found = .false.
-          call p % initialize()
-        end if
+        if (p % material == MATERIAL_VOID) found = .false.
+        if (.not. materials(p % material) % fissionable) found = .false.
       end do
       call p % clear()
 

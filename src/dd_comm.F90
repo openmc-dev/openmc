@@ -133,7 +133,8 @@ contains
     if (new_source > size_source_bank) &
         call extend_array(source_bank, size_source_bank, int(new_source, 8), &
             alloc_err)
-    
+        call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
+            int(new_source, 8), alloc_err)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)

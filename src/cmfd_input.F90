@@ -153,7 +153,7 @@ contains
       call get_node_value(doc, "feedback", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_feedback = .true.
+           cmfd_feedback = .true.
     end if
 
     ! Set downscatter logical
@@ -161,31 +161,31 @@ contains
       call get_node_value(doc, "downscatter", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_downscatter = .true.
+           cmfd_downscatter = .true.
     end if
 
     ! Set the solver type
     if (check_for_node(doc, "solver")) &
-      call get_node_value(doc, "solver", cmfd_solver_type)
+         call get_node_value(doc, "solver", cmfd_solver_type)
 
     ! Set monitoring
     if (check_for_node(doc, "snes_monitor")) then
       call get_node_value(doc, "snes_monitor", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_snes_monitor = .true.
+           cmfd_snes_monitor = .true.
     end if
     if (check_for_node(doc, "ksp_monitor")) then
       call get_node_value(doc, "ksp_monitor", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_ksp_monitor = .true.
+           cmfd_ksp_monitor = .true.
     end if
     if (check_for_node(doc, "power_monitor")) then
       call get_node_value(doc, "power_monitor", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_power_monitor = .true.
+           cmfd_power_monitor = .true.
     end if
 
     ! Output logicals
@@ -193,7 +193,7 @@ contains
       call get_node_value(doc, "write_matrices", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_write_matrices = .true.
+           cmfd_write_matrices = .true.
     end if
 
     ! Run an adjoint calc
@@ -201,36 +201,36 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_run_adjoint = .true.
+           cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
     if (check_for_node(doc, "begin")) &
-      call get_node_value(doc, "begin", cmfd_begin)
+         call get_node_value(doc, "begin", cmfd_begin)
 
     ! Tally during inactive batches
     if (check_for_node(doc, "inactive")) then
       call get_node_value(doc, "inactive", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
-        cmfd_tally_on = .false.
+           cmfd_tally_on = .false.
     end if
 
     ! Inactive batch flush window
     if (check_for_node(doc, "inactive_flush")) &
-      call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
+         call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
     if (check_for_node(doc, "num_flushes")) &
-      call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
+         call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
 
     ! Last flush before active batches
     if (check_for_node(doc, "active_flush")) &
-      call get_node_value(doc, "active_flush", cmfd_act_flush)
+         call get_node_value(doc, "active_flush", cmfd_act_flush)
 
     ! Get display
     if (check_for_node(doc, "display")) &
-      call get_node_value(doc, "display", cmfd_display)
+         call get_node_value(doc, "display", cmfd_display)
     if (trim(cmfd_display) == 'dominance' .and. &
-        trim(cmfd_solver_type) /= 'power') then
+         trim(cmfd_solver_type) /= 'power') then
       message = 'Dominance Ratio only aviable with power iteration solver'
       call warning()
       cmfd_display = ''
@@ -238,17 +238,17 @@ contains
 
     ! Read in spectral radius estimate and tolerances
     if (check_for_node(doc, "spectral")) &
-      call get_node_value(doc, "spectral", cmfd_spectral)
+         call get_node_value(doc, "spectral", cmfd_spectral)
     if (check_for_node(doc, "shift")) &
-      call get_node_value(doc, "shift", cmfd_shift)
+         call get_node_value(doc, "shift", cmfd_shift)
     if (check_for_node(doc, "ktol")) &
-      call get_node_value(doc, "ktol", cmfd_ktol)
+         call get_node_value(doc, "ktol", cmfd_ktol)
     if (check_for_node(doc, "stol")) &
-      call get_node_value(doc, "stol", cmfd_stol)
+         call get_node_value(doc, "stol", cmfd_stol)
     if (check_for_node(doc, "atoli")) &
-      call get_node_value(doc, "atoli", cmfd_atoli)
+         call get_node_value(doc, "atoli", cmfd_atoli)
     if (check_for_node(doc, "rtoli")) &
-      call get_node_value(doc, "rtoli", cmfd_rtoli)
+         call get_node_value(doc, "rtoli", cmfd_rtoli)
    
     ! Create tally objects
     call create_cmfd_tally(doc)
@@ -421,7 +421,7 @@ contains
         call get_node_value(doc, "reset", temp_str)
         call lower_case(temp_str)
         if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-          t % reset = .true.
+             t % reset = .true.
       end if
 
       ! Set up mesh filter

@@ -5,8 +5,6 @@ module testing_header
   implicit none
   private
   
-  public :: testing_type
-
   type, public :: testing_type
     integer :: n_passed = 0
     integer :: n_skipped = 0

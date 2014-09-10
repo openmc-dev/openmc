@@ -84,7 +84,7 @@ contains
 
     use global,            only: cmfd_begin, cmfd_on, &
                                  cmfd_reset, cmfd_run,               &
-                                 current_batch, cmfd_hold_weights
+                                 current_batch
 
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
@@ -283,7 +283,6 @@ contains
     integer :: nz       ! maximum number of cells in z direction
     integer :: ng       ! maximum number of energy groups
     integer :: i        ! iteration counter
-    integer :: j        ! iteration counter
     integer :: ijk(3)   ! spatial bin location
     integer :: e_bin    ! energy bin of source particle
     integer :: n_groups ! number of energy groups

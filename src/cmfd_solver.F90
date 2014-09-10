@@ -102,9 +102,8 @@ contains
 
     use constants, only: ONE, ZERO
     use error,     only: fatal_error
-    use global,    only: cmfd, message, cmfd_shift, keff, &
-                         cmfd_ktol, cmfd_stol
-    use global,    only: cmfd_write_matrices
+    use global,    only: cmfd, cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
+                         cmfd_write_matrices
 
     logical :: adjoint
 
@@ -180,10 +179,13 @@ contains
   subroutine compute_adjoint()
 
     use error,   only: fatal_error
+#ifndef PETSC
     use global,  only: message
-#ifdef PETSC
+#else
     use global,  only: cmfd_write_matrices
+#endif
 
+#ifdef PETSC
     ! Transpose matrices
     call loss % transpose()
     call prod % transpose()

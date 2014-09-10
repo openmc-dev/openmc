@@ -20,7 +20,8 @@ contains
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
+    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter, &
+                                   cmfd_fix_balance
 
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
@@ -57,11 +58,15 @@ contains
                             ONE, TINY_BIT
     use error,        only: fatal_error
     use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes,&
-                            matching_bins, current_batch
+                            matching_bins
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
+
+#ifdef CMFD_DEBUG
+    use global,       only: current_batch
+#endif
 
     integer :: nx            ! number of mesh cells in x direction
     integer :: ny            ! number of mesh cells in y direction
@@ -72,7 +77,6 @@ contains
     integer :: k             ! iteration counter for z
     integer :: g             ! iteration counter for g
     integer :: h             ! iteration counter for outgoing groups
-    integer :: l             ! iteration counter for leakage debug
     integer :: ital          ! tally object index
     integer :: ijk(3)        ! indices for mesh cell
     integer :: score_index   ! index to pull from tally object
@@ -82,10 +86,13 @@ contains
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
     real(8) :: flux          ! temp variable for flux
-    real(8) :: leak1         ! group 1 leakage 
-    real(8) :: leak2         ! group 2 leakage
     type(TallyObject),    pointer :: t => null() ! pointer for tally object
     type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
+#ifdef CMFD_DEBUG
+    integer :: l             ! iteration counter for leakage debug
+    real(8) :: leak1         ! group 1 leakage 
+    real(8) :: leak2         ! group 2 leakage
+#endif
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -709,9 +716,12 @@ contains
   subroutine compute_dhat()
 
     use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap, message, dhat_reset, current_batch
+    use global,     only: cmfd, cmfd_coremap, message, dhat_reset
     use output,     only: write_message
     use string,     only: to_str
+#ifdef CMFD_DEBUG
+    use global,     only: current_batch
+#endif
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction
@@ -869,8 +879,8 @@ contains
 
   function get_reflector_albedo(l, g, i, j, k)
 
-    use constants,  only: ALBEDO_REJECT
-    use global,     only: cmfd, cmfd_hold_weights
+    use constants,  only: ONE
+    use global,     only: cmfd
 
     real(8) :: get_reflector_albedo ! reflector albedo
     integer, intent(in) :: i ! iteration counter for x
@@ -892,8 +902,7 @@ contains
     ! Calculate albedo
     if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
         (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
-      albedo = ALBEDO_REJECT 
-      cmfd_hold_weights = .true. 
+      albedo = ONE
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)
     end if
@@ -958,8 +967,6 @@ contains
 
     keff_bal = cmfd % keff_bal
 
-    print *, 'KEFF BALANCE is:', keff_bal
-
     ! Return if not two groups
     if (ng /= 2) return
 
@@ -1006,12 +1013,6 @@ contains
           nsigf21 = cmfd % nfissxs(2,1,i,j,k)
           nsigf12 = cmfd % nfissxs(1,2,i,j,k)
           nsigf22 = cmfd % nfissxs(2,2,i,j,k)
-
-          ! Check for no fission into group 2
-          if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
-            write(OUTPUT_UNIT,'(A,1PE11.4,1X,1PE11.4)') 'Fission in G=2', &
-                  nsigf12,nsigf22
-          end if
 
           ! Compute absorption xs
           siga1 = sigt1 - sigs11 - sigs12

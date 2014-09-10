@@ -163,7 +163,10 @@ contains
           end if
           cycle
         end if
-        if (p % material == MATERIAL_VOID) found = .false.
+        if (p % material == MATERIAL_VOID) then
+          found = .false.
+          cycle
+        end if
         if (.not. materials(p % material) % fissionable) found = .false.
       end do
       call p % clear()

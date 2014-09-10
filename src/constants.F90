@@ -392,9 +392,6 @@ module constants
   ! constant to represent a zero flux "albedo"
   real(8), parameter :: ZERO_FLUX = 999.0_8
 
-  ! constant to represent albedo rejection
-  real(8), parameter :: ALBEDO_REJECT = 999.0_8
-
   ! constant for writing out no residual
   real(8), parameter :: CMFD_NORES = 99999.0_8
 

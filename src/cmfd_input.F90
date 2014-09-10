@@ -66,6 +66,7 @@ contains
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
+    integer :: i
     integer :: ng
     integer, allocatable :: iarray(:)
     integer, allocatable :: int_array(:)

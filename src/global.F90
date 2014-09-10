@@ -325,15 +325,15 @@ module global
   ! Flag to reset dhats to zero
   logical :: dhat_reset = .false.
 
+  ! Flag to enforce neutron balance
+  logical :: cmfd_fix_balance = .false.
+
   ! Flag to activate neutronic feedback via source weights
   logical :: cmfd_feedback = .false.
 
   ! User-defined tally information
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
-
-  ! Flag to hold cmfd weight adjustment factors
-  logical :: cmfd_hold_weights = .false.
 
   ! Eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'

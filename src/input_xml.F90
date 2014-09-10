@@ -295,6 +295,9 @@ contains
         case ('box')
           external_source % type_space = SRC_SPACE_BOX
           coeffs_reqd = 6
+        case ('fission')
+          external_source % type_space = SRC_SPACE_FISSION
+          coeffs_reqd = 6
         case ('point')
           external_source % type_space = SRC_SPACE_POINT
           coeffs_reqd = 3

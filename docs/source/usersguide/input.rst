@@ -274,7 +274,7 @@ attributes or sub-elements:
     of the nuclide to which a resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
     that is to be applied to the ``nuclide``.  Acceptable inputs - none of
-    which are case-sensitive - for the ``method`` attribute are ``ARTS``,
+    which are case-sensitive - for the ``method`` attribute are ``ARES``,
     ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
     are documented here_.  The ``xs_label`` attribute gives the label for the
     cross section data of the ``nuclide`` at a given temperature.  The
@@ -291,7 +291,7 @@ attributes or sub-elements:
         <resonance_scattering>
           <scatterer>
             <nuclide>U-238</nuclide>
-            <method>ARTS</method>
+            <method>ARES</method>
             <xs_label>92238.72c</xs_label>
             <xs_label_0K>92238.00c</xs_label_0K>
             <E_min>5.0e-6</E_min>
@@ -317,7 +317,7 @@ attributes or sub-elements:
               be specified, each corresponding to a single nuclide at a single
               temperature.
 
-    *Defaults*: None (scatterer), ARTS (method), 0.01 eV (E_min), 1.0 keV (E_max)
+    *Defaults*: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)
 
 ``<run_cmfd>`` Element
 ----------------------

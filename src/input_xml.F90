@@ -842,7 +842,7 @@ contains
           end if
 
           ! check that E_min is non-negative
-          if (E_min < ZERO) then
+          if (nuclides_0K(i) % E_min < ZERO) then
             message = "Lower resonance scattering energy bound is negative"
             call fatal_error()
           end if
@@ -853,7 +853,7 @@ contains
           end if
           
           ! check that E_max is not less than E_min
-          if (E_max < E_min) then
+          if (nuclides_0K(i) % E_max < nuclides_0K(i) % E_min) then
             message = "Lower resonance scattering energy bound exceeds upper"
             call fatal_error()
           end if

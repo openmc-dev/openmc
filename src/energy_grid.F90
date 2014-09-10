@@ -147,24 +147,6 @@ contains
         end if
         nuc % grid_index(j) = index_e - 1
       end do
-
-      ! set pointers for 0K energy grid to the unionized grid
-      if (nuc % resonant) then
-        allocate(nuc % grid_index_0K(n_grid))
-        
-        index_e = 1
-        energy = nuc % energy_0K(index_e)
-        
-        do j = 1, n_grid
-          union_energy = e_grid(j)
-          if (union_energy >= energy .and. index_e < nuc % n_grid_0K) then
-            index_e = index_e + 1
-            energy = nuc % energy_0K(index_e)
-          end if
-          nuc % grid_index_0K(j) = index_e - 1
-        end do
-      end if
-
     end do
 
   end subroutine grid_pointers

@@ -28,9 +28,6 @@ contains
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
       call add_grid_points(list, nuc % energy)
-
-      ! add 0K points to the grid
-      if (nuc % resonant) call add_grid_points(list, nuc % energy_0K)
     end do
 
     ! Set size of unionized energy grid 

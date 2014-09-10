@@ -2,8 +2,7 @@ module physics
 
   use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section,          only: elastic_xs_0K, find_energy_index, &
-                                    union_grid_index
+  use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
   use fission,                only: nu_total, nu_delayed
@@ -885,7 +884,7 @@ contains
         if (.not. reject) exit
       end do
 
-    case ('arts')
+    case ('ares')
       E_red = sqrt((awr * E) / kT)
       E_low = (((E_red - 4.0_8)**2) * kT) / awr
       E_up  = (((E_red + 4.0_8)**2) * kT) / awr

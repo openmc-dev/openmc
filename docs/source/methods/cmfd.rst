@@ -453,7 +453,7 @@ because no fission neutrons appear with energies in the thermal group.
    +--------------------------------------------------------------------------------------------+----------------+---------------------------+
    +--------------------------------------------------------------------------------------------+----------------+---------------------------+
    | tally                                                                                      |  score         |  filter                   |
-   +--------------------------------------------------------------------------------------------+----------------+---------------------------+
+   +============================================================================================+================+===========================+
    | \ :math:`\left\langle\overline{\overline\phi}_{l,m,n}^g                                    | flux           | mesh, energy              |
    | \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle`                                               |                |                           |
    +--------------------------------------------------------------------------------------------+----------------+---------------------------+
@@ -522,6 +522,136 @@ the current MC source, a subroutine was implemented to sum the statistical
 weights of neutrons from the source bank on a given spatial and energy mesh.
 Once weight adjustment factors were calculated, each neutron's statistical
 weight in the source bank was modified according to its location and energy.
+
+-------------------
+Toy Problem Example
+-------------------
+
+Before applying CMFD to a large reactor, a simple $1$-D slab toy problem was
+analyzed to understand how CMFD works. Table :ref:`tab_1Dtoyinput` presents
+data used to construct this problem. For MFD, the mesh was 2 cm over the
+geometry with one energy group. A comparison of fission source convergence
+using Shannon entropy is shown in figure :ref:`fig_1Dentropy`. The figure
+illustrates that it takes about 150 FSGs (equivalent to batches) to converge
+the source with standard MC without CMFD. For the case with CMFD, it is
+activated at batch 11 and directly affects the fission source for batch 12.
+Convergence of the fission source is almost immediately reached. 
+
+.. _tab_1Dtoyinput:
+
+.. table:: Input data for 1-D slab toy problem
+
+   +--------------------------------------------+-------------------+
+   +--------------------------------------------+-------------------+
+   | Slab Length                                | 200 cm            |
+   +============================================+===================+
+   | Homogeneous material of :math:`\rm UO_2`   | 19 g/cc density   |
+   +--------------------------------------------+-------------------+
+   | U-235 weight percent                       | 0.21              |
+   +--------------------------------------------+-------------------+
+   | U-238 weight percent                       | 0.68              |
+   +--------------------------------------------+-------------------+
+   | O-16 weight percent                        | 0.11              |
+   +--------------------------------------------+-------------------+
+   | Number of particles per                    | 4,000,000         |
+   +--------------------------------------------+-------------------+
+   | Number of inactive                         | 400               |
+   +--------------------------------------------+-------------------+
+
+|
+|
+
+.. _fig_1Dentropy:
+
+.. figure:: ../_images/entropy_1Dslab.png
+   :scale: 10 
+
+   Source convergence comparison for $1$-D slab toy problem
+
+To further show this convergence, source distributions were edited at various
+batches and compared. Figures :ref:`fig_toy6` to :ref:`fig_toy200` compare the
+OpenMC source distribution from the no CMFD case, the OpenMC source
+distribution from the CMFD case and the CMFD source distribution for six
+different batches. Figure :ref:`fig_toy6` compares the distributions at batch
+6. Here, CMFD has not been activated yet, so it is just plotted at zero. As
+expected, the OpenMC source distributions from the two cases are equal because
+CMFD has not yet affected it. From this plot, one can also see that the source
+distribution is very flat because the initial guess was uniform over space.
+Because the dominance ratio is close to unity, the source will slowly converge
+to a cosine-like shape. Results from batch 10 are presented in figure
+:ref:`fig_toy10`. The same information is shown in this plot, but the source is
+slightly more converged. It is plotted here to show how little the source
+changes in four batches. Batch 11 is the first time a CMFD source is
+calculated. Right away, it appears as a smooth cosine-like shape as shown in
+figure :ref:`fig_toy11`. Thus, when CMFD is fed back, its source shape will
+modify the OpenMC source bank to preserve this distribution on the CMFD mesh.
+On the next batch, shown in :ref:`fig_toy12`, the OpenMC source and the CMFD
+source from the CMFD case match, while the OpenMC source from the no CMFD case
+lags behind. Two more batches are shown in figure :ref:`fig_toy40` and figure
+:ref:`fig_toy200` to illustrate that all source distributions eventually line
+up at batch 200.
+
+.. _fig_toy6:
+
+.. figure:: ../_images/statepoint6.png
+   :scale: 10 
+
+   Source at FSG 6
+
+|
+
+.. _fig_toy10:
+
+.. figure:: ../_images/statepoint10.png
+   :scale: 10 
+
+   Source at FSG 10
+
+|
+
+.. _fig_toy11:
+
+.. figure:: ../_images/statepoint11.png
+   :scale: 10 
+
+   Source at FSG 11
+
+|
+
+.. _fig_toy12:
+
+.. figure:: ../_images/statepoint12.png
+   :scale: 10 
+
+   Source at FSG 12
+
+|
+
+.. _fig_toy40:
+
+.. figure:: ../_images/statepoint40.png
+   :scale: 10 
+
+   Source at FSG 40
+
+|
+
+.. _fig_toy200:
+
+.. figure:: ../_images/statepoint200.png
+   :scale: 10 
+
+   Source at FSG 200 
+
+|
+
+This simple illustration shows the power of NDA. Because of the nature of the
+diffusion equation, it can propagate and dampen higher harmonics much faster
+than the MC transport solution. It should be noted here that this is a very
+simplified problem where the dominance ratio was increased by changing the size
+of the slab. Also, the source distribution is very smooth and there was only
+one homogeneous material. The problem becomes more difficult to solve when
+expanding to more spatial dimensions and complex materials.
 
 ----------
 References

@@ -114,7 +114,7 @@ module ace_header
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
-    character(10)        :: name_0K ! name of 0K nuclide, e.g. 92235.00c
+    character(10)        :: name_0K = '' ! name of 0K nuclide, e.g. 92235.00c
     character(16)        :: scheme ! target velocity sampling scheme
     integer              :: n_grid_0K ! number of 0K energy grid points
     real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs

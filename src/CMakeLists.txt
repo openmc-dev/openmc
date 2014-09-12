@@ -147,9 +147,7 @@ endif()
 # PETSc for CMFD functionality
 #===============================================================================
 
-set (PETSC_ENABLED FALSE)
 if(petsc)
-  set(PETSC_ENABLED TRUE)
   find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
   find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
 
@@ -274,14 +272,6 @@ include(CTest)
 
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
-
-# Check to see if PETSC is compiled for CMFD tests
-if (NOT ${PETSC_ENABLED})
-  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
-  foreach(cmfd_test in ${CMFD_TESTS})
-    list(REMOVE_ITEM TESTS ${cmfd_test})
-  endforeach(cmfd_test)
-endif(NOT ${PETSC_ENABLED})
 
 # Check for MEM_CHECK and COVERAGE variables
 if (DEFINED ENV{MEM_CHECK})

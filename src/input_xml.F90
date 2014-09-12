@@ -512,6 +512,7 @@ contains
       allocate(entropy_mesh)
       allocate(entropy_mesh % lower_left(3))
       allocate(entropy_mesh % upper_right(3))
+      allocate(entropy_mesh % width(3))
 
       ! Copy values
       call get_node_array(node_entropy, "lower_left", &
@@ -543,6 +544,11 @@ contains
 
         ! Copy dimensions
         call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
+        
+        ! Calculate width
+        entropy_mesh % width = (entropy_mesh % upper_right - &
+             entropy_mesh % lower_left) / entropy_mesh % dimension
+        
       end if
 
       ! Turn on Shannon entropy calculation
@@ -2773,10 +2779,12 @@ contains
     integer :: i, j
     integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
     integer :: meshid
+    integer :: i_mesh
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
     character(MAX_LINE_LEN) :: temp_str
+    character(MAX_WORD_LEN) :: meshtype
     type(ObjectPlot), pointer :: pl => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_plot => null()
@@ -3060,11 +3068,11 @@ contains
             ! Get pointer to meshlines
             call get_list_item(node_meshline_list, 1, node_meshlines)
             
-            ! Ensure that there is a mesh id for this meshlines specification
-            if (check_for_node(node_meshlines, "mesh")) then
-              call get_node_value(node_meshlines, "mesh", meshid)
+            ! Check mesh type
+            if (check_for_node(node_meshlines, "meshtype")) then
+              call get_node_value(node_meshlines, "meshtype", meshtype)
             else
-              message = "Must specify a mesh id for meshlines " // &
+              message = "Must specify a meshtype for meshlines " // &
                         "specification in plot " // trim(to_str(pl % id))
               call fatal_error()
             end if
@@ -3084,8 +3092,8 @@ contains
               
               ! Check and make sure 3 values are specified for RGB
               if (get_arraysize_double(node_meshlines, "color") /= 3) then
-                message = "Bad RGB for meshlines color " &
-                     // "in plot " // trim(to_str(pl % id))
+                message = "Bad RGB for meshlines color " // &
+                          "in plot " // trim(to_str(pl % id))
                 call fatal_error()
               end if
               
@@ -3097,22 +3105,75 @@ contains
             
             end if
 
-            ! Check if the specified tally mesh exists
-            if (mesh_dict % has_key(meshid)) then
-              pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
-              if (meshes(meshid) % type /= LATTICE_RECT) then
-                message = "Non-rectangular mesh specified in meshlines for" // &
-                          " plot " // trim(to_str(pl % id))
+            ! Set mesh based on type
+            select case (trim(meshtype))
+            case ('ufs')
+
+              if (.not. associated(ufs_mesh)) then
+                message = "No UFS mesh for meshlines on plot " // &
+                          trim(to_str(pl % id))
                 call fatal_error()
               end if
-            else
-              message = "Could not find mesh " // &
-                        trim(to_str(meshid)) // &
-                        " specified in meshlines for plot " // &
-                        trim(to_str(pl % id))
-              call fatal_error()
-            end if
+              
+              pl % meshlines_mesh => ufs_mesh
+
+            case ('cmfd')
+
+              if (.not. cmfd_run) then
+                message = "Need CMFD run to plot CMFD mesh for meshlines " // &
+                          "on plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+              i_mesh = cmfd_tallies(1) % &
+                  filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
+                  int_bins(1)
+              pl % meshlines_mesh => meshes(i_mesh)
+
+            case ('entropy')
             
+              if (.not. associated(entropy_mesh)) then
+                message = "No entropy mesh for meshlines on plot " // &
+                          trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              pl % meshlines_mesh => entropy_mesh
+
+            case ('tally')
+
+              ! Ensure that there is a mesh id if the type is tally
+              if (check_for_node(node_meshlines, "id")) then
+                call get_node_value(node_meshlines, "id", meshid)
+              else
+                message = "Must specify a mesh id for meshlines tally mesh" // &
+                          "specification in plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+              ! Check if the specified tally mesh exists
+              if (mesh_dict % has_key(meshid)) then
+                pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
+                if (meshes(meshid) % type /= LATTICE_RECT) then
+                  message = "Non-rectangular mesh specified in meshlines " // &
+                            "for plot " // trim(to_str(pl % id))
+                  call fatal_error()
+                end if
+              else
+                message = "Could not find mesh " // &
+                          trim(to_str(meshid)) // &
+                          " specified in meshlines for plot " // &
+                          trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+            case default
+              message = "Invalid type for meshlines on plot " // &
+                        trim(to_str(pl % id)) // ": " // trim(meshtype)
+              call fatal_error()
+            end select
+
+
         end select
         
       end if

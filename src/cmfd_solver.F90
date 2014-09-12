@@ -11,7 +11,6 @@ module cmfd_solver
   private
   public :: cmfd_solver_execute 
 
-  logical :: iconv                ! did the problem converged
   real(8) :: k_n                  ! new k-eigenvalue
   real(8) :: k_o                  ! old k-eigenvalue
   real(8) :: k_s                  ! shift of eigenvalue
@@ -38,11 +37,11 @@ module cmfd_solver
     subroutine linsolve(A, b, x, tol, i)
       import :: Matrix
       import :: Vector
-      type(Matrix) :: A
-      type(Vector) :: b
-      type(Vector) :: x
-      real(8)      :: tol
-      integer      :: i
+      type(Matrix), intent(inout) :: A
+      type(Vector), intent(inout) :: b
+      type(Vector), intent(inout) :: x
+      real(8), intent(in) :: tol
+      integer, intent(out) :: i
     end subroutine linsolve 
   end interface
 
@@ -56,7 +55,7 @@ contains
 
     use global,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
 
-    logical, optional :: adjoint  ! adjoint calc
+    logical, optional, intent(in) :: adjoint  ! adjoint calc
 
     logical :: physical_adjoint = .false.
 
@@ -106,7 +105,7 @@ contains
                          cmfd_ktol, cmfd_stol
     use global,    only: cmfd_write_matrices
 
-    logical :: adjoint
+    logical, intent(in) :: adjoint
 
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
@@ -145,7 +144,7 @@ contains
     ! Fill in production matrix
     call build_prod_matrix(prod, adjoint=adjoint)
 
-    ! Setup petsc for everything
+    ! Finalize setup of CSR matrices
     call loss % assemble()
     call prod % assemble()
     if (cmfd_write_matrices) then
@@ -209,11 +208,13 @@ contains
   subroutine execute_power_iter()
 
     use constants,  only: ONE
-    use global,     only: cmfd_atoli, cmfd_rtoli
+    use error,      only: fatal_error
+    use global,     only: cmfd_atoli, cmfd_rtoli, message
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
     integer :: totalits ! total number of inners
+    logical :: iconv ! did the problem converged
     real(8) :: atoli ! absolute minimum tolerance
     real(8) :: rtoli ! relative tolerance based on source conv
     real(8) :: toli ! the current tolerance of inners
@@ -232,6 +233,12 @@ contains
 
     ! Begin power iteration
     do i = 1, 10000
+
+      ! Check if reached iteration 10000
+      if (i == 10000) then
+        message = 'Reached maximum iterations in CMFD power iteration solver.'
+        call fatal_error()
+      end if
 
       ! Compute source vector
       call prod % vector_multiply(phi_o, s_o)
@@ -255,7 +262,7 @@ contains
       s_o % val = s_o % val * k_lo
 
       ! Check convergence
-      call convergence(i, innerits)
+      call convergence(i, innerits, iconv)
       totalits = totalits + innerits
 
       ! Break loop if converged
@@ -304,14 +311,15 @@ contains
 ! CONVERGENCE checks the convergence of the CMFD problem
 !===============================================================================
 
-  subroutine convergence(iter, innerits)
+  subroutine convergence(iter, innerits, iconv)
 
     use constants,  only: ONE, TINY_BIT
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer :: iter     ! outer iteration number
-    integer :: innerits ! inner iteration nubmer
+    integer, intent(in) :: iter     ! outer iteration number
+    integer, intent(in) :: innerits ! inner iteration nubmer
+    logical, intent(out) :: iconv   ! convergence logical
 
     ! Reset convergence flag
     iconv = .false.
@@ -349,11 +357,11 @@ contains
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral
 
-    type(Matrix) :: A ! coefficient matrix
-    type(Vector) :: b ! right hand side vector
-    type(Vector) :: x ! unknown vector
-    real(8)      :: tol ! tolerance on final error
-    integer      :: its ! number of inner iterations
+    type(Matrix), intent(inout) :: A ! coefficient matrix
+    type(Vector), intent(inout) :: b ! right hand side vector
+    type(Vector), intent(inout) :: x ! unknown vector
+    real(8), intent(in) :: tol ! tolerance on final error
+    integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
     integer :: i ! loop counter for x 
@@ -449,11 +457,11 @@ contains
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral
 
-    type(Matrix) :: A ! coefficient matrix
-    type(Vector) :: b ! right hand side vector
-    type(Vector) :: x ! unknown vector
-    real(8)      :: tol ! tolerance on final error
-    integer      :: its ! number of inner iterations
+    type(Matrix), intent(inout) :: A ! coefficient matrix
+    type(Vector), intent(inout) :: b ! right hand side vector
+    type(Vector), intent(inout) :: x ! unknown vector
+    real(8), intent(in) :: tol ! tolerance on final error
+    integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
     integer :: i ! loop counter for x 
@@ -646,15 +654,15 @@ contains
 
     use global,  only: cmfd, cmfd_coremap
 
-    integer :: i     ! iteration counter for x
-    integer :: j     ! iteration counter for y
-    integer :: k     ! iteration counter for z
-    integer :: g     ! iteration counter for groups
-    integer :: irow  ! iteration counter over row (0 reference)
-    integer :: nx    ! maximum number of x cells
-    integer :: ny    ! maximum number of y cells
-    integer :: nz    ! maximum number of z cells
-    integer :: ng    ! maximum number of groups
+    integer, intent(out) :: i    ! iteration counter for x
+    integer, intent(out) :: j    ! iteration counter for y
+    integer, intent(out) :: k    ! iteration counter for z
+    integer, intent(out) :: g    ! iteration counter for groups
+    integer, intent(in)  :: irow ! iteration counter over row (0 reference)
+    integer, intent(in)  :: nx   ! maximum number of x cells
+    integer, intent(in)  :: ny   ! maximum number of y cells
+    integer, intent(in)  :: nz   ! maximum number of z cells
+    integer, intent(in)  :: ng   ! maximum number of groups
 
     ! Check for core map
     if (cmfd_coremap) then

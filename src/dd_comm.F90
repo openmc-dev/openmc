@@ -133,7 +133,8 @@ contains
     if (new_source > size_source_bank) &
         call extend_array(source_bank, size_source_bank, int(new_source, 8), &
             alloc_err)
-    
+        call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
+            int(new_source, 8), alloc_err)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)
@@ -715,6 +716,7 @@ contains
     real(8)    :: p_sample     ! probability of sampling a site
     type(Bank), save, allocatable :: &
          & temp_sites(:)       ! local array of extra sites on each node
+    integer(8), save :: size_temp_sites ! size of the temp_sites array
 
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
@@ -788,10 +790,15 @@ contains
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
     ! Allocate temporary source bank
-    index_temp = 0_8
+    
+    ! First check if the size of the fission bank has changed
+    if(allocated(temp_sites) .and. size_temp_sites /= size_fission_bank) &
+      deallocate(temp_sites)
+
     if (.not. allocated(temp_sites)) then
 
       allocate(temp_sites(size_fission_bank), STAT=alloc_err)
+      size_temp_sites = size_fission_bank
     
       ! Check for allocation errors 
       if (alloc_err /= 0) then
@@ -801,6 +808,7 @@ contains
 
     end if
 
+    index_temp = 0_8
     do i = 1, int(n_bank,4)
 
       ! If there are less than n_particles particles banked, automatically add 

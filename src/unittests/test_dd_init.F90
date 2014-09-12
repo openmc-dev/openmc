@@ -19,7 +19,7 @@ module test_dd_init
   implicit none
   public
 
-  type(dd_type) :: dd
+  type(dd_type), save :: dd
 
 contains
 

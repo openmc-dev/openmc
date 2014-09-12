@@ -22,15 +22,15 @@ contains
 ! flag for sending this particle later
 !===============================================================================
 
-  subroutine cross_domain_boundary(p, dist)
+  subroutine cross_domain_boundary(p, dd, dist)
 
     type(Particle), intent(inout) :: p
+    type(dd_type), intent(inout)  :: dd
     real(8), intent(in)           :: dist ! distance p still needs to travel
   
     real(8) :: xyz(3)
     integer :: to_meshbin  ! domain meshbin the particle is traveling to
     integer :: to_bin      ! local relative bin the particle is traveling to
-    type(dd_type), pointer :: dd => domain_decomp
   
     ! Advance particle a little and recalculate the bin in the DD mesh
     xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw

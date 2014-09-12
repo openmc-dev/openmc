@@ -1,18 +1,19 @@
 module source
 
-  use bank_header,      only: Bank
+  use bank_header,        only: Bank
   use constants
-  use dd_comm,          only: distribute_source
-  use error,            only: fatal_error
-  use geometry,         only: find_cell
-  use geometry_header,  only: BASE_UNIVERSE
+  use dd_comm,            only: distribute_source
+  use error,              only: fatal_error
+  use geometry,           only: find_cell
+  use geometry_header,    only: BASE_UNIVERSE
   use global
-  use math,             only: maxwell_spectrum, watt_spectrum
-  use output,           only: write_message
-  use output_interface, only: BinaryOutput
-  use particle_header,  only: Particle
-  use random_lcg,       only: prn, set_particle_seed, prn_seed, prn_set_stream
-  use string,           only: to_str
+  use math,               only: maxwell_spectrum, watt_spectrum
+  use output,             only: write_message
+  use output_interface,   only: BinaryOutput
+  use particle_header,    only: Particle
+  use random_lcg,         only: prn, set_particle_seed, prn_set_stream, prn_seed
+  use random_lcg_header,  only: STREAM_TRACKING, STREAM_SOURCE
+  use string,             only: to_str
 
 #ifdef MPI
   use mpi
@@ -153,6 +154,42 @@ contains
             call fatal_error()
           end if
         end if
+      end do
+      call p % clear()
+
+    case (SRC_SPACE_FISSION)
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Set particle defaults
+        call p % initialize()
+
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+          cycle
+        end if
+        if (p % material == MATERIAL_VOID) then
+          found = .false.
+          cycle
+        end if
+        if (.not. materials(p % material) % fissionable) found = .false.
       end do
       call p % clear()
 

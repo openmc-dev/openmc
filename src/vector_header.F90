@@ -28,7 +28,9 @@ module vector_header
 #  endif
   end type Vector
 
+#ifdef PETSC
   integer :: petsc_err ! petsc error code
+#endif
 
 contains
 

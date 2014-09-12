@@ -323,14 +323,6 @@ module constants
        LEAKAGE       = 4
 
   ! ============================================================================
-  ! RANDOM NUMBER STREAM CONSTANTS
-
-  integer, parameter :: N_STREAMS = 3
-  integer, parameter :: STREAM_TRACKING = 1
-  integer, parameter :: STREAM_TALLIES  = 2
-  integer, parameter :: STREAM_SOURCE   = 3
-
-  ! ============================================================================
   ! EXTERNAL SOURCE PARAMETERS
 
   ! Source spatial distribution types

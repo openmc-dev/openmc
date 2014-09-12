@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS
+                              MaterialMacroXS, Nuclide0K
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -256,6 +256,10 @@ module global
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
+  ! Fixed source particle bank
+  type(Bank), pointer :: source_site => null()
+!$omp threadprivate(source_site)
+
   ! Restart run
   logical :: restart_run = .false.
   integer :: restart_batch
@@ -380,6 +384,13 @@ module global
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 
+  ! ============================================================================
+  ! RESONANCE SCATTERING VARIABLES
+
+  logical :: treat_res_scat = .false. ! is resonance scattering treated?
+  integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
+  type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
+
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
@@ -413,6 +424,11 @@ contains
       end do
       deallocate(nuclides)
     end if
+
+    if (allocated(nuclides_0K)) then
+      deallocate(nuclides_0K)
+    end if
+
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)

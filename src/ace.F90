@@ -7,7 +7,7 @@ module ace
   use error,            only: fatal_error, warning
   use fission,          only: nu_total
   use global
-  use list_header,      only: ListElemInt, ListInt
+  use list_header,      only: ListInt
   use material_header,  only: Material
   use output,           only: write_message
   use set_header,       only: SetChar
@@ -1563,16 +1563,11 @@ contains
 
     integer :: i ! index in nuclides array
     integer :: j ! index in nuclides array
-    type(ListElemInt), pointer :: nuc_list => null() ! pointer to nuclide list
 
     do i = 1, n_nuclides_total
-      allocate(nuclides(i) % nuc_list)
-      nuc_list => nuclides(i) % nuc_list
       do j = 1, n_nuclides_total
         if (nuclides(i) % zaid == nuclides(j) % zaid) then
-          nuc_list % data = j
-          allocate(nuc_list % next)
-          nuc_list => nuc_list % next
+          call nuclides(i) % nuc_list % append(j)
         end if
       end do
     end do

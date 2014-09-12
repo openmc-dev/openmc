@@ -2084,6 +2084,14 @@ contains
       ! Get pointer to tally
       t => tallies(i)
 
+      ! If this is a domain-decomposed run, tallies could be scored to from any
+      ! domain.  Rather than try to use domain boundaries to figure out which
+      ! tallies fall in which domains, we'll allocate memory on-the-fly during
+      ! transport.
+      if (dd_run) then
+        t % on_the_fly_allocation = .true.
+      end if
+
       ! Get pointer to tally xml node
       call get_list_item(node_tal_list, i, node_tal)
 

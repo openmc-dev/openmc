@@ -575,6 +575,12 @@ contains
     ! Read batch number to restart at
     call sp % read_data(restart_batch, "current_batch")
 
+    if (restart_batch > n_batches) then
+      message = 'The number batches specified in settings.xml is fewer than' //&
+           & ' the number of batches in the given statepoint file.'
+      call fatal_error()
+    end if
+
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
       call sp % read_data(int_array(1), "n_inactive")

@@ -60,7 +60,12 @@ contains
       t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
 
       ! Allocate results array
-      allocate(t % results(t % total_score_bins, t % total_filter_bins))
+      if (t % on_the_fly_allocation) then
+        allocate(t % results(t % total_score_bins, 0))
+        t % size_results_filters = 0
+      else
+        allocate(t % results(t % total_score_bins, t % total_filter_bins))
+      end if
 
     end do TALLY_LOOP
 

@@ -1,6 +1,7 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES
+  use constants,    only: NONE, N_FILTER_TYPES
+  use dict_header,  only: DictIntInt
 
   implicit none
 
@@ -117,6 +118,20 @@ module tally_header
     integer :: total_score_bins
     type(TallyResult), allocatable :: results(:,:)
 
+    ! For domain-decomposed runs, the results array is allocated on the fly
+    ! as filter bins need to be accessed.  In this case, the filter indices
+    ! calculated by matching bins will not actually correspond to the index
+    ! in the results array that stores the desired values.  The following
+    ! dictionary stores a mapping to keep track of these differences.
+
+    type(DictIntInt) :: filter_index_map
+
+    ! Whether or not this tally will do on-the-fly memory allocation
+    logical :: on_the_fly_allocation = .false.
+
+    ! Size of results array when variable
+    integer :: size_results_filters
+
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.
 
@@ -125,10 +140,65 @@ module tally_header
 
     ! Type-Bound procedures
     contains
+      procedure :: get_filter_index => filter_index
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
 
   contains
+
+!===============================================================================
+! FILTER_INDEX returns the filter index in the results array for a given set of
+! matching bins
+!===============================================================================
+
+    function filter_index(this, matching_bins) result(idx)
+
+      use global, only: rank
+
+      class(TallyObject), intent(inout) :: this 
+      integer, allocatable, intent(in) :: matching_bins(:)
+      
+      integer :: idx
+      type(TallyResult), allocatable :: temp(:,:)
+
+      ! Get index in total array
+      idx = sum((matching_bins(1:this % n_filters) - 1) * this % stride) + 1
+
+      ! If the results array is fully allocated, this index is valid
+      if (.not. this % on_the_fly_allocation) return
+
+      ! If we're doing on-the-fly memory allocation, we must use the map
+      if (this % filter_index_map % has_key(idx)) then
+
+        idx = this % filter_index_map % get_key(idx)
+
+      else
+        
+        print *, rank, 'allocating bin', idx
+
+        ! This is the first time this filter index has been needed, so we must 
+        ! allocate TallyResult object for it
+  
+        ! TODO: this should be done with a linked list
+
+        ! Allocate results array with increased size
+        allocate(temp(this % total_score_bins, this % size_results_filters + 1))
+
+        ! Copy original results to temporary array
+        temp(:, 1:this % size_results_filters) = &
+             this % results(:, 1:this % size_results_filters)
+
+        ! Move allocation from temporary array
+        call move_alloc(FROM=temp, TO=this % results)
+
+        ! Increment counter and add to mapping        
+        this % size_results_filters = this % size_results_filters + 1
+        call this % filter_index_map % add_key(idx, this % size_results_filters)
+        idx = this % size_results_filters
+
+      end if
+
+    end function filter_index
 
 !===============================================================================
 ! TALLYFILTER_CLEAR deallocates a TallyFilter element and sets it to its as

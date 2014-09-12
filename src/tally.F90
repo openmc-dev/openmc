@@ -86,7 +86,7 @@ contains
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+      filter_index = t % get_filter_index(matching_bins)
 
       ! Check for nuclide bins
       k = 0
@@ -615,7 +615,7 @@ contains
       matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
 
       ! determine scoring index
-      i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+      i_filter = t % get_filter_index(matching_bins)
 
       ! Add score to tally
 !$omp critical
@@ -699,7 +699,7 @@ contains
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+      filter_index = t % get_filter_index(matching_bins)
 
       if (t % all_nuclides) then
         if (p % material /= MATERIAL_VOID) then
@@ -1582,7 +1582,7 @@ contains
         matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
 
         ! Determining scoring index
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        filter_index = t % get_filter_index(matching_bins)
 
         if (t % all_nuclides) then
           if (p % material /= MATERIAL_VOID) then
@@ -2023,7 +2023,7 @@ contains
               matching_bins(i_filter_surf) = OUT_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2037,7 +2037,7 @@ contains
               matching_bins(i_filter_surf) = IN_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2055,7 +2055,7 @@ contains
               matching_bins(i_filter_surf) = OUT_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2069,7 +2069,7 @@ contains
               matching_bins(i_filter_surf) = IN_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2087,7 +2087,7 @@ contains
               matching_bins(i_filter_surf) = OUT_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2101,7 +2101,7 @@ contains
               matching_bins(i_filter_surf) = IN_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = t % get_filter_index(matching_bins)
 !$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2218,7 +2218,7 @@ contains
 
         ! Determine scoring index
         if (matching_bins(i_filter_surf) > 0) then
-          filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+          filter_index = t % get_filter_index(matching_bins)
 
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &

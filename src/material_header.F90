@@ -21,6 +21,10 @@ module material_header
     ! Temporary names read during initialization
     character(12), allocatable :: names(:)     ! isotope names
     character(12), allocatable :: sab_names(:) ! name of S(a,b) table
+
+    ! Does this material contain fissionable nuclides?
+    logical :: fissionable = .false.
+
   end type Material
 
 end module material_header

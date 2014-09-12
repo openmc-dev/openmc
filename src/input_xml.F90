@@ -36,7 +36,7 @@ contains
     if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
-    if (run_mode /= MODE_PLOTTING) call read_tallies_xml()
+    call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
@@ -1909,7 +1909,7 @@ contains
     end if
 
     ! Allocate tally array
-    if (n_user_tallies > 0) then
+    if (n_user_tallies > 0 .and. run_mode /= MODE_PLOTTING) then
       call add_tallies("user", n_user_tallies)
     end if
 
@@ -2057,6 +2057,9 @@ contains
       ! Add mesh to dictionary
       call mesh_dict % add_key(m % id, i)
     end do
+
+    ! We only need the mesh info for plotting
+    if (run_mode == MODE_PLOTTING) return
 
     ! ==========================================================================
     ! READ TALLY DATA

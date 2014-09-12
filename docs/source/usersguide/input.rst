@@ -1298,11 +1298,16 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     The special ``meshlines`` sub-element allows for plotting the boundaries of
     a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
     ``plot`` element, and it must contain as attributes or sub-elements a mesh
-    id and a linewidth, as well as an optional color:
+    type and a linewidth, as well as an optional color:
 
-    :mesh:
+    :meshtype:
+      The type of the mesh to be plotted. Valid options are "tally", "entropy",
+      "ufs", and "cmfd".  If plotting "tally" meshes, the id of the mesh to plot
+      must be specified with the ``id`` sub-element.
+
+    :id:
       A single integer id number for the mesh specified on ``tallies.xml`` that
-      should be plotted.
+      should be plotted. This element is only required for ``meshtype="tally"``.
 
     :linewidth:
       A single integer number of pixels of linewidth to specify for the mesh
@@ -1317,9 +1322,6 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       *Default*: 0 0 0 (black)
 
     *Default*: None
-
-    .. warning:: Meshline plotting is currently only implemented for plots with
-                 an "xy" basis.
 
 ------------------------------
 CMFD Specification -- cmfd.xml

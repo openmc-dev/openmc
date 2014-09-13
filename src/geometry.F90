@@ -928,7 +928,7 @@ contains
           if (on_surface .or. tmp == ZERO) then
             d = INFINITY
           else
-            d = -(A*x + B*y + C*w - D)/tmp
+            d = -(A*x + B*y + C*z - D)/tmp
             if (d < ZERO) d = INFINITY
           end if
 

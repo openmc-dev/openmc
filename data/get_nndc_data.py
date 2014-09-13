@@ -19,9 +19,6 @@ from convert_binary import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
-         'ENDF-B-VII.1-neutron-300K.tar.gz',
-         'ENDF-B-VII.1-neutron-900K.tar.gz',
-         'ENDF-B-VII.1-neutron-1500K.tar.gz',
          'ENDF-B-VII.1-tsl.tar.gz']
 block_size = 16384
 
@@ -35,7 +32,10 @@ for f in files:
     req = urlopen(url)
 
     # Get file size from header
-    file_size = int(req.info().getheaders('Content-Length')[0])
+    if sys.version_info[0] < 3:
+        file_size = int(req.info().getheaders('Content-Length')[0])
+    else:
+        file_size = req.length
     downloaded = 0
 
     # Check if file already downloaded
@@ -129,14 +129,14 @@ if not response or response.lower().startswith('y'):
 
     # loop around ace directories
     for d in ace_dirs:
-        print('Coverting {0}...'.format(d))
+        print('Converting {0}...'.format(d))
 
         # get a list of files to convert
         ace_files = glob.glob(os.path.join(d, '*.ace*'))
 
         # convert files
         for f in ace_files:
-            print('    Coverting {0}...'.format(os.path.split(f)[1]))
+            print('    Converting {0}...'.format(os.path.split(f)[1]))
             ascii_to_binary(f, f)
 
     # Change cross_sections.xml file

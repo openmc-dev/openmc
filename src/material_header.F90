@@ -31,7 +31,6 @@ module material_header
     integer                        :: n_comp     ! number of compositions
     integer                        :: cell       ! assigned cell 
                                                  ! only for distributed material
-    integer                        :: deplete    ! deplete the material
     integer                        :: map        ! map number for this material
     integer, allocatable           :: nuclide(:) ! index in nuclides array
     type(Density)                  :: density    ! material density in atom/b-cm
@@ -50,8 +49,12 @@ module material_header
     logical                        :: distrib_dens ! distributed densities
     logical                        :: distrib_comp ! distributed compositions
 
+    ! Does this material contain fissionable nuclides?
+    logical :: fissionable = .false.
+
   contains
     procedure :: get_density => get_density
+
   end type Material
   
 contains

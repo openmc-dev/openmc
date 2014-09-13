@@ -1,6 +1,6 @@
 module initialize
 
-  use ace,              only: read_xs
+  use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -11,6 +11,7 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
+  use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message, find_offset
@@ -117,6 +118,9 @@ contains
       call time_read_xs % start()
       call read_xs()
       call time_read_xs % stop()
+
+      ! Create linked lists for multiple instances of the same nuclide
+      call same_nuclide_list()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
@@ -225,13 +229,13 @@ contains
     call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
-    ! Adjust displacements 
+    ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
     bank_blocks = (/ 1, 3, 3, 1 /)
     bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -322,12 +326,8 @@ contains
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
     integer :: filetype
-    character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
     type(BinaryOutput) :: sp
-
-    ! Get working directory
-    call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
 
     ! Check number of command line arguments and allocate argv
     argc = COMMAND_ARGUMENT_COUNT()
@@ -428,7 +428,7 @@ contains
           ! Read number of threads
           i = i + 1
 
-#ifdef _OPENMP          
+#ifdef _OPENMP
           ! Read and set number of OpenMP threads
           n_threads = int(str_to_int(argv(i)), 4)
           if (n_threads < 1) then
@@ -441,7 +441,7 @@ contains
           call warning()
 #endif
 
-        case ('-?', '-help', '--help')
+        case ('-?', '-h', '-help', '--help')
           call print_usage()
           stop
         case ('-v', '-version', '--version')
@@ -470,16 +470,12 @@ contains
     ! Determine directory where XML input files are
     if (argc > 0 .and. last_flag < argc) then
       path_input = argv(last_flag + 1)
-      ! Need to add working directory if the given path is a relative path
-      if (.not. starts_with(path_input, "/")) then
-        path_input = trim(pwd) // "/" // trim(path_input)
-      end if
     else
-      path_input = pwd
+      path_input = ''
     end if
 
     ! Add slash at end of directory if it isn't there
-    if (.not. ends_with(path_input, "/")) then
+    if (.not. ends_with(path_input, "/") .and. len_trim(path_input) > 0) then
       path_input = trim(path_input) // "/"
     end if
 
@@ -579,7 +575,7 @@ contains
     integer :: m             ! loop index for lattices
     integer :: mid, lid      ! material and lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array 
+    integer :: i_array       ! index in surfaces/materials array
     integer :: id            ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: lat => null()
@@ -650,7 +646,7 @@ contains
                " specified on lattice " // trim(to_str(lid))
             call fatal_error()
           end if
-          
+
         else
           message = "Specified fill " // trim(to_str(id)) // " on cell " // &
                trim(to_str(c % id)) // " is neither a universe nor a lattice."
@@ -869,6 +865,7 @@ contains
         mat % comp(k) % atom_density = &
             mat % density % density(l) * mat % comp(k) % atom_density
       end do
+
     end do
 
   end subroutine normalize_ao
@@ -924,7 +921,7 @@ contains
     ! Allocate source bank
     allocate(source_bank(work), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       message = "Failed to allocate source bank."
       call fatal_error()
@@ -952,7 +949,7 @@ contains
     allocate(fission_bank(3*work), STAT=alloc_err)
 #endif
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       message = "Failed to allocate fission bank."
       call fatal_error()

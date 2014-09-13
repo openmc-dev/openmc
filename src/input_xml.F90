@@ -1431,7 +1431,6 @@ contains
     real(8), allocatable :: temp_real_array(:) ! temporary array for composition
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
-    logical :: depletion     ! load depletion library isotopes?
     character(12) :: name    ! name of isotope, e.g. 92235.03c
     character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density

@@ -893,7 +893,6 @@ contains
     integer, allocatable    :: temp_array3D(:,:,:)
     integer, allocatable    :: temp_array4D(:,:,:,:)
     logical                 :: source_present
-    real(8)                 :: l
     real(8)                 :: real_array(3) 
     real(8), allocatable    :: temp_real_array(:)
     type(TallyObject), pointer :: t => null()

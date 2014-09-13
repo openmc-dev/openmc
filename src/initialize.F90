@@ -1085,7 +1085,6 @@ contains
   do i = 1, n_materials
     mat => materials(i)
     if (.not. mat % distrib_comp) then
-      write (*,*) "writing map number:",n_maps
       mat % map = n_maps
     end if
   end do

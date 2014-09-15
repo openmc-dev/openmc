@@ -1614,7 +1614,6 @@ contains
                     cycle NUCLIDE_BIN_LOOP
                   end if
                 end do NUCLIDE_MAT_LOOP
-
                 atom_density = mat % get_density(p % mapping(mat % map), j)
               else
                 atom_density = ZERO

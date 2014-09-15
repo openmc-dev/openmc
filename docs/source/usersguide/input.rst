@@ -289,6 +289,65 @@ or sub-elements and can be set to either "false" or "true".
 
   *Default*: true
 
+``<resonance_scattering>`` Element
+----------------------
+
+The ``resonance_scattering`` element can contain one or more of the following
+attributes or sub-elements:
+
+  :scatterer:
+    An element with attributes/sub-elements called ``nuclide``, ``method``,
+    ``xs_label``, ``xs_label_0K``, ``E_min``, and ``E_max``. The ``nuclide``
+    attribute is the name, as given by the ``name`` attribute within the 
+    ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
+    of the nuclide to which a resonance scattering treatment is to be applied.
+    The ``method`` attribute gives the type of resonance scattering treatment
+    that is to be applied to the ``nuclide``.  Acceptable inputs - none of
+    which are case-sensitive - for the ``method`` attribute are ``ARES``,
+    ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
+    are documented here_.  The ``xs_label`` attribute gives the label for the
+    cross section data of the ``nuclide`` at a given temperature.  The
+    ``xs_label_0K`` gives the label for the 0 K cross section data for the
+    ``nuclide``.  The ``E_min`` attribute gives the minimum energy above
+    which the ``method`` is applied.  The ``E_max`` attribute gives the
+    maximum energy below which the ``method`` is applied.  One example would
+    be as follows:
+
+    .. _here: http://dx.doi.org/10.1016/j.anucene.2014.01.017
+
+    .. code-block:: xml
+
+        <resonance_scattering>
+          <scatterer>
+            <nuclide>U-238</nuclide>
+            <method>ARES</method>
+            <xs_label>92238.72c</xs_label>
+            <xs_label_0K>92238.00c</xs_label_0K>
+            <E_min>5.0e-6</E_min>
+            <E_max>40.0e-6</E_max>
+         </scatterer>
+         <scatterer>
+            <nuclide>Pu-239</nuclide>
+            <method>dbrc</method>
+            <xs_label>94239.72c</xs_label>
+            <xs_label_0K>94239.00c</xs_label_0K>
+            <E_min>0.01e-6</E_min>
+            <E_max>210.0e-6</E_max>
+          </scatterer>
+        </resonance_scattering>
+
+    .. note:: If the ``resonance_scattering`` element is not given, the free gas,
+              constant cross section (``cxs``) scattering model, which has
+              historically been used by Monte Carlo codes to sample target
+              velocities, is used to treat the target motion of all nuclides.  If
+              ``resonance_scattering`` is present, the ``cxs`` method is applied
+              below ``E_min`` and the target-at-rest (asymptotic) kernel is used
+              above ``E_max``.  An arbitrary number of ``scatterer`` elements may
+              be specified, each corresponding to a single nuclide at a single
+              temperature.
+
+    *Defaults*: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)
+
 ``<run_cmfd>`` Element
 ----------------------
 
@@ -336,6 +395,12 @@ attributes/sub-elements:
 
     :parameters:
       For a "box" spatial distribution, ``parameters`` should be given as six
+      real numbers, the first three of which specify the lower-left corner of a
+      parallelepiped and the last three of which specify the upper-right
+      corner. Source sites are sampled uniformly through that parallelepiped.
+
+      To filter a "box" spatial distribution by fissionable material, specify
+      "fission" tag instead of "box". The ``parameters`` should be given as six
       real numbers, the first three of which specify the lower-left corner of a
       parallelepiped and the last three of which specify the upper-right
       corner. Source sites are sampled uniformly through that parallelepiped.

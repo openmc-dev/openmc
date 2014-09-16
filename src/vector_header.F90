@@ -28,7 +28,9 @@ module vector_header
 #  endif
   end type Vector
 
+#ifdef PETSC
   integer :: petsc_err ! petsc error code
+#endif
 
 contains
 
@@ -132,8 +134,8 @@ contains
 
   subroutine vector_copy(self, vectocopy)
 
-    class(Vector), target :: self
-    type(Vector) :: vectocopy
+    class(Vector), target, intent(inout) :: self
+    type(Vector), intent(in) :: vectocopy
 
     ! Preallocate vector
     if (.not.allocated(self % data)) allocate(self % data(vectocopy % n))

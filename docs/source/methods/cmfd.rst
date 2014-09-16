@@ -77,7 +77,7 @@ In eq. :eq:`eq_neut_bal` the parameters are defined as:
 * :math:`\left\langle\overline{J}^{u,g}_{l\pm
   1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle` --- surface area-integrated net
   current over surface :math:`(l\pm 1/2,m,n)` with surface normal in direction
-  $u$ in energy group :math:`g`. By dividing this quantity by the transverse
+  :math:`u` in energy group :math:`g`. By dividing this quantity by the transverse
   area, :math:`\Delta_m^v\Delta_n^w`, the surface area-averaged net current can
   be computed.
 * :math:`\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
@@ -189,7 +189,7 @@ where
    \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle.
 
 Note that the transport reaction rate is calculated from the total reaction rate
-reduced by the $P_1$ scattering production reaction rate. Equation :eq:`eq_transD`
+reduced by the :math:`P_1` scattering production reaction rate. Equation :eq:`eq_transD`
 does not represent the best definition of diffusion coefficients from MC;
 however, it is very simple and usually fits into MC tally frameworks
 easily. Different methods to calculate more accurate diffusion coefficients can
@@ -527,7 +527,7 @@ weight in the source bank was modified according to its location and energy.
 Toy Problem Example
 -------------------
 
-Before applying CMFD to a large reactor, a simple $1$-D slab toy problem was
+Before applying CMFD to a large reactor, a simple 1-D slab toy problem was
 analyzed to understand how CMFD works. Table :ref:`tab_1Dtoyinput` presents
 data used to construct this problem. For MFD, the mesh was 2 cm over the
 geometry with one energy group. A comparison of fission source convergence
@@ -566,7 +566,7 @@ Convergence of the fission source is almost immediately reached.
 .. figure:: ../_images/entropy_1Dslab.png
    :scale: 10 
 
-   Source convergence comparison for $1$-D slab toy problem
+   Source convergence comparison for 1-D slab toy problem
 
 To further show this convergence, source distributions were edited at various
 batches and compared. Figures :ref:`fig_toy6` to :ref:`fig_toy200` compare the

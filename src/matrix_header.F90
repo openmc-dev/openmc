@@ -368,11 +368,11 @@ contains
 
   subroutine matrix_search_indices(self, row, col, idx, found)
 
-    class(Matrix) :: self
-    integer :: row
-    integer :: col
-    integer :: idx
-    logical :: found
+    class(Matrix), intent(inout) :: self
+    integer, intent(in) :: row
+    integer, intent(in) :: col
+    integer, intent(out) :: idx
+    logical, intent(out) :: found
 
     integer :: j
 
@@ -396,8 +396,8 @@ contains
 
   subroutine matrix_write(self, filename)
 
-    character(*) :: filename
-    class(Matrix) :: self
+    character(*), intent(in) :: filename
+    class(Matrix), intent(inout) :: self
 
     integer :: unit_
     integer :: i
@@ -421,8 +421,8 @@ contains
 
   subroutine matrix_copy(self, mattocopy)
 
-    class(Matrix) :: self
-    type(Matrix)  :: mattocopy
+    class(Matrix), intent(inout) :: self
+    type(Matrix), intent(in) :: mattocopy
 
     ! Set n and nnz
     self % n_count = mattocopy % n_count

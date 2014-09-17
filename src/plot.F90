@@ -186,8 +186,8 @@ contains
 !===============================================================================
   subroutine draw_mesh_lines(pl, img)
   
-    type(ObjectPlot), pointer :: pl
-    type(Image)               :: img
+    type(ObjectPlot), pointer, intent(in)    :: pl
+    type(Image),               intent(inout) :: img
     
     logical :: in_mesh
     integer :: out_, in_  ! pixel location

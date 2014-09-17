@@ -60,10 +60,6 @@ contains
     use string,       only: to_str
     use tally_header, only: TallyObject
 
-#ifdef CMFD_DEBUG
-    use global,       only: current_batch
-#endif
-
     integer :: nx            ! number of mesh cells in x direction
     integer :: ny            ! number of mesh cells in y direction
     integer :: nz            ! number of mesh cells in z direction
@@ -84,11 +80,6 @@ contains
     real(8) :: flux          ! temp variable for flux
     type(TallyObject),    pointer :: t => null() ! pointer for tally object
     type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
-#ifdef CMFD_DEBUG
-    integer :: l             ! iteration counter for leakage debug
-    real(8) :: leak1         ! group 1 leakage 
-    real(8) :: leak2         ! group 2 leakage
-#endif
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -310,85 +301,6 @@ contains
     ! Nullify all pointers
     if (associated(t)) nullify(t)
     if (associated(m)) nullify(m)
-
-#ifdef CMFD_DEBUG
-    open(file='openmc_src_' // trim(to_str(current_batch)) // '.dat', unit=102)
-    open(file='totalxs1_' // trim(to_str(current_batch)) // '.dat', unit=103)
-    open(file='totalxs2_' // trim(to_str(current_batch)) // '.dat', unit=104)
-    open(file='p1scattxs1_' // trim(to_str(current_batch)) // '.dat', unit=105)
-    open(file='p1scattxs2_' // trim(to_str(current_batch)) // '.dat', unit=106)
-    open(file='scattxs11_' // trim(to_str(current_batch)) // '.dat', unit=107)
-    open(file='scattxs12_' // trim(to_str(current_batch)) // '.dat', unit=108)
-    open(file='scattxs21_' // trim(to_str(current_batch)) // '.dat', unit=109)
-    open(file='scattxs22_' // trim(to_str(current_batch)) // '.dat', unit=110)
-    open(file='nufissxs11_' // trim(to_str(current_batch)) // '.dat', unit=111)
-    open(file='nufissxs12_' // trim(to_str(current_batch)) // '.dat', unit=112)
-    open(file='nufissxs21_' // trim(to_str(current_batch)) // '.dat', unit=113)
-    open(file='nufissxs22_' // trim(to_str(current_batch)) // '.dat', unit=114)
-    open(file='diff_coef1_' // trim(to_str(current_batch)) // '.dat', unit=115)
-    open(file='diff_coef2_' // trim(to_str(current_batch)) // '.dat', unit=116)
-    open(file='flux1_' // trim(to_str(current_batch)) // '.dat', unit=117)
-    open(file='flux2_' // trim(to_str(current_batch)) // '.dat', unit=118)
-    open(file='leak1_' // trim(to_str(current_batch)) // '.dat', unit=119)
-    open(file='leak2_' // trim(to_str(current_batch)) // '.dat', unit=120)
-
-    do i = 1, nx
-      do j = 1,ny
-        leak1 = ZERO
-        leak2 = ZERO
-        do l = 1, 3
-          leak1 = leak1 + ((cmfd % current(4*l,1,i,j,1) - &
-               cmfd % current(4*l-1,1,i,j,1))) - &
-               ((cmfd % current(4*l-2,1,i,j,1) - &
-               cmfd % current(4*l-3,1,i,j,1)))
-        end do
-        do l = 1, 3
-          leak2 = leak2 + ((cmfd % current(4*l,2,i,j,1) - &
-               cmfd % current(4*l-1,2,i,j,1))) - &
-               ((cmfd % current(4*l-2,2,i,j,1) - &
-               cmfd % current(4*l-3,2,i,j,1)))
-        end do
-        write(102,*) cmfd % openmc_src(1,i,j,1)
-        write(103,*) cmfd % totalxs(1,i,j,1)
-        write(104,*) cmfd % totalxs(2,i,j,1)
-        write(105,*) cmfd % p1scattxs(1,i,j,1)
-        write(106,*) cmfd % p1scattxs(2,i,j,1)
-        write(107,*) cmfd % scattxs(1,1,i,j,1)
-        write(108,*) cmfd % scattxs(1,2,i,j,1)
-        write(109,*) cmfd % scattxs(2,1,i,j,1)
-        write(110,*) cmfd % scattxs(2,2,i,j,1)
-        write(111,*) cmfd % nfissxs(1,1,i,j,1)
-        write(112,*) cmfd % nfissxs(1,2,i,j,1)
-        write(113,*) cmfd % nfissxs(2,1,i,j,1)
-        write(114,*) cmfd % nfissxs(2,2,i,j,1)
-        write(115,*) cmfd % diffcof(1,i,j,1)
-        write(116,*) cmfd % diffcof(2,i,j,1)
-        write(117,*) cmfd % flux(1,i,j,1)
-        write(118,*) cmfd % flux(2,i,j,1)
-        write(119,*) leak1 
-        write(120,*) leak2
-      end do
-    end do
-    close(102) 
-    close(103) 
-    close(104) 
-    close(105) 
-    close(106) 
-    close(107) 
-    close(108) 
-    close(109) 
-    close(110) 
-    close(111) 
-    close(112) 
-    close(113) 
-    close(114) 
-    close(115) 
-    close(116) 
-    close(117) 
-    close(118) 
-    close(119) 
-    close(120) 
-#endif
 
   end subroutine compute_xs
 
@@ -715,9 +627,6 @@ contains
     use global,     only: cmfd, cmfd_coremap, message, dhat_reset
     use output,     only: write_message
     use string,     only: to_str
-#ifdef CMFD_DEBUG
-    use global,     only: current_batch
-#endif
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction
@@ -751,9 +660,6 @@ contains
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
-#ifdef CMFD_DEBUG
-    open(file='cmfd_dhat_' // trim(to_str(current_batch)) // '.dat', unit=125)
-#endif
 
     ! Geting loop over group and spatial indices
     ZLOOP:  do k = 1,nz
@@ -844,9 +750,6 @@ contains
                 cmfd%dhat(l,g,i,j,k) = ZERO
               end if
 
-#ifdef CMFD_DEBUG
-              write(125,*) dhat
-#endif
             end do LEAK
 
           end do GROUP
@@ -862,10 +765,6 @@ contains
       message = 'Dhats reset to zero.'
       call write_message(1)
     end if
-
-#ifdef CMFD_DEBUG
-    close(unit=125)
-#endif
 
   end subroutine compute_dhat
 

@@ -780,12 +780,6 @@ contains
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
         cmfd_run = .true.
-#ifndef PETSC
-        if (master) then
-          message = 'CMFD is not available, compile OpenMC with PETSc'
-          call fatal_error()
-        end if
-#endif
       end if
     end if
 

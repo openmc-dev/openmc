@@ -20,8 +20,7 @@ contains
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter, &
-                                   cmfd_fix_balance
+    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
 
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
@@ -31,9 +30,6 @@ contains
 
     ! Compute effective downscatter cross section
     if (cmfd_downscatter) call compute_effective_downscatter()
-
-    ! Compute perfect balance
-    if (cmfd_fix_balance) call fix_neutron_balance()
 
     ! Check neutron balance
     call neutron_balance()
@@ -911,148 +907,6 @@ contains
     get_reflector_albedo = albedo
 
   end function get_reflector_albedo
-
-!===============================================================================
-! FIX_NEUTRON_BALANCE is a method to adjust parameters to have perfect balance
-!===============================================================================
-
-  subroutine fix_neutron_balance()
-
-    use constants,  only: ONE, ZERO, CMFD_NOACCEL
-    use global,     only: cmfd, message
-    use output,     only: write_message 
-
-    integer :: nx         ! number of mesh cells in x direction
-    integer :: ny         ! number of mesh cells in y direction
-    integer :: nz         ! number of mesh cells in z direction
-    integer :: ng         ! number of energy groups
-    integer :: i          ! iteration counter for x
-    integer :: j          ! iteration counter for y
-    integer :: k          ! iteration counter for z
-    integer :: l          ! iteration counter for surface
-    real(8) :: leak1      ! leakage rate in group 1
-    real(8) :: leak2      ! leakage rate in group 2
-    real(8) :: flux1      ! group 1 volume int flux
-    real(8) :: flux2      ! group 2 volume int flux
-    real(8) :: sigt1      ! group 1 total xs
-    real(8) :: sigt2      ! group 2 total xs
-    real(8) :: sigs11     ! scattering transfer 1 --> 1
-    real(8) :: sigs21     ! scattering transfer 2 --> 1
-    real(8) :: sigs12     ! scattering transfer 1 --> 2
-    real(8) :: sigs22     ! scattering transfer 2 --> 2
-    real(8) :: nsigf11    ! fission transfer 1 --> 1
-    real(8) :: nsigf21    ! fission transfer 2 --> 1
-    real(8) :: nsigf12    ! fission transfer 1 --> 2
-    real(8) :: nsigf22    ! fission transfer 2 --> 2
-    real(8) :: siga1      ! group 1 abs xs
-    real(8) :: siga2      ! group 2 abs xs
-    real(8) :: sigs12_eff ! effective downscatter xs
-    real(8) :: a          ! matrix (1,1) element for balance
-    real(8) :: b          ! matrix (1,2) element for balance
-    real(8) :: c          ! matrix (2,1) element for balance
-    real(8) :: d          ! matrix (2,2) element for balance
-    real(8) :: r1         ! right hand side element 1
-    real(8) :: r2         ! right hand side element 2
-    real(8) :: det        ! determinant of balance matrix
-    real(8) :: keff_bal   ! keffective for balance eq.
-
-    message = 'Correcting neutron balance'
-    call write_message(1)
-
-    ! Extract spatial and energy indices from object
-    nx = cmfd % indices(1)
-    ny = cmfd % indices(2)
-    nz = cmfd % indices(3)
-    ng = cmfd % indices(4)
-
-    keff_bal = cmfd % keff_bal
-
-    ! Return if not two groups
-    if (ng /= 2) return
-
-    ! Begin loop around space and energy groups
-    ZLOOP: do k = 1, nz
-
-      YLOOP: do j = 1, ny
-
-        XLOOP: do i = 1, nx
-
-          ! Check for active mesh
-          if (allocated(cmfd%coremap)) then
-            if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle 
-          end if
-
-          ! Compute leakage in groups 1 and 2
-          leak1 = ZERO 
-          leak2 = ZERO
-          LEAK: do l = 1, 3
-
-            leak1 = leak1 + ((cmfd % current(4*l,1,i,j,k) - &
-                 cmfd % current(4*l-1,1,i,j,k))) - &
-                 ((cmfd % current(4*l-2,1,i,j,k) - &
-                 cmfd % current(4*l-3,1,i,j,k)))
-
-            leak2 = leak2 + ((cmfd % current(4*l,2,i,j,k) - &
-                 cmfd % current(4*l-1,2,i,j,k))) - &
-                 ((cmfd % current(4*l-2,2,i,j,k) - &
-                 cmfd % current(4*l-3,2,i,j,k)))
-
-
-          end do LEAK
-
-          ! Extract cross sections and flux from object
-          flux1 = cmfd % flux(1,i,j,k)
-          flux2 = cmfd % flux(2,i,j,k)
-          sigt1 = cmfd % totalxs(1,i,j,k)
-          sigt2 = cmfd % totalxs(2,i,j,k)
-          sigs11 = cmfd % scattxs(1,1,i,j,k)
-          sigs21 = cmfd % scattxs(2,1,i,j,k)
-          sigs12 = cmfd % scattxs(1,2,i,j,k)
-          sigs22 = cmfd % scattxs(2,2,i,j,k)
-          nsigf11 = cmfd % nfissxs(1,1,i,j,k)
-          nsigf21 = cmfd % nfissxs(2,1,i,j,k)
-          nsigf12 = cmfd % nfissxs(1,2,i,j,k)
-          nsigf22 = cmfd % nfissxs(2,2,i,j,k)
-
-          ! Compute absorption xs
-          siga1 = sigt1 - sigs11 - sigs12
-          siga2 = sigt2 - sigs22 - sigs21
-
-          ! Create matrix and solve for effective downscatter and thermal flux
-          a = flux1
-          b = -ONE/keff_bal*nsigf21
-          c = flux1
-          d = -siga2 + ONE/keff_bal*nsigf22
-          det = a*d - b*c
-          r1 = ONE/keff_bal*nsigf11*flux1 - siga1*flux1 - leak1
-          r2 = leak2 - ONE/keff_bal*nsigf12*flux1
-          sigs12_eff = ONE/det*(d*r1 - b*r2)
-          flux2 = ONE/det*(a*r2 - c*r1)
- 
-          ! Recompute total cross sections (use effective and no upscattering)
-          sigt1 = siga1 + sigs11 + sigs12_eff
-          sigt2 = siga2 + sigs22
-
-          ! Record total xs
-          cmfd % totalxs(1,i,j,k) = sigt1
-          cmfd % totalxs(2,i,j,k) = sigt2
-
-          ! Record effective downscatter xs
-          cmfd % scattxs(1,2,i,j,k) = sigs12_eff
-
-          ! Zero out upscatter cross section
-          cmfd % scattxs(2,1,i,j,k) = ZERO 
-
-          ! Record thermal flux
-          cmfd % flux(2,i,j,k) = flux2
-
-        end do XLOOP
-
-      end do YLOOP
-
-    end do ZLOOP
-
-  end subroutine fix_neutron_balance
 
 !===============================================================================
 ! COMPUTE_EFFECTIVE_DOWNSCATTER changes downscatter rate for zero upscatter

@@ -325,9 +325,6 @@ module global
   ! Flag to reset dhats to zero
   logical :: dhat_reset = .false.
 
-  ! Flag to enforce neutron balance
-  logical :: cmfd_fix_balance = .false.
-
   ! Flag to activate neutronic feedback via source weights
   logical :: cmfd_feedback = .false.
 

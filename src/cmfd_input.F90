@@ -174,14 +174,6 @@ contains
         dhat_reset = .true.
     end if
 
-    ! Enforce perfect neutron balance
-    if (check_for_node(doc, "balance")) then
-      call get_node_value(doc, "balance", temp_str)
-      call lower_case(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_fix_balance = .true.
-    end if
-
     ! Set the solver type
     if (check_for_node(doc, "solver")) &
       call get_node_value(doc, "solver", cmfd_solver_type)

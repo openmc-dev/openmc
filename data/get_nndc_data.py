@@ -129,14 +129,14 @@ if not response or response.lower().startswith('y'):
 
     # loop around ace directories
     for d in ace_dirs:
-        print('Coverting {0}...'.format(d))
+        print('Converting {0}...'.format(d))
 
         # get a list of files to convert
         ace_files = glob.glob(os.path.join(d, '*.ace*'))
 
         # convert files
         for f in ace_files:
-            print('    Coverting {0}...'.format(os.path.split(f)[1]))
+            print('    Converting {0}...'.format(os.path.split(f)[1]))
             ascii_to_binary(f, f)
 
     # Change cross_sections.xml file

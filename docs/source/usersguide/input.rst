@@ -1295,10 +1295,10 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: None
 
   :meshlines:
-    The special ``meshlines`` sub-element allows for plotting the boundaries of
+    The ``meshlines`` sub-element allows for plotting the boundaries of
     a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
     ``plot`` element, and it must contain as attributes or sub-elements a mesh
-    type and a linewidth, as well as an optional color:
+    type and a linewidth.  Optionally, a color may be specified for the overlay:
 
     :meshtype:
       The type of the mesh to be plotted. Valid options are "tally", "entropy",
@@ -1317,7 +1317,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     
     :color:
       Specifies the custom color for the meshlines boundaries. Should be 3
-      integers separated by spaces.  This element is optional.
+      integers separated by whitespace.  This element is optional.
     
       *Default*: 0 0 0 (black)
 

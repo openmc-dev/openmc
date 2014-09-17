@@ -1312,18 +1312,6 @@ and not when PETSc is active.
 
   *Default*: 1.e-10
 
-``<balance>`` Element
----------------------
-
-The ``<balance>`` element controls whether exact neutron balance should be enforced
-from CMFD tallies before creating CMFD matrices. This changes effective downscatter
-cross section and thermal flux to create exact balance. It should be noted that 
-this option has led to instabilities when performing CMFD. It can be turned on
-with "true" and off with "false".
-
-  *Default*: false
-
-
 ``<begin>`` Element
 -------------------
 

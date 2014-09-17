@@ -82,9 +82,9 @@ contains
       message = 'Writing out initial source guess...'
       call write_message(1)
 #ifdef HDF5
-      filename = 'initial_source.h5'
+      filename = trim(path_output) // 'initial_source.h5'
 #else
-      filename = 'initial_source.binary'
+      filename = trim(path_output) // 'initial_source.binary'
 #endif
       call sp % file_create(filename, serial = .false.)
       call sp % write_source_bank()

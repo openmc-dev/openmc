@@ -211,7 +211,9 @@ contains
                   ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
                        t % results(2,score_index) % sum
-                  cmfd % keff_bal = cmfd % keff_bal + t % results(2,score_index) % sum / dble(t % n_realizations)
+                  cmfd % keff_bal = cmfd % keff_bal + &
+                       t % results(2,score_index) % sum / &
+                       dble(t % n_realizations)
 
                 end do INGROUP
 

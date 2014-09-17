@@ -259,7 +259,7 @@ contains
     if (check_for_node(doc, "stol")) &
          call get_node_value(doc, "stol", cmfd_stol)
     if (check_for_node(doc, "gauss_seidel_tolerance")) then
-      n_params = get_arraysize_integer(doc, "gauss_seidel_tolerance")
+      n_params = get_arraysize_double(doc, "gauss_seidel_tolerance")
       if (n_params /= 2) then
         message = 'Gauss Seidel tolerance is not 2 parameters &
                    &(absolute, relative).'

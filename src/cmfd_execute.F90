@@ -304,7 +304,7 @@ contains
     ! Compute new weight factors
     if (new_weights) then
 
-      ! Zero out weights
+      ! Set weight factors to a default 1.0 
       cmfd%weightfactors = ONE
 
       ! Count bank sites in mesh and reverse due to egrid structure

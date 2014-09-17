@@ -62,7 +62,7 @@ contains
     use error,   only: fatal_error, warning
     use global
     use output,  only: write_message
-    use string,  only: lower_case
+    use string,  only: to_lower
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
@@ -153,7 +153,7 @@ contains
     ! Set feedback logical
     if (check_for_node(doc, "feedback")) then
       call get_node_value(doc, "feedback", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_feedback = .true.
     end if
@@ -161,7 +161,7 @@ contains
     ! Set downscatter logical
     if (check_for_node(doc, "downscatter")) then
       call get_node_value(doc, "downscatter", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_downscatter = .true.
     end if
@@ -181,19 +181,19 @@ contains
     ! Set monitoring
     if (check_for_node(doc, "snes_monitor")) then
       call get_node_value(doc, "snes_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_snes_monitor = .true.
     end if
     if (check_for_node(doc, "ksp_monitor")) then
       call get_node_value(doc, "ksp_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_ksp_monitor = .true.
     end if
     if (check_for_node(doc, "power_monitor")) then
       call get_node_value(doc, "power_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_power_monitor = .true.
     end if
@@ -201,7 +201,7 @@ contains
     ! Output logicals
     if (check_for_node(doc, "write_matrices")) then
       call get_node_value(doc, "write_matrices", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            cmfd_write_matrices = .true.
     end if
@@ -209,7 +209,7 @@ contains
     ! Run an adjoint calc
     if (check_for_node(doc, "run_adjoint")) then
       call get_node_value(doc, "run_adjoint", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
 #ifndef PETSC
         message = 'Must use PETSc when running adjoint option.'
@@ -260,7 +260,7 @@ contains
          call get_node_value(doc, "atoli", cmfd_atoli)
     if (check_for_node(doc, "rtoli")) &
          call get_node_value(doc, "rtoli", cmfd_rtoli)
-   
+
     ! Create tally objects
     call create_cmfd_tally(doc)
 
@@ -430,7 +430,7 @@ contains
       ! Set reset property
       if (check_for_node(doc, "reset")) then
         call get_node_value(doc, "reset", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
              t % reset = .true.
       end if

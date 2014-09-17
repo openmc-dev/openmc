@@ -68,12 +68,14 @@ contains
 
     integer :: i
     integer :: ng
+    integer :: n_params
     integer, allocatable :: iarray(:)
     integer, allocatable :: int_array(:)
     logical :: file_exists ! does cmfd.xml exist?
     logical :: found
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: temp_str
+    real(8) :: gs_tol(2)
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
 
@@ -256,10 +258,17 @@ contains
          call get_node_value(doc, "ktol", cmfd_ktol)
     if (check_for_node(doc, "stol")) &
          call get_node_value(doc, "stol", cmfd_stol)
-    if (check_for_node(doc, "atoli")) &
-         call get_node_value(doc, "atoli", cmfd_atoli)
-    if (check_for_node(doc, "rtoli")) &
-         call get_node_value(doc, "rtoli", cmfd_rtoli)
+    if (check_for_node(doc, "gauss_seidel_tolerance")) then
+      n_params = get_arraysize_integer(doc, "gauss_seidel_tolerance")
+      if (n_params /= 2) then
+        message = 'Gauss Seidel tolerance is not 2 parameters &
+                   &(absolute, relative).'
+        call fatal_error()
+      end if
+      call get_node_array(doc, "gauss_seidel_tolerance", gs_tol)
+      cmfd_atoli = gs_tol(1)
+      cmfd_rtoli = gs_tol(2)
+    end if
 
     ! Create tally objects
     call create_cmfd_tally(doc)

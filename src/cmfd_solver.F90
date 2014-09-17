@@ -356,7 +356,8 @@ contains
   subroutine cmfd_linsolver_1g(A, b, x, tol, its)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd, cmfd_spectral
+    use error,      only: fatal_error
+    use global,     only: cmfd, cmfd_spectral, message
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -397,6 +398,12 @@ contains
 
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
+
+      ! Check for max iterations met
+      if (igs == 10000) then
+        message = 'Maximum Gauss-Seidel iterations encountered.'
+        call fatal_error()
+      endif
 
       ! Copy over x vector
       call  tmpx % copy(x) 
@@ -456,7 +463,8 @@ contains
   subroutine cmfd_linsolver_2g(A, b, x, tol, its)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd, cmfd_spectral
+    use error,      only: fatal_error
+    use global,     only: cmfd, cmfd_spectral, message
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -509,6 +517,12 @@ contains
 
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
+
+      ! Check for max iterations met
+      if (igs == 10000) then
+        message = 'Maximum Gauss-Seidel iterations encountered.'
+        call fatal_error()
+      endif
 
       ! Copy over x vector
       call  tmpx % copy(x) 
@@ -595,13 +609,14 @@ contains
   subroutine cmfd_linsolver_ng(A, b, x, tol, its)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd, cmfd_spectral
+    use error,      only: fatal_error
+    use global,     only: cmfd, cmfd_spectral, message
 
-    type(Matrix) :: A ! coefficient matrix
-    type(Vector) :: b ! right hand side vector
-    type(Vector) :: x ! unknown vector
-    real(8)      :: tol ! tolerance on final error
-    integer      :: its ! number of inner iterations
+    type(Matrix), intent(inout) :: A ! coefficient matrix
+    type(Vector), intent(inout) :: b ! right hand side vector
+    type(Vector), intent(inout) :: x ! unknown vector
+    real(8), intent(in) :: tol ! tolerance on final error
+    integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
     integer :: i ! loop counter for x 
@@ -636,6 +651,12 @@ contains
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
 
+      ! Check for max iterations met
+      if (igs == 10000) then
+        message = 'Maximum Gauss-Seidel iterations encountered.'
+        call fatal_error()
+      endif
+
       ! Copy over x vector
       call  tmpx % copy(x) 
 
@@ -652,19 +673,17 @@ contains
         tmp1 = ZERO
         do icol = A % get_row(irow), didx - 1
           tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
-!         print *,A % val(icol),x % val(A % get_col(icol))
         end do
         do icol = didx + 1, A % get_row(irow + 1) - 1
           tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
-!         print *,A % val(icol),x % val(A % get_col(icol))
         end do
 
         ! Solve for new x
         x1 = (b % val(irow) - tmp1)/A % val(didx)
-!print *, irow, b % val(irow), tmp1, A % val(didx), x1
+
         ! Perform overrelaxation
         x % val(irow) = (ONE - w)*x % val(irow) + w*x1
-!stop
+
       end do ROWS
 
       ! Check convergence

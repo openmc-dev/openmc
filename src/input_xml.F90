@@ -268,7 +268,7 @@ contains
     ! Check if we want to write out source
     if (check_for_node(node_source, "write_initial")) then
       call get_node_value(node_source, "write_initial", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
            write_initial_source = .true.
     end if

@@ -433,6 +433,13 @@ attributes/sub-elements:
 
       *Default*: 0.988 2.249
 
+  :write_initial:
+    An element specifying whether to write out the intial source bank used
+    at the beginning of the first batch. The output file is named 
+    "initial_source.binary(h5)"
+
+      *Default*: false
+
 ``<state_point>`` Element
 -------------------------
 
@@ -1303,15 +1310,6 @@ Currently, it allows users to accelerate fission source convergence during
 inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
 
-``<atoli>`` Element
---------------------
-
-The ``<atoli>`` element specifies the absolute inner tolerance on the Gauss-Seidel
-when performing CMFD calculations. It is only used in the standalone CMFD solver
-and not when PETSc is active. 
-
-  *Default*: 1.e-10
-
 ``<begin>`` Element
 -------------------
 
@@ -1338,9 +1336,9 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
 ``<dhat_reset>`` Element
 ------------------------
 
-The ``<dhat_reset>`` element controls whether dhat nonlinear CMFD parameters
-should be reset to zero before solving CMFD eigenproblem. It can be turned on with 
-"true" and off with "false".
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear 
+CMFD parameters should be reset to zero before solving CMFD eigenproblem. 
+It can be turned on with "true" and off with "false".
 
   *Default*: false
 
@@ -1361,6 +1359,17 @@ used to adjust the weight of fission source neutrons on the next OpenMC batch.
 It can be turned on with "true" and off with "false".
 
   *Default*: false
+
+``<gauss_seidel_tolerance>`` Element
+--------------------
+
+The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
+the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
+and the second is the relative inner tolerance for Gauss-Seidel iterations
+for CMFD calculations. It is only used in the standalone CMFD power iteration
+solver and not when PETSc is active. 
+
+  *Default*: 1.e-10 1.e-5
 
 ``<ksp_monitor>`` Element
 -------------------------
@@ -1454,15 +1463,6 @@ The ``<power_monitor>`` element is used to view the convergence of power iterati
 This option can be turned on with "true" and turned off with "false".
 
   *Default*: false
-
-``<rtoli>`` Element
---------------------
-
-The ``<rtoli>`` element specifies the relative inner tolerance on the Gauss-Seidel
-when performing CMFD calculations. It is only used in the standalone CMFD solver
-and not when PETSc is active. 
-
-  *Default*: 1.e-5
 
 ``<run_adjoint>`` Element
 -------------------------

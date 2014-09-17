@@ -3061,11 +3061,8 @@ contains
         end if
         
         select case(n_meshlines)
-          case default
-            message = "Mutliple meshlines" // &
-                 " specified in plot " // trim(to_str(pl % id))
-            call fatal_error()
           case (0)
+            ! Skip if no meshlines are specified
           case (1)
 
             ! Get pointer to meshlines
@@ -3176,7 +3173,10 @@ contains
               call fatal_error()
             end select
 
-
+          case default
+            message = "Mutliple meshlines" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
         end select
         
       end if

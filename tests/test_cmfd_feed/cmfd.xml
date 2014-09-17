@@ -12,5 +12,7 @@
   <display> dominance </display>
   <solver> power </solver>
   <feedback> true </feedback>
+  <atoli> 1.e-15 </atoli>
+  <rtoli> 1.e-20 </rtoli>
 
 </cmfd>

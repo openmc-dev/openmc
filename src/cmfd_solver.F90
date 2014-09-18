@@ -9,7 +9,7 @@ module cmfd_solver
 
   implicit none
   private
-  public :: cmfd_solver_execute 
+  public :: cmfd_solver_execute
 
   real(8) :: k_n                  ! new k-eigenvalue
   real(8) :: k_o                  ! old k-eigenvalue
@@ -42,7 +42,7 @@ module cmfd_solver
       type(Vector), intent(inout) :: x
       real(8), intent(in) :: tol
       integer, intent(out) :: i
-    end subroutine linsolve 
+    end subroutine linsolve
   end interface
 
 contains
@@ -80,7 +80,7 @@ contains
     ! Stop timer for build
     call time_cmfdbuild % stop()
 
-    ! Begin power iteration 
+    ! Begin power iteration
     call time_cmfdsolve % start()
     call execute_power_iter()
     call time_cmfdsolve % stop()
@@ -88,7 +88,7 @@ contains
     ! Extract results
     call extract_results()
 
-    ! Deallocate data 
+    ! Deallocate data
     call finalize()
 
   end subroutine cmfd_solver_execute
@@ -138,7 +138,7 @@ contains
     k_lo = k_ln
 
     ! Fill in loss matrix
-    call build_loss_matrix(loss, adjoint=adjoint) 
+    call build_loss_matrix(loss, adjoint=adjoint)
 
     ! Fill in production matrix
     call build_prod_matrix(prod, adjoint=adjoint)
@@ -163,7 +163,7 @@ contains
         cmfd_linsolver => cmfd_linsolver_2g
       case default
         cmfd_linsolver => cmfd_linsolver_ng
-    end select    
+    end select
 
     ! Set tolerances
     ktol = cmfd_ktol
@@ -172,16 +172,16 @@ contains
   end subroutine init_data
 
 !===============================================================================
-! COMPUTE_ADJOINT computes a mathematical adjoint of CMFD problem 
+! COMPUTE_ADJOINT computes a mathematical adjoint of CMFD problem
 !===============================================================================
 
   subroutine compute_adjoint()
 
     use error,   only: fatal_error
-#ifndef PETSC
-    use global,  only: message
-#else
+#ifdef PETSC
     use global,  only: cmfd_write_matrices
+#else
+    use global,  only: message
 #endif
 
 #ifdef PETSC
@@ -224,7 +224,7 @@ contains
     iconv = .false.
 
     ! Set up tolerances
-    atoli = cmfd_atoli 
+    atoli = cmfd_atoli
     rtoli = cmfd_rtoli
     toli = rtoli*100._8
 
@@ -280,7 +280,7 @@ contains
 
     end do
 
-  end subroutine execute_power_iter 
+  end subroutine execute_power_iter
 
 !===============================================================================
 ! WIELANDT SHIFT
@@ -366,7 +366,7 @@ contains
     integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
-    integer :: i ! loop counter for x 
+    integer :: i ! loop counter for x
     integer :: j ! loop counter for y
     integer :: k ! loop counter for z
     integer :: n  ! total size of vector
@@ -406,7 +406,7 @@ contains
       endif
 
       ! Copy over x vector
-      call  tmpx % copy(x) 
+      call  tmpx % copy(x)
 
       ! Perform red/black gs iterations
       REDBLACK: do irb = 0,1
@@ -473,7 +473,7 @@ contains
     integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
-    integer :: i ! loop counter for x 
+    integer :: i ! loop counter for x
     integer :: j ! loop counter for y
     integer :: k ! loop counter for z
     integer :: n  ! total size of vector
@@ -525,7 +525,7 @@ contains
       endif
 
       ! Copy over x vector
-      call  tmpx % copy(x) 
+      call  tmpx % copy(x)
 
       ! Perform red/black gs iterations
       REDBLACK: do irb = 0,1
@@ -619,7 +619,7 @@ contains
     integer, intent(out) :: its ! number of inner iterations
 
     integer :: g ! group index
-    integer :: i ! loop counter for x 
+    integer :: i ! loop counter for x
     integer :: j ! loop counter for y
     integer :: k ! loop counter for z
     integer :: n  ! total size of vector
@@ -658,7 +658,7 @@ contains
       endif
 
       ! Copy over x vector
-      call  tmpx % copy(x) 
+      call  tmpx % copy(x)
 
       ! Begin loop around matrix rows
       ROWS: do irow = 1, n
@@ -709,7 +709,7 @@ contains
 
     use global, only: cmfd, cmfd_write_matrices, current_batch
 
-    character(len=25)    :: filename  ! name of file to write data 
+    character(len=25)    :: filename  ! name of file to write data
     integer              :: n         ! problem size
 
     ! Get problem size
@@ -722,11 +722,11 @@ contains
       if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
     end if
 
-    ! Save values 
+    ! Save values
     if (adjoint_calc) then
       cmfd % adj_phi = phi_n % val
     else
-      cmfd % phi = phi_n % val 
+      cmfd % phi = phi_n % val
     end if
 
     ! Save eigenvalue
@@ -805,8 +805,8 @@ contains
 
   subroutine finalize()
 
-    ! Destroy all objects 
-    call loss   % destroy() 
+    ! Destroy all objects
+    call loss   % destroy()
     call prod   % destroy()
     call phi_n  % destroy()
     call phi_o  % destroy()

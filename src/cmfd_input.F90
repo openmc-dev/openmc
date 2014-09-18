@@ -66,12 +66,16 @@ contains
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
+    integer :: i
     integer :: ng
+    integer :: n_params
     integer, allocatable :: iarray(:)
+    integer, allocatable :: int_array(:)
     logical :: file_exists ! does cmfd.xml exist?
     logical :: found
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: temp_str
+    real(8) :: gs_tol(2)
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
 
@@ -164,6 +168,14 @@ contains
            cmfd_downscatter = .true.
     end if
 
+    ! Reset dhat parameters 
+    if (check_for_node(doc, "dhat_reset")) then
+      call get_node_value(doc, "dhat_reset", temp_str)
+      temp_str = to_lower(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        dhat_reset = .true.
+    end if
+
     ! Set the solver type
     if (check_for_node(doc, "solver")) &
          call get_node_value(doc, "solver", cmfd_solver_type)
@@ -201,30 +213,31 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_run_adjoint = .true.
+#ifndef PETSC
+        message = 'Must use PETSc when running adjoint option.'
+        call fatal_error()
+#endif
+        cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
     if (check_for_node(doc, "begin")) &
          call get_node_value(doc, "begin", cmfd_begin)
 
-    ! Tally during inactive batches
-    if (check_for_node(doc, "inactive")) then
-      call get_node_value(doc, "inactive", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
-           cmfd_tally_on = .false.
+    ! Check for cmfd tally resets
+    if (check_for_node(doc, "tally_reset")) then
+      n_cmfd_resets = get_arraysize_integer(doc, "tally_reset")
+    else
+      n_cmfd_resets = 0
     end if
-
-    ! Inactive batch flush window
-    if (check_for_node(doc, "inactive_flush")) &
-         call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
-    if (check_for_node(doc, "num_flushes")) &
-         call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
-
-    ! Last flush before active batches
-    if (check_for_node(doc, "active_flush")) &
-         call get_node_value(doc, "active_flush", cmfd_act_flush)
+    if (n_cmfd_resets > 0) then
+      allocate(int_array(n_cmfd_resets))
+      call get_node_array(doc, "tally_reset", int_array)
+      do i = 1, n_cmfd_resets
+        call cmfd_reset % add(int_array(i))
+      end do
+      deallocate(int_array)
+    end if
 
     ! Get display
     if (check_for_node(doc, "display")) &
@@ -245,10 +258,17 @@ contains
          call get_node_value(doc, "ktol", cmfd_ktol)
     if (check_for_node(doc, "stol")) &
          call get_node_value(doc, "stol", cmfd_stol)
-    if (check_for_node(doc, "atoli")) &
-         call get_node_value(doc, "atoli", cmfd_atoli)
-    if (check_for_node(doc, "rtoli")) &
-         call get_node_value(doc, "rtoli", cmfd_rtoli)
+    if (check_for_node(doc, "gauss_seidel_tolerance")) then
+      n_params = get_arraysize_double(doc, "gauss_seidel_tolerance")
+      if (n_params /= 2) then
+        message = 'Gauss Seidel tolerance is not 2 parameters &
+                   &(absolute, relative).'
+        call fatal_error()
+      end if
+      call get_node_array(doc, "gauss_seidel_tolerance", gs_tol)
+      cmfd_atoli = gs_tol(1)
+      cmfd_rtoli = gs_tol(2)
+    end if
 
     ! Create tally objects
     call create_cmfd_tally(doc)

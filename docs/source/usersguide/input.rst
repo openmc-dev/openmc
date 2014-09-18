@@ -269,7 +269,7 @@ attributes or sub-elements:
   :scatterer:
     An element with attributes/sub-elements called ``nuclide``, ``method``,
     ``xs_label``, ``xs_label_0K``, ``E_min``, and ``E_max``. The ``nuclide``
-    attribute is the name, as given by the ``name`` attribute within the 
+    attribute is the name, as given by the ``name`` attribute within the
     ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
     of the nuclide to which a resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
@@ -434,8 +434,8 @@ attributes/sub-elements:
       *Default*: 0.988 2.249
 
   :write_initial:
-    An element specifying whether to write out the intial source bank used
-    at the beginning of the first batch. The output file is named 
+    An element specifying whether to write out the initial source bank used at
+    the beginning of the first batch. The output file is named
     "initial_source.binary(h5)"
 
       *Default*: false
@@ -1336,8 +1336,8 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
 ``<dhat_reset>`` Element
 ------------------------
 
-The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear 
-CMFD parameters should be reset to zero before solving CMFD eigenproblem. 
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
 It can be turned on with "true" and off with "false".
 
   *Default*: false
@@ -1367,7 +1367,7 @@ The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
 the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
 and the second is the relative inner tolerance for Gauss-Seidel iterations
 for CMFD calculations. It is only used in the standalone CMFD power iteration
-solver and not when PETSc is active. 
+solver and not when PETSc is active.
 
   *Default*: 1.e-10 1.e-5
 

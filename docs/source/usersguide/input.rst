@@ -261,7 +261,7 @@ or sub-elements and can be set to either "false" or "true".
   *Default*: true
 
 ``<resonance_scattering>`` Element
-----------------------
+----------------------------------
 
 The ``resonance_scattering`` element can contain one or more of the following
 attributes or sub-elements:

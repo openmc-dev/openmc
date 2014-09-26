@@ -828,7 +828,7 @@ Here is an example of a properly defined 2d rectangular lattice:
 
     <lattice id="10" dimension="3 3" outside="1">
         <lower_left> -1.5 -1.5 </lower_left>
-        <width> 1.0 1.0 </width>
+        <pitch> 1.0 1.0 </pitch>
         <universes>
           2 2 2
           2 1 2

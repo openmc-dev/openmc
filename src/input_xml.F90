@@ -2647,6 +2647,12 @@ contains
             ! Get index of mesh filter
             k = t % find_filter(FILTER_MESH)
 
+            ! Check to make sure mesh filter was specified
+            if (k == 0) then
+              message = "Cannot tally surface current without a mesh filter."
+              call fatal_error()
+            end if
+
             ! Get pointer to mesh
             i_mesh = t % filters(k) % int_bins(1)
             m => meshes(i_mesh)

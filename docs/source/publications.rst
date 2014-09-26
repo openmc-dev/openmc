@@ -4,6 +4,10 @@
 Publications
 ============
 
+- Jonathan A. Walsh, Benoit Forget, and Kord S. Smith, "Accelerated sampling
+  of the free gas resonance elastic scattering kernel," *Ann. Nucl. Energy*,
+  **69**, 116--124 (2014). `<http://dx.doi.org/10.1016/j.anucene.2014.01.017>`_
+
 - Benoit Forget, Sheng Xu, and Kord Smith, "Direct Doppler broadening in Monte
   Carlo simulations using the multipole representation," *Ann. Nucl. Energy*,
   **64**, 78--85 (2014). `<http://dx.doi.org/10.1016/j.anucene.2013.09.043>`_

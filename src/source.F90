@@ -27,6 +27,7 @@ contains
 
   subroutine initialize_source()
 
+    character(MAX_FILE_LEN) :: filename
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
     integer(4) :: itmp       ! temporary integer
@@ -74,6 +75,20 @@ contains
         ! sample external source distribution
         call sample_external_source(src)
       end do
+    end if
+
+    ! Write out initial source
+    if (write_initial_source) then
+      message = 'Writing out initial source guess...'
+      call write_message(1)
+#ifdef HDF5
+      filename = trim(path_output) // 'initial_source.h5'
+#else
+      filename = trim(path_output) // 'initial_source.binary'
+#endif
+      call sp % file_create(filename, serial = .false.)
+      call sp % write_source_bank()
+      call sp % file_close()
     end if
 
   end subroutine initialize_source
@@ -132,6 +147,42 @@ contains
             call fatal_error()
           end if
         end if
+      end do
+      call p % clear()
+
+    case (SRC_SPACE_FISSION)
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Set particle defaults
+        call p % initialize()
+
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+          cycle
+        end if
+        if (p % material == MATERIAL_VOID) then
+          found = .false.
+          cycle
+        end if
+        if (.not. materials(p % material) % fissionable) found = .false.
       end do
       call p % clear()
 

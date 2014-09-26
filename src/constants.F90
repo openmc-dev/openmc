@@ -335,8 +335,9 @@ module constants
 
   ! Source spatial distribution types
   integer, parameter :: &
-       SRC_SPACE_BOX   = 1, & ! Source in a rectangular prism
-       SRC_SPACE_POINT = 2    ! Source at a single point
+       SRC_SPACE_BOX     = 1, & ! Source in a rectangular prism
+       SRC_SPACE_POINT   = 2, & ! Source at a single point
+       SRC_SPACE_FISSION = 3    ! Source in prism filtered by fissionable mats
 
   ! Source angular distribution types
   integer, parameter :: &
@@ -391,9 +392,6 @@ module constants
 
   ! constant to represent a zero flux "albedo"
   real(8), parameter :: ZERO_FLUX = 999.0_8
-
-  ! constant to represent albedo rejection
-  real(8), parameter :: ALBEDO_REJECT = 999.0_8
 
   ! constant for writing out no residual
   real(8), parameter :: CMFD_NORES = 99999.0_8

@@ -1373,8 +1373,6 @@ contains
 
         type is (HexLattice) LAT_TYPE
           ! Copy local coordinates.
-          x = coord % xyz(1)
-          y = coord % xyz(2)
           z = coord % xyz(3)
           i_xyz(1) = coord % lattice_x
           i_xyz(2) = coord % lattice_y

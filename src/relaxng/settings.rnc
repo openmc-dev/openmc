@@ -85,7 +85,8 @@ element settings {
         attribute interplation { xsd:string { maxLength = "10" } })? &
       (element parameters { list { xsd:double+ } } |
         attribute parameters { list { xsd:double+ } })?
-    }?
+    }? &
+    (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
   }? &
 
   element state_point {

@@ -12,7 +12,5 @@
   <display> dominance </display>
   <solver> power </solver>
   <feedback> true </feedback>
-  <atoli> 1.e-15 </atoli>
-  <rtoli> 1.e-20 </rtoli>
-
+  <gauss_seidel_tolerance> 1.e-15 1.e-20 </gauss_seidel_tolerance>
 </cmfd>

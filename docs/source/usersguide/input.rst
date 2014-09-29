@@ -1301,6 +1301,8 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: None
 
+.. _usersguide_cmfd:
+
 ------------------------------
 CMFD Specification -- cmfd.xml
 ------------------------------
@@ -1361,7 +1363,7 @@ It can be turned on with "true" and off with "false".
   *Default*: false
 
 ``<gauss_seidel_tolerance>`` Element
---------------------
+------------------------------------
 
 The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
 the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD

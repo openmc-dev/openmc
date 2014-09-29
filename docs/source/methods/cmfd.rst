@@ -37,7 +37,7 @@ the direction as a superscript. Energy group indices represented by :math:`g`
 and :math:`h` are also listed as superscripts here. The group :math:`g` is the
 group of interest and, if present, :math:`h` is all groups. Finally, any
 parameter surrounded by :math:`\left\langle\cdot\right\rangle` represents a
-tally quantity that can be edited from an MC solution.
+tally quantity that can be edited from a Monte Carlo (MC) solution.
 
 ------
 Theory
@@ -83,7 +83,7 @@ In eq. :eq:`eq_neut_bal` the parameters are defined as:
 * :math:`\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
   \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle`
   --- volume-integrated total reaction rate over energy group :math:`g`.
-  * :math:`\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
+* :math:`\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
   g}
   \overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle`
   --- volume-integrated scattering production rate of neutrons that begin with
@@ -98,7 +98,7 @@ In eq. :eq:`eq_neut_bal` the parameters are defined as:
   group :math:`h` that exit in group :math:`g`.
 
 Each quantity in :math:`\left\langle\cdot\right\rangle` represents a scalar value that
-is obtained from an MC tally. A good verification step when using an MC is
+is obtained from an MC tally. A good verification step when using an MC code is
 to make sure that tallies satisfy this balance equation within statistics. No
 NDA acceleration can be performed if the balance equation is not satisfied.
 
@@ -110,7 +110,8 @@ illustrated as a flow chart below. After a batch of neutrons
 is simulated, NDA can take place. Each of the steps described above is described
 in detail in the following sections.
 
-.. tikz:: Flow chart of NDA process 
+.. tikz:: Flow chart of NDA process. Note "XS" is used for cross section and
+          "DC" is used for diffusion coefficient.
    :libs: shapes, snakes, shadows, arrows, calc, decorations.markings, patterns, fit, matrix, spy
    :include: cmfd_tikz/cmfd_flow.tikz
 
@@ -234,9 +235,9 @@ as [Hebert]_. These current/flux relationships are as follows:
    \beta_{l\pm1/2,m,n}^{u,g}\right)\Delta_l^u}\overline{\overline{\phi}}_{l,m,n}^{g}.
 
 In Eqs. :eq:`eq_cell_cell` and :eq:`eq_cell_bound`, the :math:`\pm` refers to
-left (-:math:`x`) or right (+:math:`x`) surface in the :math:`x` direction,
-back (-:math:`y`) or front (+:math:`y`) surface in the :math:`y` direction and
-bottom (-:math:`z`) or top (+:math:`z`) surface in the :math:`z` direction. For
+left (:math:`-x`) or right (:math:`+x`) surface in the :math:`x` direction,
+back (:math:`-y`) or front (:math:`+y`) surface in the :math:`y` direction and
+bottom (:math:`-z`) or top (:math:`+z`) surface in the :math:`z` direction. For
 cell-to-boundary coupling, a general albedo, :math:`\beta_{l\pm1/2,m,n}^{u,g}`,
 is used. The albedo is defined as the ratio of incoming (:math:`-` superscript)
 to outgoing (:math:`+` superscript) partial current on any surface represented
@@ -395,7 +396,7 @@ information:
 It should be noted that for more difficult simulations (e.g., light water
 reactors), there are other options available to users such as tally resetting
 parameters, effective down-scatter usage, tally estimator, etc. For more
-information please see [Herman_Thesis]_.
+information please see :ref:`usersguide_cmfd`.
 
 Of the options described above, the optional acceleration subset region is an
 uncommon feature. Because OpenMC only has a structured Cartesian mesh, mesh
@@ -425,26 +426,26 @@ in mesh cells far away from the core.
    :libs: shapes, snakes, shadows, arrows, calc, decorations.markings, patterns, fit, matrix, spy
    :include: cmfd_tikz/meshfig.tikz
 
-During an MC simulation, CMFD tallies are accumulated. The basic tallies
-needed are listed in Table :ref:`tab_tally`. Each tally is performed on a
-spatial and energy mesh basis. The surface area-integrated net current is
-tallied on every surface of the mesh. OpenMC tally objects are created by
-the CMFD code internally, and cross sections are calculated at each
-CMFD feedback iteration. The first CMFD iteration, controlled by the
-user, occurs just after tallies are communicated to the master processor. Once
-tallies are collapsed, cross sections, diffusion coefficients and equivalence
-parameters are calculated. This is performed only on the acceleration region if
-that option has been activated by the user. Once all diffusion parameters
-are calculated, CMFD matrices are formed where energy groups are the inner
-most iteration index. In OpenMC, compressed row storage sparse matrices are
-used due to the sparsity of CMFD operators. An example of this sparsity is
-shown for the 3-D BEAVRS model in figures :ref:`fig_loss` and :ref:`fig_prod`. These matrices
-represent an assembly radial mesh, 24 cell mesh in the axial direction and two
-energy groups. The loss matrix is 99.92% sparse and the production matrix is
-99.99% sparse. Although the loss matrix looks like it is tridiagonal, it is
-really a seven banded matrix with a block diagonal matrix for scattering. The
-production matrix is a :math:`2\times 2` block diagonal; however, zeros are present
-because no fission neutrons appear with energies in the thermal group.
+During an MC simulation, CMFD tallies are accumulated. The basic tallies needed
+are listed in Table :ref:`tab_tally`. Each tally is performed on a spatial and
+energy mesh basis. The surface area-integrated net current is tallied on every
+surface of the mesh. OpenMC tally objects are created by the CMFD code
+internally, and cross sections are calculated at each CMFD feedback iteration.
+The first CMFD iteration, controlled by the user, occurs just after tallies are
+communicated to the master processor. Once tallies are collapsed, cross
+sections, diffusion coefficients and equivalence parameters are calculated. This
+is performed only on the acceleration region if that option has been activated
+by the user. Once all diffusion parameters are calculated, CMFD matrices are
+formed where energy groups are the inner most iteration index. In OpenMC,
+compressed row storage sparse matrices are used due to the sparsity of CMFD
+operators. An example of this sparsity is shown for the 3-D BEAVRS model in
+figures :ref:`fig_loss` and :ref:`fig_prod` [BEAVRS]_. These matrices represent
+an assembly radial mesh, 24 cell mesh in the axial direction and two energy
+groups. The loss matrix is 99.92% sparse and the production matrix is 99.99%
+sparse. Although the loss matrix looks like it is tridiagonal, it is really a
+seven banded matrix with a block diagonal matrix for scattering. The production
+matrix is a :math:`2\times 2` block diagonal; however, zeros are present because
+no fission neutrons appear with energies in the thermal group.
 
 .. _tab_tally:
 
@@ -518,144 +519,19 @@ source distribution to the current number of neutrons in each mesh. It is
 straightforward to compute the CMFD number of neutrons because it is the
 product between the total starting initial weight of neutrons and the CMFD
 normalized fission source distribution. To compute the number of neutrons from
-the current MC source, a subroutine was implemented to sum the statistical
+the current MC source, OpenMC sums the statistical
 weights of neutrons from the source bank on a given spatial and energy mesh.
 Once weight adjustment factors were calculated, each neutron's statistical
 weight in the source bank was modified according to its location and energy.
-
--------------------
-Toy Problem Example
--------------------
-
-Before applying CMFD to a large reactor, a simple 1-D slab toy problem was
-analyzed to understand how CMFD works. Table :ref:`tab_1Dtoyinput` presents
-data used to construct this problem. For MFD, the mesh was 2 cm over the
-geometry with one energy group. A comparison of fission source convergence
-using Shannon entropy is shown in figure :ref:`fig_1Dentropy`. The figure
-illustrates that it takes about 150 FSGs (equivalent to batches) to converge
-the source with standard MC without CMFD. For the case with CMFD, it is
-activated at batch 11 and directly affects the fission source for batch 12.
-Convergence of the fission source is almost immediately reached. 
-
-.. _tab_1Dtoyinput:
-
-.. table:: Input data for 1-D slab toy problem
-
-   +--------------------------------------------+-------------------+
-   +--------------------------------------------+-------------------+
-   | Slab Length                                | 200 cm            |
-   +============================================+===================+
-   | Homogeneous material of :math:`\rm UO_2`   | 19 g/cc density   |
-   +--------------------------------------------+-------------------+
-   | U-235 weight percent                       | 0.21              |
-   +--------------------------------------------+-------------------+
-   | U-238 weight percent                       | 0.68              |
-   +--------------------------------------------+-------------------+
-   | O-16 weight percent                        | 0.11              |
-   +--------------------------------------------+-------------------+
-   | Number of particles per                    | 4,000,000         |
-   +--------------------------------------------+-------------------+
-   | Number of inactive                         | 400               |
-   +--------------------------------------------+-------------------+
-
-|
-|
-
-.. _fig_1Dentropy:
-
-.. figure:: ../_images/entropy_1Dslab.png
-   :scale: 10 
-
-   Source convergence comparison for 1-D slab toy problem
-
-To further show this convergence, source distributions were edited at various
-batches and compared. Figures :ref:`fig_toy6` to :ref:`fig_toy200` compare the
-OpenMC source distribution from the no CMFD case, the OpenMC source
-distribution from the CMFD case and the CMFD source distribution for six
-different batches. Figure :ref:`fig_toy6` compares the distributions at batch
-6. Here, CMFD has not been activated yet, so it is just plotted at zero. As
-expected, the OpenMC source distributions from the two cases are equal because
-CMFD has not yet affected it. From this plot, one can also see that the source
-distribution is very flat because the initial guess was uniform over space.
-Because the dominance ratio is close to unity, the source will slowly converge
-to a cosine-like shape. Results from batch 10 are presented in figure
-:ref:`fig_toy10`. The same information is shown in this plot, but the source is
-slightly more converged. It is plotted here to show how little the source
-changes in four batches. Batch 11 is the first time a CMFD source is
-calculated. Right away, it appears as a smooth cosine-like shape as shown in
-figure :ref:`fig_toy11`. Thus, when CMFD is fed back, its source shape will
-modify the OpenMC source bank to preserve this distribution on the CMFD mesh.
-On the next batch, shown in :ref:`fig_toy12`, the OpenMC source and the CMFD
-source from the CMFD case match, while the OpenMC source from the no CMFD case
-lags behind. Two more batches are shown in figure :ref:`fig_toy40` and figure
-:ref:`fig_toy200` to illustrate that all source distributions eventually line
-up at batch 200.
-
-.. _fig_toy6:
-
-.. figure:: ../_images/statepoint6.png
-   :scale: 10 
-
-   Source at FSG 6
-
-|
-
-.. _fig_toy10:
-
-.. figure:: ../_images/statepoint10.png
-   :scale: 10 
-
-   Source at FSG 10
-
-|
-
-.. _fig_toy11:
-
-.. figure:: ../_images/statepoint11.png
-   :scale: 10 
-
-   Source at FSG 11
-
-|
-
-.. _fig_toy12:
-
-.. figure:: ../_images/statepoint12.png
-   :scale: 10 
-
-   Source at FSG 12
-
-|
-
-.. _fig_toy40:
-
-.. figure:: ../_images/statepoint40.png
-   :scale: 10 
-
-   Source at FSG 40
-
-|
-
-.. _fig_toy200:
-
-.. figure:: ../_images/statepoint200.png
-   :scale: 10 
-
-   Source at FSG 200 
-
-|
-
-This simple illustration shows the power of NDA. Because of the nature of the
-diffusion equation, it can propagate and dampen higher harmonics much faster
-than the MC transport solution. It should be noted here that this is a very
-simplified problem where the dominance ratio was increased by changing the size
-of the slab. Also, the source distribution is very smooth and there was only
-one homogeneous material. The problem becomes more difficult to solve when
-expanding to more spatial dimensions and complex materials.
+Examples of CMFD simulations using OpenMC can be found in [Herman_Thesis]_.
 
 ----------
 References
 ----------
+
+.. [BEAVRS] Nick Horelik, Bryan Herman. *Benchmark for Evaluation And Verification of Reactor
+            Simulations*. Massachusetts Institute of Technology, http://crpg.mit.edu/pub/beavrs
+            , 2013.
 
 .. [Gill] Daniel F. Gill. *Newton-Krylov methods for the solution of the k-eigenvalue problem in
           multigroup neutronics calculations*. Ph.D. thesis, Pennsylvania State University, 2010.

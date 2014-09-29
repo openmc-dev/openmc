@@ -69,7 +69,7 @@ contains
     call calc_fission_source()
 
     ! calculate weight factors
-    if (cmfd_feedback) call cmfd_reweight(.true.)
+    call cmfd_reweight(.true.)
 
     ! stop cmfd timer
     if (master) call time_cmfd % stop()
@@ -82,36 +82,23 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,            only: cmfd_begin, cmfd_on, cmfd_tally_on,         &
-                                 cmfd_inact_flush, cmfd_act_flush, cmfd_run, &
-                                 current_batch, cmfd_hold_weights
+    use global,            only: cmfd_begin, cmfd_on, &
+                                 cmfd_reset, cmfd_run,               &
+                                 current_batch
 
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
     ! accumulated
     if (cmfd_run .and. cmfd_begin == current_batch) then
       cmfd_on = .true.
-      cmfd_tally_on = .true.
     end if
 
     ! If this is a restart run and we are just replaying batches leave
     if (restart_run .and. current_batch <= restart_batch) return
 
-    ! Check to flush cmfd tallies for active batches, no more inactive flush
-    if (cmfd_run .and. cmfd_act_flush == current_batch) then
+    ! Check to reset tallies
+    if (cmfd_run .and. cmfd_reset % contains(current_batch)) then
       call cmfd_tally_reset()
-      cmfd_tally_on = .true.
-      cmfd_inact_flush(2) = -1
-    end if
-
-    ! Check to flush cmfd tallies during inactive batches (>= on number of
-    ! flushes important as the code will flush on the first batch which we
-    ! dont want to count)
-    if (cmfd_run .and. mod(current_batch,cmfd_inact_flush(1))   &
-       == 0 .and. cmfd_inact_flush(2) > 0 .and. cmfd_begin < current_batch) then
-        cmfd_hold_weights = .true.
-        call cmfd_tally_reset()
-        cmfd_inact_flush(2) = cmfd_inact_flush(2) - 1
     end if
 
   end subroutine cmfd_init_batch
@@ -144,6 +131,7 @@ contains
 
     use constants,  only: CMFD_NOACCEL, ZERO, TWO
     use global,     only: cmfd, cmfd_coremap, master, entropy_on, current_batch
+    use string,     only: to_str 
 
 #ifdef MPI
     use global,     only: mpi_err
@@ -272,6 +260,7 @@ contains
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
     use search,      only: binary_search
+    use string,      only: to_str
 
 #ifdef MPI
     use global,      only: mpi_err
@@ -292,7 +281,6 @@ contains
     logical :: in_mesh  ! source site is inside mesh
 
     type(StructuredMesh), pointer :: m ! point to mesh
-    real(8), allocatable :: egrid(:)   ! energy grid
 
     ! Associate pointer
     m => meshes(n_user_meshes + 1)
@@ -313,19 +301,16 @@ contains
       cmfd % weightfactors = ONE
     end if
 
-    ! Allocate energy grid and reverse cmfd energy grid
-    if (.not. allocated(egrid)) allocate(egrid(ng + 1))
-    egrid = (/(cmfd % egrid(ng - i + 2), i = 1, ng + 1)/)
-
     ! Compute new weight factors
     if (new_weights) then
 
-      ! Zero out weights
-      cmfd%weightfactors = ZERO
+      ! Set weight factors to a default 1.0 
+      cmfd%weightfactors = ONE
 
-      ! Count bank sites in mesh
-      call count_bank_sites(m, source_bank, cmfd%sourcecounts, egrid, &
+      ! Count bank sites in mesh and reverse due to egrid structure
+      call count_bank_sites(m, source_bank, cmfd%sourcecounts, cmfd % egrid, &
            sites_outside=outside, size_bank=work)
+      cmfd % sourcecounts = cmfd%sourcecounts(ng:1:-1,:,:,:)
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then
@@ -341,12 +326,14 @@ contains
         end where
       end if
 
+      if (.not. cmfd_feedback) return
+
       ! Broadcast weight factors to all procs
 #ifdef MPI
       call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
            MPI_COMM_WORLD, mpi_err)
 #endif
-   end if
+    end if
 
     ! begin loop over source bank
     do i = 1, int(work,4)
@@ -382,9 +369,6 @@ contains
              cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3))
 
     end do
-
-    ! Deallocate all
-    if (allocated(egrid)) deallocate(egrid)
 
   end subroutine cmfd_reweight
 

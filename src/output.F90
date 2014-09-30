@@ -2061,6 +2061,35 @@ contains
   end subroutine write_surface_current
 
 !===============================================================================
+! WRITE_COORDS takes vectors of abscissae and ordinates and writes them to a
+! text file
+!===============================================================================
+
+  subroutine write_coords(unit_num, filename, x_size, y_size, x_vals, y_vals)
+
+    integer :: unit_num                    ! unit number for output file
+    integer :: x_size                      ! length of vector of abscissae
+    integer :: y_size                      ! length of vector of ordinates
+    integer :: i                           ! coordinate pair index
+    character(80) :: filename              ! name of output file
+    real(8) :: x_vals(x_size)              ! vector of abscissae
+    real(8) :: y_vals(y_size)              ! vector of ordinates
+
+    open(unit = unit_num, file = trim(adjustl(filename)))
+
+    if (x_size == y_size) then
+      do i = 1, x_size
+        write(unit_num, '(ES23.16, ES23.16)') x_vals(i), y_vals(i)
+      end do
+    else
+      continue
+    end if
+
+    close(unit_num)
+
+  end subroutine write_coords
+
+!===============================================================================
 ! GET_LABEL returns a label for a cell/surface/etc given a tally, filter type,
 ! and corresponding bin
 !===============================================================================

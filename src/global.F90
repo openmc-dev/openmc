@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS
+                              MaterialMacroXS, Nuclide0K
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -63,7 +63,7 @@ module global
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
+  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -280,6 +280,10 @@ module global
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
+  ! Fixed source particle bank
+  type(Bank), pointer :: source_site => null()
+!$omp threadprivate(source_site)
+
   ! Restart run
   logical :: restart_run = .false.
   integer :: restart_batch
@@ -319,6 +323,9 @@ module global
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
+  ! Write out initial source
+  logical :: write_initial_source = .false.
+
   ! ============================================================================
   ! CMFD VARIABLES
 
@@ -349,9 +356,6 @@ module global
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! Flag to hold cmfd weight adjustment factors
-  logical :: cmfd_hold_weights = .false.
-
   ! Eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'
 
@@ -364,11 +368,9 @@ module global
   ! Batch to begin cmfd
   integer :: cmfd_begin = 1
 
-  ! When and how long to flush cmfd tallies during inactive batches
-  integer :: cmfd_inact_flush(2) = (/9999,1/)
-
-  ! Batch to last flush before active batches
-  integer :: cmfd_act_flush = 0
+  ! Tally reset list
+  integer :: n_cmfd_resets
+  type(SetInt) :: cmfd_reset
 
   ! Compute effective downscatter cross section
   logical :: cmfd_downscatter = .false.
@@ -386,10 +388,17 @@ module global
 
   ! CMFD run logicals
   logical :: cmfd_on             = .false.
-  logical :: cmfd_tally_on       = .true.
 
   ! CMFD display info
   character(len=25) :: cmfd_display = 'balance'
+
+  ! Estimate of spectral radius of CMFD matrices and tolerances
+  real(8) :: cmfd_spectral = ZERO
+  real(8) :: cmfd_shift = 1.e6
+  real(8) :: cmfd_ktol = 1.e-8_8
+  real(8) :: cmfd_stol = 1.e-8_8
+  real(8) :: cmfd_atoli = 1.e-10_8
+  real(8) :: cmfd_rtoli = 1.e-5_8
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -404,20 +413,27 @@ module global
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 
+  ! ============================================================================
+  ! RESONANCE SCATTERING VARIABLES
+
+  logical :: treat_res_scat = .false. ! is resonance scattering treated?
+  integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
+  type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
+
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates and clears  all global allocatable arrays in the
+! FREE_MEMORY deallocates and clears  all global allocatable arrays in the 
 ! program
 !===============================================================================
 
   subroutine free_memory()
-
+    
     integer :: i ! Loop Index
-
+    
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -437,6 +453,11 @@ contains
       end do
       deallocate(nuclides)
     end if
+
+    if (allocated(nuclides_0K)) then
+      deallocate(nuclides_0K)
+    end if
+
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
@@ -521,9 +542,30 @@ contains
     call sab_dict % clear()
     call xs_listing_dict % clear()
 
-    ! Clear statepoint batch set
+    ! Clear statepoint and sourcepoint batch set
     call statepoint_batch % clear()
+    call sourcepoint_batch % clear()
 
+    ! Deallocate entropy mesh
+    if (associated(entropy_mesh)) then
+      if (allocated(entropy_mesh % lower_left)) &
+          deallocate(entropy_mesh % lower_left)
+      if (allocated(entropy_mesh % upper_right)) &
+          deallocate(entropy_mesh % upper_right)
+      if (allocated(entropy_mesh % width)) deallocate(entropy_mesh % width)
+      deallocate(entropy_mesh)
+    end if
+
+    ! Deallocate ufs
+    if (allocated(source_frac)) deallocate(source_frac)
+    if (associated(ufs_mesh)) then
+        if (allocated(ufs_mesh % lower_left)) deallocate(ufs_mesh % lower_left)
+        if (allocated(ufs_mesh % upper_right)) &
+            deallocate(ufs_mesh % upper_right)
+        if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
+        deallocate(ufs_mesh)
+    end if
+    
   end subroutine free_memory
 
 end module global

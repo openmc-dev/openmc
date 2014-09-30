@@ -7,6 +7,7 @@ module cross_section
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
+  use output,          only: write_coords
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
@@ -18,6 +19,103 @@ module cross_section
 !$omp threadprivate(union_grid_index)
 
 contains
+
+!===============================================================================
+! WRITE_XS_GRIDS writes out user-requested energy-cross section coordinate pairs
+!===============================================================================
+
+  subroutine write_xs_grids()
+
+    integer :: i      ! material index
+    integer :: j      ! nuclide index
+    integer :: k      ! loop index for list of xs grids to be written
+    integer :: i_nuc  ! index in global nuclides array
+    integer :: x_size ! length of vector of abscissae
+    integer :: y_size ! length of vector of ordinates
+    real(8), allocatable :: x_vals(:)        ! vector of abscissae
+    real(8), allocatable :: y_vals(:)        ! vector of ordinates
+    character(80) :: filename                ! name of xs grid output file
+    type(Material), pointer :: mat => null() ! material pointer
+    type(Nuclide),  pointer :: nuc => null() ! nuclide pointer
+
+    ! loop over all materials
+    do i = 1, n_materials
+      mat => materials(i)
+
+      ! loop over all nuclides
+      do j = 1, mat % n_nuclides
+        i_nuc = mat % nuclide(j)
+        nuc => nuclides(i_nuc)
+
+        ! loop over all requested energy-xs grid outputs
+        do k = 1, mat % xs_gridpoints(j) % size()
+
+          ! energy values
+          x_size = size(nuc % energy)
+          allocate(x_vals(x_size))
+          x_vals = nuc % energy
+
+          ! determine which energy-xs grid is requested
+          select case (trim(adjustl(mat % xs_gridpoints(j) % get_item(k))))
+
+          ! write unionized energy grid values
+          case ('unionized')
+
+            ! we want the unionized grid, not the nuclide energy grid
+            deallocate(x_vals)
+            x_size = size(e_grid)
+            allocate(x_vals(x_size))
+
+            ! if we're writing the unionized grid energy values, xs values don't
+            ! matter, so give the energy values as both the abscissae and
+            ! ordinates 
+            x_vals = e_grid
+            y_size = x_size
+            allocate(y_vals(y_size))
+            y_vals = x_vals
+            filename = "unionized-energy-grid.dat"
+
+          ! write a nuclide's energy-total xs grid values
+          case ('total')
+            y_size = size(nuc % total)
+            allocate(y_vals(y_size))
+            y_vals = nuc % total
+            filename = trim(adjustl(nuc % name)) // "-total.dat"
+
+          ! write a nuclide's energy-elastic xs grid values
+          case ('elastic')
+            y_size = size(nuc % elastic)
+            allocate(y_vals(y_size))
+            y_vals = nuc % elastic
+            filename = trim(adjustl(nuc % name)) // "-elastic.dat"
+
+          ! write a nuclide's energy-fission xs grid values
+          case ('fission')
+            y_size = size(nuc % fission)
+            allocate(y_vals(y_size))
+            y_vals = nuc % fission
+            filename = trim(adjustl(nuc % name)) // "-fission.dat"
+
+          ! the requested xs is not recognized
+          case default
+            message = 'Not an allowed energy-xs grid option'
+            call fatal_error()
+          end select
+
+          ! write the energy-xs value pairs to a file
+          call write_coords(99, &
+            & filename, &
+            & x_size, &
+            & y_size, &
+            & x_vals, &
+            & y_vals)
+          deallocate(x_vals)
+          if (allocated(y_vals)) deallocate(y_vals)
+        end do
+      end do
+    end do
+
+  end subroutine write_xs_grids
 
 !===============================================================================
 ! CALCULATE_XS determines the macroscopic cross sections for the material the

@@ -3,6 +3,7 @@ module initialize
   use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
+  use cross_section,    only: write_xs_grids
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
@@ -114,6 +115,9 @@ contains
         call unionized_grid()
         call time_unionize % stop()
       end if
+
+      ! Write user-requested energy-xs coordinate files
+      call write_xs_grids()
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

@@ -1405,6 +1405,7 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
+    integer :: k             ! loop index for list of xs grids to be written
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
     integer :: index_list    ! index in xs_listings array
@@ -1419,6 +1420,7 @@ contains
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
@@ -1561,6 +1563,10 @@ contains
       ! Get pointer list of XML <nuclide>
       call get_node_list(node_mat, "nuclide", node_nuc_list)
 
+      ! Allocate array of lists containing strings indicating which xs grids
+      ! should be writeen for each nuclide in the material
+      allocate(mat % xs_gridpoints(get_list_size(node_nuc_list)))
+
       ! Create list of nuclides based on those specified plus natural elements
       INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
         ! Combine nuclide identifier and cross section and copy into names
@@ -1615,6 +1621,17 @@ contains
           call get_node_value(node_nuc, "wo", temp_dble)
           call list_density % append(-temp_dble)
         end if
+
+        ! Check if xs grid data needs to be written out
+        if (check_for_node(node_nuc, "xs_gridpoints")) then
+          allocate(sarray(get_arraysize_string(node_nuc, "xs_gridpoints")))
+          call get_node_array(node_nuc, "xs_gridpoints", sarray)
+          do k = 1, get_arraysize_string(node_nuc, "xs_gridpoints")
+            call mat % xs_gridpoints(j) % append(sarray(k))
+          end do
+          deallocate(sarray)
+        end if
+
       end do INDIVIDUAL_NUCLIDES
 
       ! =======================================================================

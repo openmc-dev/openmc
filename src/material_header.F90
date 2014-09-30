@@ -1,5 +1,7 @@
 module material_header
 
+  use list_header, only: ListChar
+
   implicit none
 
 !===============================================================================
@@ -24,6 +26,9 @@ module material_header
 
     ! Does this material contain fissionable nuclides?
     logical :: fissionable = .false.
+
+    ! String array of xs grids that need to be written
+    type(ListChar), allocatable :: xs_gridpoints(:)
 
   end type Material
 

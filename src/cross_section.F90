@@ -475,7 +475,7 @@ contains
       fission = fission * micro_xs(i_nuclide) % fission
     end if
 
-    ! Check for negative calues
+    ! Check for negative values
     if (elastic < ZERO) elastic = ZERO
     if (fission < ZERO) fission = ZERO
     if (capture < ZERO) capture = ZERO

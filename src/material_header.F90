@@ -1,5 +1,7 @@
 module material_header
 
+  use list_header, only: ListChar
+
   implicit none
 
 !===============================================================================
@@ -21,6 +23,13 @@ module material_header
     ! Temporary names read during initialization
     character(12), allocatable :: names(:)     ! isotope names
     character(12), allocatable :: sab_names(:) ! name of S(a,b) table
+
+    ! Does this material contain fissionable nuclides?
+    logical :: fissionable = .false.
+
+    ! String array of xs grids that need to be written
+    type(ListChar), allocatable :: xs_gridpoints(:)
+
   end type Material
 
 end module material_header

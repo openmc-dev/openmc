@@ -2,6 +2,7 @@ module ace_header
 
   use constants,     only: MAX_FILE_LEN, ONE, THREE
   use endf_header,   only: Tab1
+  use list_header,   only: ListInt
   use vector_header, only: URRVector
 
   implicit none
@@ -97,6 +98,9 @@ module ace_header
     real(8)       :: T       ! termperature in K
     real(8)       :: kT      ! temperature in MeV (k*T)
 
+    ! Linked list of indices in nuclides array of instances of this same nuclide
+    type(ListInt) :: nuc_list
+
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
     integer, allocatable :: grid_index(:) ! pointers to union grid
@@ -109,6 +113,17 @@ module ace_header
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
+
+    ! Resonance scattering info
+    logical              :: resonant = .false. ! resonant scatterer?
+    character(10)        :: name_0K = '' ! name of 0K nuclide, e.g. 92235.00c
+    character(16)        :: scheme ! target velocity sampling scheme
+    integer              :: n_grid_0K ! number of 0K energy grid points
+    real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
+    real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
+    real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
+    real(8)              :: E_min ! lower cutoff energy for res scattering
+    real(8)              :: E_max ! upper cutoff energy for res scattering
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -219,6 +234,22 @@ module ace_header
   end type Nuclide
 
 !===============================================================================
+! NUCLIDE0K temporarily contains all 0K cross section data and other parameters
+! needed to treat resonance scattering before transferring them to NUCLIDE
+!===============================================================================
+
+  type Nuclide0K
+
+    character(10) :: nuclide            ! name of nuclide, e.g. U-238
+    character(16) :: scheme = 'ares'    ! target velocity sampling scheme
+    character(10) :: name               ! name of nuclide, e.g. 92235.03c
+    character(10) :: name_0K            ! name of 0K nuclide, e.g. 92235.00c
+    real(8)       :: E_min = 0.01e-6    ! lower cutoff energy for res scattering
+    real(8)       :: E_max = 1000.0e-6  ! upper cutoff energy for res scattering
+
+  end type Nuclide0K
+
+!===============================================================================
 ! DISTENERGYSAB contains the secondary energy/angle distributions for inelastic
 ! thermal scattering collisions which utilize a continuous secondary energy
 ! representation.
@@ -316,6 +347,7 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+    real(8) :: last_prn
   end type NuclideMicroXS
 
 !===============================================================================
@@ -467,12 +499,24 @@ module ace_header
       integer :: i_L ! orbital quantum # index
       integer :: i_E ! energy grid index
 
-      if (allocated(this % grid_index)) deallocate(this % grid_index)
+      if (allocated(this % grid_index)) &
+           deallocate(this % grid_index)
 
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &
-           this % fission, this % nu_fission, this % absorption)
-      if (allocated(this % heating)) deallocate(this % heating)
+           & this % fission, this % nu_fission, this % absorption)
+
+      if (allocated(this % energy_0K)) &
+           deallocate(this % energy_0K)
+
+      if (allocated(this % elastic_0K)) &
+           deallocate(this % elastic_0K)
+
+      if (allocated(this % xs_cdf)) &
+           deallocate(this % xs_cdf)
+
+      if (allocated(this % heating)) &
+           deallocate(this % heating)
 
       if (allocated(this % index_fission)) deallocate(this % index_fission)
 
@@ -502,6 +546,7 @@ module ace_header
         deallocate(this % reactions)
       end if
 
+! TODO: investigate...
       if (1 == 2) then
 
       ! deallocate energy grid
@@ -555,6 +600,8 @@ module ace_header
       if (allocated(this % Gam_x_means))   deallocate(this % Gam_x_means)
       
       end if
+
+      call this % nuc_list % clear()
 
     end subroutine nuclide_clear
 

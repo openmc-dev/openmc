@@ -5,7 +5,9 @@ module cross_section
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global
+  use list_header,     only: ListElemInt
   use material_header, only: Material
+  use output,          only: write_coords
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
@@ -18,6 +20,103 @@ module cross_section
 !$omp threadprivate(union_grid_index)
 
 contains
+
+!===============================================================================
+! WRITE_XS_GRIDS writes out user-requested energy-cross section coordinate pairs
+!===============================================================================
+
+  subroutine write_xs_grids()
+
+    integer :: i      ! material index
+    integer :: j      ! nuclide index
+    integer :: k      ! loop index for list of xs grids to be written
+    integer :: i_nuc  ! index in global nuclides array
+    integer :: x_size ! length of vector of abscissae
+    integer :: y_size ! length of vector of ordinates
+    real(8), allocatable :: x_vals(:)        ! vector of abscissae
+    real(8), allocatable :: y_vals(:)        ! vector of ordinates
+    character(80) :: filename                ! name of xs grid output file
+    type(Material), pointer :: mat => null() ! material pointer
+    type(Nuclide),  pointer :: nuc => null() ! nuclide pointer
+
+    ! loop over all materials
+    do i = 1, n_materials
+      mat => materials(i)
+
+      ! loop over all nuclides
+      do j = 1, mat % n_nuclides
+        i_nuc = mat % nuclide(j)
+        nuc => nuclides(i_nuc)
+
+        ! loop over all requested energy-xs grid outputs
+        do k = 1, mat % xs_gridpoints(j) % size()
+
+          ! energy values
+          x_size = size(nuc % energy)
+          allocate(x_vals(x_size))
+          x_vals = nuc % energy
+
+          ! determine which energy-xs grid is requested
+          select case (trim(adjustl(mat % xs_gridpoints(j) % get_item(k))))
+
+          ! write unionized energy grid values
+          case ('unionized')
+
+            ! we want the unionized grid, not the nuclide energy grid
+            deallocate(x_vals)
+            x_size = size(e_grid)
+            allocate(x_vals(x_size))
+
+            ! if we're writing the unionized grid energy values, xs values don't
+            ! matter, so give the energy values as both the abscissae and
+            ! ordinates 
+            x_vals = e_grid
+            y_size = x_size
+            allocate(y_vals(y_size))
+            y_vals = x_vals
+            filename = "unionized-energy-grid.dat"
+
+          ! write a nuclide's energy-total xs grid values
+          case ('total')
+            y_size = size(nuc % total)
+            allocate(y_vals(y_size))
+            y_vals = nuc % total
+            filename = trim(adjustl(nuc % name)) // "-total.dat"
+
+          ! write a nuclide's energy-elastic xs grid values
+          case ('elastic')
+            y_size = size(nuc % elastic)
+            allocate(y_vals(y_size))
+            y_vals = nuc % elastic
+            filename = trim(adjustl(nuc % name)) // "-elastic.dat"
+
+          ! write a nuclide's energy-fission xs grid values
+          case ('fission')
+            y_size = size(nuc % fission)
+            allocate(y_vals(y_size))
+            y_vals = nuc % fission
+            filename = trim(adjustl(nuc % name)) // "-fission.dat"
+
+          ! the requested xs is not recognized
+          case default
+            message = 'Not an allowed energy-xs grid option'
+            call fatal_error()
+          end select
+
+          ! write the energy-xs value pairs to a file
+          call write_coords(99, &
+            & filename, &
+            & x_size, &
+            & y_size, &
+            & x_vals, &
+            & y_vals)
+          deallocate(x_vals)
+          if (allocated(y_vals)) deallocate(y_vals)
+        end do
+      end do
+    end do
+
+  end subroutine write_xs_grids
 
 !===============================================================================
 ! CALCULATE_XS determines the macroscopic cross sections for the material the
@@ -185,6 +284,8 @@ contains
     ! Initialize sab treatment to false
     micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
+
+    ! Initialize URR probability table treatment to false
     micro_xs(i_nuclide) % use_ptable  = .false.
 
     ! Initialize nuclide cross-sections to zero
@@ -343,18 +444,22 @@ contains
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i_energy   ! index for energy
-    integer :: i_up
-    integer :: i_low
-    real(8) :: f          ! interpolation factor
-    real(8) :: r          ! pseudo-random number
-    real(8) :: elastic    ! elastic cross section
-    real(8) :: capture    ! (n,gamma) cross section
-    real(8) :: fission    ! fission cross section
-    real(8) :: inelastic  ! inelastic cross section
-    type(UrrData),  pointer, save :: urr => null()
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
+    integer :: i            ! loop index
+    integer :: i_energy     ! index for energy
+    integer :: i_low        ! band index at lower bounding energy
+    integer :: i_up         ! band index at upper bounding energy
+    integer :: same_nuc_idx ! index of same nuclide
+    real(8) :: f            ! interpolation factor
+    real(8) :: r            ! pseudo-random number
+    real(8) :: elastic      ! elastic cross section
+    real(8) :: capture      ! (n,gamma) cross section
+    real(8) :: fission      ! fission cross section
+    real(8) :: inelastic    ! inelastic cross section
+    logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
+    type(UrrData),  pointer, save :: urr      => null()
+    type(Nuclide),  pointer, save :: nuc      => null()
+    type(Reaction), pointer, save :: rxn      => null()
+
 !$omp threadprivate(urr, nuc, rxn)
 
     micro_xs(i_nuclide) % use_ptable = .true.
@@ -374,8 +479,25 @@ contains
     f = (E - urr % energy(i_energy)) / &
          (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
-    ! sample probability table using the cumulative distribution
-    r = prn()
+    ! if we're dealing with a nuclide that we've previously encountered at
+    ! this energy but a different temperature, use the original random number to
+    ! preserve correlation of temperature in probability tables
+    same_nuc = .false.
+    do i = 1, nuc % nuc_list % size()
+      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
+        same_nuc = .true.
+        same_nuc_idx = i
+        exit
+      end if
+    end do
+
+    if (same_nuc) then
+      r = micro_xs(nuc % nuc_list % get_item(same_nuc_idx)) % last_prn
+    else
+      r = prn()
+      micro_xs(i_nuclide) % last_prn = r
+    end if
+
     i_low = 1
     do
       if (urr % prob(i_energy, URR_CUM_PROB, i_low) > r) exit
@@ -490,5 +612,42 @@ contains
     end if
 
   end subroutine find_energy_index
+
+!===============================================================================
+! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section
+! for a given nuclide at the trial relative energy used in resonance scattering
+!===============================================================================
+
+  function elastic_xs_0K(E, nuc) result(xs_out)
+
+    type(Nuclide), pointer :: nuc    ! target nuclide at temperature
+    integer                :: i_grid ! index on nuclide energy grid
+    real(8)                :: f      ! interp factor on nuclide energy grid
+    real(8), intent(inout) :: E      ! trial energy
+    real(8)                :: xs_out ! 0K xs at trial energy
+
+    ! Determine index on nuclide energy grid
+    if (E < nuc % energy_0K(1)) then
+      i_grid = 1
+    elseif (E > nuc % energy_0K(nuc % n_grid_0K)) then
+      i_grid = nuc % n_grid_0K - 1
+    else
+      i_grid = binary_search(nuc % energy_0K, nuc % n_grid_0K, E)
+    end if
+
+    ! check for rare case where two energy points are the same
+    if (nuc % energy_0K(i_grid) == nuc % energy_0K(i_grid+1)) then
+      i_grid = i_grid + 1
+    end if
+    
+    ! calculate interpolation factor
+    f = (E - nuc % energy_0K(i_grid)) &
+      & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
+    
+    ! Calculate microscopic nuclide elastic cross section
+    xs_out = (ONE - f) * nuc % elastic_0K(i_grid) &
+      & + f * nuc % elastic_0K(i_grid + 1)
+
+  end function elastic_xs_0K
 
 end module cross_section

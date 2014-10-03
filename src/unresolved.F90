@@ -151,6 +151,7 @@ module unresolved
      & 6.35044e0_8,   7.22996e0_8,  8.541e0_8,     11.8359e0_8   &
                                                               &/),(/20,4/))
 
+! TODO: remove these hard codes
   real(8), parameter :: Eid(18) = (/&
     2.000000E+4,&
     2.300000E+4,&
@@ -278,12 +279,13 @@ contains
     integer :: i_r    ! resonance index
     real(8) :: f      ! interpolation factor
     integer :: i_energy
-    real(8) :: xsidnval
-    real(8) :: xsidfval
-    real(8) :: xsidgval
-    real(8) :: xsidxval
-    real(8) :: inelastic_val
-    real(8) :: capture_val
+    real(8) :: xsidnval ! infinite-dilute n xs value from NJOY's MC^2 quadrature
+    real(8) :: xsidfval ! infinite-dilute f xs value from NJOY's MC^2 quadrature
+    real(8) :: xsidgval ! infinite-dilute g xs value from NJOY's MC^2 quadrature
+    real(8) :: xsidxval ! infinite-dilute x xs value from NJOY's MC^2 quadrature
+    real(8) :: inelastic_val ! competitive inelastic scattering cross section
+    real(8) :: capture_val  ! radiative capture cross section
+    integer :: n_resonances ! number of resonances to include for a given l-wave
 
 !$omp threadprivate(nuc, rxn) 
 
@@ -318,6 +320,9 @@ contains
 
       ! set current orbital angular momentum quantum #
       nuc % L = i_l - 1
+
+      ! get the number of contributing l-wave resonances for this l
+      n_resonances = l_wave_resonances(nuc % L)
 
       ! loop over total angular momentum quantum #'s
       TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -384,7 +389,7 @@ contains
         call res % reset(i_nuc, E)
         
         ! loop over the addition of resonances to this ladder
-        RESONANCES_LOOP: do i_r = 1, nuc % n_resonances
+        RESONANCES_LOOP: do i_r = 1, n_resonances
 
           ! sample unresolved resonance parameters for this spin
           ! sequence, at this energy
@@ -455,7 +460,7 @@ contains
 
       if (xsidxval > ZERO) then
 
-        if (competitive == .true.) then
+        if (competitive) then
           ! self-shielded treatment of competitive inelastic cross section
           inelastic_val = sig_x % val / xsidxval &
             & * (micro_xs(i_nuc) % total &
@@ -568,8 +573,11 @@ contains
 
     type(Nuclide), pointer :: nuc => null() ! nuclide pointer
     integer                :: i_nuc         ! nuclide index
+    integer :: n_resonances ! number of resonances to include for a given l-wave
 
     nuc => nuclides(i_nuc)
+
+    n_resonances = l_wave_resonances(nuc % L)
 
     ! sample a level spacing from the Wigner distribution
     this % D_lJ = wigner_dist(nuc % D)
@@ -577,7 +585,7 @@ contains
     ! set lowest energy (i.e. the first) resonance for this ladder well below
     ! the energy grid point such that the ladder spans a sufficient energy range
     if (this % i_res == 0) then
-      this % E_lam = (nuc % E - nuc % n_resonances/2 * nuc % D) &
+      this % E_lam = (nuc % E - n_resonances/2 * nuc % D) &
         & + (ONE - TWO * prn()) * this % D_lJ
 
     ! add subsequent resonance energies at the sampled spacing above the last
@@ -608,6 +616,34 @@ contains
 !    end if
 
   end subroutine level_spacing
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! L_WAVE_RESONANCES determines the number of resonances to include from the lth
+! wave when computing a URR cross section on-the-fly
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function l_wave_resonances(L) result(n_res)
+
+    integer :: L     ! orbital quantum number
+    integer :: n_res ! number of resonances to include for this l
+
+    select case(L)
+    case(0)
+      n_res = n_s_wave
+    case(1)
+      n_res = n_p_wave
+    case(2)
+      n_res = n_d_wave
+    case(3)
+      n_res = n_f_wave
+    case default
+      message = 'Only s-, p-, d-, and f-wave resonances are supported in ENDF-6'
+      call fatal_error()
+    end select
+
+  end function l_wave_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

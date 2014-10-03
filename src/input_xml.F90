@@ -15,8 +15,9 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: URR_FREQUENCY, URR_METHOD, urr_endf_filenames, &
-                              urr_zaids, OTF_URR
+  use unresolved,       only: URR_FREQUENCY, URR_FORMALISM, urr_endf_filenames, &
+                              urr_zaids, OTF_URR, n_s_wave, n_p_wave, n_d_wave, &
+                              n_f_wave, competitive
   use xml_interface
 
   implicit none
@@ -3079,31 +3080,81 @@ contains
       call get_node_ptr(doc, "on_the_fly", otf_node)
     else
       message = 'No on-the-fly URR treatment is specified in urr.xml.'
-      call fatal_error
+      call fatal_error()
     end if
 
     ! Check that a path to ENDF data is specified
-    if (check_for_node(doc, "endf_data_path")) then
-      call get_node_value(doc, "endf_data_path", path_endf)
+    if (check_for_node(doc, "endf_datapath")) then
+      call get_node_value(doc, "endf_datapath", path_endf)
     else
       message = 'No path to ENDF data files for URR treatment is specified'
-      call fatal_error
+      call fatal_error()
     end if
 
-    ! Check if a method for the on-the-fly URR treatment is specified
-    if (check_for_node(otf_node, 'method')) then
-      call get_node_value(otf_node, 'method', URR_METHOD)
-      call lower_case(URR_METHOD)
+    ! Check which formalism for the on-the-fly URR treatment is specified
+    if (check_for_node(otf_node, 'formalism')) then
+      call get_node_value(otf_node, 'formalism', temp_str)
+      call lower_case(temp_str)
+      select case (trim(adjustl(temp_str)))
+      case ('slbw')
+        URR_FORMALISM = 'slbw'
+      case default
+        message = 'Unrecognized on-the-fly URR formalism given in urr.xml'
+        call fatal_error()
+      end select
     else
-      URR_METHOD = 'slbw'
+      URR_FORMALISM = 'slbw'
     end if
 
     ! Check if a xs calculation frequency is specified
     if (check_for_node(otf_node, 'frequency')) then
-      call get_node_value(otf_node, 'frequency', URR_FREQUENCY)
-      call lower_case(URR_FREQUENCY)
+      call get_node_value(otf_node, 'frequency', temp_str)
+      call lower_case(temp_str)
+      select case (trim(adjustl(temp_str)))
+      case ('event')
+        URR_FREQUENCY = 'event'
+      case ('particle')
+        URR_FREQUENCY = 'particle'
+      case ('batch')
+        URR_FREQUENCY = 'batch'
+      case ('simulation')
+        URR_FREQUENCY = 'simulation'
+      case default
+        message = 'Unrecognized OTF URR xs calculation frequency in urr.xml'
+        call fatal_error()
+      end select
     else
-      URR_FREQUENCY = 'unlimited'
+      URR_FREQUENCY = 'event'
+    end if
+
+    ! Assign number of l-wave resonances to be used in xs calculations
+    if (check_for_node(otf_node, 'n_s_wave')) then
+      call get_node_value(otf_node, 'n_s_wave', n_s_wave)
+    else
+      n_s_wave = 32
+    end if
+    if (check_for_node(otf_node, 'n_p_wave')) then
+      call get_node_value(otf_node, 'n_p_wave', n_p_wave)
+    else
+      n_p_wave = 32
+    end if
+    if (check_for_node(otf_node, 'n_d_wave')) then
+      call get_node_value(otf_node, 'n_d_wave', n_d_wave)
+    else
+      n_d_wave = 32
+    end if
+    if (check_for_node(otf_node, 'n_f_wave')) then
+      call get_node_value(otf_node, 'n_f_wave', n_f_wave)
+    else
+      n_f_wave = 32
+    end if
+
+    ! Include resonance structure of competitive URR cross sections?
+    if (check_for_node(otf_node, "competitive")) then
+      call get_node_value(otf_node, "competitive", temp_str)
+      call lower_case(temp_str)
+      if (trim(adjustl(temp_str)) == 'false' &
+        & .or. trim(adjustl(temp_str)) == '0') competitive = .false.
     end if
 
     ! Check for list of nuclides to apply the treatment to
@@ -3122,14 +3173,14 @@ contains
         if (.not. check_for_node(nuc_node, 'ZAID')) then
           message = 'No nuclide ZAID # specified for nuclide ' &
             & // trim(to_str(i)) // ' in urr.xml file.'
-          call fatal_error
+          call fatal_error()
         end if
 
         ! Check that an ENDF data file is given
         if (.not. check_for_node(nuc_node, 'ENDF')) then
           message = 'No ENDF data file specified for nuclide ' &
             & // trim(to_str(i)) // ' in urr.xml file.'
-          call fatal_error
+          call fatal_error()
         end if        
 
         call get_node_value(nuc_node, 'ZAID', urr_zaids(i))

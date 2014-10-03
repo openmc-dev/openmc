@@ -133,7 +133,6 @@ module ace_header
 
     ! Unresolved resonance information
     logical                :: otf_urr = .false.
-    integer                :: n_resonances = 10
     logical                :: urr_present
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
@@ -503,6 +502,8 @@ module ace_header
         deallocate(this % reactions)
       end if
 
+      if (1 == 2) then
+
       ! deallocate energy grid
       if (allocated(this % ES)) deallocate(this % ES)
       
@@ -553,6 +554,8 @@ module ace_header
       if (allocated(this % Gam_f_means))   deallocate(this % Gam_f_means)
       if (allocated(this % Gam_x_means))   deallocate(this % Gam_x_means)
       
+      end if
+
     end subroutine nuclide_clear
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$

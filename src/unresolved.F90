@@ -14,13 +14,18 @@ module unresolved
   implicit none
 
   logical                   :: OTF_URR       ! are we treating the URR OTF?
-  character(MAX_LINE_LEN)   :: URR_METHOD    ! method for URR data treatment
-  character(MAX_LINE_LEN)   :: URR_FREQUENCY ! frequency of urr xs realization
+  character(80)             :: URR_FORMALISM ! formalism for URR data treatment
+  character(80)             :: URR_FREQUENCY ! frequency of urr xs realization
   integer, allocatable      :: urr_zaids(:)  ! ZAID #'s for URR nuclides
   type ENDFFilename
-    character(MAX_LINE_LEN) :: filename      ! ENDF filename for URR nuclide
+    character(80)           :: filename      ! ENDF filename for URR nuclide
   end type ENDFFilename
   type(ENDFFilename), allocatable :: urr_endf_filenames(:) ! ENDF filename
+  integer :: n_s_wave ! number of s-wave resonances used in URR xs calculations
+  integer :: n_p_wave ! number of p-wave resonances used in URR xs calculations
+  integer :: n_d_wave ! number of d-wave resonances used in URR xs calculations
+  integer :: n_f_wave ! number of f-wave resonances used in URR xs calculations
+  logical :: competitive = .true. ! include competitve URR xs resonances?
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -415,10 +420,6 @@ contains
       i_energy = i_energy + 1
       if (i_energy >= size(Eid)) then
         i_energy = size(Eid) - 1
-        message = 'Energy exceeds URR upper bound but URR xs values are being &
-          & calculated'
-        write(*,'(ES20.13,ES20.13)') E
-        call warning()
         exit
       end if
     end do
@@ -453,10 +454,20 @@ contains
         & * (xsidx(i_energy+1) - xsidx(i_energy))
 
       if (xsidxval > ZERO) then
-        inelastic_val = sig_x % val / xsidxval &
-          & * (micro_xs(i_nuc) % total &
-          & - micro_xs(i_nuc) % absorption &
-          & - micro_xs(i_nuc) % elastic)
+
+        if (competitive == .true.) then
+          ! self-shielded treatment of competitive inelastic cross section
+          inelastic_val = sig_x % val / xsidxval &
+            & * (micro_xs(i_nuc) % total &
+            & - micro_xs(i_nuc) % absorption &
+            & - micro_xs(i_nuc) % elastic)
+        else
+          ! infinite-dilute treatment of competitive inelastic cross section
+          inelastic_val = micro_xs(i_nuc) % total &
+            & - micro_xs(i_nuc) % absorption &
+            & - micro_xs(i_nuc) % elastic
+        end if
+
       else
         inelastic_val = micro_xs(i_nuc) % total &
           & - micro_xs(i_nuc) % absorption &

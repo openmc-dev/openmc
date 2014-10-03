@@ -1092,10 +1092,10 @@ The ``<tally>`` element accepts the following sub-elements:
       all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
 
     :total-YN:
-      Spherical harmonic expansion of the incoming particle's direction of
-      motion :math:`\left(\Omega\right)` of the total flux.  This score will
-      tally all of the harmonic moments of order 0 to N.  N must be between 0
-      and 10.
+      The total reaction rate expanded via spherical harmonics about the 
+      direction of motion of the neutron, :math:`\Omega`.
+      This score will tally all of the harmonic moments of order 0 to N.  N must
+      be between 0 and 10.
 
     :current:
       Partial currents on the boundaries of each cell in a mesh.

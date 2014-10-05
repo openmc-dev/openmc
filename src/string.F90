@@ -149,7 +149,7 @@ contains
   end function concatenate
 
 !===============================================================================
-! LOWER_CASE converts a string to all lower case characters
+! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
   elemental function to_lower(word) result(word_lower)
@@ -172,7 +172,7 @@ contains
   end function to_lower
 
 !===============================================================================
-! UPPER_CASE converts a string to all upper case characters
+! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
   elemental function to_upper(word) result(word_upper)
@@ -200,32 +200,32 @@ contains
 ! integers.
 !===============================================================================
 
-function zero_padded(num, n_digits) result(str)
-  integer, intent(in) :: num
-  integer, intent(in) :: n_digits
-  character(11)       :: str
+  function zero_padded(num, n_digits) result(str)
+    integer, intent(in) :: num
+    integer, intent(in) :: n_digits
+    character(11)       :: str
 
-  character(8)        :: zp_form
+    character(8)        :: zp_form
 
-  ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
-  ! largest integer(4).
-  if (n_digits > 10) then
-    message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error()
-  end if
+    ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
+    ! largest integer(4).
+    if (n_digits > 10) then
+      message = 'zero_padded called with an unreasonably large n_digits (>10)'
+      call fatal_error()
+    end if
 
-  ! Write a format string of the form '(In.m)' where n is the max width and
-  ! m is the min width.  If a sign is present, then n must be one greater
-  ! than m.
-  if (num < 0) then
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
-  else
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
-  end if
+    ! Write a format string of the form '(In.m)' where n is the max width and
+    ! m is the min width.  If a sign is present, then n must be one greater
+    ! than m.
+    if (num < 0) then
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
+    else
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+    end if
 
-  ! Format the number.
-  write(str, zp_form) num
-end function zero_padded
+    ! Format the number.
+    write(str, zp_form) num
+  end function zero_padded
 
 !===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters

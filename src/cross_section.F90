@@ -198,7 +198,7 @@ contains
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
          + f * nuc % total(i_grid+1)
 
-    ! Calculate microscopic nuclide total cross section
+    ! Calculate microscopic nuclide elastic cross section
     micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
          + f * nuc % elastic(i_grid+1)
 

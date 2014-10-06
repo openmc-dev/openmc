@@ -3145,7 +3145,6 @@ contains
   subroutine read_urr_xml()
 
     integer :: i ! URR nuclides loop index
-    integer :: j ! all nuclides loop index
     character(MAX_LINE_LEN) :: temp_str
     character(MAX_LINE_LEN) :: filename
     logical                 :: file_exists ! does urr.xml file exist?
@@ -3190,8 +3189,7 @@ contains
     ! Check which formalism for the on-the-fly URR treatment is specified
     if (check_for_node(otf_node, 'formalism')) then
       call get_node_value(otf_node, 'formalism', temp_str)
-      call lower_case(temp_str)
-      select case (trim(adjustl(temp_str)))
+      select case (trim(adjustl(to_lower(temp_str))))
       case ('slbw')
         URR_FORMALISM = 'slbw'
       case default
@@ -3205,16 +3203,15 @@ contains
     ! Check if a xs calculation frequency is specified
     if (check_for_node(otf_node, 'frequency')) then
       call get_node_value(otf_node, 'frequency', temp_str)
-      call lower_case(temp_str)
-      select case (trim(adjustl(temp_str)))
+      select case (trim(adjustl(to_lower(temp_str))))
       case ('event')
         URR_FREQUENCY = 'event'
-      case ('particle')
-        URR_FREQUENCY = 'particle'
-      case ('batch')
-        URR_FREQUENCY = 'batch'
-      case ('simulation')
-        URR_FREQUENCY = 'simulation'
+!      case ('particle')
+!        URR_FREQUENCY = 'particle'
+!      case ('batch')
+!        URR_FREQUENCY = 'batch'
+!      case ('simulation')
+!        URR_FREQUENCY = 'simulation'
       case default
         message = 'Unrecognized OTF URR xs calculation frequency in urr.xml'
         call fatal_error()
@@ -3246,11 +3243,34 @@ contains
     end if
 
     ! Include resonance structure of competitive URR cross sections?
+    competitive = .true.
     if (check_for_node(otf_node, "competitive")) then
       call get_node_value(otf_node, "competitive", temp_str)
-      call lower_case(temp_str)
-      if (trim(adjustl(temp_str)) == 'false' &
-        & .or. trim(adjustl(temp_str)) == '0') competitive = .false.
+      if (trim(adjustl(to_lower(temp_str))) == 'false' &
+        & .or. trim(adjustl(temp_str)) == '0') then
+        competitive = .false.
+      else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+        & .or. trim(adjustl(temp_str)) == '1') then
+        competitive = .true.
+      else
+        message = 'competitive element in urr.xml must be true or false'
+        call fatal_error()
+      end if
+    end if
+
+    ! Determine which W function evaluation to use
+    w_eval = MIT_W
+    if (check_for_node(otf_node, "w_function")) then
+      call get_node_value(otf_node, "w_function", temp_str)
+      select case (trim(adjustl(to_lower(temp_str))))
+      case ('mit_w')
+        w_eval = MIT_W
+      case ('quick_w')
+        w_eval = QUICK_W
+      case default
+        message = 'Unrecognized W function evaluation method'
+        call fatal_error()
+      end select
     end if
 
     ! Check for list of nuclides to apply the treatment to

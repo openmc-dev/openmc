@@ -2,7 +2,7 @@ module unresolved
 
   use ace_header,   only: Nuclide, Reaction
   use constants,    only: ZERO, ONE, SQRT_PI, TWO, THREE, PI, FOUR, C_1, &
-                          K_BOLTZMANN
+                          K_BOLTZMANN, MIT_W, QUICK_W
   use error,        only: fatal_error, warning
   use faddeeva,     only: quickw, faddeeva_w
   use fission,      only: nu_total
@@ -25,7 +25,7 @@ module unresolved
   integer :: n_p_wave ! number of p-wave resonances used in URR xs calculations
   integer :: n_d_wave ! number of d-wave resonances used in URR xs calculations
   integer :: n_f_wave ! number of f-wave resonances used in URR xs calculations
-  logical :: competitive = .true. ! include competitve URR xs resonances?
+  logical :: competitive ! include competitve URR xs resonances?
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -269,7 +269,6 @@ contains
     type(CrossSection) :: sig_gam ! radiative capture xs object
     type(CrossSection) :: sig_f   ! fission xs object
     type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    type(Reaction), pointer, save :: rxn => null()
     integer :: i_nuc  ! nuclide index
     real(8) :: E      ! neutron energy [eV]
     integer :: i_E    ! energy grid index
@@ -287,7 +286,7 @@ contains
     real(8) :: capture_val  ! radiative capture cross section
     integer :: n_resonances ! number of resonances to include for a given l-wave
 
-!$omp threadprivate(nuc, rxn) 
+!$omp threadprivate(nuc) 
 
     micro_xs(i_nuc) % use_ptable = .true.
 
@@ -432,7 +431,7 @@ contains
     ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
     ! MF3 contains background xs values (add to MF2 resonance contributions)
     if (nuc % LSSF == 0) then
-      message = 'you got here'
+      message = 'LSSF = 0 not yet supported'
       call fatal_error()
       micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
       micro_xs(i_nuc) % elastic    = sig_n % val + micro_xs(i_nuc) % elastic
@@ -824,7 +823,7 @@ contains
     T       = nuc % T
     theta   = Gam_t_n / (TWO * sqrt(K_BOLTZMANN * 1.0E6_8 * T * E_n / A))
     x       = (TWO * (E_n - E_shift)) / Gam_t_n
-    sig_lam = FOUR * PI / k_lam**2 * g_J * Gam_n / Gam_t
+    sig_lam = FOUR * PI / (k_lam * k_lam) * g_J * Gam_n / Gam_t
 
 ! TODO: Correct negative scattering xs values to 0 b in the library version of
 !       code for use in OpenMC
@@ -891,9 +890,27 @@ contains
 
   function penetration(L, rho) result(P)
 
-    integer, intent(in) :: L   ! current orbital quantum #
-    real(8)             :: rho ! derived variable, ka
-    real(8)             :: P   ! penetration factor
+    integer, intent(in) :: L    ! current orbital quantum #
+    real(8)             :: rho  ! derived variable, ka
+    real(8)             :: rho2 ! rho**2
+    real(8)             :: rho3 ! rho**3
+    real(8)             :: rho4 ! rho**4
+    real(8)             :: rho5 ! rho**5
+    real(8)             :: rho6 ! rho**6
+    real(8)             :: rho7 ! rho**7
+    real(8)             :: rho8 ! rho**8
+    real(8)             :: rho9 ! rho**9
+    real(8)             :: P    ! penetration factor
+
+    ! pre-compute exponentiations
+    rho2 = rho * rho
+    rho3 = rho * rho * rho
+    rho4 = rho * rho * rho * rho
+    rho5 = rho * rho * rho * rho * rho
+    rho6 = rho * rho * rho * rho * rho * rho
+    rho7 = rho * rho * rho * rho * rho * rho * rho
+    rho8 = rho * rho * rho * rho * rho * rho * rho * rho
+    rho9 = rho * rho * rho * rho * rho * rho * rho * rho * rho
 
     ! calculate penetrability for the current orbital quantum #
     select case(L)
@@ -902,17 +919,17 @@ contains
         P = rho
 
       case(1)
-        P = rho**3 / (ONE + rho**2)
+        P = rho3 / (ONE + rho2)
 
       case(2)
-        P = rho**5 / (9.0_8 + THREE * rho**2 + rho**4)
+        P = rho5 / (9.0_8 + THREE * rho2 + rho4)
 
       case(3)
-        P = rho**7 / (225.0_8 + 45.0_8 * rho**2 + 6.0_8 * rho**4 + rho**6)
+        P = rho7 / (225.0_8 + 45.0_8 * rho2 + 6.0_8 * rho4 + rho6)
 
       case(4)
-        P = rho**9 / (11025.0_8 + 1575.0_8 * rho**2 + 135.0_8 * rho**4 &
-          & + 10.0_8 * rho**6 + rho**8)
+        P = rho9 / (11025.0_8 + 1575.0_8 * rho2 + 135.0_8 * rho4 &
+          & + 10.0_8 * rho6 + rho8)
 
       case default
         message = 'Orbital quantum number not allowed'
@@ -929,9 +946,17 @@ contains
 
   function phase_shift(L, rho) result(phi)
 
-    integer :: L   ! current orbital quantum #
-    real(8) :: rho ! derived variable, ka
-    real(8) :: phi ! hard sphere phase shift
+    integer :: L    ! current orbital quantum #
+    real(8) :: rho  ! derived variable, ka
+    real(8) :: rho2 ! rho**2
+    real(8) :: rho3 ! rho**3
+    real(8) :: rho4 ! rho**4
+    real(8) :: phi  ! hard sphere phase shift
+
+    ! pre-compute exponentiations
+    rho2 = rho * rho
+    rho3 = rho * rho * rho
+    rho4 = rho * rho * rho * rho
 
     ! calculate phase shift for the current orbital quantum #
     select case(L)
@@ -943,14 +968,14 @@ contains
         phi = rho - atan(rho)
 
       case(2)
-        phi = rho - atan(THREE * rho / (THREE - rho**2))
+        phi = rho - atan(THREE * rho / (THREE - rho2))
 
       case(3)
-        phi = rho - atan((15.0_8 * rho - rho**3) / (15.0_8 - 6.0_8 * rho**2))
+        phi = rho - atan((15.0_8 * rho - rho3) / (15.0_8 - 6.0_8 * rho2))
 
       case(4)
-        phi = rho - atan((105.0_8 * rho - 10.0_8 * rho**3) &
-          & / (105.0_8 - 45.0_8 * rho**2 + rho**4))
+        phi = rho - atan((105.0_8 * rho - 10.0_8 * rho3) &
+          & / (105.0_8 - 45.0_8 * rho2 + rho4))
 
       case default
         message = 'Orbital quantum number not allowed'
@@ -967,9 +992,19 @@ contains
 
   function shift(L, rho) result(S)
 
-    integer :: L   ! current orbital quantum #
-    real(8) :: rho ! derived variable, ka
-    real(8) :: S   ! shift factor (for shifting the resonance energy)
+    integer :: L    ! current orbital quantum #
+    real(8) :: rho  ! derived variable, ka
+    real(8) :: rho2 ! rho**2
+    real(8) :: rho4 ! rho**4
+    real(8) :: rho6 ! rho**6
+    real(8) :: rho8 ! rho**8
+    real(8) :: S    ! shift factor (for shifting the resonance energy)
+
+    ! pre-compute exponentiations
+    rho2 = rho * rho
+    rho4 = rho * rho * rho * rho
+    rho6 = rho * rho * rho * rho * rho * rho
+    rho8 = rho * rho * rho * rho * rho * rho * rho * rho
 
     ! calculate shift factor for current orbital quantum #
     select case(L)
@@ -978,20 +1013,20 @@ contains
         S = ZERO
 
       case(1)
-        S = -ONE / (ONE + rho**2)
+        S = -ONE / (ONE + rho2)
 
       case(2)
-        S = -(18.0_8 + THREE * rho**2) / (9.0_8 + THREE * rho**2 + rho**4)
+        S = -(18.0_8 + THREE * rho2) / (9.0_8 + THREE * rho2 + rho4)
 
       case(3)
-        S = -(675.0_8 + 90.0_8 * rho**2 + 6.0_8 * rho**4) &
-          & / (225.0_8 + 45.0_8 * rho**2 + 6.0_8 * rho**4 + rho**6)
+        S = -(675.0_8 + 90.0_8 * rho2 + 6.0_8 * rho4) &
+          & / (225.0_8 + 45.0_8 * rho2 + 6.0_8 * rho4 + rho6)
 
       case(4)
-        S = -(44100.0_8 + 4725.0_8 * rho**2 + &
-          & 270.0_8 * rho**4 + 10.0_8 * rho**6) &
-          & / (11025.0_8 + 1575.0_8 * rho**2 + 135.0_8 * rho**4 &
-          & +10.0_8 * rho**6 + rho**8)
+        S = -(44100.0_8 + 4725.0_8 * rho2 + &
+          & 270.0_8 * rho4 + 10.0_8 * rho6) &
+          & / (11025.0_8 + 1575.0_8 * rho2 + 135.0_8 * rho4 &
+          & + 10.0_8 * rho6 + rho8)
 
       case default
         message = 'Orbital quantum number not allowed'
@@ -1014,20 +1049,25 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
-    relerr = 1.0e-1
-
-! TODO: Allow option of using different Faddeeva evaluations?
+    ! evaluate the W (Faddeeva) function
+    select case (w_eval)
 
     ! call S.G. Johnson's Faddeeva evaluation
-    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
-
-    ! compute psi
-    psi_val = SQRT_PI / TWO * theta &
-      & * real(real(w_val, 8), 8)
+    case (MIT_W)
+      relerr = 1.0e-1
+      w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+      psi_val = SQRT_PI / TWO * theta &
+        & * real(real(w_val, 8), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-!    psi_val = SQRT_PI / TWO * theta &
-!      & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
+    case (QUICK_W)
+      psi_val = SQRT_PI / TWO * theta &
+        & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
+
+    case default
+      message = 'Unrecognized W function evaluation method'
+      call fatal_error()
+    end select
 
   end function psi
 
@@ -1045,20 +1085,25 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
-    relerr = 1.0e-1
-
-! TODO: Allow option of using different Faddeeva evaluations?
+    ! evaluate the W (Faddeeva) function
+    select case (w_eval)
 
     ! call S.G. Johnson's Faddeeva evaluation
-    w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
-
-    ! compute chi
-    chi_val = SQRT_PI / TWO * theta &
-      & * real(aimag(w_val), 8)
+    case (MIT_W)
+      relerr = 1.0e-1
+      w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
+      chi_val = SQRT_PI / TWO * theta &
+        & * real(aimag(w_val), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-!    chi_val = SQRT_PI / TWO * theta &
-!      & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+    case (QUICK_W)
+      chi_val = SQRT_PI / TWO * theta &
+        & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+
+    case default
+      message = 'Unrecognized W function evaluation method'
+      call fatal_error()
+    end select
 
   end function chi
 
@@ -1139,8 +1184,9 @@ contains
     sig_pot = ZERO
     do i_L = 0, NLS - 1
       sig_pot = sig_pot &
-        & + FOUR * PI / k_n**2 * (TWO * dble(i_L) + ONE) &
-        & * (sin(phase_shift(i_L, k_n*AP)))**2
+        & + FOUR * PI / (k_n * k_n) * (TWO * dble(i_L) + ONE) &
+        & * (sin(phase_shift(i_L, k_n*AP))) &
+        & * (sin(phase_shift(i_L, k_n*AP)))
     end do
 
     ! add the potential scattering xs to this xs

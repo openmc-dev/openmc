@@ -92,6 +92,9 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
+  ! W function evaluation method
+  integer :: w_eval = 0
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 

@@ -240,6 +240,11 @@ module constants
        JENDL_33   = 7, &
        JENDL_40   = 8
 
+  ! W function evaluation method
+  integer, parameter :: &
+    MIT_W   = 1, &
+    QUICK_W = 2
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 

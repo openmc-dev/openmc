@@ -321,10 +321,8 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
-    logical :: INELASTIC
-!$omp threadprivate(nuc, rxn)
 
-    INELASTIC = .false.
+!$omp threadprivate(nuc, rxn)
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -362,65 +360,49 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
-      if (nuc % otf_urr) then
-        if (p%E>=nuc%EL/1.0E6_8 .and. p%E<=nuc%EH/1.0E6_8) then
-          rxn => nuc % reactions(nuc % urr_inelastic)
-          if (micro_xs(i_nuclide) % index_grid < rxn % threshold) then
-            message = 'fuck this shit'
+      if (nuc % otf_urr .and. &
+        & p % E > nuc % EL / 1.0E6_8 .and. &
+        & p % E < nuc % EH / 1.0E6_8) then
+        rxn => nuc % reactions(nuc % urr_inelastic)
+      else
+        ! note that indexing starts from 2 since nuc % reactions(1) is elastic
+        ! scattering
+        i = 1
+        do while (prob < cutoff)
+
+          i = i + 1
+
+          ! Check to make sure inelastic scattering reaction sampled
+          if (i > nuc % n_reaction) then
+            call write_particle_restart(p)
+            message = "Did not sample any reaction for nuclide " // &
+              trim(nuc % name)
             call fatal_error()
           end if
-          goto 69
-        end if
-      end if
 
-      ! note that indexing starts from 2 since nuc % reactions(1) is elastic
-      ! scattering
-      i = 1
-      do while (prob < cutoff)
+          rxn => nuc % reactions(i)
 
-        i = i + 1
+          ! Skip fission reactions
+          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+            .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
 
-        ! Check to make sure inelastic scattering reaction sampled
-        if (i > nuc % n_reaction) then
-          call write_particle_restart(p)
-          message = "Did not sample any reaction for nuclide " // &
-            trim(nuc % name)
-          call fatal_error()
-        end if
+          ! some materials have gas production cross sections with MT > 200 that
+          ! are duplicates. Also MT=4 is total level inelastic scattering which
+          ! should be skipped
+          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
 
-        rxn => nuc % reactions(i)
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < rxn % threshold) cycle
 
-        ! Skip fission reactions
-        if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
+          ! add to cumulative probability
+          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
+            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-        ! some materials have gas production cross sections with MT > 200 that
-        ! are duplicates. Also MT=4 is total level inelastic scattering which
-        ! should be skipped
-        if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
-
-        ! if energy is below threshold for this reaction, skip it
-        if (i_grid < rxn % threshold) cycle
-
-        ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-
-      end do
-
-      if (nuc % zaid == 92238) then
-        if (p%E >= nuc % urr_data % energy(1) .and. &
-           p%E <= nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-          if (rxn % MT /= 51) then
-            message = 'A non-inelastic competitive reaction event occurred in &
-              & the URR'
-            call fatal_error()
-          end if
-        end if
+        end do
       end if
 
       ! Perform collision physics for inelastic scattering
-69    call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
+      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
         p % mu, p % wgt)
       p % event_MT = rxn % MT
       

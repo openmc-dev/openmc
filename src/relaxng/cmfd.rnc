@@ -22,15 +22,9 @@ element cmfd {
 
   element feedback { xsd:boolean }? &
 
-  element n_cmfd_procs { xsd:int }? &
-
-  element reset { xsd:boolean }? &
-
-  element balance { xsd:boolean }? &
-
   element downscatter { xsd:boolean }? &
 
-  element run_2grp { xsd:boolean }? &
+  element dhat_reset { xsd:boolean }? &
 
   element solver { xsd:string }? &
 
@@ -40,8 +34,6 @@ element cmfd {
 
   element power_monitor { xsd:boolean }? &
 
-  element write_balance { xsd:boolean }? &
-
   element write_matrices { xsd:boolean }? &
 
   element run_adjoint { xsd:boolean }? &
@@ -50,9 +42,18 @@ element cmfd {
 
   element begin { xsd:int }? &
 
-  element inactive { xsd:boolean }? &
+  element tally_reset { list { xsd:int+ } }? &
 
-  element active_flush { xsd:int }? &
+  element display { xsd:string }? &
 
-  element keff_tol { xsd:double }?
+  element spectral { xsd:double }? &
+
+  element shift { xsd:double }? &
+
+  element ktol { xsd: double }? &
+
+  element stol { xsd: double }? &
+
+  element gauss_seidel_tolerance { list { xsd:double+ } }?
+
 }

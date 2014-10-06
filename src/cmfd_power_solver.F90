@@ -242,7 +242,7 @@ contains
 
   subroutine convergence(iter)
 
-    use constants,  only: ONE, TINY_BIT
+    use constants,  only: ONE, ZERO
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
@@ -255,7 +255,7 @@ contains
     kerr = abs(k_o - k_n)/k_n
 
     ! Calculate max error in source
-    where (s_n % val > TINY_BIT)
+    where (s_n % val > ZERO) 
       serr_v % val = ((s_n % val - s_o % val)/s_n % val)**2
     end where
     serr = sqrt(ONE/dble(s_n % n) * sum(serr_v % val))

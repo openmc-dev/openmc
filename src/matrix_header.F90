@@ -20,19 +20,22 @@ module matrix_header
 #  endif
     logical :: petsc_active
    contains
-     procedure :: create       => matrix_create
-     procedure :: destroy      => matrix_destroy
-     procedure :: add_value    => matrix_add_value
-     procedure :: new_row      => matrix_new_row
-     procedure :: assemble     => matrix_assemble
-     procedure :: get_row      => matrix_get_row
-     procedure :: get_col      => matrix_get_col
+     procedure :: create             => matrix_create
+     procedure :: destroy            => matrix_destroy
+     procedure :: add_value          => matrix_add_value
+     procedure :: new_row            => matrix_new_row
+     procedure :: assemble           => matrix_assemble
+     procedure :: get_row            => matrix_get_row
+     procedure :: get_col            => matrix_get_col
      procedure :: vector_multiply    => matrix_vector_multiply
-#ifdef PETSC
-     procedure :: transpose          => matrix_transpose
+     procedure :: search_indices     => matrix_search_indices
+     procedure :: write              => matrix_write
+     procedure :: copy               => matrix_copy
+#  ifdef PETSC
      procedure :: setup_petsc        => matrix_setup_petsc
      procedure :: write_petsc_binary => matrix_write_petsc_binary
-#endif
+     procedure :: transpose          => matrix_transpose
+#  endif
   end type matrix
 
 #ifdef PETSC
@@ -358,5 +361,88 @@ contains
     end do ROWS
 
   end subroutine matrix_vector_multiply
+
+!===============================================================================
+! MATRIX_SEARCH_INDICES searches for an index in column corresponding to a row 
+!===============================================================================
+
+  subroutine matrix_search_indices(self, row, col, idx, found)
+
+    class(Matrix), intent(inout) :: self
+    integer, intent(in) :: row
+    integer, intent(in) :: col
+    integer, intent(out) :: idx
+    logical, intent(out) :: found
+
+    integer :: j
+
+    found = .false.
+
+    COLS: do j = self % get_row(row), self % get_row(row + 1) - 1
+
+      if (self % get_col(j) == col) then
+        idx = j
+        found = .true.
+        exit
+      end if
+
+    end do COLS
+
+  end subroutine matrix_search_indices
+
+!===============================================================================
+! MATRIX_WRITE writes a matrix to file
+!===============================================================================
+
+  subroutine matrix_write(self, filename)
+
+    character(*), intent(in) :: filename
+    class(Matrix), intent(inout) :: self
+
+    integer :: unit_
+    integer :: i
+    integer :: j
+
+    open(newunit=unit_, file=filename)
+
+    do i = 1, self % n
+      do j = self % get_row(i), self % get_row(i + 1) - 1
+        write(unit_,*) i, self % get_col(j), self % val(j)
+      end do
+    end do
+
+    close(unit_)
+
+  end subroutine matrix_write
+
+!===============================================================================
+! MATRIX_COPY copies a matrix
+!===============================================================================
+
+  subroutine matrix_copy(self, mattocopy)
+
+    class(Matrix), intent(inout) :: self
+    type(Matrix), intent(in) :: mattocopy
+
+    ! Set n and nnz
+    self % n_count = mattocopy % n_count
+    self % nz_count = mattocopy % nz_count
+    self % n = mattocopy % n
+    self % nnz = mattocopy % nnz
+
+    ! Allocate vectors
+    if (.not.allocated(self % row)) allocate(self % row(self % n + 1))
+    if (.not.allocated(self % col)) allocate(self % col(self % nnz))
+    if (.not.allocated(self % val)) allocate(self % val(self % nnz))
+
+    ! Set PETSc active to false
+    self % petsc_active = .false.
+
+    ! Copy over data
+    self % row = mattocopy % row
+    self % col = mattocopy % col
+    self % val = mattocopy % val
+
+  end subroutine matrix_copy
 
 end module matrix_header

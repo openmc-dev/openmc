@@ -261,7 +261,8 @@ install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
   install(CODE "execute_process(
-                  COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
+                  COMMAND ${PYTHON_EXECUTABLE} setup.py install
+                  --prefix=${CMAKE_INSTALL_PREFIX}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
 endif()
 

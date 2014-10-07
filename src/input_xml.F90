@@ -3136,7 +3136,7 @@ contains
               end if
               
               if (.not. allocated(entropy_mesh % dimension)) then
-                message = "No dimension specified on entropy mesh for " //
+                message = "No dimension specified on entropy mesh for " // &
                           "meshlines on plot " // trim(to_str(pl % id))
                 call fatal_error()
               end if

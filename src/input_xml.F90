@@ -36,7 +36,7 @@ contains
     if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
-    if (run_mode /= MODE_PLOTTING) call read_tallies_xml()
+    call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
@@ -517,6 +517,7 @@ contains
       allocate(entropy_mesh)
       allocate(entropy_mesh % lower_left(3))
       allocate(entropy_mesh % upper_right(3))
+      allocate(entropy_mesh % width(3))
 
       ! Copy values
       call get_node_array(node_entropy, "lower_left", &
@@ -548,6 +549,11 @@ contains
 
         ! Copy dimensions
         call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
+        
+        ! Calculate width
+        entropy_mesh % width = (entropy_mesh % upper_right - &
+             entropy_mesh % lower_left) / entropy_mesh % dimension
+        
       end if
 
       ! Turn on Shannon entropy calculation
@@ -1895,7 +1901,7 @@ contains
     end if
 
     ! Allocate tally array
-    if (n_user_tallies > 0) then
+    if (n_user_tallies > 0 .and. run_mode /= MODE_PLOTTING) then
       call add_tallies("user", n_user_tallies)
     end if
 
@@ -2042,6 +2048,9 @@ contains
       ! Add mesh to dictionary
       call mesh_dict % add_key(m % id, i)
     end do
+
+    ! We only need the mesh info for plotting
+    if (run_mode == MODE_PLOTTING) return
 
     ! ==========================================================================
     ! READ TALLY DATA
@@ -2767,20 +2776,25 @@ contains
 
   subroutine read_plots_xml()
 
-    integer i, j
-    integer n_cols, col_id, n_comp, n_masks
+    integer :: i, j
+    integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
+    integer :: meshid
+    integer :: i_mesh
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
     character(MAX_LINE_LEN) :: temp_str
+    character(MAX_WORD_LEN) :: meshtype
     type(ObjectPlot), pointer :: pl => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_plot => null()
     type(Node), pointer :: node_col => null()
     type(Node), pointer :: node_mask => null()
+    type(Node), pointer :: node_meshlines => null()
     type(NodeList), pointer :: node_plot_list => null()
     type(NodeList), pointer :: node_col_list => null()
     type(NodeList), pointer :: node_mask_list => null()
+    type(NodeList), pointer :: node_meshline_list => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -3032,6 +3046,144 @@ contains
         end do
       end if
 
+      ! Deal with meshlines
+      call get_node_list(node_plot, "meshlines", node_meshline_list)
+      n_meshlines = get_list_size(node_meshline_list)
+      if (n_meshlines /= 0) then
+
+        if (pl % type == PLOT_TYPE_VOXEL) then
+          message = "Meshlines ignored in voxel plot " // & 
+                     trim(to_str(pl % id))
+          call warning()
+        end if
+        
+        select case(n_meshlines)
+          case (0)
+            ! Skip if no meshlines are specified
+          case (1)
+
+            ! Get pointer to meshlines
+            call get_list_item(node_meshline_list, 1, node_meshlines)
+            
+            ! Check mesh type
+            if (check_for_node(node_meshlines, "meshtype")) then
+              call get_node_value(node_meshlines, "meshtype", meshtype)
+            else
+              message = "Must specify a meshtype for meshlines " // &
+                        "specification in plot " // trim(to_str(pl % id))
+              call fatal_error()
+            end if
+            
+            ! Ensure that there is a linewidth for this meshlines specification
+            if (check_for_node(node_meshlines, "linewidth")) then
+              call get_node_value(node_meshlines, "linewidth", &
+                  pl % meshlines_width)
+            else
+              message = "Must specify a linewidth for meshlines " // &
+                        "specification in plot " // trim(to_str(pl % id))
+              call fatal_error()
+            end if
+
+            ! Check for color
+            if (check_for_node(node_meshlines, "color")) then
+              
+              ! Check and make sure 3 values are specified for RGB
+              if (get_arraysize_double(node_meshlines, "color") /= 3) then
+                message = "Bad RGB for meshlines color " // &
+                          "in plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              call get_node_array(node_meshlines, "color", &
+                  pl % meshlines_color % rgb)
+            else
+              
+              pl % meshlines_color % rgb = (/ 0, 0, 0 /)
+            
+            end if
+
+            ! Set mesh based on type
+            select case (trim(meshtype))
+            case ('ufs')
+
+              if (.not. associated(ufs_mesh)) then
+                message = "No UFS mesh for meshlines on plot " // &
+                          trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              pl % meshlines_mesh => ufs_mesh
+
+            case ('cmfd')
+
+              if (.not. cmfd_run) then
+                message = "Need CMFD run to plot CMFD mesh for meshlines " // &
+                          "on plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+              i_mesh = cmfd_tallies(1) % &
+                  filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
+                  int_bins(1)
+              pl % meshlines_mesh => meshes(i_mesh)
+
+            case ('entropy')
+            
+              if (.not. associated(entropy_mesh)) then
+                message = "No entropy mesh for meshlines on plot " // &
+                          trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              if (.not. allocated(entropy_mesh % dimension)) then
+                message = "No dimension specified on entropy mesh for " // &
+                          "meshlines on plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+              
+              pl % meshlines_mesh => entropy_mesh
+
+            case ('tally')
+
+              ! Ensure that there is a mesh id if the type is tally
+              if (check_for_node(node_meshlines, "id")) then
+                call get_node_value(node_meshlines, "id", meshid)
+              else
+                message = "Must specify a mesh id for meshlines tally mesh" // &
+                          "specification in plot " // trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+              ! Check if the specified tally mesh exists
+              if (mesh_dict % has_key(meshid)) then
+                pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
+                if (meshes(meshid) % type /= LATTICE_RECT) then
+                  message = "Non-rectangular mesh specified in meshlines " // &
+                            "for plot " // trim(to_str(pl % id))
+                  call fatal_error()
+                end if
+              else
+                message = "Could not find mesh " // &
+                          trim(to_str(meshid)) // &
+                          " specified in meshlines for plot " // &
+                          trim(to_str(pl % id))
+                call fatal_error()
+              end if
+
+            case default
+              message = "Invalid type for meshlines on plot " // &
+                        trim(to_str(pl % id)) // ": " // trim(meshtype)
+              call fatal_error()
+            end select
+
+          case default
+            message = "Mutliple meshlines" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+        end select
+        
+      end if
+      
       ! Deal with masks
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import struct
 
@@ -30,6 +30,7 @@ class Particle(object):
         self.gen_per_batch = self._get_int(path='gen_per_batch')[0]
         self.current_gen = self._get_int(path='current_gen')[0]
         self.n_particles = self._get_long(path='n_particles')[0]
+        self.run_mode = self._get_int(path='run_mode')[0]
 
         # Read particle properties
         self.id = self._get_long(path='id')[0]
@@ -50,9 +51,9 @@ class Particle(object):
 
     def _get_long(self, n=1, path=None):
         if self._hdf5:
-            return [long(v) for v in self._f[path].value]
+            return [int(v) for v in self._f[path].value]
         else:
-            return [long(v) for v in self._get_data(n, 'q', 8)]
+            return [int(v) for v in self._get_data(n, 'q', 8)]
 
     def _get_float(self, n=1, path=None):
         if self._hdf5:

@@ -152,37 +152,47 @@ contains
 ! LOWER_CASE converts a string to all lower case characters
 !===============================================================================
 
-  elemental subroutine lower_case(word)
+  elemental function to_lower(word) result(word_lower)
 
-    character(*), intent(inout) :: word
+    character(*), intent(in) :: word
+    character(len=len(word)) :: word_lower
 
     integer :: i
     integer :: ic
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 65 .and. ic <= 90) word(i:i) = char(ic+32)
+      if (ic >= 65 .and. ic <= 90) then
+        word_lower(i:i) = char(ic+32)
+      else
+        word_lower(i:i) = word(i:i)
+      end if
     end do
 
-  end subroutine lower_case
+  end function to_lower
 
 !===============================================================================
 ! UPPER_CASE converts a string to all upper case characters
 !===============================================================================
 
-  elemental subroutine upper_case(word)
+  elemental function to_upper(word) result(word_upper)
 
-    character(*), intent(inout) :: word
+    character(*), intent(in) :: word
+    character(len=len(word)) :: word_upper
 
     integer :: i
     integer :: ic
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 97 .and. ic <= 122) word(i:i) = char(ic-32)
+      if (ic >= 97 .and. ic <= 122) then
+        word_upper(i:i) = char(ic-32)
+      else
+        word_upper(i:i) = word(i:i)
+      end if
     end do
 
-  end subroutine upper_case
+  end function to_upper
 
 !===============================================================================
 ! ZERO_PADDED returns a string of the input integer padded with zeros to the
@@ -317,7 +327,7 @@ end function zero_padded
       ! the loop automatically exits when n_digits = 10.
       n_digits = n_digits + 1
     end do
-  
+
   end function count_digits
 
 !===============================================================================
@@ -349,21 +359,21 @@ end function zero_padded
   end function int8_to_str
 
 !===============================================================================
-! STR_TO_INT converts a string to an integer. 
+! STR_TO_INT converts a string to an integer.
 !===============================================================================
 
   function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
     integer(8) :: num
-    
+
     character(5) :: fmt
     integer      :: w
     integer      :: ioError
 
     ! Determine width of string
     w = len_trim(str)
-    
+
     ! Create format specifier for reading string
     write(UNIT=fmt, FMT='("(I",I2,")")') w
 
@@ -404,7 +414,7 @@ end function zero_padded
 
     integer      :: decimal ! number of places after decimal
     integer      :: width   ! total field width
-    real(8)      :: num2    ! absolute value of number 
+    real(8)      :: num2    ! absolute value of number
     character(9) :: fmt     ! format specifier for writing number
 
     ! set default field width

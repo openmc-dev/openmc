@@ -38,11 +38,17 @@ contains
     filename = trim(filename) // '.binary'
 #endif
 
+!$omp critical
     ! Create file
     call pr % file_create(filename)
 
     ! Get information about source particle
-    src => source_bank(current_work)
+    select case (run_mode)
+    case (MODE_EIGENVALUE)
+      src => source_bank(current_work)
+    case (MODE_FIXEDSOURCE)
+      src => source_site
+    end select
 
     ! Write data to file
     call pr % write_data(FILETYPE_PARTICLE_RESTART, 'filetype')
@@ -51,6 +57,7 @@ contains
     call pr % write_data(gen_per_batch, 'gen_per_batch')
     call pr % write_data(current_gen, 'current_gen')
     call pr % write_data(n_particles, 'n_particles')
+    call pr % write_data(run_mode, 'run_mode')
     call pr % write_data(p % id, 'id')
     call pr % write_data(src % wgt, 'weight')
     call pr % write_data(src % E, 'energy')
@@ -59,6 +66,7 @@ contains
 
     ! Close file
     call pr % file_close()
+!$omp end critical
 
   end subroutine write_particle_restart
 

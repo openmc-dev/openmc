@@ -159,7 +159,7 @@ contains
     integer, intent(in) :: MT
     logical             :: fission_event
 
-    if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
+    if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF &
          .or. MT == N_3NF) then
       fission_event = .true.
     else
@@ -167,6 +167,28 @@ contains
     end if
 
   end function is_fission
+
+!===============================================================================
+! IS_DISAPPEARANCE determines if a given MT number is that of a disappearance
+! reaction, i.e. a reaction with no neutron in the exit channel
+!===============================================================================
+
+  function is_disappearance(MT) result(dis)
+
+    integer, intent(in) :: MT
+    logical             :: dis
+
+    if (MT >= N_GAMMA .and. MT <= N_DA) then
+      dis = .true.
+    elseif (MT >= N_P0 .and. MT <= N_AC) then
+      dis = .true.
+    elseif (any(MT == [N_TA, N_DT, N_P3HE, N_D3HE, N_3HEA, N_3P])) then
+      dis = .true.
+    else
+      dis = .false.
+    end if
+
+  end function is_disappearance
 
 !===============================================================================
 ! IS_SCATTER determines if a given MT number is that of a scattering event
@@ -178,7 +200,7 @@ contains
     logical             :: scatter_event
 
     if (MT < 100) then
-      if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
+      if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF &
            .or. MT == N_3NF) then
         scatter_event = .false.
       else

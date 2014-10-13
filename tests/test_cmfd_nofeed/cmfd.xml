@@ -12,5 +12,6 @@
   <display> dominance </display>
   <solver> power </solver>
   <feedback> false </feedback>
+  <gauss_seidel_tolerance> 1.e-15 1.e-20 </gauss_seidel_tolerance>
 
 </cmfd>

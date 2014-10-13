@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <cell id="1"                fill="6" surfaces="1 -2 3 -4" />
+  <cell id="2"   universe="5" fill="4" surfaces="1 -2 3 -4" />
+  <cell id="101" universe="1" material="1" surfaces="-5" />
+  <cell id="102" universe="1" material="2" surfaces="5" />
+  <cell id="201" universe="2" material="1" surfaces="-6" />
+  <cell id="202" universe="2" material="2" surfaces="6" />
+  <cell id="301" universe="3" material="1" surfaces="-7" />
+  <cell id="302" universe="3" material="2" surfaces="7" />
+
+  <!-- 4 x 4 assembly -->
+  <lattice id="4">
+    <type>rectangular</type>
+    <dimension>2 2</dimension>
+    <lower_left>-1.0 -1.0</lower_left>
+    <width>1.0 1.0</width>
+    <universes>
+      1 2
+      2 3
+    </universes>
+  </lattice>
+
+  <!-- 4 x 4 core -->
+  <lattice id="6">
+    <type>rectangular</type>
+    <dimension>2 2</dimension>
+    <lower_left>-2.0 -2.0</lower_left>
+    <width>2.0 2.0</width>
+    <universes>
+      5 5
+      5 5
+    </universes>
+  </lattice>
+
+  <surface id="1" type="x-plane" coeffs="-2.0" boundary="vacuum" />
+  <surface id="2" type="x-plane" coeffs="2.0" boundary="vacuum" />
+  <surface id="3" type="y-plane" coeffs="-2.0" boundary="vacuum" />
+  <surface id="4" type="y-plane" coeffs="2.0" boundary="vacuum" />
+  <surface id="5" type="z-cylinder" coeffs="0.0 0.0 0.4" />
+  <surface id="6" type="z-cylinder" coeffs="0.0 0.0 0.3" />
+  <surface id="7" type="z-cylinder" coeffs="0.0 0.0 0.2" />
+
+</geometry>

@@ -858,22 +858,37 @@ class Lattice(object):
     lattice_subelement.set("type", self._type)
 
     # Export Lattice cell dimensions
-    dimension = ET.SubElement(lattice_subelement, "dimension")
-    dimension.text = '{0} {1} {2}'.format(self._dimension[0], \
-                                          self._dimension[1], \
-                                          self._dimension[2])
+    if len(self._dimension) == 3:
+      dimension = ET.SubElement(lattice_subelement, "dimension")
+      dimension.text = '{0} {1} {2}'.format(self._dimension[0], \
+                                            self._dimension[1], \
+                                            self._dimension[2])
+    else:
+      dimension = ET.SubElement(lattice_subelement, "dimension")
+      dimension.text = '{0} {1}'.format(self._dimension[0], \
+                                        self._dimension[1])
 
     # Export Lattice lower left
-    lower_left = ET.SubElement(lattice_subelement, "lower_left")
-    lower_left.text = '{0} {1} {2}'.format(self._lower_left[0], \
-                                           self._lower_left[1], \
-                                           self._lower_left[2])
+    if len(self._lower_left) == 3:
+      lower_left = ET.SubElement(lattice_subelement, "lower_left")
+      lower_left.text = '{0} {1} {2}'.format(self._lower_left[0], \
+                                             self._lower_left[1], \
+                                             self._lower_left[2])
+    else:
+      lower_left = ET.SubElement(lattice_subelement, "lower_left")
+      lower_left.text = '{0} {1}'.format(self._lower_left[0], \
+                                         self._lower_left[1])
 
     # Export the Lattice cell width/height
-    width = ET.SubElement(lattice_subelement, "width")
-    width.text = '{0} {1} {2}'.format(self._width[0], \
-                                      self._width[1], \
-                                      self._width[2])
+    if len(self._width) == 3:
+      width = ET.SubElement(lattice_subelement, "width")
+      width.text = '{0} {1} {2}'.format(self._width[0], \
+                                        self._width[1], \
+                                        self._width[2])
+    else:
+      width = ET.SubElement(lattice_subelement, "width")
+      width.text = '{0} {1}'.format(self._width[0], \
+                                    self._width[1])
 
     # Export the Lattice outside Universe (if specified)
     if self._outside is not None:

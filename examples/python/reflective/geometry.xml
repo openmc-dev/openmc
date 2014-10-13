@@ -1,19 +1,17 @@
-<?xml version="1.0"?>
+<?xml version='1.0' encoding='utf-8'?>
 <geometry>
-
-  <!-- Definition of Cells -->
-  <cell id="1">
-    <universe>0</universe>
-    <material>1</material>
-    <surfaces>1 -2 3 -4 5 -6</surfaces>
-  </cell>
-
-  <!-- Defition of Surfaces -->
-  <surface id="1" type="x-plane" coeffs="-1" boundary="vacuum" />
-  <surface id="2" type="x-plane" coeffs="1" boundary="vacuum" />
-  <surface id="3" type="y-plane" coeffs="-1" boundary="reflective" /> 
-  <surface id="4" type="y-plane" coeffs="1" boundary="reflective" />
-  <surface id="5" type="z-plane" coeffs="-1" boundary="reflective" /> 
-  <surface id="6" type="z-plane" coeffs="1" boundary="reflective" />
-    
+  <!--cell 1-->
+<cell id="1" material="1" surfaces="1 -2 3 -4 5 -6" universe="0" />
+<!--surf 1-->
+<surface boundary="vacuum" coeffs="-1" id="1" type="x-plane" />
+<!--surf 2-->
+<surface boundary="vacuum" coeffs="1" id="2" type="x-plane" />
+<!--surf 3-->
+<surface boundary="reflective" coeffs="-1" id="3" type="y-plane" />
+<!--surf 4-->
+<surface boundary="reflective" coeffs="1" id="4" type="y-plane" />
+<!--surf 5-->
+<surface boundary="reflective" coeffs="-1" id="5" type="z-plane" />
+<!--surf 6-->
+<surface boundary="reflective" coeffs="1" id="6" type="z-plane" />
 </geometry>

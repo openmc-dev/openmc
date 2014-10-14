@@ -8,8 +8,6 @@ module interpolation
 
   implicit none
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
   interface interpolate_tab1
     module procedure interpolate_tab1_array, interpolate_tab1_object
   end interface interpolate_tab1
@@ -119,8 +117,7 @@ contains
       r = (log(x) - log(x0))/(log(x1) - log(x0))
       y = exp((1-r)*log(y0) + r*log(y1))
     case default
-      message = "Unsupported interpolation scheme: " // to_str(interp)
-      call fatal_error(message)
+      call fatal_error("Unsupported interpolation scheme: " // to_str(interp))
     end select
 
   end function interpolate_tab1_array
@@ -205,8 +202,7 @@ contains
       r = (log(x) - log(x0))/(log(x1) - log(x0))
       y = exp((1-r)*log(y0) + r*log(y1))
     case default
-      message = "Unsupported interpolation scheme: " // to_str(interp)
-      call fatal_error(message)
+      call fatal_error("Unsupported interpolation scheme: " // to_str(interp))
     end select
 
   end function interpolate_tab1_object

@@ -16,8 +16,6 @@ module plot
 
   implicit none
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
 contains
 
 !===============================================================================
@@ -33,8 +31,8 @@ contains
       pl => plots(i)
 
       ! Display output message
-      message = "Processing plot " // trim(to_str(pl % id)) // "..."
-      call write_message(message, 5)
+      call write_message("Processing plot " // trim(to_str(pl % id)) &
+           &// "...", 5)
 
       if (pl % type == PLOT_TYPE_SLICE) then
         ! create 2d image

@@ -195,7 +195,7 @@ contains
 
   subroutine write_message(message, level)
 
-    character(2*MAX_LINE_LEN) :: message
+    character(*) :: message
     integer, optional :: level ! verbosity level
 
     integer :: i_start    ! starting position

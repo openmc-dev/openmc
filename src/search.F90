@@ -9,8 +9,6 @@ module search
     module procedure binary_search_real, binary_search_int4, binary_search_int8
   end interface binary_search
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
 contains
 
 !===============================================================================
@@ -34,8 +32,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      message = "Value outside of array during binary search"
-      call fatal_error(message)
+      call fatal_error("Value outside of array during binary search")
     end if
 
     n_iteration = 0
@@ -62,8 +59,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error(message)
+        call fatal_error("Reached maximum number of iterations on binary " &
+            &// "search.")
       end if
     end do
 
@@ -87,8 +84,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      message = "Value outside of array during binary search"
-      call fatal_error(message)
+      call fatal_error("Value outside of array during binary search")
     end if
 
     n_iteration = 0
@@ -115,8 +111,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error(message)
+        call fatal_error("Reached maximum number of iterations on binary " &
+            &// "search.")
       end if
     end do
 
@@ -140,8 +136,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      message = "Value outside of array during binary search"
-      call fatal_error(message)
+      call fatal_error("Value outside of array during binary search")
     end if
 
     n_iteration = 0
@@ -168,8 +163,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error(message)
+        call fatal_error("Reached maximum number of iterations on binary " &
+            &// "search.")
       end if
     end do
 

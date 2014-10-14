@@ -1,6 +1,5 @@
 module solver_interface
 
-  use constants
   use error,          only: fatal_error
   use matrix_header,  only: Matrix
   use vector_header,  only: Vector
@@ -12,8 +11,6 @@ module solver_interface
 
   implicit none
   private
-
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
   ! GMRES solver type 
   type, public :: GMRESSolver 

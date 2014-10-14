@@ -11,8 +11,6 @@ module cmfd_execute
   private
   public :: execute_cmfd, cmfd_init_batch
 
-  character(2*MAX_LINE_LEN) :: message                                      
-
 contains
 
 !==============================================================================
@@ -46,8 +44,7 @@ contains
       elseif (trim(cmfd_solver_type) == 'jfnk') then
         call cmfd_jfnk_execute()
       else
-        message = 'solver type became invalid after input processing'
-        call fatal_error(message) 
+        call fatal_error('solver type became invalid after input processing') 
       end if
 #else
       call cmfd_solver_execute()
@@ -316,8 +313,7 @@ contains
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then
-        message = "Source sites outside of the CMFD mesh!"
-        call fatal_error(message)
+        call fatal_error("Source sites outside of the CMFD mesh!")
       end if
 
       ! Have master compute weight factors (watch for 0s)
@@ -347,12 +343,10 @@ contains
       n_groups = size(cmfd % egrid) - 1
       if (source_bank(i) % E < cmfd % egrid(1)) then
         e_bin = 1
-        message = 'Source pt below energy grid'
-        if (master) call warning(message)
+        if (master) call warning('Source pt below energy grid')
       elseif (source_bank(i) % E > cmfd % egrid(n_groups + 1)) then
         e_bin = n_groups
-        message = 'Source pt above energy grid'
-        if (master) call warning(message)
+        if (master) call warning('Source pt above energy grid')
       else
         e_bin = binary_search(cmfd % egrid, n_groups + 1, source_bank(i) % E)
       end if
@@ -362,8 +356,7 @@ contains
 
       ! Check for outside of mesh
       if (.not. in_mesh) then
-        message = 'Source site found outside of CMFD mesh'
-        call fatal_error(message)
+        call fatal_error('Source site found outside of CMFD mesh')
       end if
 
       ! Reweight particle
@@ -419,8 +412,7 @@ contains
     integer :: i ! loop counter
 
     ! Print message
-    message = "CMFD tallies reset"
-    call write_message(message, 7)
+    call write_message("CMFD tallies reset", 7)
 
     ! Begin loop around CMFD tallies
     do i = 1, n_cmfd_tallies

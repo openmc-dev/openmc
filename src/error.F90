@@ -20,7 +20,7 @@ contains
 
   subroutine warning(message)
 
-    character(2*MAX_LINE_LEN) :: message
+    character(*) :: message
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
@@ -78,7 +78,7 @@ contains
 
   subroutine fatal_error(message, error_code)
 
-    character(2*MAX_LINE_LEN) :: message
+    character(*) :: message
     integer, optional :: error_code ! error code
 
     integer :: code      ! error code

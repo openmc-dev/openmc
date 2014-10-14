@@ -20,9 +20,9 @@ module input_xml
   implicit none
   save
 
-  character(2*MAX_LINE_LEN) :: message
-  type(DictIntInt) :: cells_in_univ_dict ! used to count how many cells each
+  type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                          ! universe contains
+  character(2*MAX_LINE_LEN) :: message   ! Message to output unit
 
 contains
 

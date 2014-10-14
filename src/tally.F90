@@ -21,11 +21,9 @@ module tally
 
   implicit none
 
-  ! Tally map positioning array
-  integer :: position(N_FILTER_TYPES - 3) = 0
+  character(2*MAX_LINE_LEN) :: message        ! Message to output unit
+  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
 !$omp threadprivate(position)
-
-  character(2*MAX_LINE_LEN) :: message
 
 contains
 

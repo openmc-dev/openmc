@@ -5,7 +5,7 @@ module energy_grid
   use list_header,      only: ListReal
   use output,           only: write_message
 
-  character(2*MAX_LINE_LEN) :: message                                      
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
 contains
 

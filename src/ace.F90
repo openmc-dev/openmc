@@ -15,15 +15,14 @@ module ace
 
   implicit none
 
-  character(2*MAX_LINE_LEN) :: message
+  integer                   :: JXS(32)   ! Pointers into ACE XSS tables
+  integer                   :: NXS(16)   ! Descriptors for ACE XSS tables
+  real(8), allocatable      :: XSS(:)    ! Cross section data
+  integer                   :: XSS_index ! Current index in XSS data
+  character(2*MAX_LINE_LEN) :: message   ! Message to output unit
 
-  integer :: NXS(16)             ! Descriptors for ACE XSS tables
-  integer :: JXS(32)             ! Pointers into ACE XSS tables
-  real(8), allocatable :: XSS(:) ! Cross section data
-  integer :: XSS_index           ! current index in XSS data
-
-  private :: NXS
   private :: JXS
+  private :: NXS
   private :: XSS
 
 contains

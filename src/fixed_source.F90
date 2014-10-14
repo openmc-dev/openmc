@@ -1,6 +1,6 @@
 module fixed_source
 
-  use constants,       only: ZERO
+  use constants,       only: ZERO, MAX_LINE_LEN
   use global
   use output,          only: write_message, header
   use particle_header, only: Particle
@@ -11,7 +11,7 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
 contains
 

@@ -13,7 +13,7 @@ module solver_interface
   implicit none
   private
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
   ! GMRES solver type 
   type, public :: GMRESSolver 

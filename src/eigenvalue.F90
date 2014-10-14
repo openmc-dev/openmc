@@ -26,9 +26,10 @@ module eigenvalue
   private
   public :: run_eigenvalue
 
-  character(2*MAX_LINE_LEN) :: message                                      
-  real(8) :: keff_generation ! Single-generation k on each processor
-  real(8) :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
+  real(8)                   :: keff_generation ! Single-generation k on each
+                                               ! processor
+  real(8)                   :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
+  character(2*MAX_LINE_LEN) :: message         ! Message to output unit
 
 contains
 

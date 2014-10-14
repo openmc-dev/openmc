@@ -37,7 +37,7 @@ module xml_interface
     module procedure get_node_array_string
   end interface get_node_array
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
 contains
 

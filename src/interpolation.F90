@@ -8,7 +8,7 @@ module interpolation
 
   implicit none
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
   interface interpolate_tab1
     module procedure interpolate_tab1_array, interpolate_tab1_object

@@ -16,7 +16,7 @@ module tracking
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              finalize_particle_track
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
 contains
 

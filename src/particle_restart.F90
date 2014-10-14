@@ -16,10 +16,8 @@ module particle_restart
   private
   public ::  run_particle_restart
 
-  ! Binary file
-  type(BinaryOutput) :: pr
-
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
+  type(BinaryOutput)        :: pr      ! Binary file
 
 contains
 

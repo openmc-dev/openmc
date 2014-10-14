@@ -8,7 +8,7 @@ module fission
 
   implicit none
 
-  character(2*MAX_LINE_LEN) :: message
+  character(2*MAX_LINE_LEN) :: message ! Message to output unit
 
 contains
 

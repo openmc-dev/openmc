@@ -393,7 +393,7 @@ module global
   integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
 contains

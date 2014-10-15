@@ -131,7 +131,7 @@ class Cell(object):
       raise ValueError(msg)
 
     # If the Cell does not already contain the Surface, add it
-    if not surface._id in self._surfaces.keys():
+    if not surface._id in self._surfaces:
       self._surfaces[surface._id] = (surface, halfspace)
 
 
@@ -298,7 +298,7 @@ class Cell(object):
 
       surfaces = ''
 
-      for surface_id in self._surfaces.keys():
+      for surface_id in self._surfaces:
 
         # Determine if XML element already includes subelement for this Surface
         path = './surface[@id=\'{0}\']'.format(surface_id)
@@ -420,7 +420,7 @@ class Universe(object):
 
     cell_id = cell._id
 
-    if not cell_id in self._cells.keys():
+    if not cell_id in self._cells:
       self._cells[cell_id] = cell
 
 
@@ -445,7 +445,7 @@ class Universe(object):
     cell_id = cell.getId()
 
     # If the Cell is in the Universe's list of Cells, delete it
-    if cell_id in self._cells.keys():
+    if cell_id in self._cells:
       del self._cells[cell_id]
 
 
@@ -512,7 +512,8 @@ class Universe(object):
     string = 'Universe\n'
     string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
     string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-    string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t', self._cells.keys())
+    string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
+                                        list(self._cells.keys()))
     string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t', self._num_regions)
     return string
 

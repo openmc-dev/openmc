@@ -96,7 +96,7 @@ class Surface(object):
 
     coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
 
-    for coeff in self._coeffs.keys():
+    for coeff in self._coeffs:
       coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
 
     string += coeffs

@@ -159,7 +159,7 @@ class Material(object):
       raise ValueError(msg)
 
     # If the Material contains the Nuclide, delete it
-    if self._nuclides.has_key(nuclide._name):
+    if nuclide._name in self._nuclides:
       del self._nuclides[nuclide._name]
 
 
@@ -189,7 +189,7 @@ class Material(object):
   def removeElement(self, element):
 
     # If the Material contains the Element, delete it
-    if self._elements.has_key(element._name):
+    if element._name in self._elements:
       del self._elements[element._name]
 
 

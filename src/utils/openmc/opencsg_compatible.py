@@ -69,7 +69,7 @@ def get_opencsg_material(openmc_material):
   material_id = openmc_material._id
 
   # If this Material was already created, use it
-  if material_id in OPENCSG_MATERIALS.keys():
+  if material_id in OPENCSG_MATERIALS:
     return OPENCSG_MATERIALS[material_id]
 
   # Create an OpenCSG Material to represent this OpenMC Material
@@ -96,7 +96,7 @@ def get_openmc_material(opencsg_material):
   material_id = opencsg_material._id
 
   # If this Material was already created, use it
-  if material_id in OPENMC_MATERIALS.keys():
+  if material_id in OPENMC_MATERIALS:
     return OPENMC_MATERIALS[material_id]
 
   # Create an OpenMC Material to represent this OpenCSG Material
@@ -136,7 +136,7 @@ def get_opencsg_surface(openmc_surface):
   surface_id = openmc_surface._id
 
   # If this Material was already created, use it
-  if surface_id in OPENCSG_SURFACES.keys():
+  if surface_id in OPENCSG_SURFACES:
     return OPENCSG_SURFACES[surface_id]
 
   # Create an OpenCSG Surface to represent this OpenMC Surface
@@ -206,7 +206,7 @@ def get_openmc_surface(opencsg_surface):
   surface_id = opencsg_surface._id
 
   # If this Surface was already created, use it
-  if surface_id in OPENMC_SURFACES.keys():
+  if surface_id in OPENMC_SURFACES:
     return OPENMC_SURFACES[surface_id]
 
   # Create an OpenMC Surface to represent this OpenCSG Surface
@@ -281,7 +281,7 @@ def get_compatible_opencsg_surfaces(opencsg_surface):
   surface_id = opencsg_surface._id
 
   # If this Surface was already created, use it
-  if surface_id in OPENMC_SURFACES.keys():
+  if surface_id in OPENMC_SURFACES:
     return OPENMC_SURFACES[surface_id]
 
   # Create an OpenMC Surface to represent this OpenCSG Surface
@@ -350,7 +350,7 @@ def get_opencsg_cell(openmc_cell):
   cell_id = openmc_cell._id
 
   # If this Cell was already created, use it
-  if cell_id in OPENCSG_CELLS.keys():
+  if cell_id in OPENCSG_CELLS:
     return OPENCSG_CELLS[cell_id]
 
   # Create an OpenCSG Cell to represent this OpenMC Cell
@@ -368,7 +368,7 @@ def get_opencsg_cell(openmc_cell):
 
   surfaces = openmc_cell._surfaces
 
-  for surface_id in surfaces.keys():
+  for surface_id in surfaces:
     surface = surfaces[surface_id][0]
     halfspace = surfaces[surface_id][1]
     opencsg_cell.addSurface(get_opencsg_surface(surface), halfspace)
@@ -498,7 +498,7 @@ def make_opencsg_cells_compatible(opencsg_universe):
     # Check each of the OpenCSG Surfaces for OpenMC compatibility
     surfaces = opencsg_cell._surfaces
 
-    for surface_id in surfaces.keys():
+    for surface_id in surfaces:
       surface = surfaces[surface_id][0]
       halfspace = surfaces[surface_id][1]
 
@@ -540,7 +540,7 @@ def get_openmc_cell(opencsg_cell):
   cell_id = opencsg_cell._id
 
   # If this Cell was already created, use it
-  if cell_id in OPENMC_CELLS.keys():
+  if cell_id in OPENMC_CELLS:
     return OPENMC_CELLS[cell_id]
 
   # Create an OpenCSG Cell to represent this OpenMC Cell
@@ -558,7 +558,7 @@ def get_openmc_cell(opencsg_cell):
 
   surfaces = opencsg_cell._surfaces
 
-  for surface_id in surfaces.keys():
+  for surface_id in surfaces:
     surface = surfaces[surface_id][0]
     halfspace = surfaces[surface_id][1]
     openmc_cell.addSurface(get_openmc_surface(surface), halfspace)
@@ -584,7 +584,7 @@ def get_opencsg_universe(openmc_universe):
   universe_id = openmc_universe._id
 
   # If this Universe was already created, use it
-  if universe_id in OPENCSG_UNIVERSES.keys():
+  if universe_id in OPENCSG_UNIVERSES:
     return OPENCSG_UNIVERSES[universe_id]
 
   # Create an OpenCSG Universe to represent this OpenMC Universe
@@ -618,7 +618,7 @@ def get_openmc_universe(opencsg_universe):
   universe_id = opencsg_universe._id
 
   # If this Universe was already created, use it
-  if universe_id in OPENMC_UNIVERSES.keys():
+  if universe_id in OPENMC_UNIVERSES:
     return OPENMC_UNIVERSES[universe_id]
 
   # Make all OpenCSG Cells and Surfaces in this Universe compatible with OpenMC
@@ -655,7 +655,7 @@ def get_opencsg_lattice(openmc_lattice):
   lattice_id = openmc_lattice._id
 
   # If this Lattice was already created, use it
-  if lattice_id in OPENCSG_LATTICES.keys():
+  if lattice_id in OPENCSG_LATTICES:
     return OPENCSG_LATTICES[lattice_id]
 
   # Create an OpenCSG Lattice to represent this OpenMC Lattice
@@ -712,7 +712,7 @@ def get_openmc_lattice(opencsg_lattice):
   lattice_id = opencsg_lattice._id
 
   # If this Lattice was already created, use it
-  if lattice_id in OPENMC_LATTICES.keys():
+  if lattice_id in OPENMC_LATTICES:
     return OPENMC_LATTICES[lattice_id]
 
   dimension = opencsg_lattice._dimension

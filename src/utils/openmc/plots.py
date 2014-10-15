@@ -234,7 +234,7 @@ class Plot(object):
            'pixels'.format(self._id, col_spec)
       raise ValueError(msg)
 
-    for key in col_spec.keys():
+    for key in col_spec:
 
       if not is_integer(key):
         msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
@@ -367,11 +367,11 @@ class Plot(object):
 
     if not self._col_spec is None:
 
-      for key in self._col_spec.keys():
+      for key in self._col_spec:
         subelement = ET.SubElement(element, "col_spec")
         subelement.set("id", '{0}'.format(key))
         value = self._col_spec[key]
-        subelement.set("rgb", '{0} {1} {2}'.format(value[0], value[1], value[2]))
+        subelement.set("rgb",'{0} {1} {2}'.format(value[0], value[1], value[2]))
 
     if not self._mask_components is None:
       subelement = ET.SubElement(element, "mask")

@@ -40,7 +40,7 @@ class Geometry(object):
     """
 
     # Return memoize'd offset if possible
-    if self._offsets.has_key((path, filter_offset)):
+    if (path, filter_offset) in self._offsets:
       offset = self._offsets[(path, filter_offset)]
 
     # Begin recursive call to compute the offset starting with the base Universe

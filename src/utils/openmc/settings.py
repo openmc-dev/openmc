@@ -263,7 +263,7 @@ class SettingsFile(object):
       raise ValueError(msg)
 
 
-    for element in output.keys():
+    for element in output:
 
       if not element in ['summary', 'cross_sections', 'tallies']:
         msg = 'Unable to set output to {0} which is unsupported by ' \
@@ -808,7 +808,7 @@ class SettingsFile(object):
     if not self._output is None:
       element = ET.SubElement(self._settings_file, "output")
 
-      for key in self._output.keys():
+      for key in self._output:
         subelement = ET.SubElement(element, key)
         subelement.text = str(self._output[key]).lower()
 

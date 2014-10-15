@@ -23,7 +23,7 @@ import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 
-from statepoint import StatePoint
+from openmc.statepoint import StatePoint
 
 ##################################### USER OPTIONS
 

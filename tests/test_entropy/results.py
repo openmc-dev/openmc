@@ -4,14 +4,13 @@ import sys
 import numpy as np
 
 # import statepoint
-sys.path.append('../../src/utils')
-import statepoint
+from openmc.statepoint import StatePoint
 
 # read in statepoint file
 if len(sys.argv) > 1:
-    sp = statepoint.StatePoint(sys.argv[1])
+    sp = StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.10.binary')
+    sp = StatePoint('statepoint.10.binary')
 sp.read_results()
 
 # set up output string

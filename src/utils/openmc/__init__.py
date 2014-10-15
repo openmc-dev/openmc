@@ -11,4 +11,4 @@ from openmc.surface import *
 from openmc.universe import *
 from openmc.tallies import *
 from openmc.executor import *
-#from statepoint import *
+from statepoint import *

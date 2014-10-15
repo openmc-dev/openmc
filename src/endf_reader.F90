@@ -201,7 +201,7 @@ contains
 
     nuc => nuclides(i_nuc)
 
-    write(*,'(I6,ES10.3,L1,I5)') nuc%zaid,nuc%kT,nuc%otf_urr
+    write(*,'(I6,ES10.3,L1,I5)') nuc%zaid,nuc%kT,nuc%otf_urr_xs
     write(*,'(ES10.3,ES10.3)') nuc%EL,nuc%EH
     write(*,'(I2,I2)') nuc%NRO,nuc%NAPS
     write(*,'(ES10.3,ES10.3,ES10.3)') nuc%SPI,nuc%AP,nuc%ac

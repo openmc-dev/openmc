@@ -360,7 +360,7 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
-      if (nuc % otf_urr .and. &
+      if (nuc % otf_urr_xs .and. &
         & p % E > nuc % EL / 1.0E6_8 .and. &
         & p % E < nuc % EH / 1.0E6_8) then
         rxn => nuc % reactions(nuc % urr_inelastic)

@@ -147,8 +147,9 @@ module ace_header
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
     ! Unresolved resonance information
-    logical                :: otf_urr = .false.
     logical                :: urr_present
+    logical                :: otf_urr_xs
+    logical                :: avg_urr_xs
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
 
@@ -212,6 +213,12 @@ module ace_header
     type(URRVector), allocatable :: Gam_x_means(:,:)
     real(8)                      :: GX         ! current value
 
+    ! average (infinite-dilute) cross sections values
+    real(8), allocatable :: avg_urr_n(:)
+    real(8), allocatable :: avg_urr_f(:)
+    real(8), allocatable :: avg_urr_g(:)
+    real(8), allocatable :: avg_urr_x(:)
+
     ! Reactions
     integer :: n_reaction ! # of reactions
     type(Reaction), pointer :: reactions(:) => null()
@@ -219,8 +226,11 @@ module ace_header
     ! Type-Bound procedures
     contains
 
-      ! allocate a spin sequence for the nuclide
-      procedure :: alloc_lJ => alloc_spin_seq
+      ! allocate average (infinite-dilute) cross sections
+      procedure :: alloc_avg_urr => avg_urr_alloc
+
+      ! deallocate average (infinite-dilute) cross sections
+      procedure :: dealloc_avg_urr => avg_urr_dealloc
 
       ! Deallocates Nuclide
       procedure :: clear => nuclide_clear
@@ -364,128 +374,109 @@ module ace_header
     real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
-  contains
+contains
 
 !===============================================================================
 ! DISTANGLE_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine distangle_clear(this)
+  subroutine distangle_clear(this)
 
-      class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
+    class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % type, this % location, this % data)
+    if (allocated(this % energy)) &
+      deallocate(this % energy, this % type, this % location, this % data)
 
-    end subroutine distangle_clear
+  end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
 !===============================================================================
 
-    recursive subroutine distenergy_clear(this)
+  recursive subroutine distenergy_clear(this)
 
-      class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
+    class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
 
-      ! Clear p_valid
-      call this % p_valid % clear()
+    ! Clear p_valid
+    call this % p_valid % clear()
 
-      if (allocated(this % data)) &
-           deallocate(this % data)
+    if (allocated(this % data)) &
+      deallocate(this % data)
 
-      if (associated(this % next)) then
-        ! recursively clear this item
-        call this % next % clear()
-        deallocate(this % next)
-      end if
+    if (associated(this % next)) then
+      ! recursively clear this item
+      call this % next % clear()
+      deallocate(this % next)
+    end if
 
-    end subroutine distenergy_clear
+  end subroutine distenergy_clear
 
 !===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine reaction_clear(this)
+  subroutine reaction_clear(this)
 
-      class(Reaction), intent(inout) :: this ! The Reaction object to clear
+    class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) &
-           deallocate(this % sigma)
+    if (allocated(this % sigma)) &
+      deallocate(this % sigma)
 
-      if (associated(this % edist)) then
-        call this % edist % clear()
-        deallocate(this % edist)
-      end if
+    if (associated(this % edist)) then
+      call this % edist % clear()
+      deallocate(this % edist)
+    end if
 
-      call this % adist % clear()
+    call this % adist % clear()
 
-    end subroutine reaction_clear
+  end subroutine reaction_clear
 
 !===============================================================================
 ! URRDATA_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine urrdata_clear(this)
+  subroutine urrdata_clear(this)
 
-      class(UrrData), intent(inout) :: this ! The UrrData object to clear
+    class(UrrData), intent(inout) :: this ! The UrrData object to clear
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % prob)
+    if (allocated(this % energy)) &
+      deallocate(this % energy, this % prob)
 
-    end subroutine urrdata_clear
+  end subroutine urrdata_clear
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_SPIN_SEQ allocates memory for a single spin sequence
+! AVG_URR_ALLOC allocates average (infinite-dilute) cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_spin_seq(this)
-    
-    integer :: i_L
-    integer :: i_E
+  subroutine avg_urr_alloc(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
-    ! allocate energy grid
-    allocate(this % ES(this % NE))
+    allocate(this % avg_urr_n(this % NE))
+    allocate(this % avg_urr_f(this % NE))
+    allocate(this % avg_urr_g(this % NE))
+    allocate(this % avg_urr_x(this % NE))
 
-    ! allocate total angular momentum quantum #'s
-    allocate(this % NJS(this % NLS))
-    allocate(this % J_grid(this % NLS))
+  end subroutine avg_urr_alloc
 
-    ! allocate degress of freedom for partial widths
-    allocate(this % AMUX_grid(this % NLS))
-    allocate(this % AMUN_grid(this % NLS))
-    allocate(this % AMUG_grid(this % NLS))
-    allocate(this % AMUF_grid(this % NLS))
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! AVG_URR_DEALLOC deallocates average (infinite-dilute) cross sections
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-    ! allocate mean widths and spacings
-    allocate(this % D_means(this % NE, this % NLS))
-    allocate(this % Gam_n_means(this % NE, this % NLS))
-    allocate(this % Gam_gam_means(this % NE, this % NLS))
-    allocate(this % Gam_f_means(this % NE, this % NLS))
-    allocate(this % Gam_x_means(this % NE, this % NLS))
+  subroutine avg_urr_dealloc(this)
 
-    ! allocate space for the different spin sequences (i.e. (l,J) pairs)
-    do i_L = 1, this % NLS
+    class(Nuclide), intent(inout) :: this ! nuclide object
 
-      allocate(this % J_grid(i_L)    % vals(this % NJS(i_L)))
-      allocate(this % AMUX_grid(i_L) % vals(this % NJS(i_L)))
-      allocate(this % AMUN_grid(i_L) % vals(this % NJS(i_L)))
-      allocate(this % AMUG_grid(i_L) % vals(this % NJS(i_L)))
-      allocate(this % AMUF_grid(i_L) % vals(this % NJS(i_L)))
+    deallocate(this % avg_urr_n)
+    deallocate(this % avg_urr_f)
+    deallocate(this % avg_urr_g)
+    deallocate(this % avg_urr_x)
 
-      do i_E = 1, this % NE
-        allocate(this % D_means(i_E, i_L)       % vals(this % NJS(i_L)))
-        allocate(this % Gam_n_means(i_E, i_L)   % vals(this % NJS(i_L)))
-        allocate(this % Gam_gam_means(i_E, i_L) % vals(this % NJS(i_L)))
-        allocate(this % Gam_f_means(i_E, i_L)   % vals(this % NJS(i_L)))
-        allocate(this % Gam_x_means(i_E, i_L)   % vals(this % NJS(i_L)))
-      end do
-    end do
-
-  end subroutine alloc_spin_seq
+  end subroutine avg_urr_dealloc
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.

@@ -11,8 +11,6 @@ module cmfd_data
   private
   public :: set_up_cmfd, neutron_balance
 
-  character(2*MAX_LINE_LEN) :: message
-
 contains
 
 !==============================================================================
@@ -162,10 +160,9 @@ contains
 
                 ! Detect zero flux, abort if located
                 if ((flux - ZERO) < TINY_BIT) then
-                  message = 'Detected zero flux without coremap overlay at: (' &
-                          // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
-                          // ') in group ' // to_str(h)
-                  call fatal_error(message)
+                  call fatal_error('Detected zero flux without coremap overlay &
+                       &at: (' // to_str(i) // ',' // to_str(j) // ',' // &
+                       &to_str(k) // ') in group ' // to_str(h))
                 end if
 
                 ! Get total rr and convert to total xs
@@ -767,8 +764,7 @@ contains
 
     ! write that dhats are zero
     if (dhat_reset) then
-      message = 'Dhats reset to zero.'
-      call write_message(message, 1)
+      call write_message('Dhats reset to zero.', 1)
     end if
 
   end subroutine compute_dhat

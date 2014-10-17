@@ -1555,7 +1555,6 @@ contains
 
   subroutine print_results()
 
-    character(2*MAX_LINE_LEN) :: message
     real(8) :: alpha   ! significance level for CI
     real(8) :: t_value ! t-value for confidence intervals
 
@@ -1589,8 +1588,8 @@ contains
       write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
            global_tallies(LEAKAGE) % sum_sq
     else
-      message = "Could not compute uncertainties -- only one active batch simulated!"
-      if (master) call warning(message)
+      if (master) call warning("Could not compute uncertainties -- only one &
+           &active batch simulated!")
 
       write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
       write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum

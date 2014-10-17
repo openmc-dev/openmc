@@ -11,8 +11,6 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
 contains
 
   subroutine run_fixedsource()
@@ -96,8 +94,8 @@ contains
 
   subroutine initialize_batch()
 
-    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-    call write_message(message, 1)
+    call write_message("Simulating batch " // trim(to_str(current_batch)) &
+         &// "...", 1)
 
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO

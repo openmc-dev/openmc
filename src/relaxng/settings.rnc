@@ -86,7 +86,8 @@ element settings {
         attribute interplation { xsd:string { maxLength = "10" } })? &
       (element parameters { list { xsd:double+ } } |
         attribute parameters { list { xsd:double+ } })?
-    }?
+    }? &
+    (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
   }? &
 
   element state_point {
@@ -130,5 +131,22 @@ element settings {
       attribute lower_left { list { xsd:double+ } }) &
     (element upper_right { list { xsd:double+ } } | 
       attribute upper_right { list { xsd:double+ } })
+  }? &
+
+  element resonance_scattering {
+    element scatterer {
+      (element nuclide { xsd:string { maxLength = "12" } } |
+        attribute nuclide { xsd:string { maxLength = "12" }  }) &
+      (element method { xsd:string { maxLength = "16" } } |
+        attribute method { xsd:string { maxLength = "16" }  }) &
+      (element xs_label { xsd:string { maxLength = "12" } } |
+        attribute xs_label { xsd:string { maxLength = "12" } }) &
+      (element xs_label_0K { xsd:string { maxLength = "12" } } |
+        attribute xs_label_0K { xsd:string { maxLength = "12" } }) &
+      (element E_min { xsd:double } |
+        attribute E_min { xsd:double }) &
+      (element E_max { xsd:double } |
+        attribute E_max { xsd:double })?
+    }*
   }?
 }

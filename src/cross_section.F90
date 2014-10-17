@@ -5,6 +5,7 @@ module cross_section
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global
+  use list_header,     only: ListElemInt
   use material_header, only: Material
   use particle_header, only: Particle
   use random_lcg,      only: prn
@@ -112,7 +113,7 @@ contains
            atom_density * micro_xs(i_nuclide) % elastic
 
       ! Add contributions to material macroscopic absorption cross section
-      material_xs % absorption = material_xs % absorption + & 
+      material_xs % absorption = material_xs % absorption + &
            atom_density * micro_xs(i_nuclide) % absorption
 
       ! Add contributions to material macroscopic fission cross section
@@ -122,7 +123,7 @@ contains
       ! Add contributions to material macroscopic nu-fission cross section
       material_xs % nu_fission = material_xs % nu_fission + &
            atom_density * micro_xs(i_nuclide) % nu_fission
-           
+
       ! Add contributions to material macroscopic energy release from fission
       material_xs % kappa_fission = material_xs % kappa_fission + &
            atom_density * micro_xs(i_nuclide) % kappa_fission
@@ -205,6 +206,8 @@ contains
     ! Initialize sab treatment to false
     micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
+
+    ! Initialize URR probability table treatment to false
     micro_xs(i_nuclide) % use_ptable  = .false.
 
     ! Initialize nuclide cross-sections to zero
@@ -232,7 +235,7 @@ contains
       ! Calculate microscopic nuclide nu-fission cross section
       micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
            i_grid) + f * nuc % nu_fission(i_grid+1)
-           
+
       ! Calculate microscopic nuclide kappa-fission cross section
       ! The ENDF standard (ENDF-102) states that MT 18 stores
       ! the fission energy as the Q_value (fission(1))
@@ -294,7 +297,7 @@ contains
       f = ZERO
     else
       i_grid = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
-      f = (E - sab%inelastic_e_in(i_grid)) / & 
+      f = (E - sab%inelastic_e_in(i_grid)) / &
            (sab%inelastic_e_in(i_grid+1) - sab%inelastic_e_in(i_grid))
     end if
 
@@ -360,18 +363,21 @@ contains
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i_energy   ! index for energy
-    integer :: i_low      ! band index at lower bounding energy
-    integer :: i_up       ! band index at upper bounding energy
-    real(8) :: f          ! interpolation factor
-    real(8) :: r          ! pseudo-random number
-    real(8) :: elastic    ! elastic cross section
-    real(8) :: capture    ! (n,gamma) cross section
-    real(8) :: fission    ! fission cross section
-    real(8) :: inelastic  ! inelastic cross section
-    type(UrrData),  pointer, save :: urr => null()
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
+    integer :: i            ! loop index
+    integer :: i_energy     ! index for energy
+    integer :: i_low        ! band index at lower bounding energy
+    integer :: i_up         ! band index at upper bounding energy
+    integer :: same_nuc_idx ! index of same nuclide
+    real(8) :: f            ! interpolation factor
+    real(8) :: r            ! pseudo-random number
+    real(8) :: elastic      ! elastic cross section
+    real(8) :: capture      ! (n,gamma) cross section
+    real(8) :: fission      ! fission cross section
+    real(8) :: inelastic    ! inelastic cross section
+    logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
+    type(UrrData),  pointer, save :: urr      => null()
+    type(Nuclide),  pointer, save :: nuc      => null()
+    type(Reaction), pointer, save :: rxn      => null()
 !$omp threadprivate(urr, nuc, rxn)
 
     micro_xs(i_nuclide) % use_ptable = .true.
@@ -392,7 +398,26 @@ contains
          (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
     ! sample probability table using the cumulative distribution
-    r = prn()
+
+    ! if we're dealing with a nuclide that we've previously encountered at
+    ! this energy but a different temperature, use the original random number to
+    ! preserve correlation of temperature in probability tables
+    same_nuc = .false.
+    do i = 1, nuc % nuc_list % size()
+      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
+        same_nuc = .true.
+        same_nuc_idx = i
+        exit
+      end if
+    end do
+
+    if (same_nuc) then
+      r = micro_xs(nuc % nuc_list % get_item(same_nuc_idx)) % last_prn
+    else
+      r = prn()
+      micro_xs(i_nuclide) % last_prn = r
+    end if
+
     i_low = 1
     do
       if (urr % prob(i_energy, URR_CUM_PROB, i_low) > r) exit
@@ -471,6 +496,11 @@ contains
       fission = fission * micro_xs(i_nuclide) % fission
     end if
 
+    ! Check for negative values
+    if (elastic < ZERO) elastic = ZERO
+    if (fission < ZERO) fission = ZERO
+    if (capture < ZERO) capture = ZERO
+
     ! Set elastic, absorption, fission, and total cross sections. Note that the
     ! total cross section is calculated as sum of partials rather than using the
     ! table-provided value
@@ -507,5 +537,42 @@ contains
     end if
 
   end subroutine find_energy_index
+
+!===============================================================================
+! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section
+! for a given nuclide at the trial relative energy used in resonance scattering
+!===============================================================================
+
+  function elastic_xs_0K(E, nuc) result(xs_out)
+
+    type(Nuclide), pointer :: nuc    ! target nuclide at temperature
+    integer                :: i_grid ! index on nuclide energy grid
+    real(8)                :: f      ! interp factor on nuclide energy grid
+    real(8), intent(inout) :: E      ! trial energy
+    real(8)                :: xs_out ! 0K xs at trial energy
+
+    ! Determine index on nuclide energy grid
+    if (E < nuc % energy_0K(1)) then
+      i_grid = 1
+    elseif (E > nuc % energy_0K(nuc % n_grid_0K)) then
+      i_grid = nuc % n_grid_0K - 1
+    else
+      i_grid = binary_search(nuc % energy_0K, nuc % n_grid_0K, E)
+    end if
+
+    ! check for rare case where two energy points are the same
+    if (nuc % energy_0K(i_grid) == nuc % energy_0K(i_grid+1)) then
+      i_grid = i_grid + 1
+    end if
+
+    ! calculate interpolation factor
+    f = (E - nuc % energy_0K(i_grid)) &
+      & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
+
+    ! Calculate microscopic nuclide elastic cross section
+    xs_out = (ONE - f) * nuc % elastic_0K(i_grid) &
+      & + f * nuc % elastic_0K(i_grid + 1)
+
+  end function elastic_xs_0K
 
 end module cross_section

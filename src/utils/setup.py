@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='statepoint',
-      version='0.6.0',
+      version='0.6.1',
       description='OpenMC StatePoint',
       author='Paul Romano',
       author_email='paul.k.romano@gmail.com',

@@ -11,9 +11,6 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
-  type(Bank), pointer :: source_site => null()
-!$omp threadprivate(source_site)
-
 contains
 
   subroutine run_fixedsource()

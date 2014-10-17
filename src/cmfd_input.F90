@@ -135,7 +135,7 @@ contains
            cmfd % indices(3)))
       if (get_arraysize_integer(node_mesh, "map") /= &
           product(cmfd % indices(1:3))) then
-        call fatal_error('FATAL==>CMFD coremap not to correct dimensions')
+        call fatal_error('CMFD coremap not to correct dimensions')
       end if
       allocate(iarray(get_arraysize_integer(node_mesh, "map")))
       call get_node_array(node_mesh, "map", iarray)
@@ -342,7 +342,7 @@ contains
     call get_node_array(node_mesh, "dimension", iarray3(1:n))
     if (any(iarray3(1:n) <= 0)) then
       call fatal_error("All entries on the <dimension> element for a tally mesh&
-           &must be positive.")
+           & must be positive.")
     end if
 
     ! Read dimensions in each direction

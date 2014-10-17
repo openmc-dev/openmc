@@ -267,7 +267,7 @@ contains
       call fatal_error("ACE library '" // trim(filename) // "' does not exist!")
     elseif (readable(1:3) == 'NO') then
       call fatal_error("ACE library '" // trim(filename) // "' is not readable!&
-           &Change file permissions with chmod command.")
+           & Change file permissions with chmod command.")
     end if
 
     ! display message

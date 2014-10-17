@@ -37,8 +37,6 @@ module xml_interface
     module procedure get_node_array_string
   end interface get_node_array
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
 contains
 
 !===============================================================================
@@ -202,9 +200,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
 
     ! Extract value
@@ -235,9 +232,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
       
     ! Extract value
@@ -268,9 +264,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
       
     ! Extract value
@@ -301,9 +296,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
       
     ! Extract value
@@ -334,9 +328,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
       
     ! Extract value
@@ -367,9 +360,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
       
     ! Extract value
@@ -400,9 +392,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then 
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // ".")
     end if
  
     ! Extract value
@@ -433,9 +424,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
 
     ! Get the size
@@ -462,9 +452,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " &
+           &// getNodeName(ptr) // ".")
     end if
 
     ! Get the size
@@ -491,9 +480,8 @@ contains
 
     ! Leave if it was not found
     if (.not. found) then
-      message = "Node " // node_name // " not part of Node " // &
-                getNodeName(ptr) // "."
-      call fatal_error(message)
+      call fatal_error("Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // ".")
     end if
 
     ! Get the size

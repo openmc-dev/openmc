@@ -16,7 +16,6 @@ module particle_restart
   private
   public ::  run_particle_restart
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
   type(BinaryOutput)        :: pr      ! Binary file
 
 contains
@@ -73,9 +72,8 @@ contains
     type(Particle), intent(inout) :: p
 
     ! Write meessage
-    message = "Loading particle restart file " // trim(path_particle_restart) &
-              // "..."
-    call write_message(message, 1)
+    call write_message("Loading particle restart file " &
+         &// trim(path_particle_restart) // "...", 1)
 
     ! Open file
     call pr % file_open(path_particle_restart, 'r')

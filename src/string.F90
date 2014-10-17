@@ -10,8 +10,6 @@ module string
      module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
-  character(2*MAX_LINE_LEN) :: message ! Message to output unit
-
 contains
 
 !===============================================================================
@@ -51,9 +49,8 @@ contains
         if (i_end > 0) then
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
-            message = "The word '" // string(i_start:i_end) // &
-                 "' is longer than the space allocated for it."
-            if (master) call warning(message)
+            if (master) call warning("The word '" // string(i_start:i_end) &
+                &// "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -212,8 +209,8 @@ function zero_padded(num, n_digits) result(str)
   ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
   ! largest integer(4).
   if (n_digits > 10) then
-    message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error(message)
+    call fatal_error('zero_padded called with an unreasonably large &
+         &n_digits (>10)')
   end if
 
   ! Write a format string of the form '(In.m)' where n is the max width and

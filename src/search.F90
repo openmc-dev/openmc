@@ -59,8 +59,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary " &
-            &// "search.")
+        call fatal_error("Reached maximum number of iterations on binary &
+            &search.")
       end if
     end do
 
@@ -111,8 +111,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary " &
-            &// "search.")
+        call fatal_error("Reached maximum number of iterations on binary &
+            &search.")
       end if
     end do
 
@@ -163,8 +163,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary " &
-            &// "search.")
+        call fatal_error("Reached maximum number of iterations on binary &
+            &search.")
       end if
     end do
 

@@ -101,7 +101,6 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use error,     only: fatal_error
     use global,    only: cmfd, cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
                          cmfd_write_matrices
 
@@ -235,8 +234,8 @@ contains
 
       ! Check if reached iteration 10000
       if (i == 10000) then
-        call fatal_error('Reached maximum iterations in CMFD power iteration ' &
-            & // 'solver.')
+        call fatal_error('Reached maximum iterations in CMFD power iteration &
+             &solver.')
       end if
 
       ! Compute source vector

@@ -4,7 +4,7 @@ import sys
 import numpy as np
 
 # import statepoint
-sys.path.append('../../src/utils')
+sys.path.insert(0, '../../src/utils')
 import statepoint
 
 # read in statepoint file
@@ -23,7 +23,7 @@ results2 = sp.tallies[1].results
 shape2 = results2.shape
 size2 = (np.product(shape2))
 results2 = np.reshape(results2, size2)
-results3 = sp.tallies[1].results
+results3 = sp.tallies[2].results
 shape3 = results3.shape
 size3 = (np.product(shape3))
 results3 = np.reshape(results3, size3)

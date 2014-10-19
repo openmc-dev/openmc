@@ -76,10 +76,10 @@ module unresolved
       procedure :: sample_parameters => parameters_sample
 
       ! sample level spacing
-      procedure :: level_spacing => lev_spacing
+      procedure :: level_spacing => spacing_level
 
       ! sample channel widths
-      procedure :: channel_width => chan_width
+      procedure :: channel_width => width_channel
 
       ! interface for calculation of partial cross sections at E_0
       procedure :: calc_xs => xs_calc
@@ -772,11 +772,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! LEV_SPACING samples the energy spacing between adjacent resonances
+! SPACING_LEVEL samples the energy spacing between adjacent resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine lev_spacing(this, i_nuc)
+  subroutine spacing_level(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -824,7 +824,7 @@ contains
 !      end if
 !    end if
 
-  end subroutine lev_spacing
+  end subroutine spacing_level
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -872,11 +872,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHAN_WIDTH samples the channel partial widths
+! WIDTH_CHANNEL samples the channel partial widths
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine chan_width(this, i_nuc)
+  subroutine width_channel(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -938,7 +938,7 @@ contains
     ! total width (sum of partials)
     this % Gam_t = this % Gam_n + this % Gam_f + this % Gam_gam + this % Gam_x
 
-  end subroutine chan_width
+  end subroutine width_channel
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

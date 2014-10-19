@@ -13,7 +13,7 @@ module initialize
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict, read_plots_xml
+                              cells_in_univ_dict, read_plots_xml, n_urr_method
   use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
@@ -25,7 +25,8 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: OTF_URR, urr_endf_filenames, urr_zaids
+  use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,       &
+                              n_otf_urr_xs, n_avg_urr_xs, calculate_avg_urr_xs
 
 #ifdef MPI
   use mpi
@@ -110,9 +111,10 @@ contains
       call time_read_xs % stop()
 
       ! Read ENDF-6 format nuclear data file
-      if (OTF_URR) then
+      if (urr_method) then
         call initialize_endf()
         call initialize_w_tabulated()
+        call calculate_avg_urr_xs()
       end if
 
       ! Create linked lists for multiple instances of the same nuclide
@@ -182,15 +184,26 @@ contains
 
   subroutine initialize_endf()
 
-    integer :: i ! on-the-fly URR nuclide index
+    integer :: i ! URR method nuclide index
     integer :: j ! global nuclide index
 
-    do i = 1, n_otf_urr_nuclides
+    do i = 1, n_urr_method
       do j = 1, n_nuclides_total
         if (allocated(urr_zaids) .and. nuclides(j) % zaid == urr_zaids(i)) then
-          nuclides(j) % otf_urr = .true.
-          call read_endf(urr_endf_filenames(i) % filename, j)
-!          call print_shit(j)
+          if (n_avg_urr_xs == n_urr_method) then
+            nuclides(j) % avg_urr_xs = .true.
+          else
+            nuclides(j) % avg_urr_xs = .false.
+          end if
+          if (n_otf_urr_xs == n_urr_method) then
+            nuclides(j) % otf_urr_xs = .true.
+          else
+            nuclides(j) % otf_urr_xs = .false.
+          end if
+          call read_endf(urr_endf_filenames(i), j)
+        else
+          nuclides(j) % avg_urr_xs = .false.
+          nuclides(j) % otf_urr_xs = .false.
         end if
       end do
     end do

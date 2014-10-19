@@ -2,7 +2,7 @@ module cross_section
 
   use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
-  use error,           only: fatal_error
+  use error,           only: fatal_error, warning
   use fission,         only: nu_total
   use global
   use list_header,     only: ListElemInt
@@ -42,6 +42,13 @@ contains
     ! loop over all materials
     do i = 1, n_materials
       mat => materials(i)
+
+      if (mat % nat_elements) then
+        message = 'xs_gridpoints element(s) in material(s) with natural&
+          & elements will be ignored'
+        call warning()
+        cycle
+      end if
 
       ! loop over all nuclides
       do j = 1, mat % n_nuclides
@@ -331,7 +338,7 @@ contains
 
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
-    if (nuc % otf_urr) then
+    if (nuc % otf_urr_xs) then
       if (E * 1.0E6_8 >= nuc % EL .and. E * 1.0E6_8 <= nuc % EH) then
         call calculate_urr_xs_otf(i_nuclide, E * 1.0E6_8)
       end if

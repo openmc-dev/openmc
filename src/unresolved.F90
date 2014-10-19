@@ -13,19 +13,22 @@ module unresolved
 
   implicit none
 
-  logical                   :: OTF_URR       ! are we treating the URR OTF?
-  character(80)             :: URR_FORMALISM ! formalism for URR data treatment
-  character(80)             :: URR_FREQUENCY ! frequency of urr xs realization
-  integer, allocatable      :: urr_zaids(:)  ! ZAID #'s for URR nuclides
-  type ENDFFilename
-    character(80)           :: filename      ! ENDF filename for URR nuclide
-  end type ENDFFilename
-  type(ENDFFilename), allocatable :: urr_endf_filenames(:) ! ENDF filename
-  integer :: n_s_wave ! number of s-wave resonances used in URR xs calculations
-  integer :: n_p_wave ! number of p-wave resonances used in URR xs calculations
-  integer :: n_d_wave ! number of d-wave resonances used in URR xs calculations
-  integer :: n_f_wave ! number of f-wave resonances used in URR xs calculations
-  logical :: competitive ! include competitve URR xs resonances?
+  logical :: urr_method  ! new urr method?
+  logical :: competitive ! competitve inelastic scatter xs resonance structure?
+  character(80), allocatable :: urr_endf_filenames(:) ! ENDF filename list
+  character(80)              :: urr_formalism         ! URR formalism
+  character(80)              :: urr_frequency         ! freq of realizations
+  integer, allocatable :: urr_zaids(:) ! ZAID's for URR nuclides
+  integer :: n_otf_urr_xs      ! number of nuclides to calc otf urr xs for
+  integer :: n_avg_urr_xs      ! number of nuclides to calc average urr xs for
+  integer :: n_urr_method      ! number of nuclides to treat with a new method
+  integer :: n_s_wave          ! number of contributing s-wave resonances
+  integer :: n_p_wave          ! number of contributing p-wave resonances
+  integer :: n_d_wave          ! number of contributing d-wave resonances
+  integer :: n_f_wave          ! number of contributing f-wave resonances
+  integer :: urr_avg_batches   ! min number of batches for inf dil xs calc
+  integer :: urr_avg_histories ! number of histories for inf dil xs calc
+  real(8) :: urr_avg_tol       ! max rel error for inf dil xs calc termination
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -67,22 +70,22 @@ module unresolved
     contains
 
       ! reset the resonance object before starting the next spin sequence
-      procedure :: reset => reset_resonance
+      procedure :: reset_resonance => resonance_reset
 
       ! sample unresolved resonance parameters
-      procedure :: parameters => sample_parameters 
+      procedure :: sample_parameters => parameters_sample
 
       ! sample level spacing
-      procedure :: level_spacing => level_spacing
+      procedure :: level_spacing => spacing_level
 
       ! sample channel widths
-      procedure :: channel_width => channel_width
+      procedure :: channel_width => width_channel
 
       ! interface for calculation of partial cross sections at E_0
-      procedure :: xs => calc_xs
+      procedure :: calc_xs => xs_calc
 
       ! calculate SLBW partial cross sections
-      procedure :: slbw => slbw_xs
+      procedure :: slbw_xs => xs_slbw
 
   end type Resonance
 
@@ -101,21 +104,50 @@ module unresolved
     ! cross section value at an energy with one less contributing resonance
     real(8) :: val_last
 
-    ! relative error between cross section values computed with N and N+1
-    ! contributing resonances
-    real(8) :: rel_err
+    ! history-based sum of cross section values
+    real(8) :: xs_sum_tmp
+
+    ! batch-based sum of cross section values
+    real(8) :: xs_sum
+
+    ! sum of squares of batch-based cross section value sums
+    real(8) :: xs_sum2
+
+    ! mean of batch-based cross section values
+    real(8) :: xs_mean
+
+    ! standard error of the mean cross section values
+    real(8) :: xs_sem
+
+    ! relative uncertainty
+    real(8) :: rel_unc
 
     ! type-bound procedures
     contains
 
-      ! clear ladder partial cross sections, relative errors
-      procedure :: reset => reset_xs
-
       ! accumulate resonance contribution to ladder partial cross section
-      procedure :: resonance => accum_resonance
+      procedure :: accum_resonance => resonance_accum
 
       ! add contribution of potential scattering cross section
-      procedure :: potential => pot_scatter_xs
+      procedure :: potential_xs => xs_potential
+
+      ! accumulate values for a single history
+      procedure :: accum_history => history_accum
+
+      ! clear values for a single history
+      procedure :: flush_history => history_flush
+
+      ! accumulate values for a single batch
+      procedure :: accum_batch => batch_accum
+
+      ! clear values for a single batch
+      procedure :: flush_batch => batch_flush
+
+      ! calculate batch statistics
+      procedure :: calc_stats => stats_calc
+
+      ! clear batch statistics
+      procedure :: flush_stats => stats_flush
 
   end type CrossSection
 
@@ -151,46 +183,45 @@ module unresolved
      & 6.35044e0_8,   7.22996e0_8,  8.541e0_8,     11.8359e0_8   &
                                                               &/),(/20,4/))
 
-! TODO: remove these hard codes
   real(8), parameter :: Eid(18) = (/&
-    2.000000E+4,&
-    2.300000E+4,&
-    2.600000E+4,&
-    3.000000E+4,&
-    3.500000E+4,&
-    4.000000E+4,&
-    4.500000E+4,&
-    4.509020E+4,&
-    5.000000E+4,&
-    5.500000E+4,&
-    6.000000E+4,&
-    7.000000E+4,&
-    8.000000E+4,&
-    9.000000E+4,&
-    1.000000E+5,&
-    1.200000E+5,&
-    1.400000E+5,&
-    1.490288E+5/)
+    2.000E+04,&
+    2.300E+04,&
+    2.600E+04,&
+    3.000E+04,&
+    3.500E+04,&
+    4.000E+04,&
+    4.500E+04,&
+    4.509E+04,&
+    5.000E+04,&
+    5.500E+04,&
+    6.000E+04,&
+    7.000E+04,&
+    8.000E+04,&
+    9.000E+04,&
+    1.000E+05,&
+    1.200E+05,&
+    1.400E+05,&
+    1.490E+05/)
 
   real(8), parameter :: xsidn(18) = (/&
-    1.3796E+01,&
-    1.3643E+01,&
-    1.3517E+01,&
-    1.3377E+01,&
-    1.3234E+01,&
-    1.3113E+01,&
-    1.3010E+01,&
-    1.3008E+01,&
-    1.2882E+01,&
-    1.2749E+01,&
-    1.2624E+01,&
-    1.2398E+01,&
-    1.2202E+01,&
-    1.2028E+01,&
-    1.1871E+01,&
-    1.1596E+01,&
-    1.1357E+01,&
-    1.1258E+01/)
+    1.385E+01,&
+    1.369E+01,&
+    1.357E+01,&
+    1.342E+01,&
+    1.328E+01,&
+    1.315E+01,&
+    1.306E+01,&
+    1.305E+01,&
+    1.293E+01,&
+    1.279E+01,&
+    1.266E+01,&
+    1.244E+01,&
+    1.224E+01,&
+    1.207E+01,&
+    1.191E+01,&
+    1.163E+01,&
+    1.139E+01,&
+    1.129E+01/)
 
   real(8), parameter :: xsidf(18) = (/&
     ZERO,&
@@ -213,46 +244,227 @@ module unresolved
     ZERO/)
 
   real(8), parameter :: xsidg(18) = (/&
-    5.2939E-01,&
-    4.9618E-01,&
-    4.6839E-01,&
-    4.3772E-01,&
-    4.0706E-01,&
-    3.8270E-01,&
-    3.6302E-01,&
-    3.6270E-01,&
-    3.1951E-01,&
-    2.8902E-01,&
-    2.6452E-01,&
-    2.2879E-01,&
-    2.0449E-01,&
-    1.8716E-01,&
-    1.7431E-01,&
-    1.5691E-01,&
-    1.4626E-01,&
-    1.4270E-01/)
+    5.296E-01,&
+    4.957E-01,&
+    4.681E-01,&
+    4.373E-01,&
+    4.065E-01,&
+    3.826E-01,&
+    3.631E-01,&
+    3.623E-01,&
+    3.194E-01,&
+    2.888E-01,&
+    2.641E-01,&
+    2.286E-01,&
+    2.043E-01,&
+    1.871E-01,&
+    1.739E-01,&
+    1.566E-01,&
+    1.459E-01,&
+    1.423E-01/)
 
   real(8), parameter :: xsidx(18) = (/&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    0.0000E+00,&
-    7.8649E-02,&
-    1.4429E-01,&
-    2.0994E-01,&
-    3.0452E-01,&
-    3.6843E-01,&
-    4.3122E-01,&
-    4.9409E-01,&
-    6.1918E-01,&
-    7.3973E-01,&
-    7.9105E-01/)
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    0.000E+00,&
+    6.315E-02,&
+    1.304E-01,&
+    1.936E-01,&
+    3.016E-01,&
+    3.890E-01,&
+    4.615E-01,&
+    5.229E-01,&
+    6.207E-01,&
+    6.959E-01,&
+    7.244E-01/)
 
 contains
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CALCULATE_AVG_URR_XS computes the infinite-dilute partial cross sections in
+! the URR
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine calculate_avg_urr_xs()
+
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Resonance)    :: res   ! resonance object
+    type(CrossSection) :: sig_n ! elastic scattering xs object
+    type(CrossSection) :: sig_g ! radiative capture xs object
+    type(CrossSection) :: sig_f ! fission xs object
+    type(CrossSection) :: sig_x ! competitive inelastic scattering xs object
+    integer :: i_nuc ! nuclide index
+    integer :: i_E   ! energy grid index
+    integer :: i_b   ! batch index
+    integer :: i_h   ! history index
+    integer :: i_l   ! orbital quantum #
+    integer :: i_J   ! total angular momentum quantum #
+    integer :: i_r   ! resonance index
+    integer :: n_res ! number of resonances to include for a given l-wave
+    real(8) :: E ! neutron lab energy [eV]
+
+    ! loop over all nuclides
+    NUCLIDE_LOOP: do i_nuc = 1, n_nuclides_total
+
+      nuc => nuclides(i_nuc)
+
+      ! skip nuclides without an OTF URR treatment
+      if (.not. nuc % avg_urr_xs) cycle
+
+      micro_xs(i_nuc) % use_ptable = .true.
+
+      ! allocate infinite-dilute cross section objects
+      call nuc % alloc_avg_urr()
+
+      ! loop over tabulated ENDF energies
+      ENERGY_LOOP: do i_E = 1, nuc % NE
+
+        nuc % E = nuc % ES(i_E)
+        E = nuc % E
+
+        ! reset accumulator of statistics
+        call sig_n % flush_stats()
+        call sig_f % flush_stats()
+        call sig_g % flush_stats()
+        call sig_x % flush_stats()
+
+        i_b = 0
+
+        ! loop over batches until convergence
+        BATCH_LOOP: do
+
+          i_b = i_b + 1
+
+          call sig_n % flush_batch
+          call sig_f % flush_batch
+          call sig_g % flush_batch
+          call sig_x % flush_batch
+
+          ! loop over realizations
+          HISTORY_LOOP: do i_h = 1, urr_avg_histories
+
+            ! reset accumulator of histories
+            call sig_n % flush_history()
+            call sig_f % flush_history()
+            call sig_g % flush_history()
+            call sig_x % flush_history()
+
+            ! loop over orbital quantum #'s
+            ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS
+
+              ! set current orbital angular momentum quantum #
+              nuc % L = i_l - 1
+
+              ! get the number of contributing l-wave resonances for this l
+              n_res = l_wave_resonances(nuc % L)
+
+              ! loop over total angular momentum quantum #'s
+              TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+
+                ! set current total angular momentum quantum #
+                nuc % J = nuc % J_grid(i_l) % vals(i_J)
+
+                ! set current partial width degrees of freedom
+                nuc % AMUX = int(nuc % AMUX_grid(i_l) % vals(i_J))
+                nuc % AMUN = int(nuc % AMUN_grid(i_l) % vals(i_J))
+                nuc % AMUG = int(nuc % AMUG_grid(i_l) % vals(i_J))
+                nuc % AMUF = int(nuc % AMUF_grid(i_l) % vals(i_J))
+
+                ! set current mean unresolved resonance parameters
+                nuc % D   = nuc % D_means(i_E, i_l)       % vals(i_J)
+                nuc % GN0 = nuc % Gam_n_means(i_E, i_l)   % vals(i_J)
+                nuc % GG  = nuc % Gam_gam_means(i_E, i_l) % vals(i_J)
+                nuc % GF  = nuc % Gam_f_means(i_E, i_l)   % vals(i_J)
+                nuc % GX  = nuc % Gam_x_means(i_E, i_l)   % vals(i_J)
+
+                ! reset the resonance object for a new spin sequence
+                call res % reset_resonance(i_nuc)
+        
+                ! loop over the addition of resonances to this ladder
+                RESONANCES_LOOP: do i_r = 1, n_res
+
+                  ! sample unresolved resonance parameters for this spin
+                  ! sequence, at this energy
+                  call res % sample_parameters(i_nuc)
+
+                  ! set current temperature
+                  nuc % T = nuc % kT / K_BOLTZMANN
+
+                  ! calculate the contribution to the partial cross sections,
+                  ! at this energy, from an additional resonance 
+                  call res % calc_xs(i_nuc)
+
+                  ! add this contribution to the accumulated partial cross
+                  ! section values built up from all resonances
+                  call sig_n   % accum_resonance(res % dsig_n)
+                  call sig_g   % accum_resonance(res % dsig_gam)
+                  call sig_f   % accum_resonance(res % dsig_f)
+                  call sig_x   % accum_resonance(res % dsig_x)
+
+                end do RESONANCES_LOOP
+              end do TOTAL_ANG_MOM_LOOP
+            end do ORBITAL_ANG_MOM_LOOP
+
+            ! add potential scattering contribution
+            call sig_n % potential_xs(i_nuc)
+
+            ! set negative SLBW elastic xs to zero
+            if (sig_n % val < ZERO) then
+              sig_n % val = ZERO
+            end if
+
+            ! accumulate the result of this history
+            call sig_n % accum_history()
+            call sig_f % accum_history()
+            call sig_g % accum_history()
+            call sig_x % accum_history()
+
+          end do HISTORY_LOOP
+
+          ! accumulate the result of this batch
+          call sig_n % accum_batch()
+          call sig_f % accum_batch()
+          call sig_g % accum_batch()
+          call sig_x % accum_batch()
+
+          ! calculate statistics for this batch
+          call sig_n % calc_stats(i_b)
+          call sig_f % calc_stats(i_b)
+          call sig_g % calc_stats(i_b)
+          call sig_x % calc_stats(i_b)
+
+! TODO: format avg urr xs output
+          if (i_b > urr_avg_batches .and. max(sig_n % rel_unc, sig_f % rel_unc, &
+            & sig_g % rel_unc, sig_x % rel_unc) < urr_avg_tol) then
+            if (1==1) then
+              write(*, '(I5, ES10.3, ES10.3, ES10.3, ES10.3, ES10.3, ES10.3, ES10.3, ES10.3, ES10.3)') &
+                & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
+                &         sig_f % xs_mean, sig_f % xs_sem, &
+                &         sig_g % xs_mean, sig_g % xs_sem, &
+                &         sig_x % xs_mean, sig_x % xs_sem
+            end if
+            exit
+          end if
+
+        end do BATCH_LOOP
+
+        ! set infinite-dilute xs values at this energy to converged means
+        nuc % avg_urr_n(i_E) = sig_n % xs_mean
+        nuc % avg_urr_f(i_E) = sig_f % xs_mean
+        nuc % avg_urr_g(i_E) = sig_g % xs_mean
+        nuc % avg_urr_x(i_E) = sig_x % xs_mean
+
+      end do ENERGY_LOOP
+    end do NUCLIDE_LOOP
+
+  end subroutine calculate_avg_urr_xs
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -272,7 +484,6 @@ contains
     integer :: i_nuc  ! nuclide index
     real(8) :: E      ! neutron energy [eV]
     integer :: i_E    ! energy grid index
-    integer :: i_near ! nearest-neighbor energy index
     integer :: i_l    ! orbital quantum #
     integer :: i_J    ! total angular momentum quantum #
     integer :: i_r    ! resonance index
@@ -293,9 +504,12 @@ contains
     ! Set pointer to nuclide
     nuc => nuclides(i_nuc)
 
+    ! set current temperature
+    nuc % T = nuc % kT / K_BOLTZMANN
+
+    ! set current energy
     nuc % E = E
     i_E     = binary_search(nuc % ES, nuc % NE, E)
-    i_near  = near_neighb(i_E, nuc % ES(i_E), nuc % ES(i_E + 1), E)
     if (nuc % INT == LINEAR_LINEAR) then
       f = (E - nuc % ES(i_E)) &
         & / (nuc % ES(i_E + 1) - nuc % ES(i_E))
@@ -308,11 +522,11 @@ contains
     end if
 
     ! reset xs objects
-    call sig_t   % reset()
-    call sig_n   % reset()
-    call sig_gam % reset()
-    call sig_f   % reset()
-    call sig_x   % reset()
+    call sig_t   % flush_history()
+    call sig_n   % flush_history()
+    call sig_gam % flush_history()
+    call sig_f   % flush_history()
+    call sig_x   % flush_history()
 
     ! loop over orbital quantum #'s
     ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS
@@ -385,37 +599,35 @@ contains
         end if
 
         ! reset the resonance object for a new spin sequence
-        call res % reset(i_nuc, E)
-        
+        call res % reset_resonance(i_nuc)
+
         ! loop over the addition of resonances to this ladder
         RESONANCES_LOOP: do i_r = 1, n_resonances
 
           ! sample unresolved resonance parameters for this spin
           ! sequence, at this energy
-          call res % parameters(i_nuc)
-
-          ! set current temperature
-          nuc % T = nuc % kT / K_BOLTZMANN
+          call res % sample_parameters(i_nuc)
 
           ! calculate the contribution to the partial cross sections,
           ! at this energy, from an additional resonance 
-          call res % xs(i_nuc)
+          call res % calc_xs(i_nuc)
 
           ! add this contribution to the accumulated partial cross
           ! section values built up from all resonances
-          call sig_t   % resonance(res % dsig_t)
-          call sig_n   % resonance(res % dsig_n)
-          call sig_gam % resonance(res % dsig_gam)
-          call sig_f   % resonance(res % dsig_f)
-          call sig_x   % resonance(res % dsig_x)
+! TODO: move sig_t outside of loop
+          call sig_t   % accum_resonance(res % dsig_t)
+          call sig_n   % accum_resonance(res % dsig_n)
+          call sig_gam % accum_resonance(res % dsig_gam)
+          call sig_f   % accum_resonance(res % dsig_f)
+          call sig_x   % accum_resonance(res % dsig_x)
 
         end do RESONANCES_LOOP
       end do TOTAL_ANG_MOM_LOOP
     end do ORBITAL_ANG_MOM_LOOP
 
     ! add potential scattering contribution
-    call sig_t % potential(i_nuc)
-    call sig_n % potential(i_nuc)
+    call sig_t % potential_xs(i_nuc)
+    call sig_n % potential_xs(i_nuc)
 
     ! determine energy table
     i_energy = 1
@@ -481,10 +693,9 @@ contains
       micro_xs(i_nuc) % elastic = sig_n % val / xsidnval &
         & * micro_xs(i_nuc) % elastic
 
+      ! set negative SLBW elastic xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) then
         micro_xs(i_nuc) % elastic = ZERO
-        message = 'Encountered a negative elastic scattering xs in the URR'
-        call warning()
       end if
 
       capture_val = sig_gam % val / xsidgval &
@@ -518,37 +729,36 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RESET_RESONANCE resets the resonance object before proceeding to add
+! RESONANCE_RESET resets the resonance object before proceeding to add
 ! contributions from the next spin sequence
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine reset_resonance(this, i_nuc, E)
+  subroutine resonance_reset(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
     type(Nuclide), pointer :: nuc => null() ! nuclide pointer
     integer                :: i_nuc         ! nuclide index
-    real(8)                :: E             ! neutron energy
 
     nuc => nuclides(i_nuc)
 
     ! prepare to construct a new ladder (reset resonance counter and energies)
     this % i_res     = 0
-    this % E_lam_up  = E
-    this % E_lam_low = E
-    this % E_lam_tmp = E
+    this % E_lam_up  = nuc % E
+    this % E_lam_low = nuc % E
+    this % E_lam_tmp = nuc % E
 
-  end subroutine reset_resonance
+  end subroutine resonance_reset
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! SAMPLE_PARAMETERS samples unresolved resonance parameters for the next
+! PARAMETERS_SAMPLE samples unresolved resonance parameters for the next
 ! pseudo-resonance added to the ladder
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine sample_parameters(this, i_nuc)
+  subroutine parameters_sample(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -558,15 +768,15 @@ contains
     call this % level_spacing(i_nuc)
     call this % channel_width(i_nuc)
 
-  end subroutine sample_parameters
+  end subroutine parameters_sample
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! LEVEL_SPACING samples the energy spacing between adjacent resonances
+! SPACING_LEVEL samples the energy spacing between adjacent resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine level_spacing(this, i_nuc)
+  subroutine spacing_level(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -614,7 +824,7 @@ contains
 !      end if
 !    end if
 
-  end subroutine level_spacing
+  end subroutine spacing_level
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -662,11 +872,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHANNEL_WIDTH samples the channel partial widths
+! WIDTH_CHANNEL samples the channel partial widths
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine channel_width(this, i_nuc)
+  subroutine width_channel(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -728,16 +938,16 @@ contains
     ! total width (sum of partials)
     this % Gam_t = this % Gam_n + this % Gam_f + this % Gam_gam + this % Gam_x
 
-  end subroutine channel_width
+  end subroutine width_channel
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CALC_XS is an interface for the calculation of partial cross sections at E_0,
+! XS_CALC is an interface for the calculation of partial cross sections at E_0,
 ! the energy that the ladder is being generated about
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calc_xs(this, i_nuc)
+  subroutine xs_calc(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -747,17 +957,17 @@ contains
     this % i_res = this % i_res + 1
 
     ! calculate SLBW xs contributions from an additional resonance
-    call this % slbw(i_nuc)
+    call this % slbw_xs(i_nuc)
 
-  end subroutine calc_xs
+  end subroutine xs_calc
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! SLBW_XS calculates Single-Level Breit-Wigner cross sections at an energy point
+! XS_SLBW calculates Single-Level Breit-Wigner cross sections at an energy point
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine slbw_xs(this, i_nuc)
+  subroutine xs_slbw(this, i_nuc)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
@@ -796,6 +1006,7 @@ contains
     real(8) :: Gam_f    ! sampled fission width
     real(8) :: Gam_x    ! sampled competitive width
     real(8) :: sig_lam  ! peak resonance cross section
+    real(8) :: sig_lam_Gam_t_n_psi
 
     nuc => nuclides(i_nuc)
 
@@ -840,20 +1051,22 @@ contains
       call fatal_error()
     end if
 
+    sig_lam_Gam_t_n_psi = sig_lam * psi(theta, x) / Gam_t_n
+
     if (Gam_gam > ZERO) then
-      this % dsig_gam = sig_lam * Gam_gam / Gam_t_n * psi(theta, x)
+      this % dsig_gam = sig_lam_Gam_t_n_psi * Gam_gam
     else
       this % dsig_gam = ZERO
     end if
 
     if (Gam_f > ZERO) then
-      this % dsig_f   = sig_lam * Gam_f   / Gam_t_n * psi(theta, x)
+      this % dsig_f   = sig_lam_Gam_t_n_psi * Gam_f
     else
       this % dsig_f   = ZERO
     end if
 
     if (Gam_x > ZERO) then
-      this % dsig_x   = sig_lam * Gam_x   / Gam_t_n * psi(theta, x)
+      this % dsig_x   = sig_lam_Gam_t_n_psi * Gam_x
     else
       this % dsig_x   = ZERO
     end if
@@ -880,7 +1093,7 @@ contains
 !      & * psi(theta, x) + Gam_n_n/Gam_t_n * sin(TWO * phase_shift(L, k_n*AP)) &
 !      & * chi(theta, x))
 
-  end subroutine slbw_xs
+  end subroutine xs_slbw
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -893,24 +1106,10 @@ contains
     integer, intent(in) :: L    ! current orbital quantum #
     real(8)             :: rho  ! derived variable, ka
     real(8)             :: rho2 ! rho**2
-    real(8)             :: rho3 ! rho**3
-    real(8)             :: rho4 ! rho**4
-    real(8)             :: rho5 ! rho**5
-    real(8)             :: rho6 ! rho**6
-    real(8)             :: rho7 ! rho**7
-    real(8)             :: rho8 ! rho**8
-    real(8)             :: rho9 ! rho**9
     real(8)             :: P    ! penetration factor
 
-    ! pre-compute exponentiations
+    ! pre-compute exponentiation
     rho2 = rho * rho
-    rho3 = rho * rho * rho
-    rho4 = rho * rho * rho * rho
-    rho5 = rho * rho * rho * rho * rho
-    rho6 = rho * rho * rho * rho * rho * rho
-    rho7 = rho * rho * rho * rho * rho * rho * rho
-    rho8 = rho * rho * rho * rho * rho * rho * rho * rho
-    rho9 = rho * rho * rho * rho * rho * rho * rho * rho * rho
 
     ! calculate penetrability for the current orbital quantum #
     select case(L)
@@ -919,17 +1118,18 @@ contains
         P = rho
 
       case(1)
-        P = rho3 / (ONE + rho2)
+        P = rho * rho2 / (ONE + rho2)
 
       case(2)
-        P = rho5 / (9.0_8 + THREE * rho2 + rho4)
+        P = rho * rho2 * rho2 / (9.0_8 + rho2 * (THREE + rho2))
 
       case(3)
-        P = rho7 / (225.0_8 + 45.0_8 * rho2 + 6.0_8 * rho4 + rho6)
+        P = rho * rho2 * rho2 * rho2 &
+          & / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
 
       case(4)
-        P = rho9 / (11025.0_8 + 1575.0_8 * rho2 + 135.0_8 * rho4 &
-          & + 10.0_8 * rho6 + rho8)
+        P = rho * rho2 * rho2 * rho2 * rho2 &
+          & / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
       case default
         message = 'Orbital quantum number not allowed'
@@ -995,16 +1195,10 @@ contains
     integer :: L    ! current orbital quantum #
     real(8) :: rho  ! derived variable, ka
     real(8) :: rho2 ! rho**2
-    real(8) :: rho4 ! rho**4
-    real(8) :: rho6 ! rho**6
-    real(8) :: rho8 ! rho**8
     real(8) :: S    ! shift factor (for shifting the resonance energy)
 
-    ! pre-compute exponentiations
+    ! pre-compute exponentiation
     rho2 = rho * rho
-    rho4 = rho * rho * rho * rho
-    rho6 = rho * rho * rho * rho * rho * rho
-    rho8 = rho * rho * rho * rho * rho * rho * rho * rho
 
     ! calculate shift factor for current orbital quantum #
     select case(L)
@@ -1016,17 +1210,15 @@ contains
         S = -ONE / (ONE + rho2)
 
       case(2)
-        S = -(18.0_8 + THREE * rho2) / (9.0_8 + THREE * rho2 + rho4)
+        S = -(18.0_8 + THREE * rho2) / (9.0_8 + rho2 * (THREE + rho2))
 
       case(3)
-        S = -(675.0_8 + 90.0_8 * rho2 + 6.0_8 * rho4) &
-          & / (225.0_8 + 45.0_8 * rho2 + 6.0_8 * rho4 + rho6)
+        S = -(675.0_8 + rho2 * (90.0_8 + 6.0_8 * rho2)) &
+          & / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
 
       case(4)
-        S = -(44100.0_8 + 4725.0_8 * rho2 + &
-          & 270.0_8 * rho4 + 10.0_8 * rho6) &
-          & / (11025.0_8 + 1575.0_8 * rho2 + 135.0_8 * rho4 &
-          & + 10.0_8 * rho6 + rho8)
+        S = -(44100.0_8 + rho2 * (4725.0_8 + rho2 * (270.0_8 + 10.0_8 * rho2))) &
+          & / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
       case default
         message = 'Orbital quantum number not allowed'
@@ -1126,12 +1318,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ACCUM_RESONANCE accumulates the contribution to the ladder partial cross
+! RESONANCE_ACCUM accumulates the contribution to the ladder partial cross
 ! section due to the addition of a resonance
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine accum_resonance(this, sig)
+  subroutine resonance_accum(this, sig)
 
     class(CrossSection), intent(inout) :: this ! cross section object
 
@@ -1143,20 +1335,16 @@ contains
     ! add xs contribution from a new resonance to the xs value at the current E
     this % val = this % val + sig
 
-    ! compute the magnitude of the relative error between current and last xs
-    if (this % val > ZERO) &
-      this % rel_err  = abs((this % val_last - this % val) / this % val)
-
-  end subroutine accum_resonance
+  end subroutine resonance_accum
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! POT_SCATTER_XS adds the contribution of potential scattering to the elastic
+! XS_POTENTIAL adds the contribution of potential scattering to the elastic
 ! and total cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pot_scatter_xs(this, i_nuc)
+  subroutine xs_potential(this, i_nuc)
 
     class(CrossSection), intent(inout) :: this ! cross section object
 
@@ -1192,23 +1380,121 @@ contains
     ! add the potential scattering xs to this xs
     this % val = this % val + sig_pot
 
-  end subroutine pot_scatter_xs
+  end subroutine xs_potential
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RESET_XS resets the xs values and relative error for a cross section object
+! HISTORY_ACCUM adds the single-history xs realization to the single-batch
+! accumulator
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine reset_xs(this)
+  subroutine history_accum(this)
 
     class(CrossSection), intent(inout) :: this ! cross section object
 
-    ! clear accumulated xs values for this realization and set error to INF
+    ! accumulate history xs value for this realization
+    this % xs_sum_tmp = this % xs_sum_tmp + this % val
+
+  end subroutine history_accum
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! HISTORY_FLUSH flushes the single-history xs realization
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine history_flush(this)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+
+    ! clear accumulated xs values for this realization
     this % val      = ZERO
     this % val_last = ZERO
-    this % rel_err  = ONE
 
-  end subroutine reset_xs
+  end subroutine history_flush
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! BATCH_ACCUM adds the single-batch xs realization to the overall accumulator
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine batch_accum(this)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+
+    ! accumulate batch-wise mean
+    this % xs_sum = this % xs_sum + this % xs_sum_tmp / dble(urr_avg_histories)
+
+    ! accumulate squared batch-wise mean
+    this % xs_sum2 = this % xs_sum2 &
+      & + (this % xs_sum_tmp / dble(urr_avg_histories)) &
+      & * (this % xs_sum_tmp / dble(urr_avg_histories))
+
+  end subroutine batch_accum
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! BATCH_FLUSH clears the single-batch sum of xs realizations for the batch
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine batch_flush(this)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+
+    ! clear accumulated xs values for this batch
+    this % xs_sum_tmp = ZERO
+
+  end subroutine batch_flush
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! STATS_CALC computes batch-based means and standard errors of those means
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine stats_calc(this, i_bat_int)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+    integer :: i_bat_int ! current batch index
+    real(8) :: i_bat ! current batch index for calcs
+
+    i_bat = dble(i_bat_int)
+
+    ! compute mean xs value
+    this % xs_mean  = this % xs_sum / i_bat
+
+    if (this % xs_mean /= ZERO .and. i_bat_int > 1) then
+      ! compute standard error of mean xs value
+      this % xs_sem   = sqrt((ONE / (i_bat - ONE)) &
+        & * (this % xs_sum2 / i_bat &
+        & - (this % xs_mean) * (this % xs_mean)))
+
+      ! compute relative uncertainty in xs value
+      this % rel_unc  = this % xs_sem / this % xs_mean
+    end if
+
+  end subroutine stats_calc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! STATS_FLUSH clears the batch statistics and accumulators
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine stats_flush(this)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+
+    ! clear mean, SEM, and overall accumulators
+    this % xs_mean = ZERO
+    this % xs_sem  = ZERO
+    this % rel_unc = ZERO
+    this % xs_sum  = ZERO
+    this % xs_sum2 = ZERO
+
+  end subroutine stats_flush
 
 end module unresolved

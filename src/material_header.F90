@@ -27,6 +27,9 @@ module material_header
     ! Does this material contain fissionable nuclides?
     logical :: fissionable = .false.
 
+    ! Are any nuclides in this material given in terms of natural elements
+    logical :: nat_elements = .false.
+
     ! String array of xs grids that need to be written
     type(ListChar), allocatable :: xs_gridpoints(:)
 

@@ -15,9 +15,12 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: URR_FREQUENCY, URR_FORMALISM, urr_endf_filenames, &
-                              urr_zaids, OTF_URR, n_s_wave, n_p_wave, n_d_wave, &
-                              n_f_wave, competitive
+  use unresolved,       only: urr_frequency, urr_formalism, urr_endf_filenames,&
+                              urr_zaids, n_s_wave, n_p_wave, n_d_wave,         &
+                              n_f_wave, competitive, urr_avg_histories,        &
+                              urr_avg_tol, urr_avg_batches, n_urr_method,      &
+                              n_otf_urr_xs, n_avg_urr_xs, urr_method
+
   use xml_interface
 
   implicit none
@@ -1564,6 +1567,11 @@ contains
              trim(to_str(mat % id))
         call fatal_error()
       end if
+
+      ! Are there natural element specifications
+      if (check_for_node(node_mat, "element") &
+        & .or. check_for_node(node_mat, "natural_elements")) &
+        & mat % nat_elements = .true.
 
       ! Get pointer list of XML <nuclide>
       call get_node_list(node_mat, "nuclide", node_nuc_list)
@@ -3150,6 +3158,7 @@ contains
     logical                 :: file_exists ! does urr.xml file exist?
     type(Node),     pointer :: doc => null()
     type(Node),     pointer :: otf_node => null()
+    type(Node),     pointer :: avg_xs_node => null()
     type(NodeList), pointer :: nuc_list_node => null()
     type(Node),     pointer :: nuc_node => null()
 
@@ -3158,9 +3167,11 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
+      urr_method = .false.
       return
     else
-      OTF_URR = .true.
+      urr_method = .true.
+      continue
     end if
 
     ! Display output message
@@ -3170,11 +3181,13 @@ contains
     ! Parse urr.xml file
     call open_xmldoc(doc, filename)
 
-    ! Check that an on-the-fly URR treatment is specified
-    if (check_for_node(doc, "on_the_fly")) then
-      call get_node_ptr(doc, "on_the_fly", otf_node)
+    ! Check that an on-the-fly URR treatment and/or average xs calc is specified
+    if (check_for_node(doc, "on_the_fly") &
+      & .or. check_for_node(doc, "average_xs")) then
+      continue
     else
-      message = 'No on-the-fly URR treatment is specified in urr.xml.'
+      message = 'no on-the-fly or average cross section calculation&
+        & parameters specified in urr.xml'
       call fatal_error()
     end if
 
@@ -3187,81 +3200,23 @@ contains
     end if
 
     ! Check which formalism for the on-the-fly URR treatment is specified
-    if (check_for_node(otf_node, 'formalism')) then
-      call get_node_value(otf_node, 'formalism', temp_str)
+    if (check_for_node(doc, 'formalism')) then
+      call get_node_value(doc, 'formalism', temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
       case ('slbw')
-        URR_FORMALISM = 'slbw'
+        urr_formalism = 'slbw'
       case default
         message = 'Unrecognized on-the-fly URR formalism given in urr.xml'
         call fatal_error()
       end select
     else
-      URR_FORMALISM = 'slbw'
-    end if
-
-    ! Check if a xs calculation frequency is specified
-    if (check_for_node(otf_node, 'frequency')) then
-      call get_node_value(otf_node, 'frequency', temp_str)
-      select case (trim(adjustl(to_lower(temp_str))))
-      case ('event')
-        URR_FREQUENCY = 'event'
-!      case ('particle')
-!        URR_FREQUENCY = 'particle'
-!      case ('batch')
-!        URR_FREQUENCY = 'batch'
-!      case ('simulation')
-!        URR_FREQUENCY = 'simulation'
-      case default
-        message = 'Unrecognized OTF URR xs calculation frequency in urr.xml'
-        call fatal_error()
-      end select
-    else
-      URR_FREQUENCY = 'event'
-    end if
-
-    ! Assign number of l-wave resonances to be used in xs calculations
-    if (check_for_node(otf_node, 'n_s_wave')) then
-      call get_node_value(otf_node, 'n_s_wave', n_s_wave)
-    else
-      n_s_wave = 32
-    end if
-    if (check_for_node(otf_node, 'n_p_wave')) then
-      call get_node_value(otf_node, 'n_p_wave', n_p_wave)
-    else
-      n_p_wave = 32
-    end if
-    if (check_for_node(otf_node, 'n_d_wave')) then
-      call get_node_value(otf_node, 'n_d_wave', n_d_wave)
-    else
-      n_d_wave = 32
-    end if
-    if (check_for_node(otf_node, 'n_f_wave')) then
-      call get_node_value(otf_node, 'n_f_wave', n_f_wave)
-    else
-      n_f_wave = 32
-    end if
-
-    ! Include resonance structure of competitive URR cross sections?
-    competitive = .true.
-    if (check_for_node(otf_node, "competitive")) then
-      call get_node_value(otf_node, "competitive", temp_str)
-      if (trim(adjustl(to_lower(temp_str))) == 'false' &
-        & .or. trim(adjustl(temp_str)) == '0') then
-        competitive = .false.
-      else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-        & .or. trim(adjustl(temp_str)) == '1') then
-        competitive = .true.
-      else
-        message = 'competitive element in urr.xml must be true or false'
-        call fatal_error()
-      end if
+      urr_formalism = 'slbw'
     end if
 
     ! Determine which W function evaluation to use
-    w_eval = MIT_W
-    if (check_for_node(otf_node, "w_function")) then
-      call get_node_value(otf_node, "w_function", temp_str)
+    w_eval = QUICK_W
+    if (check_for_node(doc, "w_function")) then
+      call get_node_value(doc, "w_function", temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
       case ('mit_w')
         w_eval = MIT_W
@@ -3273,39 +3228,134 @@ contains
       end select
     end if
 
-    ! Check for list of nuclides to apply the treatment to
-    if (check_for_node(otf_node, 'nuclide')) then
-      call get_node_list(otf_node, 'nuclide', nuc_list_node)
+    ! Assign number of l-wave resonances to be used in xs calculations
+    if (check_for_node(doc, 'n_s_wave')) then
+      call get_node_value(doc, 'n_s_wave', n_s_wave)
+    else
+      n_s_wave = 32
+    end if
+    if (check_for_node(doc, 'n_p_wave')) then
+      call get_node_value(doc, 'n_p_wave', n_p_wave)
+    else
+      n_p_wave = 32
+    end if
+    if (check_for_node(doc, 'n_d_wave')) then
+      call get_node_value(doc, 'n_d_wave', n_d_wave)
+    else
+      n_d_wave = 32
+    end if
+    if (check_for_node(doc, 'n_f_wave')) then
+      call get_node_value(doc, 'n_f_wave', n_f_wave)
+    else
+      n_f_wave = 32
+    end if
 
-      n_otf_urr_nuclides = get_list_size(nuc_list_node)
-      allocate(urr_zaids(n_otf_urr_nuclides))
-      allocate(urr_endf_filenames(n_otf_urr_nuclides))
+    n_urr_method = 0
+    ! Check for list of nuclides to apply the treatment to
+    if (check_for_node(doc, 'nuclide')) then
+      call get_node_list(doc, 'nuclide', nuc_list_node)
+
+      n_urr_method = get_list_size(nuc_list_node)
+      allocate(urr_zaids(n_urr_method))
+      allocate(urr_endf_filenames(n_urr_method))
 
       ! Read in nuclide id's and ENDF filenames for the nuclide(s)
-      do i = 1, n_otf_urr_nuclides
+      do i = 1, n_urr_method
         call get_list_item(nuc_list_node, i, nuc_node)
 
-        ! Check that a nuclide ZAID # is given
-        if (.not. check_for_node(nuc_node, 'ZAID')) then
-          message = 'No nuclide ZAID # specified for nuclide ' &
+        ! Check that a nuclide ZAID is given
+        if (.not. check_for_node(nuc_node, 'zaid')) then
+          message = 'No nuclide ZAID specified for nuclide ' &
             & // trim(to_str(i)) // ' in urr.xml file.'
           call fatal_error()
         end if
 
         ! Check that an ENDF data file is given
-        if (.not. check_for_node(nuc_node, 'ENDF')) then
-          message = 'No ENDF data file specified for nuclide ' &
+        if (.not. check_for_node(nuc_node, 'endf')) then
+          message = 'No ENDF-6 data file specified for nuclide ' &
             & // trim(to_str(i)) // ' in urr.xml file.'
           call fatal_error()
-        end if        
+        end if
 
-        call get_node_value(nuc_node, 'ZAID', urr_zaids(i))
-        call get_node_value(nuc_node, 'ENDF', urr_endf_filenames(i) % filename)
-
+        call get_node_value(nuc_node, 'zaid', urr_zaids(i))
+        call get_node_value(nuc_node, 'endf', urr_endf_filenames(i))
       end do
     else
-      message = 'No nuclide(s) specified for the on-the-fly URR treatment.'
+      message = 'No nuclide(s) specified for URR treatment.'
       call fatal_error()
+    end if
+
+    n_otf_urr_xs = 0
+    ! Check if an on-the-fly treatment is specified
+    if (check_for_node(doc, "on_the_fly")) then
+      
+      n_otf_urr_xs = n_urr_method
+
+      call get_node_ptr(doc, "on_the_fly", otf_node)
+
+      ! Check if a xs calculation frequency is specified
+      if (check_for_node(otf_node, 'frequency')) then
+        call get_node_value(otf_node, 'frequency', temp_str)
+        select case (trim(adjustl(to_lower(temp_str))))
+        case ('event')
+          urr_frequency = 'event'
+          ! TODO: allow for different otf xs calculation frequencies
+          !      case ('particle')
+          !        urr_frequency = 'particle'
+          !      case ('batch')
+          !        urr_frequency = 'batch'
+          !      case ('simulation')
+          !        urr_frequency = 'simulation'
+        case default
+          message = 'Unrecognized OTF URR xs calculation frequency in urr.xml'
+          call fatal_error()
+        end select
+      else
+        urr_frequency = 'event'
+      end if
+
+      ! Include resonance structure of competitive URR cross sections?
+      competitive = .true.
+      if (check_for_node(otf_node, "competitive")) then
+        call get_node_value(otf_node, "competitive", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'false' &
+          & .or. trim(adjustl(temp_str)) == '0') then
+          competitive = .false.
+        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+          & .or. trim(adjustl(temp_str)) == '1') then
+          competitive = .true.
+        else
+          message = 'competitive element in urr.xml must be true or false'
+          call fatal_error()
+        end if
+      end if
+    end if
+
+    n_avg_urr_xs = 0
+    ! Check for average (infinite-dilute) xs calculation parameters
+    if (check_for_node(doc, "average_xs")) then
+
+      n_avg_urr_xs = n_urr_method
+
+      call get_node_ptr(doc, "average_xs", avg_xs_node)
+
+      if (check_for_node(avg_xs_node, "batches")) then
+        call get_node_value(avg_xs_node, "batches", urr_avg_batches)
+      else
+        urr_avg_batches = 50
+      end if
+
+      if (check_for_node(avg_xs_node, "realizations")) then
+        call get_node_value(avg_xs_node, "realizations", urr_avg_histories)
+      else
+        urr_avg_histories = 1000
+      end if
+
+      if (check_for_node(avg_xs_node, "tolerance")) then
+        call get_node_value(avg_xs_node, "tolerance", urr_avg_tol)
+      else
+        urr_avg_tol = 0.001
+      end if
     end if
 
     ! Close URR XML file

@@ -154,9 +154,10 @@ contains
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-#endif
-    
     if (master .and. .not. any_fail) call suite % pass()
+#else
+    call suite % pass()
+#endif
 
     ! Clean up
     deallocate(source_bank)    
@@ -340,9 +341,10 @@ contains
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-#endif
-    
     if (master .and. .not. any_fail) call suite % pass()
+#else
+    call suite % pass()
+#endif
 
     ! Clean up
     call deallocate_dd(dd)
@@ -451,9 +453,10 @@ contains
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-#endif
-    
     if (master .and. .not. any_fail) call suite % pass()
+#else
+    call suite % pass()
+#endif
 
     ! Clean up
     call deallocate_dd(dd)
@@ -522,9 +525,10 @@ contains
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-#endif
-    
     if (master .and. .not. any_fail) call suite % pass()
+#else
+    call suite % pass()
+#endif
 
     ! Clean up
     call deallocate_dd(dd)
@@ -593,9 +597,10 @@ contains
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-#endif
-    
     if (master .and. .not. any_fail) call suite % pass()
+#else
+    call suite % pass()
+#endif
 
     ! Clean up
     call deallocate_dd(dd)

@@ -14,7 +14,7 @@ module global
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
-  use testing_header,   only: testing_type
+  use testing_header,   only: TestSuiteClass
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -319,7 +319,7 @@ module global
   logical :: particle_restart_run = .false.
 
   ! Testing data structure
-  type(testing_type) :: unittests
+  type(TestSuiteClass) :: unittests
 
   ! ============================================================================
   ! CMFD VARIABLES 

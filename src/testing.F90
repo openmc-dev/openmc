@@ -2,16 +2,16 @@ module testing
 
   use global,             only: master, message, unittests
   use error,              only: fatal_error
+  use output_header,      only: output_message
   use output,             only: header
+  use testing_header,     only: TestSuiteClass, TestClass
 
 #ifdef TESTING
-  use test_dd_comm,       only: test_distribute_source, &
-                                test_synchronize_transfer_info, &
-                                test_synchronize_destination_info, &
-                                test_send_recv_particles, &
-                                test_synchronize_bank_dd
-  use test_dd_init,       only: test_set_neighbor_meshbins, &
-                                test_bins_dict
+  use test_dd_neighbor_meshbins,            only: dd_neighbor_meshbins_test
+  use test_dd_bins_dict,                    only: dd_bins_dict_test
+  use test_dd_distribute_source,            only: dd_distribute_source_test
+  use test_dd_synchronize_transfer_info,    only: dd_synchronize_transfer_info_test
+  use test_dd_synchronize_destination_info, only: dd_synchronize_destination_info_test
 #endif
 
   implicit none
@@ -30,14 +30,14 @@ contains
 
     if (master) call header("UNIT TESTING MODE", level=1)
     
+    unittests % master = master
+    
     ! Domain decomposition tests
-    call test_set_neighbor_meshbins(unittests)
-    call test_bins_dict(unittests)
-    call test_distribute_source(unittests)
-    call test_synchronize_transfer_info(unittests)
-    call test_synchronize_destination_info(unittests)
-    call test_send_recv_particles(unittests)
-    call test_synchronize_bank_dd(unittests)
+    call run_test(unittests, dd_neighbor_meshbins_test)
+    call run_test(unittests, dd_bins_dict_test)
+    call run_test(unittests, dd_distribute_source_test)
+    call run_test(unittests, dd_synchronize_transfer_info_test)
+    call run_test(unittests, dd_synchronize_destination_info_test)
 
 #else
     message = "Must be compiled with testing mode enabled to run tests."
@@ -45,5 +45,36 @@ contains
 #endif
   
   end subroutine run_tests
+
+!===============================================================================
+! RUN_TEST
+!===============================================================================
+
+  subroutine run_test(suite, test)
+    
+    class(TestSuiteClass), intent(inout) :: suite
+    class(TestClass),      intent(inout) :: test
+
+    call test % init()
+
+    if (master) call header(test % name, level=2)
+
+    if (master) call output_message("Setting up...")
+    
+    call test % setup(suite)
+    
+    if (master) call output_message("Invoking test...")
+    
+    call test % execute()
+    
+    if (master) call output_message("Checking results...")
+    
+    call test % check(suite)
+    
+    if (master) call output_message("Tearing down...")
+    
+    call test % teardown()
+
+  end subroutine run_test
 
 end module testing

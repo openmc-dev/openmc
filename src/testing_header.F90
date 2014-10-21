@@ -1,73 +1,72 @@
 module testing_header 
 
-  use output_header, only: output_message
+  use constants
 
   implicit none
   private
   
-  type, public :: testing_type
+  type, public :: TestSuiteClass
+    logical :: master
     integer :: n_passed = 0
     integer :: n_skipped = 0
     integer :: n_failed = 0
     contains
-      procedure :: setup => setup
-      procedure :: execute => execute
-      procedure :: check => check
-      procedure :: fail => fail
-      procedure :: skip => skip
-      procedure :: pass => pass
-  end type testing_type
+      procedure :: fail     => fail
+      procedure :: skip     => skip
+      procedure :: pass     => pass
+  end type TestSuiteClass
+
+  type, abstract, public :: TestClass
+    character(MAX_LINE_LEN) :: name
+    contains
+      procedure(init_interface),             deferred :: init
+      procedure(setup_interface),    nopass, deferred :: setup
+      procedure(execute_interface),  nopass, deferred :: execute
+      procedure(check_interface),    nopass, deferred :: check
+      procedure(teardown_interface), nopass, deferred :: teardown
+  end type TestClass
+
+  abstract interface
+    subroutine init_interface(self)
+      import TestClass
+      class(TestClass), intent(inout) :: self
+    end subroutine init_interface
+  end interface
+
+  abstract interface
+    subroutine setup_interface(suite)
+      import TestSuiteClass
+      class(TestSuiteClass), intent(inout) :: suite
+    end subroutine setup_interface
+  end interface
+  
+  abstract interface
+    subroutine execute_interface()
+    end subroutine execute_interface
+  end interface
+  
+  abstract interface
+    subroutine check_interface(suite)
+      import TestSuiteClass
+      class(TestSuiteClass), intent(inout) :: suite
+    end subroutine check_interface
+  end interface
+
+  abstract interface
+    subroutine teardown_interface()
+    end subroutine teardown_interface
+  end interface
 
 contains
-
-!===============================================================================
-! SETUP
-!===============================================================================
-
-  subroutine setup(this)
-    
-    class(testing_type) :: this
-  
-    call output_message("Setting up...")
-
-  end subroutine setup
-
-!===============================================================================
-! EXECUTE
-!===============================================================================
-
-  subroutine execute(this)
-
-    class(testing_type) :: this
-
-    call output_message("Invoking test...")
-
-  end subroutine execute
-
-!===============================================================================
-! CHECK
-!===============================================================================
-
-  subroutine check(this)
-
-    class(testing_type) :: this
-
-    call output_message("Checking results...")
-
-  end subroutine check
 
 !===============================================================================
 ! FAIL
 !===============================================================================
 
-  subroutine fail(this, msg)
+  subroutine fail(this)
 
-    class(testing_type) :: this
-    character(len=*) :: msg
+    class(TestSuiteClass) :: this
 
-    call output_message("FAILED")
-    call output_message(msg)
-    
     this % n_failed = this % n_failed + 1
 
   end subroutine fail
@@ -78,10 +77,8 @@ contains
 
   subroutine skip(this)
 
-    class(testing_type) :: this
+    class(TestSuiteClass) :: this
 
-    call output_message("SKIPPED")
-    
     this % n_skipped = this % n_skipped + 1
 
   end subroutine skip
@@ -92,10 +89,8 @@ contains
 
   subroutine pass(this)
 
-    class(testing_type) :: this
+    class(TestSuiteClass) :: this
 
-    call output_message("PASS")
-    
     this % n_passed = this % n_passed + 1
 
   end subroutine pass

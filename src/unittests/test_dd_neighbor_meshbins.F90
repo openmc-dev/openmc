@@ -1,120 +1,88 @@
-module test_dd_init
+module test_dd_neighbor_meshbins
 
-  use dd_comm,          only: distribute_source, synchronize_transfer_info
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
-  use dd_tracking,      only: cross_domain_boundary
-  use error,            only: fatal_error, warning
-  use global,           only: master, n_procs, rank, message, work, &
-                              n_particles, source_bank, size_source_bank
-  use output,           only: header, write_message
-  use random_lcg,       only: initialize_prng, set_particle_seed, prn_seed
+  use dd_testing_setup, only: check_procs, dd_simple_four_domains
+  use global,           only: master, rank, message
+  use output,           only: write_message
   use string,           only: to_str
-  use testing_header,   only: testing_type
+  use testing_header,   only: TestSuiteClass, TestClass
 
 #ifdef MPI
   use mpi
 #endif
 
   implicit none
-  public
+  private
 
   type(dd_type), save :: dd
+
+  type, extends(TestClass) :: test
+    contains
+      procedure         :: init     => test_init
+      procedure, nopass :: setup    => test_setup
+      procedure, nopass :: execute  => test_execute
+      procedure, nopass :: check    => test_check
+      procedure, nopass :: teardown => test_teardown
+  end type test
+
+  type(test), public :: dd_neighbor_meshbins_test
 
 contains
 
 !===============================================================================
-! DD_SIMPLE_FOUR_DOMAINS hardcodes in a simple 4-domain xml input
+! INIT
 !===============================================================================
 
-  subroutine dd_simple_four_domains(dd)
-  
-    type(dd_type), intent(inout) :: dd
-  
-    ! Mimic everything done in input_xml for DD setup
-    allocate(dd % mesh)
-    allocate(dd % mesh % dimension(3))
-    allocate(dd % mesh % lower_left(3))
-    allocate(dd % mesh % upper_right(3))
-    allocate(dd % mesh % width(3))
-    dd % mesh % n_dimension = 3
+  subroutine test_init(self)
 
-    dd % mesh % dimension = (/ 2, 2, 1/)
-    dd % n_domains = 4
-    dd % mesh % lower_left = (/ -2, -2, -1/)
-    dd % mesh % upper_right = (/ 2, 2, 1/)
-    dd % mesh % width = (/ 2, 2, 2/)
-  
-    allocate(dd % domain_load_dist(4))
-    dd % domain_load_dist = (/ 2.0, 1.0, 1.0, 1.0/)
+    class(test), intent(inout) :: self
 
-    ! Set n_particles so buffers are properly allocated
-    n_particles = 97 ! we will have 55 transferring
+    self % name = "test_dd_neighbor_meshbins"
 
-  end subroutine dd_simple_four_domains
+  end subroutine test_init
 
 !===============================================================================
-! CHECK_PROCS makes sure we have the right number of processors for this test
+! SETUP
 !===============================================================================
 
-  function check_procs() result(skip)
-  
-    logical :: skip
-    skip = .false.
-  
-#ifdef MPI
-    if (.not. n_procs == 5) then
-      message = "Skipping test_synchronize_info: must be run with MPI 5 procs"
-      call warning()
-      skip = .true.
+  subroutine test_setup(suite)
+
+    class(TestSuiteClass), intent(inout) :: suite
+    
+    if (check_procs(5)) then
+      if (master) call suite % skip()
+      return
     end if
-#else
-    message = "Skipping test_synchronize_info: requires MPI"
-    call warning()
-    skip = .true.
-#endif
-
-  end function check_procs
+    
+    ! Get generic DD setup with 4 domains for 5 MPI ranks
+    call dd_simple_four_domains(dd)
+    
+  end subroutine test_setup
 
 !===============================================================================
-! TEST_SET_NEIGHBOR_MESHBINS
+! EXECUTE
 !===============================================================================
 
-  subroutine test_set_neighbor_meshbins(suite)
+  subroutine test_execute()
 
-    type(testing_type), intent(inout) :: suite
+    call initialize_domain_decomp(dd)
+    
+  end subroutine test_execute
+
+!===============================================================================
+! CHECK
+!===============================================================================
+
+  subroutine test_check(suite)
+
+    class(TestSuiteClass), intent(inout) :: suite
 
     logical :: failure = .false.
 #ifdef MPI
     integer :: mpi_err
     logical :: any_fail
 #endif
-
-    if (master) call header("test_set_neighbor_meshbins", level=2)
-
-    if (check_procs()) then
-      if (master) call suite % skip()
-      return
-    end if
-
-    ! SETUP
-
-    if (master) call suite % setup()
-
-    ! Get generic DD setup with 4 domains for 5 MPI ranks
-    call dd_simple_four_domains(dd)
-
-    ! EXECUTE
-
-    if (master) call suite % execute()
-
-    ! Invoke test method
-
-    call initialize_domain_decomp(dd)
-
-    ! CHECK
-    
-    if (master) call suite % check()
 
     select case(rank)
       case(0, 1)
@@ -220,95 +188,31 @@ contains
     end select
 
     if (failure) then
-      call suite % fail("Domain meshbin mapping is incorrect on rank " // &
-          trim(to_str(rank))) 
+      message = "FAILURE: Domain meshbin mapping is incorrect on rank " // &
+                trim(to_str(rank))
+      call write_message()
     end if
-
+    
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
         MPI_COMM_WORLD, mpi_err)
-    if (master .and. .not. any_fail) call suite % pass()
-#else
-    call suite % pass()
-#endif
-
-    ! Clean up
-    call deallocate_dd(dd)
-
-  end subroutine test_set_neighbor_meshbins
-
-
-!===============================================================================
-! TEST_BINS_DICT
-!===============================================================================
-
-  subroutine test_bins_dict(suite)
-
-    type(testing_type), intent(inout) :: suite
-
-    logical :: failure = .false.
-#ifdef MPI
-    integer :: mpi_err
-    logical :: any_fail
-#endif
-
-    if (master) call header("test_bins_dict", level=2)
-
-    if (check_procs()) then
-      if (master) call suite % skip()
-      return
+    if (.not. any_fail) then
+      call suite % pass()
+    else
+      call suite % fail()
     end if
-
-    ! SETUP
-
-    if (master) call suite % setup()
-
-    ! Get generic DD setup with 4 domains for 5 MPI ranks
-    call dd_simple_four_domains(dd)
-
-    ! EXECUTE
-
-    if (master) call suite % execute()
-
-    ! Invoke test method
-
-    call initialize_domain_decomp(dd)
-
-    ! CHECK
-    
-    if (master) call suite % check()
-
-    select case(rank)
-      case(0, 1)
-        if (.not. dd % bins_dict % get_key(2) == 4) failure = .true.
-        if (.not. dd % bins_dict % get_key(3) == 2) failure = .true.
-      case(2)
-        if (.not. dd % bins_dict % get_key(1) == 3) failure = .true.
-        if (.not. dd % bins_dict % get_key(4) == 2) failure = .true.
-      case(3)
-        if (.not. dd % bins_dict % get_key(1) == 1) failure = .true.
-        if (.not. dd % bins_dict % get_key(4) == 4) failure = .true.
-      case(4)
-        if (.not. dd % bins_dict % get_key(2) == 1) failure = .true.
-        if (.not. dd % bins_dict % get_key(3) == 3) failure = .true.
-    end select
-
-    if (failure) then
-      call suite % fail("Domain bins_dict is incorrect on rank " // &
-          trim(to_str(rank))) 
-    end if
-
-#ifdef MPI
-    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
-        MPI_COMM_WORLD, mpi_err)
-    if (master .and. .not. any_fail) call suite % pass()
-#else
-    call suite % pass()
 #endif
     
-    ! Clean up
+  end subroutine test_check
+
+!===============================================================================
+! TEARDOWN
+!===============================================================================
+
+  subroutine test_teardown()
+
     call deallocate_dd(dd)
+    
+  end subroutine test_teardown
 
-  end subroutine test_bins_dict
-
-end module test_dd_init
+end module test_dd_neighbor_meshbins

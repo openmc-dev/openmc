@@ -3,7 +3,6 @@ module fission
   use ace_header,    only: Nuclide
   use constants
   use error,         only: fatal_error
-  use global,        only: message
   use interpolation, only: interpolate_tab1
   use search,        only: binary_search
 
@@ -27,8 +26,7 @@ contains
     real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_t_type == NU_NONE) then
-      message = "No neutron emission data for table: " // nuc % name
-      call fatal_error()
+      call fatal_error("No neutron emission data for table: " // nuc % name)
     elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
       ! determine number of coefficients
       NC = int(nuc % nu_t_data(1))

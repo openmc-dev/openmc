@@ -1,6 +1,7 @@
 module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
+  use constants
 
   use global
 
@@ -17,18 +18,15 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(force)
+  subroutine warning(message)
 
-    logical, optional :: force ! force write from proc other than master
+    character(*) :: message
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-
-    ! Only allow master to print to screen
-    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
     write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
@@ -78,8 +76,9 @@ contains
 ! the program is aborted.
 !===============================================================================
 
-  subroutine fatal_error(error_code)
+  subroutine fatal_error(message, error_code)
 
+    character(*) :: message
     integer, optional :: error_code ! error code
 
     integer :: code      ! error code

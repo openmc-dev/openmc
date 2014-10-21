@@ -1616,8 +1616,8 @@ contains
         unittests % n_failed
     
     ! format for write statements
-100 format (1X,A,T15,A,T15,A)
-101 format (1X,I8,T15,I8,T15,I8)
+100 format (1X,A,T15,A,T30,A)
+101 format (1X,I8,T15,I8,T30,I8)
 
   end subroutine print_testing
 

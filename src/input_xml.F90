@@ -213,7 +213,7 @@ contains
     case ('nuclide')
       grid_method = GRID_NUCLIDE
     case ('union')
-      grid_method = GRID_UNION
+      call fatal_error("Union energy grid is no longer supported.")
     case ('logarithm', 'logarithmic', 'log')
       grid_method = GRID_LOGARITHM
     case default

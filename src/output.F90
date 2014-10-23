@@ -1226,12 +1226,6 @@ contains
       end do
     end if
 
-    ! print summary of unionized energy grid
-    call header("UNIONIZED ENERGY GRID", unit=UNIT_SUMMARY)
-    write(UNIT_SUMMARY,*) "Points on energy grid:  " // trim(to_str(n_grid))
-    write(UNIT_SUMMARY,*) "Extra storage required: " // trim(to_str(&
-         n_grid*n_nuclides_total*4)) // " bytes"
-
     ! print summary of variance reduction
     call header("VARIANCE REDUCTION", unit=UNIT_SUMMARY)
     if (survival_biasing) then
@@ -1494,7 +1488,6 @@ contains
     ! display time elapsed for various sections
     write(ou,100) "Total time for initialization", time_initialize % elapsed
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
-    write(ou,100) "  Unionizing energy grid", time_unionize % elapsed
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed

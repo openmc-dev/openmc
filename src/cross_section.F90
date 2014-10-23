@@ -14,9 +14,6 @@ module cross_section
   implicit none
   save
 
-  integer :: union_grid_index
-!$omp threadprivate(union_grid_index)
-
 contains
 
 !===============================================================================
@@ -49,9 +46,6 @@ contains
     if (p % material == MATERIAL_VOID) return
 
     mat => materials(p % material)
-
-    ! Find energy index on unionized grid
-    if (grid_method == GRID_UNION) call find_energy_index(p % E)
 
     ! Determine if this material has S(a,b) tables
     check_sab = (mat % n_sab > 0)
@@ -154,12 +148,6 @@ contains
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
-    case (GRID_UNION)
-      ! If we're using the unionized grid with pointers, finding the index on
-      ! the nuclide energy grid is as simple as looking up the pointer
-
-      i_grid = nuc % grid_index(union_grid_index)
-
     case (GRID_LOGARITHM)
       ! Determine the energy grid index using a logarithmic mapping to reduce
       ! the energy range over which a binary search needs to be performed
@@ -516,27 +504,6 @@ contains
     end if
 
   end subroutine calculate_urr_xs
-
-!===============================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain
-! energy
-!===============================================================================
-
-  subroutine find_energy_index(E)
-
-    real(8), intent(in) :: E ! energy of particle
-
-    ! if particle's energy is outside of energy grid range, set to first or last
-    ! index. Otherwise, do a binary search through the union energy grid.
-    if (E < e_grid(1)) then
-      union_grid_index = 1
-    elseif (E > e_grid(n_grid)) then
-      union_grid_index = n_grid - 1
-    else
-      union_grid_index = binary_search(e_grid, n_grid, E)
-    end if
-
-  end subroutine find_energy_index
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section

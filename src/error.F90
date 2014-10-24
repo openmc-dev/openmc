@@ -30,20 +30,24 @@ contains
     integer                   :: indent       ! length of indentation
     character(:), allocatable :: message      ! input message with a prefix
 
-    ! Prefix the message
-    if (.not. present(deprecation)) then
-      message = 'WARNING: ' // message_in
-    else if (deprecation) then
-      message = 'DEPRECATION WARNING: ' // message_in
-    else
-      message = 'WARNING: ' // message_in
-    end if
-
     ! Set line wrapping and indentation
     line_wrap = 80
     indent = 10
 
     ! Determine length of message
+    length = len_trim(message_in)
+
+    ! Prefix the message
+    if (.not. present(deprecation)) then
+      allocate(character(length+9) :: message)
+      message = 'WARNING: ' // message_in
+    else if (deprecation) then
+      allocate(character(length+23) :: message)
+      message = 'DEPRECATION WARNING: ' // message_in
+    else
+      allocate(character(length+9) :: message)
+      message = 'WARNING: ' // message_in
+    end if
     length = len_trim(message)
 
     i_start = 0

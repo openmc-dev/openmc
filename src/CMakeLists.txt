@@ -261,7 +261,8 @@ install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
   install(CODE "execute_process(
-                  COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
+                  COMMAND ${PYTHON_EXECUTABLE} setup.py install
+                  --prefix=${CMAKE_INSTALL_PREFIX}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
 endif()
 
@@ -277,7 +278,7 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
 
 # Check to see if PETSC is compiled for CMFD tests
 if (NOT ${PETSC_ENABLED})
-  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
+  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd_jfnk.py)
   foreach(cmfd_test in ${CMFD_TESTS})
     list(REMOVE_ITEM TESTS ${cmfd_test})
   endforeach(cmfd_test)

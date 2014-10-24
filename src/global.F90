@@ -272,9 +272,6 @@ module global
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
-  ! Message used in message/warning/fatal_error
-  character(2*MAX_LINE_LEN) :: message
-
   ! Random number seed
   integer(8) :: seed = 1_8
 
@@ -396,7 +393,7 @@ module global
   integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
 contains

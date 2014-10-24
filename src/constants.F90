@@ -8,7 +8,7 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 0
+  integer, parameter :: VERSION_RELEASE = 1
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_STATEPOINT       = 12

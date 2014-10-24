@@ -48,7 +48,6 @@
 
   <!-- Cube cell filled Fuel -->
   <lattice id="11">
-    <type>rectangular</type>
     <dimension>29 29</dimension>
     <lower_left>-0.889 -0.889</lower_left>
     <pitch>1.778 1.778</pitch>

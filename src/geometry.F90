@@ -12,7 +12,7 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
-     
+
 contains
 
 !===============================================================================
@@ -239,7 +239,7 @@ contains
 
         if (is_valid_lat_index(lat, i_xyz)) then
           p % coord % next % universe = &
-              &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+               &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
           ! Move particle to next level and search for the lower cells.
           p % coord => p % coord % next
@@ -287,25 +287,25 @@ contains
 
     type is (RectLattice)
       xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
-          &(i_xyz(1) - 0.5_8)*lat % pitch(1))
+           &(i_xyz(1) - 0.5_8)*lat % pitch(1))
       xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
-          &(i_xyz(2) - 0.5_8)*lat % pitch(2))
+           &(i_xyz(2) - 0.5_8)*lat % pitch(2))
       if (lat % is_3d) then
         xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
-            &(i_xyz(3) - 0.5_8)*lat % pitch(3))
+             &(i_xyz(3) - 0.5_8)*lat % pitch(3))
       else
         xyz_t(3) = xyz(3)
       end if
  
     type is (HexLattice)
       xyz_t(1) = xyz(1) - (lat % center(1) + &
-          &sqrt(3.0_8) / 2.0_8 * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
+           &sqrt(3.0_8) / 2.0_8 * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
       xyz_t(2) = xyz(2) - (lat % center(2) + &
-          &(i_xyz(2) - lat % n_rings) * lat % pitch(1) + &
-          &(i_xyz(1) - lat % n_rings) * lat % pitch(1) / 2.0_8)
+           &(i_xyz(2) - lat % n_rings) * lat % pitch(1) + &
+           &(i_xyz(1) - lat % n_rings) * lat % pitch(1) / 2.0_8)
       if (lat % is_3d) then
         xyz_t(3) = xyz(3) - lat % center(3) &
-            &+ (lat % n_axial/2 - i_xyz(3) + 1) * lat % pitch(2)
+             &+ (lat % n_axial/2 - i_xyz(3) + 1) * lat % pitch(2)
       else
         xyz_t(3) = xyz(3)
       end if
@@ -374,7 +374,7 @@ contains
       ! Index z direction.
       if (lat % is_3d) then
         i_xyz(3) = ceiling((xyz(3) - lat % center(3))/lat % pitch(2) + 0.5_8) &
-            &+ lat % n_axial/2
+             &+ lat % n_axial/2
       else
         i_xyz(3) = 1
       end if
@@ -475,7 +475,7 @@ contains
       if (tallies_on) then
 !$omp critical
         global_tallies(LEAKAGE) % value = &
-           global_tallies(LEAKAGE) % value + p % wgt
+             global_tallies(LEAKAGE) % value + p % wgt
 !$omp end critical
       end if
 

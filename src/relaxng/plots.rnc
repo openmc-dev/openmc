@@ -3,29 +3,38 @@ element plots {
     (element id { xsd:int } | attribute id { xsd:int })? &
     (element filename { xsd:string { maxLength = "50" } } |
       attribute filename { xsd:string { maxLength = "50" } })? &
-    (element type { "slice" } | attribute type { "slice" })? &
+    (element type { "slice" | "voxel" } |
+      attribute type { "slice" | "voxel" })? &
     (element color { ( "cell" | "mat" | "material" ) } |
       attribute color { ( "cell" | "mat" | "material" ) })? &
-    (element origin { list { xsd:double+ } } | 
+    (element origin { list { xsd:double+ } } |
       attribute origin { list { xsd:double+ } })? &
-    (element width { list { xsd:double+ } } | 
+    (element width { list { xsd:double+ } } |
       attribute width { list { xsd:double+ } })? &
     (element basis { ( "xy" | "yz" | "xz" ) } |
       attribute basis { ( "xy" | "yz" | "xz" ) })? &
-    (element pixels { list { xsd:int+ } } | 
+    (element pixels { list { xsd:int+ } } |
       attribute pixels { list { xsd:int+ } })? &
     (element background { list { xsd:int+ } } |
       attribute background { list { xsd:int+ } })? &
     element col_spec {
       (element id { xsd:int } | attribute id { xsd:int }) &
-      (element rgb { list { xsd:int+ } } | 
+      (element rgb { list { xsd:int+ } } |
         attribute rgb { list { xsd:int+ } })
     }* &
     element mask {
-      (element components { list { xsd:int+ } } | 
+      (element components { list { xsd:int+ } } |
         attribute components { list { xsd:int+ } }) &
-      (element background { list { xsd:int+ } } | 
+      (element background { list { xsd:int+ } } |
         attribute background { list { xsd:int+ } })
+    }* &
+    element meshlines {
+      (element meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" ) } |
+        attribute meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" ) }) &
+      (element id { xsd:int } | attribute id { xsd:int })? &
+      (element linewidth { xsd:int } | attribute linewidth { xsd:int }) &
+      (element color { list { xsd:int+ } } |
+        attribute color { list { xsd:int+ } })?
     }*
   }*
 }

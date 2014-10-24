@@ -3,7 +3,7 @@
 import sys
 
 # import particle restart 
-sys.path.append('../../src/utils')
+sys.path.insert(0, '../../src/utils')
 import particle_restart as pr
 
 # read in particle restart file

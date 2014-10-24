@@ -261,7 +261,7 @@ or sub-elements and can be set to either "false" or "true".
   *Default*: true
 
 ``<resonance_scattering>`` Element
-----------------------
+----------------------------------
 
 The ``resonance_scattering`` element can contain one or more of the following
 attributes or sub-elements:
@@ -269,7 +269,7 @@ attributes or sub-elements:
   :scatterer:
     An element with attributes/sub-elements called ``nuclide``, ``method``,
     ``xs_label``, ``xs_label_0K``, ``E_min``, and ``E_max``. The ``nuclide``
-    attribute is the name, as given by the ``name`` attribute within the 
+    attribute is the name, as given by the ``name`` attribute within the
     ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
     of the nuclide to which a resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
@@ -432,6 +432,13 @@ attributes/sub-elements:
       c E e^{-E/a} dE`.
 
       *Default*: 0.988 2.249
+
+  :write_initial:
+    An element specifying whether to write out the initial source bank used at
+    the beginning of the first batch. The output file is named
+    "initial_source.binary(h5)"
+
+      *Default*: false
 
 ``<state_point>`` Element
 -------------------------
@@ -1085,10 +1092,10 @@ The ``<tally>`` element accepts the following sub-elements:
       all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
 
     :total-YN:
-      Spherical harmonic expansion of the incoming particle's direction of
-      motion :math:`\left(\Omega\right)` of the total flux.  This score will
-      tally all of the harmonic moments of order 0 to N.  N must be between 0
-      and 10.
+      The total reaction rate expanded via spherical harmonics about the
+      direction of motion of the neutron, :math:`\Omega`.
+      This score will tally all of the harmonic moments of order 0 to N.  N must
+      be between 0 and 10.
 
     :current:
       Partial currents on the boundaries of each cell in a mesh.
@@ -1222,7 +1229,7 @@ sub-elements:
 attribute or sub-element:
 
   :pixels:
-    Specifies the number of pixes or voxels to be used along each of the basis
+    Specifies the number of pixels or voxels to be used along each of the basis
     directions for "slice" and "voxel" plots, respectively. Should be two or
     three integers separated by spaces.
 
@@ -1254,7 +1261,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     Specifies the RGB color of the regions where no OpenMC cell can be found.
     Should be three integers separated by spaces.
 
-    *Default*: 0 0 0 (white)
+    *Default*: 0 0 0 (black)
 
   :col_spec:
     Any number of this optional tag may be included in each ``<plot>`` element,
@@ -1294,6 +1301,37 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: None
 
+  :meshlines:
+    The ``meshlines`` sub-element allows for plotting the boundaries of
+    a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
+    ``plot`` element, and it must contain as attributes or sub-elements a mesh
+    type and a linewidth.  Optionally, a color may be specified for the overlay:
+
+    :meshtype:
+      The type of the mesh to be plotted. Valid options are "tally", "entropy",
+      "ufs", and "cmfd".  If plotting "tally" meshes, the id of the mesh to plot
+      must be specified with the ``id`` sub-element.
+
+    :id:
+      A single integer id number for the mesh specified on ``tallies.xml`` that
+      should be plotted. This element is only required for ``meshtype="tally"``.
+
+    :linewidth:
+      A single integer number of pixels of linewidth to specify for the mesh
+      boundaries. Specifying this as 0 indicates that lines will be 1 pixel
+      thick, specifying 1 indicates 3 pixels thick, specifying 2 indicates
+      5 pixels thick, etc.
+
+    :color:
+      Specifies the custom color for the meshlines boundaries. Should be 3
+      integers separated by whitespace.  This element is optional.
+
+      *Default*: 0 0 0 (black)
+
+    *Default*: None
+
+.. _usersguide_cmfd:
+
 ------------------------------
 CMFD Specification -- cmfd.xml
 ------------------------------
@@ -1302,15 +1340,6 @@ Coarse mesh finite difference acceleration method has been implemented in OpenMC
 Currently, it allows users to accelerate fission source convergence during
 inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
-
-``<active_flush>`` Element
---------------------------
-
-The ``<active_flush>`` element controls the batch where CMFD tallies should be
-reset. CMFD tallies should be reset before active batches so they are accumulated
-without bias.
-
-  *Default*: 0
 
 ``<begin>`` Element
 -------------------
@@ -1333,7 +1362,25 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
 * "source" - prints the RMS [%] between the OpenMC fission source and CMFD
   fission source.
 
-  *Default*: None
+  *Default*: balance
+
+``<dhat_reset>`` Element
+------------------------
+
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
+It can be turned on with "true" and off with "false".
+
+  *Default*: false
+
+``<downscatter>`` Element
+-------------------------
+
+The ``<downscatter>`` element controls whether an effective downscatter cross
+section should be used when using 2-group CMFD. It can be turned on with "true"
+and off with "false".
+
+  *Default*: false
 
 ``<feedback>`` Element
 ----------------------
@@ -1344,24 +1391,16 @@ It can be turned on with "true" and off with "false".
 
   *Default*: false
 
-``<inactive>`` Element
-----------------------
+``<gauss_seidel_tolerance>`` Element
+------------------------------------
 
-The ``<inactive>`` element controls if cmfd tallies should be accumulated
-during inactive batches. For some applications, CMFD tallies may not be
-needed until the start of active batches. This option can be turned on
-with "true" and off with "false"
+The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
+the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
+and the second is the relative inner tolerance for Gauss-Seidel iterations
+for CMFD calculations. It is only used in the standalone CMFD power iteration
+solver and not when PETSc is active.
 
-  *Default*: true
-
-``<inactive_flush>`` Element
-----------------------------
-
-The ``<inactive_flush>`` element controls when CMFD tallies are reset during
-inactive batches. The integer set here is the interval at which this reset
-occurs. The amout of resets is controlled with the ``<num_flushes>`` element.
-
-  *Defualt*: 9999
+  *Default*: 1.e-10 1.e-5
 
 ``<ksp_monitor>`` Element
 -------------------------
@@ -1370,8 +1409,15 @@ The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES
 iterations in PETSc. This option can be turned on with "true" and turned off
 with "false".
 
-
   *Default*: false
+
+``<ktol>`` Element
+--------------------
+
+The ``<ktol>`` element specifies the tolerance on the eigenvalue when performing
+CMFD power iteration.
+
+  *Default*: 1.e-8
 
 ``<mesh>`` Element
 ------------------
@@ -1441,14 +1487,6 @@ not impact the calculation.
 
   *Default*: 1.0
 
-``<num_flushes>`` Element
--------------------------
-
-The ``<num_flushes>`` element controls the number of CMFD tally resets that
-occur during inactive CMFD batches.
-
-  *Default*: 9999
-
 ``<power_monitor>`` Element
 ---------------------------
 
@@ -1461,16 +1499,8 @@ This option can be turned on with "true" and turned off with "false".
 -------------------------
 
 The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
-calculation be performed on the last batch when CMFD is active.
-
-  *Default*: false
-
-``<snes_monitor>`` Element
---------------------------
-
-The ``<snes_monitor>`` element is used to view the convergence of the nonlinear SNES
-function in PETSc. This option can be turned on with "true" and turned off with "false".
-
+calculation be performed on the last batch when CMFD is active. OpenMC should be
+compiled with PETSc when using this option.
 
   *Default*: false
 
@@ -1482,6 +1512,41 @@ standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
 By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
 
   *Default*: power
+
+``<shift>`` Element
+--------------------
+
+The ``<shfit>`` element specifies an optional Wielandt shift parameter for
+accelerating power iterations. It can only be used when PETSc is not active.
+It is by default very large so the impact of the shift is effectively zero.
+
+  *Default*: 1e6
+
+``<spectral>`` Element
+----------------------
+
+The ``<spectral>`` element specifies an optional spectral radius that can be set to
+accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
+solve. Note this is only used in the standalone CMFD solver and does not affect
+the calculation when PETSc is active.
+
+  *Default*: power
+
+``<stol>`` Element
+------------------
+
+The ``<stol>`` element specifies the tolerance on the fission source when performing
+CMFD power iteration.
+
+  *Default*: 1.e-8
+
+``<tally_reset>`` Element
+-------------------------
+
+The ``<tally_reset>`` element contains a list of batch numbers in which CMFD tallies
+should be reset.
+
+  *Default*: None
 
 ``<write_matrices>`` Element
 ----------------------------

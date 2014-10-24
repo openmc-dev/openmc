@@ -1,7 +1,6 @@
 module solver_interface
 
   use error,          only: fatal_error
-  use global,         only: message
   use matrix_header,  only: Matrix
   use vector_header,  only: Vector
 

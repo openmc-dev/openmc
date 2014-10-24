@@ -26,7 +26,7 @@ module state_point
 
   implicit none
 
-  type(BinaryOutput) :: sp ! statepoint/source output file
+  type(BinaryOutput)        :: sp      ! Statepoint/source output file
 
 contains
 
@@ -54,8 +54,7 @@ contains
 #endif
 
     ! Write message
-    message = "Creating state point " // trim(filename) // "..."
-    call write_message(1)
+    call write_message("Creating state point " // trim(filename) // "...", 1)
 
     if (master) then
       ! Create statepoint file
@@ -314,8 +313,8 @@ contains
 #endif
 
         ! Write message for new file creation
-        message = "Creating source file " // trim(filename) // "..."
-        call write_message(1)
+        call write_message("Creating source file " // trim(filename) // "...", &
+             &1)
 
         ! Create separate source file
         call sp % file_create(filename, serial = .false.)
@@ -359,8 +358,7 @@ contains
 #endif
 
       ! Write message for new file creation
-      message = "Creating source file " // trim(filename) // "..."
-      call write_message(1)
+      call write_message("Creating source file " // trim(filename) // "...", 1)
 
       ! Always create this file because it will be overwritten
       call sp % file_create(filename, serial = .false.)
@@ -530,8 +528,8 @@ contains
     type(TallyObject), pointer :: t => null()
 
     ! Write message
-    message = "Loading state point " // trim(path_state_point) // "..."
-    call write_message(1)
+    call write_message("Loading state point " // trim(path_state_point) &
+         &// "...", 1)
 
     ! Open file for reading
     call sp % file_open(path_state_point, 'r', serial = .false.)
@@ -543,9 +541,8 @@ contains
     ! current version
     call sp % read_data(int_array(1), "revision")
     if (int_array(1) /= REVISION_STATEPOINT) then
-      message = "State point version does not match current version " &
-                // "in OpenMC."
-      call fatal_error()
+      call fatal_error("State point version does not match current version &
+           &in OpenMC.")
     end if
 
     ! Read OpenMC version
@@ -554,9 +551,8 @@ contains
     call sp % read_data(int_array(3), "version_release")
     if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
         .or. int_array(3) /= VERSION_RELEASE) then
-      message = "State point file was created with a different version " &
-                // "of OpenMC."
-      call warning()
+      if (master) call warning("State point file was created with a different &
+           &version of OpenMC.")
     end if
 
     ! Read date and time
@@ -668,8 +664,8 @@ contains
       ! Check size of tally results array
       if (int_array(1) /= t % total_score_bins .and. &
           int_array(2) /= t % total_filter_bins) then
-        message = "Input file tally structure is different from restart."
-        call fatal_error()
+        call fatal_error("Input file tally structure is different from &
+             &restart.")
       end if
 
       ! Read number of filters
@@ -742,8 +738,8 @@ contains
 
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then
-      message = "Source bank must be contained in statepoint restart file"
-      call fatal_error()
+      call fatal_error("Source bank must be contained in statepoint restart &
+           &file")
     end if
 
     ! Read tallies to master
@@ -755,8 +751,8 @@ contains
       ! Read number of global tallies
       call sp % read_data(int_array(1), "n_global_tallies", collect=.false.)
       if (int_array(1) /= N_GLOBAL_TALLIES) then
-        message = "Number of global tallies does not match in state point."
-        call fatal_error()
+        call fatal_error("Number of global tallies does not match in state &
+             &point.")
       end if
 
       ! Read global tally data
@@ -792,8 +788,8 @@ contains
         call sp % file_close()
 
         ! Write message
-        message = "Loading source file " // trim(path_source_point) // "..."
-        call write_message(1)
+        call write_message("Loading source file " // trim(path_source_point) &
+             &// "...", 1)
 
         ! Open source file
         call sp % file_open(path_source_point, 'r', serial = .false.)

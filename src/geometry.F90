@@ -135,7 +135,6 @@ contains
     integer :: i_xyz(3)                ! indices in lattice
     integer :: n                       ! number of cells to search
     integer :: index_cell              ! index in cells array
-    real(8) :: xyz(3)                  ! temporary location
     logical :: use_search_cells        ! use cells provided as argument
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     class(Lattice), pointer, save :: lat => null()  ! pointer to lattice
@@ -225,7 +224,7 @@ contains
 
         ! Determine lattice indices
         i_xyz = get_lat_indices(lat, &
-            &p % coord % xyz + TINY_BIT * p % coord % uvw, p % coord % uvw)
+             &p % coord % xyz + TINY_BIT * p % coord % uvw)
 
         ! Create new level of coordinates
         allocate(p % coord % next)
@@ -348,17 +347,15 @@ contains
 ! coordinates.
 !===============================================================================
 
-  function get_lat_indices(lat, xyz, uvw) result(i_xyz)
+  function get_lat_indices(lat, xyz) result(i_xyz)
     class(Lattice), intent(in) :: lat
-    real(8)       , intent(in) :: xyz(3)
-    real(8)       , intent(in) :: uvw(3)
+    real(8),        intent(in) :: xyz(3)
 
     integer :: i_xyz(3)
 
-    real(8) :: alpha, beta_dir
+    real(8) :: alpha
     real(8) :: xyz_t(3)
     real(8) :: dists(4)
-    integer :: n_rings
     integer :: i, j, k, loc(1)
 
     select type(lat)
@@ -811,9 +808,8 @@ contains
     integer :: i                 ! index for surface in cell
     integer :: index_surf        ! index in surfaces array (with sign)
     real(8) :: x,y,z             ! particle coordinates
-    real(8) :: alpha, beta, gama ! skewed particle coordiantes
+    real(8) :: beta, gama        ! skewed particle coordiantes
     real(8) :: u,v,w             ! particle directions
-    real(8) :: alpha_dir         ! skewed particle direction
     real(8) :: beta_dir          ! skewed particle direction
     real(8) :: gama_dir          ! skewed particle direction
     real(8) :: edge              ! distance to oncoming edge

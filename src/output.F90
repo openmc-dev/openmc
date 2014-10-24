@@ -194,8 +194,9 @@ contains
 ! standard output stream.
 !===============================================================================
 
-  subroutine write_message(level)
+  subroutine write_message(message, level)
 
+    character(*) :: message
     integer, optional :: level ! verbosity level
 
     integer :: i_start    ! starting position
@@ -1601,8 +1602,8 @@ contains
       write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
            global_tallies(LEAKAGE) % sum_sq
     else
-      message = "Could not compute uncertainties -- only one active batch simulated!"
-      call warning()
+      if (master) call warning("Could not compute uncertainties -- only one &
+           &active batch simulated!")
 
       write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
       write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum

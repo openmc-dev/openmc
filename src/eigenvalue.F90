@@ -26,8 +26,9 @@ module eigenvalue
   private
   public :: run_eigenvalue
 
-  real(8) :: keff_generation ! Single-generation k on each processor
-  real(8) :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
+  real(8)                   :: keff_generation ! Single-generation k on each
+                                               ! processor
+  real(8)                   :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
 
 contains
 
@@ -114,8 +115,8 @@ contains
 
   subroutine initialize_batch()
 
-    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-    call write_message(8)
+    call write_message("Simulating batch " // trim(to_str(current_batch)) &
+         &// "...", 8)
 
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
@@ -301,8 +302,7 @@ contains
     ! runs enough particles to avoid this in the first place.
 
     if (n_bank == 0) then
-      message = "No fission sites banked on processor " // to_str(rank)
-      call fatal_error()
+      call fatal_error("No fission sites banked on processor " // to_str(rank))
     end if
 
     ! Make sure all processors start at the same point for random sampling. Then
@@ -536,11 +536,11 @@ contains
         m % n_dimension = 3
         allocate(m % dimension(3))
         m % dimension = n
+        
+        ! determine width
+        m % width = (m % upper_right - m % lower_left) / m % dimension
+        
       end if
-
-      ! allocate and determine width
-      allocate(m % width(3))
-      m % width = (m % upper_right - m % lower_left) / m % dimension
 
       ! allocate p
       allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
@@ -553,8 +553,7 @@ contains
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
-      message = "Fission source site(s) outside of entropy box."
-      call warning()
+      if (master) call warning("Fission source site(s) outside of entropy box.")
     end if
 
     ! sum values to obtain shannon entropy
@@ -772,8 +771,7 @@ contains
 
       ! Check for sites outside of the mesh
       if (master .and. sites_outside) then
-        message = "Source sites outside of the UFS mesh!"
-        call fatal_error()
+        call fatal_error("Source sites outside of the UFS mesh!")
       end if
 
 #ifdef MPI
@@ -803,8 +801,7 @@ contains
 
     ! Write message at beginning
     if (current_batch == 1) then
-      message = "Replaying history from state point..."
-      call write_message(1)
+      call write_message("Replaying history from state point...", 1)
     end if
 
     do current_gen = 1, gen_per_batch
@@ -821,8 +818,7 @@ contains
 
     ! Write message at end
     if (current_batch == restart_batch) then
-      message = "Resuming simulation..."
-      call write_message(1)
+      call write_message("Resuming simulation...", 1)
     end if
 
   end subroutine replay_batch_history

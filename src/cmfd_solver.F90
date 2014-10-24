@@ -2,6 +2,7 @@ module cmfd_solver
 
 ! This module contains routines to execute the power iteration solver
 
+  use constants,          only: MAX_LINE_LEN
   use cmfd_loss_operator, only: init_loss_matrix, build_loss_matrix
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
@@ -11,25 +12,25 @@ module cmfd_solver
   private
   public :: cmfd_solver_execute
 
-  real(8) :: k_n                  ! new k-eigenvalue
-  real(8) :: k_o                  ! old k-eigenvalue
-  real(8) :: k_s                  ! shift of eigenvalue
-  real(8) :: k_ln                 ! new shifted eigenvalue
-  real(8) :: k_lo                 ! old shifted eigenvalue
-  real(8) :: norm_n               ! current norm of source vector
-  real(8) :: norm_o               ! old norm of source vector
-  real(8) :: kerr                 ! error in keff
-  real(8) :: serr                 ! error in source
-  real(8) :: ktol                 ! tolerance on keff
-  real(8) :: stol                 ! tolerance on source
-  logical :: adjoint_calc         ! run an adjoint calculation
-  type(Matrix) :: loss            ! cmfd loss matrix
-  type(Matrix) :: prod            ! cmfd prod matrix
-  type(Vector) :: phi_n           ! new flux vector
-  type(Vector) :: phi_o           ! old flux vector
-  type(Vector) :: s_n             ! new source vector
-  type(Vector) :: s_o             ! old flux vector
-  type(Vector) :: serr_v          ! error in source
+  real(8) :: k_n          ! New k-eigenvalue
+  real(8) :: k_o          ! Old k-eigenvalue
+  real(8) :: k_s          ! Shift of eigenvalue
+  real(8) :: k_ln         ! New shifted eigenvalue
+  real(8) :: k_lo         ! Old shifted eigenvalue
+  real(8) :: norm_n       ! Current norm of source vector
+  real(8) :: norm_o       ! Old norm of source vector
+  real(8) :: kerr         ! Error in keff
+  real(8) :: serr         ! Error in source
+  real(8) :: ktol         ! Tolerance on keff
+  real(8) :: stol         ! Tolerance on source
+  logical :: adjoint_calc ! Run an adjoint calculation
+  type(Matrix) :: loss    ! Cmfd loss matrix
+  type(Matrix) :: prod    ! Cmfd prod matrix
+  type(Vector) :: phi_n   ! New flux vector
+  type(Vector) :: phi_o   ! Old flux vector
+  type(Vector) :: s_n     ! New source vector
+  type(Vector) :: s_o     ! Old flux vector
+  type(Vector) :: serr_v  ! Error in source
 
   ! CMFD linear solver interface
   procedure(linsolve), pointer :: cmfd_linsolver => null()
@@ -100,7 +101,6 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use error,     only: fatal_error
     use global,    only: cmfd, cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
                          cmfd_write_matrices
 
@@ -180,8 +180,6 @@ contains
     use error,   only: fatal_error
 #ifdef PETSC
     use global,  only: cmfd_write_matrices
-#else
-    use global,  only: message
 #endif
 
 #ifdef PETSC
@@ -195,8 +193,7 @@ contains
       call prod % write_petsc_binary('adj_prodmat.bin')
     end if
 #else
-    message = 'Adjoint calculations only allowed with PETSc'
-    call fatal_error()
+    call fatal_error('Adjoint calculations only allowed with PETSc')
 #endif
 
   end subroutine compute_adjoint
@@ -210,7 +207,7 @@ contains
 
     use constants,  only: ONE
     use error,      only: fatal_error
-    use global,     only: cmfd_atoli, cmfd_rtoli, message
+    use global,     only: cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -237,8 +234,8 @@ contains
 
       ! Check if reached iteration 10000
       if (i == 10000) then
-        message = 'Reached maximum iterations in CMFD power iteration solver.'
-        call fatal_error()
+        call fatal_error('Reached maximum iterations in CMFD power iteration &
+             &solver.')
       end if
 
       ! Compute source vector
@@ -357,7 +354,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -401,8 +398,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector
@@ -464,7 +460,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -520,8 +516,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector
@@ -610,7 +605,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -653,8 +648,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector

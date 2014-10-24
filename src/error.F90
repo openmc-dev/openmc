@@ -1,6 +1,7 @@
 module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
+  use constants
 
   use global
 
@@ -17,33 +18,25 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(force, deprecation)
+  subroutine warning(message_in, deprecation)
 
-    logical, optional, intent(in) :: force ! force write from non-master proc
+    character(*)                  :: message_in  ! printed with the warning
     logical, optional, intent(in) :: deprecation ! is a depreciation warning
 
-    logical :: deprecation_ ! is a deprecation warning
-    integer :: i_start      ! starting position
-    integer :: i_end        ! ending position
-    integer :: line_wrap    ! length of line
-    integer :: length       ! length of message
-    integer :: indent       ! length of indentation
+    integer                   :: i_start      ! starting position
+    integer                   :: i_end        ! ending position
+    integer                   :: line_wrap    ! length of line
+    integer                   :: length       ! length of message
+    integer                   :: indent       ! length of indentation
+    character(:), allocatable :: message      ! input message with a prefix
 
-    ! Only allow master to print to screen
-    if (.not. master .and. .not. present(force)) return
-
-    ! Make a deprecation alias in case deprecation is not present.
+    ! Prefix the message
     if (.not. present(deprecation)) then
-      deprecation_ = .false.
+      message = 'WARNING: ' // message_in
+    else if (deprecation) then
+      message = 'DEPRECATION WARNING: ' // message_in
     else
-      deprecation_ = deprecation
-    end if
-
-    ! Write warning at beginning
-    if (deprecation_) then
-      message = 'DEPRECATION WARNING: ' // message
-    else
-      message = 'WARNING: ' // message
+      message = 'WARNING: ' // message_in
     end if
 
     ! Set line wrapping and indentation
@@ -83,6 +76,8 @@ contains
       end if
     end do
 
+    deallocate(message)
+
   end subroutine warning
 
 !===============================================================================
@@ -91,8 +86,9 @@ contains
 ! the program is aborted.
 !===============================================================================
 
-  subroutine fatal_error(error_code)
+  subroutine fatal_error(message, error_code)
 
+    character(*) :: message
     integer, optional :: error_code ! error code
 
     integer :: code      ! error code

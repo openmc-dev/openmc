@@ -134,13 +134,11 @@ should be performed. It has the following attributes/sub-elements:
 -------------------------
 
 The ``<energy_grid>`` element determines the treatment of the energy grid during
-a simulation. The valid options are "nuclide", "union", and "logarithm". Setting
-this element to "nuclide" will cause OpenMC to use a nuclide's energy grid when
+a simulation. The valid options are "nuclide" and "logarithm". Setting this
+element to "nuclide" will cause OpenMC to use a nuclide's energy grid when
 determining what points to interpolate between for determining cross sections
-(i.e. non-unionized energy grid). Setting this element to "union" results in a
-unionized energy grid with pointers to nuclide grids. Setting this element to
-"logarithm" causes OpenMC to use a logarithmic mapping technique described in
-LA-UR-14-24530_.
+(i.e. non-unionized energy grid). Setting this element to "logarithm" causes
+OpenMC to use a logarithmic mapping technique described in LA-UR-14-24530_.
 
   *Default*: logarithm
 

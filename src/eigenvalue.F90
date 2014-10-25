@@ -23,6 +23,7 @@ module eigenvalue
                           reset_result
   use tracking,     only: transport
 
+  implicit none
   private
   public :: run_eigenvalue
 

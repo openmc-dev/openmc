@@ -3,6 +3,8 @@ module search
   use error,     only: fatal_error
   use global,    only: message
 
+  implicit none
+
   integer, parameter :: MAX_ITERATION = 64
 
   interface binary_search

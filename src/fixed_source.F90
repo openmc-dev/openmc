@@ -11,6 +11,8 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
+  implicit none
+
 contains
 
   subroutine run_fixedsource()

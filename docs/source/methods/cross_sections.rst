@@ -47,45 +47,30 @@ there would be for burnup calculations. Thus, there is a strong motive to
 implement a method of reducing the number of energy grid searches in order to
 speed up the calculation.
 
-Unionized Energy Grid
----------------------
+-------------------
+Logarithmic Mapping
+-------------------
 
-The most naïve method to reduce the number of energy grid searches is to
-construct a new energy grid that consists of the union of the energy points of
-each nuclide and use this energy grid for all nuclides. This method is
-computationally very efficient as it only requires one energy grid search at
-each collision as well as one interpolation between cross section values since
-the interpolation factor can be used for all nuclides. However, it requires
-redundant storage of cross section values at points which were added to each
-nuclide grid. This additional burden on memory storage can become quite
-prohibitive. To lessen that burden, the unionized energy grid can be thinned
-with cross sections reconstructed on the thinned energy grid. This method is
-currently used by default in the Serpent Monte Carlo code.
+To speed up energy grid searches, OpenMC uses logarithmic mapping technique
+[Brown]_ to limit the range of energies that must be searched for each
+nuclide. The entire energy range is divided up into equal-lethargy segments, and
+the bounding energies of each segment are mapped to bounding indices on each of
+the nuclide energy grids. By default, OpenMC uses 8000 equal-lethargy segments
+as recommended by Brown.
 
-Unionized Energy Grid with Nuclide Pointers
--------------------------------------------
+-------------
+Other Methods
+-------------
 
-While having a unionized grid that is used for all nuclides allows for very fast
-lookup of cross sections, the burden on memory is in many circumstances
-unacceptable. The OpenMC Monte Carlo code utilizes a method that allows for a
-single energy grid search to be performed at every collision while avoiding the
-redundant storage of cross section values. Instead of using the unionized grid
-for every nuclide, the original energy grid of each nuclide is kept and a list
-of pointers (of the same length as the unionized energy grid) is constructed for
-each nuclide that gives the corresponding grid index on the nuclide grid for a
-given grid index on the unionized grid. One must still interpolate on cross
-section values for each nuclide since the interpolation factors will generally
-be different. The figure below illustrates this method. All values within the
-dashed box would need to be stored on a per-nuclide basis, and the union grid
-would need to be stored once. This method is also referred to as *double
-indexing* and is available as an option in Serpent (see paper by Leppanen_).
+A good survey of other energy grid techniques, including unionized energy grids,
+can be found in a paper by Leppanen_.
 
-.. figure:: ../_images/uniongrid.*
-    :width: 600px
-    :align: center
-    :figclass: align-center
+----------
+References
+----------
 
-    Mapping of union energy grid to nuclide energy grid through pointers.
+.. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
+           Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).
 
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi

@@ -47,7 +47,6 @@ there would be for burnup calculations. Thus, there is a strong motive to
 implement a method of reducing the number of energy grid searches in order to
 speed up the calculation.
 
--------------------
 Logarithmic Mapping
 -------------------
 
@@ -58,7 +57,6 @@ the bounding energies of each segment are mapped to bounding indices on each of
 the nuclide energy grids. By default, OpenMC uses 8000 equal-lethargy segments
 as recommended by Brown.
 
--------------
 Other Methods
 -------------
 

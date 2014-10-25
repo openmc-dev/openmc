@@ -15,13 +15,13 @@ module ace
 
   implicit none
 
-  integer :: NXS(16)             ! Descriptors for ACE XSS tables
-  integer :: JXS(32)             ! Pointers into ACE XSS tables
-  real(8), allocatable :: XSS(:) ! Cross section data
-  integer :: XSS_index           ! current index in XSS data
+  integer                   :: JXS(32)   ! Pointers into ACE XSS tables
+  integer                   :: NXS(16)   ! Descriptors for ACE XSS tables
+  real(8), allocatable      :: XSS(:)    ! Cross section data
+  integer                   :: XSS_index ! Current index in XSS data
 
-  private :: NXS
   private :: JXS
+  private :: NXS
   private :: XSS
 
 contains
@@ -151,9 +151,9 @@ contains
 
         ! Check to make sure S(a,b) table matched a nuclide
         if (mat % i_sab_nuclides(k) == NONE) then
-          message = "S(a,b) table " // trim(mat % sab_names(k)) // " did not &
-               &match any nuclide on material " // trim(to_str(mat % id))
-          call fatal_error()
+          call fatal_error("S(a,b) table " // trim(mat % sab_names(k)) &
+               &// " did not match any nuclide on material " &
+               &// trim(to_str(mat % id)))
         end if
       end do ASSIGN_SAB
 
@@ -264,17 +264,14 @@ contains
     ! Check if ACE library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-      message = "ACE library '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error("ACE library '" // trim(filename) // "' does not exist!")
     elseif (readable(1:3) == 'NO') then
-      message = "ACE library '" // trim(filename) // "' is not readable! &
-           &Change file permissions with chmod command."
-      call fatal_error()
+      call fatal_error("ACE library '" // trim(filename) // "' is not readable!&
+           & Change file permissions with chmod command.")
     end if
 
     ! display message
-    message = "Loading ACE cross section table: " // listing % name
-    call write_message(6)
+    call write_message("Loading ACE cross section table: " // listing % name, 6)
 
     if (filetype == ASCII) then
       ! =======================================================================
@@ -293,9 +290,8 @@ contains
       ! Check that correct xs was found -- if cross_sections.xml is broken, the
       ! location of the table may be wrong
       if(adjustl(name) /= adjustl(listing % name)) then
-        message = "XS listing entry " // trim(listing % name) // " did not &
-             &match ACE data, " // trim(name) // " found instead."
-        call fatal_error()
+        call fatal_error("XS listing entry " // trim(listing % name) // " did &
+             &not match ACE data, " // trim(name) // " found instead.")
       end if
 
       ! Read more header and NXS and JXS
@@ -377,8 +373,8 @@ contains
       ! if any fissionable material is found in a fixed source calculation,
       ! abort the run.
       if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
-        message = "Cannot have fissionable material in a fixed source run."
-        call fatal_error()
+        call fatal_error("Cannot have fissionable material in a fixed source &
+             &run.")
       end if
 
       ! for fissionable nuclides, precalculate microscopic nu-fission cross
@@ -1315,9 +1311,8 @@ contains
 
       ! Abort if no corresponding inelastic reaction was found
       if (nuc % urr_inelastic == NONE) then
-        message = "Could not find inelastic reaction specified on " &
-             // "unresolved resonance probability table."
-        call fatal_error()
+        call fatal_error("Could not find inelastic reaction specified on &
+             &unresolved resonance probability table.")
       end if
     end if
 
@@ -1343,9 +1338,8 @@ contains
 
     ! Check for negative values
     if (any(nuc % urr_data % prob < ZERO)) then
-      message = "Negative value(s) found on probability table for nuclide " &
-           // nuc % name
-      call warning()
+      if (master) call warning("Negative value(s) found on probability table &
+           &for nuclide " // nuc % name)
     end if
 
   end subroutine read_unr_res

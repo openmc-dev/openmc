@@ -3,6 +3,8 @@ module energy_grid
   use constants, only: N_LOG_BINS
   use global
 
+  implicit none
+
 contains
 
 !===============================================================================

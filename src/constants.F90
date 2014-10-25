@@ -11,7 +11,7 @@ module constants
   integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 12
+  integer, parameter :: REVISION_STATEPOINT       = 13
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types

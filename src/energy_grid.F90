@@ -5,6 +5,8 @@ module energy_grid
   use list_header,      only: ListReal
   use output,           only: write_message
 
+  implicit none
+
 contains
 
 !===============================================================================

@@ -84,7 +84,6 @@ contains
       ! Write run information
       call sp % write_data(run_mode, "run_mode")
       call sp % write_data(n_particles, "n_particles")
-      call sp % write_data(n_batches, "n_batches")
 
       ! Write out current batch number
       call sp % write_data(current_batch, "current_batch")
@@ -307,7 +306,7 @@ contains
         ! Set filename
         filename = trim(path_output) // 'source.' // &
             & zero_padded(current_batch, count_digits(n_batches))
- 
+
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -572,13 +571,14 @@ contains
     ! Read and overwrite run information except number of batches
     call sp % read_data(run_mode, "run_mode")
     call sp % read_data(n_particles, "n_particles")
-    call sp % read_data(int_array(1), "n_batches")
-
-    ! Take maximum of statepoint n_batches and input n_batches
-    n_batches = max(n_batches, int_array(1))
 
     ! Read batch number to restart at
     call sp % read_data(restart_batch, "current_batch")
+
+    if (restart_batch > n_batches) then
+      call fatal_error("The number batches specified in settings.xml is fewer &
+           & than the number of batches in the given statepoint file.")
+    end if
 
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then

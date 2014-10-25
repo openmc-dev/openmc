@@ -554,7 +554,7 @@ def get_openmc_cell(opencsg_cell):
     openmc_cell = openmc.Cell(cell_id, name)
 
     fill = opencsg_cell._fill
-    rot = opencsg_cell._rot
+    rot = opencsg_cell._rotation
 
     if (opencsg_cell._type == 'universe'):
         openmc_cell.setFill(get_openmc_universe(fill))

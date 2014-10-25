@@ -4,8 +4,9 @@
 State Point Binary File Specifications
 ======================================
 
-=======
+-----------
 Revision 13
+-----------
 
 **integer(4) FILETYPE_STATEPOINT**
 
@@ -297,7 +298,6 @@ Same as revision 11, except **tallies(i) % scatt_order(j)** is now **tallies(i)
 % moment_order(j)**.
 
 -----------
->>>>>>> upstream/develop
 Revision 11
 -----------
 

@@ -6,7 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
-REVISION_STATEPOINT = 12
+REVISION_STATEPOINT = 13
 
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
@@ -182,7 +182,6 @@ class StatePoint(object):
         # Read run information
         self.run_mode = self._get_int(path='run_mode')[0]
         self.n_particles = self._get_long(path='n_particles')[0]
-        self.n_batches = self._get_int(path='n_batches')[0]
 
         # Read current batch
         self.current_batch = self._get_int(path='current_batch')[0]

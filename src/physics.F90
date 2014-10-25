@@ -797,7 +797,7 @@ contains
         sampling_scheme = 'cxs'
       end if
 
-    ! otherwise, use free gas model  
+    ! otherwise, use free gas model
     else
       if (E >= FREE_GAS_THRESHOLD * kT .and. awr > ONE) then
         v_target = ZERO
@@ -859,7 +859,7 @@ contains
       m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
-      
+
       ! get max 0K xs value over range of practical relative energies
       xs_max = max(xs_low, &
         & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
@@ -972,7 +972,7 @@ contains
     case default
       call fatal_error("Not a recognized resonance scattering treatment!")
     end select
-    
+
   end subroutine sample_target_velocity
 
 !===============================================================================
@@ -1835,14 +1835,15 @@ contains
       lc = 2 + 2*NR + 2*NE
       U = edist % data(lc + 1)
 
+      y = (E_in - U)/T
+      v = 1 - exp(-y)
+
       ! sample outgoing energy based on evaporation spectrum probability
       ! density function
       n_sample = 0
       do
-        r1 = prn()
-        r2 = prn()
-        E_out = -T * log(r1*r2)
-        if (E_out <= E_in - U) exit
+        x = -log((1 - v*prn())*(1 - v*prn()))
+        if (x <= y) exit
 
         ! check for large number of rejections
         n_sample = n_sample + 1
@@ -1851,6 +1852,8 @@ contains
           call fatal_error("Too many rejections on evaporation spectrum.")
         end if
       end do
+
+      E_out = x*T
 
     case (11)
       ! =======================================================================

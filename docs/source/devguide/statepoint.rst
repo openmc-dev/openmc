@@ -511,13 +511,13 @@ if (run_mode == MODE_EIGENVALUE)
         **integer(4) tallies(i) % score_bins(j)**
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
-            
+
     *do j = 1, tallies(i) % n_score_bins*
 
         **integer(4) tallies(i) % scatt_order(j)**
 
             Scattering Order specified scoring bins.
-            
+
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
@@ -558,7 +558,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -588,7 +588,7 @@ if (run_mode == MODE_EIGENVALUE and source_present)
             Energy of the i-th source particle.
 
 -----------
-Revision 10 
+Revision 10
 -----------
 
 **integer(4) FILETYPE_STATEPOINT**
@@ -801,13 +801,13 @@ if (run_mode == MODE_EIGENVALUE)
         **integer(4) tallies(i) % score_bins(j)**
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
-            
+
     *do j = 1, tallies(i) % n_score_bins*
 
         **integer(4) tallies(i) % scatt_order(j)**
 
             Scattering Order specified scoring bins.
-            
+
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
@@ -844,7 +844,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -1053,13 +1053,13 @@ if (run_mode == MODE_EIGENVALUE)
         **integer(4) tallies(i) % score_bins(j)**
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
-            
+
     *do j = 1, tallies(i) % n_score_bins*
 
         **integer(4) tallies(i) % scatt_order(j)**
 
             Scattering Order specified scoring bins.
-            
+
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
@@ -1096,7 +1096,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -1301,13 +1301,13 @@ if (run_mode == MODE_EIGENVALUE)
         **integer(4) tallies(i) % score_bins(j)**
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
-            
+
     *do j = 1, tallies(i) % n_score_bins*
 
         **integer(4) tallies(i) % scatt_order(j)**
 
             Scattering Order specified scoring bins.
-            
+
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
@@ -1344,7 +1344,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -1533,13 +1533,13 @@ if (run_mode == MODE_EIGENVALUE)
         **integer(4) tallies(i) % score_bins(j)**
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
-            
+
     *do j = 1, tallies(i) % n_score_bins*
 
         **integer(4) tallies(i) % scatt_order(j)**
 
             Scattering Order specified scoring bins.
-            
+
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
@@ -1576,7 +1576,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -1797,7 +1797,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -2006,7 +2006,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -2211,7 +2211,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -2412,7 +2412,7 @@ if (tallies_on > 0)
             *do j = 1, size(tallies(i) % scores, 1)*
 
                 **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                     Accumulated sum for the j-th score and k-th filter of the
                     i-th tally
 
@@ -2533,7 +2533,7 @@ Revision 2
         *do j = 1, size(tallies(i) % scores, 1)*
 
             **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                 Accumulated sum for the j-th score and k-th filter of the i-th
                 tally
 
@@ -2632,7 +2632,7 @@ Revision 1
         *do j = 1, size(tallies(i) % scores, 1)*
 
             **real(8) tallies(i) % scores(j,k) % sum**
-            
+
                 Accumulated sum for the j-th score and k-th filter of the i-th
                 tally
 

@@ -1092,10 +1092,10 @@ The ``<tally>`` element accepts the following sub-elements:
       all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
 
     :total-YN:
-      Spherical harmonic expansion of the incoming particle's direction of
-      motion :math:`\left(\Omega\right)` of the total flux.  This score will
-      tally all of the harmonic moments of order 0 to N.  N must be between 0
-      and 10.
+      The total reaction rate expanded via spherical harmonics about the
+      direction of motion of the neutron, :math:`\Omega`.
+      This score will tally all of the harmonic moments of order 0 to N.  N must
+      be between 0 and 10.
 
     :current:
       Partial currents on the boundaries of each cell in a mesh.
@@ -1229,7 +1229,7 @@ sub-elements:
 attribute or sub-element:
 
   :pixels:
-    Specifies the number of pixes or voxels to be used along each of the basis
+    Specifies the number of pixels or voxels to be used along each of the basis
     directions for "slice" and "voxel" plots, respectively. Should be two or
     three integers separated by spaces.
 
@@ -1321,11 +1321,11 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       boundaries. Specifying this as 0 indicates that lines will be 1 pixel
       thick, specifying 1 indicates 3 pixels thick, specifying 2 indicates
       5 pixels thick, etc.
-    
+
     :color:
       Specifies the custom color for the meshlines boundaries. Should be 3
       integers separated by whitespace.  This element is optional.
-    
+
       *Default*: 0 0 0 (black)
 
     *Default*: None

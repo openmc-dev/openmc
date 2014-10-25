@@ -5,6 +5,7 @@ module cmfd_data
 ! parameters for CMFD calculation.
 !==============================================================================
 
+  use constants
 
   implicit none
   private
@@ -53,7 +54,7 @@ contains
                             OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO,     &
                             ONE, TINY_BIT
     use error,        only: fatal_error
-    use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes,&
+    use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
@@ -159,10 +160,9 @@ contains
 
                 ! Detect zero flux, abort if located
                 if ((flux - ZERO) < TINY_BIT) then
-                  message = 'Detected zero flux without coremap overlay at: (' &
-                          // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
-                          // ') in group ' // to_str(h)
-                  call fatal_error()
+                  call fatal_error('Detected zero flux without coremap overlay &
+                       &at: (' // to_str(i) // ',' // to_str(j) // ',' // &
+                       &to_str(k) // ') in group ' // to_str(h))
                 end if
 
                 ! Get total rr and convert to total xs
@@ -626,7 +626,7 @@ contains
   subroutine compute_dhat()
 
     use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap, message, dhat_reset
+    use global,     only: cmfd, cmfd_coremap, dhat_reset
     use output,     only: write_message
     use string,     only: to_str
 
@@ -764,8 +764,7 @@ contains
 
     ! write that dhats are zero
     if (dhat_reset) then
-      message = 'Dhats reset to zero.'
-      call write_message(1)
+      call write_message('Dhats reset to zero.', 1)
     end if
 
   end subroutine compute_dhat

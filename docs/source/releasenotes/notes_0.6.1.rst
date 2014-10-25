@@ -17,7 +17,7 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
-- Coarse mesh finite difference acceleration no longer requires PETSc
+- Coarse mesh finite difference (CMFD) acceleration no longer requires PETSc
 - Statepoint file numbering is now zero-padded
 - Python scripts now compatible with Python 2 or 3
 - Ability to run particle restarts in fixed source calculations
@@ -38,6 +38,7 @@ Bug Fixes
 - 01178b_: Fix metastables nuclides in NNDC cross_sections.xml file
 - 62ec43_: Don't read tallies.xml when OpenMC is run in plotting mode
 - 2a95ef_: Prevent segmentation fault on "current" score without mesh filter
+- 93e482_: Check for negative values in probability tables
 
 .. _03e890: https://github.com/mit-crpg/openmc/commit/03e890
 .. _4439de: https://github.com/mit-crpg/openmc/commit/4439de
@@ -48,6 +49,7 @@ Bug Fixes
 .. _01178b: https://github.com/mit-crpg/openmc/commit/01178b
 .. _62ec43: https://github.com/mit-crpg/openmc/commit/62ec43
 .. _2a95ef: https://github.com/mit-crpg/openmc/commit/2a95ef
+.. _93e482: https://github.com/mit-crpg/openmc/commit/93e482
 
 ------------
 Contributors

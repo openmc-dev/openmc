@@ -305,7 +305,7 @@ contains
         ! Set filename
         filename = trim(path_output) // 'source.' // &
             & zero_padded(current_batch, count_digits(n_batches))
- 
+
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -572,9 +572,8 @@ contains
     call sp % read_data(restart_batch, "current_batch")
 
     if (restart_batch > n_batches) then
-      message = 'The number batches specified in settings.xml is fewer than' //&
-           & ' the number of batches in the given statepoint file.'
-      call fatal_error()
+      call fatal_error("The number batches specified in settings.xml is fewer &
+           & than the number of batches in the given statepoint file.")
     end if
 
     ! Read information specific to eigenvalue run

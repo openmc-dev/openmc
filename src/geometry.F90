@@ -196,14 +196,6 @@ contains
         elseif (c % type == CELL_FILL) then
           ! ====================================================================
           ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-        
-          ! Determine all offsets for this cell level
-          if (.not. allocated(p % coord % mapping)) then
-            allocate(p % coord % mapping(n_maps))
-          end if
-          do j = 1, n_maps
-            p % coord % mapping(j) = c % offset(j)
-          end do
 
           ! Create new level of coordinates
           allocate(p % coord % next)
@@ -213,6 +205,14 @@ contains
           ! Move particle to next level and set universe
           p % coord => p % coord % next
           p % coord % universe = c % fill
+
+          ! Determine all offsets for this cell level
+          if (.not. allocated(p % coord % mapping)) then
+            allocate(p % coord % mapping(n_maps))
+          end if
+          do j = 1, n_maps
+            p % coord % mapping(j) = c % offset(j)
+          end do
 
           ! Apply translation
           if (allocated(c % translation)) then
@@ -282,7 +282,7 @@ contains
               ! In this case the neutron is leaving the lattice, so we move it
               ! out, remove all lower coordinate levels and then search from
               ! universe 0.
-            
+
               p % coord => p % coord0
               call deallocate_coord(p % coord % next)
 
@@ -326,12 +326,23 @@ contains
             p % coord % next % uvw = p % coord % uvw
 
             ! set particle lattice indices
-            p % coord % next% lattice   = c % fill
-            p % coord % next% lattice_x = i_x
-            p % coord % next% lattice_y = i_y
-            p % coord % next% lattice_z = i_z
+            p % coord % next % lattice   = c % fill
+            p % coord % next % lattice_x = i_x
+            p % coord % next % lattice_y = i_y
+            p % coord % next % lattice_z = i_z
+
             if (.not. outside_lattice) then
+
               p % coord % next % universe = lat % universes(i_x,i_y,i_z)
+
+              ! Determine all offsets for this cell level
+              if (.not. allocated(p % coord % next % mapping)) then
+                allocate(p % coord % next % mapping(n_maps))
+              end if
+              do j = 1, n_maps
+                p % coord % next % mapping(j) = lat % offset(j,i_x,i_y,i_z)
+              end do
+
             else
 
               ! Set universe as the same for subsequent calls to find_cell
@@ -348,15 +359,6 @@ contains
           end if
 
           if (.not. outside_lattice) then
-
-            ! Determine all offsets for this cell level
-            if (.not. allocated(p % coord % mapping)) then
-              allocate(p % coord % mapping(n_maps))
-            end if
-            do j = 1, n_maps
-              p % coord % mapping(j) = lat % offset(j,i_x,i_y,i_z)
-            end do
-
             call find_cell(p, found)
             if (.not. found) exit
           end if
@@ -1696,7 +1698,7 @@ contains
               if (univ_next % id == goal) then
                 tempoffset = tempoffset + 1
               end if   
-              
+
               tempoffset = tempoffset + count_target_univ(univ_next,goal)
               
               c => cells(index_cell)
@@ -1940,6 +1942,9 @@ contains
       c => cells(index_cell)
       if (cell_dict % get_key(c % id) == goal) then
         kount = kount + 1
+        ! Cell can't exist more than once in this universe,
+        ! or in a universe below this
+        cycle
       end if
       if (c % type == CELL_NORMAL) then
         ! ====================================================================
@@ -1972,13 +1977,11 @@ contains
         ! Loop over lattice coordinates
         do i_x = 1, n_x
           do i_y = 1, n_y
-            do i_z = 1, n_z            
-              
+            do i_z = 1, n_z
               univ_next => universes(lat % universes(i_x,i_y,i_z))
               call count_instance(univ_next,goal,kount)
               c => cells(index_cell)
               lat => lattices(c % fill)
-              
             end do
           end do
         end do

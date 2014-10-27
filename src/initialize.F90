@@ -1076,6 +1076,9 @@ contains
 
   ! Calculate the numbers to be stored for all maps except the special end one  
   do i = 1, n_maps - 1
+    ! This step must be done for each map for each universe
+    ! because the maps are summed as you progress down through the tree.
+    ! calc_offsets only sets values for the universe specified by 'univ'
     do j = 1, n_universes  
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
@@ -1312,8 +1315,11 @@ end subroutine prepare_distribution
       if (lat % n_dimension == 3) then
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), &
                  & lat % dimension(3)))
+        allocate(lat % kount(maps, lat % dimension(1), lat % dimension(2), &
+                 & lat % dimension(3)))
       else
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), 1))
+        allocate(lat % kount(maps, lat % dimension(1), lat % dimension(2), 1))
       end if
 
     end do
@@ -1323,6 +1329,7 @@ end subroutine prepare_distribution
       c => cells(i)
       if (c % material == NONE) then
         allocate(c % offset(maps))
+        allocate(c % kount(maps))
       end if
 
     end do
@@ -1373,7 +1380,7 @@ end subroutine prepare_distribution
           density = mat % density % density(1)
           deallocate(mat % density % density)
           allocate(mat % density % density(c % instances))
-          do j = 1, c % instances          
+          do j = 1, c % instances
             mat % density % density(j) = density          
           end do          
           mat % density % num = c % instances
@@ -1390,7 +1397,7 @@ end subroutine prepare_distribution
         deallocate(mat % comp(1) % atom_density)
         deallocate(mat % comp)
         allocate(mat % comp(c % instances))
-        do j = 1, c % instances          
+        do j = 1, c % instances
           allocate(mat % comp(j) % atom_density(mat % n_nuclides))
           mat % comp(j) % atom_density = atom_density          
         end do

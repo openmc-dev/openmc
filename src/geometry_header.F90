@@ -31,6 +31,7 @@ module geometry_header
      real(8), allocatable :: width(:)            ! width of each lattice cell
      integer, allocatable :: universes(:,:,:)    ! specified universes
      integer, allocatable :: offset(:,:,:,:)     ! offsets
+     integer, allocatable :: kount(:,:,:,:)     ! offsets
      integer              :: outside             ! material to fill area outside
   end type Lattice
 
@@ -63,7 +64,9 @@ module geometry_header
      integer :: material      ! Material within cell (0 for universe)
      integer :: n_surfaces    ! Number of surfaces within
      integer, allocatable :: &
-          & offset (:)        ! Offset for tally counter
+          & offset (:)        ! Offset for distribution
+     integer, allocatable :: &
+          & kount (:)         ! Count for tally counter
      integer, allocatable :: & 
           & surfaces(:)       ! List of surfaces bounding cell -- note that
                               ! parentheses, union, etc operators will be listed

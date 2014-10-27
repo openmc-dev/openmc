@@ -183,6 +183,7 @@ contains
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
       write(OUTPUT_UNIT,*) '  -s, --threads          Number of OpenMP threads'
       write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
+      write(OUTPUT_UNIT,*) '  -d, --distribution     Show distribution help'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -h, --help             Show this message'
     end if
@@ -2248,20 +2249,22 @@ contains
             temp_offset = c % offset(map)
           else
             lat => lattices(c % fill)            
-            ! Get the offset of the first lattice location
+            ! Get the offset of the last lattice location
             temp_offset = lat % offset(map,1,1,1)
           end if   
           ! If the final offset is in the range of offset - temp_offset+offset
-          ! then the goal is in this cell         
+          ! then the goal is in this cell
           if (final < temp_offset + offset) then
             this_cell = .true.
           end if  
         end if
       end if
-      if (n == 1 .and. c % type /= 1) then
+      if (n == 1 .and. c % type /= CELL_NORMAL) then
         this_cell = .true.
       end if
-      if (.not. later_cell) this_cell = .true.
+      if (.not. later_cell) then
+        this_cell = .true.
+      end if
       if (this_cell) then
         ! get pointer to THIS cell because we
         ! know that the target is in this cell

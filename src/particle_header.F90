@@ -84,7 +84,7 @@ module particle_header
     logical    :: write_track = .false.
     
     ! Distributed Mapping Info
-    integer, allocatable :: mapping(:)  ! records the current value in all maps
+    integer, allocatable :: mapping(:)  ! records the current sum of all maps
     integer              :: inst        ! records the current material instance
     integer              :: last_inst   ! records the previous material instance
 
@@ -171,7 +171,8 @@ contains
   end subroutine clear_particle  
  
 !===============================================================================
-! SUM_MAPS
+! SUM_MAPS Sums up the offsets for all levels to determine the instance
+! of the current material
 !===============================================================================
 
   subroutine sum_maps(this, n_maps)

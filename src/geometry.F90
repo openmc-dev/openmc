@@ -1647,7 +1647,7 @@ contains
 
     n = univ % n_cells
     tempoffset = 0
-    
+
     do i = 1, n
       
       index_cell = univ % cells(i)
@@ -1667,8 +1667,8 @@ contains
         c % offset(map) = tempoffset
         univ_next => universes(c % fill)
         ! Count contents of this cell
-        tempoffset = tempoffset + count_target(univ_next,goal)
-        
+
+        tempoffset = tempoffset + count_target(univ_next, goal, map)
         ! Move into the next universe
         univ_next => universes(c % fill)
         c => cells(index_cell)
@@ -1696,12 +1696,8 @@ contains
               lat % offset(map,i_x,i_y,i_z) = tempoffset
               
               univ_next => universes(lat % universes(i_x,i_y,i_z))
-              if (univ_next % id == goal) then
-                tempoffset = tempoffset + 1
-              end if   
 
-!              if (
-              tempoffset = tempoffset + count_target(univ_next,goal)
+              tempoffset = tempoffset + count_target(univ_next, goal, map)
               
               c => cells(index_cell)
               lat => lattices(c % fill)
@@ -1722,11 +1718,12 @@ contains
 ! universe ID beginning with the universe given.
 !===============================================================================
 
-  recursive function count_target(univ, goal) result(kount)
+  recursive function count_target(univ, goal, map) result(kount)
 
-    type(Universe), intent(in) :: univ  ! universe to search through
+    type(Universe), intent(inout) :: univ  ! universe to search through
     integer, intent(in) :: goal         ! target universe ID
     integer             :: kount        ! number of times target located
+    integer             :: map          ! current map
 
     integer :: i                        ! index over cells
     integer :: i_x, i_y, i_z            ! indices in lattice
@@ -1738,11 +1735,26 @@ contains
     type(Universe), pointer, save :: univ_next => null() ! next univ to loop through
 !$omp threadprivate(c, lat, univ_next)
 
+    ! Don't research places already checked
+    if (univ % search(map)) then
+      kount = univ % kount(map)
+      return
+    end if
+
+    ! If this is the target, it can't contain itself.
+    ! Kount = 1, then quit
+    if (univ % id == goal) then
+      kount = 1
+      univ % kount(map) = 1
+      univ % search(map) = .true.
+      return
+    end if
+
     kount = 0
     n = univ % n_cells
       
     do i = 1, n
-    
+      
       index_cell = univ % cells(i)
 
       ! get pointer to cell
@@ -1764,7 +1776,7 @@ contains
           return
         end if
         
-        kount = kount + count_target(univ_next,goal)
+        kount = kount + count_target(univ_next, goal, map)
         c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
@@ -1795,7 +1807,7 @@ contains
                 cycle
               end if
               
-              kount = kount + count_target(univ_next,goal)
+              kount = kount + count_target(univ_next, goal, map)
               c => cells(index_cell)
               lat => lattices(c % fill)
               
@@ -1805,6 +1817,9 @@ contains
 
       end if
     end do
+
+    univ % kount(map) = kount
+    univ % search(map) = .true.
              
   end function count_target
   

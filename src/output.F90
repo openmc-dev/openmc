@@ -2165,8 +2165,8 @@ contains
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
-    integer :: latoffset            ! offset from lattice
-    integer :: temp_offset          ! looped sum of offsets
+    integer :: latoffset = 0        ! offset from lattice
+    integer :: temp_offset = 0      ! looped sum of offsets
     logical :: this_cell = .false.  ! advance in this cell?
     logical :: later_cell = .false. ! non-normal cells after this one?
     logical :: material = .false.   ! material instead of cell         

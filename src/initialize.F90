@@ -1083,6 +1083,11 @@ contains
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
     end do
+    do j = 1, n_universes  
+      univ => universes(j)
+      deallocate(univ % kount)
+      deallocate(univ % search)
+    end do
   end do
 
   do i = 1, n_materials
@@ -1259,6 +1264,13 @@ end subroutine prepare_distribution
 
       u => universes(i)
 
+      ! Allocate search + kount
+      allocate(u % kount(maps))
+      allocate(u % search(maps))
+      do j = 1, maps
+        u % kount(j) = 0
+        u % search(j) = .false.
+      end do
       do j = 1, u % n_cells
 
         if (cell_list % has_key(u % cells(j))) then
@@ -1315,11 +1327,8 @@ end subroutine prepare_distribution
       if (lat % n_dimension == 3) then
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), &
                  & lat % dimension(3)))
-        allocate(lat % kount(maps, lat % dimension(1), lat % dimension(2), &
-                 & lat % dimension(3)))
       else
         allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), 1))
-        allocate(lat % kount(maps, lat % dimension(1), lat % dimension(2), 1))
       end if
 
     end do
@@ -1329,7 +1338,6 @@ end subroutine prepare_distribution
       c => cells(i)
       if (c % material == NONE) then
         allocate(c % offset(maps))
-        allocate(c % kount(maps))
       end if
 
     end do

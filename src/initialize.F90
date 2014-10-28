@@ -1083,11 +1083,12 @@ contains
       univ => universes(j)
       call calc_offsets(univ_list(i),i,univ)
     end do
-    do j = 1, n_universes  
-      univ => universes(j)
-      deallocate(univ % kount)
-      deallocate(univ % search)
-    end do
+  end do
+
+  do i = 1, n_universes  
+    univ => universes(i)
+    deallocate(univ % kount)
+    deallocate(univ % search)
   end do
 
   do i = 1, n_materials

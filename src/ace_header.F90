@@ -3,7 +3,7 @@ module ace_header
   use constants,     only: MAX_FILE_LEN, ONE, THREE
   use endf_header,   only: Tab1
   use list_header,   only: ListInt
-  use vector_header, only: URRVector
+  use vector_header, only: Vector, JaggedArray
 
   implicit none
 
@@ -84,6 +84,50 @@ module ace_header
       procedure :: clear => urrdata_clear ! Deallocates UrrData
   end type UrrData
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!                                                                               
+! URR_RESONANCES is an object containing a vector of URR resonances' information
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type URRResonances
+
+     real(8), allocatable :: E_lam(:)
+     real(8), allocatable :: GN(:)
+     real(8), allocatable :: GG(:)
+     real(8), allocatable :: GF(:)
+     real(8), allocatable :: GX(:)
+     real(8), allocatable :: GT(:)
+
+     ! type-bound procedures
+     contains
+
+       ! allocate vector of URR resonances (for a J, for a given (i_lam,i_l))
+       procedure :: alloc_resonances => resonances_alloc
+
+       ! deallocate vector of URR resonances (for a J, for a given (i_lam,i_l))
+       procedure :: dealloc_resonances => resonances_dealloc
+
+  end type URRResonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!                                                                               
+! REICHMOORERESONANCES is an object containing a vector of Reich-Moore resonance
+! data
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type ReichMooreResonances
+
+     real(8), allocatable :: E_lam(:)
+     real(8), allocatable :: AJ(:)
+     real(8), allocatable :: GN(:)
+     real(8), allocatable :: GG(:)
+     real(8), allocatable :: GFA(:)
+     real(8), allocatable :: GFB(:)
+
+  end type ReichMooreResonances
+
 !===============================================================================
 ! NUCLIDE contains all the data for an ACE-format continuous-energy cross
 ! section. The ACE format (A Compact ENDF format) is used in MCNP and several
@@ -146,78 +190,95 @@ module ace_header
     real(8), allocatable :: nu_d_precursor_data(:)
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
-    ! Unresolved resonance information
-    logical                :: urr_present
-    logical                :: otf_urr_xs
-    logical                :: avg_urr_xs
-    integer                :: urr_inelastic
+    ! URR treatment parameters and indices
+    logical :: urr_present
+    logical :: otf_urr_xs   ! do an on-the-fly URR cross section calculation?
+    logical :: avg_urr_xs   ! do an average URR cross section calculation?
+    logical :: point_urr_xs ! calculate pointwise URR cross sections?
+    integer :: urr_inelastic_index
+    integer :: i_urr ! energy range index of unresolved resonance region
     type(UrrData), pointer :: urr_data => null()
 
-    ! ENDF URR data
-    real(8) :: EL           ! lower energy bound of URR
-    real(8) :: EH           ! upper energy bound of URR
-    integer :: NRO          ! AP energy-dependence flag
-    integer :: NAPS         ! channel radius handling flag
-    real(8) :: SPI          ! total spin
-    real(8) :: AP           ! scattering radius
-    real(8) :: ac           ! channel radius
-    integer :: LSSF         ! self-shielding factor flag
-    integer :: NLS          ! # of orbital quantum #'s
-    integer :: L            ! current orbital quantum #
-    integer :: LRX          ! competitive inelastic width flag
-    integer :: LRP          ! resonance parameter flag
-    integer :: LRU
-    integer :: LRF
-    integer :: INT
-
-! TODO: only accept LRP of 1
+    ! ENDF-6 nuclear data
+    integer, allocatable :: NLS(:)  ! number of orbital quantum numbers
+    integer, allocatable :: NJS(:)  ! number of J values for each l
+    integer, allocatable :: LRU(:)  ! resolved (1) or unresolved (2)?
+    integer, allocatable :: LRF(:)  ! resonance formalism #
+    integer, allocatable :: NRO(:)  ! AP energy-dependence flag
+    integer, allocatable :: NAPS(:) ! channel radius handling flag
+    real(8), allocatable :: EL(:)  ! lower energy bound of URR
+    real(8), allocatable :: EH(:)  ! upper energy bound of URR
+    real(8), allocatable :: AP(:)  ! scattering radius
+    real(8), allocatable :: ac(:)  ! channel radius
+    real(8), allocatable :: SPI(:) ! total spin
+    real(8), allocatable :: ES(:)  ! URR tabulated data energies
+    integer :: MAT  ! nuclide MAT number
+    integer :: LRP  ! resonance parameter flag
+    integer :: NER  ! number of resonance energy ranges
+    integer :: LSSF ! self-shielding factor flag
+    integer :: INT  ! interpolation scheme #
 ! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
+    integer :: LRX  ! competitive inelastic width flag
+    integer :: NE   ! number of URR tabulated data energies
 
-    ! # of total angular momenta for each orbital quantum #
-    integer,         allocatable :: NJS(:)
-    type(URRVector), allocatable :: J_grid(:) ! values at each orbital quantum #
-    real(8)                      :: J         ! current total angular momentum
+    ! mean values
+    type(JaggedArray), allocatable :: D_mean(:)   ! level spacing
+    type(JaggedArray), allocatable :: GN0_mean(:) ! reduced neutron width
+    type(JaggedArray), allocatable :: GG_mean(:)  ! radiative capture width
+    type(JaggedArray), allocatable :: GF_mean(:)  ! fission width
+    type(JaggedArray), allocatable :: GX_mean(:)  ! competitive inelastic width
+    type(Vector), allocatable :: AJ(:)   ! total angular momentum
+    type(Vector), allocatable :: DOFN(:) ! # neutron channels
+    type(Vector), allocatable :: DOFG(:) ! # capture channels
+    type(Vector), allocatable :: DOFF(:) ! # fission channels
+    type(Vector), allocatable :: DOFX(:) ! # competitive channels
 
-    ! degrees of freedom at each orbital quantum # (one value for each J value)
-    type(URRVector), allocatable :: AMUX_grid(:) ! competitive reaction values
-    integer                      :: AMUX         ! current value
-    type(URRVector), allocatable :: AMUN_grid(:) ! elastic neutron scatter values
-    integer                      :: AMUN         ! current value
-    type(URRVector), allocatable :: AMUG_grid(:) ! capture values
-    integer                      :: AMUG         ! current value
-    type(URRVector), allocatable :: AMUF_grid(:) ! fission values
-    integer                      :: AMUF         ! current value
-
-    ! energy grid of unresolved resonance parameters
-    integer                      :: NE
-    real(8), allocatable         :: ES(:)
-    real(8)                      :: E          ! neutron energy
-
-    ! mean level spacing for a value of J for a given (E,l)
-    type(URRVector), allocatable :: D_means(:,:)
-    real(8)                      :: D          ! current value
-
-    ! mean neutron width for a value of J for a given (E,l)
-    type(URRVector), allocatable :: Gam_n_means(:,:)
-    real(8)                      :: GN0        ! current value
-
-    ! mean radiative width for a value of J for a given (E,l)
-    type(URRVector), allocatable :: Gam_gam_means(:,:)
-    real(8)                      :: GG         ! current mean value
-
-    ! mean fission width for a value of J for a given (E,l)
-    type(URRVector), allocatable :: Gam_f_means(:,:)
-    real(8)                      :: GF         ! current value
-
-    ! mean competitive width for a value of J for a given (E,l)
-    type(URRVector), allocatable :: Gam_x_means(:,:)
-    real(8)                      :: GX         ! current value
+    ! current values
+    real(8) :: E   ! neutron energy
+    real(8) :: J   ! total angular momentum
+    real(8) :: g_J ! statistical spin factor
+    real(8) :: D   ! level spacing
+    real(8) :: GN0 ! reduced neutron width
+    real(8) :: GG  ! radiative capture width
+    real(8) :: GF  ! fission width
+    real(8) :: GX  ! competitive inelastic width
+    integer :: L   ! orbital quantum number
+    integer :: AMUN ! number of neutron channels (degrees of freedom)
+    integer :: AMUG ! number of capture channels (degrees of freedom)
+    integer :: AMUF ! number of fission channels(degrees of freedom)
+    integer :: AMUX ! number of competitive channels (degrees of freedom)
 
     ! average (infinite-dilute) cross sections values
     real(8), allocatable :: avg_urr_n(:)
     real(8), allocatable :: avg_urr_f(:)
     real(8), allocatable :: avg_urr_g(:)
     real(8), allocatable :: avg_urr_x(:)
+
+    ! URR resonance realization (vector of resonances for a value
+    ! of J for a given (i_lam, L))
+    type(URRResonances), allocatable :: urr_resonances(:,:)
+
+    ! set of Reich-Moore resonances (vector of resonances for each l
+    type(ReichMooreResonances), allocatable :: rm_resonances(:)
+
+    ! pointwise URR cross section data
+    real(8), allocatable :: urr_energy_tmp(:)    ! energy grid values
+    real(8), allocatable :: urr_elastic_tmp(:)   ! elastic scattering
+    real(8), allocatable :: urr_capture_tmp(:)   ! capture
+    real(8), allocatable :: urr_fission_tmp(:)   ! fission
+    real(8), allocatable :: urr_inelastic_tmp(:) ! first level inelastic scattering
+    real(8), allocatable :: urr_total_tmp(:)     ! total
+    real(8), allocatable :: urr_energy(:)    ! energy grid values
+    real(8), allocatable :: urr_elastic(:)   ! elastic scattering
+    real(8), allocatable :: urr_capture(:)   ! capture
+    real(8), allocatable :: urr_fission(:)   ! fission
+    real(8), allocatable :: urr_inelastic(:) ! first level inelastic scattering
+    real(8), allocatable :: urr_total(:)     ! total
+
+    ! pointwise URR cross section parameters
+    integer :: n_urr_resonances = 1000000 ! max URR resonances for a given (l,J)
+    integer :: n_urr_gridpoints = 100000000 ! max URR energy-cross section gridpoints
+    real(8) :: urr_dE = 0.1_8 ! difference between URR energy grid points [eV]
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -226,20 +287,44 @@ module ace_header
     ! Type-Bound procedures
     contains
 
+      ! allocate resonance energy range variables
+      procedure :: alloc_energy_range => energy_range_alloc
+
+      ! deallocate resonance energy range variables
+      procedure :: dealloc_energy_range => energy_range_dealloc
+
       ! allocate average (infinite-dilute) cross sections
       procedure :: alloc_avg_urr => avg_urr_alloc
 
       ! deallocate average (infinite-dilute) cross sections
       procedure :: dealloc_avg_urr => avg_urr_dealloc
 
+      ! allocate URR resonance ensemble realization
+      procedure :: alloc_ensemble => ensemble_alloc
+
+      ! deallocate URR resonance ensemble realization
+      procedure :: dealloc_ensemble => ensemble_dealloc
+
+      ! allocate temporary pointwise URR cross sections
+      procedure :: alloc_pointwise_tmp => pointwise_tmp_alloc
+
+      ! deallocate temporary pointwise URR cross sections
+      procedure :: dealloc_pointwise_tmp => pointwise_tmp_dealloc
+
+      ! allocate pointwise URR cross sections
+      procedure :: alloc_pointwise => pointwise_alloc
+
+      ! deallocate pointwise URR cross sections
+      procedure :: dealloc_pointwise => pointwise_dealloc
+
       ! Deallocates Nuclide
       procedure :: clear => nuclide_clear
 
       ! pre-process data that needs it
-      procedure :: pprocess => pre_process
+      procedure :: pre_process => process_pre
 
       ! set channel radius
-      procedure :: rad_channel => channel_radius
+      procedure :: channel_radius => radius_channel
 
   end type Nuclide
 
@@ -446,6 +531,52 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
+! ENERGY_RANGE_ALLOC allocated variables for the resonance energy ranges
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine energy_range_alloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    allocate(this % NLS(this % NER))
+    allocate(this % LRU(this % NER))
+    allocate(this % LRF(this % NER))
+    allocate(this % NRO(this % NER))
+    allocate(this % NAPS(this % NER))
+    allocate(this % EL(this % NER))
+    allocate(this % EH(this % NER))
+    allocate(this % AP(this % NER))
+    allocate(this % ac(this % NER))
+    allocate(this % SPI(this % NER))
+
+  end subroutine energy_range_alloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! !TODO: ENERGY_RANGE_DEALLOC deallocates variables for the resonance energy ranges
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine energy_range_dealloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    deallocate(this % NLS)
+    deallocate(this % LRU)
+    deallocate(this % LRF)
+    deallocate(this % NRO)
+    deallocate(this % NAPS)
+    deallocate(this % EL)
+    deallocate(this % EH)
+    deallocate(this % AP)
+    deallocate(this % ac)
+    deallocate(this % SPI)
+
+  end subroutine energy_range_dealloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
 ! AVG_URR_ALLOC allocates average (infinite-dilute) cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -463,7 +594,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! AVG_URR_DEALLOC deallocates average (infinite-dilute) cross sections
+! !TODO: AVG_URR_DEALLOC deallocates average (infinite-dilute) cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -478,8 +609,167 @@ contains
 
   end subroutine avg_urr_dealloc
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ENSEMBLE_ALLOC allocates a URR resonance ensemble realization
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine ensemble_alloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: i_l   ! orbital angular momentum quantum number index
+    integer :: i_lam ! resonance index
+
+    ! allocate energies and orbital quantum numbers for resonances
+    allocate(this % urr_resonances(this % n_urr_resonances, &
+      & this % NLS(this % i_urr)))
+
+    ! loop over orbital quantum numbers
+    do i_l = 1, this % NLS(this % i_urr)
+
+      ! loop over resonances
+      do i_lam = 1, this % n_urr_resonances
+
+        ! allocate resonance parameters
+        call this % urr_resonances(i_lam, i_l) % alloc_resonances(this % NJS(i_l))
+
+      end do
+    end do
+
+  end subroutine ensemble_alloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! TODO: ! ENSEMBLE_DEALLOC deallocates a URR resonance ensemble realization
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine ensemble_dealloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    
+
+  end subroutine ensemble_dealloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! RESONANCES_ALLOC allocates a vector of URR resonances for a given J, for a
+! given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine resonances_alloc(this, N_J)
+
+    class(URRResonances), intent(inout) :: this ! resonance vector object
+    integer :: N_J
+
+    allocate(this % E_lam(N_J))
+    allocate(this % GN(N_J))
+    allocate(this % GG(N_J))
+    allocate(this % GF(N_J))
+    allocate(this % GX(N_J))
+    allocate(this % GT(N_J))
+
+  end subroutine resonances_alloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! TODO: ! RESONANCES_DEALLOC deallocates a vector of URR resonances for a given J, for a
+! given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine resonances_dealloc(this)
+
+    class(URRResonances), intent(inout) :: this ! resonance vector object
+
+    
+
+  end subroutine resonances_dealloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! POINTWISE_TMP_ALLOC allocates the temporary pointwise URR energy-cross section
+! grids
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine pointwise_tmp_alloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    allocate(this % urr_energy_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_elastic_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_capture_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_fission_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_inelastic_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_total_tmp(this % n_urr_gridpoints))
+
+  end subroutine pointwise_tmp_alloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! POINTWISE_TMP_DEALLOC deallocates the temporary pointwise URR energy-cross
+! section grids
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine pointwise_tmp_dealloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    deallocate(this % urr_energy_tmp)
+    deallocate(this % urr_elastic_tmp)
+    deallocate(this % urr_capture_tmp)
+    deallocate(this % urr_fission_tmp)
+    deallocate(this % urr_inelastic_tmp)
+    deallocate(this % urr_total_tmp)
+
+  end subroutine pointwise_tmp_dealloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! POINTWISE_ALLOC allocates the pointwise URR energy-cross section grids
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine pointwise_alloc(this, n_pts)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: n_pts ! number of points in grid
+
+    allocate(this % urr_energy(n_pts))
+    allocate(this % urr_elastic(n_pts))
+    allocate(this % urr_capture(n_pts))
+    allocate(this % urr_fission(n_pts))
+    allocate(this % urr_inelastic(n_pts))
+    allocate(this % urr_total(n_pts))
+
+  end subroutine pointwise_alloc
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! TODO: use this : POINTWISE_DEALLOC deallocates the pointwise URR energy-cross section grids
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine pointwise_dealloc(this)
+
+    class(Nuclide), intent(inout) :: this ! nuclide object
+
+    deallocate(this % urr_energy)
+    deallocate(this % urr_elastic)
+    deallocate(this % urr_capture)
+    deallocate(this % urr_fission)
+    deallocate(this % urr_inelastic)
+    deallocate(this % urr_total)
+
+  end subroutine pointwise_dealloc
+
 !===============================================================================
-! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
+! !TODO: deallocate URR structures NUCLIDE_CLEAR resets and deallocates data in Nuclide.
 !===============================================================================
 
     subroutine nuclide_clear(this)
@@ -487,8 +777,6 @@ contains
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
-      integer :: i_L ! orbital quantum # index
-      integer :: i_E ! energy grid index
 
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
@@ -537,106 +825,53 @@ contains
         deallocate(this % reactions)
       end if
 
-! TODO: investigate...
-      if (1 == 2) then
-
-      ! deallocate energy grid
-      if (allocated(this % ES)) deallocate(this % ES)
-      
-      ! deallocate space for the different spin sequences (i.e. (l,J) pairs)
-      do i_L = 1, this % NLS
-        
-        if (allocated(this % J_grid(i_L) % vals)) &
-          & deallocate(this % J_grid(i_L) % vals)
-        
-        if (allocated(this % AMUX_grid(i_L) % vals)) &
-          & deallocate(this % AMUX_grid(i_L) % vals)
-        
-        if (allocated(this % AMUN_grid(i_L) % vals)) &
-          & deallocate(this % AMUN_grid(i_L) % vals)
-        
-        if (allocated(this % AMUG_grid(i_L) % vals)) &
-          & deallocate(this % AMUG_grid(i_L) % vals)
-        
-        if (allocated(this % AMUF_grid(i_L) % vals)) &
-          & deallocate(this % AMUF_grid(i_L) % vals)
-        
-        do i_E = 1, this % NE
-          if (allocated(this % D_means(i_E, i_L) % vals)) &
-            & deallocate(this % D_means(i_E, i_L) % vals)
-          if (allocated(this % Gam_n_means(i_E, i_L) % vals)) &
-            & deallocate(this % Gam_n_means(i_E, i_L) % vals)
-          if (allocated(this % Gam_gam_means(i_E, i_L) % vals)) &
-            & deallocate(this % Gam_gam_means(i_E, i_L) % vals)
-          if (allocated(this % Gam_f_means(i_E, i_L) % vals)) &
-            & deallocate(this % Gam_f_means(i_E, i_L) % vals)
-          if (allocated(this % Gam_x_means(i_E, i_L) % vals)) &
-            & deallocate(this % Gam_x_means(i_E, i_L) % vals)
-        end do
-      end do
-      
-      ! deallocate total angular momentum quantum #'s
-      if (allocated(this % NJS))     deallocate(this % NJS)
-      if (allocated(this % J_grid))  deallocate(this % J_grid)
-      
-      ! deallocate mean unresolved resonance parameters
-      if (allocated(this % AMUX_grid))     deallocate(this % AMUX_grid)
-      if (allocated(this % AMUN_grid))     deallocate(this % AMUN_grid)
-      if (allocated(this % AMUG_grid))     deallocate(this % AMUG_grid)
-      if (allocated(this % AMUF_grid))     deallocate(this % AMUF_grid)
-      if (allocated(this % D_means))       deallocate(this % D_means)
-      if (allocated(this % Gam_n_means))   deallocate(this % Gam_n_means)
-      if (allocated(this % Gam_gam_means)) deallocate(this % Gam_gam_means)
-      if (allocated(this % Gam_f_means))   deallocate(this % Gam_f_means)
-      if (allocated(this % Gam_x_means))   deallocate(this % Gam_x_means)
-      
-      end if
-
       call this % nuc_list % clear()
 
     end subroutine nuclide_clear
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! PRE_PROCESS pre-processes any nuclear data that needs it
+! PROCESS_PRE pre-processes any nuclear data that needs it
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pre_process(this)
+  subroutine process_pre(this, i_ER)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: i_ER ! resonance energy range index
 
     ! set the channel radius
-    call this % rad_channel
+    call this % channel_radius(i_ER)
 
-  end subroutine pre_process
+  end subroutine process_pre
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHANNEL_RADIUS computes or sets the channel radius depending on ENDF flags
+! RADIUS_CHANNEL computes or sets the channel radius depending on ENDF flags
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine channel_radius(this)
+  subroutine radius_channel(this, i_ER)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: i_ER ! resonance energy range index
 
-    select case(this % NRO)
+    select case(this % NRO(i_ER))
 
     ! scattering radius is independent of energy
     case(0)
 
-      select case(this % NAPS)
+      select case(this % NAPS(i_ER))
 
         ! use channel radius for penetrabilities and shift factors but
         ! scattering radius for phase shifts
         case(0)
-          this % ac = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+          this % ac(i_ER) = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
 
         ! use scattering radius for penetrabilities, shift factors and phase
         ! shifts
         case(1)
-          this % ac = this % AP
+          this % ac(i_ER) = this % AP(i_ER)
 
         ! invalid scattering radius treatment flag
         case default
@@ -647,24 +882,24 @@ contains
     ! scattering radius is energy dependent
     case(1)
 
-      select case(this % NAPS)
+      select case(this % NAPS(i_ER))
 
         ! use channel radius for penetrabilities and shift factors but
         ! scattering radius for phase shifts
         case(0)
-          this % ac = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+          this % ac(i_ER) = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
 
         ! use scattering radius for penetrabilities, shift factors and phase
         ! shifts
         case(1)
-          this % ac = this % AP
+          this % ac(i_ER) = this % AP(i_ER)
 
 ! TODO: understand this and implement it correctly
         ! use energy dependent scattering radius in phase shifts but the energy
         ! independent AP scattering radius value for penetrabilities and shift
         ! factors
         case(2)
-          this % ac = this % AP
+          this % ac(i_ER) = this % AP(i_ER)
 
         ! invalid scattering radius treatment flag
         case default
@@ -679,6 +914,6 @@ contains
   
     end select
 
-  end subroutine channel_radius
+  end subroutine radius_channel
 
 end module ace_header

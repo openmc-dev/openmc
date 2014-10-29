@@ -9,16 +9,6 @@ module vector_header
   implicit none
   private
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! VECTOR is an object containing a vector of values
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type, public :: URRVector
-    real(8), allocatable :: vals(:)
-  end type URRVector
-
   type, public :: Vector 
     integer :: n        ! number of rows/cols in matrix
     real(8), allocatable :: data(:) ! where vector data is stored
@@ -37,6 +27,16 @@ module vector_header
      procedure :: write_petsc_binary => vector_write_petsc_binary
 #  endif
   end type Vector
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! JAGGEDARRAY is a jagged 2-D array object (i.e. a vector of vectors)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type, public :: JaggedArray
+    type(Vector), allocatable :: data(:)
+  end type JaggedArray
 
 #ifdef PETSC
   integer :: petsc_err ! petsc error code

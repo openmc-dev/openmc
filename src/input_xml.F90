@@ -19,7 +19,8 @@ module input_xml
                               urr_zaids, n_s_wave, n_p_wave, n_d_wave,         &
                               n_f_wave, competitive, urr_avg_histories,        &
                               urr_avg_tol, urr_avg_batches, n_urr_method,      &
-                              n_otf_urr_xs, n_avg_urr_xs, urr_method
+                              n_otf_urr_xs, n_avg_urr_xs, urr_method,          &
+                              urr_pointwise
 
   use xml_interface
 
@@ -3250,6 +3251,22 @@ contains
       n_f_wave = 32
     end if
 
+    ! Check for pointwise cross section calculation
+    urr_pointwise = .false.
+    if (check_for_node(doc, 'pointwise')) then
+      call get_node_value(doc, "pointwise", temp_str)
+      if (trim(adjustl(to_lower(temp_str))) == 'false' &
+        & .or. trim(adjustl(temp_str)) == '0') then
+        urr_pointwise = .false.
+      else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+        & .or. trim(adjustl(temp_str)) == '1') then
+        urr_pointwise = .true.
+      else
+        message = 'pointwise element in urr.xml must be true or false'
+        call fatal_error()
+      end if
+    end if
+
     n_urr_method = 0
     ! Check for list of nuclides to apply the treatment to
     if (check_for_node(doc, 'nuclide')) then
@@ -3304,8 +3321,8 @@ contains
           !        urr_frequency = 'particle'
           !      case ('batch')
           !        urr_frequency = 'batch'
-          !      case ('simulation')
-          !        urr_frequency = 'simulation'
+        case ('simulation')
+          urr_frequency = 'simulation'
         case default
           message = 'Unrecognized OTF URR xs calculation frequency in urr.xml'
           call fatal_error()

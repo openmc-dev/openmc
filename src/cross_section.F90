@@ -58,19 +58,13 @@ contains
         ! loop over all requested energy-xs grid outputs
         do k = 1, mat % xs_gridpoints(j) % size()
 
-          ! energy values
-          x_size = size(nuc % energy)
-          allocate(x_vals(x_size))
-          x_vals = nuc % energy
-
           ! determine which energy-xs grid is requested
           select case (trim(adjustl(mat % xs_gridpoints(j) % get_item(k))))
 
           ! write unionized energy grid values
           case ('unionized')
 
-            ! we want the unionized grid, not the nuclide energy grid
-            deallocate(x_vals)
+            ! unionized energy grid values
             x_size = size(e_grid)
             allocate(x_vals(x_size))
 
@@ -85,6 +79,10 @@ contains
 
           ! write a nuclide's energy-total xs grid values
           case ('total')
+
+            x_size = size(nuc % energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % energy
             y_size = size(nuc % total)
             allocate(y_vals(y_size))
             y_vals = nuc % total
@@ -92,6 +90,10 @@ contains
 
           ! write a nuclide's energy-elastic xs grid values
           case ('elastic')
+
+            x_size = size(nuc % energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % energy
             y_size = size(nuc % elastic)
             allocate(y_vals(y_size))
             y_vals = nuc % elastic
@@ -99,10 +101,69 @@ contains
 
           ! write a nuclide's energy-fission xs grid values
           case ('fission')
+
+            x_size = size(nuc % energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % energy
             y_size = size(nuc % fission)
             allocate(y_vals(y_size))
             y_vals = nuc % fission
             filename = trim(adjustl(nuc % name)) // "-fission.dat"
+
+          ! write a nuclide's URR energy-total xs grid values
+          case ('urr-total')
+
+            x_size = size(nuc % urr_energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % urr_energy
+            y_size = size(nuc % urr_total)
+            allocate(y_vals(y_size))
+            y_vals = nuc % urr_total
+            filename = trim(adjustl(nuc % name)) // "-urr-total.dat"
+
+          ! write a nuclide's URR energy-elastic xs grid values
+          case ('urr-elastic')
+
+            x_size = size(nuc % urr_energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % urr_energy
+            y_size = size(nuc % urr_elastic)
+            allocate(y_vals(y_size))
+            y_vals = nuc % urr_elastic
+            filename = trim(adjustl(nuc % name)) // "-urr-elastic.dat"
+
+          ! write a nuclide's URR energy-fission xs grid values
+          case ('urr-fission')
+
+            x_size = size(nuc % urr_energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % urr_energy
+            y_size = size(nuc % urr_fission)
+            allocate(y_vals(y_size))
+            y_vals = nuc % urr_fission
+            filename = trim(adjustl(nuc % name)) // "-urr-fission.dat"
+
+          ! write a nuclide's URR energy-inelastic xs grid values
+          case ('urr-inelastic')
+
+            x_size = size(nuc % urr_energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % urr_energy
+            y_size = size(nuc % urr_inelastic)
+            allocate(y_vals(y_size))
+            y_vals = nuc % urr_inelastic
+            filename = trim(adjustl(nuc % name)) // "-urr-inelastic.dat"
+
+          ! write a nuclide's URR energy-capture xs grid values
+          case ('urr-capture')
+
+            x_size = size(nuc % urr_energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % urr_energy
+            y_size = size(nuc % urr_capture)
+            allocate(y_vals(y_size))
+            y_vals = nuc % urr_capture
+            filename = trim(adjustl(nuc % name)) // "-urr-capture.dat"
 
           ! the requested xs is not recognized
           case default
@@ -339,7 +400,7 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
     if (nuc % otf_urr_xs) then
-      if (E * 1.0E6_8 >= nuc % EL .and. E * 1.0E6_8 <= nuc % EH) then
+      if (E * 1.0E6_8 >= nuc % EL(nuc % i_urr) .and. E * 1.0E6_8 <= nuc % EH(nuc % i_urr)) then
         call calculate_urr_xs_otf(i_nuclide, E * 1.0E6_8)
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then
@@ -562,7 +623,7 @@ contains
     inelastic = ZERO
     if (urr % inelastic_flag > 0) then
       ! Get pointer to inelastic scattering reaction
-      rxn => nuc % reactions(nuc % urr_inelastic)
+      rxn => nuc % reactions(nuc % urr_inelastic_index)
 
       ! Get index on energy grid and interpolation factor
       i_energy = micro_xs(i_nuclide) % index_grid

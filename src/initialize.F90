@@ -5,7 +5,7 @@ module initialize
   use constants
   use cross_section,    only: write_xs_grids
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use endf_reader,      only: read_endf, print_shit
+  use endf_reader,      only: read_endf6
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use faddeeva,         only: initialize_w_tabulated
@@ -26,7 +26,9 @@ module initialize
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
   use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,       &
-                              n_otf_urr_xs, n_avg_urr_xs, calculate_avg_urr_xs
+                              n_otf_urr_xs, n_avg_urr_xs, calculate_avg_urr_xs,&
+                              resonance_ensemble, urr_frequency, pointwise_urr,&
+                              urr_pointwise
 
 #ifdef MPI
   use mpi
@@ -115,6 +117,9 @@ contains
         call initialize_endf()
         call initialize_w_tabulated()
         call calculate_avg_urr_xs()
+        if (trim(adjustl(urr_frequency)) == 'simulation') &
+          & call resonance_ensemble()
+        if (urr_pointwise) call pointwise_urr()
       end if
 
       ! Create linked lists for multiple instances of the same nuclide
@@ -200,7 +205,7 @@ contains
           else
             nuclides(j) % otf_urr_xs = .false.
           end if
-          call read_endf(urr_endf_filenames(i), j)
+          call read_endf6(urr_endf_filenames(i), j)
         else
           nuclides(j) % avg_urr_xs = .false.
           nuclides(j) % otf_urr_xs = .false.

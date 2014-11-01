@@ -167,8 +167,7 @@ contains
 
           ! the requested xs is not recognized
           case default
-            message = 'Not an allowed energy-xs grid option'
-            call fatal_error()
+            call fatal_error('Not an allowed energy-xs grid option')
           end select
 
           ! write the energy-xs value pairs to a file
@@ -280,7 +279,7 @@ contains
            atom_density * micro_xs(i_nuclide) % elastic
 
       ! Add contributions to material macroscopic absorption cross section
-      material_xs % absorption = material_xs % absorption + & 
+      material_xs % absorption = material_xs % absorption + &
            atom_density * micro_xs(i_nuclide) % absorption
 
       ! Add contributions to material macroscopic fission cross section
@@ -290,7 +289,7 @@ contains
       ! Add contributions to material macroscopic nu-fission cross section
       material_xs % nu_fission = material_xs % nu_fission + &
            atom_density * micro_xs(i_nuclide) % nu_fission
-           
+
       ! Add contributions to material macroscopic energy release from fission
       material_xs % kappa_fission = material_xs % kappa_fission + &
            atom_density * micro_xs(i_nuclide) % kappa_fission
@@ -381,7 +380,7 @@ contains
       ! Calculate microscopic nuclide nu-fission cross section
       micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
            i_grid) + f * nuc % nu_fission(i_grid+1)
-           
+
       ! Calculate microscopic nuclide kappa-fission cross section
       ! The ENDF standard (ENDF-102) states that MT 18 stores
       ! the fission energy as the Q_value (fission(1))
@@ -446,7 +445,7 @@ contains
       f = ZERO
     else
       i_grid = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
-      f = (E - sab%inelastic_e_in(i_grid)) / & 
+      f = (E - sab%inelastic_e_in(i_grid)) / &
            (sab%inelastic_e_in(i_grid+1) - sab%inelastic_e_in(i_grid))
     end if
 
@@ -644,6 +643,11 @@ contains
       fission = fission * micro_xs(i_nuclide) % fission
     end if
 
+    ! Check for negative values
+    if (elastic < ZERO) elastic = ZERO
+    if (fission < ZERO) fission = ZERO
+    if (capture < ZERO) capture = ZERO
+
     ! Set elastic, absorption, fission, and total cross sections. Note that the
     ! total cross section is calculated as sum of partials rather than using the
     ! table-provided value
@@ -707,11 +711,11 @@ contains
     if (nuc % energy_0K(i_grid) == nuc % energy_0K(i_grid+1)) then
       i_grid = i_grid + 1
     end if
-    
+
     ! calculate interpolation factor
     f = (E - nuc % energy_0K(i_grid)) &
       & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
-    
+
     ! Calculate microscopic nuclide elastic cross section
     xs_out = (ONE - f) * nuc % elastic_0K(i_grid) &
       & + f * nuc % elastic_0K(i_grid + 1)

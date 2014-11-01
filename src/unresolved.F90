@@ -624,8 +624,7 @@ contains
         ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
         ! MF3 contains background xs values (add to MF2 resonance contributions)
         if (nuc % LSSF == 0) then
-          message = 'LSSF = 0 not yet supported'
-          call fatal_error()
+          call fatal_error('LSSF = 0 not yet supported')
 
           ! elastic scattering xs
           nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
@@ -697,8 +696,7 @@ contains
             &                        + nuc % urr_inelastic_tmp(n_pts)
 
         else
-          message = 'Self-shielding flag (LSSF) not allowed - must be 0 or 1.'
-          call fatal_error()
+          call fatal_error('Self-shielding flag (LSSF) not allowed - must be 0 or 1.')
         end if
 
         nuc % E = nuc % E + nuc % urr_dE
@@ -1090,8 +1088,7 @@ contains
     ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
     ! MF3 contains background xs values (add to MF2 resonance contributions)
     if (nuc % LSSF == 0) then
-      message = 'LSSF = 0 not yet supported'
-      call fatal_error()
+      call fatal_error('LSSF = 0 not yet supported')
       micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
       micro_xs(i_nuc) % elastic    = sig_n % val + micro_xs(i_nuc) % elastic
       micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val &
@@ -1162,8 +1159,7 @@ contains
         & + inelastic_val
 
     else
-      message = 'Self-shielding flag (LSSF) not allowed - must be 0 or 1.'
-      call fatal_error()
+      call fatal_error('Self-shielding flag (LSSF) not allowed - must be 0 or 1.')
     end if
 
     ! Determine nu-fission cross section
@@ -1250,27 +1246,6 @@ contains
       this % E_lam = this % E_lam + this % D_lJ
     end if
 
-! TODO: check why this doesn't work
-!    if (1 == 2) then
-!      rn = prn()
-!      if (this % i_res == 0) then
-!        this % E_lam     = nuc % E + (ONE - rn) * this % D_lJ
-!        this % E_lam_tmp = nuc % E - rn * this % D_lJ
-!        this % E_lam_up  = this % E_lam
-!        this % E_lam_low = this % E_lam_tmp
-!      else if (this % i_res == 1) then
-!        this % E_lam     = this % E_lam_tmp
-!      else
-!        if (this % E_lam_up - nuc % E > nuc % E - this % E_lam_low) then
-!          this % E_lam     = this % E_lam_low - this % D_lJ
-!          this % E_lam_low = this % E_lam
-!        else
-!          this % E_lam     = this % E_lam_up + this % D_lJ
-!          this % E_lam_up  = this % E_lam
-!        end if
-!      end if
-!    end if
-
   end subroutine spacing_level
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1295,8 +1270,7 @@ contains
     case(3)
       n_res = n_f_wave
     case default
-      message = 'Only s-, p-, d-, and f-wave resonances are supported in ENDF-6'
-      call fatal_error()
+      call fatal_error('Only s-, p-, d-, and f-wave resonances are supported in ENDF-6')
     end select
 
   end function l_wave_resonances
@@ -1465,8 +1439,7 @@ contains
         & ((cos(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))) - (ONE - Gam_n_n / Gam_t_n)) &
         & * psi(theta, x) + sin(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))) * chi(theta, x))
     else
-      message = 'Encountered a non-positive elastic scattering width in the URR'
-      call fatal_error()
+      call fatal_error('Encountered a non-positive elastic scattering width in the URR')
     end if
 
     sig_lam_Gam_t_n_psi = sig_lam * psi(theta, x) / Gam_t_n
@@ -1493,23 +1466,6 @@ contains
                 & + this % dsig_gam &
                 & + this % dsig_f   &
                 & + this % dsig_x
-
-! TODO: Possibly add the option of using different forms
-
-    ! this particular form comes from the ENDF 2012 manual
-!    this % dsig_n   = FOUR * PI / k_n**2 &
-!      & *((TWO * dble(nuc % L) + ONE) * (sin(phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))))**2 &
-!      & + nuc % g_J * (Gam_n_n**2 - TWO * Gam_n_n * Gam_t_n &
-!      & * (sin(phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))))**2 + TWO * Gam_n_n * (nuc % E - E_shift) &
-!      & * sin(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr)))) &
-!      & / (FOUR * (nuc % E - E_shift)**2 + Gam_t_n**2))
-
-    ! this particular form comes from a previous ENDF 102 manual via Kord
-!    this % dsig_n  = 2603911.0_8 / nuc % E * ((nuc % awr + ONE) / nuc % awr)**2 &
-!      & * (((Gam_n_n/Gam_t_n)**2 &
-!      & - TWO*Gam_n_n/Gam_t_n*(sin(phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))))**2) &
-!      & * psi(theta, x) + Gam_n_n/Gam_t_n * sin(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))) &
-!      & * chi(theta, x))
 
   end subroutine xs_slbw
 
@@ -1550,8 +1506,7 @@ contains
           & / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
       case default
-        message = 'Orbital quantum number not allowed'
-        call fatal_error()
+        call fatal_error('Orbital quantum number not allowed')
     end select
 
   end function penetration
@@ -1596,8 +1551,7 @@ contains
           & / (105.0_8 - 45.0_8 * rho2 + rho4))
 
       case default
-        message = 'Orbital quantum number not allowed'
-        call fatal_error()
+        call fatal_error('Orbital quantum number not allowed')
     end select
 
   end function phase_shift
@@ -1639,8 +1593,8 @@ contains
           & / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
       case default
-        message = 'Orbital quantum number not allowed'
-        call fatal_error()
+        call fatal_error('Orbital quantum number not allowed')
+
     end select
     
   end function shift
@@ -1675,8 +1629,7 @@ contains
         & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
 
     case default
-      message = 'Unrecognized W function evaluation method'
-      call fatal_error()
+      call fatal_error('Unrecognized W function evaluation method')
     end select
 
   end function psi
@@ -1714,8 +1667,7 @@ contains
 
     case default
 
-      message = 'Unrecognized W function evaluation method'
-      call fatal_error()
+      call fatal_error('Unrecognized W function evaluation method')
 
     end select
 
@@ -1936,9 +1888,8 @@ contains
 
     case default
  
-      message = 'Interpolations other than lin-lin or log-log currently not &
-        & supported in OTF URR treatments'
-      call fatal_error()
+      call fatal_error('Interpolations other than lin-lin or log-log currently not &
+        & supported in OTF URR treatments')
 
     end select
 
@@ -1969,9 +1920,8 @@ contains
 
     case default
 
-      message = 'Interpolations other than lin-lin or log-log currently not &
-        & supported in OTF URR treatments'
-      call fatal_error()
+      call fatal_error('Interpolations other than lin-lin or log-log currently not &
+        & supported in OTF URR treatments')
 
     end select
 

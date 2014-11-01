@@ -11,7 +11,7 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
-     
+ 
 contains
 
 !===============================================================================
@@ -100,11 +100,10 @@ contains
         if (simple_cell_contains(c, p)) then
           ! the particle should only be contained in one cell per level
           if (index_cell /= coord % cell) then
-            message = "Overlapping cells detected: " //               &
-                      trim(to_str(cells(index_cell) % id)) // ", " // &
-                      trim(to_str(cells(coord % cell) % id)) //       &
-                      " on universe " // trim(to_str(univ % id))
-            call fatal_error()
+            call fatal_error("Overlapping cells detected: " &
+                 &// trim(to_str(cells(index_cell) % id)) // ", " &
+                 &// trim(to_str(cells(coord % cell) % id)) &
+                 &// " on universe " // trim(to_str(univ % id)))
           end if
 
           overlap_check_cnt(index_cell) = overlap_check_cnt(index_cell) + 1
@@ -179,8 +178,7 @@ contains
 
         ! Show cell information on trace
         if (verbosity >= 10 .or. trace) then
-          message = "    Entering cell " // trim(to_str(c % id))
-          call write_message()
+          call write_message("    Entering cell " // trim(to_str(c % id)))
         end if
 
         if (c % type == CELL_NORMAL) then
@@ -384,8 +382,7 @@ contains
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
-      message = "    Crossing surface " // trim(to_str(surf % id))
-      call write_message()
+      call write_message("    Crossing surface " // trim(to_str(surf % id)))
     end if
 
     if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
@@ -417,8 +414,8 @@ contains
 
       ! Display message
       if (verbosity >= 10 .or. trace) then
-        message = "    Leaked out of surface " // trim(to_str(surf % id))
-        call write_message()
+        call write_message("    Leaked out of surface " &
+             &// trim(to_str(surf % id)))
       end if
       return
 
@@ -428,9 +425,8 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (.not. associated(p % coord, p % coord0)) then
-        message = "Cannot reflect particle " // trim(to_str(p % id)) // &
-             " off surface in a lower universe."
-        call handle_lost_particle(p)
+        call handle_lost_particle(p, "Cannot reflect particle " &
+             &// trim(to_str(p % id)) // " off surface in a lower universe.")
         return
       end if
 
@@ -562,9 +558,8 @@ contains
         w = w + 2*dot_prod*R*z
 
       case default
-        message = "Reflection not supported for surface " // &
-             trim(to_str(surf % id))
-        call fatal_error()
+        call fatal_error("Reflection not supported for surface " &
+             &// trim(to_str(surf % id)))
       end select
 
       ! Set new particle direction
@@ -583,8 +578,8 @@ contains
         call deallocate_coord(p % coord0 % next)
         call find_cell(p, found)
         if (.not. found) then
-          message = "Couldn't find particle after reflecting from surface."
-          call handle_lost_particle(p)
+          call handle_lost_particle(p, "Couldn't find particle after reflecting&
+               & from surface.")
           return
         end if
       end if
@@ -594,8 +589,8 @@ contains
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
-        message = "    Reflected from surface " // trim(to_str(surf%id))
-        call write_message()
+        call write_message("    Reflected from surface " &
+             &// trim(to_str(surf%id)))
       end if
       return
     end if
@@ -643,10 +638,9 @@ contains
       ! undefined region in the geometry.
 
       if (.not. found) then
-        message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
-             // trim(to_str(surfaces(i_surface) % id)) // " it could not be &
-             &located in any cell and it did not leak."
-        call handle_lost_particle(p)
+        call handle_lost_particle(p, "After particle " // trim(to_str(p % id)) &
+             &// " crossed surface " // trim(to_str(surfaces(i_surface) % id)) &
+             &// " it could not be located in any cell and it did not leak.")
         return
       end if
     end if
@@ -672,11 +666,10 @@ contains
     lat => lattices(p % coord % lattice)
 
     if (verbosity >= 10 .or. trace) then
-      message = "    Crossing lattice " // trim(to_str(lat % id)) // &
-           ". Current position (" // trim(to_str(p % coord % lattice_x)) &
-           // "," // trim(to_str(p % coord % lattice_y)) // "," // &
-           trim(to_str(p % coord % lattice_z)) // ")"
-      call write_message()
+      call write_message("    Crossing lattice " // trim(to_str(lat % id)) &
+           &// ". Current position (" // trim(to_str(p % coord % lattice_x)) &
+           &// "," // trim(to_str(p % coord % lattice_y)) // "," &
+           &// trim(to_str(p % coord % lattice_z)) // ")")
     end if
 
     if (lat % type == LATTICE_RECT) then
@@ -739,9 +732,8 @@ contains
       ! Search for particle
       call find_cell(p, found)
       if (.not. found) then
-        message = "Could not locate particle " // trim(to_str(p % id)) // &
-             " after crossing a lattice boundary."
-        call handle_lost_particle(p)
+        call handle_lost_particle(p, "Could not locate particle " &
+             &// trim(to_str(p % id)) // " after crossing a lattice boundary.")
         return
       end if
     else
@@ -762,9 +754,9 @@ contains
         ! Search for particle
         call find_cell(p, found)
         if (.not. found) then
-          message = "Could not locate particle " // trim(to_str(p % id)) // &
-               " after crossing a lattice boundary."
-          call handle_lost_particle(p)
+          call handle_lost_particle(p, "Could not locate particle " &
+               &// trim(to_str(p % id)) &
+               &// " after crossing a lattice boundary.")
           return
         end if
       end if
@@ -1494,8 +1486,8 @@ contains
     type(Cell),    pointer  :: c
     type(Surface), pointer  :: surf
 
-    message = "Building neighboring cells lists for each surface..."
-    call write_message(4)
+    call write_message("Building neighboring cells lists for each surface...", &
+         &4)
 
     allocate(count_positive(n_surfaces))
     allocate(count_negative(n_surfaces))
@@ -1562,12 +1554,13 @@ contains
 ! HANDLE_LOST_PARTICLE
 !===============================================================================
 
-  subroutine handle_lost_particle(p)
+  subroutine handle_lost_particle(p, message)
 
     type(Particle), intent(inout) :: p
+    character(*)                  :: message
 
     ! Print warning and write lost particle file
-    call warning(force = .true.)
+    call warning(message)
     call write_particle_restart(p)
 
     ! Increment number of lost particles
@@ -1579,8 +1572,7 @@ contains
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached
     if (n_lost_particles == MAX_LOST_PARTICLES) then
-      message = "Maximum number of lost particles has been reached."
-      call fatal_error()
+      call fatal_error("Maximum number of lost particles has been reached.")
     end if
 
   end subroutine handle_lost_particle

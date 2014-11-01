@@ -37,12 +37,10 @@ contains
     inquire(file = trim(path_endf)//trim(filename), &
       & exist = file_exists, read = readable)
     if (.not. file_exists) then
-      message = 'ENDF-6 file '//trim(filename)//' does not exist.'
-      call fatal_error()
+      call fatal_error('ENDF-6 file '//trim(filename)//' does not exist.')
     else if (readable(1:3) == 'NO') then
-      message = 'ENDF-6 file '//trim(filename)// &
-        & ' is not readable.  Change file permissions with chmod command.'
-      call fatal_error()
+      call fatal_error('ENDF-6 file '//trim(filename)// &
+        & ' is not readable.  Change file permissions with chmod command.')
     end if
 
     ! display message
@@ -210,13 +208,11 @@ contains
 
       ! SLBW
       case(1)
-        message = 'SLBW (LRF=1) formalism not supported in '//trim(filename)
-        call fatal_error()
+        call fatal_error('SLBW (LRF=1) formalism not supported in '//trim(filename))
 
       ! MLBW
       case(2)
-        message = 'MLBW (LRF=2) formalism not supported in '//trim(filename)
-        call fatal_error()
+        call fatal_error('MLBW (LRF=2) formalism not supported in '//trim(filename))
 
       ! Reich-Moore
       case(3)
@@ -224,33 +220,28 @@ contains
 
       ! Adler-Adler
       case(4)
-        message = 'Adler-Adler (LRF=4) formalism not supported in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('Adler-Adler (LRF=4) formalism not supported in '&
+          & //trim(filename))
 
       ! General R-Matrix
       case(5)
-        message = 'General R-Matrix (LRF=5) formalism not allowed in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('General R-Matrix (LRF=5) formalism not allowed in '&
+          & //trim(filename))
 
       ! Hybrid R-Function
       case(6)
-        message = 'Hybrid R-Function (LRF=6) formalism not allowed in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('Hybrid R-Function (LRF=6) formalism not allowed in '&
+          & //trim(filename))
 
       ! R-Matrix Limited
       case(7)
-        message = 'R-Matrix Limited (LRF=7) formalism not supported in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('R-Matrix Limited (LRF=7) formalism not supported in '&
+          & //trim(filename))
 
       ! default case
       case default
-        message = 'LRF must be an integer between 1 and 7, inclusive in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('LRF must be an integer between 1 and 7, inclusive in '&
+          & //trim(filename))
       end select
 
     ! unresolved region
@@ -263,9 +254,8 @@ contains
 
       ! only fission widths are energy-dependent
       case(1)
-        message = 'LRF values other than 2 are not supported in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('LRF values other than 2 are not supported in '&
+          & //trim(filename))
 
       ! all parameters are energy-dependent
       case(2)
@@ -273,16 +263,14 @@ contains
 
       ! default case
       case default
-        message = 'LRF values other than 2 are not supported in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('LRF values other than 2 are not supported in '&
+          & //trim(filename))
       end select
 
     ! default case
     case default
-      message = 'LRU values other than 1 or 2 are not allowed in '&
-        & //trim(filename)
-      call fatal_error()
+      call fatal_error('LRU values other than 1 or 2 are not allowed in '&
+        & //trim(filename))
     end select
 
   end subroutine read_resonance_subsection
@@ -493,9 +481,8 @@ contains
     integer :: zaid_ref
 
     if (zaid_val /= zaid_ref) then
-      message = trim(adjustl(filename))//' and the corresponding ACE file give&
-        & conflicting ZAID values'
-      call fatal_error()
+      call fatal_error(trim(adjustl(filename))//' and the corresponding ACE file give&
+        & conflicting ZAID values')
     end if
 
   end subroutine check_zaid
@@ -513,9 +500,8 @@ contains
     real(8) :: awr_ref
 
     if (awr_val /= awr_ref) then
-      message = trim(adjustl(filename))//' and the corresponding ACE file give&
-        & conflicting AWR values'
-      call warning()
+      call warning(trim(adjustl(filename))//' and the corresponding ACE file give&
+        & conflicting AWR values')
    end if
 
   end subroutine check_mass
@@ -532,19 +518,15 @@ contains
 
     select case(lrp_val)
     case(-1)
-      message = 'LRP of -1 not supported in '//trim(filename)
-      call fatal_error()
+      call fatal_error('LRP of -1 not supported in '//trim(filename))
     case(0)
-      message = 'LRP of 0 not supported in '//trim(filename)
-      call fatal_error()
+      call fatal_error('LRP of 0 not supported in '//trim(filename))
     case(1)
       continue
     case(2)
-      message = 'LRP of 2 not supported in '//trim(filename)
-      call fatal_error()
+      call fatal_error('LRP of 2 not supported in '//trim(filename))
     case default
-      message = 'LRP must be -1, 0, 1, or 2 in '//trim(filename)
-      call fatal_error()
+      call fatal_error('LRP must be -1, 0, 1, or 2 in '//trim(filename))
     end select
 
   end subroutine check_parameters
@@ -561,8 +543,7 @@ contains
     integer :: nis_val
 
     if (nis_val /= 1) then
-      message = trim(filename)//' contains data for more than 1 nuclide'
-      call fatal_error()
+      call fatal_error(trim(filename)//' contains data for more than 1 nuclide')
     end if
 
   end subroutine check_single_nuclide
@@ -579,9 +560,8 @@ contains
     real(8) :: abn_val
 
     if (abn_val /= ONE) then
-      message = 'Abundance of nuclide given in '//trim(filename)//' is not&
-        & unity'
-      call fatal_error()
+      call fatal_error('Abundance of nuclide given in '//trim(filename)//' is not&
+        & unity')
     end if
 
   end subroutine check_abundance
@@ -600,15 +580,13 @@ contains
     real(8) :: e_high
 
     if (n_ranges /= 2) then
-      message = 'NER values other than 2 are not supported (see &
-        &'//trim(filename)
-      call fatal_error()
+      call fatal_error('NER values other than 2 are not supported (see &
+        &'//trim(filename))
     end if
 
     if (e_high <= e_low) then
-      message = 'Upper resonance energy range bound is not greater &
-        &than the lower in '//trim(filename)
-      call fatal_error()
+      call fatal_error('Upper resonance energy range bound is not greater &
+        &than the lower in '//trim(filename))
     end if
 
   end subroutine check_energy_ranges
@@ -625,8 +603,7 @@ contains
     integer :: lru_val
 
     if (lru_val /= lru_ref) then
-      message = 'Unexpected resonance range ordering in '//trim(filename)
-      call fatal_error()
+      call fatal_error('Unexpected resonance range ordering in '//trim(filename))
     end if
 
   end subroutine check_formalism
@@ -650,13 +627,11 @@ contains
       case(1)
         continue
       case default
-        message = 'ENDF-6 NAPS flag must be 0 or 1 when NRO is 0 in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO is 0 in '&
+          & //trim(filename))
       end select
     case(1)
-      message ='ENDF-6 NRO flag value 1 not supported in '//trim(filename)
-      call fatal_error()
+      call fatal_error('ENDF-6 NRO flag value 1 not supported in '//trim(filename))
       select case(naps_val)
       case(0)
         continue
@@ -665,13 +640,11 @@ contains
       case(2)
         continue
       case default
-        message = 'ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1 in '&
-          & //trim(filename)
-        call fatal_error()
+        call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1 in '&
+          & //trim(filename))
       end select
     case default
-      message = 'ENDF-6 NRO flag must be 0 or 1 in '//trim(filename)
-      call fatal_error()
+      call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '//trim(filename))
     end select
 
   end subroutine check_radius_flags
@@ -689,9 +662,8 @@ contains
     real(8) :: ap_ref
 
     if (ap_val /= ap_ref) then
-      message = 'AP value changes within a resonance energy range in '&
-        & //trim(filename)
-      call fatal_error()
+      call fatal_error('AP value changes within a resonance energy range in '&
+        & //trim(filename))
     end if
 
   end subroutine check_scattering_radius
@@ -708,9 +680,8 @@ contains
     integer :: l_ref
 
     if (l_val /= l_ref) then
-      message = 'Unexpected ordering of orbital quantum numbers in '&
-        & //trim(filename)
-      call fatal_error()
+      call fatal_error('Unexpected ordering of orbital quantum numbers in '&
+        & //trim(filename))
     end if
 
   end subroutine check_l_number
@@ -727,9 +698,8 @@ contains
     real(8) :: j_val
 
     if (j_val < ZERO) then
-      message = 'Negative total angular momentum not supported in '&
-        //trim(filename)
-      call fatal_error()
+      call fatal_error('Negative total angular momentum not supported in '&
+        //trim(filename))
     end if
 
   end subroutine check_j_sign

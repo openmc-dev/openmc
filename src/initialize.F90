@@ -176,10 +176,8 @@ contains
 
     ! Warn if overlap checking is on
     if (master .and. check_overlaps) then
-      message = ""
-      call write_message()
-      message = "Cell overlap checking is ON"
-      call warning()
+      call write_message("")
+      call warning("Cell overlap checking is ON")
     end if
 
     ! Stop initialization timer
@@ -390,9 +388,8 @@ contains
 
           ! Check that number specified was valid
           if (n_particles == ERROR_INT) then
-            message = "Must specify integer after " // trim(argv(i-1)) // &
-                 " command-line flag."
-            call fatal_error()
+            call fatal_error("Must specify integer after " // trim(argv(i-1)) &
+                 &// " command-line flag.")
           end if
         case ('-r', '-restart', '--restart')
           ! Read path for state point/particle restart
@@ -412,8 +409,7 @@ contains
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
-            message = "Unrecognized file after restart flag."
-            call fatal_error()
+            call fatal_error("Unrecognized file after restart flag.")
           end select
 
           ! If its a restart run check for additional source file
@@ -431,8 +427,8 @@ contains
               call sp % read_data(filetype, 'filetype')
               call sp % file_close()
               if (filetype /= FILETYPE_SOURCE) then
-                message = "Second file after restart flag must be a source file"
-                call fatal_error()
+                call fatal_error("Second file after restart flag must be a &
+                     &source file")
               end if
 
               ! It is a source file
@@ -466,13 +462,13 @@ contains
           ! Read and set number of OpenMP threads
           n_threads = int(str_to_int(argv(i)), 4)
           if (n_threads < 1) then
-            message = "Invalid number of threads specified on command line."
-            call fatal_error()
+            call fatal_error("Invalid number of threads specified on command &
+                 &line.")
           end if
           call omp_set_num_threads(n_threads)
 #else
-          message = "Ignoring number of threads specified on command line."
-          call warning()
+          if (master) call warning("Ignoring number of threads specified on &
+               &command line.")
 #endif
 
         case ('-?', '-h', '-help', '--help')
@@ -488,8 +484,7 @@ contains
           write_all_tracks = .true.
           i = i + 1
         case default
-          message = "Unknown command line option: " // argv(i)
-          call fatal_error()
+          call fatal_error("Unknown command line option: " // argv(i))
         end select
 
         last_flag = i
@@ -625,9 +620,8 @@ contains
             i_array = surface_dict % get_key(abs(id))
             c % surfaces(j) = sign(i_array, id)
           else
-            message = "Could not find surface " // trim(to_str(abs(id))) // &
-                 " specified on cell " // trim(to_str(c % id))
-            call fatal_error()
+            call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
+                 &// " specified on cell " // trim(to_str(c % id)))
           end if
         end if
       end do
@@ -639,9 +633,8 @@ contains
       if (universe_dict % has_key(id)) then
         c % universe = universe_dict % get_key(id)
       else
-        message = "Could not find universe " // trim(to_str(id)) // &
-             " specified on cell " // trim(to_str(c % id))
-        call fatal_error()
+        call fatal_error("Could not find universe " // trim(to_str(id)) &
+             &// " specified on cell " // trim(to_str(c % id)))
       end if
 
       ! =======================================================================
@@ -655,9 +648,8 @@ contains
           c % type = CELL_NORMAL
           c % material = material_dict % get_key(id)
         else
-          message = "Could not find material " // trim(to_str(id)) // &
-               " specified on cell " // trim(to_str(c % id))
-          call fatal_error()
+          call fatal_error("Could not find material " // trim(to_str(id)) &
+               &// " specified on cell " // trim(to_str(c % id)))
         end if
       else
         id = c % fill
@@ -674,15 +666,14 @@ contains
           else if (material_dict % has_key(mid)) then
             c % material = material_dict % get_key(mid)
           else
-            message = "Could not find material " // trim(to_str(mid)) // &
-               " specified on lattice " // trim(to_str(lid))
-            call fatal_error()
+            call fatal_error("Could not find material " // trim(to_str(mid)) &
+                 &// " specified on lattice " // trim(to_str(lid)))
           end if
 
         else
-          message = "Specified fill " // trim(to_str(id)) // " on cell " // &
-               trim(to_str(c % id)) // " is neither a universe nor a lattice."
-          call fatal_error()
+          call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
+               &// trim(to_str(c % id)) // " is neither a universe nor a &
+               &lattice.")
         end if
       end if
     end do
@@ -707,9 +698,8 @@ contains
             if (universe_dict % has_key(id)) then
               lat % universes(j,k,m) = universe_dict % get_key(id)
             else
-              message = "Invalid universe number " // trim(to_str(id)) &
-                   // " specified on lattice " // trim(to_str(lat % id))
-              call fatal_error()
+              call fatal_error("Invalid universe number " // trim(to_str(id)) &
+                   &// " specified on lattice " // trim(to_str(lat % id)))
             end if
           end do
         end do
@@ -733,9 +723,8 @@ contains
             if (cell_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = cell_dict % get_key(id)
             else
-              message = "Could not find cell " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find cell " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -749,9 +738,8 @@ contains
             if (surface_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = surface_dict % get_key(id)
             else
-              message = "Could not find surface " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find surface " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -762,9 +750,8 @@ contains
             if (universe_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = universe_dict % get_key(id)
             else
-              message = "Could not find universe " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find universe " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -775,9 +762,8 @@ contains
             if (material_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = material_dict % get_key(id)
             else
-              message = "Could not find material " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find material " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -912,8 +898,7 @@ contains
 
     ! Check for allocation errors
     if (alloc_err /= 0) then
-      message = "Failed to allocate source bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate source bank.")
     end if
 
 #ifdef _OPENMP
@@ -940,8 +925,7 @@ contains
 
     ! Check for allocation errors
     if (alloc_err /= 0) then
-      message = "Failed to allocate fission bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate fission bank.")
     end if
 
   end subroutine allocate_banks

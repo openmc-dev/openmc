@@ -1619,14 +1619,14 @@ contains
     ! call S.G. Johnson's Faddeeva evaluation
     case (MIT_W)
       relerr = 1.0e-1
-      w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
-      psi_val = SQRT_PI / TWO * theta &
+      w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
+      psi_val = SQRT_PI * HALF * theta &
         & * real(real(w_val, 8), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
     case (QUICK_W)
-      psi_val = SQRT_PI / TWO * theta &
-        & * real(real(quickw(cmplx(theta * x / TWO, theta / TWO, 8)), 8), 8)
+      psi_val = SQRT_PI * HALF * theta &
+        & * real(real(quickw(cmplx(theta * x * HALF, theta * HALF, 8)), 8), 8)
 
     case default
       call fatal_error('Unrecognized W function evaluation method')
@@ -1655,15 +1655,15 @@ contains
     case (MIT_W)
 
       relerr = 1.0e-1
-      w_val = faddeeva_w(cmplx(theta * x / TWO, theta / TWO, 8), relerr)
-      chi_val = SQRT_PI / TWO * theta &
+      w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
+      chi_val = SQRT_PI * HALF * theta &
         & * real(aimag(w_val), 8)
 
     ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
     case (QUICK_W)
 
-      chi_val = SQRT_PI / TWO * theta &
-        & * real(aimag(quickw(cmplx(theta * x / TWO, theta / TWO, 8))), 8)
+      chi_val = SQRT_PI * HALF * theta &
+        & * real(aimag(quickw(cmplx(theta * x * HALF, theta * HALF, 8))), 8)
 
     case default
 

@@ -456,7 +456,7 @@ contains
 
         ! build xs cdf
         xs_cdf_sum = xs_cdf_sum + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
-          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
+          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) * HALF &
           & * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
         nuc % xs_cdf(i) = xs_cdf_sum
       end do

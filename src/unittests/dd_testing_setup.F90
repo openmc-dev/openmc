@@ -3,9 +3,12 @@ module dd_testing_setup
   use constants
   use dd_header,        only: dd_type
   use global,           only: master, n_procs, rank, message, n_particles, &
-                              tallies, n_cells
+                              tallies, n_cells, n_user_tallies, micro_xs, &
+                              material_xs
   use output,           only: write_message
+  use particle_header,  only: Particle
   use string,           only: to_str
+  use tally,            only: setup_active_usertallies
   use tally_initialize, only: add_tallies, configure_tallies
 
 #ifdef MPI
@@ -179,17 +182,23 @@ contains
 ! scoring events to this tally where the cells overlap domains in any way.
 !===============================================================================
 
-  subroutine dd_simple_four_domain_tallies()
+  subroutine dd_simple_four_domain_tallies(p)
+
+    type(Particle), intent(inout) :: p
+
+    ! This hardcodes in what would be done in input_xml and during
+    ! initialization, and would need to be modified if anything changes there
 
     n_cells = 4
 
-    call add_tallies("user", 1)
+   n_user_tallies = 1
+    call add_tallies("user", n_user_tallies)
 
     tallies(1) % id = 1
     tallies(1) % label = 'DD test tally for simple four-domain test case'
     tallies(1) %  on_the_fly_allocation = .true.
     tallies(1) %  type = TALLY_VOLUME
-    tallies(1) % estimator = ESTIMATOR_TRACKLENGTH
+    tallies(1) % estimator = ESTIMATOR_ANALOG
     tallies(1) % n_filters = 1
     allocate(tallies(1) % filters(1))
     tallies(1) % filters(1) % type = FILTER_CELL
@@ -208,6 +217,18 @@ contains
     tallies(1) % n_user_score_bins = 2
 
     call configure_tallies()
+    call setup_active_usertallies()
+
+    ! Set up a particle to score to this tally
+    call p % initialize()
+
+    p % event_nuclide = 1
+
+    allocate(micro_xs(1))
+    micro_xs % absorption = 1.0_8
+    micro_xs % fission = 1.0_8
+
+    material_xs % total = 1.0_8
 
   end subroutine dd_simple_four_domain_tallies
 

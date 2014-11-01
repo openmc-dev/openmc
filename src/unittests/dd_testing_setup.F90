@@ -2,9 +2,11 @@ module dd_testing_setup
 
   use constants
   use dd_header,        only: dd_type
-  use error,            only: warning
-  use global,           only: n_procs, rank, message, n_particles
+  use global,           only: master, n_procs, rank, message, n_particles, &
+                              tallies, n_cells
+  use output,           only: write_message
   use string,           only: to_str
+  use tally_initialize, only: add_tallies, configure_tallies
 
 #ifdef MPI
   use mpi
@@ -19,18 +21,18 @@ contains
 ! CHECK_PROCS makes sure we have the right number of processors
 !===============================================================================
 
-  function check_procs(n_procs) result(skip)
+  function check_procs(procs) result(skip)
   
-    integer, intent(in) :: n_procs
+    integer, intent(in) :: procs
 
     logical :: skip
     skip = .false.
   
 #ifdef MPI
-    if (.not. n_procs == 5) then
-      message = "Skipping test: must be run with MPI " // &
-                trim(to_str(n_procs)) // " procs"
-      call warning()
+    if (.not. n_procs == procs) then
+      message = "Skipping test: must be run with MPI and " // &
+                trim(to_str(procs)) // " procs"
+      if (master) call write_message()
       skip = .true.
     end if
 #else
@@ -169,5 +171,44 @@ contains
     end select
 
   end subroutine dd_simple_four_domain_scatters
+
+!===============================================================================
+! DD_SIMPLE_FOUR_DOMAIN_TALLIES initializes a fake set of tallies designed to
+! test on-the-fly memory loading with the simple four-domain test case
+! We'll have two scores and a cell filter with 4 cells.  Tests can simulate
+! scoring events to this tally where the cells overlap domains in any way.
+!===============================================================================
+
+  subroutine dd_simple_four_domain_tallies()
+
+    n_cells = 4
+
+    call add_tallies("user", 1)
+
+    tallies(1) % id = 1
+    tallies(1) % label = 'DD test tally for simple four-domain test case'
+    tallies(1) %  on_the_fly_allocation = .true.
+    tallies(1) %  type = TALLY_VOLUME
+    tallies(1) % estimator = ESTIMATOR_TRACKLENGTH
+    tallies(1) % n_filters = 1
+    allocate(tallies(1) % filters(1))
+    tallies(1) % filters(1) % type = FILTER_CELL
+    tallies(1) % filters(1) % n_bins = 4
+    allocate(tallies(1) % filters(1) % int_bins(4))
+    tallies(1) % filters(1) % int_bins = (/ 1, 2, 3, 4/)
+    allocate(tallies(1) % nuclide_bins(1))
+    tallies(1) % nuclide_bins(1) = -1
+    tallies(1) % n_nuclide_bins = 1
+    allocate(tallies(1) % score_bins(2))
+    allocate(tallies(1) % moment_order(2))
+    tallies(1) % moment_order = 0
+    tallies(1) % score_bins(1) = SCORE_FLUX
+    tallies(1) % score_bins(2) = SCORE_FISSION
+    tallies(1) % n_score_bins = 2
+    tallies(1) % n_user_score_bins = 2
+
+    call configure_tallies()
+
+  end subroutine dd_simple_four_domain_tallies
 
 end module dd_testing_setup

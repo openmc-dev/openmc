@@ -21,7 +21,7 @@ module test_dd_distribute_source
   type, extends(TestClass) :: test
     contains
       procedure         :: init     => test_init
-      procedure, nopass :: setup    => test_setup
+      procedure         :: setup    => test_setup
       procedure, nopass :: execute  => test_execute
       procedure, nopass :: check    => test_check
       procedure, nopass :: teardown => test_teardown
@@ -37,11 +37,11 @@ contains
 ! INIT
 !===============================================================================
 
-  subroutine test_init(self)
+  subroutine test_init(this)
 
-    class(test), intent(inout) :: self
+    class(test), intent(inout) :: this
 
-    self % name = "test_dd_distribute_source"
+    this % name = "test_dd_distribute_source"
     
   end subroutine test_init
 
@@ -49,12 +49,14 @@ contains
 ! SETUP
 !===============================================================================
 
-  subroutine test_setup(suite)
+  subroutine test_setup(this, suite)
+
+    class(test),      intent(inout) :: this
 
     class(TestSuiteClass), intent(inout) :: suite
     
     if (check_procs(5)) then
-      if (master) call suite % skip()
+      call suite % skip(this)
       return
     end if
 

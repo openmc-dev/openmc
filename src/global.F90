@@ -5,7 +5,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use dd_header,        only: dd_type
+  use dd_header,        only: dd_type, deallocate_dd
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
@@ -533,6 +533,9 @@ contains
         if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
         deallocate(ufs_mesh)
     end if
+    
+    ! Deallocate domain decomposition
+    call deallocate_dd(domain_decomp)
     
   end subroutine free_memory
 

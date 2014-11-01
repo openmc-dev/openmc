@@ -18,24 +18,27 @@ module testing_header
 
   type, abstract, public :: TestClass
     character(MAX_LINE_LEN) :: name
+    logical :: skip = .false.
     contains
       procedure(init_interface),             deferred :: init
-      procedure(setup_interface),    nopass, deferred :: setup
+      procedure(setup_interface),            deferred :: setup
       procedure(execute_interface),  nopass, deferred :: execute
       procedure(check_interface),    nopass, deferred :: check
       procedure(teardown_interface), nopass, deferred :: teardown
   end type TestClass
 
   abstract interface
-    subroutine init_interface(self)
+    subroutine init_interface(this)
       import TestClass
-      class(TestClass), intent(inout) :: self
+      class(TestClass),      intent(inout) :: this
     end subroutine init_interface
   end interface
 
   abstract interface
-    subroutine setup_interface(suite)
+    subroutine setup_interface(this, suite)
+      import TestClass
       import TestSuiteClass
+      class(TestClass),      intent(inout) :: this
       class(TestSuiteClass), intent(inout) :: suite
     end subroutine setup_interface
   end interface
@@ -65,7 +68,7 @@ contains
 
   subroutine fail(this)
 
-    class(TestSuiteClass) :: this
+    class(TestSuiteClass), intent(inout) :: this
 
     this % n_failed = this % n_failed + 1
 
@@ -75,11 +78,13 @@ contains
 ! SKIP
 !===============================================================================
 
-  subroutine skip(this)
+  subroutine skip(this, test)
 
-    class(TestSuiteClass) :: this
+    class(TestSuiteClass), intent(inout) :: this
+    class(TestClass),      intent(inout) :: test
 
     this % n_skipped = this % n_skipped + 1
+    test % skip = .true.
 
   end subroutine skip
 
@@ -89,7 +94,7 @@ contains
 
   subroutine pass(this)
 
-    class(TestSuiteClass) :: this
+    class(TestSuiteClass), intent(inout) :: this
 
     this % n_passed = this % n_passed + 1
 

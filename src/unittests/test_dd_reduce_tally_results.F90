@@ -1,21 +1,14 @@
-module test_dd_bins_dict
+module test_dd_reduce_tally_results
 
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains
-  use global,           only: master, rank, message
-  use output,           only: write_message
-  use string,           only: to_str
+  use error,            only: warning
+  use global,           only: master, message
   use testing_header,   only: TestSuiteClass, TestClass
-
-#ifdef MPI
-  use mpi
-#endif
 
   implicit none
   private
-
-  type(dd_type), save :: dd
 
   type, extends(TestClass) :: test
     contains
@@ -26,7 +19,9 @@ module test_dd_bins_dict
       procedure, nopass :: teardown => test_teardown
   end type test
 
-  type(test), public :: dd_bins_dict_test
+  type(test), public :: dd_reduce_tally_results_test
+  
+  type(dd_type) :: dd
 
 contains
 
@@ -38,7 +33,7 @@ contains
 
     class(test), intent(inout) :: this
 
-    this % name = "test_dd_bins_dict"
+    this % name = "test_dd_reduce_tally_results"
 
   end subroutine test_init
 
@@ -49,16 +44,26 @@ contains
   subroutine test_setup(this, suite)
 
     class(test),      intent(inout) :: this
+
     class(TestSuiteClass), intent(inout) :: suite
     
     if (check_procs(5)) then
       call suite % skip(this)
       return
     end if
-    
+
     ! Get generic DD setup with 4 domains for 5 MPI ranks
     call dd_simple_four_domains(dd)
-    
+
+    ! Initialize dd_type
+    call initialize_domain_decomp(dd)
+
+    if (master) then
+      message = "TEST NOT IMPLEMENTED"
+      call warning(force=.true.)
+      call suite % skip(this)
+    end if
+
   end subroutine test_setup
 
 !===============================================================================
@@ -67,7 +72,7 @@ contains
 
   subroutine test_execute()
 
-    call initialize_domain_decomp(dd)
+    ! Call the subroutines or functions to check here
     
   end subroutine test_execute
 
@@ -79,42 +84,11 @@ contains
 
     class(TestSuiteClass), intent(inout) :: suite
 
-    logical :: failure = .false.
-#ifdef MPI
-    integer :: mpi_err
-    logical :: any_fail
-#endif
-
-    select case(rank)
-      case(0, 1)
-        if (.not. dd % bins_dict % get_key(2) == 4) failure = .true.
-        if (.not. dd % bins_dict % get_key(3) == 2) failure = .true.
-      case(2)
-        if (.not. dd % bins_dict % get_key(1) == 3) failure = .true.
-        if (.not. dd % bins_dict % get_key(4) == 2) failure = .true.
-      case(3)
-        if (.not. dd % bins_dict % get_key(1) == 1) failure = .true.
-        if (.not. dd % bins_dict % get_key(4) == 4) failure = .true.
-      case(4)
-        if (.not. dd % bins_dict % get_key(2) == 1) failure = .true.
-        if (.not. dd % bins_dict % get_key(3) == 3) failure = .true.
-    end select
-
-    if (failure) then
-      message = "FAILURE: Domain bins_dict is incorrect on rank " // &
-                trim(to_str(rank))
-      call write_message()
-    end if
-
-#ifdef MPI
-    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
-        MPI_COMM_WORLD, mpi_err)
-    if (.not. any_fail) then
-      call suite % pass()
-    else
-      call suite % fail()
-    end if
-#endif
+    ! Add test checks here.  For example, check that the results are what you
+    ! expect given whatever setup was hardcoded into test_setup
+    
+    ! If success, do:  call suite % pass()
+    ! If failure, do:  call suite % fail()
     
   end subroutine test_check
 
@@ -128,4 +102,4 @@ contains
     
   end subroutine test_teardown
 
-end module test_dd_bins_dict
+end module test_dd_reduce_tally_results

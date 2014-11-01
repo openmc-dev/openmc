@@ -44,9 +44,8 @@ contains
       mat => materials(i)
 
       if (mat % nat_elements) then
-        message = 'xs_gridpoints element(s) in material(s) with natural&
-          & elements will be ignored'
-        call warning()
+        call warning('xs_gridpoints element(s) in material(s) with natural&
+          & elements will be ignored')
         cycle
       end if
 

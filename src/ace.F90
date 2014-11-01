@@ -1311,9 +1311,6 @@ contains
 
       ! Abort if no corresponding inelastic reaction was found
       if (nuc % urr_inelastic_index == NONE) then
-        call fatal_error("Could not find inelastic reaction specified on " &
-             // "unresolved resonance probability table.")
-      if (nuc % urr_inelastic == NONE) then
         call fatal_error("Could not find inelastic reaction specified on &
              &unresolved resonance probability table.")
       end if
@@ -1341,8 +1338,10 @@ contains
 
     ! Check for negative values
     if (any(nuc % urr_data % prob < ZERO)) then
-      if (master) call warning("Negative value(s) found on probability table &
-           &for nuclide " // nuc % name)
+      if (master) then
+        call warning("Negative value(s) found on probability table &
+          &for nuclide " // nuc % name)
+      end if
     end if
 
   end subroutine read_unr_res

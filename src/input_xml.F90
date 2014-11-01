@@ -3177,8 +3177,7 @@ contains
     end if
 
     ! Display output message
-    message = "Reading urr XML file..."
-    call write_message(5)
+    call write_message("Reading urr XML file...")
 
     ! Parse urr.xml file
     call open_xmldoc(doc, filename)

@@ -44,8 +44,7 @@ contains
     end if
 
     ! display message
-    message = "Loading ENDF-6 file: "//trim(filename)
-    call write_message(6)
+    call write_message("Loading ENDF-6 file: "//trim(filename))
 
     open(unit = in, &
       file = trim(path_endf)//trim(filename))

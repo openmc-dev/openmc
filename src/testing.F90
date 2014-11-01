@@ -42,7 +42,7 @@ contains
     call run_test(unittests, dd_sync_destination_info_test)
     ! TODO: add test for DD send_recv_particles
     ! TODO: add test for synchronize_bank_dd
-    !call run_test(unittests, dd_otf_tally_allocation_test)
+    call run_test(unittests, dd_otf_tally_allocation_test)
 !    call run_test(unittests, dd_reduce_tally_results_test)
 #else
     message = "Must be compiled with testing mode enabled to run tests."

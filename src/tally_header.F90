@@ -141,6 +141,7 @@ module tally_header
     ! Type-Bound procedures
     contains
       procedure :: get_filter_index => filter_index
+      procedure :: add_filter_bin => add_filter_bin
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
 
@@ -153,13 +154,10 @@ module tally_header
 
     function filter_index(this, matching_bins) result(idx)
 
-      use global, only: rank
-
       class(TallyObject), intent(inout) :: this 
       integer, allocatable, intent(in) :: matching_bins(:)
       
       integer :: idx
-      type(TallyResult), allocatable :: temp(:,:)
 
       ! Get index in total array
       idx = sum((matching_bins(1:this % n_filters) - 1) * this % stride) + 1
@@ -173,32 +171,44 @@ module tally_header
         idx = this % filter_index_map % get_key(idx)
 
       else
-        
-        print *, rank, 'allocating bin', idx
 
         ! This is the first time this filter index has been needed, so we must 
-        ! allocate TallyResult object for it
-  
-        ! TODO: this should be done with a linked list
-
-        ! Allocate results array with increased size
-        allocate(temp(this % total_score_bins, this % size_results_filters + 1))
-
-        ! Copy original results to temporary array
-        temp(:, 1:this % size_results_filters) = &
-             this % results(:, 1:this % size_results_filters)
-
-        ! Move allocation from temporary array
-        call move_alloc(FROM=temp, TO=this % results)
-
-        ! Increment counter and add to mapping        
-        this % size_results_filters = this % size_results_filters + 1
-        call this % filter_index_map % add_key(idx, this % size_results_filters)
+        ! allocate a TallyResult object for it
+        call this % add_filter_bin(idx)
         idx = this % size_results_filters
 
       end if
 
     end function filter_index
+
+!===============================================================================
+! ADD_FILTER_BIN allocates space for a new filter bin in the results array
+!===============================================================================
+
+    subroutine add_filter_bin(this, idx)
+
+      class(TallyObject), intent(inout) :: this 
+      integer,            intent(in)    :: idx
+
+      type(TallyResult), allocatable :: temp(:,:)
+
+      ! TODO: this is inefficient - should be done with a linked list?
+
+      ! Allocate results array with increased size
+      allocate(temp(this % total_score_bins, this % size_results_filters + 1))
+
+      ! Copy original results to temporary array
+      temp(:, 1:this % size_results_filters) = &
+           this % results(:, 1:this % size_results_filters)
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=this % results)
+
+      ! Increment counter and add to mapping        
+      this % size_results_filters = this % size_results_filters + 1
+      call this % filter_index_map % add_key(idx, this % size_results_filters)
+
+    end subroutine add_filter_bin
 
 !===============================================================================
 ! TALLYFILTER_CLEAR deallocates a TallyFilter element and sets it to its as

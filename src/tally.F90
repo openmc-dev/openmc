@@ -2321,8 +2321,14 @@ contains
       n_realizations = n_realizations + n_procs
     end if
 
-    ! Accumulate on master only unless run is not reduced then do it on all
-    if (master .or. (.not. reduce_tallies)) then
+    ! Accumulate on master only, unless run is not reduced then do it on all
+    ! If the run is domain decomposed, we do this only for the master of that
+    ! domain. (If a tally filter bin lies on more than one domain, it will be
+    ! accumulated on the domain master of each domain - those results should be
+    ! identical
+    if ((.not. dd_run .and. master) .or. &
+        (dd_run .and. domain_decomp % local_master) .or. &
+        (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
         call accumulate_tally(tallies(active_tallies % get_item(i)))
@@ -2357,6 +2363,7 @@ contains
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
+    integer :: max_filters ! max number of filter bins allocated across procs
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
@@ -2365,29 +2372,78 @@ contains
     do i = 1, active_tallies % size()
       t => tallies(active_tallies % get_item(i))
 
-      m = t % total_score_bins
-      n = t % total_filter_bins
-      n_bins = m*n
+      if (.not. dd_run) then
+        
+        if (t % on_the_fly_allocation) then
+          message = "On-the-fly tally reduction only implemented for " // &
+                    "domain-decomposed runs"
+          call fatal_error()
+        end if
 
-      allocate(tally_temp(m,n))
+        ! For non-DD runs, the results array is always the same size and in the
+        ! same order
 
-      tally_temp = t % results(:,:) % value
+        m = t % total_score_bins
+        n = t % total_filter_bins
+        n_bins = m*n
 
-      if (master) then
-        ! The MPI_IN_PLACE specifier allows the master to copy values into
-        ! a receive buffer without having a temporary variable
-        call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+        allocate(tally_temp(m,n))
 
-        ! Transfer values to value on master
-        t % results(:,:) % value = tally_temp
+        tally_temp = t % results(:,:) % value
+        if (master) then
+          ! The MPI_IN_PLACE specifier allows the master to copy values into
+          ! a receive buffer without having a temporary variable
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+          ! Transfer values to value on master
+          t % results(:,:) % value = tally_temp
+        else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+          ! Reset value on other processors
+          t % results(:,:) % value = 0
+        end if
+
       else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
-        ! Reset value on other processors
-        t % results(:,:) % value = 0
+        ! For DD runs, different processes probably allocated the results array
+        ! in a different order, and the results arrays might not be the same
+        ! size.  Therefore local masters need to broadcast their filter maps
+        ! so processes can send tallies to the correct index in the results
+        ! array of the local master
+
+        ! Everyone needs to know the max number of filter bins
+!        call MPI_REDUCE(t % size_result_filters, max_filters, 1, MPI_INTEGER, &
+!             MPI_MAX, 0, domain_decomp % comm, mpi_err) 
+
+!        if (domain_decomp % local_master) then
+!    
+!          flawed: TALLIES CAN BE ON MORE THAN ONE DOMAIN
+!      
+!          loop through other procs
+!            receive filter indices from other procs
+!            loop through received idxs
+!              if idx not in the map
+!                call t % add_filter_bin(idx)
+!          
+!          broadcast filter indices (send)
+
+
+!        else
+
+!          send filter indices to local master
+
+!          broadcast filter indices (recv)
+
+!          loop through filter idxs
+!            if idx in map:
+!              add 
+!          
+!        end if
+
       end if
 
       deallocate(tally_temp)
@@ -2420,6 +2476,12 @@ contains
       ! Receive buffer not significant at other processors
       call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
+    end if
+
+    ! If this is a domain decomposed run, domain masters need the total_weight
+    ! for tallies
+    if (dd_run) then
+      call MPI_BCAST(total_weight, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
     end if
 
   end subroutine reduce_tally_results

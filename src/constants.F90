@@ -392,6 +392,10 @@ module constants
   integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
   integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
+  ! When materials and tallies arrays are allocated on-the-fly, this parameter
+  ! controls how much larger than the needed size they will be allocated to
+  real(8), parameter :: OTF_HEADROOM = 1.1_8
+
   !=============================================================================
   ! CMFD CONSTANTS
 

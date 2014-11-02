@@ -1,6 +1,6 @@
 module tally_header
 
-  use constants,    only: NONE, N_FILTER_TYPES
+  use constants,    only: NONE, N_FILTER_TYPES, OTF_HEADROOM
   use dict_header,  only: DictIntInt
 
   implicit none
@@ -129,8 +129,14 @@ module tally_header
     ! Whether or not this tally will do on-the-fly memory allocation
     logical :: on_the_fly_allocation = .false.
 
+    ! Initial size to allocate the results array to when variable
+    integer :: otf_initial_size
+
     ! Size of results array when variable
     integer :: size_results_filters
+
+    ! Next index in the results array when variable
+    integer :: next_filter_idx = 1
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.
@@ -141,7 +147,7 @@ module tally_header
     ! Type-Bound procedures
     contains
       procedure :: get_filter_index => filter_index
-      procedure :: add_filter_bin => add_filter_bin
+      procedure :: grow_results_array
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
 
@@ -172,30 +178,40 @@ module tally_header
 
       else
 
-        ! This is the first time this filter index has been needed, so we must 
-        ! allocate a TallyResult object for it
-        call this % add_filter_bin(idx)
-        idx = this % size_results_filters
+        ! This is the first time this filter index has been needed
+
+        ! Grow the results array if we've used it all
+        if (this % next_filter_idx > this % size_results_filters) &
+            call this % grow_results_array()
+
+        ! Update the map
+        call this % filter_index_map % add_key(idx, this % next_filter_idx)
+
+        ! Set the return index
+        idx = this % next_filter_idx
+        
+        ! Increment the next index
+        this % next_filter_idx = this % next_filter_idx + 1
 
       end if
 
     end function filter_index
 
 !===============================================================================
-! ADD_FILTER_BIN allocates space for a new filter bin in the results array
+! GROW_RESULTS_ARRAY
 !===============================================================================
 
-    subroutine add_filter_bin(this, idx)
+    subroutine grow_results_array(this)
 
       class(TallyObject), intent(inout) :: this 
-      integer,            intent(in)    :: idx
 
+      integer :: newsize
       type(TallyResult), allocatable :: temp(:,:)
 
-      ! TODO: this is inefficient - should be done with a linked list?
+      newsize = int(real(this % size_results_filters, 8) * OTF_HEADROOM)
 
       ! Allocate results array with increased size
-      allocate(temp(this % total_score_bins, this % size_results_filters + 1))
+      allocate(temp(this % total_score_bins, newsize))
 
       ! Copy original results to temporary array
       temp(:, 1:this % size_results_filters) = &
@@ -204,11 +220,10 @@ module tally_header
       ! Move allocation from temporary array
       call move_alloc(FROM=temp, TO=this % results)
 
-      ! Increment counter and add to mapping        
-      this % size_results_filters = this % size_results_filters + 1
-      call this % filter_index_map % add_key(idx, this % size_results_filters)
+      ! Update size
+      this % size_results_filters = newsize
 
-    end subroutine add_filter_bin
+    end subroutine grow_results_array
 
 !===============================================================================
 ! TALLYFILTER_CLEAR deallocates a TallyFilter element and sets it to its as

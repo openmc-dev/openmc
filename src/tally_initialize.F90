@@ -2,6 +2,7 @@ module tally_initialize
 
   use constants
   use global
+  use error,        only: warning
   use tally_header, only: TallyObject, TallyMapElement, TallyMapItem
 
   implicit none
@@ -35,6 +36,7 @@ contains
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
     integer :: max_n_filters = 0 ! maximum number of filters
+    integer :: even
     type(TallyObject), pointer :: t => null()
 
     TALLY_LOOP: do i = 1, n_tallies
@@ -61,8 +63,24 @@ contains
 
       ! Allocate results array
       if (t % on_the_fly_allocation) then
-        allocate(t % results(t % total_score_bins, 0))
-        t % size_results_filters = 0
+
+        if (dd_run) then
+          ! Assume the tallies are evenly distributed across domains
+          even = t % total_filter_bins / domain_decomp % n_domains
+          
+          ! Allocate a little extra
+          even = int(dble(even) * OTF_HEADROOM)
+          
+          ! If the total number is actually less than
+          t % otf_initial_size = min(even, t % total_filter_bins)
+        else
+          message = "Using OTF tally allocation for non-DD run"
+          call warning(force=.true.)
+          t % otf_initial_size = t % total_filter_bins
+        end if
+
+        allocate(t % results(t % total_score_bins, t % otf_initial_size))
+        t % size_results_filters = t % otf_initial_size
       else
         allocate(t % results(t % total_score_bins, t % total_filter_bins))
       end if

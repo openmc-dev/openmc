@@ -65,17 +65,24 @@ contains
       if (t % on_the_fly_allocation) then
 
         if (dd_run) then
-          ! Assume the tallies are evenly distributed across domains
-          even = t % total_filter_bins / domain_decomp % n_domains
+
+          if (domain_decomp % n_domains > t % total_filter_bins) then
+
+            t % otf_initial_size = t % total_filter_bins
+
+          else
           
-          ! Allocate a little extra
-          even = int(dble(even) * OTF_HEADROOM)
-          
-          ! If the total number is actually less than
-          t % otf_initial_size = min(even, t % total_filter_bins)
+            ! Assume the tallies are evenly distributed across domains
+            even = t % total_filter_bins / domain_decomp % n_domains
+            
+            ! Allocate a little extra
+            t % otf_initial_size = int(dble(even) * OTF_HEADROOM)
+
+          end if
+
         else
           message = "Using OTF tally allocation for non-DD run"
-          call warning(force=.true.)
+          if (master) call warning(force=.true.)
           t % otf_initial_size = t % total_filter_bins
         end if
 

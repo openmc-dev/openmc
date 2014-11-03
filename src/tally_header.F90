@@ -208,7 +208,7 @@ module tally_header
       integer :: newsize
       type(TallyResult), allocatable :: temp(:,:)
 
-      newsize = int(real(this % size_results_filters, 8) * OTF_HEADROOM)
+      newsize = ceiling(real(this % size_results_filters, 8) * OTF_HEADROOM)
 
       ! Allocate results array with increased size
       allocate(temp(this % total_score_bins, newsize))

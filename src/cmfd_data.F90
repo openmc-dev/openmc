@@ -5,12 +5,11 @@ module cmfd_data
 ! parameters for CMFD calculation.
 !==============================================================================
 
+  use constants
 
   implicit none
   private
   public :: set_up_cmfd, neutron_balance
-
-  logical :: dhat_reset = .false.
 
 contains
 
@@ -55,7 +54,7 @@ contains
                             OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO,     &
                             ONE, TINY_BIT
     use error,        only: fatal_error
-    use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes,&
+    use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
@@ -102,6 +101,8 @@ contains
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
     cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
+
+    cmfd % keff_bal = ZERO
 
    ! Begin loop around tallies
    TAL: do ital = 1, n_cmfd_tallies
@@ -159,10 +160,9 @@ contains
 
                 ! Detect zero flux, abort if located
                 if ((flux - ZERO) < TINY_BIT) then
-                  message = 'Detected zero flux without coremap overlay at: (' &
-                          // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
-                          // ') in group ' // to_str(h)
-                  call fatal_error()
+                  call fatal_error('Detected zero flux without coremap overlay &
+                       &at: (' // to_str(i) // ',' // to_str(j) // ',' // &
+                       &to_str(k) // ') in group ' // to_str(h))
                 end if
 
                 ! Get total rr and convert to total xs
@@ -211,6 +211,9 @@ contains
                   ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
                        t % results(2,score_index) % sum
+                  cmfd % keff_bal = cmfd % keff_bal + &
+                       t % results(2,score_index) % sum / &
+                       dble(t % n_realizations)
 
                 end do INGROUP
 
@@ -623,7 +626,9 @@ contains
   subroutine compute_dhat()
 
     use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap
+    use global,     only: cmfd, cmfd_coremap, dhat_reset
+    use output,     only: write_message
+    use string,     only: to_str
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction
@@ -743,7 +748,9 @@ contains
               cmfd%dhat(l,g,i,j,k) = dhat
 
               ! check for dhat reset
-              if (dhat_reset) cmfd%dhat(l,g,i,j,k) = ZERO
+              if (dhat_reset) then
+                cmfd%dhat(l,g,i,j,k) = ZERO
+              end if
 
             end do LEAK
 
@@ -755,6 +762,11 @@ contains
 
     end do ZLOOP
 
+    ! write that dhats are zero
+    if (dhat_reset) then
+      call write_message('Dhats reset to zero.', 1)
+    end if
+
   end subroutine compute_dhat
 
 !===============================================================================
@@ -763,8 +775,8 @@ contains
 
   function get_reflector_albedo(l, g, i, j, k)
 
-    use constants,  only: ALBEDO_REJECT
-    use global,     only: cmfd, cmfd_hold_weights
+    use constants,  only: ONE
+    use global,     only: cmfd
 
     real(8) :: get_reflector_albedo ! reflector albedo
     integer, intent(in) :: i ! iteration counter for x
@@ -786,8 +798,7 @@ contains
     ! Calculate albedo
     if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
         (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
-      albedo = ALBEDO_REJECT 
-      cmfd_hold_weights = .true. 
+      albedo = ONE
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)
     end if
@@ -796,137 +807,6 @@ contains
     get_reflector_albedo = albedo
 
   end function get_reflector_albedo
-
-!===============================================================================
-! FIX_NEUTRON_BALANCE is a method to adjust parameters to have perfect balance
-!===============================================================================
-#ifdef DEVELOPMENTAL 
-  subroutine fix_neutron_balance()
-
-    use constants,  only: ONE, ZERO, CMFD_NOACCEL
-    use global,     only: cmfd, keff
-    use, intrinsic :: ISO_FORTRAN_ENV
-
-    integer :: nx         ! number of mesh cells in x direction
-    integer :: ny         ! number of mesh cells in y direction
-    integer :: nz         ! number of mesh cells in z direction
-    integer :: ng         ! number of energy groups
-    integer :: i          ! iteration counter for x
-    integer :: j          ! iteration counter for y
-    integer :: k          ! iteration counter for z
-    integer :: l          ! iteration counter for surface
-    real(8) :: leak1      ! leakage rate in group 1
-    real(8) :: leak2      ! leakage rate in group 2
-    real(8) :: flux1      ! group 1 volume int flux
-    real(8) :: flux2      ! group 2 volume int flux
-    real(8) :: sigt1      ! group 1 total xs
-    real(8) :: sigt2      ! group 2 total xs
-    real(8) :: sigs11     ! scattering transfer 1 --> 1
-    real(8) :: sigs21     ! scattering transfer 2 --> 1
-    real(8) :: sigs12     ! scattering transfer 1 --> 2
-    real(8) :: sigs22     ! scattering transfer 2 --> 2
-    real(8) :: nsigf11    ! fission transfer 1 --> 1
-    real(8) :: nsigf21    ! fission transfer 2 --> 1
-    real(8) :: nsigf12    ! fission transfer 1 --> 2
-    real(8) :: nsigf22    ! fission transfer 2 --> 2
-    real(8) :: siga1      ! group 1 abs xs
-    real(8) :: siga2      ! group 2 abs xs
-    real(8) :: sigs12_eff ! effective downscatter xs
-
-    ! Extract spatial and energy indices from object
-    nx = cmfd % indices(1)
-    ny = cmfd % indices(2)
-    nz = cmfd % indices(3)
-    ng = cmfd % indices(4)
-
-    ! Return if not two groups
-    if (ng /= 2) return
-
-    ! Begin loop around space and energy groups
-    ZLOOP: do k = 1, nz
-
-      YLOOP: do j = 1, ny
-
-        XLOOP: do i = 1, nx
-
-          ! Check for active mesh
-          if (allocated(cmfd%coremap)) then
-            if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle 
-          end if
-
-          ! Compute leakage in groups 1 and 2
-          leak1 = ZERO 
-          leak2 = ZERO
-          LEAK: do l = 1, 3
-
-            leak1 = leak1 + ((cmfd % current(4*l,1,i,j,k) - &
-                 cmfd % current(4*l-1,1,i,j,k))) - &
-                 ((cmfd % current(4*l-2,1,i,j,k) - &
-                 cmfd % current(4*l-3,1,i,j,k)))
-
-            leak2 = leak2 + ((cmfd % current(4*l,2,i,j,k) - &
-                 cmfd % current(4*l-1,2,i,j,k))) - &
-                 ((cmfd % current(4*l-2,2,i,j,k) - &
-                 cmfd % current(4*l-3,2,i,j,k)))
-
-
-          end do LEAK
-
-          ! Extract cross sections and flux from object
-          flux1 = cmfd % flux(1,i,j,k)
-          flux2 = cmfd % flux(2,i,j,k)
-          sigt1 = cmfd % totalxs(1,i,j,k)
-          sigt2 = cmfd % totalxs(2,i,j,k)
-          sigs11 = cmfd % scattxs(1,1,i,j,k)
-          sigs21 = cmfd % scattxs(2,1,i,j,k)
-          sigs12 = cmfd % scattxs(1,2,i,j,k)
-          sigs22 = cmfd % scattxs(2,2,i,j,k)
-          nsigf11 = cmfd % nfissxs(1,1,i,j,k)
-          nsigf21 = cmfd % nfissxs(2,1,i,j,k)
-          nsigf12 = cmfd % nfissxs(1,2,i,j,k)
-          nsigf22 = cmfd % nfissxs(2,2,i,j,k)
-
-          ! Check for no fission into group 2
-          if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
-            write(OUTPUT_UNIT,'(A,1PE11.4,1X,1PE11.4)') 'Fission in G=2', &
-                  nsigf12,nsigf22
-          end if
-
-          ! Compute absorption xs
-          siga1 = sigt1 - sigs11 - sigs12
-          siga2 = sigt2 - sigs22 - sigs21
-
-          ! Compute effective downscatter xs
-          sigs12_eff = (ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1 &
-               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE &
-               - ONE/keff*nsigf21/siga2))
-
-          ! Redefine flux 2
-          flux2 = (sigs12_eff*flux1 - leak2)/siga2
-          cmfd % flux(2,i,j,k) = flux2
- 
-          ! Recompute total cross sections (use effective and no upscattering)
-          sigt1 = siga1 + sigs11 + sigs12_eff
-          sigt2 = siga2 + sigs22
-
-          ! Record total xs
-          cmfd % totalxs(1,i,j,k) = sigt1
-          cmfd % totalxs(2,i,j,k) = sigt2
-
-          ! Record effective downscatter xs
-          cmfd % scattxs(1,2,i,j,k) = sigs12_eff
-
-          ! Zero out upscatter cross section
-          cmfd % scattxs(2,1,i,j,k) = ZERO 
-
-        end do XLOOP
-
-      end do YLOOP
-
-    end do ZLOOP
-
-  end subroutine fix_neutron_balance
-#endif
 
 !===============================================================================
 ! COMPUTE_EFFECTIVE_DOWNSCATTER changes downscatter rate for zero upscatter

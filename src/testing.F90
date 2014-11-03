@@ -1,6 +1,6 @@
 module testing
 
-  use global,             only: master, message, unittests
+  use global,             only: master, unittests
   use error,              only: fatal_error
   use output_header,      only: output_message
   use output,             only: header
@@ -45,8 +45,7 @@ contains
     call run_test(unittests, dd_otf_tally_allocation_test)
 !    call run_test(unittests, dd_reduce_tally_results_test)
 #else
-    message = "Must be compiled with testing mode enabled to run tests."
-    call fatal_error()
+    call fatal_error("Must be compiled with testing mode enabled to run tests.")
 #endif
   
   end subroutine run_tests

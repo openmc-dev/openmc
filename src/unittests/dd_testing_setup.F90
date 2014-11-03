@@ -2,7 +2,7 @@ module dd_testing_setup
 
   use constants
   use dd_header,        only: dd_type
-  use global,           only: master, n_procs, rank, message, n_particles, &
+  use global,           only: master, n_procs, rank, n_particles, &
                               tallies, n_cells, n_user_tallies, micro_xs, &
                               material_xs
   use output,           only: write_message
@@ -33,14 +33,12 @@ contains
   
 #ifdef MPI
     if (.not. n_procs == procs) then
-      message = "Skipping test: must be run with MPI and " // &
-                trim(to_str(procs)) // " procs"
-      if (master) call write_message()
+      if (master) call write_message("Skipping test: must be run with " // &
+          "MPI and " // trim(to_str(procs)) // " procs")
       skip = .true.
     end if
 #else
-    message = "Skipping test: requires MPI"
-    call warning()
+    call warning("Skipping test: requires MPI")
     skip = .true.
 #endif
 

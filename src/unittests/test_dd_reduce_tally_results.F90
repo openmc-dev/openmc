@@ -4,7 +4,7 @@ module test_dd_reduce_tally_results
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains
   use error,            only: warning
-  use global,           only: master, message
+  use global,           only: master
   use testing_header,   only: TestSuiteClass, TestClass
 
   implicit none
@@ -59,8 +59,7 @@ contains
     call initialize_domain_decomp(dd)
 
     if (master) then
-      message = "TEST NOT IMPLEMENTED"
-      call warning(force=.true.)
+      call warning("TEST NOT IMPLEMENTED")
       call suite % skip(this)
     end if
 

@@ -8,10 +8,10 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 0
+  integer, parameter :: VERSION_RELEASE = 1
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 12
+  integer, parameter :: REVISION_STATEPOINT       = 13
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -404,9 +404,6 @@ module constants
 
   ! constant to represent a zero flux "albedo"
   real(8), parameter :: ZERO_FLUX = 999.0_8
-
-  ! constant to represent albedo rejection
-  real(8), parameter :: ALBEDO_REJECT = 999.0_8
 
   ! constant for writing out no residual
   real(8), parameter :: CMFD_NORES = 99999.0_8

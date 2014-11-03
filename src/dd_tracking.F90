@@ -3,7 +3,7 @@ module dd_tracking
   use constants
   use dd_header,        only: dd_type
   use error,            only: fatal_error
-  use global,           only: domain_decomp, rank, message, verbosity, trace
+  use global,           only: domain_decomp, rank, verbosity, trace
   use particle_header,  only: Particle
   use mesh,             only: get_mesh_bin
   use output,           only: write_message
@@ -38,36 +38,33 @@ contains
     
     ! Check for particle leaking out of domain mesh - this is a user input error
     if (to_meshbin == NO_BIN_FOUND) then
-      message = "Particle " // trim(to_str(p % id)) // &
+      call fatal_error("Particle " // trim(to_str(p % id)) // &
                 " leaked out of DD mesh at (" // &
                 trim(to_str(p % coord0 % xyz(1))) // ", " // &
                 trim(to_str(p % coord0 % xyz(2))) // ", " // &
                 trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
                 trim(to_str(rank)) // ". Does the DD mesh " // &
-                "completely envelope the defined geometry?"
-      call fatal_error()
+                "completely envelope the defined geometry?")
     end if
     
     ! Check for a bad determination of a change - this would be a bug
     if (to_meshbin == dd % meshbin) then
-      message = "Can't determine which domain to send particle on rank " // &
-                 trim(to_str(rank))
-      call fatal_error()
+      call fatal_error("Can't determine which domain to send particle " // &
+          "on rank " // trim(to_str(rank)))
     end if
 
     if (verbosity >= 10 .or. trace) then
-      message = 'Scatter from domain ' // trim(to_str(dd % meshbin)) // &
+      call write_message('Scatter from domain ' // &
+                trim(to_str(dd % meshbin)) // &
                 ' to ' // trim(to_str(to_meshbin)) // ' pid = ' // &
-                trim(to_str(p % id))
-      call write_message()
+                trim(to_str(p % id)))
     end if
 
     ! Check if we're scattering further than a direct neighbor - bug if so
     if (.not. dd % bins_dict % has_key(to_meshbin)) then
-      message = "Not transferring to direct neighbor! From domain " // &
+      call fatal_error("Not transferring to direct neighbor! From domain " // &
                 trim(to_str(dd % meshbin)) // ' to ' // &
-                trim(to_str(to_meshbin)) // ' pid = ' // trim(to_str(p % id))
-      call fatal_error()
+                trim(to_str(to_meshbin)) // ' pid = ' // trim(to_str(p % id)))
     end if
 
     ! Convert destination domain meshbin to relative local bin

@@ -3,7 +3,7 @@ module dd_init
   use constants
   use dd_header,  only: dd_type
   use error,      only: fatal_error, warning
-  use global,     only: n_procs, n_particles, rank, message, mpi_err
+  use global,     only: n_procs, n_particles, rank, mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -28,20 +28,18 @@ contains
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
 
-    message = "Initializing domain decomposition parameters..."
-    call write_message(6)
+    call write_message("Initializing domain decomposition parameters...", 6)
 
 #ifdef _OPENMP
-    message = "Domain decomposition not implemented in conjunction with OpenMP."
-    call fatal_error()
+    call fatal_error("Domain decomposition not implemented in " \\ &
+        "conjunction with OpenMP.")
 #endif
 
     if (n_procs < dd % n_domains) then
-      message = "Not enough processors for domain decomposition. Must have" // &
-                " at least one per domain." // &
+      call fatal_error("Not enough processors for domain decomposition. " // &
+                "Must have at least one per domain." // &
                 " Domains: " // trim(to_str(dd % n_domains)) // &
-                " Procs: " // trim(to_str(n_procs))
-      call fatal_error()
+                " Procs: " // trim(to_str(n_procs)))
     end if
 
     ! Determine number of processors per domain
@@ -120,8 +118,7 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-      message = "Failed to allocate initial DD particle buffer."
-      call fatal_error()
+      call fatal_error("Failed to allocate initial DD particle buffer.")
     end if
 
     ! Allocate send buffer
@@ -130,8 +127,7 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-      message = "Failed to allocate initial DD send buffer."
-      call fatal_error()
+      call fatal_error("Failed to allocate initial DD send buffer.")
     end if
     
     ! Allocate receive buffer
@@ -140,8 +136,7 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-      message = "Failed to allocate initial DD receive bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate initial DD receive bank.")
     end if
   
   end subroutine initialize_domain_decomp
@@ -163,10 +158,9 @@ contains
     if (.not. allocated(dd % domain_load_dist)) then
 
       if (.not. mod(n_procs, dd % n_domains) == 0) then
-        message = "Number of processes not evenly divisible by number of &
+        call warning("Number of processes not evenly divisible by number of &
                   &domains. No <nodemap> was specified, so processes will be &
-                  &distributed un-evenly"
-        call warning()
+                  &distributed un-evenly")
       end if
 
       ! Evenly distribute processes across domains

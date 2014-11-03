@@ -81,8 +81,7 @@ contains
           end if
 
         else
-          message = "Using OTF tally allocation for non-DD run"
-          if (master) call warning(force=.true.)
+          if (master) call warning("Using OTF tally allocation for non-DD run")
           t % otf_initial_size = t % total_filter_bins
         end if
 

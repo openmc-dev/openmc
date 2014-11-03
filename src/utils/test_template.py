@@ -5,7 +5,7 @@ import inspect
 
 template = """module test_{name}
 
-  use global,           only: master, message
+  use global,           only: master
   use error,            only: warning
   use testing_header,   only: TestSuiteClass, TestClass
 
@@ -52,8 +52,7 @@ contains
     ! materials, geometry, and particles
 
     if (master) then
-      message = "TEST NOT IMPLEMENTED"
-      call warning(force=.true.)
+      call warning("TEST NOT IMPLEMENTED")
       call suite % skip()
     end if
 

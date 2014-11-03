@@ -239,20 +239,22 @@ the root directory of the source code:
 
 .. code-block:: sh
 
-    cd src
+    mkdir src/build
+    cd src/build
+    cmake ..
     make
-    sudo make install
+    make install
 
 This will build an executable named ``openmc`` and install it (by default in
 /usr/local/bin). If you do not have administrative privileges, you can install
-OpenMC locally by replacing the last command with:
+OpenMC locally by specifying an install prefix when running cmake:
 
 .. code-block:: sh
 
-    make install -e prefix=$HOME/.local
+    cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 
-The ``prefix`` variable can be changed to any path for which you have
-write-access.
+The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
+have write-access.
 
 Compiling on Windows
 --------------------
@@ -326,7 +328,7 @@ Testing Build
 -------------
 
 If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
-Make sure the **CROSS_SECTIONS** environmental variable is set to the 
+Make sure the **CROSS_SECTIONS** environmental variable is set to the
 *cross_sections.xml* file in the *data/nndc* directory.
 There are two ways to run tests. The first is to use the Makefile present in
 the source directory and run the following:

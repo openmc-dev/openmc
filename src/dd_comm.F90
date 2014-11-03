@@ -5,7 +5,7 @@ module dd_comm
   use dd_header,        only: dd_type
   use error,            only: fatal_error
   use global,           only: MPI_BANK, MPI_PARTICLEBUFFER, n_procs, rank, &
-                              mpi_err, work, message, n_particles, work_index, &
+                              mpi_err, work, n_particles, work_index, &
                               source_bank, fission_bank, size_source_bank, &
                               size_fission_bank, time_dd_sendrecv, &
                               time_bank_sample, time_bank_sendrecv, &
@@ -65,9 +65,8 @@ contains
     
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-      message = "Failed to allocate source bank send buffer during domain &
-                &decomposition initialization."
-      call fatal_error()
+      call fatal_error("Failed to allocate source bank send buffer during &
+          &domain decomposition initialization.")
     end if
     
     ! TODO: This may be too conservative an allocation for most use-cases
@@ -76,9 +75,8 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-      message = "Failed to allocate communication request array during domain &
-                &decomposition initialization."
-      call fatal_error()
+      call fatal_error("Failed to allocate communication request array during &
+          &domain decomposition initialization.")
     end if
 
     ! Copy initially-sampled source sites
@@ -617,8 +615,7 @@ contains
           if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then
           
             if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
-              message = "Trying to send particle that didn't leave domain!"
-              call fatal_error()
+              call fatal_error("Trying to send particle that didn't leave domain!")
             end if
             
             call particle_to_buffer(dd % particle_buffer(i8), &
@@ -757,8 +754,7 @@ contains
          MPI_COMM_WORLD, mpi_err)
 
 #else
-    message = "MPI must be enabled for domain decomposition."
-    call fatal_error()
+    call fatal_error("MPI must be enabled for domain decomposition.")
 #endif
 
     ! If there are not that many particles per generation, it's possible that no
@@ -770,8 +766,7 @@ contains
     ! regions of the geometry.
 
     if (total == 0) then
-      message = "No fission sites banked anywhere"
-      call fatal_error()
+      call fatal_error("No fission sites banked anywhere")
     end if
 
     ! Determine how many fission sites we need to sample from the source bank
@@ -802,8 +797,7 @@ contains
     
       ! Check for allocation errors 
       if (alloc_err /= 0) then
-        message = "Failed to allocate temp_sites."
-        call fatal_error()
+        call fatal_error("Failed to allocate temp_sites.")
       end if
 
     end if

@@ -3,7 +3,7 @@ module test_dd_bins_dict
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains
-  use global,           only: master, rank, message
+  use global,           only: master, rank
   use output,           only: write_message
   use string,           only: to_str
   use testing_header,   only: TestSuiteClass, TestClass
@@ -101,9 +101,8 @@ contains
     end select
 
     if (failure) then
-      message = "FAILURE: Domain bins_dict is incorrect on rank " // &
-                trim(to_str(rank))
-      call write_message()
+      call write_message("FAILURE: Domain bins_dict is incorrect on rank " // &
+                trim(to_str(rank)))
     end if
 
 #ifdef MPI

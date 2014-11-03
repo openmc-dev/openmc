@@ -4,7 +4,7 @@ module test_dd_distribute_source
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains
-  use global,           only: master, rank, work, message, n_particles, &
+  use global,           only: master, rank, work, n_particles, &
                               source_bank, size_source_bank
   use output,           only: write_message
   use random_lcg,       only: initialize_prng, set_particle_seed, prn_seed
@@ -170,9 +170,8 @@ contains
     end select
     
     if (failure) then
-      message = "FAILURE: Rank " // trim(to_str(rank)) // &
-                " doesn't have all the particles it should."
-      call write_message()
+      call write_message("FAILURE: Rank " // trim(to_str(rank)) // &
+                " doesn't have all the particles it should.")
     end if
 
 #ifdef MPI

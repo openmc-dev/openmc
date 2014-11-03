@@ -7,7 +7,7 @@ module test_dd_synchronize_destination_info
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains, &
                               dd_simple_four_domain_scatters
-  use global,           only: master, rank, message
+  use global,           only: master, rank
   use output,           only: write_message
   use string,           only: to_str
   use testing_header,   only: TestSuiteClass, TestClass
@@ -147,10 +147,9 @@ contains
     end select
 
     if (failure) then
-      message = "FAILURE: Rank " // trim(to_str(rank)) // " calculated the" // &
-                " wrong number of particles to send to a process on a " // &
-                "neighboring domain."
-      call write_message()
+      call write_message("FAILURE: Rank " // trim(to_str(rank)) // &
+          " calculated the wrong number of particles to send to " // &
+          "a process on a neighboring domain.")
     end if
 
 #ifdef MPI

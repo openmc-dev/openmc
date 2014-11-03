@@ -4,7 +4,7 @@ module test_dd_otf_tally_allocation
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains, &
                               dd_simple_four_domain_tallies
-  use global,           only: master, rank, message, free_memory, tallies, &
+  use global,           only: master, rank, free_memory, tallies, &
                               domain_decomp, dd_run
   use error,            only: warning
   use output,           only: write_message
@@ -190,9 +190,8 @@ contains
     end select    
     
     if (failure) then
-      message = "FAILURE: Tally results arrays improperly allocated with " // &
-                "OTF on rank " // trim(to_str(rank))
-      call write_message()
+      call write_message("FAILURE: Tally results arrays improperly " // &
+          "allocated with OTF on rank " // trim(to_str(rank)))
     end if
 
 #ifdef MPI

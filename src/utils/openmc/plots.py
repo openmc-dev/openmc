@@ -36,11 +36,11 @@ class Plot(object):
         self._mask_background = None
         self._col_spec = None
 
-        self.setId(plot_id)
-        self.setName(name)
+        self.set_id(plot_id)
+        self.set_name(name)
 
 
-    def setId(self, plot_id=None):
+    def set_id(self, plot_id=None):
 
         if plot_id is None:
             global AUTO_PLOT_ID
@@ -61,7 +61,7 @@ class Plot(object):
             self._id = plot_id
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Plot ID={0} with a non-string ' \
@@ -72,7 +72,7 @@ class Plot(object):
             self._name = name
 
 
-    def setWidth(self, width):
+    def set_width(self, width):
 
         if not isinstance(width, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with width {1} which is not ' \
@@ -94,7 +94,7 @@ class Plot(object):
         self._width = width
 
 
-    def setOrigin(self, origin):
+    def set_origin(self, origin):
 
         if not isinstance(origin, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with origin {1} which is not ' \
@@ -117,7 +117,7 @@ class Plot(object):
         self._origin = origin
 
 
-    def setPixels(self, pixels):
+    def set_pixels(self, pixels):
 
         if not isinstance(pixels, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with pixels {1} which is not ' \
@@ -144,7 +144,7 @@ class Plot(object):
         self._pixels = pixels
 
 
-    def setFilename(self, filename):
+    def set_filename(self, filename):
 
         if not is_string(filename):
             msg = 'Unable to create Plot ID={0} with filename {1} which is ' \
@@ -154,7 +154,7 @@ class Plot(object):
         self._filename = filename
 
 
-    def setColor(self, color):
+    def set_color(self, color):
 
         if not is_string(color):
             msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
@@ -169,7 +169,7 @@ class Plot(object):
         self._color = color
 
 
-    def setType(self, type):
+    def set_type(self, type):
 
         if not is_string(type):
             msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
@@ -184,7 +184,7 @@ class Plot(object):
         self._type = type
 
 
-    def setBasis(self, basis):
+    def set_basis(self, basis):
 
         if not is_string(basis):
             msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
@@ -199,7 +199,7 @@ class Plot(object):
         self._basis = basis
 
 
-    def setBackground(self, background):
+    def set_background(self, background):
 
         if not isinstance(background, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with background {1} ' \
@@ -228,7 +228,7 @@ class Plot(object):
         self._background = background
 
 
-    def setColSpec(self, col_spec):
+    def set_col_spec(self, col_spec):
 
         if not isinstance(col_spec, dict):
             msg= 'Unable to create Plot ID={0} with col_spec parameter {1} ' \
@@ -263,7 +263,7 @@ class Plot(object):
         self._col_spec = col_spec
 
 
-    def setMaskComponents(self, mask_components):
+    def set_mask_components(self, mask_components):
 
         if not isinstance(mask_components, (list, tuple, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with mask components {1} ' \
@@ -285,7 +285,7 @@ class Plot(object):
         self._mask_components = mask_components
 
 
-    def setMaskBackground(self, mask_background):
+    def set_mask_background(self, mask_background):
 
         if not isinstance(mask_background, (list, tuple, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with mask background {1} ' \
@@ -335,7 +335,7 @@ class Plot(object):
         return string
 
 
-    def getPlotXML(self):
+    def get_plot_xml(self):
 
         element = ET.Element("plot")
         element.set("id", str(self._id))
@@ -404,7 +404,7 @@ class PlotsFile(object):
         self._plots_file = ET.Element("plots")
 
 
-    def addPlot(self, plot):
+    def add_plot(self, plot):
 
         if not isinstance(plot, Plot):
             msg = 'Unable to add a non-Plot {0} to the PlotsFile'.format(plot)
@@ -413,15 +413,15 @@ class PlotsFile(object):
         self._plots.append(plot)
 
 
-    def removePlot(self, plot):
+    def remove_plot(self, plot):
         self._plots.remove(plot)
 
 
-    def createPlotSubelements(self):
+    def create_plot_subelements(self):
 
         for plot in self._plots:
 
-            xml_element = plot.getPlotXML()
+            xml_element = plot.get_plot_xml()
 
             if len(plot._name) > 0:
                 self._plots_file.append(ET.Comment(plot._name))
@@ -429,9 +429,9 @@ class PlotsFile(object):
             self._plots_file.append(xml_element)
 
 
-    def exportToXML(self):
+    def export_to_xml(self):
 
-        self.createPlotSubelements()
+        self.create_plot_subelements()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._plots_file)

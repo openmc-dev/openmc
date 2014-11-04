@@ -58,11 +58,11 @@ class Material(object):
         self._sab = list()
 
         # Set the Material class attributes
-        self.setId(material_id)
-        self.setName(name)
+        self.set_id(material_id)
+        self.set_name(name)
 
 
-    def setId(self, material_id=None):
+    def set_id(self, material_id=None):
 
         global MATERIAL_IDS
 
@@ -97,7 +97,7 @@ class Material(object):
             MATERIAL_IDS.append(material_id)
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Material ID={0} with a non-string ' \
@@ -108,7 +108,7 @@ class Material(object):
             self._name = name
 
 
-    def setDensity(self, units, density=NO_DENSITY):
+    def set_density(self, units, density=NO_DENSITY):
 
         if not is_float(density):
             msg = 'Unable to set the density for Material ID={0} to a ' \
@@ -130,7 +130,7 @@ class Material(object):
         self._density_units = units
 
 
-    def addNuclide(self, nuclide, percent, percent_type='ao'):
+    def add_nuclide(self, nuclide, percent, percent_type='ao'):
 
         if not isinstance(nuclide, openmc.Nuclide):
             msg = 'Unable to add an Nuclide to Material ID={0} with a ' \
@@ -153,7 +153,7 @@ class Material(object):
         self._nuclides[nuclide._name] = (nuclide, percent, percent_type)
 
 
-    def removeNuclide(self, nuclide):
+    def remove_nuclide(self, nuclide):
 
         if not isinstance(nuclide, openmc.Nuclide):
             msg = 'Unable to remove a Nuclide {0} in Material ID={1} ' \
@@ -165,7 +165,7 @@ class Material(object):
             del self._nuclides[nuclide._name]
 
 
-    def addElement(self, element, percent, percent_type='ao'):
+    def add_element(self, element, percent, percent_type='ao'):
 
         if not isinstance(element, openmc.Element):
             msg = 'Unable to add an Element to Material ID={0} with a ' \
@@ -188,14 +188,14 @@ class Material(object):
         self._elements[element._name] = (element, percent, percent_type)
 
 
-    def removeElement(self, element):
+    def remove_element(self, element):
 
         # If the Material contains the Element, delete it
         if element._name in self._elements:
             del self._elements[element._name]
 
 
-    def addSAlphaBeta(self, name, xs):
+    def add_s_alpha_beta(self, name, xs):
 
         if not is_string(name):
             msg = 'Unable to add an S(a,b) table to Material ID={0} with a ' \
@@ -210,7 +210,7 @@ class Material(object):
         self._sab.append((name, xs))
 
 
-    def getAllNuclides(self):
+    def get_all_nuclides(self):
 
         nuclides = dict()
 
@@ -256,7 +256,7 @@ class Material(object):
         return string
 
 
-    def getNuclideXML(self, nuclide):
+    def get_nuclide_xml(self, nuclide):
 
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0]._name)
@@ -272,7 +272,7 @@ class Material(object):
         return xml_element
 
 
-    def getElementXML(self, element):
+    def get_element_xml(self, element):
 
         xml_element = ET.Element("element")
         xml_element.set("name", str(element[0]._name))
@@ -285,27 +285,27 @@ class Material(object):
         return xml_element
 
 
-    def getNuclidesXML(self, nuclides):
+    def get_nuclides_xml(self, nuclides):
 
         xml_elements = list()
 
         for nuclide in nuclides.values():
-            xml_elements.append(self.getNuclideXML(nuclide))
+            xml_elements.append(self.get_nuclide_xml(nuclide))
 
         return xml_elements
 
 
-    def getElementsXML(self, elements):
+    def get_elements_xml(self, elements):
 
         xml_elements = list()
 
         for element in elements.values():
-            xml_elements.append(self.getElementXML(element))
+            xml_elements.append(self.get_element_xml(element))
 
         return xml_elements
 
 
-    def getMaterialXML(self):
+    def get_material_xml(self):
 
         # Create Material XML element
         element = ET.Element("material")
@@ -318,12 +318,12 @@ class Material(object):
         subelement.set("units", self._density_units)
 
         # Create nuclide XML subelements
-        subelements = self.getNuclidesXML(self._nuclides)
+        subelements = self.get_nuclides_xml(self._nuclides)
         for subelement in subelements:
             element.append(subelement)
 
         # Create element XML subelements
-        subelements = self.getElementsXML(self._elements)
+        subelements = self.get_elements_xml(self._elements)
         for subelement in subelements:
             element.append(subelement)
 
@@ -346,7 +346,7 @@ class MaterialsFile(object):
         self._materials_file = ET.Element("materials")
 
 
-    def addMaterial(self, material):
+    def add_material(self, material):
 
         if not isinstance(material, Material):
             msg = 'Unable to add a non-Material {0} to the ' \
@@ -356,7 +356,7 @@ class MaterialsFile(object):
         self._materials.append(material)
 
 
-    def addMaterials(self, materials):
+    def add_materials(self, materials):
 
         if not isinstance(materials, (tuple, list, MappingView)):
             msg = 'Unable to create OpenMC materials.xml file from {0} which ' \
@@ -364,10 +364,10 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         for material in materials:
-            self.addMaterial(material)
+            self.add_material(material)
 
 
-    def removeMaterial(self, material):
+    def remove_materials(self, material):
 
         if not isinstance(material, Material):
             msg = 'Unable to remove a non-Material {0} from the ' \
@@ -377,7 +377,7 @@ class MaterialsFile(object):
         self._materials.remove(material)
 
 
-    def setDefaultXS(self, xs):
+    def set_default_xs(self, xs):
 
         if not is_string(xs):
             msg = 'Unable to set default xs to a non-string value'.format(xs)
@@ -386,7 +386,7 @@ class MaterialsFile(object):
         self._default_xs = xs
 
 
-    def createMaterialSubelements(self):
+    def create_material_subelements(self):
 
         subelement = ET.SubElement(self._materials_file, "default_xs")
 
@@ -394,7 +394,7 @@ class MaterialsFile(object):
             subelement.text = self._default_xs
 
         for material in self._materials:
-            xml_element = material.getMaterialXML()
+            xml_element = material.get_material_xml()
 
             if len(material._name) > 0:
                 self._materials_file.append(ET.Comment(material._name))
@@ -402,9 +402,9 @@ class MaterialsFile(object):
             self._materials_file.append(xml_element)
 
 
-    def exportToXML(self):
+    def export_to_xml(self):
 
-        self.createMaterialSubelements()
+        self.create_material_subelements()
 
         # Clean the indentation in the file to be user-readable
         sort_xml_elements(self._materials_file)

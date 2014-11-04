@@ -20,7 +20,7 @@ class Geometry(object):
         self._offsets = dict()
 
 
-    def getOffset(self, path, filter_offset):
+    def get_offset(self, path, filter_offset):
         """
         Returns the corresponding location in the results array for a given
         path and filter number.
@@ -46,35 +46,35 @@ class Geometry(object):
 
         # Begin recursive call to compute offset starting with the base Universe
         else:
-            offset = self._root_universe.getOffset(path, filter_offset)
+            offset = self._root_universe.get_offset(path, filter_offset)
             self._offsets[(path, filter_offset)] = offset
 
         # Return the final offset
         return offset
 
 
-    def getAllCells(self):
-        return self._root_universe.getAllCells()
+    def get_all_cells(self):
+        return self._root_universe.get_all_cells()
 
 
-    def getAllUniverses(self):
-        return self._root_universe.getAllUniverses()
+    def get_all_universes(self):
+        return self._root_universe.get_all_universes()
 
 
-    def getAllNuclides(self):
+    def get_all_nuclides(self):
 
         nuclides = dict()
-        materials = self.getAllMaterials()
+        materials = self.get_all_materials()
 
         for material in materials:
-            nuclides.update(material.getAllNuclides())
+            nuclides.update(material.get_all_nuclides())
 
         return nuclides
 
 
-    def getAllMaterials(self):
+    def get_all_materials(self):
 
-        material_cells = self.getAllMaterialCells()
+        material_cells = self.get_all_material_cells()
         materials = set()
 
         for cell in material_cells:
@@ -83,9 +83,9 @@ class Geometry(object):
         return list(materials)
 
 
-    def getAllMaterialCells(self):
+    def get_all_material_cells(self):
 
-        all_cells = self.getAllCells()
+        all_cells = self.get_all_cells()
         material_cells = set()
 
         for cell_id, cell in all_cells.items():
@@ -95,9 +95,9 @@ class Geometry(object):
         return list(material_cells)
 
 
-    def getAllMaterialUniverses(self):
+    def get_all_material_universes(self):
 
-        all_universes = self.getAllUniverses()
+        all_universes = self.get_all_universes()
         material_universes = set()
 
         for universe_id, universe in all_universes.items():
@@ -111,7 +111,7 @@ class Geometry(object):
         return list(material_universes)
 
 
-    def setRootUniverse(self, root_universe):
+    def set_root_universe(self, root_universe):
 
         if not isinstance(root_universe, openmc.Universe):
             msg = 'Unable to add root Universe {0} to Geometry since ' \
@@ -137,7 +137,7 @@ class GeometryFile(object):
         self._geometry_file = ET.Element("geometry")
 
 
-    def setGeometry(self, geometry):
+    def set_geometry(self, geometry):
 
         if not isinstance(geometry, Geometry):
             msg = 'Unable to set the Geometry to {0} for the GeometryFile ' \
@@ -147,10 +147,10 @@ class GeometryFile(object):
         self._geometry = geometry
 
 
-    def exportToXML(self):
+    def export_to_xml(self):
 
         root_universe = self._geometry._root_universe
-        root_universe.createXMLSubElement(self._geometry_file)
+        root_universe.create_xml_subelement(self._geometry_file)
 
         # Clean the indentation in the file to be user-readable
         sort_xml_elements(self._geometry_file)

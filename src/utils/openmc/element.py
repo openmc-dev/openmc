@@ -11,15 +11,15 @@ class Element(object):
         self._xs = None
 
         # Set the Material class attributes
-        self.setName(name)
+        self.set_name(name)
 
         if not xs is None:
-            self.setXS(xs)
+            self.set_xs(xs)
 
 
     def __eq__(self, element2):
 
-        # check type
+        # Check type
         if not isinstance(element2, Element):
             return False
 
@@ -42,7 +42,7 @@ class Element(object):
         return hash(tuple(hashable))
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Element with a non-string ' \
@@ -52,7 +52,7 @@ class Element(object):
         self._name = name
 
 
-    def setXS(self, xs):
+    def set_xs(self, xs):
 
         if not is_string(xs):
             msg = 'Unable to set cross-section identifier xs for Element ' \

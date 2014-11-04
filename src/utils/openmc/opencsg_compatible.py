@@ -438,47 +438,47 @@ def get_compatible_opencsg_cells(opencsg_cell, opencsg_surface, halfspace):
 
                 # Top left subcell - add left XPlane, top YPlane
                 if clone_id == 0:
-                    clone.addSurface(compatible_surfaces[0], -1)
-                    clone.addSurface(compatible_surfaces[3], +1)
+                    clone.add_surface(compatible_surfaces[0], -1)
+                    clone.add_surface(compatible_surfaces[3], +1)
 
                 # Top center subcell - add top YPlane, left/right XPlanes
                 elif clone_id == 1:
-                    clone.addSurface(compatible_surfaces[0], +1)
-                    clone.addSurface(compatible_surfaces[1], -1)
-                    clone.addSurface(compatible_surfaces[3], +1)
+                    clone.add_surface(compatible_surfaces[0], +1)
+                    clone.add_surface(compatible_surfaces[1], -1)
+                    clone.add_surface(compatible_surfaces[3], +1)
 
                 # Top right subcell - add top YPlane, right XPlane
                 elif clone_id == 2:
-                    clone.addSurface(compatible_surfaces[1], +1)
-                    clone.addSurface(compatible_surfaces[3], +1)
+                    clone.add_surface(compatible_surfaces[1], +1)
+                    clone.add_surface(compatible_surfaces[3], +1)
 
                 # Right center subcell - add right XPlane, top/bottom YPlanes
                 elif clone_id == 3:
-                    clone.addSurface(compatible_surfaces[1], +1)
-                    clone.addSurface(compatible_surfaces[3], -1)
-                    clone.addSurface(compatible_surfaces[2], +1)
+                    clone.add_surface(compatible_surfaces[1], +1)
+                    clone.add_surface(compatible_surfaces[3], -1)
+                    clone.add_surface(compatible_surfaces[2], +1)
 
                 # Bottom right subcell - add right XPlane, bottom YPlane
                 elif clone_id == 4:
-                    clone.addSurface(compatible_surfaces[1], +1)
-                    clone.addSurface(compatible_surfaces[2], -1)
+                    clone.add_surface(compatible_surfaces[1], +1)
+                    clone.add_surface(compatible_surfaces[2], -1)
 
                 # Bottom center subcell - add bottom YPlane, left/right XPlanes
                 elif clone_id == 5:
-                    clone.addSurface(compatible_surfaces[0], +1)
-                    clone.addSurface(compatible_surfaces[1], -1)
-                    clone.addSurface(compatible_surfaces[2], -1)
+                    clone.add_surface(compatible_surfaces[0], +1)
+                    clone.add_surface(compatible_surfaces[1], -1)
+                    clone.add_surface(compatible_surfaces[2], -1)
 
                 # Bottom left subcell - add bottom YPlane, left XPlane
                 elif clone_id == 6:
-                    clone.addSurface(compatible_surfaces[0], -1)
-                    clone.addSurface(compatible_surfaces[2], -1)
+                    clone.add_surface(compatible_surfaces[0], -1)
+                    clone.add_surface(compatible_surfaces[2], -1)
 
                 # Left center subcell - add left XPlane, top/bottom YPlanes
                 elif clone_id == 7:
-                    clone.addSurface(compatible_surfaces[0], -1)
-                    clone.addSurface(compatible_surfaces[3], -1)
-                    clone.addSurface(compatible_surfaces[2], +1)
+                    clone.add_surface(compatible_surfaces[0], -1)
+                    clone.add_surface(compatible_surfaces[3], -1)
+                    clone.add_surface(compatible_surfaces[2], +1)
 
     # Remove redundant Surfaces from the Cells
     for cell in compatible_cells:
@@ -557,21 +557,21 @@ def get_openmc_cell(opencsg_cell):
     rot = opencsg_cell._rotation
 
     if (opencsg_cell._type == 'universe'):
-        openmc_cell.setFill(get_openmc_universe(fill))
+        openmc_cell.set_fill(get_openmc_universe(fill))
     elif (opencsg_cell._type == 'lattice'):
-        openmc_cell.setFill(get_openmc_lattice(fill))
+        openmc_cell.set_fill(get_openmc_lattice(fill))
     else:
-        openmc_cell.setFill(get_openmc_material(fill))
+        openmc_cell.set_fill(get_openmc_material(fill))
 
     if rot:
-        openmc_cell.setRotation(rot)
+        openmc_cell.set_rotation(rot)
 
     surfaces = opencsg_cell._surfaces
 
     for surface_id in surfaces:
         surface = surfaces[surface_id][0]
         halfspace = surfaces[surface_id][1]
-        openmc_cell.addSurface(get_openmc_surface(surface), halfspace)
+        openmc_cell.add_surface(get_openmc_surface(surface), halfspace)
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -643,7 +643,7 @@ def get_openmc_universe(opencsg_universe):
 
     for cell_id, opencsg_cell in opencsg_cells.items():
         openmc_cell = get_openmc_cell(opencsg_cell)
-        openmc_universe.addCell(openmc_cell)
+        openmc_universe.add_cell(openmc_cell)
 
     # Add the OpenMC Universe to the global collection of all OpenMC Universes
     OPENMC_UNIVERSES[universe_id] = openmc_universe
@@ -680,7 +680,7 @@ def get_opencsg_lattice(openmc_lattice):
                                 dtype=opencsg.Universe)
 
     # Create OpenCSG Universes for each unique nested Universe in this Lattice
-    unique_universes = openmc_lattice.getUniqueUniverses()
+    unique_universes = openmc_lattice.get_unique_universes()
 
     for universe_id, universe in unique_universes.items():
         unique_universes[universe_id] = get_opencsg_universe(universe)
@@ -758,10 +758,10 @@ def get_openmc_lattice(opencsg_lattice):
     universe_array = np.squeeze(universe_array)
     
     openmc_lattice = openmc.Lattice(lattice_id=lattice_id)
-    openmc_lattice.setDimension(dimension)
-    openmc_lattice.setWidth(width)
-    openmc_lattice.setUniverses(universe_array)
-    openmc_lattice.setLowerLeft(lower_left)
+    openmc_lattice.set_dimension(dimension)
+    openmc_lattice.set_width(width)
+    openmc_lattice.set_universes(universe_array)
+    openmc_lattice.set_lower_left(lower_left)
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice
@@ -831,6 +831,6 @@ def get_openmc_geometry(opencsg_geometry):
     openmc_root_universe = get_openmc_universe(opencsg_root_universe)
 
     openmc_geometry = openmc.Geometry()
-    openmc_geometry.setRootUniverse(openmc_root_universe)
+    openmc_geometry.set_root_universe(openmc_root_universe)
 
     return openmc_geometry

@@ -33,12 +33,12 @@ class Surface(object):
         # proper order
         self._coeff_keys = list()
 
-        self.setId(surface_id)
-        self.setBoundaryType(bc_type)
-        self.setName(name)
+        self.set_id(surface_id)
+        self.set_boundary_type(bc_type)
+        self.set_name(name)
 
 
-    def setId(self, surface_id=None):
+    def set_id(self, surface_id=None):
 
         if surface_id is None:
             global AUTO_SURFACE_ID
@@ -60,7 +60,7 @@ class Surface(object):
             self._id = surface_id
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Surface ID={0} with a non-string ' \
@@ -71,7 +71,7 @@ class Surface(object):
             self._name = name
 
 
-    def setBoundaryType(self, bc_type):
+    def set_boundary_type(self, bc_type):
 
         if not is_string(bc_type):
             msg = 'Unable to set boundary type for Surface ID={0} with a ' \
@@ -106,7 +106,7 @@ class Surface(object):
         return string
 
 
-    def createXMLSubElement(self):
+    def create_xml_subelement(self):
 
         element = ET.Element("surface")
         element.set("id", str(self._id))
@@ -140,19 +140,19 @@ class Plane(Surface):
         self._coeff_keys = ['A', 'B', 'C', 'D']
 
         if not A is None:
-            self.setA(A)
+            self.set_A(A)
 
         if not B is None:
-            self.setB(B)
+            self.set_B(B)
 
         if not C is None:
-            self.setC(C)
+            self.set_C(C)
 
         if not D is None:
-            self.setD(D)
+            self.set_D(D)
 
 
-    def setA(self, A):
+    def set_A(self, A):
 
         if not is_integer(A) and not is_float(A):
             msg = 'Unable to set A coefficient for Plane ID={0} to a ' \
@@ -162,7 +162,7 @@ class Plane(Surface):
         self._coeffs['A'] = A
 
 
-    def setB(self, B):
+    def set_B(self, B):
 
         if not is_integer(B) and not is_float(B):
             msg = 'Unable to set B coefficient for Plane ID={0} to a ' \
@@ -172,7 +172,7 @@ class Plane(Surface):
         self._coeffs['B'] = B
 
 
-    def setC(self, C):
+    def set_C(self, C):
 
         if not is_integer(C) and not is_float(C):
             msg = 'Unable to set C coefficient for Plane ID={0} to a ' \
@@ -182,7 +182,7 @@ class Plane(Surface):
         self._coeffs['C'] = C
 
 
-    def setD(self, D):
+    def set_D(self, D):
 
         if not is_integer(D) and not is_float(D):
             msg = 'Unable to set D coefficient for Plane ID={0} to a ' \
@@ -206,10 +206,10 @@ class XPlane(Plane):
         self._coeff_keys = ['x0']
 
         if not x0 is None:
-            self.setX0(x0)
+            self.set_X0(x0)
 
 
-    def setX0(self, x0):
+    def set_X0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for XPlane ID={0} to a ' \
@@ -233,10 +233,10 @@ class YPlane(Plane):
         self._coeff_keys = ['y0']
 
         if not y0 is None:
-            self.setY0(y0)
+            self.set_Y0(y0)
 
 
-    def setY0(self, y0):
+    def set_Y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for XPlane ID={0} to a ' \
@@ -260,10 +260,10 @@ class ZPlane(Plane):
         self._coeff_keys = ['z0']
 
         if not z0 is None:
-            self.setZ0(z0)
+            self.set_Z0(z0)
 
 
-    def setZ0(self, z0):
+    def set_Z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for ZPlane ID={0} to a ' \
@@ -286,10 +286,10 @@ class Cylinder(Surface):
         self._coeff_keys = ['R']
 
         if not R is None:
-            self.setR(R)
+            self.set_R(R)
 
 
-    def setR(self, R):
+    def set_R(self, R):
 
         if not is_integer(R) and not is_float(R):
             msg = 'Unable to set R coefficient for Cylinder ID={0} to a ' \
@@ -314,13 +314,13 @@ class XCylinder(Cylinder):
         self._coeff_keys = ['y0', 'z0', 'R']
 
         if not y0 is None:
-            self.setY0(y0)
+            self.set_Y0(y0)
 
         if not z0 is None:
-            self.setZ0(z0)
+            self.set_Z0(z0)
 
 
-    def setY0(self, y0):
+    def set_Y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for XCylinder ID={0} to a ' \
@@ -330,7 +330,7 @@ class XCylinder(Cylinder):
         self._coeffs['y0'] = y0
 
 
-    def setZ0(self, z0):
+    def set_Z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for XCylinder ID={0} to a ' \
@@ -355,13 +355,13 @@ class YCylinder(Cylinder):
         self._coeff_keys = ['x0', 'z0', 'R']
 
         if not x0 is None:
-            self.setX0(x0)
+            self.set_X0(x0)
 
         if not z0 is None:
-            self.setZ0(z0)
+            self.set_Z0(z0)
 
 
-    def setX0(self, x0):
+    def set_X0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for YCylinder ID={0} to a ' \
@@ -371,7 +371,7 @@ class YCylinder(Cylinder):
         self._coeffs['x0'] = x0
 
 
-    def setZ0(self, z0):
+    def set_Z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for YCylinder ID={0} to a ' \
@@ -396,13 +396,13 @@ class ZCylinder(Cylinder):
         self._coeff_keys = ['x0', 'y0', 'R']
 
         if not x0 is None:
-            self.setX0(x0)
+            self.set_X0(x0)
 
         if not y0 is None:
-            self.setY0(y0)
+            self.set_Y0(y0)
 
 
-    def setX0(self, x0):
+    def set_X0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for ZCylinder ID={0} to a ' \
@@ -412,7 +412,7 @@ class ZCylinder(Cylinder):
         self._coeffs['x0'] = x0
 
 
-    def setY0(self, y0):
+    def set_Y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for ZCylinder ID={0} to a ' \
@@ -439,19 +439,19 @@ class Sphere(Surface):
         self._coeff_keys = ['x0', 'y0', 'z0', 'R']
 
         if not x0 is None:
-            self.setX0(x0)
+            self.set_X0(x0)
 
         if not y0 is None:
-            self.setY0(y0)
+            self.set_Y0(y0)
 
         if not z0 is None:
-            self.setZ0(z0)
+            self.set_Z0(z0)
 
         if not R is None:
-            self.setZ0(R)
+            self.set_Z0(R)
 
 
-    def setX0(self, x0):
+    def set_X0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for Sphere ID={0} to a ' \
@@ -461,7 +461,7 @@ class Sphere(Surface):
         self._coeffs['x0'] = x0
 
 
-    def setY0(self, y0):
+    def set_Y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for Sphere ID={0} to a ' \
@@ -471,7 +471,7 @@ class Sphere(Surface):
         self._coeffs['y0'] = y0
 
 
-    def setZ0(self, z0):
+    def set_Z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for Sphere ID={0} to a ' \
@@ -481,7 +481,7 @@ class Sphere(Surface):
         self._coeffs['z0'] = z0
 
 
-    def setR(self, R):
+    def set_R(self, R):
 
         if not is_integer(R) and not is_float(R):
             msg = 'Unable to set R coefficient for Sphere ID={0} to a ' \
@@ -507,19 +507,19 @@ class Cone(Surface):
         self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
 
         if not x0 is None:
-            self.setX0(x0)
+            self.set_X0(x0)
 
         if not y0 is None:
-            self.setY0(y0)
+            self.set_Y0(y0)
 
         if not z0 is None:
-            self.setZ0(z0)
+            self.set_Z0(z0)
 
         if not R2 is None:
-            self.setZ0(R2)
+            self.set_Z0(R2)
 
 
-    def setX0(self, x0):
+    def set_X0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for Cone ID={0} to a ' \
@@ -529,7 +529,7 @@ class Cone(Surface):
         self._coeffs['x0'] = x0
 
 
-    def setY0(self, y0):
+    def set_Y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for Cone ID={0} to a ' \
@@ -539,7 +539,7 @@ class Cone(Surface):
         self._coeffs['y0'] = y0
 
 
-    def setZ0(self, z0):
+    def set_Z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for Cone ID={0} to a ' \
@@ -549,7 +549,7 @@ class Cone(Surface):
         self._coeffs['z0'] = z0
 
 
-    def setR2(self, R2):
+    def set_R2(self, R2):
 
         if not is_integer(R2) and not is_float(R2):
             msg = 'Unable to set R^2 coefficient for Cone ID={0} to a ' \

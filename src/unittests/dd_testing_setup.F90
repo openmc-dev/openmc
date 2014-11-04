@@ -2,13 +2,14 @@ module dd_testing_setup
 
   use constants
   use dd_header,        only: dd_type
-  use global,           only: master, n_procs, rank, n_particles, &
+  use global,           only: master, n_procs, rank, n_particles, n_tallies, &
                               tallies, n_cells, n_user_tallies, micro_xs, &
                               material_xs
   use output,           only: write_message
   use particle_header,  only: Particle
   use string,           only: to_str
   use tally,            only: setup_active_usertallies
+  use tally,            only: score_analog_tally
   use tally_initialize, only: add_tallies, configure_tallies
 
 #ifdef MPI
@@ -187,9 +188,11 @@ contains
     ! This hardcodes in what would be done in input_xml and during
     ! initialization, and would need to be modified if anything changes there
 
+    n_tallies = 0 ! This gets set in add_tallies
+
     n_cells = 4
 
-   n_user_tallies = 1
+    n_user_tallies = 1
     call add_tallies("user", n_user_tallies)
 
     tallies(1) % id = 1
@@ -229,5 +232,69 @@ contains
     material_xs % total = 1.0_8
 
   end subroutine dd_simple_four_domain_tallies
+
+!===============================================================================
+! DD_SCORE_TO_FOUR_DOMAIN_TALLIES
+!===============================================================================
+
+  subroutine dd_score_to_four_domain_tallies(p)
+
+    type(Particle), intent(inout) :: p
+
+    ! Simulate scoring to tally bins
+    select case(rank)
+      case(0)
+        p % coord % cell = 2
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        p % coord % cell = 4
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+      case(1)
+        p % coord % cell = 2
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        p % coord % cell = 1
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+      case(2)
+        p % coord % cell = 3
+        call score_analog_tally(p)
+        p % coord % cell = 4
+        call score_analog_tally(p)
+        p % coord % cell = 3
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        p % coord % cell = 4
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+      case(3)
+        p % coord % cell = 2
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+      case(4)
+        p % coord % cell = 2
+        call score_analog_tally(p)
+        p % coord % cell = 4
+        call score_analog_tally(p)
+        p % coord % cell = 3
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        p % coord % cell = 2
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+        p % coord % cell = 4
+        call score_analog_tally(p)
+        call score_analog_tally(p)
+    end select
+
+  end subroutine dd_score_to_four_domain_tallies
 
 end module dd_testing_setup

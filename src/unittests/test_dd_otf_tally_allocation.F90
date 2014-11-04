@@ -3,14 +3,14 @@ module test_dd_otf_tally_allocation
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains, &
-                              dd_simple_four_domain_tallies
+                              dd_simple_four_domain_tallies, &
+                              dd_score_to_four_domain_tallies
   use global,           only: master, rank, free_memory, tallies, &
                               domain_decomp, dd_run
   use error,            only: warning
   use output,           only: write_message
   use particle_header,  only: Particle
   use string,           only: to_str
-  use tally,            only: score_analog_tally
   use testing_header,   only: TestSuiteClass, TestClass
 
 #ifdef MPI
@@ -79,66 +79,9 @@ contains
 
   subroutine test_execute()
 
-    ! Simulate scoring to tally bins
-    select case(rank)
-      case(0)
-        p % coord % cell = 1
-        call score_analog_tally(p)
-        p % coord % cell = 2
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-      case(1)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        p % coord % cell = 2
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 1
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-      case(2)
-        p % coord % cell = 3
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        p % coord % cell = 3
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-      case(3)
-        p % coord % cell = 2
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-      case(4)
-        p % coord % cell = 2
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        p % coord % cell = 3
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 2
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 4
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-    end select    
-    
+    ! Score to the tallies
+    call dd_score_to_four_domain_tallies(p)
+
   end subroutine test_execute
 
 !===============================================================================
@@ -158,12 +101,11 @@ contains
     ! Check that the results arrays are the right size and have the right values
     select case(rank)
       case(0, 1)
-        if (size(tallies(1) % results, 2) /= 3) then
+        if (size(tallies(1) % results, 2) /= 2) then
           failure = .true.
         else
-          if (.not. int(tallies(1) % results(1,1) % value) == 1 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 3 .and. &
-              .not. int(tallies(1) % results(1,3) % value) == 4) failure = .true.
+          if (.not. int(tallies(1) % results(1,1) % value) == 3 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 4) failure = .true.
         end if
       case(2)
         if (size(tallies(1) % results, 2) /= 2) then
@@ -173,11 +115,10 @@ contains
               .not. int(tallies(1) % results(1,2) % value) == 4) failure = .true.
         end if
       case(3)
-        if (size(tallies(1) % results, 2) /= 2) then
+        if (size(tallies(1) % results, 2) /= 1) then
           failure = .true.
         else
-          if (.not. int(tallies(1) % results(1,1) % value) == 2 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 1) failure = .true.
+          if (.not. int(tallies(1) % results(1,1) % value) == 2) failure = .true.
         end if
       case(4)
         if (size(tallies(1) % results, 2) /= 3) then

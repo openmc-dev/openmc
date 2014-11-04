@@ -2,10 +2,21 @@ module test_dd_reduce_tally_results
 
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
-  use dd_testing_setup, only: check_procs, dd_simple_four_domains
+  use dd_testing_setup, only: check_procs, dd_simple_four_domains, &
+                              dd_simple_four_domain_tallies, &
+                              dd_score_to_four_domain_tallies
   use error,            only: warning
-  use global,           only: master
+  use global,           only: master, domain_decomp, dd_run, free_memory, &
+                              tallies, rank
+  use output,           only: write_message
+  use particle_header,  only: Particle
+  use string,           only: to_str
+  use tally,            only: reduce_tally_results
   use testing_header,   only: TestSuiteClass, TestClass
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
   private
@@ -21,7 +32,7 @@ module test_dd_reduce_tally_results
 
   type(test), public :: dd_reduce_tally_results_test
   
-  type(dd_type) :: dd
+  type(Particle) :: p
 
 contains
 
@@ -53,15 +64,17 @@ contains
     end if
 
     ! Get generic DD setup with 4 domains for 5 MPI ranks
-    call dd_simple_four_domains(dd)
+    call dd_simple_four_domains(domain_decomp)
 
     ! Initialize dd_type
-    call initialize_domain_decomp(dd)
+    call initialize_domain_decomp(domain_decomp)
+    dd_run = .true.
 
-    if (master) then
-      call warning("TEST NOT IMPLEMENTED")
-      call suite % skip(this)
-    end if
+    ! Setup tallies and particle for scoring to them
+    call dd_simple_four_domain_tallies(p)
+
+    ! Score to the tallies
+    call dd_score_to_four_domain_tallies(p)
 
   end subroutine test_setup
 
@@ -71,7 +84,7 @@ contains
 
   subroutine test_execute()
 
-    ! Call the subroutines or functions to check here
+    call reduce_tally_results()
     
   end subroutine test_execute
 
@@ -82,13 +95,69 @@ contains
   subroutine test_check(suite)
 
     class(TestSuiteClass), intent(inout) :: suite
+   
+    logical :: failure = .false.
+#ifdef MPI
+    integer :: mpi_err
+    logical :: any_fail
+#endif
 
-    ! Add test checks here.  For example, check that the results are what you
-    ! expect given whatever setup was hardcoded into test_setup
+    ! Check that the results arrays are the right size and have the right values
+    select case(rank)
+      case(0)
+        if (size(tallies(1) % results, 2) /= 3) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 11 .and. &
+              .not. int(tallies(1) % results(1,3) % value) == 7) failure = .true.
+        end if
+      case(1)
+        if (size(tallies(1) % results, 2) /= 2) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 3 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 4) failure = .true.
+        end if
+      case(2)
+        if (size(tallies(1) % results, 2) /= 2) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 5 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 11) failure = .true.
+        end if
+      case(3)
+        if (size(tallies(1) % results, 2) /= 2) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 11) failure = .true.
+        end if
+      case(4)
+        if (size(tallies(1) % results, 2) /= 3) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 11 .and. &
+              .not. int(tallies(1) % results(1,3) % value) == 5) failure = .true.
+        end if
+    end select    
     
-    ! If success, do:  call suite % pass()
-    ! If failure, do:  call suite % fail()
-    
+    if (failure) then
+      call write_message("FAILURE: Tally reduction failure with OTF " // &
+          "tallies on rank " // trim(to_str(rank)))
+    end if
+
+#ifdef MPI
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
+    if (.not. any_fail) then
+      call suite % pass()
+    else
+      call suite % fail()
+    end if
+#endif
+ 
   end subroutine test_check
 
 !===============================================================================
@@ -97,7 +166,9 @@ contains
 
   subroutine test_teardown()
 
-    call deallocate_dd(dd)
+    call p % clear()
+    call deallocate_dd(domain_decomp)
+    call free_memory()
     
   end subroutine test_teardown
 

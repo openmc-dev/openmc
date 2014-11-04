@@ -2441,7 +2441,7 @@ contains
 
       end if
 
-      deallocate(tally_temp)
+      if (allocated(tally_temp)) deallocate(tally_temp)
     end do
 
     ! Copy global tallies into array to be reduced

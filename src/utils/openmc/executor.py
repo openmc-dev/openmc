@@ -15,7 +15,7 @@ class Executor(object):
         self._working_directory = '.'
 
 
-    def setWorkingDirectory(self, working_directory):
+    def set_working_directory(self, working_directory):
 
         if not is_string(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \
@@ -30,7 +30,7 @@ class Executor(object):
         self._working_directory = working_directory
 
 
-    def plotGeometry(self, output=True):
+    def plot_geometry(self, output=True):
 
         if output:
             subprocess.check_call('openmc -p', shell=True,
@@ -40,8 +40,9 @@ class Executor(object):
                                   cwd=self._working_directory)
 
 
-    def runSimulation(self, particles=None, threads=None, geometry_debug=False,
-                      restart_file=None, tracks=False, mpi_procs=1, output=True):
+    def run_simulation(self, particles=None, threads=None,
+                       geometry_debug=False, restart_file=None,
+                       tracks=False, mpi_procs=1, output=True):
 
         post_args = ' '
         pre_args = ''

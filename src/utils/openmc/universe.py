@@ -33,11 +33,11 @@ class Cell(object):
         self._translation = None
         self._offset = None
 
-        self.setId(cell_id)
-        self.setName(name)
+        self.set_id(cell_id)
+        self.set_name(name)
 
 
-    def getOffset(self, path, filter_offset):
+    def get_offset(self, path, filter_offset):
 
         # Get the current element and remove it from the list
         cell_id = path[0]
@@ -50,22 +50,22 @@ class Cell(object):
         # If the Cell is filled by a Universe
         elif self._type == 'fill':
             offset = self._offset[filter_offset-1]
-            offset += self._fill.getOffset(path, filter_offset)
+            offset += self._fill.get_offset(path, filter_offset)
 
         # If the Cell is filled by a Lattice
         else:
-            offset = self._fill.getOffset(path, filter_offset)
+            offset = self._fill.get_offset(path, filter_offset)
 
         return offset
 
         # Make a recursive call to the Universe filling this Cell
-        offset = self._cells[cell_id].getOffset(path, filter_offset)
+        offset = self._cells[cell_id].get_offset(path, filter_offset)
 
         # Return the offset computed at all nested Universe levels
         return offset
 
 
-    def setId(self, cell_id=None):
+    def set_id(self, cell_id=None):
 
         if cell_id is None:
             global AUTO_CELL_ID
@@ -86,7 +86,7 @@ class Cell(object):
             self._id = cell_id
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not isinstance(name, str):
             msg = 'Unable to set name for Cell ID={0} with a non-string ' \
@@ -97,7 +97,7 @@ class Cell(object):
             self._name = name
 
 
-    def setFill(self, fill):
+    def set_fill(self, fill):
 
         if not isinstance(fill, (openmc.Material, Universe, Lattice)) \
             and fill != 'void':
@@ -117,7 +117,7 @@ class Cell(object):
             self._type = 'normal'
 
 
-    def addSurface(self, surface, halfspace):
+    def add_surface(self, surface, halfspace):
 
         if not isinstance(surface, openmc.Surface):
             msg = 'Unable to add Surface {0} to Cell ID={1} since it is ' \
@@ -134,7 +134,7 @@ class Cell(object):
             self._surfaces[surface._id] = (surface, halfspace)
 
 
-    def removeSurface(self, surface):
+    def remove_surface(self, surface):
 
         if not isinstance(surface, openmc.Surface):
             msg = 'Unable to remove Surface {0} from Cell ID={1} since it is ' \
@@ -146,7 +146,7 @@ class Cell(object):
             del self._surfaces[surface._id]
 
 
-    def setSurfaces(self, surfaces, halfspaces):
+    def set_surfaces(self, surfaces, halfspaces):
 
         if not isinstance(surfaces, (tuple, list, np.ndarray)):
             msg = 'Unable to set Cell ID={0} with Surfaces {1} since ' \
@@ -161,10 +161,10 @@ class Cell(object):
             raise ValueError(msg)
 
         for surface in surfaces:
-            self.addSurface(surface)
+            self.add_surface(surface)
 
 
-    def setRotation(self, rotation):
+    def set_rotation(self, rotation):
 
         if not isinstance(rotation, (tuple, list, np.ndarray)):
             msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
@@ -188,7 +188,7 @@ class Cell(object):
             self._rotation = rotation
 
 
-    def setTranslation(self, translation):
+    def set_translation(self, translation):
 
         if not isinstance(translation, (tuple, list, np.ndarray)):
             msg = 'Unable to add translation {0} to Cell ID={1} since ' \
@@ -210,7 +210,7 @@ class Cell(object):
 
         self._translation = translation
 
-    def setOffset(self, offset):
+    def set_offset(self, offset):
 
         if not isinstance(offset, (tuple, list, np.ndarray)):
             msg = 'Unable to set offset {0} to Cell ID={1} since ' \
@@ -221,35 +221,35 @@ class Cell(object):
         self._offset = offset
 
 
-    def getAllNuclides(self):
+    def get_all_nuclides(self):
 
         nuclides = dict()
 
         if self._type != 'void':
-            nuclides.update(self._fill.getAllNuclides())
+            nuclides.update(self._fill.get_all_nuclides())
 
         return nuclides
 
 
-    def getAllCells(self):
+    def get_all_cells(self):
 
         cells = dict()
 
         if self._type == 'fill' or self._type == 'lattice':
-            cells.update(self._fill.getAllCells())
+            cells.update(self._fill.get_all_cells())
 
         return cells
 
 
-    def getAllUniverses(self):
+    def get_all_universes(self):
 
         universes = dict()
 
         if self._type == 'fill':
             universes[self._fill._id] = self._fill
-            universes.update(self._fill.getAllUniverses())
+            universes.update(self._fill.get_all_universes())
         elif self._type == 'lattice':
-            universes.update(self._fill.getAllUniverses())
+            universes.update(self._fill.get_all_universes())
 
         return universes
 
@@ -286,7 +286,7 @@ class Cell(object):
         return string
 
 
-    def createXMLSubElement(self, xml_element):
+    def create_xml_subelement(self, xml_element):
 
         element = ET.Element("cell")
         element.set("id", str(self._id))
@@ -296,11 +296,11 @@ class Cell(object):
 
         elif isinstance(self._fill, (Universe, Lattice)):
             element.set("fill", str(self._fill._id))
-            self._fill.createXMLSubElement(xml_element)
+            self._fill.create_xml_subelement(xml_element)
 
         else:
             element.set("fill", str(self._fill))
-            self._fill.createXMLSubElement(xml_element)
+            self._fill.create_xml_subelement(xml_element)
 
 
         if not self._surfaces is None:
@@ -318,7 +318,7 @@ class Cell(object):
 
                     # Create the XML subelement for this Surface
                     surface = self._surfaces[surface_id][0]
-                    surface_subelement = surface.createXMLSubElement()
+                    surface_subelement = surface.create_xml_subelement()
 
                     if len(surface._name) > 0:
                         xml_element.append(ET.Comment(surface._name))
@@ -384,11 +384,11 @@ class Universe(object):
         self._cell_offsets = OrderedDict()
         self._num_regions = 0
 
-        self.setId(universe_id)
-        self.setName(name)
+        self.set_id(universe_id)
+        self.set_name(name)
 
 
-    def setId(self, universe_id=None):
+    def set_id(self, universe_id=None):
 
         if universe_id is None:
             global AUTO_UNIVERSE_ID
@@ -410,7 +410,7 @@ class Universe(object):
             self._id = universe_id
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Universe ID={0} with a non-string ' \
@@ -421,7 +421,7 @@ class Universe(object):
             self._name = name
 
 
-    def addCell(self, cell):
+    def add_cell(self, cell):
 
         if not isinstance(cell, Cell):
             msg = 'Unable to add a Cell to Universe ID={0} since {1} is not ' \
@@ -434,7 +434,7 @@ class Universe(object):
             self._cells[cell_id] = cell
 
 
-    def addCells(self, cells):
+    def add_cells(self, cells):
 
         if not isinstance(cells, (list, tuple, np.ndarray)):
             msg = 'Unable to add Cells to Universe ID={0} since {1} is not a ' \
@@ -442,10 +442,10 @@ class Universe(object):
             raise ValueError(msg)
 
         for i in range(len(cells)):
-            self.addCell(cells[i])
+            self.add_cell(cells[i])
 
 
-    def removeCell(self, cell):
+    def remove_cell(self, cell):
 
         if not isinstance(cell, Cell):
             msg = 'Unable to remove a Cell from Universe ID={0} since {1} is ' \
@@ -459,11 +459,11 @@ class Universe(object):
             del self._cells[cell_id]
 
 
-    def clearCells(self):
+    def clear_cells(self):
         self._cells.clear()
 
 
-    def getOffset(self, path, filter_offset):
+    def get_offset(self, path, filter_offset):
 
         # Get the current element and remove it from the list
         path = path[1:]
@@ -472,24 +472,24 @@ class Universe(object):
         cell_id = path[0]
 
         # Make a recursive call to the Cell within this Universe
-        offset = self._cells[cell_id].getOffset(path, filter_offset)
+        offset = self._cells[cell_id].get_offset(path, filter_offset)
 
         # Return the offset computed at all nested Universe levels
         return offset
 
 
-    def getAllNuclides(self):
+    def get_all_nuclides(self):
 
         nuclides = dict()
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
-            nuclides.update(cell.getAllNuclides())
+            nuclides.update(cell.get_all_nuclides())
 
         return nuclides
 
 
-    def getAllCells(self):
+    def get_all_cells(self):
 
         cells = dict()
 
@@ -498,21 +498,21 @@ class Universe(object):
 
         # Append all Cells in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
-            cells.update(cell.getAllCells())
+            cells.update(cell.get_all_cells())
 
         return cells
 
 
-    def getAllUniverses(self):
+    def get_all_universes(self):
 
         # Get all Cells in this Universe
-        cells = self.getAllCells()
+        cells = self.get_all_cells()
 
         universes = dict()
 
         # Append all Universes containing each Cell to the dictionary
         for cell_id, cell in cells.items():
-            universes.update(cell.getAllUniverses())
+            universes.update(cell.get_all_universes())
 
         return universes
 
@@ -529,7 +529,7 @@ class Universe(object):
         return string
 
 
-    def createXMLSubElement(self, xml_element):
+    def create_xml_subelement(self, xml_element):
 
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
@@ -542,7 +542,7 @@ class Universe(object):
             if test is None:
 
                 # Create XML subelement for this Cell
-                cell_subelement = cell.createXMLSubElement(xml_element)
+                cell_subelement = cell.create_xml_subelement(xml_element)
 
                 # Append the Universe ID to the subelement and add to Element
                 cell_subelement.set("universe", str(self._id))
@@ -575,12 +575,12 @@ class Lattice(object):
         self._offsets = None
 
 
-        self.setId(lattice_id)
-        self.setName(name)
-        self.setType(type)
+        self.set_id(lattice_id)
+        self.set_name(name)
+        self.set_type(type)
 
 
-    def setId(self, lattice_id=None):
+    def set_id(self, lattice_id=None):
 
         if lattice_id is None:
             global AUTO_UNIVERSE_ID
@@ -601,7 +601,7 @@ class Lattice(object):
             self._id = lattice_id
 
 
-    def setName(self, name):
+    def set_name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Lattice ID={0} with a non-string ' \
@@ -612,7 +612,7 @@ class Lattice(object):
             self._name = name
 
 
-    def setType(self, type):
+    def set_type(self, type):
 
         if not is_string(type):
             msg = 'Unable to set type for Lattice ID={0} with a non-string ' \
@@ -627,7 +627,7 @@ class Lattice(object):
         self._type = type
 
 
-    def setDimension(self, dimension):
+    def set_dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} dimension to {1} since ' \
@@ -658,7 +658,7 @@ class Lattice(object):
         self._dimension = dimension
 
 
-    def setLowerLeft(self, lower_left):
+    def set_lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} lower_left to {1} since ' \
@@ -684,7 +684,7 @@ class Lattice(object):
         self._lower_left = lower_left
 
 
-    def setWidth(self, width):
+    def set_width(self, width):
 
         if not isinstance(width, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} width to {1} since ' \
@@ -714,7 +714,7 @@ class Lattice(object):
         self._width = width
 
 
-    def setOutside(self, outside):
+    def set_outside(self, outside):
 
         if not isinstance(outside, Universe):
             msg = 'Unable to set Lattice ID={0} outside universe to {1} ' \
@@ -724,7 +724,7 @@ class Lattice(object):
         self._outside = outside
 
 
-    def setUniverses(self, universes):
+    def set_universes(self, universes):
 
         if not isinstance(universes, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} universes to {1} since ' \
@@ -735,7 +735,7 @@ class Lattice(object):
         self._universes = np.asarray(universes, dtype=Universe)
 
 
-    def setOffsets(self, offsets):
+    def set_offsets(self, offsets):
 
         if not isinstance(offsets, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
@@ -746,7 +746,7 @@ class Lattice(object):
         self._offsets = offsets
 
 
-    def getOffset(self, path, filter_offset):
+    def get_offset(self, path, filter_offset):
 
         # Get the current element and remove it from the list
         i = path[0]
@@ -755,18 +755,18 @@ class Lattice(object):
         # For 2D Lattices
         if len(self._dimension) == 2:
             offset = self._offsets[i[1]-1, i[2]-1, 0, filter_offset-1]
-            offset += self._universes[i[1]][i[2]].getOffset(path, filter_offset)
+            offset += self._universes[i[1]][i[2]].get_offset(path, filter_offset)
 
         # For 3D Lattices
         else:
             offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, filter_offset-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].getOffset(path,
+            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_offset(path,
                                                                  filter_offset)
 
         return offset
 
 
-    def getUniqueUniverses(self):
+    def get_unique_universes(self):
 
         unique_universes = np.unique(self._universes.ravel())
         universes = dict()
@@ -777,46 +777,46 @@ class Lattice(object):
         return universes
 
 
-    def getAllNuclides(self):
+    def get_all_nuclides(self):
 
         nuclides = dict()
 
         # Get all unique Universes contained in each of the lattice cells
-        unique_universes = self.getUniqueUniverses()
+        unique_universes = self.get_unique_universes()
 
         # Append all Universes containing each cell to the dictionary
         for universe_id, universe in unique_universes.items():
-            nuclides.update(universe.getAllNuclides())
+            nuclides.update(universe.get_all_nuclides())
 
         return nuclides
 
 
-    def getAllCells(self):
+    def get_all_cells(self):
 
         cells = dict()
-        unique_universes = self.getUniqueUniverses()
+        unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
-            cells.update(universe.getAllCells())
+            cells.update(universe.get_all_cells())
 
         return cells
 
 
-    def getAllUniverses(self):
+    def get_all_universes(self):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
         all_universes = dict()
 
         # Get all unique Universes contained in each of the lattice cells
-        unique_universes = self.getUniqueUniverses()
+        unique_universes = self.get_unique_universes()
 
         # Add the unique Universes filling each Lattice cell
         all_universes.update(unique_universes)
 
         # Append all Universes containing each cell to the dictionary
         for universe_id, universe in unique_universes.items():
-            all_universes.update(universe.getAllUniverses())
+            all_universes.update(universe.get_all_universes())
 
         return all_universes
 
@@ -869,7 +869,7 @@ class Lattice(object):
         return string
 
 
-    def createXMLSubElement(self, xml_element):
+    def create_xml_subelement(self, xml_element):
 
         # Determine if XML element already contains subelement for this Lattice
         path = './lattice[@id=\'{0}\']'.format(self._id)
@@ -936,7 +936,7 @@ class Lattice(object):
                         universe_ids += '{0} '.format(universe._id)
 
                         # Create XML subelement for this Universe
-                        universe.createXMLSubElement(xml_element)
+                        universe.create_xml_subelement(xml_element)
 
                     # Add newline character when we reach end of row of cells
                     universe_ids += '\n'
@@ -955,7 +955,7 @@ class Lattice(object):
                     universe_ids += '{0} '.format(universe._id)
 
                     # Create XML subelement for this Universe
-                    universe.createXMLSubElement(xml_element)
+                    universe.create_xml_subelement(xml_element)
 
                 # Add newline character when we reach end of row of cells
                 universe_ids += '\n'

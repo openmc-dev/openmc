@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Dictionaries of integer-to-string mapppings from openmc/src/constants.F90"""
+"""Dictionaries of integer-to-string mappings from openmc/src/constants.F90"""
 
 SURFACE_TYPES = {1: 'x-plane',
                  2: 'y-plane',

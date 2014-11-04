@@ -74,7 +74,7 @@ class SettingsFile(object):
         self._source_element = None
 
 
-    def setBatches(self, batches):
+    def set_batches(self, batches):
 
         if not is_integer(batches):
             msg = 'Unable to set batches to a non-integer ' \
@@ -89,7 +89,7 @@ class SettingsFile(object):
         self._batches = batches
 
 
-    def setGenerationsPerBatch(self, generations_per_batch):
+    def set_generations_per_batch(self, generations_per_batch):
 
         if not is_integer(generations_per_batch):
             msg = 'Unable to set generations per batch to a non-integer ' \
@@ -104,7 +104,7 @@ class SettingsFile(object):
         self._generations_per_batch = generations_per_batch
 
 
-    def setInactive(self, inactive):
+    def set_inactive(self, inactive):
 
         if not is_integer(inactive):
             msg = 'Unable to set inactive batches to a non-integer ' \
@@ -119,7 +119,7 @@ class SettingsFile(object):
         self._inactive = inactive
 
 
-    def setParticles(self, particles):
+    def set_particles(self, particles):
 
         if not is_integer(particles):
             msg = 'Unable to set particles to a non-integer ' \
@@ -134,7 +134,7 @@ class SettingsFile(object):
         self._particles = particles
 
 
-    def setSourceFile(self, source_file):
+    def set_source_file(self, source_file):
 
         if not is_string(source_file):
             msg = 'Unable to set source file to a non-string ' \
@@ -144,7 +144,7 @@ class SettingsFile(object):
         self._source_file = source_file
 
 
-    def setSourceSpace(self, type, params):
+    def set_source_space(self, type, params):
 
         if not is_string(type):
             msg = 'Unable to set source space type to a non-string ' \
@@ -177,7 +177,7 @@ class SettingsFile(object):
         self._source_space_params = params
 
 
-    def setSourceAngle(self, type, params=[]):
+    def set_source_angle(self, type, params=[]):
 
         if not is_string(type):
             msg = 'Unable to set source angle type to a non-string ' \
@@ -216,7 +216,7 @@ class SettingsFile(object):
         self._source_angle_params = params
 
 
-    def setSourceEnergy(self, type, params=[]):
+    def set_source_energy(self, type, params=[]):
 
         if not is_string(type):
             msg = 'Unable to set source energy type to a non-string ' \
@@ -262,7 +262,7 @@ class SettingsFile(object):
         self._source_energy_params = params
 
 
-    def setOutput(self, output):
+    def set_output(self, output):
 
         if not isinstance(output, dict):
             msg = 'Unable to set output to {0} which is not a Python ' \
@@ -285,7 +285,7 @@ class SettingsFile(object):
         self._output = output
 
 
-    def setOutputPath(self, output_path):
+    def set_output_path(self, output_path):
 
         if not is_string(output_path):
             msg = 'Unable to set output path to non-string ' \
@@ -295,7 +295,7 @@ class SettingsFile(object):
         self._output_path = output_path
 
 
-    def setVerbosity(self, verbosity):
+    def set_verbosity(self, verbosity):
 
         if not is_integer(verbosity):
             msg = 'Unable to set verbosity to non-integer ' \
@@ -310,7 +310,7 @@ class SettingsFile(object):
         self._verbosity = verbosity
 
 
-    def setStatepointBatches(self, batches):
+    def set_statepoint_batches(self, batches):
 
         if not isinstance(batches, (tuple, list, np.ndarray)):
             msg = 'Unable to set statepoint batches to {0} which is not a ' \
@@ -332,7 +332,7 @@ class SettingsFile(object):
         self._statepoint_batches = batches
 
 
-    def setStatepointInterval(self, interval):
+    def set_statepoint_interval(self, interval):
 
         if not is_integer(interval):
             msg = 'Unable to set statepoint interval to non-integer ' \
@@ -342,7 +342,7 @@ class SettingsFile(object):
         self._statepoint_interval = interval
 
 
-    def setSourcepointBatches(self, batches):
+    def set_sourcepoint_batches(self, batches):
 
         if not isinstance(batches, (tuple, list, np.ndarray)):
             msg = 'Unable to set sourcepoint batches to {0} which is ' \
@@ -364,7 +364,7 @@ class SettingsFile(object):
         self._sourcepoint_batches = batches
 
 
-    def setSourcepointInterval(self, interval):
+    def set_sourcepoint_interval(self, interval):
 
         if not is_integer(interval):
             msg = 'Unable to set sourcepoint interval to non-integer ' \
@@ -374,7 +374,7 @@ class SettingsFile(object):
         self._sourcepoint_interval = interval
 
 
-    def setSourcepointSeparate(self, source_separate):
+    def set_sourcepoint_separate(self, source_separate):
 
         if not isinstance(source_separate, (bool, np.bool)):
             msg = 'Unable to set sourcepoint separate to non-boolean ' \
@@ -384,7 +384,7 @@ class SettingsFile(object):
         self._sourcepoint_separate = source_separate
 
 
-    def setSourcepointWrite(self, source_write):
+    def set_sourcepoint_write(self, source_write):
 
         if not isinstance(source_write, (bool, np.bool)):
             msg = 'Unable to set sourcepoint write to non-boolean ' \
@@ -394,7 +394,7 @@ class SettingsFile(object):
         self._sourcepoint_write = source_write
 
 
-    def setSourcepointOverwrite(self, source_overwrite):
+    def set_sourcepoint_overwrite(self, source_overwrite):
 
         if not isinstance(source_overwrite, (bool, np.bool)):
             msg = 'Unable to set sourcepoint overwrite to non-boolean ' \
@@ -404,7 +404,7 @@ class SettingsFile(object):
         self._sourcepoint_overwrite = source_overwrite
 
 
-    def setConfidenceIntervals(self, confidence_intervals):
+    def set_confidence_intervals(self, confidence_intervals):
 
         if not isinstance(confidence_intervals, (bool, np.bool)):
             msg = 'Unable to set confidence interval to non-boolean ' \
@@ -414,7 +414,7 @@ class SettingsFile(object):
         self._confidence_intervals = confidence_intervals
 
 
-    def setCrossSections(self, cross_sections):
+    def set_cross_sections(self, cross_sections):
 
         if not is_string(cross_sections):
             msg = 'Unable to set cross sections to non-string ' \
@@ -424,7 +424,7 @@ class SettingsFile(object):
         self._cross_sections = cross_sections
 
 
-    def setEnergyGrid(self, energy_grid):
+    def set_energy_grid(self, energy_grid):
 
         if not energy_grid in ['union', 'nuclide']:
             msg = 'Unable to set energy grid to {0} which is neither ' \
@@ -434,7 +434,7 @@ class SettingsFile(object):
         self._energy_grid = energy_grid
 
 
-    def setPTables(self, ptables):
+    def set_ptables(self, ptables):
 
         if not isinstance(ptables, (bool, np.bool)):
             msg = 'Unable to set ptables to non-boolean ' \
@@ -444,7 +444,7 @@ class SettingsFile(object):
         self._ptables = ptables
 
 
-    def setRunCMFD(self, run_cmfd):
+    def set_run_cmfd(self, run_cmfd):
 
         if not isinstance(run_cmfd, (bool, np.bool)):
             msg = 'Unable to set run_cmfd to non-boolean ' \
@@ -454,7 +454,7 @@ class SettingsFile(object):
         self._run_cmfd = run_cmfd
 
 
-    def setSeed(self, seed):
+    def set_seed(self, seed):
 
         if not is_integer(seed):
             msg = 'Unable to set seed to non-integer value {0}'.format(seed)
@@ -467,7 +467,7 @@ class SettingsFile(object):
         self._seed = seed
 
 
-    def setSurvivalBiasing(self, survival_biasing):
+    def set_survival_biasing(self, survival_biasing):
 
         if not isinstance(survival_biasing, (bool, np.bool)):
             msg = 'Unable to set survival biasing to non-boolean ' \
@@ -477,7 +477,7 @@ class SettingsFile(object):
         self._survival_biasing = survival_biasing
 
 
-    def setWeight(self, weight, weight_avg):
+    def set_weight(self, weight, weight_avg):
 
         if not is_float(weight):
             msg = 'Unable to set weight cutoff to non-floating point ' \
@@ -503,7 +503,7 @@ class SettingsFile(object):
         self._weight_avg = weight_avg
 
 
-    def setEntropyDimension(self, dimension):
+    def set_entropy_dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list)):
             msg = 'Unable to set entropy mesh dimension to {0} which is ' \
@@ -525,7 +525,7 @@ class SettingsFile(object):
         self._entropy_dimension = dimension
 
 
-    def setEntropyLowerLeft(self, lower_left):
+    def set_entropy_lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list)):
             msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
@@ -548,7 +548,7 @@ class SettingsFile(object):
         self._entropy_lower_left = lower_left
 
 
-    def setEntropyUpperRight(self, upper_right):
+    def set_entropy_upper_right(self, upper_right):
 
         if not isinstance(upper_right, (tuple, list)):
             msg = 'Unable to set entropy mesh upper right corner to {0} ' \
@@ -571,7 +571,7 @@ class SettingsFile(object):
         self._entropy_upper_right = upper_right
 
 
-    def setNoReduce(self, no_reduce):
+    def set_no_reduce(self, no_reduce):
 
         if not isinstance(no_reduce, (bool, np.bool)):
             msg = 'Unable to set the no_reduce to a non-boolean ' \
@@ -581,7 +581,7 @@ class SettingsFile(object):
         self._no_reduce = no_reduce
 
 
-    def setThreads(self, threads):
+    def set_threads(self, threads):
 
         if not is_integer(threads):
             msg = 'Unable to set the threads to a non-integer ' \
@@ -596,7 +596,7 @@ class SettingsFile(object):
         self._threads = threads
 
 
-    def setTrace(self, trace):
+    def set_trace(self, trace):
 
         if not isinstance(trace, (list, tuple)):
             msg = 'Unable to set the trace to {0} which is not a Python ' \
@@ -626,7 +626,7 @@ class SettingsFile(object):
         self._trace = trace
 
 
-    def setTrack(self, track):
+    def set_track(self, track):
 
         if not isinstance(track, (list, tuple)):
             msg = 'Unable to set the track to {0} which is not a Python ' \
@@ -657,7 +657,7 @@ class SettingsFile(object):
         self._track = track
 
 
-    def setUFSDimension(self, dimension):
+    def set_ufs_dimension(self, dimension):
 
         if not is_integer(dimension) and not is_float(dimension):
             msg = 'Unable to set UFS dimension to non-integer or ' \
@@ -672,7 +672,7 @@ class SettingsFile(object):
         self._ufs_dimension = dimension
 
 
-    def setUFSLowerLeft(self, lower_left):
+    def set_ufs_lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set UFS mesh lower left corner to {0} which is ' \
@@ -687,7 +687,7 @@ class SettingsFile(object):
         self._ufs_lower_left = lower_left
 
 
-    def setUFSUpperRight(self, upper_right):
+    def set_ufs_upper_right(self, upper_right):
 
         if not isinstance(upper_right, tuple) and \
           not isinstance(upper_right, list):
@@ -703,15 +703,15 @@ class SettingsFile(object):
         self._ufs_upper_right = upper_right
 
 
-    def createEigenvalueSubelement(self):
+    def create_eigenvalue_subelement(self):
 
-        self.createParticlesSubelement()
-        self.createBatchesSubelement()
-        self.createInactiveSubelement()
-        self.createGenerationsPerBatchSubelement()
+        self.create_particles_subelement()
+        self.create_batches_subelement()
+        self.create_inactive_subelement()
+        self.create_generations_per_batch_subelement()
 
 
-    def createBatchesSubelement(self):
+    def create_batches_subelement(self):
 
         if not self._batches is None:
 
@@ -723,7 +723,7 @@ class SettingsFile(object):
             element.text = '{0}'.format(self._batches)
 
 
-    def createGenerationsPerBatchSubelement(self):
+    def create_generations_per_batch_subelement(self):
 
         if not self._generations_per_batch is None:
 
@@ -736,7 +736,7 @@ class SettingsFile(object):
             element.text = '{0}'.format(self._generations_per_batch)
 
 
-    def createInactiveSubelement(self):
+    def create_inactive_subelement(self):
 
         if not self._inactive is None:
 
@@ -748,7 +748,7 @@ class SettingsFile(object):
             element.text = '{0}'.format(self._inactive)
 
 
-    def createParticlesSubelement(self):
+    def create_particles_subelement(self):
 
         if not self._particles is None:
 
@@ -760,14 +760,14 @@ class SettingsFile(object):
             element.text = '{0}'.format(self._particles)
 
 
-    def createSourceSubelement(self):
+    def create_source_subelement(self):
 
-        self.createSourceSpaceSubelement()
-        self.createSourceEnergySubelement()
-        self.createSourceAngleSubelement()
+        self.create_source_space_subelement()
+        self.create_source_energy_subelement()
+        self.create_source_angle_subelement()
 
 
-    def createSourceSpaceSubelement(self):
+    def create_source_space_subelement(self):
 
 
         if not self._source_space_params is None:
@@ -787,7 +787,7 @@ class SettingsFile(object):
             subelement.text = text.rstrip(' ')
 
 
-    def createSourceAngleSubelement(self):
+    def create_source_angle_subelement(self):
 
         if not self._source_angle_params is None:
 
@@ -806,7 +806,7 @@ class SettingsFile(object):
             subelement.text = text.rstrip(' ')
 
 
-    def createSourceEnergySubelement(self):
+    def create_source_energy_subelement(self):
 
         if not self._source_energy_params is None:
 
@@ -825,7 +825,7 @@ class SettingsFile(object):
             subelement.text = text.rstrip(' ')
 
 
-    def createOutputSubelement(self):
+    def create_output_subelement(self):
 
         if not self._output is None:
             element = ET.SubElement(self._settings_file, "output")
@@ -834,24 +834,24 @@ class SettingsFile(object):
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._output[key]).lower()
 
-            self.createOuputPathSubelement()
+            self.create_output_path_subelement()
 
 
-    def createOuputPathSubelement(self):
+    def create_output_path_subelement(self):
 
         if not self._output_path is None:
             element = ET.SubElement(self._settings_file, "output_path")
             element.text = self._output_path
 
 
-    def createVerbositySubelement(self):
+    def create_verbosity_subelement(self):
 
         if not self._verbosity is None:
             element = ET.SubElement(self._settings_file, "verbosity")
             element.text = '{0}'.format(self._verbosity)
 
 
-    def createStatepointSubelement(self):
+    def create_statepoint_subelement(self):
 
         # Batches subelement
         if not self._statepoint_batches is None:
@@ -869,7 +869,7 @@ class SettingsFile(object):
             subelement.text = '{0}'.format(self._statepoint_interval)
 
 
-    def createSourcepointSubelement(self):
+    def create_sourcepoint_subelement(self):
 
         # Batches subelement
         if not self._sourcepoint_batches is None:
@@ -902,56 +902,56 @@ class SettingsFile(object):
             subelement.text = '{0}'.format(str(self._sourcepoint_overwrite).lower())
 
 
-    def createConfidenceIntervalsSubelement(self):
+    def create_confidence_intervals(self):
 
         if not self._confidence_intervals is None:
             element = ET.SubElement(self._settings_file, "confidence_intervals")
             element.text = '{0}'.format(str(self._confidence_intervals).lower())
 
 
-    def createCrossSectionsSubelement(self):
+    def create_cross_sections_subelement(self):
 
         if not self._cross_sections is None:
             element = ET.SubElement(self._settings_file, "cross_sections")
             element.text = '{0}'.format(self._cross_sections)
 
 
-    def createEnergyGridSubelement(self):
+    def create_energy_grid_subelement(self):
 
         if not self._energy_grid is None:
             element = ET.SubElement(self._settings_file, "energy_grid")
             element.text = '{0}'.format(self._energy_grid)
 
 
-    def createPTablesSubelement(self):
+    def create_ptables_subelement(self):
 
         if not self._ptables is None:
             element = ET.SubElement(self._settings_file, "ptables")
             element.text = '{0}'.format(str(self._ptables).lower())
 
 
-    def createRunCMFDSubelement(self):
+    def create_run_cmfd_subelement(self):
 
         if not self._run_cmfd is None:
             element = ET.SubElement(self._settings_file, "run_cmfd")
             element.text = '{0}'.format(str(self._run_cmfd).lower())
 
 
-    def createSeedSubelement(self):
+    def create_seed_subelement(self):
 
         if not self._seed is None:
             element = ET.SubElement(self._settings_file, "seed")
             element.text = '{0}'.format(self._seed)
 
 
-    def createSurvivalBiasingSubelement(self):
+    def create_survival_biasing_subelement(self):
 
         if not self._survival_biasing is None:
             element = ET.SubElement(self._settings_file, "survival_biasing")
             element.text = '{0}'.format(str(self._survival_biasing).lower())
 
 
-    def createCutoffSubelement(self):
+    def create_cutoff_subelement(self):
 
         if not self._weight is None:
             element = ET.SubElement(self._settings_file, "cutoff")
@@ -963,7 +963,7 @@ class SettingsFile(object):
             subelement.text = '{0}'.format(self._weight_avg)
 
 
-    def createEntropySubelement(self):
+    def create_entropy_subelement(self):
 
         if not self._entropy_lower_left is None and \
             not self._entropy_upper_right is None:
@@ -986,21 +986,21 @@ class SettingsFile(object):
                                                    self._entropy_upper_right[2])
 
 
-    def createNoReduceSubelement(self):
+    def create_no_reduce_subelement(self):
 
         if not self._no_reduce is None:
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = '{0}'.format(str(self._no_reduce).lower())
 
 
-    def createThreadsSubelement(self):
+    def create_threads_subelement(self):
 
         if not self._threads is None:
             element = ET.SubElement(self._settings_file, "threads")
             element.text = '{0}'.format(self._threads)
 
 
-    def createTraceSubelement(self):
+    def create_trace_subelement(self):
 
         if not self._trace is None:
             element = ET.SubElement(self._settings_file, "trace")
@@ -1011,7 +1011,7 @@ class SettingsFile(object):
             element.text = text.rstrip(' ')
 
 
-    def createTrackSubelement(self):
+    def create_track_subelement(self):
 
         if not self._track is None:
             element = ET.SubElement(self._settings_file, "track")
@@ -1022,7 +1022,7 @@ class SettingsFile(object):
             element.text = text.rstrip(' ')
 
 
-    def createUFSSubelement(self):
+    def create_ufs_subelement(self):
 
         if not self._ufs_lower_left is None and \
             not self._ufs_upper_right is None:
@@ -1043,28 +1043,28 @@ class SettingsFile(object):
                                                    self._ufs_upper_right[2])
 
 
-    def exportToXML(self):
+    def export_to_xml(self):
 
-        self.createEigenvalueSubelement()
-        self.createSourceSubelement()
-        self.createOutputSubelement()
-        self.createStatepointSubelement()
-        self.createSourcepointSubelement()
-        self.createConfidenceIntervalsSubelement()
-        self.createCrossSectionsSubelement()
-        self.createEnergyGridSubelement()
-        self.createPTablesSubelement()
-        self.createRunCMFDSubelement()
-        self.createSeedSubelement()
-        self.createSurvivalBiasingSubelement()
-        self.createCutoffSubelement()
-        self.createEntropySubelement()
-        self.createNoReduceSubelement()
-        self.createThreadsSubelement()
-        self.createVerbositySubelement()
-        self.createTraceSubelement()
-        self.createTrackSubelement()
-        self.createUFSSubelement()
+        self.create_eigenvalue_subelement()
+        self.create_source_subelement()
+        self.create_output_subelement()
+        self.create_statepoint_subelement()
+        self.create_sourcepoint_subelement()
+        self.create_confidence_intervals()
+        self.create_cross_sections_subelement()
+        self.create_energy_grid_subelement()
+        self.create_ptables_subelement()
+        self.create_run_cmfd_subelement()
+        self.create_seed_subelement()
+        self.create_survival_biasing_subelement()
+        self.create_cutoff_subelement()
+        self.create_entropy_subelement()
+        self.create_no_reduce_subelement()
+        self.create_threads_subelement()
+        self.create_verbosity_subelement()
+        self.create_trace_subelement()
+        self.create_track_subelement()
+        self.create_ufs_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

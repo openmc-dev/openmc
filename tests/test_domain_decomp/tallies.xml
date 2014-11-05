@@ -3,8 +3,8 @@
 
   <mesh id="1">
     <type>rectangular</type>
-    <lower_left> -250 -250 -230 </lower_left>
-    <upper_right> 250  250  224 </upper_right>
+    <lower_left> -9.9 -9.9 -9.9 </lower_left>
+    <upper_right> 9.9  9.9  9.9 </upper_right>
     <dimension>3 3 1</dimension>
   </mesh>
 

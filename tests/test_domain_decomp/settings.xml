@@ -1,21 +1,17 @@
 <?xml version="1.0"?>
 <settings>
 
-  <cross_sections>
-    /home/nhorelik/git/domain_decomp/closedmc/data/nndc/cross_sections.xml
-  </cross_sections>
-
   <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>90000</particles>
+    <batches>20</batches>
+    <inactive>15</inactive>
+    <particles>1000</particles>
   </eigenvalue>
 
   <source>
     <space type="box">
       <parameters>
-        -160 -160 -183
-         160  160  183
+        -9.9 -9.9 -9.9
+         9.9  9.9  9.9
       </parameters>
     </space>
   </source>
@@ -24,17 +20,16 @@
 
     <mesh>
       <dimension> 2 2 1 </dimension>
-      <lower_left> -250 -250 -230 </lower_left>
-      <upper_right> 250  250  224 </upper_right>
+      <lower_left> -10 -10 -10 </lower_left>
+      <upper_right> 10 10 10 </upper_right>
     </mesh>
 
     <nodemap>
-        1 1
-        1 1
+         1 1
+         1 1
     </nodemap>
 
   </domain_decomposition>
-
 
 
 </settings>

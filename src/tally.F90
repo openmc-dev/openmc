@@ -2404,12 +2404,7 @@ contains
       else
 
         ! Reduce tallies to local masters within each domain
-        call reduce_otf_tally_results(t, domain_decomp % comm, .true.)
-
-        ! Reduce tallies among all domains who's scored to this tally
-        if (domain_decomp % local_master) &
-            call reduce_otf_tally_results(t, &
-                domain_decomp % local_master_comm, .false.)
+        call reduce_otf_tally_results(t, domain_decomp % comm)
 
       end if
 
@@ -2457,11 +2452,10 @@ contains
 ! master process of a communicator
 !===============================================================================
 
-  subroutine reduce_otf_tally_results(t, reduce_comm, flag)
+  subroutine reduce_otf_tally_results(t, reduce_comm)
 
     type(TallyObject), pointer, intent(inout) :: t
     integer,                    intent(in) :: reduce_comm
-    logical :: flag
 
     integer :: j
     integer :: idx    ! filter index in results array

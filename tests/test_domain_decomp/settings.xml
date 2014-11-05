@@ -23,15 +23,14 @@
   <domain_decomposition>
 
     <mesh>
-      <dimension> 3 3 1 </dimension>
+      <dimension> 2 2 1 </dimension>
       <lower_left> -250 -250 -230 </lower_left>
       <upper_right> 250  250  224 </upper_right>
     </mesh>
 
     <nodemap>
-        1 1 1
-        1 1 1
-        1 1 1
+        1 1
+        1 1
     </nodemap>
 
   </domain_decomposition>

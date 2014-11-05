@@ -43,8 +43,6 @@ contains
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
-!    print *, rank, "Tracking particle", p % id
-
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
       call write_message("Simulating Particle " // trim(to_str(p % id)))
@@ -68,9 +66,11 @@ contains
     n_event = 0
 
     ! Add paricle's starting weight to count for normalizing tallies later
+    if (p % new_particle) then
 !$omp critical
-    total_weight = total_weight + p % wgt
+      total_weight = total_weight + p % wgt
 !$omp end critical
+    end if
 
     ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO

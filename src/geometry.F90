@@ -228,7 +228,7 @@ contains
 
         ! Create new level of coordinates
         allocate(p % coord % next)
-        p % coord % next % xyz = get_lat_trans(lat, p % coord % xyz, i_xyz)
+        p % coord % next % xyz = lat % get_local_xyz(p % coord % xyz, i_xyz)
         p % coord % next % uvw = p % coord % uvw
 
         ! set particle lattice indices
@@ -270,49 +270,6 @@ contains
     found = .false.
 
   end subroutine find_cell
-
-!===============================================================================
-! GET_LAT_TRANS returns the translated xyz coordinates in the specified lattice
-! cell for a particle currently at the given xyz coordinates.
-!===============================================================================
-
-  function get_lat_trans(lat, xyz, i_xyz) result(xyz_t)
-    class(Lattice), intent(in)  :: lat
-    real(8)       , intent(in)  :: xyz(3)
-    integer       , intent(in)  :: i_xyz(3)
-
-    real(8) :: xyz_t(3)
-
-    select type(lat)
-
-    type is (RectLattice)
-      xyz_t(1) = xyz(1) - (lat % lower_left(1) + &
-           &(i_xyz(1) - 0.5_8)*lat % pitch(1))
-      xyz_t(2) = xyz(2) - (lat % lower_left(2) + &
-           &(i_xyz(2) - 0.5_8)*lat % pitch(2))
-      if (lat % is_3d) then
-        xyz_t(3) = xyz(3) - (lat % lower_left(3) + &
-             &(i_xyz(3) - 0.5_8)*lat % pitch(3))
-      else
-        xyz_t(3) = xyz(3)
-      end if
- 
-    type is (HexLattice)
-      xyz_t(1) = xyz(1) - (lat % center(1) + &
-           &sqrt(3.0_8) / 2.0_8 * (i_xyz(1) - lat % n_rings) * lat % pitch(1))
-      xyz_t(2) = xyz(2) - (lat % center(2) + &
-           &(i_xyz(2) - lat % n_rings) * lat % pitch(1) + &
-           &(i_xyz(1) - lat % n_rings) * lat % pitch(1) / 2.0_8)
-      if (lat % is_3d) then
-        xyz_t(3) = xyz(3) - lat % center(3) &
-             &+ (lat % n_axial/2 - i_xyz(3) + 1) * lat % pitch(2)
-      else
-        xyz_t(3) = xyz(3)
-      end if
-
-    end select
-
-  end function get_lat_trans
 
 !===============================================================================
 ! IS_VALID_LAT_INDEX returns .true. if the given lattice indices fit within
@@ -400,7 +357,7 @@ contains
       k = 1
       do i=0,1
         do j=0,1
-          xyz_t = get_lat_trans(lat, xyz, i_xyz + (/j, i, 0/))
+          xyz_t = lat % get_local_xyz(xyz, i_xyz + (/j, i, 0/))
           dists(k) = xyz_t(1)**2 + xyz_t(2)**2
           k = k + 1
         end do
@@ -753,7 +710,7 @@ contains
     i_xyz(3) = p % coord % lattice_z 
 
     ! Set the new coordinate position.
-    p % coord % xyz = get_lat_trans(lat, parent_coord % xyz, i_xyz)
+    p % coord % xyz = lat % get_local_xyz(parent_coord % xyz, i_xyz)
 
     OUTSIDE_LAT: if (.not. is_valid_lat_index(lat, i_xyz)) then
       ! The particle is outside the lattice.  Search for it from coord0.
@@ -1381,9 +1338,9 @@ contains
           ! Upper right and lower left sides.
           edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
           if (beta_dir > 0.0) then
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, 0, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/1, 0, 0/))
           else
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/-1, 0, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/-1, 0, 0/))
           end if
           beta = xyz_t(1)*sqrt(3.0_8)/2.0_8 + xyz_t(2)/2.0_8
           if (abs(beta - edge) < FP_PRECISION) then
@@ -1404,9 +1361,9 @@ contains
           ! Lower right and upper left sides.
           edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
           if (gama_dir > 0.0) then
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/1, -1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/1, -1, 0/))
           else
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/-1, 1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/-1, 1, 0/))
           end if
           gama = xyz_t(1)*sqrt(3.0_8)/2.0_8 - xyz_t(2)/2.0_8
           if (abs(gama - edge) < FP_PRECISION) then
@@ -1429,9 +1386,9 @@ contains
           ! Upper and lower sides.
           edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
           if (v > 0.0) then
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/0, 1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/0, 1, 0/))
           else
-            xyz_t = get_lat_trans(lat, parent_coord % xyz, i_xyz + (/0, -1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/0, -1, 0/))
           end if
           if (abs(xyz_t(2) - edge) < FP_PRECISION) then
             d = INFINITY

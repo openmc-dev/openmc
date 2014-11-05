@@ -121,12 +121,11 @@ contains
           if (.not. int(tallies(1) % results(1,1) % value) == 2) failure = .true.
         end if
       case(4)
-        if (size(tallies(1) % results, 2) /= 3) then
+        if (size(tallies(1) % results, 2) /= 2) then
           failure = .true.
         else
           if (.not. int(tallies(1) % results(1,1) % value) == 3 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 3 .and. &
-              .not. int(tallies(1) % results(1,3) % value) == 2) failure = .true.
+              .not. int(tallies(1) % results(1,2) % value) == 2) failure = .true.
         end if
     end select    
     

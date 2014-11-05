@@ -280,14 +280,9 @@ contains
         call score_analog_tally(p)
         call score_analog_tally(p)
       case(4)
-        p % coord % cell = 2
-        call score_analog_tally(p)
         p % coord % cell = 4
         call score_analog_tally(p)
         p % coord % cell = 3
-        call score_analog_tally(p)
-        call score_analog_tally(p)
-        p % coord % cell = 2
         call score_analog_tally(p)
         call score_analog_tally(p)
         p % coord % cell = 4

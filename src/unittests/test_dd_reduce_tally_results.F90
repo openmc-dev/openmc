@@ -102,6 +102,8 @@ contains
     logical :: any_fail
 #endif
 
+    print *,rank, tallies(1) % results(1,:) % value
+
     ! Check that the results arrays are the right size and have the right values
     select case(rank)
       case(0)

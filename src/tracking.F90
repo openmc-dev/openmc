@@ -112,7 +112,12 @@ contains
       if (material_xs % total == ZERO) then
         d_collision = INFINITY
       else
-        d_collision = -log(prn()) / material_xs % total
+        if (p % stored_distance > ZERO) then
+          d_collision = p % stored_distance
+          p % stored_distance = ZERO
+        else
+          d_collision = -log(prn()) / material_xs % total
+        end if
       end if
 
       ! Select smaller of the two distances

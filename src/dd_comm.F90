@@ -148,7 +148,7 @@ contains
 
     ! Reset how much work needs to be done on this process
     work = n_source_sites
-    
+
     ! Free memory
     deallocate(n_send_domain)
     deallocate(n_send_rank)
@@ -617,7 +617,7 @@ contains
             if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
               call fatal_error("Trying to send particle that didn't leave domain!")
             end if
-            
+
             call particle_to_buffer(dd % particle_buffer(i8), &
                                     dd % send_buffer(index_pbuffer))
             index_pbuffer = index_pbuffer + 1

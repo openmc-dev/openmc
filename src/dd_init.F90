@@ -26,6 +26,7 @@ contains
     
     integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
+    integer :: color
     integer :: alloc_err        ! allocation error code
 
     call write_message("Initializing domain decomposition parameters...", 6)
@@ -92,6 +93,21 @@ contains
       dd % local_master = .false.
     end if
     
+    ! Initialize a communicator for local masters, for OTF tally reduction
+#ifdef MPI
+    color = MPI_UNDEFINED
+    if (dd % local_master) color = 0
+    call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, rank, &
+        dd % local_master_comm, mpi_err)
+
+!    call MPI_COMM_GROUP(MPI_COMM_WORLD, world_group, mpi_err)
+!    call MPI_GROUP_INCL(world_group, dd % n_domains, dd % domain_masters, master_group, mpi_err)
+!    call MPI_COMM_CREATE(MPI_COMM_WORLD, master_group, dd % local_master_comm, mpi_err)
+
+!    call MPI_GROUP_RANK(master_group, color, mpi_err)
+
+#endif
+
     ! Allocate particle inter-domain transfer information arrays
     allocate(dd % n_scatters_neighborhood(N_DD_NEIGHBORS,N_CARTESIAN_NEIGHBORS))
     allocate(dd % n_scatters_domain(N_CARTESIAN_NEIGHBORS)) 

@@ -2446,6 +2446,7 @@ contains
             call MPI_IRECV(proc_n_filters(p), 1, MPI_INTEGER, p, p, &
                 domain_decomp % comm, request(n_request), mpi_err)
 
+
             ! Receive filter maps
             n_request = n_request + 1
             call MPI_IRECV(proc_filter_map(:,p), max_filters, MPI_INTEGER, p, &
@@ -2458,27 +2459,28 @@ contains
           ! Build filter map
           n_filters = t % next_filter_idx - 1
           allocate(proc_filter_map(n_filters, 1))
-          do j = 1, n_filters
-            proc_filter_map(j, 1) = t % filter_index_map % get_key(j)
+          do real_bin = 1, n_filters
+            j = t % filter_index_map % get_key(real_bin)
+            proc_filter_map(j, 1) = real_bin
           end do
 
           ! Send number of filters
           n_request = n_request + 1
           call MPI_ISEND(n_filters, 1, MPI_INTEGER, &
-              domain_decomp % rank, domain_decomp % rank, &
+              0, domain_decomp % rank, &
               domain_decomp % comm, request(n_request), mpi_err)
 
           ! Send filter maps
           n_request = n_request + 1
           call MPI_ISEND(proc_filter_map(:,1), n_filters, MPI_INTEGER, &
-              domain_decomp % rank, domain_decomp % rank, &
+              0, domain_decomp % rank, &
               domain_decomp % comm, request(n_request), mpi_err)
 
         end if
 
         ! Wait for filter information to synchronize
         call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-
+        
         !=======================================================================
         ! SYNCHRONIZE MAPS
 
@@ -2487,7 +2489,8 @@ contains
           ! go through all received filter maps and add space
           do p = 1, domain_decomp % n_domain_procs - 1
             do j = 1, proc_n_filters(p)
-              idx = t % otf_filter_index(proc_filter_map(j, p))
+              real_bin = proc_filter_map(j, p)
+              idx = t % otf_filter_index(real_bin)
             end do
           end do
 
@@ -2496,7 +2499,8 @@ contains
           n_filters = t % next_filter_idx - 1
           allocate(proc_filter_map(n_filters, 1))
           do j = 1, n_filters
-            proc_filter_map(j, 1) = t % filter_index_map % get_key(j)
+            real_bin = t % reverse_filter_index_map % get_key(j)
+            proc_filter_map(j, 1) = real_bin
           end do
 
           ! broadcast the updated master n_filter
@@ -2541,6 +2545,8 @@ contains
         !=======================================================================
         ! REDUCE TALLY RESULTS
 
+        n_bins = t % total_score_bins * n_filters
+
         if (domain_decomp % local_master) then
           
           ! TODO: add otf phasing, which would move this outside of here
@@ -2548,7 +2554,7 @@ contains
           tally_temp = t % results(:,:) % value
           
           ! Receive results arrays from other procs
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_filters, MPI_REAL8, &
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                MPI_SUM, 0, domain_decomp % comm, mpi_err)
 
           ! Transfer values to value on master
@@ -2557,7 +2563,7 @@ contains
         else
 
           ! Send results to local master
-          call MPI_REDUCE(tally_temp, dummy, n_filters, MPI_REAL8, &
+          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
                MPI_SUM, 0, domain_decomp % comm, mpi_err)
 
           ! Reset value on other processors

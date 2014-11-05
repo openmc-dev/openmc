@@ -2356,19 +2356,9 @@ contains
   subroutine reduce_tally_results()
 
     integer :: i
-    integer :: j
-    integer :: idx    ! filter index in results array
-    integer :: p      ! process rank in domain MPI communicator
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
-    integer :: n_filters
-    integer :: real_bin
-    integer :: max_filters ! max number of filter bins in use on any proc
-    integer, allocatable :: proc_n_filters(:) ! number of filter bins on proc
-    integer, allocatable :: proc_filter_map(:,:) ! index -> real bin on proc
-    integer              :: n_request
-    integer              :: request(10000) ! TODO: make this something real!
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
@@ -2413,169 +2403,16 @@ contains
 
       else
 
-        ! For DD runs, different processes probably allocated the results array
-        ! in a different order, and the results arrays might not be the same
-        ! size.  Therefore local masters need to broadcast their filter maps
-        ! so processes can send tallies to the correct index in the results
-        ! array of the local master
+        ! Reduce tallies to local masters within each domain
+        call reduce_otf_tally_results(t, domain_decomp % comm, .true.)
 
-        ! During the OTF allocation phase, we'll be reallocating memory and
-        ! moving things around alot, which can be slow.  After that phase
-        ! though, all the tally bins on each other process are in the same order
-        ! and thus simple MPI_REDUCE can be done
-        ! TODO: add in the phase logical and implement MPI_REDUCE as if ordered
-
-        !=======================================================================
-        ! SEND MAPS TO LOCAL MASTER
-
-        ! Master needs to know the max number of filter bins
-        call MPI_REDUCE(t % next_filter_idx, max_filters, 1, MPI_INTEGER, &
-             MPI_MAX, 0, domain_decomp % comm, mpi_err) 
-
-        n_request = 0
-        if (domain_decomp % local_master) then
-
-          allocate(proc_n_filters(domain_decomp % n_domain_procs - 1))
-          allocate(proc_filter_map(max_filters, domain_decomp % n_domain_procs - 1))
-
-          ! Receive filter information from all other procs in domain
-          do p = 1, domain_decomp % n_domain_procs - 1
-
-            ! Receive number of filters
-            n_request = n_request + 1
-            call MPI_IRECV(proc_n_filters(p), 1, MPI_INTEGER, p, p, &
-                domain_decomp % comm, request(n_request), mpi_err)
-
-
-            ! Receive filter maps
-            n_request = n_request + 1
-            call MPI_IRECV(proc_filter_map(:,p), max_filters, MPI_INTEGER, p, &
-                p, domain_decomp % comm, request(n_request), mpi_err)
-
-          end do
-
-        else
-
-          ! Build filter map
-          n_filters = t % next_filter_idx - 1
-          allocate(proc_filter_map(n_filters, 1))
-          do real_bin = 1, n_filters
-            j = t % filter_index_map % get_key(real_bin)
-            proc_filter_map(j, 1) = real_bin
-          end do
-
-          ! Send number of filters
-          n_request = n_request + 1
-          call MPI_ISEND(n_filters, 1, MPI_INTEGER, &
-              0, domain_decomp % rank, &
-              domain_decomp % comm, request(n_request), mpi_err)
-
-          ! Send filter maps
-          n_request = n_request + 1
-          call MPI_ISEND(proc_filter_map(:,1), n_filters, MPI_INTEGER, &
-              0, domain_decomp % rank, &
-              domain_decomp % comm, request(n_request), mpi_err)
-
-        end if
-
-        ! Wait for filter information to synchronize
-        call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-        
-        !=======================================================================
-        ! SYNCHRONIZE MAPS
-
-        if (domain_decomp % local_master) then
-
-          ! go through all received filter maps and add space
-          do p = 1, domain_decomp % n_domain_procs - 1
-            do j = 1, proc_n_filters(p)
-              real_bin = proc_filter_map(j, p)
-              idx = t % otf_filter_index(real_bin)
-            end do
-          end do
-
-          ! Build filter map
-          deallocate(proc_filter_map)
-          n_filters = t % next_filter_idx - 1
-          allocate(proc_filter_map(n_filters, 1))
-          do j = 1, n_filters
-            real_bin = t % reverse_filter_index_map % get_key(j)
-            proc_filter_map(j, 1) = real_bin
-          end do
-
-          ! broadcast the updated master n_filter
-          call MPI_BCAST(n_filters, 1, MPI_INTEGER, &
-              0, domain_decomp % comm, mpi_err)
-
-          ! broadcast the updated master filter map
-          call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, &
-              0, domain_decomp % comm, mpi_err)
-
-        else
-
-          ! receive master n_filters
-          call MPI_BCAST(n_filters, 1, MPI_INTEGER, &
-              0, domain_decomp % comm, mpi_err)
-
-          deallocate(proc_filter_map)
-          allocate(proc_filter_map(n_filters, 1))
-
-          ! recieve master filter map
-          call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, &
-              0, domain_decomp % comm, mpi_err)
-
-          ! reorder results according to master map
-          allocate(tally_temp(t % total_score_bins, n_filters))
-          do j = 1, n_filters
-            real_bin = proc_filter_map(j, 1)
-            idx = t % otf_filter_index(real_bin)
-            tally_temp(:, j) = t % results(:, idx) % value
-          end do
-
-          ! reset the tally filter map to match the master
-          call t % filter_index_map % clear()
-          t % next_filter_idx = 1
-          do j = 1, n_filters
-            real_bin = proc_filter_map(j, 1)
-            idx = t % otf_filter_index(real_bin)
-          end do
-
-        end if
-
-        !=======================================================================
-        ! REDUCE TALLY RESULTS
-
-        n_bins = t % total_score_bins * n_filters
-
-        if (domain_decomp % local_master) then
-          
-          ! TODO: add otf phasing, which would move this outside of here
-          allocate(tally_temp(t % total_score_bins, n_filters))
-          tally_temp = t % results(:,:) % value
-          
-          ! Receive results arrays from other procs
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-               MPI_SUM, 0, domain_decomp % comm, mpi_err)
-
-          ! Transfer values to value on master
-          t % results(:,:) % value = tally_temp
-
-        else
-
-          ! Send results to local master
-          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
-               MPI_SUM, 0, domain_decomp % comm, mpi_err)
-
-          ! Reset value on other processors
-          t % results(:,:) % value = 0
-
-        end if
+        ! Reduce tallies among all domains who's scored to this tally
+        if (domain_decomp % local_master) &
+            call reduce_otf_tally_results(t, &
+                domain_decomp % local_master_comm, .false.)
 
       end if
 
-      if (allocated(proc_n_filters)) deallocate(proc_n_filters)
-      if (allocated(proc_filter_map)) deallocate(proc_filter_map)
-      if (allocated(tally_temp)) deallocate(tally_temp)
     end do
 
     ! Copy global tallies into array to be reduced
@@ -2614,6 +2451,201 @@ contains
     end if
 
   end subroutine reduce_tally_results
+
+!===============================================================================
+! REDUCE_OTF_TALLY_RESULTS collects all the results from one OTF tally onto the
+! master process of a communicator
+!===============================================================================
+
+  subroutine reduce_otf_tally_results(t, reduce_comm, flag)
+
+    type(TallyObject), pointer, intent(inout) :: t
+    integer,                    intent(in) :: reduce_comm
+    logical :: flag
+
+    integer :: j
+    integer :: idx    ! filter index in results array
+    integer :: p      ! process rank in domain MPI communicator
+    integer :: n_bins ! total number of bins
+    integer :: n_filters
+    integer :: real_bin
+    integer :: reduce_n_procs
+    integer :: reduce_rank
+    logical :: reduce_master
+    integer :: max_filters ! max number of filter bins in use on any proc
+    integer, allocatable :: proc_n_filters(:) ! number of filter bins on proc
+    integer, allocatable :: proc_filter_map(:,:) ! index -> real bin on proc
+    integer              :: n_request
+    integer              :: request(10000) ! TODO: make this something real!
+    real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
+    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+
+    ! For DD runs, different processes probably allocated the results array
+    ! in a different order, and the results arrays might not be the same
+    ! size.  Therefore local masters need to broadcast their filter maps
+    ! so processes can send tallies to the correct index in the results
+    ! array of the local master
+
+    ! During the OTF allocation phase, we'll be reallocating memory and
+    ! moving things around alot, which can be slow.  After that phase
+    ! though, all the tally bins on each other process are in the same order
+    ! and thus simple MPI_REDUCE can be done
+    ! TODO: add in the phase logical and implement MPI_REDUCE as if ordered
+
+    !=======================================================================
+    ! SEND MAPS TO LOCAL MASTER
+
+    reduce_master = .false.
+    call MPI_COMM_SIZE(reduce_comm, reduce_n_procs, mpi_err)
+    call MPI_COMM_RANK(reduce_comm, reduce_rank, mpi_err)
+    if (reduce_rank == 0) reduce_master = .true.
+    
+    ! Master needs to know the max number of filter bins
+    call MPI_REDUCE(t % next_filter_idx, max_filters, 1, MPI_INTEGER, &
+         MPI_MAX, 0, reduce_comm, mpi_err) 
+
+    n_request = 0
+    if (reduce_master) then
+
+      allocate(proc_n_filters(reduce_n_procs - 1))
+      allocate(proc_filter_map(max_filters, reduce_n_procs - 1))
+
+      ! Receive filter information from all other procs in domain
+      do p = 1, reduce_n_procs - 1
+
+        ! Receive number of filters
+        n_request = n_request + 1
+        call MPI_IRECV(proc_n_filters(p), 1, MPI_INTEGER, p, p, &
+            reduce_comm, request(n_request), mpi_err)
+
+        ! Receive filter maps
+        n_request = n_request + 1
+        call MPI_IRECV(proc_filter_map(:,p), max_filters, MPI_INTEGER, p, &
+            p, reduce_comm, request(n_request), mpi_err)
+
+      end do
+
+    else
+
+      ! Build filter map
+      n_filters = t % next_filter_idx - 1
+      allocate(proc_filter_map(n_filters, 1))
+      do j = 1, n_filters
+        real_bin = t % reverse_filter_index_map % get_key(j)
+        proc_filter_map(j, 1) = real_bin
+      end do
+
+      ! Send number of filters
+      n_request = n_request + 1
+      call MPI_ISEND(n_filters, 1, MPI_INTEGER, &
+          0, reduce_rank, &
+          reduce_comm, request(n_request), mpi_err)
+
+      ! Send filter maps
+      n_request = n_request + 1
+      call MPI_ISEND(proc_filter_map(:,1), n_filters, MPI_INTEGER, &
+          0, reduce_rank, &
+          reduce_comm, request(n_request), mpi_err)
+
+    end if
+
+    ! Wait for filter information to synchronize
+    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+    
+    !=======================================================================
+    ! SYNCHRONIZE MAPS
+
+    if (reduce_master) then
+
+      ! go through all received filter maps and add space
+      do p = 1, reduce_n_procs - 1
+        do j = 1, proc_n_filters(p)
+          real_bin = proc_filter_map(j, p)
+          idx = t % otf_filter_index(real_bin)
+        end do
+      end do
+
+      ! Build filter map
+      deallocate(proc_filter_map)
+      n_filters = t % next_filter_idx - 1
+      allocate(proc_filter_map(n_filters, 1))
+      do j = 1, n_filters
+        real_bin = t % reverse_filter_index_map % get_key(j)
+        proc_filter_map(j, 1) = real_bin
+      end do
+
+      ! broadcast the updated master n_filter
+      call MPI_BCAST(n_filters, 1, MPI_INTEGER, 0, reduce_comm, mpi_err)
+
+      ! broadcast the updated master filter map
+      call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, 0, &
+          reduce_comm, mpi_err)
+
+    else
+
+      ! receive master n_filters
+      call MPI_BCAST(n_filters, 1, MPI_INTEGER, 0, reduce_comm, mpi_err)
+
+      deallocate(proc_filter_map)
+      allocate(proc_filter_map(n_filters, 1))
+
+      ! recieve master filter map
+      call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, 0, &
+          reduce_comm, mpi_err)
+
+      ! reorder results according to master map
+      allocate(tally_temp(t % total_score_bins, n_filters))
+      do j = 1, n_filters
+        real_bin = proc_filter_map(j, 1)
+        idx = t % otf_filter_index(real_bin)
+        tally_temp(:, j) = t % results(:, idx) % value
+      end do
+
+      ! reset the tally filter map to match the master
+      call t % filter_index_map % clear()
+      t % next_filter_idx = 1
+      do j = 1, n_filters
+        real_bin = proc_filter_map(j, 1)
+        idx = t % otf_filter_index(real_bin)
+      end do
+
+    end if
+
+    !=======================================================================
+    ! REDUCE TALLY RESULTS
+
+    n_bins = t % total_score_bins * n_filters
+
+    if (reduce_master) then
+      
+      ! TODO: add otf phasing, which would move this outside of here
+      allocate(tally_temp(t % total_score_bins, n_filters))
+      tally_temp = t % results(:,:) % value
+      
+      ! Receive results arrays from other procs
+      call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+           MPI_SUM, 0, reduce_comm, mpi_err)
+
+      ! Transfer values to value on master
+      t % results(:,:) % value = tally_temp
+
+    else
+
+      ! Send results to local master
+      call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
+           MPI_SUM, 0, reduce_comm, mpi_err)
+
+      ! Reset value on other processors
+      t % results(:,:) % value = 0
+
+    end if
+
+    if (allocated(proc_n_filters)) deallocate(proc_n_filters)
+    if (allocated(proc_filter_map)) deallocate(proc_filter_map)
+    if (allocated(tally_temp)) deallocate(tally_temp)
+
+  end subroutine reduce_otf_tally_results
+
 #endif
 
 !===============================================================================

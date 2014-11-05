@@ -125,6 +125,7 @@ module tally_header
     ! dictionary stores a mapping to keep track of these differences.
 
     type(DictIntInt) :: filter_index_map
+    type(DictIntInt) :: reverse_filter_index_map
 
     ! Whether or not this tally will do on-the-fly memory allocation
     logical :: on_the_fly_allocation = .false.
@@ -203,6 +204,8 @@ module tally_header
 
         ! Update the map
         call this % filter_index_map % add_key(real_bin, this % next_filter_idx)
+        call this % reverse_filter_index_map % add_key( &
+            this % next_filter_idx, real_bin)
 
         ! Set the return index
         idx = this % next_filter_idx

@@ -102,47 +102,60 @@ contains
     logical :: any_fail
 #endif
 
-    print *,rank, tallies(1) % results(1,:) % value
-
     ! Check that the results arrays are the right size and have the right values
     select case(rank)
       case(0)
         if (size(tallies(1) % results, 2) /= 3) then
           failure = .true.
         else
-          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 11 .and. &
-              .not. int(tallies(1) % results(1,3) % value) == 7) failure = .true.
+          if (.not. int(tallies(1) % results(1,1) % value) == 6 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 4 .and. &
+              .not. int(tallies(1) % results(1,3) % value) == 4) failure = .true.
         end if
+        ! Check that the bins point to the proper cells
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(3) == 1) failure = .true.
       case(1)
+        if (size(tallies(1) % results, 2) /= 3) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 0 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 0 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 0) failure = .true.
+        end if
+        ! Check that the bins point to the proper cells
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(3) == 1) failure = .true.
+      case(2)
         if (size(tallies(1) % results, 2) /= 2) then
           failure = .true.
         else
           if (.not. int(tallies(1) % results(1,1) % value) == 3 .and. &
               .not. int(tallies(1) % results(1,2) % value) == 4) failure = .true.
         end if
-      case(2)
-        if (size(tallies(1) % results, 2) /= 2) then
-          failure = .true.
-        else
-          if (.not. int(tallies(1) % results(1,1) % value) == 5 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 11) failure = .true.
-        end if
+        ! Check that the bins point to the proper cells
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 3) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
       case(3)
+        if (size(tallies(1) % results, 2) /= 1) then
+          failure = .true.
+        else
+          if (.not. int(tallies(1) % results(1,1) % value) == 2) failure = .true.
+        end if
+        ! Check that the bins point to the proper cells
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+      case(4)
         if (size(tallies(1) % results, 2) /= 2) then
           failure = .true.
         else
-          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 11) failure = .true.
+          if (.not. int(tallies(1) % results(1,1) % value) == 3 .and. &
+              .not. int(tallies(1) % results(1,2) % value) == 4) failure = .true.
         end if
-      case(4)
-        if (size(tallies(1) % results, 2) /= 3) then
-          failure = .true.
-        else
-          if (.not. int(tallies(1) % results(1,1) % value) == 11 .and. &
-              .not. int(tallies(1) % results(1,2) % value) == 11 .and. &
-              .not. int(tallies(1) % results(1,3) % value) == 5) failure = .true.
-        end if
+        ! Check that the bins point to the proper cells
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 4) failure = .true.
+        if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 3) failure = .true.
     end select    
     
     if (failure) then

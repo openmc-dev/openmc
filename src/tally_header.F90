@@ -124,8 +124,8 @@ module tally_header
     ! in the results array that stores the desired values.  The following
     ! dictionary stores a mapping to keep track of these differences.
 
-    type(DictIntInt) :: filter_index_map
-    type(DictIntInt) :: reverse_filter_index_map
+    type(DictIntInt) :: filter_index_map          ! real_bin --> local bin
+    type(DictIntInt) :: reverse_filter_index_map  ! local_bin --> real_bin
 
     ! Whether or not this tally will do on-the-fly memory allocation
     logical :: on_the_fly_allocation = .false.

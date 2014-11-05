@@ -147,6 +147,7 @@ module tally_header
     ! Type-Bound procedures
     contains
       procedure :: get_filter_index => filter_index
+      procedure :: otf_filter_index
       procedure :: grow_results_array
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
@@ -160,8 +161,8 @@ module tally_header
 
     function filter_index(this, matching_bins) result(idx)
 
-      class(TallyObject), intent(inout) :: this 
-      integer, allocatable, intent(in) :: matching_bins(:)
+      class(TallyObject),   intent(inout) :: this 
+      integer, allocatable, intent(in)    :: matching_bins(:)
       
       integer :: idx
 
@@ -169,12 +170,28 @@ module tally_header
       idx = sum((matching_bins(1:this % n_filters) - 1) * this % stride) + 1
 
       ! If the results array is fully allocated, this index is valid
-      if (.not. this % on_the_fly_allocation) return
+      if (this % on_the_fly_allocation) then
+        idx = this % otf_filter_index(idx)
+      end if
+
+    end function filter_index
+
+!===============================================================================
+! OTF_FILTER_INDEX returns the filter index in the results array when OTF tally
+! allocation is active
+!===============================================================================
+
+    function otf_filter_index(this, real_bin) result(idx)
+      
+      class(TallyObject), intent(inout) :: this 
+      integer,            intent(in)    :: real_bin
+      
+      integer :: idx
 
       ! If we're doing on-the-fly memory allocation, we must use the map
-      if (this % filter_index_map % has_key(idx)) then
+      if (this % filter_index_map % has_key(real_bin)) then
 
-        idx = this % filter_index_map % get_key(idx)
+        idx = this % filter_index_map % get_key(real_bin)
 
       else
 
@@ -185,7 +202,7 @@ module tally_header
             call this % grow_results_array()
 
         ! Update the map
-        call this % filter_index_map % add_key(idx, this % next_filter_idx)
+        call this % filter_index_map % add_key(real_bin, this % next_filter_idx)
 
         ! Set the return index
         idx = this % next_filter_idx
@@ -195,7 +212,7 @@ module tally_header
 
       end if
 
-    end function filter_index
+    end function otf_filter_index
 
 !===============================================================================
 ! GROW_RESULTS_ARRAY

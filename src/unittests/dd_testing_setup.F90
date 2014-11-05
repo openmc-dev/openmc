@@ -4,7 +4,7 @@ module dd_testing_setup
   use dd_header,        only: dd_type
   use global,           only: master, n_procs, rank, n_particles, n_tallies, &
                               tallies, n_cells, n_user_tallies, micro_xs, &
-                              material_xs
+                              material_xs, total_weight
   use output,           only: write_message
   use particle_header,  only: Particle
   use string,           only: to_str
@@ -253,6 +253,7 @@ contains
         call score_analog_tally(p)
         call score_analog_tally(p)
         call score_analog_tally(p)
+        total_weight = 7.0
       case(1)
         p % coord % cell = 2
         call score_analog_tally(p)
@@ -263,6 +264,7 @@ contains
         call score_analog_tally(p)
         call score_analog_tally(p)
         call score_analog_tally(p)
+        total_weight = 7.0
       case(2)
         p % coord % cell = 3
         call score_analog_tally(p)
@@ -275,10 +277,12 @@ contains
         call score_analog_tally(p)
         call score_analog_tally(p)
         call score_analog_tally(p)
+        total_weight = 7.0
       case(3)
         p % coord % cell = 2
         call score_analog_tally(p)
         call score_analog_tally(p)
+        total_weight = 2.0
       case(4)
         p % coord % cell = 4
         call score_analog_tally(p)
@@ -288,6 +292,7 @@ contains
         p % coord % cell = 4
         call score_analog_tally(p)
         call score_analog_tally(p)
+        total_weight = 5.0
     end select
 
   end subroutine dd_score_to_four_domain_tallies

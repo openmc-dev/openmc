@@ -7,7 +7,7 @@ module test_dd_reduce_tally_results
                               dd_score_to_four_domain_tallies
   use error,            only: warning
   use global,           only: master, domain_decomp, dd_run, free_memory, &
-                              tallies, rank
+                              tallies, rank, total_weight
   use output,           only: write_message
   use particle_header,  only: Particle
   use string,           only: to_str
@@ -156,10 +156,63 @@ contains
         ! Check that the bins point to the proper cells
         if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 4) failure = .true.
         if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 3) failure = .true.
-    end select    
+    end select
     
     if (failure) then
       call write_message("FAILURE: Tally reduction failure with OTF " // &
+          "tallies on rank " // trim(to_str(rank)))
+    end if
+
+    ! Check that the bins point to the proper cells
+    select case(rank)
+      case(0)
+        if (size(tallies(1) % results, 2) /= 3) then
+          failure = .true.
+        else
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(3) == 1) failure = .true.
+        end if
+      case(1)
+        if (size(tallies(1) % results, 2) /= 3) then
+          failure = .true.
+        else
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(3) == 1) failure = .true.
+        end if
+      case(2)
+        if (size(tallies(1) % results, 2) /= 2) then
+          failure = .true.
+        else
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 3) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 4) failure = .true.
+        end if
+      case(3)
+        if (size(tallies(1) % results, 2) /= 1) then
+          failure = .true.
+        else
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 2) failure = .true.
+        end if
+      case(4)
+        if (size(tallies(1) % results, 2) /= 2) then
+          failure = .true.
+        else
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(1) == 4) failure = .true.
+          if (.not. tallies(1) % reverse_filter_index_map % get_key(2) == 3) failure = .true.
+        end if
+    end select
+
+    if (failure) then
+      call write_message("FAILURE: Tally reduction maps incorrect with OTF " // &
+          "tallies on rank " // trim(to_str(rank)))
+    end if
+
+    ! Check total_weight
+    if (.not. total_weight == 28.0) failure = .true.
+
+    if (failure) then
+      call write_message("FAILURE: Incorrect total_weight with OTF " // &
           "tallies on rank " // trim(to_str(rank)))
     end if
 

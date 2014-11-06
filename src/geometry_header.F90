@@ -156,11 +156,7 @@ contains
     integer,            intent(in) :: i_xyz(3)
     logical                        :: is_valid
 
-    ! TODO can this be replaced with
-    ! is_valid = (all(i_xyz > 0 .and. i_xyz <= this % n_cells)) ?
-    is_valid = (i_xyz(1) > 0 .and. i_xyz(1) <= this % n_cells(1) .and. &
-               &i_xyz(2) > 0 .and. i_xyz(2) <= this % n_cells(2) .and. &
-               &i_xyz(3) > 0 .and. i_xyz(3) <= this % n_cells(3))
+    is_valid = (all(i_xyz > 0 .and. i_xyz <= this % n_cells))
   end function valid_inds_rect
 
 !===============================================================================
@@ -170,11 +166,12 @@ contains
     integer,           intent(in) :: i_xyz(3)
     logical                       :: is_valid
 
-    is_valid = (i_xyz(1) > 0 .and. i_xyz(1) < 2*this % n_rings .and. &
-               &i_xyz(2) > 0 .and. i_xyz(2) < 2*this % n_rings .and. &
+    is_valid = (all(i_xyz > 0) .and. &
+               &i_xyz(1) < 2*this % n_rings .and. &
+               &i_xyz(2) < 2*this % n_rings .and. &
                &i_xyz(1) + i_xyz(2) > this % n_rings .and. &
                &i_xyz(1) + i_xyz(2) < 3*this % n_rings .and. &
-               &i_xyz(3) > 0 .and. i_xyz(3) <= this % n_axial)
+               &i_xyz(3) <= this % n_axial)
   end function valid_inds_hex
 
 !===============================================================================

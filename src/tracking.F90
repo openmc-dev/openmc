@@ -123,7 +123,7 @@ contains
 
         last_cell = p % coord % cell
         p % coord % cell = NONE
-        if (any(lattice_translation /= (/0, 0, 0/))) then
+        if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = NONE
           call cross_lattice(p, lattice_translation)

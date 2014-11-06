@@ -21,7 +21,7 @@ module geometry_header
 !===============================================================================
 
   type, abstract :: Lattice
-    integer :: id          ! Universe number for lattice
+    integer              :: id               ! Universe number for lattice
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
@@ -53,7 +53,7 @@ module geometry_header
     function get_indices_(this, global_xyz) result(i_xyz)
       import Lattice
       class(Lattice), intent(in) :: this
-      real(8),        intent(in) :: global_xyz
+      real(8),        intent(in) :: global_xyz(3)
       integer                    :: i_xyz(3)
     end function get_indices_
 
@@ -181,7 +181,7 @@ contains
 
   function get_inds_rect(this, global_xyz) result(i_xyz)
     class(RectLattice), intent(in) :: this
-    real(8),            intent(in) :: global_xyz
+    real(8),            intent(in) :: global_xyz(3)
     integer                        :: i_xyz(3)
 
     real(8) :: xyz(3)  ! global_xyz alias 
@@ -201,7 +201,7 @@ contains
 
   function get_inds_hex(this, global_xyz) result(i_xyz)
     class(HexLattice), intent(in) :: this
-    real(8),           intent(in) :: global_xyz
+    real(8),           intent(in) :: global_xyz(3)
     integer                       :: i_xyz(3)
 
     real(8) :: xyz(3)    ! global_xyz alias 

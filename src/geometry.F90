@@ -223,8 +223,7 @@ contains
         lat => lattices(c % fill) % obj
 
         ! Determine lattice indices
-        i_xyz = get_lat_indices(lat, &
-             &p % coord % xyz + TINY_BIT * p % coord % uvw)
+        i_xyz = lat % get_indices(p % coord % xyz + TINY_BIT * p % coord % uvw)
 
         ! Create new level of coordinates
         allocate(p % coord % next)
@@ -237,7 +236,7 @@ contains
         p % coord % next% lattice_y = i_xyz(2)
         p % coord % next% lattice_z = i_xyz(3)
 
-        if (is_valid_lat_index(lat, i_xyz)) then
+        if (lat % are_valid_indices(i_xyz)) then
           p % coord % next % universe = &
                &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
@@ -270,111 +269,6 @@ contains
     found = .false.
 
   end subroutine find_cell
-
-!===============================================================================
-! IS_VALID_LAT_INDEX returns .true. if the given lattice indices fit within
-! the bounds of the given lattice.  Returns false otherwise.
-!===============================================================================
-
-  function is_valid_lat_index(lat, i_xyz) result(is_valid)
-    class(Lattice), intent(in)  :: lat
-    integer       , intent(in)  :: i_xyz(3)
-    logical                     :: is_valid
-
-    select type(lat)
-
-    type is (RectLattice)
-      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) <= lat % n_cells(1) .and. &
-                 &i_xyz(2) > 0 .and. i_xyz(2) <= lat % n_cells(2) .and. &
-                 &i_xyz(3) > 0 .and. i_xyz(3) <= lat % n_cells(3))
-
-    type is (HexLattice)
-      is_valid = (i_xyz(1) > 0 .and. i_xyz(1) < 2*lat % n_rings .and. &
-                 &i_xyz(2) > 0 .and. i_xyz(2) < 2*lat % n_rings .and. &
-                 &i_xyz(1) + i_xyz(2) > lat % n_rings .and. &
-                 &i_xyz(1) + i_xyz(2) < 3*lat % n_rings .and. &
-                 &i_xyz(3) > 0 .and. i_xyz(3) <= lat % n_axial)
-
-    end select
-
-  end function is_valid_lat_index
-
-!===============================================================================
-! GET_LAT_INDICES returns the indices in a lattice for the given xyz
-! coordinates.
-!===============================================================================
-
-  function get_lat_indices(lat, xyz) result(i_xyz)
-    class(Lattice), intent(in) :: lat
-    real(8),        intent(in) :: xyz(3)
-
-    integer :: i_xyz(3)
-
-    real(8) :: alpha
-    real(8) :: xyz_t(3)
-    real(8) :: dists(4)
-    integer :: i, j, k, loc(1)
-
-    select type(lat)
-
-    type is (RectLattice)
-      ! Find approximate indices using ceiling division.
-      i_xyz(1) = ceiling((xyz(1) - lat % lower_left(1))/lat % pitch(1))
-      i_xyz(2) = ceiling((xyz(2) - lat % lower_left(2))/lat % pitch(2))
-      if (lat % is_3d) then
-        i_xyz(3) = ceiling((xyz(3) - lat % lower_left(3))/lat % pitch(3))
-      else
-        i_xyz(3) = 1
-      end if
-
-    type is (HexLattice)
-      ! Index z direction.
-      if (lat % is_3d) then
-        i_xyz(3) = ceiling((xyz(3) - lat % center(3))/lat % pitch(2) + 0.5_8) &
-             &+ lat % n_axial/2
-      else
-        i_xyz(3) = 1
-      end if
-
-      ! Convert coordinates into skewed bases.  The (x, alpha) basis is used to
-      ! find the index of the particle coordinates to within 4 cells.
-      alpha = xyz(2) - xyz(1) / sqrt(3.0_8)
-      i_xyz(1) = floor(xyz(1) / (sqrt(3.0_8) / 2.0_8 * lat % pitch(1)))
-      i_xyz(2) = floor(alpha / lat % pitch(1))
-
-      ! Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
-      ! the array is offset so that the indices never go below 1).
-      i_xyz(1) = i_xyz(1) + lat % n_rings
-      i_xyz(2) = i_xyz(2) + lat % n_rings
-
-      ! Calculate the (squared) distance between the particle and the centers of
-      ! the four possible cells.  Regular hexagonal tiles form a centroidal
-      ! Voronoi tessellation so the particle should be in the hexagonal cell
-      ! that it is closest to the center of.  This method is used over a
-      ! remainder method (such as the rectangular one) becasue it provides
-      ! better finite precision performance.  Squared distances are used becasue
-      ! they are more computationally efficient than normal distances.
-      k = 1
-      do i=0,1
-        do j=0,1
-          xyz_t = lat % get_local_xyz(xyz, i_xyz + (/j, i, 0/))
-          dists(k) = xyz_t(1)**2 + xyz_t(2)**2
-          k = k + 1
-        end do
-      end do
-
-      loc = minloc(dists)
-      if (loc(1) == 2) then
-        i_xyz = i_xyz + (/1, 0, 0/)
-      else if (loc(1) == 3) then
-        i_xyz = i_xyz + (/0, 1, 0/)
-      else if (loc(1) == 4) then
-        i_xyz = i_xyz + (/1, 1, 0/)
-      end if
- 
-    end select
-
-  end function get_lat_indices
 
 !===============================================================================
 ! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
@@ -712,7 +606,7 @@ contains
     ! Set the new coordinate position.
     p % coord % xyz = lat % get_local_xyz(parent_coord % xyz, i_xyz)
 
-    OUTSIDE_LAT: if (.not. is_valid_lat_index(lat, i_xyz)) then
+    OUTSIDE_LAT: if (.not. lat % are_valid_indices(i_xyz)) then
       ! The particle is outside the lattice.  Search for it from coord0.
       call deallocate_coord(p % coord0 % next)
       p % coord => p % coord0

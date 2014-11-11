@@ -1,8 +1,8 @@
 module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
-  use error,     only: warning
-  use global,    only: message
+  use error,     only: fatal_error, warning
+  use global,    only: master
 
   implicit none
 
@@ -49,9 +49,8 @@ contains
         if (i_end > 0) then
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
-            message = "The word '" // string(i_start:i_end) // &
-                 "' is longer than the space allocated for it."
-            call warning()
+            if (master) call warning("The word '" // string(i_start:i_end) &
+                &// "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -152,37 +151,80 @@ contains
 ! LOWER_CASE converts a string to all lower case characters
 !===============================================================================
 
-  elemental subroutine lower_case(word)
+  elemental function to_lower(word) result(word_lower)
 
-    character(*), intent(inout) :: word
+    character(*), intent(in) :: word
+    character(len=len(word)) :: word_lower
 
     integer :: i
     integer :: ic
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 65 .and. ic <= 90) word(i:i) = char(ic+32)
+      if (ic >= 65 .and. ic <= 90) then
+        word_lower(i:i) = char(ic+32)
+      else
+        word_lower(i:i) = word(i:i)
+      end if
     end do
 
-  end subroutine lower_case
+  end function to_lower
 
 !===============================================================================
 ! UPPER_CASE converts a string to all upper case characters
 !===============================================================================
 
-  elemental subroutine upper_case(word)
+  elemental function to_upper(word) result(word_upper)
 
-    character(*), intent(inout) :: word
+    character(*), intent(in) :: word
+    character(len=len(word)) :: word_upper
 
     integer :: i
     integer :: ic
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 97 .and. ic <= 122) word(i:i) = char(ic-32)
+      if (ic >= 97 .and. ic <= 122) then
+        word_upper(i:i) = char(ic-32)
+      else
+        word_upper(i:i) = word(i:i)
+      end if
     end do
 
-  end subroutine upper_case
+  end function to_upper
+
+!===============================================================================
+! ZERO_PADDED returns a string of the input integer padded with zeros to the
+! desired number of digits.  Do not include the sign in n_digits for negative
+! integers.
+!===============================================================================
+
+function zero_padded(num, n_digits) result(str)
+  integer, intent(in) :: num
+  integer, intent(in) :: n_digits
+  character(11)       :: str
+
+  character(8)        :: zp_form
+
+  ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
+  ! largest integer(4).
+  if (n_digits > 10) then
+    call fatal_error('zero_padded called with an unreasonably large &
+         &n_digits (>10)')
+  end if
+
+  ! Write a format string of the form '(In.m)' where n is the max width and
+  ! m is the min width.  If a sign is present, then n must be one greater
+  ! than m.
+  if (num < 0) then
+    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
+  else
+    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+  end if
+
+  ! Format the number.
+  write(str, zp_form) num
+end function zero_padded
 
 !===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters
@@ -269,6 +311,25 @@ contains
   end function ends_with
 
 !===============================================================================
+! COUNT_DIGITS returns the number of digits needed to represent the input
+! integer.
+!===============================================================================
+
+  function count_digits(num) result(n_digits)
+    integer, intent(in) :: num
+    integer             :: n_digits
+
+    n_digits = 1
+    do while (num / 10**(n_digits) /= 0 .and. abs(num / 10 **(n_digits-1)) /= 1&
+              &.and. n_digits /= 10)
+      ! Note that 10 digits is the maximum needed to represent an integer(4) so
+      ! the loop automatically exits when n_digits = 10.
+      n_digits = n_digits + 1
+    end do
+
+  end function count_digits
+
+!===============================================================================
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 
@@ -297,21 +358,21 @@ contains
   end function int8_to_str
 
 !===============================================================================
-! STR_TO_INT converts a string to an integer. 
+! STR_TO_INT converts a string to an integer.
 !===============================================================================
 
   function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
     integer(8) :: num
-    
+
     character(5) :: fmt
     integer      :: w
     integer      :: ioError
 
     ! Determine width of string
     w = len_trim(str)
-    
+
     ! Create format specifier for reading string
     write(UNIT=fmt, FMT='("(I",I2,")")') w
 
@@ -352,7 +413,7 @@ contains
 
     integer      :: decimal ! number of places after decimal
     integer      :: width   ! total field width
-    real(8)      :: num2    ! absolute value of number 
+    real(8)      :: num2    ! absolute value of number
     character(9) :: fmt     ! format specifier for writing number
 
     ! set default field width

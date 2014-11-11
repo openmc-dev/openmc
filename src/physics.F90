@@ -2,6 +2,7 @@ module physics
 
   use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
+  use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
   use fission,                only: nu_total, nu_delayed
@@ -46,17 +47,15 @@ contains
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-      message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
-           trim(adjustl(nuclides(p % event_nuclide) % name)) // &
-           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV."
-      call write_message()
+      call write_message("    " // trim(reaction_name(p % event_MT)) &
+           &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
+           &// ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV.")
     end if
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
       p % alive = .false.
-      message = "Killing neutron with extremely low energy"
-      call warning()
+      if (master) call warning("Killing neutron with extremely low energy")
     end if
 
   end subroutine collision
@@ -158,8 +157,7 @@ contains
       ! Check to make sure that a nuclide was sampled
       if (i > mat % n_nuclides) then
         call write_particle_restart(p)
-        message = "Did not sample any nuclide during collision."
-        call fatal_error()
+        call fatal_error("Did not sample any nuclide during collision.")
       end if
 
       ! Find atom density
@@ -349,7 +347,7 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord0 % uvw, p % mu)
+             p % E, p % coord0 % uvw, p % mu, p % wgt)
       end if
 
       p % event_MT = ELASTIC
@@ -367,9 +365,8 @@ contains
         ! Check to make sure inelastic scattering reaction sampled
         if (i > nuc % n_reaction) then
           call write_particle_restart(p)
-          message = "Did not sample any reaction for nuclide " // &
-               trim(nuc % name)
-          call fatal_error()
+          call fatal_error("Did not sample any reaction for nuclide " &
+               &// trim(nuc % name))
         end if
 
         rxn => nuc % reactions(i)
@@ -408,13 +405,14 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab)
+  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
 
     integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
+    real(8), intent(inout)  :: wgt
 
     real(8) :: awr       ! atomic weight ratio of target
     real(8) :: mu_cm     ! cosine of polar angle in center-of-mass
@@ -437,7 +435,8 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t, E, uvw)
+      call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
+        & micro_xs(i_nuclide) % elastic)
     else
       v_t = ZERO
     end if
@@ -718,8 +717,8 @@ contains
         mu = sab % inelastic_data(l) % mu(k, j)
 
       else
-        message = "Invalid secondary energy mode on S(a,b) table " // &
-             trim(sab % name)
+        call fatal_error("Invalid secondary energy mode on S(a,b) table " &
+             &// trim(sab % name))
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
 
@@ -729,19 +728,269 @@ contains
   end subroutine sab_scatter
 
 !===============================================================================
-! SAMPLE_TARGET_VELOCITY samples the target velocity based on the free gas
-! scattering formulation used by most Monte Carlo codes. Excellent documentation
-! for this method can be found in FRA-TM-123.
+! SAMPLE_TARGET_VELOCITY samples the target velocity. The constant cross section
+! free gas model is the default method. Methods for correctly accounting
+! for the energy dependence of cross sections in treating resonance elastic
+! scattering such as the DBRC, WCM, and a new, accelerated scheme are also
+! implemented here.
 !===============================================================================
 
-  subroutine sample_target_velocity(nuc, v_target, E, uvw)
+  subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
 
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide), pointer :: nuc ! target nuclide at temperature T
+
+    real(8), intent(out)   :: v_target(3) ! target velocity
+    real(8), intent(in)    :: v_neut(3)   ! neutron velocity
+    real(8), intent(in)    :: E           ! particle energy
+    real(8), intent(in)    :: uvw(3)      ! direction cosines
+    real(8), intent(inout) :: wgt         ! particle weight
+
+    real(8) :: awr     ! target/neutron mass ratio
+    real(8) :: kT      ! equilibrium temperature of target in MeV
+    real(8) :: E_rel   ! trial relative energy
+    real(8) :: xs_0K   ! 0K xs at E_rel
+    real(8) :: xs_eff  ! effective elastic xs at temperature T
+    real(8) :: wcf     ! weight correction factor
+    real(8) :: E_red   ! reduced energy (same as used by Cullen in SIGMA1)
+    real(8) :: E_low   ! lowest practical relative energy
+    real(8) :: E_up    ! highest practical relative energy
+    real(8) :: E_mode  ! most probable Maxwellian energy
+    real(8) :: E_t_max ! highest practical target energy
+    real(8) :: E_t     ! trial target energy
+    real(8) :: xs_max  ! max 0K xs over practical relative energies
+    real(8) :: xs_low  ! 0K xs at lowest practical relative energy
+    real(8) :: xs_up   ! 0K xs at highest practical relative energy
+    real(8) :: m       ! slope for interpolation
+    real(8) :: R_dbrc  ! DBRC rejection criterion
+    real(8) :: R_speed ! target speed rejection criterion
+    real(8) :: cdf_low ! xs cdf at lowest practical relative energy
+    real(8) :: cdf_up  ! xs cdf at highest practical relative energy
+    real(8) :: cdf_rel ! trial xs cdf value
+    real(8) :: p_mode  ! probability at most probable energy
+    real(8) :: p_t     ! probability at trial target energy
+    real(8) :: mu      ! cosine between neutron and target velocities
+
+    integer :: i_E_low ! 0K index to lowest practical relative energy
+    integer :: i_E_up  ! 0K index to highest practical relative energy
+    integer :: i_E_rel ! index to trial relative energy
+
+    logical :: reject  ! resample if true
+
+    character(80) :: sampling_scheme ! method of target velocity sampling
+
+    kT = nuc % kT
+    awr = nuc % awr
+
+    ! check if nuclide is a resonant scatterer
+    if (nuc % resonant) then
+
+      ! sampling scheme to use
+      sampling_scheme = nuc % scheme
+
+      ! upper resonance scattering energy bound (target is at rest above this E)
+      if (E > nuc % E_max) then
+        v_target = ZERO
+        return
+
+      ! lower resonance scattering energy bound (should be no resonances below)
+      else if (E < nuc % E_min) then
+        sampling_scheme = 'cxs'
+      end if
+
+    ! otherwise, use free gas model  
+    else
+      if (E >= FREE_GAS_THRESHOLD * kT .and. awr > ONE) then
+        v_target = ZERO
+        return
+      else
+        sampling_scheme = 'cxs'
+      end if
+    end if
+
+    ! use appropriate target velocity sampling method
+    select case (sampling_scheme)
+
+    case ('cxs')
+
+      ! sample target velocity with the constant cross section (cxs) approx.
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+    case ('wcm')
+
+      ! sample target velocity with the constant cross section (cxs) approx.
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+      ! adjust weight as prescribed by the weight correction method (wcm)
+      E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+      xs_0K = elastic_xs_0K(E_rel, nuc)
+      wcf = xs_0K / xs_eff
+      wgt = wcf * wgt
+
+    case ('dbrc')
+      E_red = sqrt((awr * E) / kT)
+      E_low = (((E_red - 4.0_8)**2) * kT) / awr
+      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+
+      ! find lower and upper energy bound indices
+      ! lower index
+      if (E_low < nuc % energy_0K(1)) then
+        i_E_low = 1
+      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_low = nuc % n_grid_0K - 1
+      else
+        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+      end if
+
+      ! upper index
+      if (E_up < nuc % energy_0K(1)) then
+        i_E_up = 1
+      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_up = nuc % n_grid_0K - 1
+      else
+        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+      end if
+
+      ! interpolate xs since we're not exactly at the energy indices
+      xs_low = nuc % elastic_0K(i_E_low)
+      m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
+        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+      xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
+      xs_up = nuc % elastic_0K(i_E_up)
+      m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
+       & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+      xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
+      
+      ! get max 0K xs value over range of practical relative energies
+      xs_max = max(xs_low, &
+        & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
+
+      reject = .true.
+
+      ! sample target velocities until one is accepted by the DBRC
+      do
+
+        ! sample target velocity with the constant cross section (cxs) approx.
+        call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+        ! perform Doppler broadening rejection correction (dbrc)
+        E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+        xs_0K = elastic_xs_0K(E_rel, nuc)
+        R_dbrc = xs_0K / xs_max
+        if (prn() < R_dbrc) reject = .false.
+        if (.not. reject) exit
+      end do
+
+    case ('ares')
+      E_red = sqrt((awr * E) / kT)
+      E_low = (((E_red - 4.0_8)**2) * kT) / awr
+      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+
+      ! find lower and upper energy bound indices
+      ! lower index
+      if (E_low < nuc % energy_0K(1)) then
+        i_E_low = 1
+      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_low = nuc % n_grid_0K - 1
+      else
+        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+      end if
+
+      ! upper index
+      if (E_up < nuc % energy_0K(1)) then
+        i_E_up = 1
+      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
+        i_E_up = nuc % n_grid_0K - 1
+      else
+        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+      end if
+
+      ! interpolate xs CDF since we're not exactly at the energy indices
+      ! cdf value at lower bound attainable energy
+      if (i_E_low > 1) then
+        m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
+          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+        cdf_low = nuc % xs_cdf(i_E_low - 1) &
+          & + m * (E_low - nuc % energy_0K(i_E_low))
+      else
+        m = nuc % xs_cdf(i_E_low) &
+          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+        cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
+        if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
+      end if
+
+      ! cdf value at upper bound attainable energy
+      m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
+        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+      cdf_up = nuc % xs_cdf(i_E_up - 1) &
+        & + m * (E_up - nuc % energy_0K(i_E_up))
+
+      ! values used to sample the Maxwellian
+      E_mode = kT
+      p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
+        & * exp(-E_mode / kT)
+      E_t_max = 16.0_8 * E_mode
+
+      reject = .true.
+
+      do
+
+        ! perform Maxwellian rejection sampling
+        E_t = E_t_max * prn()**2
+        p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
+          & * exp(-E_t / kT)
+        R_speed = p_t / p_mode
+
+        if (prn() < R_speed) then
+
+          ! sample a relative energy using the xs cdf
+          cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
+          i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
+            & i_E_up - i_E_low + 2, cdf_rel)
+          E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
+          m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
+            & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+            & / (nuc % energy_0K(i_E_low + i_E_rel) &
+            & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+          E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
+
+          ! perform rejection sampling on cosine between
+          ! neutron and target velocities
+          mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
+
+          if (abs(mu) < ONE) then
+
+            ! set and accept target velocity
+            E_t = E_t / awr
+            v_target = sqrt(E_t) * rotate_angle(uvw, mu)
+            reject = .false.
+          end if
+        end if
+
+        if (.not. reject) exit
+      end do
+
+    case default
+      call fatal_error("Not a recognized resonance scattering treatment!")
+    end select
+    
+  end subroutine sample_target_velocity
+
+!===============================================================================
+! SAMPLE_CXS_TARGET_VELOCITY samples a target velocity based on the free gas
+! scattering formulation, used by most Monte Carlo codes, in which cross section
+! is assumed to be constant in energy. Excellent documentation for this method
+! can be found in FRA-TM-123.
+!===============================================================================
+
+  subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+    type(Nuclide),  pointer :: nuc ! target nuclide at temperature
     real(8), intent(out)    :: v_target(3)
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
 
     real(8) :: kT          ! equilibrium temperature of target in MeV
+    real(8) :: awr         ! target/neutron mass ratio
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
     real(8) :: r1, r2      ! pseudo-random numbers
@@ -752,18 +1001,10 @@ contains
     real(8) :: beta_vt_sq  ! (beta * speed of target)^2
     real(8) :: vt          ! speed of target
 
-    ! Determine equilibrium temperature in MeV
     kT = nuc % kT
+    awr = nuc % awr
 
-    ! Check if energy is above threshold
-    if (E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
-      v_target = ZERO
-      return
-    end if
-
-    ! calculate beta
-    beta_vn = sqrt(nuc%awr * E / kT)
-
+    beta_vn = sqrt(awr * E / kT)
     alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
 
     do
@@ -795,20 +1036,20 @@ contains
 
       ! Determine rejection probability
       accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-           /(beta_vn + beta_vt)
+        /(beta_vn + beta_vt)
 
       ! Perform rejection sampling on vt and mu
       if (prn() < accept_prob) exit
     end do
 
-    ! determine speed of target nucleus
-    vt = sqrt(beta_vt_sq*kT/nuc % awr)
+    ! Determine speed of target nucleus
+    vt = sqrt(beta_vt_sq*kT/awr)
 
-    ! determine velocity vector of target nucleus based on neutron's velocity
+    ! Determine velocity vector of target nucleus based on neutron's velocity
     ! and the sampled angle between them
     v_target = vt * rotate_angle(uvw, mu)
 
-  end subroutine sample_target_velocity
+  end subroutine sample_cxs_target_velocity
 
 !===============================================================================
 ! CREATE_FISSION_SITES determines the average total, prompt, and delayed
@@ -847,8 +1088,7 @@ contains
       call get_mesh_indices(ufs_mesh, p % coord0 % xyz, ijk, in_mesh)
       if (.not. in_mesh) then
         call write_particle_restart(p)
-        message = "Source site outside UFS mesh!"
-        call fatal_error()
+        call fatal_error("Source site outside UFS mesh!")
       end if
 
       if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
@@ -873,10 +1113,9 @@ contains
 
     ! Check for fission bank size getting hit
     if (n_bank + nu > size(fission_bank)) then
-      message = "Maximum number of sites in fission bank reached. This can &
-           &result in irreproducible results using different numbers of &
-           &processes/threads."
-      call warning()
+      if (master) call warning("Maximum number of sites in fission bank &
+           &reached. This can result in irreproducible results using different &
+           &numbers of processes/threads.")
     end if
 
     ! Bank source neutrons
@@ -1001,9 +1240,8 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          message = "Resampled energy distribution maximum number of " // &
-               "times for nuclide " // nuc % name
-          call fatal_error()
+          call fatal_error("Resampled energy distribution maximum number of " &
+               &// "times for nuclide " // nuc % name)
         end if
       end do
 
@@ -1028,9 +1266,8 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          message = "Resampled energy distribution maximum number of " // &
-               "times for nuclide " // nuc % name
-          call fatal_error()
+          call fatal_error("Resampled energy distribution maximum number of " &
+               &// "times for nuclide " // nuc % name)
         end if
       end do
 
@@ -1211,8 +1448,7 @@ contains
         end if
       else
         ! call write_particle_restart(p)
-        message = "Unknown interpolation type: " // trim(to_str(interp))
-        call fatal_error()
+        call fatal_error("Unknown interpolation type: " // trim(to_str(interp)))
       end if
 
       ! Because of floating-point roundoff, it may be possible for mu to be
@@ -1223,8 +1459,8 @@ contains
 
     else
       ! call write_particle_restart(p)
-      message = "Unknown angular distribution type: " // trim(to_str(type))
-      call fatal_error()
+      call fatal_error("Unknown angular distribution type: " &
+           &// trim(to_str(type)))
     end if
 
   end function sample_angle
@@ -1371,9 +1607,8 @@ contains
       NET = int(edist % data(3 + 2*NR + NE))
       if (NR > 0) then
         ! call write_particle_restart(p)
-        message = "Multiple interpolation regions not supported while &
-             &attempting to sample equiprobable energy bins."
-        call fatal_error()
+        call fatal_error("Multiple interpolation regions not supported while &
+             &attempting to sample equiprobable energy bins.")
       end if
 
       ! determine index on incoming energy grid and interpolation factor
@@ -1436,14 +1671,12 @@ contains
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
-        message = "Assuming linear-linear interpolation when sampling &
-             &continuous tabular distribution"
-        call warning()
+        if (master) call warning("Assuming linear-linear interpolation when &
+             &sampling continuous tabular distribution")
       else if (NR > 1) then
         ! call write_particle_restart(p)
-        message = "Multiple interpolation regions not supported while &
-             &attempting to sample continuous tabular distribution."
-        call fatal_error()
+        call fatal_error("Multiple interpolation regions not supported while &
+             &attempting to sample continuous tabular distribution.")
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1501,9 +1734,8 @@ contains
       if (ND > 0) then
         ! discrete lines present
         ! call write_particle_restart(p)
-        message = "Discrete lines in continuous tabular distributed not &
-             &yet supported"
-        call fatal_error()
+        call fatal_error("Discrete lines in continuous tabular distributed not &
+             &yet supported")
       end if
 
       ! determine outgoing energy bin
@@ -1543,8 +1775,7 @@ contains
         end if
       else
         ! call write_particle_restart(p)
-        message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -1585,8 +1816,7 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          message = "Too many rejections on Maxwell fission spectrum."
-          call fatal_error()
+          call fatal_error("Too many rejections on Maxwell fission spectrum.")
         end if
       end do
 
@@ -1618,8 +1848,7 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          message = "Too many rejections on evaporation spectrum."
-          call fatal_error()
+          call fatal_error("Too many rejections on evaporation spectrum.")
         end if
       end do
 
@@ -1660,8 +1889,7 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          message = "Too many rejections on Watt spectrum."
-          call fatal_error()
+          call fatal_error("Too many rejections on Watt spectrum.")
         end if
       end do
 
@@ -1671,8 +1899,7 @@ contains
 
       if (.not. present(mu_out)) then
         ! call write_particle_restart(p)
-        message = "Law 44 called without giving mu_out as argument."
-        call fatal_error()
+        call fatal_error("Law 44 called without giving mu_out as argument.")
       end if
 
       ! read number of interpolation regions and incoming energies
@@ -1680,9 +1907,8 @@ contains
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
         ! call write_particle_restart(p)
-        message = "Multiple interpolation regions not supported while &
-             &attempting to sample Kalbach-Mann distribution."
-        call fatal_error()
+        call fatal_error("Multiple interpolation regions not supported while &
+             &attempting to sample Kalbach-Mann distribution.")
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1741,9 +1967,8 @@ contains
       if (ND > 0) then
         ! discrete lines present
         ! call write_particle_restart(p)
-        message = "Discrete lines in continuous tabular distributed not &
-             &yet supported"
-        call fatal_error()
+        call fatal_error("Discrete lines in continuous tabular distributed not &
+             &yet supported")
       end if
 
       ! determine outgoing energy bin
@@ -1797,8 +2022,7 @@ contains
         KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
       else
         ! call write_particle_restart()
-        message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -1824,8 +2048,7 @@ contains
 
       if (.not. present(mu_out)) then
         ! call write_particle_restart()
-        message = "Law 61 called without giving mu_out as argument."
-        call fatal_error()
+        call fatal_error("Law 61 called without giving mu_out as argument.")
       end if
 
       ! read number of interpolation regions and incoming energies
@@ -1833,9 +2056,8 @@ contains
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
         ! call write_particle_restart()
-        message = "Multiple interpolation regions not supported while &
-             &attempting to sample correlated energy-angle distribution."
-        call fatal_error()
+        call fatal_error("Multiple interpolation regions not supported while &
+             &attempting to sample correlated energy-angle distribution.")
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1894,9 +2116,8 @@ contains
       if (ND > 0) then
         ! discrete lines present
         ! call write_particle_restart()
-        message = "Discrete lines in continuous tabular distributed not &
-             &yet supported"
-        call fatal_error()
+        call fatal_error("Discrete lines in continuous tabular distributed not &
+             &yet supported")
       end if
 
       ! determine outgoing energy bin
@@ -1937,8 +2158,7 @@ contains
         end if
       else
         ! call write_particle_restart()
-        message = "Unknown interpolation type: " // trim(to_str(INTT))
-        call fatal_error()
+        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
@@ -2001,8 +2221,7 @@ contains
         end if
       else
         ! call write_particle_restart()
-        message = "Unknown interpolation type: " // trim(to_str(JJ))
-        call fatal_error()
+        call fatal_error("Unknown interpolation type: " // trim(to_str(JJ)))
       end if
 
     case (66)

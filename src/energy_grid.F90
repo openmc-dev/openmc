@@ -6,6 +6,8 @@ module energy_grid
   use output,           only: write_message
   use search,           only: binary_search
 
+  implicit none
+
 contains
 
 !===============================================================================
@@ -58,8 +60,7 @@ contains
     type(ListReal), pointer :: list => null()
     type(Nuclide),  pointer :: nuc => null()
 
-    message = "Creating unionized energy grid..."
-    call write_message(5)
+    call write_message("Creating unionized energy grid...", 5)
 
     ! Add grid points for each nuclide in the problem
     do i = 1, n_nuclides_total

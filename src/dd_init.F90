@@ -26,7 +26,6 @@ contains
     
     integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
-    integer :: color
     integer :: alloc_err        ! allocation error code
 
     call write_message("Initializing domain decomposition parameters...", 6)

@@ -711,6 +711,7 @@ contains
     integer(8) :: index_temp   ! index in temporary source bank
     integer(8) :: sites_needed ! # of sites to be sampled
     real(8)    :: p_sample     ! probability of sampling a site
+    real(8)    :: dummy        ! dummy to burn a random number
     type(Bank), save, allocatable :: &
          & temp_sites(:)       ! local array of extra sites on each node
     integer(8), save :: size_temp_sites ! size of the temp_sites array
@@ -729,14 +730,16 @@ contains
          & bank_start(:)
 #endif
 
-    ! In order to properly understand the fission bank algorithm, you need to
-    ! think of the fission and source bank as being one global array divided
-    ! over multiple processors. At the start, each processor has a random amount
-    ! of fission bank sites -- each processor needs to know the total number of
-    ! sites in order to figure out the probability for selecting
-    ! sites. Furthermore, each proc also needs to know where in the 'global'
-    ! fission bank its own sites starts in order to ensure reproducibility by
-    ! skipping ahead to the proper seed.
+    ! This routine differs from the non-DD version in a number of ways. It
+    ! still distributes particles amongst processes, but it does so only
+    ! within a single domain.  Furthermore, reproducibility is ensured by using
+    ! the prn_seeds stored in the banked fission sites, rather that by assigning
+    ! seeds based on particle id.  This is because an expensive
+    ! fully-distributed sort over all n_particles would need to be performed
+    ! across all processes to determine the order that sites were banked (in
+    ! the non-DD version, fission sites are always in order already, not so with
+    ! domain decomposision).  As a result, the requirement of exactly
+    ! n_particles starting on the next batch is relaxed.
 
 #ifdef MPI
     start = 0_8
@@ -804,6 +807,8 @@ contains
 
     index_temp = 0_8
     do i = 1, int(n_bank,4)
+      
+      prn_seed = fission_bank(i) % prn_seed
 
       ! If there are less than n_particles particles banked, automatically add 
       ! int(n_particles/total) sites to temp_sites. For example, if you need 
@@ -813,10 +818,12 @@ contains
         do j = 1, int(n_particles/total)
           index_temp = index_temp + 1
           temp_sites(index_temp) = fission_bank(i)
+          ! We don't want to start identical particles, so we burn an prn and
+          ! save the resulting seed to ensure these particles track differently
+          dummy = prn()
+          temp_sites(index_temp) % prn_seed = prn_seed
         end do
       end if
-      
-      prn_seed = fission_bank(i) % prn_seed
 
       ! Randomly sample sites needed
       if (prn() < p_sample) then

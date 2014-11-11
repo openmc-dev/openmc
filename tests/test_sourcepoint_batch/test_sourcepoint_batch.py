@@ -30,7 +30,7 @@ def test_statepoint_exists():
         'Statepoint file detected that is not binary or hdf5.'
 
 def test_results():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.8.*'))
+    statepoint = glob.glob(os.path.join(cwd, 'statepoint.08.*'))
     call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:

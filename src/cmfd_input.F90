@@ -62,16 +62,20 @@ contains
     use error,   only: fatal_error, warning
     use global
     use output,  only: write_message
-    use string,  only: lower_case
+    use string,  only: to_lower
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
+    integer :: i
     integer :: ng
+    integer :: n_params
     integer, allocatable :: iarray(:)
+    integer, allocatable :: int_array(:)
     logical :: file_exists ! does cmfd.xml exist?
     logical :: found
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: temp_str
+    real(8) :: gs_tol(2)
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
 
@@ -81,15 +85,14 @@ contains
     if (.not. file_exists) then
       ! CMFD is optional unless it is in on from settings
       if (cmfd_on) then
-        message = "No CMFD XML file, '" // trim(filename) // "' does not exist!"
-        call fatal_error()
+        call fatal_error("No CMFD XML file, '" // trim(filename) // "' does not&
+             & exist!")
       end if
       return
     else
 
       ! Tell user
-      message = "Reading CMFD XML file..."
-      call write_message(5)
+      call write_message("Reading CMFD XML file...", 5)
 
     end if
 
@@ -101,8 +104,7 @@ contains
 
     ! Check if mesh is there
     if (.not.found) then
-      message = "No CMFD mesh specified in CMFD XML file."
-      call fatal_error()
+      call fatal_error("No CMFD mesh specified in CMFD XML file.")
     end if
 
     ! Set spatial dimensions in cmfd object
@@ -133,8 +135,7 @@ contains
            cmfd % indices(3)))
       if (get_arraysize_integer(node_mesh, "map") /= &
           product(cmfd % indices(1:3))) then
-        message = 'FATAL==>CMFD coremap not to correct dimensions'
-        call fatal_error()
+        call fatal_error('CMFD coremap not to correct dimensions')
       end if
       allocate(iarray(get_arraysize_integer(node_mesh, "map")))
       call get_node_array(node_mesh, "map", iarray)
@@ -151,89 +152,117 @@ contains
     ! Set feedback logical
     if (check_for_node(doc, "feedback")) then
       call get_node_value(doc, "feedback", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_feedback = .true.
+           cmfd_feedback = .true.
     end if
 
     ! Set downscatter logical
     if (check_for_node(doc, "downscatter")) then
       call get_node_value(doc, "downscatter", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_downscatter = .true.
+           cmfd_downscatter = .true.
+    end if
+
+    ! Reset dhat parameters 
+    if (check_for_node(doc, "dhat_reset")) then
+      call get_node_value(doc, "dhat_reset", temp_str)
+      temp_str = to_lower(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        dhat_reset = .true.
     end if
 
     ! Set the solver type
     if (check_for_node(doc, "solver")) &
-      call get_node_value(doc, "solver", cmfd_solver_type)
+         call get_node_value(doc, "solver", cmfd_solver_type)
 
     ! Set monitoring
     if (check_for_node(doc, "snes_monitor")) then
       call get_node_value(doc, "snes_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_snes_monitor = .true.
+           cmfd_snes_monitor = .true.
     end if
     if (check_for_node(doc, "ksp_monitor")) then
       call get_node_value(doc, "ksp_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_ksp_monitor = .true.
+           cmfd_ksp_monitor = .true.
     end if
     if (check_for_node(doc, "power_monitor")) then
       call get_node_value(doc, "power_monitor", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_power_monitor = .true.
+           cmfd_power_monitor = .true.
     end if
 
     ! Output logicals
     if (check_for_node(doc, "write_matrices")) then
-      call get_node_value(doc, "write_matices", temp_str)
-      call lower_case(temp_str)
+      call get_node_value(doc, "write_matrices", temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_write_matrices = .true.
+           cmfd_write_matrices = .true.
     end if
 
     ! Run an adjoint calc
     if (check_for_node(doc, "run_adjoint")) then
       call get_node_value(doc, "run_adjoint", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+#ifndef PETSC
+        call fatal_error('Must use PETSc when running adjoint option.')
+#endif
         cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
     if (check_for_node(doc, "begin")) &
-      call get_node_value(doc, "begin", cmfd_begin)
+         call get_node_value(doc, "begin", cmfd_begin)
 
-    ! Tally during inactive batches
-    if (check_for_node(doc, "inactive")) then
-      call get_node_value(doc, "inactive", temp_str)
-      call lower_case(temp_str)
-      if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
-        cmfd_tally_on = .false.
+    ! Check for cmfd tally resets
+    if (check_for_node(doc, "tally_reset")) then
+      n_cmfd_resets = get_arraysize_integer(doc, "tally_reset")
+    else
+      n_cmfd_resets = 0
     end if
-
-    ! Inactive batch flush window
-    if (check_for_node(doc, "inactive_flush")) &
-      call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
-    if (check_for_node(doc, "num_flushes")) &
-      call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
-
-    ! Last flush before active batches
-    if (check_for_node(doc, "active_flush")) &
-      call get_node_value(doc, "active_flush", cmfd_act_flush)
+    if (n_cmfd_resets > 0) then
+      allocate(int_array(n_cmfd_resets))
+      call get_node_array(doc, "tally_reset", int_array)
+      do i = 1, n_cmfd_resets
+        call cmfd_reset % add(int_array(i))
+      end do
+      deallocate(int_array)
+    end if
 
     ! Get display
     if (check_for_node(doc, "display")) &
-      call get_node_value(doc, "display", cmfd_display)
+         call get_node_value(doc, "display", cmfd_display)
     if (trim(cmfd_display) == 'dominance' .and. &
-        trim(cmfd_solver_type) /= 'power') then
-      message = 'Dominance Ratio only aviable with power iteration solver'
-      call warning()
+         trim(cmfd_solver_type) /= 'power') then
+      if (master) call warning('Dominance Ratio only aviable with power &
+           &iteration solver')
       cmfd_display = ''
+    end if
+
+    ! Read in spectral radius estimate and tolerances
+    if (check_for_node(doc, "spectral")) &
+         call get_node_value(doc, "spectral", cmfd_spectral)
+    if (check_for_node(doc, "shift")) &
+         call get_node_value(doc, "shift", cmfd_shift)
+    if (check_for_node(doc, "ktol")) &
+         call get_node_value(doc, "ktol", cmfd_ktol)
+    if (check_for_node(doc, "stol")) &
+         call get_node_value(doc, "stol", cmfd_stol)
+    if (check_for_node(doc, "gauss_seidel_tolerance")) then
+      n_params = get_arraysize_double(doc, "gauss_seidel_tolerance")
+      if (n_params /= 2) then
+        call fatal_error('Gauss Seidel tolerance is not 2 parameters &
+                   &(absolute, relative).')
+      end if
+      call get_node_array(doc, "gauss_seidel_tolerance", gs_tol)
+      cmfd_atoli = gs_tol(1)
+      cmfd_rtoli = gs_tol(2)
     end if
 
     ! Create tally objects
@@ -299,8 +328,7 @@ contains
     ! Determine number of dimensions for mesh
     n = get_arraysize_integer(node_mesh, "dimension")
     if (n /= 2 .and. n /= 3) then
-       message = "Mesh must be two or three dimensions."
-       call fatal_error()
+       call fatal_error("Mesh must be two or three dimensions.")
     end if
     m % n_dimension = n
 
@@ -313,9 +341,8 @@ contains
     ! Check that dimensions are all greater than zero
     call get_node_array(node_mesh, "dimension", iarray3(1:n))
     if (any(iarray3(1:n) <= 0)) then
-      message = "All entries on the <dimension> element for a tally mesh &
-           &must be positive."
-      call fatal_error()
+      call fatal_error("All entries on the <dimension> element for a tally mesh&
+           & must be positive.")
     end if
 
     ! Read dimensions in each direction
@@ -323,42 +350,37 @@ contains
 
     ! Read mesh lower-left corner location
     if (m % n_dimension /= get_arraysize_double(node_mesh, "lower_left")) then
-      message = "Number of entries on <lower_left> must be the same as &
-           &the number of entries on <dimension>."
-      call fatal_error()
+      call fatal_error("Number of entries on <lower_left> must be the same as &
+           &the number of entries on <dimension>.")
     end if
     call get_node_array(node_mesh, "lower_left", m % lower_left)
 
     ! Make sure both upper-right or width were specified
     if (check_for_node(node_mesh, "upper_right") .and. &
         check_for_node(node_mesh, "width")) then
-      message = "Cannot specify both <upper_right> and <width> on a &
-           &tally mesh."
-      call fatal_error()
+      call fatal_error("Cannot specify both <upper_right> and <width> on a &
+           &tally mesh.")
     end if
 
     ! Make sure either upper-right or width was specified
     if (.not.check_for_node(node_mesh, "upper_right") .and. &
         .not.check_for_node(node_mesh, "width")) then
-      message = "Must specify either <upper_right> and <width> on a &
-           &tally mesh."
-      call fatal_error()
+      call fatal_error("Must specify either <upper_right> and <width> on a &
+           &tally mesh.")
     end if
 
     if (check_for_node(node_mesh, "width")) then
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "width") /= &
           get_arraysize_double(node_mesh, "lower_left")) then
-        message = "Number of entries on <width> must be the same as the &
-             &number of entries on <lower_left>."
-        call fatal_error()
+        call fatal_error("Number of entries on <width> must be the same as the &
+             &number of entries on <lower_left>.")
       end if
 
       ! Check for negative widths
       call get_node_array(node_mesh, "width", rarray3(1:n))
       if (any(rarray3(1:n) < ZERO)) then
-        message = "Cannot have a negative <width> on a tally mesh."
-        call fatal_error()
+        call fatal_error("Cannot have a negative <width> on a tally mesh.")
       end if
 
       ! Set width and upper right coordinate
@@ -369,17 +391,15 @@ contains
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "upper_right") /= &
           get_arraysize_double(node_mesh, "lower_left")) then
-        message = "Number of entries on <upper_right> must be the same as &
-             &the number of entries on <lower_left>."
-        call fatal_error()
+        call fatal_error("Number of entries on <upper_right> must be the same &
+             &as the number of entries on <lower_left>.")
       end if
 
       ! Check that upper-right is above lower-left
       call get_node_array(node_mesh, "upper_right", rarray3(1:n))
       if (any(rarray3(1:n) < m % lower_left)) then
-        message = "The <upper_right> coordinates must be greater than the &
-             &<lower_left> coordinates on a tally mesh."
-        call fatal_error()
+        call fatal_error("The <upper_right> coordinates must be greater than &
+             &the <lower_left> coordinates on a tally mesh.")
       end if
 
       ! Set upper right coordinate and width
@@ -405,9 +425,9 @@ contains
       ! Set reset property
       if (check_for_node(doc, "reset")) then
         call get_node_value(doc, "reset", temp_str)
-        call lower_case(temp_str)
+        temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-          t % reset = .true.
+             t % reset = .true.
       end if
 
       ! Set up mesh filter

@@ -5,6 +5,8 @@ module energy_grid
   use list_header,      only: ListReal
   use output,           only: write_message
 
+  implicit none
+
 contains
 
 !===============================================================================
@@ -24,8 +26,7 @@ contains
     type(Nuclide),  pointer :: nuc  => null()
     type(Material), pointer :: mat  => null()
 
-    message = "Creating unionized energy grid(s)..."
-    call write_message(5)
+    call write_message("Creating unionized energy grid...", 5)
 
     select case(grid_method)
     case(GRID_GLOB_UNION)

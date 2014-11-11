@@ -167,28 +167,28 @@ if(petsc)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FLAPACK_LIB})
   endif()
 
-  # If libdl wasn't found, search /usr/lib64 
+  # If libdl wasn't found, search /usr/lib64
   if(PETSC_DL_LIB STREQUAL "PETSC_DL_LIB-NOTFOUND")
     find_library(PETSC_DL_LIB libdl.so /usr/lib64)
     list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_DL_LIB-NOTFOUND)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_DL_LIB})
   endif()
 
-  # If libm wasn't found, search /usr/lib64 
+  # If libm wasn't found, search /usr/lib64
   if(PETSC_M_LIB STREQUAL "PETSC_M_LIB-NOTFOUND")
     find_library(PETSC_M_LIB libm.so /usr/lib64)
     list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_M_LIB-NOTFOUND)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_M_LIB})
   endif()
 
-  # If libpthread wasn't found, search /usr/lib64 
+  # If libpthread wasn't found, search /usr/lib64
   if(PETSC_PTHREAD_LIB STREQUAL "PETSC_PTHREAD_LIB-NOTFOUND")
     find_library(PETSC_PTHREAD_LIB libpthread.so /usr/lib64)
     list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_PTHREAD_LIB-NOTFOUND)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_PTHREAD_LIB})
   endif()
 
-  # If librt wasn't found, search /usr/lib64 
+  # If librt wasn't found, search /usr/lib64
   if(PETSC_RT_LIB STREQUAL "PETSC_RT_LIB-NOTFOUND")
     find_library(PETSC_RT_LIB librt.so /usr/lib64)
     list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_RT_LIB-NOTFOUND)
@@ -213,7 +213,7 @@ execute_process(COMMAND git rev-parse HEAD
 if(GIT_SHA1_SUCCESS EQUAL 0)
   add_definitions(-DGIT_SHA1="${GIT_SHA1}")
 endif()
-  
+
 #===============================================================================
 # FoX Fortran XML Library
 #===============================================================================
@@ -261,7 +261,8 @@ install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
   install(CODE "execute_process(
-                  COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
+                  COMMAND ${PYTHON_EXECUTABLE} setup.py install
+                  --prefix=${CMAKE_INSTALL_PREFIX}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
 endif()
 
@@ -277,7 +278,7 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
 
 # Check to see if PETSC is compiled for CMFD tests
 if (NOT ${PETSC_ENABLED})
-  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
+  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd_jfnk.py)
   foreach(cmfd_test in ${CMFD_TESTS})
     list(REMOVE_ITEM TESTS ${cmfd_test})
   endforeach(cmfd_test)
@@ -300,7 +301,7 @@ foreach(test ${TESTS})
 
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
-  get_filename_component(TEST_PATH ${test} PATH) 
+  get_filename_component(TEST_PATH ${test} PATH)
 
   # Check for running standard tests (no valgrind, no gcov)
   if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
@@ -309,15 +310,15 @@ foreach(test ${TESTS})
     if (${MPI_ENABLED})
 
       # Preform a parallel test
-      add_test(NAME ${TEST_NAME} 
-        WORKING_DIRECTORY ${TEST_PATH} 
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
     else(${MPI_ENABLED})
 
       # Perform a serial test
-      add_test(NAME ${TEST_NAME} 
+      add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
 
@@ -342,11 +343,13 @@ foreach(test ${TESTS})
 
         # Handle restart tests separately
         if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.7.h5)
+          set(RESTART_FILE statepoint.07.h5)
         elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.7.h5 source.7.h5)
-        elseif(${test} MATCHES "test_particle_restart")
-          set(RESTART_FILE particle_12_192.h5)
+          set(RESTART_FILE statepoint.07.h5 source.07.h5)
+        elseif(${test} MATCHES "test_particle_restart_eigval")
+          set(RESTART_FILE particle_12_842.h5)
+        elseif(${test} MATCHES "test_particle_restart_fixed")
+          set(RESTART_FILE particle_7_6144.h5)
         else(${test} MATCHES "test_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
         endif(${test} MATCHES "test_statepoint_restart")
@@ -355,11 +358,13 @@ foreach(test ${TESTS})
 
         # Handle restart tests separately
         if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.7.binary)
+          set(RESTART_FILE statepoint.07.binary)
         elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.7.binary source.7.binary)
-        elseif(${test} MATCHES "test_particle_restart")
-          set(RESTART_FILE particle_12_192.binary)
+          set(RESTART_FILE statepoint.07.binary source.07.binary)
+        elseif(${test} MATCHES "test_particle_restart_eigval")
+          set(RESTART_FILE particle_12_842.binary)
+        elseif(${test} MATCHES "test_particle_restart_fixed")
+          set(RESTART_FILE particle_7_6144.binary)
         else(${test} MATCHES "test_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
         endif(${test} MATCHES "test_statepoint_restart")

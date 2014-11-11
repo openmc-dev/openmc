@@ -1,6 +1,6 @@
 module fixed_source
 
-  use constants,       only: ZERO
+  use constants,       only: ZERO, MAX_LINE_LEN
   use global
   use output,          only: write_message, header
   use particle_header, only: Particle
@@ -11,8 +11,7 @@ module fixed_source
   use tally,           only: synchronize_tallies, setup_active_usertallies
   use tracking,        only: transport
 
-  type(Bank), pointer :: source_site => null()
-!$omp threadprivate(source_site)
+  implicit none
 
 contains
 
@@ -97,8 +96,8 @@ contains
 
   subroutine initialize_batch()
 
-    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-    call write_message(1)
+    call write_message("Simulating batch " // trim(to_str(current_batch)) &
+         &// "...", 1)
 
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO

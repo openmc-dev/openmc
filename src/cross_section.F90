@@ -92,7 +92,7 @@ contains
       i_nuclide = mat % nuclide(i)
 
       ! Calculate microscopic cross section for this nuclide
-      if (p % E /= micro_xs(i_nuclide) % last_E . or. & \
+      if (p % E /= micro_xs(i_nuclide) % last_E .or. &
           i_sab /= micro_xs(i_nuclide) % last_index_sab) then
         if (i == 1) p % xs_seed = prn_seed
         call calculate_nuclide_xs(i_nuclide, i_sab, p % E)

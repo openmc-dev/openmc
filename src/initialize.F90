@@ -1,6 +1,6 @@
 module initialize
 
-  use ace,              only: read_xs
+  use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -11,6 +11,7 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
+  use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message
@@ -104,6 +105,9 @@ contains
       call read_xs()
       call time_read_xs % stop()
 
+      ! Create linked lists for multiple instances of the same nuclide
+      call same_nuclide_list()
+
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_NUCLIDE) then
         continue
@@ -154,10 +158,8 @@ contains
 
     ! Warn if overlap checking is on
     if (master .and. check_overlaps) then
-      message = ""
-      call write_message()
-      message = "Cell overlap checking is ON"
-      call warning()
+      call write_message("")
+      call warning("Cell overlap checking is ON")
     end if
 
     ! Stop initialization timer
@@ -213,13 +215,13 @@ contains
     call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
-    ! Adjust displacements 
+    ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
     bank_blocks = (/ 1, 3, 3, 1 /)
     bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -310,12 +312,8 @@ contains
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
     integer :: filetype
-    character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
     type(BinaryOutput) :: sp
-
-    ! Get working directory
-    call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
 
     ! Check number of command line arguments and allocate argv
     argc = COMMAND_ARGUMENT_COUNT()
@@ -344,9 +342,8 @@ contains
 
           ! Check that number specified was valid
           if (n_particles == ERROR_INT) then
-            message = "Must specify integer after " // trim(argv(i-1)) // &
-                 " command-line flag."
-            call fatal_error()
+            call fatal_error("Must specify integer after " // trim(argv(i-1)) &
+                 &// " command-line flag.")
           end if
         case ('-r', '-restart', '--restart')
           ! Read path for state point/particle restart
@@ -366,8 +363,7 @@ contains
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
-            message = "Unrecognized file after restart flag."
-            call fatal_error()
+            call fatal_error("Unrecognized file after restart flag.")
           end select
 
           ! If its a restart run check for additional source file
@@ -385,8 +381,8 @@ contains
               call sp % read_data(filetype, 'filetype')
               call sp % file_close()
               if (filetype /= FILETYPE_SOURCE) then
-                message = "Second file after restart flag must be a source file"
-                call fatal_error()
+                call fatal_error("Second file after restart flag must be a &
+                     &source file")
               end if
 
               ! It is a source file
@@ -416,17 +412,17 @@ contains
           ! Read number of threads
           i = i + 1
 
-#ifdef _OPENMP          
+#ifdef _OPENMP
           ! Read and set number of OpenMP threads
           n_threads = int(str_to_int(argv(i)), 4)
           if (n_threads < 1) then
-            message = "Invalid number of threads specified on command line."
-            call fatal_error()
+            call fatal_error("Invalid number of threads specified on command &
+                 &line.")
           end if
           call omp_set_num_threads(n_threads)
 #else
-          message = "Ignoring number of threads specified on command line."
-          call warning()
+          if (master) call warning("Ignoring number of threads specified on &
+               &command line.")
 #endif
 
         case ('-?', '-h', '-help', '--help')
@@ -440,10 +436,8 @@ contains
           i = i + 1
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
-          i = i + 1
         case default
-          message = "Unknown command line option: " // argv(i)
-          call fatal_error()
+          call fatal_error("Unknown command line option: " // argv(i))
         end select
 
         last_flag = i
@@ -456,16 +450,12 @@ contains
     ! Determine directory where XML input files are
     if (argc > 0 .and. last_flag < argc) then
       path_input = argv(last_flag + 1)
-      ! Need to add working directory if the given path is a relative path
-      if (.not. starts_with(path_input, "/")) then
-        path_input = trim(pwd) // "/" // trim(path_input)
-      end if
     else
-      path_input = pwd
+      path_input = ''
     end if
 
     ! Add slash at end of directory if it isn't there
-    if (.not. ends_with(path_input, "/")) then
+    if (.not. ends_with(path_input, "/") .and. len_trim(path_input) > 0) then
       path_input = trim(path_input) // "/"
     end if
 
@@ -565,7 +555,7 @@ contains
     integer :: m             ! loop index for lattices
     integer :: mid, lid      ! material and lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array 
+    integer :: i_array       ! index in surfaces/materials array
     integer :: id            ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: lat => null()
@@ -583,9 +573,8 @@ contains
             i_array = surface_dict % get_key(abs(id))
             c % surfaces(j) = sign(i_array, id)
           else
-            message = "Could not find surface " // trim(to_str(abs(id))) // &
-                 " specified on cell " // trim(to_str(c % id))
-            call fatal_error()
+            call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
+                 &// " specified on cell " // trim(to_str(c % id)))
           end if
         end if
       end do
@@ -597,9 +586,8 @@ contains
       if (universe_dict % has_key(id)) then
         c % universe = universe_dict % get_key(id)
       else
-        message = "Could not find universe " // trim(to_str(id)) // &
-             " specified on cell " // trim(to_str(c % id))
-        call fatal_error()
+        call fatal_error("Could not find universe " // trim(to_str(id)) &
+             &// " specified on cell " // trim(to_str(c % id)))
       end if
 
       ! =======================================================================
@@ -613,9 +601,8 @@ contains
           c % type = CELL_NORMAL
           c % material = material_dict % get_key(id)
         else
-          message = "Could not find material " // trim(to_str(id)) // &
-               " specified on cell " // trim(to_str(c % id))
-          call fatal_error()
+          call fatal_error("Could not find material " // trim(to_str(id)) &
+               &// " specified on cell " // trim(to_str(c % id)))
         end if
       else
         id = c % fill
@@ -632,15 +619,14 @@ contains
           else if (material_dict % has_key(mid)) then
             c % material = material_dict % get_key(mid)
           else
-            message = "Could not find material " // trim(to_str(mid)) // &
-               " specified on lattice " // trim(to_str(lid))
-            call fatal_error()
+            call fatal_error("Could not find material " // trim(to_str(mid)) &
+                 &// " specified on lattice " // trim(to_str(lid)))
           end if
-          
+
         else
-          message = "Specified fill " // trim(to_str(id)) // " on cell " // &
-               trim(to_str(c % id)) // " is neither a universe nor a lattice."
-          call fatal_error()
+          call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
+               &// trim(to_str(c % id)) // " is neither a universe nor a &
+               &lattice.")
         end if
       end if
     end do
@@ -665,9 +651,8 @@ contains
             if (universe_dict % has_key(id)) then
               lat % universes(j,k,m) = universe_dict % get_key(id)
             else
-              message = "Invalid universe number " // trim(to_str(id)) &
-                   // " specified on lattice " // trim(to_str(lat % id))
-              call fatal_error()
+              call fatal_error("Invalid universe number " // trim(to_str(id)) &
+                   &// " specified on lattice " // trim(to_str(lat % id)))
             end if
           end do
         end do
@@ -691,9 +676,8 @@ contains
             if (cell_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = cell_dict % get_key(id)
             else
-              message = "Could not find cell " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find cell " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -707,9 +691,8 @@ contains
             if (surface_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = surface_dict % get_key(id)
             else
-              message = "Could not find surface " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find surface " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -720,9 +703,8 @@ contains
             if (universe_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = universe_dict % get_key(id)
             else
-              message = "Could not find universe " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find universe " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -733,9 +715,8 @@ contains
             if (material_dict % has_key(id)) then
               t % filters(j) % int_bins(k) = material_dict % get_key(id)
             else
-              message = "Could not find material " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Could not find material " // trim(to_str(id)) &
+                   &// " specified on tally " // trim(to_str(t % id)))
             end if
           end do
 
@@ -807,7 +788,7 @@ contains
           sum_percent = sum_percent + x*awr
         end do
         sum_percent = ONE / sum_percent
-        mat % density = -mat % density * N_AVOGADRO & 
+        mat % density = -mat % density * N_AVOGADRO &
              / MASS_NEUTRON * sum_percent
       end if
 
@@ -868,10 +849,9 @@ contains
     ! Allocate source bank
     allocate(source_bank(work), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
-      message = "Failed to allocate source bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate source bank.")
     end if
 
 #ifdef _OPENMP
@@ -896,10 +876,9 @@ contains
     allocate(fission_bank(3*work), STAT=alloc_err)
 #endif
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
-      message = "Failed to allocate fission bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate fission bank.")
     end if
 
   end subroutine allocate_banks

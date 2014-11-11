@@ -10,7 +10,7 @@ module source
   use output,           only: write_message
   use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
-  use random_lcg,       only: prn, set_particle_seed
+  use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use string,           only: to_str
 
 #ifdef MPI
@@ -27,21 +27,21 @@ contains
 
   subroutine initialize_source()
 
+    character(MAX_FILE_LEN) :: filename
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
     integer(4) :: itmp       ! temporary integer
     type(Bank), pointer :: src => null() ! source bank site
     type(BinaryOutput) :: sp ! statepoint/source binary file
 
-    message = "Initializing source particles..."
-    call write_message(6)
+    call write_message("Initializing source particles...", 6)
 
     if (path_source /= '') then
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      message = 'Reading source file from ' // trim(path_source) // '...'
-      call write_message(6)
+      call write_message('Reading source file from ' // trim(path_source) &
+           &// '...', 6)
 
       ! Open the binary file
       call sp % file_open(path_source, 'r', serial = .false.)
@@ -51,8 +51,8 @@ contains
 
       ! Check to make sure this is a source file
       if (itmp /= FILETYPE_SOURCE) then
-        message = "Specified starting source file not a source file type."
-        call fatal_error()
+        call fatal_error("Specified starting source file not a source file &
+             &type.")
       end if
 
       ! Read in the source bank
@@ -74,6 +74,19 @@ contains
         ! sample external source distribution
         call sample_external_source(src)
       end do
+    end if
+
+    ! Write out initial source
+    if (write_initial_source) then
+      call write_message('Writing out initial source guess...', 1)
+#ifdef HDF5
+      filename = trim(path_output) // 'initial_source.h5'
+#else
+      filename = trim(path_output) // 'initial_source.binary'
+#endif
+      call sp % file_create(filename, serial = .false.)
+      call sp % write_source_bank()
+      call sp % file_close()
     end if
 
   end subroutine initialize_source
@@ -101,6 +114,9 @@ contains
     ! Set weight to one by default
     site % wgt = ONE
 
+    ! Set the random number generator to the source stream.
+    call prn_set_stream(STREAM_SOURCE)
+
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
@@ -124,11 +140,45 @@ contains
         if (.not. found) then
           num_resamples = num_resamples + 1
           if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            message = "Maximum number of external source spatial resamples &
-                      &reached!"
-            call fatal_error()
+            call fatal_error("Maximum number of external source spatial &
+                 &resamples reached!")
           end if
         end if
+      end do
+      call p % clear()
+
+    case (SRC_SPACE_FISSION)
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Set particle defaults
+        call p % initialize()
+
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            call fatal_error("Maximum number of external source spatial &
+                 &resamples reached!")
+          end if
+          cycle
+        end if
+        if (p % material == MATERIAL_VOID) then
+          found = .false.
+          cycle
+        end if
+        if (.not. materials(p % material) % fissionable) found = .false.
       end do
       call p % clear()
 
@@ -153,8 +203,7 @@ contains
       site % uvw = external_source % params_angle
 
     case default
-      message = "No angle distribution specified for external source!"
-      call fatal_error()
+      call fatal_error("No angle distribution specified for external source!")
     end select
 
     ! Sample energy distribution
@@ -185,9 +234,11 @@ contains
       end do
 
     case default
-      message = "No energy distribution specified for external source!"
-      call fatal_error()
+      call fatal_error("No energy distribution specified for external source!")
     end select
+
+    ! Set the random number generator back to the tracking stream.
+    call prn_set_stream(STREAM_TRACKING)
 
   end subroutine sample_external_source
 

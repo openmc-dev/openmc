@@ -74,6 +74,7 @@ contains
 
     ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO
+    micro_xs % last_index_sab = NONE
 
     ! Prepare to write out particle track.
     if (p % write_track) then

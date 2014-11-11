@@ -37,8 +37,6 @@ contains
     type(Material), pointer, save :: mat => null() ! current material
 !$omp threadprivate(mat)
 
-    p % xs_seed = prn_seed
-
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO
     material_xs % elastic    = ZERO
@@ -94,9 +92,9 @@ contains
       i_nuclide = mat % nuclide(i)
 
       ! Calculate microscopic cross section for this nuclide
-      if (p % E /= micro_xs(i_nuclide) % last_E) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E)
-      else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
+      if (p % E /= micro_xs(i_nuclide) % last_E . or. & \
+          i_sab /= micro_xs(i_nuclide) % last_index_sab) then
+        if (i == 1) p % xs_seed = prn_seed
         call calculate_nuclide_xs(i_nuclide, i_sab, p % E)
       end if
 

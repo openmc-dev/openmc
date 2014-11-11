@@ -110,7 +110,6 @@ contains
     call scatter(p, i_nuclide)
 
     ! Play russian roulette if survival biasing is turned on
-
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
@@ -1069,7 +1068,6 @@ contains
     real(8) :: mu           ! fission neutron angular cosine
     real(8) :: phi          ! fission neutron azimuthal angle
     real(8) :: weight       ! weight adjustment for ufs method
-    real(8) :: tmp
     logical :: in_mesh      ! source site in ufs mesh?
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
@@ -1112,7 +1110,6 @@ contains
       nu = int(nu_t) + 1
     end if
 
-!    print *, rank, size(fission_bank), n_bank
     ! Check for fission bank size getting hit
     if (n_bank + nu > size(fission_bank)) then
       if (master) call warning("Maximum number of sites in fission bank &
@@ -1146,9 +1143,8 @@ contains
       ! in fission bank
       fission_bank(i) % E = sample_fission_energy(nuc, rxn, p % E)
 
-      ! Store random number seed to continue this site with      
-      fission_bank(i) % prn_seed = prn_seed
-      tmp = prn() ! burn this random number so the seed isn't reused
+      ! Store a new random number seed to continue this site with
+      fission_bank(i) % prn_seed = int(9220000000000000000_8*prn(), 8)
       
     end do
 

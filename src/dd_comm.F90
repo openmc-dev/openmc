@@ -625,7 +625,7 @@ contains
           end if
           
           if (n_send == dd % send_rank_info(pr_bin)) then
-            start = i8
+            start = i8 + 1_8
             exit
           end if
           

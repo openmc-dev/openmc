@@ -8,8 +8,10 @@ module dd_init
   use output,     only: write_message
   use search,     only: binary_search
   use string,     only: to_str
-  
+
+#ifdef MPI  
   use mpi
+#endif 
   
   implicit none
   public

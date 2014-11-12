@@ -19,7 +19,9 @@ module dd_comm
   use search,           only: binary_search
   use string,           only: to_str
   
+#ifdef MPI
   use mpi
+#endif
   
   implicit none
   public
@@ -113,17 +115,20 @@ contains
         n_send_domain(to_domain) = n_send_domain(to_domain) + 1
 
         ! Post the send
+#ifdef MPI
         n_request = n_request + 1
         call MPI_ISEND(buffer(i), 1, MPI_BANK, to_rank, rank, MPI_COMM_WORLD, &
             request(n_request), mpi_err)
-
+#endif
       end if
     
     end do
 
     ! Determine how many sites were sent here by reducing n_send_rank
+#ifdef MPI
     call MPI_ALLREDUCE(MPI_IN_PLACE, n_send_rank, n_procs, MPI_INTEGER, &
         MPI_SUM, MPI_COMM_WORLD, mpi_err)
+#endif
 
     ! Check if we're not going to have enough space in the source_bank (which
     ! we're using as the receive buffer), and resize the array if needed
@@ -139,12 +144,16 @@ contains
     
       n_source_sites = n_source_sites + 1
       n_request = n_request + 1
+#ifdef MPI
       call MPI_IRECV(source_bank(n_source_sites), 1, MPI_BANK, MPI_ANY_SOURCE, &
           MPI_ANY_TAG, MPI_COMM_WORLD, request(n_request), mpi_err)
+#endif
     end do
 
     ! Wait for all sends/recvs to complete
+#ifdef MPI
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+#endif
 
     ! Reset how much work needs to be done on this process
     work = n_source_sites
@@ -168,6 +177,8 @@ contains
     type(dd_type), intent(inout) :: dd
     integer(8) :: work
   
+#ifdef MPI
+
     ! These subroutines operate in a manner similar to synchronize_bank for the
     ! fission bank, where the group of processors that operate on a certain
     ! domain should be thought of as sharing arrays ('global' to just this
@@ -207,10 +218,14 @@ contains
 
     ! Copy particles back out of the receiving buffer
     call rebuild_particle_buffer(dd)
-    
+
+#endif 
+   
     work = dd % n_inscatt
 
   end function synchronize_particles
+
+#ifdef MPI
 
 !===============================================================================
 ! SYNCHRONIZE_TRANSFER_INFO communicates all required particle transfer
@@ -688,6 +703,8 @@ contains
     end do
 
   end subroutine rebuild_particle_buffer
+
+#endif
 
 !===============================================================================
 ! SYNCHRONIZE_BANK_DD does the same thing as the non-domain-decomposed

@@ -4,18 +4,21 @@ import sys
 import numpy as np
 
 # import statepoint
-sys.path.append('../../src/utils')
+sys.path.insert(0, '../../../src/utils')
 import statepoint
 
-# read in statepoint file
-if len(sys.argv) > 1:
-    sp = statepoint.StatePoint(sys.argv[1])
-else:
-    sp = statepoint.StatePoint('statepoint.10.binary')
+def order_by(arr, ordering):
+    ordered = np.zeros(arr.shape)
+    for i,val in enumerate(arr):
+        ordered[ordering[i]-1] = val
+    return ordered 
+
+sp = statepoint.StatePoint('statepoint.20.domain_1.binary')
 sp.read_results()
 
-# extract tally results and convert to vector
-results = sp.tallies[0].results
+# extract tally results (means only) and convert to vector
+results = sp.tallies[0].results[:,:,0]
+results = order_by(results, sp.tallies[0].otf_filter_bin_map)
 shape = results.shape
 size = (np.product(shape))
 results = np.reshape(results, size)

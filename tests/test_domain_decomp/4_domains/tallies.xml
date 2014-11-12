@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>rectangular</type>
+    <lower_left> -9.9 -9.9 -9.9 </lower_left>
+    <upper_right> 9.9  9.9  9.9 </upper_right>
+    <dimension>3 3 1</dimension>
+  </mesh>
+
+  <tally id="1">
+    <filter type="mesh" bins="1" />
+    <scores>total</scores>
+  </tally>
+
+</tallies>

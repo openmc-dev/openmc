@@ -7,11 +7,14 @@ import re
 from subprocess import Popen, call, STDOUT, PIPE
 from glob import glob
 from optparse import OptionParser
+import warnings
 
 parser = OptionParser()
 parser.add_option('--exe', dest='exe',
                   help="Path to openmc executable with basic \
                         configuration options (no HDF5, no MPI, etc.)")
+parser.add_option('--mpi_exec', dest='mpi_exec',
+                  help="Path to mpiexec for tests that require it.")
 parser.add_option('-R', '--tests-regex', dest='regex_tests',
                   help="Run tests matching regular expression. \
                   Test names are the directories present in tests folder.\
@@ -66,6 +69,36 @@ for adir in sorted(folders):
         returncode = proc.wait()
         if os.path.exists('results_error.dat'):
             os.rename('results_error.dat', 'results_true.dat')
+        print(BOLD + OKGREEN + "[OK]" + ENDC)
+        os.chdir('..')
+        continue
+
+    if adir == 'test_domain_decomp':
+        # Handle domain decomp test separately since it requires running OpenMC
+        # twice
+        if opts.mpi_exec is None:
+            warnings.warn('Need to specify an mpi_exec executable for DD test')
+            print(BOLD + FAIL + "[FAILED]" + ENDC)
+            continue
+        else:
+            mpi_exec = os.path.abspath(opts.mpi_exec)
+        if os.path.exists('results_error.dat'):
+            os.remove('results_error.dat')
+        proc = Popen(['python', 'test_domain_decomp.py', '--exe', openmc_exe,
+                      '--mpi_exec', mpi_exec],
+                     stderr=STDOUT, stdout=PIPE)
+        returncode = proc.wait()
+        if returncode != 0:
+            print(BOLD + FAIL + "[FAILED]" + ENDC)
+            continue
+        os.chdir('1_domain')
+        if os.path.exists('results_error.dat'):
+            os.rename('results_error.dat', 'results_true.dat')
+        os.chdir('..')
+        os.chdir('4_domains')
+        if os.path.exists('results_error.dat'):
+            os.rename('results_error.dat', 'results_true.dat')
+        os.chdir('..')
         print(BOLD + OKGREEN + "[OK]" + ENDC)
         os.chdir('..')
         continue

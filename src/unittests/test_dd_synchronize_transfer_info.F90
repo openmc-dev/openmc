@@ -1,6 +1,5 @@
 module test_dd_synchronize_transfer_info
 
-  use dd_comm,          only: synchronize_transfer_info
   use dd_init,          only: initialize_domain_decomp
   use dd_header,        only: dd_type, deallocate_dd
   use dd_testing_setup, only: check_procs, dd_simple_four_domains, &
@@ -11,6 +10,7 @@ module test_dd_synchronize_transfer_info
   use testing_header,   only: TestSuiteClass, TestClass
 
 #ifdef MPI
+  use dd_comm,          only: synchronize_transfer_info
   use mpi
 #endif
 
@@ -76,8 +76,10 @@ contains
 
   subroutine test_execute()
 
+#ifdef MPI
     call synchronize_transfer_info(dd)
-    
+#endif
+
   end subroutine test_execute
 
 !===============================================================================
@@ -131,6 +133,8 @@ contains
     else
       call suite % fail()
     end if
+#else
+    call suite % fail()
 #endif
     
   end subroutine test_check

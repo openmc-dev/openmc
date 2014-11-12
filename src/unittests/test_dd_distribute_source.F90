@@ -182,6 +182,8 @@ contains
     else
       call suite % fail()
     end if
+#else
+    call suite % fail()
 #endif
     
   end subroutine test_check

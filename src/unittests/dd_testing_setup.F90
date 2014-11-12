@@ -2,6 +2,7 @@ module dd_testing_setup
 
   use constants
   use dd_header,        only: dd_type
+  use error,            only: warning
   use global,           only: master, n_procs, rank, n_particles, n_tallies, &
                               tallies, n_cells, n_user_tallies, micro_xs, &
                               material_xs, total_weight

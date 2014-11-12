@@ -11,11 +11,11 @@ module test_dd_reduce_tally_results
   use output,           only: write_message
   use particle_header,  only: Particle
   use string,           only: to_str
-  use tally,            only: reduce_tally_results
   use testing_header,   only: TestSuiteClass, TestClass
 
 #ifdef MPI
   use mpi
+  use tally,            only: reduce_tally_results
 #endif
 
   implicit none
@@ -84,8 +84,10 @@ contains
 
   subroutine test_execute()
 
+#ifdef MPI
     call reduce_tally_results()
-    
+#endif
+
   end subroutine test_execute
 
 !===============================================================================
@@ -224,6 +226,8 @@ contains
     else
       call suite % fail()
     end if
+#else
+    call suite % fail()
 #endif
  
   end subroutine test_check

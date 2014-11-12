@@ -721,9 +721,6 @@ contains
     integer    :: i            ! loop indices
     integer    :: j            ! loop indices
     integer    :: alloc_err    ! allocation error code
-    integer(8) :: size_bank    ! new size of the particle source bank
-    integer(8) :: start        ! starting index in global bank
-    integer(8) :: finish       ! ending index in global bank
     integer(8) :: total        ! total sites in global fission bank
     integer(8) :: index_temp   ! index in temporary source bank
     integer(8) :: sites_needed ! # of sites to be sampled
@@ -735,6 +732,9 @@ contains
 
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
+    integer(8) :: size_bank    ! new size of the particle source bank
+    integer(8) :: start        ! starting index in global bank
+    integer(8) :: finish       ! ending index in global bank
     integer    :: neighbor     ! processor to send/recv data from
     integer    :: request(20)  ! communication request for send/recving sites
     integer    :: n_request    ! number of communication requests

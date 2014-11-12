@@ -9,6 +9,7 @@ module tracking
                              distance_to_mesh_surface
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
+  use material_header
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
@@ -104,7 +105,8 @@ contains
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
 
-      if (p % material /= p % last_material) call calculate_xs(p)
+      if (p % material /= p % last_material &
+            & .or. p % inst /= p % last_inst) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)

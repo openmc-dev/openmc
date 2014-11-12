@@ -11,7 +11,7 @@ module constants
   integer, parameter :: VERSION_RELEASE = 1
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 14
+  integer, parameter :: REVISION_STATEPOINT       = 15
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -294,16 +294,17 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 8
+  integer, parameter :: N_FILTER_TYPES = 9
   integer, parameter :: &
-       FILTER_UNIVERSE  = 1, &
-       FILTER_MATERIAL  = 2, &
-       FILTER_CELL      = 3, &
-       FILTER_CELLBORN  = 4, &
-       FILTER_SURFACE   = 5, &
-       FILTER_MESH      = 6, &
-       FILTER_ENERGYIN  = 7, &
-       FILTER_ENERGYOUT = 8
+       FILTER_UNIVERSE    = 1, &
+       FILTER_MATERIAL    = 2, &
+       FILTER_CELL        = 3, &
+       FILTER_CELLBORN    = 4, &
+       FILTER_SURFACE     = 5, &
+       FILTER_MESH        = 6, &
+       FILTER_ENERGYIN    = 7, &
+       FILTER_ENERGYOUT   = 8, &
+       FILTER_DISTRIBCELL = 9
 
   ! Tally surface current directions
   integer, parameter :: &
@@ -377,12 +378,13 @@ module constants
        GRID_LETHARGY = 3    ! lethargy mapping
 
   ! Running modes
-  integer, parameter ::       &
-       MODE_TESTING     = -1, & ! Unit Testing mode
-       MODE_FIXEDSOURCE = 1,  & ! Fixed source mode
-       MODE_EIGENVALUE  = 2,  & ! K eigenvalue mode
-       MODE_PLOTTING    = 3,  & ! Plotting mode
-       MODE_PARTICLE    = 4     ! Particle restart mode
+  integer, parameter ::        &
+       MODE_TESTING      = -1, & ! Unit Testing mode
+       MODE_FIXEDSOURCE  = 1,  & ! Fixed source mode
+       MODE_EIGENVALUE   = 2,  & ! K eigenvalue mode
+       MODE_PLOTTING     = 3,  & ! Plotting mode
+       MODE_PARTICLE     = 4,  & ! Particle restart mode
+       MODE_DISTRIBUTION = 5     ! Help with distribution indices
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
@@ -391,6 +393,7 @@ module constants
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
   integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
   integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
+  integer, parameter :: UNIT_HELP     = 17 ! unit # for writing distrib help
 
   ! When materials and tallies arrays are allocated on-the-fly, this parameter
   ! controls how much larger than the needed size they will be allocated to

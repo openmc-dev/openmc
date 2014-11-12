@@ -1,15 +1,17 @@
 #!/usr/bin/env python2
 
+from sys import exit
 import struct
 from collections import OrderedDict
 
 import numpy as np
 import scipy.stats
 
-REVISION_STATEPOINT = 14
+REVISION_STATEPOINT = 15
 
-filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
-                5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
+filter_types = {1: 'universe', 2: 'material', 3: 'cell',
+                4: 'cellborn', 5: 'surface', 6: 'mesh',
+                7: 'energyin', 8: 'energyout', 9: 'distribcell'}
 
 score_types = {-1: 'flux',
                -2: 'total',
@@ -98,6 +100,7 @@ score_types.update({MT: '(n,a' + str(MT-800) + ')' for MT in range(800,849)})
 
 
 class Mesh(object):
+
     def __init__(self):
         pass
 
@@ -109,17 +112,30 @@ class Mesh(object):
 
 
 class Filter(object):
+
     def __init__(self):
         self.type = 0
         self.bins = []
+        self.offset = -1
 
     def __repr__(self):
         return "<Filter: {0}>".format(self.type)
 
 
 class Tally(object):
+
     def __init__(self):
+
         self.filters = OrderedDict()
+        self.id = None
+	self.label = None
+	self.estimator = None
+        self.n_realizations = None
+        self.total_score_bins = None
+        self.total_filter_bins = None
+
+    def getScoreIndex(self, score):
+        return self.scores.index(score)
 
 
 class SourceSite(object):
@@ -132,9 +148,306 @@ class SourceSite(object):
     def __repr__(self):
         return "<SourceSite: xyz={0} at E={1}>".format(self.xyz, self.E)
 
+class Geometry_Data(object):
+    def __init__(self):
+        self.univ = []
+        self.cell = []
+        self.lat  = []
+        self.surf = []
+        self.mat  = []
+        self.n_cells = 0
+        self.n_lattices = 0
+        self.n_universes = 0
+        self.n_surfaces = 0
+        self.n_materials = 0
+
+    def _print_all(self):
+
+        print 'Geometry Information:'
+        print 'n_cells:',self.n_cells
+        print 'n_universes:',self.n_universes
+        print 'n_lattices:',self.n_lattices
+        print 'n_surfaces:',self.n_surfaces
+        print 'n_materials:',self.n_materials
+	print ''
+	print 'Universes:'
+	print ''
+        for i in self.univ:
+          print 'Universe:',i.ID
+          print '--Contains Cells:',i.cells
+
+	print ''
+	print ''	
+	print 'Cells:'
+	print ''
+        for i in self.cell:
+          print 'Cell:',i.ID
+          print '--UserID:',i.userID
+          print '--Filltype:',i.filltype
+          print '--Fill:'
+          print i.fill
+          print '--Offset:',i.offset
+          print '--Material:',i.material
+          print '--Surfaces:'
+          print i.surf
+
+	print ''
+	print ''	
+	print 'Lattices:'
+	print ''
+        for i in self.lat:
+          print 'Lattice:',i.ID
+          print '--Fill:',i.fill
+          if type(i.offset) == int:
+            pass
+          else:
+            print '--Offset Dimensions:',i.offset.shape
+          print '--Offset:',np.squeeze(i.offset)
+          print '--Dimenisions:',i.dim
+
+	print ''
+	print ''	
+	print 'Surfaces:'
+	print ''
+        for i in self.surf:
+          print 'Surface:',i.ID
+          print 'User ID:',i.userID
+          print '--Type:',i.s_type
+          print '--Coefficients:'
+          print i.coeffs
+	  print '--# Positive Neighbors:',i.n_pos
+          print '--Positive Neighbors:'
+	  print i.neighbor_pos
+	  print '--# Negative Neighbors:',i.n_neg
+          print '--Negative Neighbors:'
+	  print i.neighbor_neg
+          print 'Boundary Condition:',i.bc
+
+
+	print ''
+	print ''	
+	print 'Materials:'
+	print ''
+        for i in self.mat:
+          print 'Material:',i.ID
+          print '--# Nuclides:',i.n_nuclide
+          print '--Nuclides:'
+	  print i.nuclide
+          print '--Density:',i.density
+          print '--Atom Densities:'
+	  print i.atom_density
+          print '--# Sab Tables:',i.n_sab
+          print '--Sab Nuclides:'
+	  print i.i_sab_nuclides
+          print '--Tables:'
+	  print i.i_sab_tables
+
+    def _get_offset(self, path, filter_offset):
+        """
+        Returns the corresponding location in the results array for a given
+        path and filter number.
+
+        Parameters
+        ----------
+        path : list 
+            A list of IDs that form the path to the target. It should begin with 0
+            for the base universe, and should cover every universe, cell, and lattice passed through.
+            For the case of the lattice, a tuple should be provided to indicate which coordinates
+            in the lattice should be entered. This should be in the form: (lat_id, i_x, i_y, i_z)
+
+        filter_offset : int
+            An integer that specifies which offset map the filter is using
+
+        """
+        prev = -1
+        prevtype = ''
+        # The variable returned at completion
+        offset = 0
+        # Verify path length at least 2. 1 for base universe, 1 so it could end in a cell
+        if len(path) < 2:
+          error = "ERROR: len(path) < 2. It cannot meet all requirements."
+          exit(error)
+        # Iterate over path
+        for i in path:
+
+          if prev == -1:
+            # We should get the base universe first
+            prev = i
+            prevtype = 'U'
+            if prev != 0:
+              error = "ERROR: First element in path was not 0."
+              exit(error)
+
+          else:
+            if isinstance(i,tuple):
+              if len(i) != 4:
+                error = "ERROR: Tuple " + str(i) + " does not have exactly 4 elements."
+                exit(error)
+
+              # WILL'S CHANGE
+              if i[0] != self.cell[self.cellKeys.index(prev)].fill:
+                error = "ERROR: Previous cell did not contain lattice " + str(i[0]) + "."
+                exit(error)
+
+              # Find the lattice in the lattice list
+              for j in self.lat:
+                if j.ID == i[0]:
+                  if (i[1] > j.dim[0] or i[1] < 1 or 
+                      i[2] > j.dim[1] or i[2] < 1 or
+                      i[3] > j.dim[2] or i[3] < 1):
+                    error = "Bad lattice index specified for lattice "+str(i[0])+"."
+                    exit(error)
+                  offset += j.offset[i[3]-1,i[2]-1,i[1]-1,filter_offset-1]
+                  prev = i[0]
+                  prevtype = 'L'
+                  break
+              else:
+                # Couldn't find the lattice - Not good 
+                    error = "ERROR: Could not find lattice data for ID " + str(i[0]) + "."
+                    exit(error)             
+            
+            else:
+              # Expect universe or cell or lattice (as final target)
+              if prevtype == 'U':
+                # Last construct was a universe
+                # Need to set j to be the OpenMC ID of the cell, as that is what the universes store
+                for c in self.cell:
+                  if i == c.userID:
+                    jTrue = c.ID
+                l = 0
+                for u in self.univ:
+                  if u.ID == prev:                    
+                    break
+                  l += 1
+                if jTrue not in self.univ[l].cells:
+                    error = "ERROR: Requested cell " + str(i) + " from universe ",str(prev)," was not found."
+                    exit(error)
+                # Get key index
+                prev = i
+                prevtype = 'C'
+              elif prevtype == 'C':                
+                # Last construct was a cell 
+                # Check if the previous cell was a normal cell
+                # Throw Exception if it was, there's no deeper cells
+                for c in self.cell:
+                  if prev == c.userID and c.filltype == 'normal':
+                    error = "ERROR: Cell " + str(c.userID)  + " is normal cell, cannot contain any lower levels."
+                    exit(error)
+                # Else check if fill or lattice
+                # If fill, just go to that universe
+                for c in self.cell:
+                  if prev == c.userID:
+                    if c.filltype == "fill_cell":
+                      if c.fill != i[0]:
+                        error = "ERROR: Fill Cell " + str(c.userID) + " does not contain universe " + str(i[0])  + "."
+                        exit(error)
+                      prevtype = 'U'
+                      prev = i[0]      
+                      offset += c.offset[filter_offset-1]                   
+                    elif c.filltype == "lattice":
+                      prev = i[0]
+                      prevtype = 'L'    
+              elif prevtype == 'L':
+                # Last construct was a lattice 
+                # Double check that this universe is contained by that lattice
+                for j in self.lat:
+                  if j.ID == prev:
+                    if not (j.fill == i).any():
+                      error = "ERROR: Lattice " + str(prev) + " does not contain universe " + str(i) + "."
+                      exit(error)
+                # Found a lattice that matched and contains this universe
+                prevtype = 'U'
+                prev = i  
+        return offset
+
+
+class Universe(object):
+
+    def __init__(self, ID, cells):
+
+        self.ID = ID
+        self.cells = cells
+
+
+class Cell(object):
+
+    def __init__(self, ID, userID, filltype):
+
+        self.ID = ID
+        self.userID = userID
+        self.filltype = filltype
+        self.offset = []
+        self.material = -1
+        self.fill = -1
+        self.n_surf = 0
+        self.surf = []
+
+
+    def _set_material(self, material):
+        self.material = material
+
+
+    def _set_fill(self, fill):
+        self.fill = fill
+
+
+    def _set_offset(self, offset):
+        self.offset = offset
+
+    def _set_surf(self,n_surf,surf):
+        self.n_surf = n_surf
+        self.surf = surf
+
+
+class Lattice(object):
+
+    def __init__(self, ID, fill, offset, dim):
+
+        self.ID = ID
+        self.fill = fill
+        self.offset = offset
+        self.dim = dim
+        if len(self.dim) == 2:
+            self.dim.append(1)
+
+
+class Surface(object):
+
+    def __init__(self, ID, userID, s_type, coeffs, n_pos, neighbor_pos, 
+                 n_neg, neighbor_neg, bc):
+
+        self.ID = ID
+        self.userID = userID
+        self.s_type = s_type
+        self.coeffs = coeffs
+        self.n_pos = n_pos
+        self.neighbor_pos = neighbor_pos
+        self.n_neg = n_neg
+        self.neighbor_neg = neighbor_neg
+        self.bc = bc
+
+
+class Material(object):
+
+    def __init__(self, ID, n_nuclide, nuclide, density, atom_density, n_sab, 
+                 i_sab_nuclides, i_sab_tables):
+
+        self.ID = ID
+        self.n_nuclide = n_nuclide
+        self.nuclide = nuclide
+        self.density = density
+        self.atom_density = atom_density
+        self.n_sab = n_sab
+        self.i_sab_nuclides = i_sab_nuclides
+        self.i_sab_tables = i_sab_tables
+
 
 class StatePoint(object):
+
     def __init__(self, filename):
+
+        self.tallies_present = False
+
         if filename.endswith('.h5'):
             import h5py
             self._f = h5py.File(filename, 'r')
@@ -143,7 +456,10 @@ class StatePoint(object):
             self._f = open(filename, 'rb')
             self._hdf5 = False
 
-        # Set flags for what data  was read
+        # Tally ID -> Index Dictionary
+        self.tallyID = dict()
+
+        # Set flags for what data was read
         self._metadata = False
         self._results = False
         self._source = False
@@ -153,8 +469,12 @@ class StatePoint(object):
         self.tallies = []
         self.source = []
 
+        # Initialize geometry data
+        self.geom = Geometry_Data()
+
         # Read all metadata
         self._read_metadata()
+
 
     def _read_metadata(self):
         # Read filetype
@@ -223,6 +543,143 @@ class StatePoint(object):
                 self.cmfd_srccmp = self._get_double(self.current_batch,
                                    path='cmfd/cmfd_srccmp')
 
+        # Read geometry information
+        self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
+        self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
+        self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
+        self.geom.n_surfaces = self._get_int(path='geometry/n_surfaces')[0]
+        self.geom.n_materials = self._get_int(path='geometry/n_materials')[0]
+
+        if self.geom.n_lattices > 0:
+          latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
+
+        univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
+
+        
+        # User Inputs  
+        self.geom.surfKeys = self._get_int(self.geom.n_surfaces,path='geometry/surface_keys')
+        # OpenMC IDs
+        self.geom.surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
+
+
+        matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
+
+        # User Inputs  
+        self.geom.cellKeys = self._get_int(self.geom.n_cells,path='geometry/cell_keys')
+        # OpenMC IDs
+        self.geom.cellList = self._get_int(self.geom.n_cells,path='geometry/cell_ids')
+
+        # Build list of cells
+        base = 'geometry/cells/cell '
+        for i in range(self.geom.n_cells):
+          filltypeInt = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill_type')[0]
+          n_surf = self._get_int(path=base + str(self.geom.cellKeys[i])+'/n_surfaces')[0]
+          surf = self._get_int(n_surf,path=base + str(self.geom.cellKeys[i])+'/surfaces')
+          if filltypeInt == 1:
+            filltype = "normal"
+          elif filltypeInt == 2:
+            filltype = "fill cell"
+          else:
+            filltype = "lattice"
+          self.geom.cell.append(Cell(self.geom.cellList[i],self.geom.cellKeys[i],filltype))
+          if filltype == "normal":
+            material = self._get_int(path=base + str(self.geom.cellKeys[i])+'/material')[0]
+            self.geom.cell[-1]._set_material(material)
+          else:
+            if filltype == "lattice":
+              fill = self._get_int(path=base + str(self.geom.cellKeys[i])+'/lattice')[0]
+            elif filltype == "fill cell":
+              fill = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill')[0]
+              maps = self._get_int(path=base + str(self.geom.cellKeys[i])+'/maps')[0]
+              if maps > 0:
+                offset = self._get_int(path=base + str(self.geom.cellKeys[i])+'/offset')
+                self.geom.cell[-1]._set_offset(offset)
+            self.geom.cell[-1]._set_fill(fill)
+          self.geom.cell[-1]._set_surf(n_surf,surf)
+
+        # Build list of universes
+        base = 'geometry/universes/universe '
+        for i in range(self.geom.n_universes):
+          n = self._get_int(path=base + str(univList[i])+'/cells')[0]
+          if n != 0:
+            self.geom.univ.append(Universe(univList[i],self._get_int(n, path=base + str(univList[i])+'/cells')))
+
+        # Build list of lattices
+        base = 'geometry/lattices/lattice '
+        for i in range(self.geom.n_lattices):
+          struct = self._get_int(path=base + str(latticeList[i])+'/type')
+          dim = self._get_int(3,path=base + str(latticeList[i])+'/dimension')
+          maps = self._get_int(path=base + str(latticeList[i])+'/maps')[0]
+          offset_size = self._get_int(path=base + str(latticeList[i])+'/offset_size')[0]
+          offset = 0
+          if offset_size > 0:
+            if self._hdf5:
+              path = base + str(latticeList[i])+'/offset'
+              data = self._f[path].value
+              offset = data    
+              path = base + str(latticeList[i])+'/universes'
+              data = self._f[path].value
+              fill = data
+            else:
+              offset = np.array(self._get_int(dim[0]*dim[1]*dim[2]*maps))
+              offset.shape = (dim[2], dim[1], dim[0],maps)     
+              fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
+              fill.shape = (dim[0], dim[1], dim[2]) 
+          else:
+            if self._hdf5:    
+              path = base + str(latticeList[i])+'/universes'
+              data = self._f[path].value
+              fill = data
+            else:
+              fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
+              fill.shape = (dim[0], dim[1], dim[2]) 
+          self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
+
+        # Build list of surfaces
+        base = 'geometry/surfaces/surface '
+        for i in range(self.geom.n_surfaces):
+          s_type = self._get_int(path=base + str(self.geom.surfKeys[i])+'/type')[0]
+          bc = self._get_int(path=base + str(self.geom.surfKeys[i])+'/bc')[0]
+          n_coeff = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_coeffs')[0]
+          coeffs = self._get_double(n_coeff,path=base + str(self.geom.surfKeys[i])+'/coeffs')
+          n_pos = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_neighbor_pos')[0]
+          if n_pos > 0:
+            pos_n = self._get_int(n_pos,path=base + str(self.geom.surfKeys[i])+'/neighbor_pos')
+          else:
+            pos_n = None
+          n_neg = self._get_int(path=base + str(self.geom.surfKeys[i])+'/n_neighbor_neg')[0]
+          if n_neg > 0:
+            neg_n = self._get_int(n_neg,path=base + str(self.geom.surfKeys[i])+'/neighbor_neg')
+          else:
+            neg_n = None
+          self.geom.surf.append(Surface(self.geom.surfList[i], 
+                                          self.geom.surfKeys[i], s_type, coeffs, 
+                                          n_pos, pos_n, n_neg, neg_n, bc))
+
+        # Build list of materials
+        base = 'geometry/materials/material '
+        for i in range(self.geom.n_materials):
+          n_nuclide = self._get_int(path=base + str(matList[i])+'/n_nuclides')[0]
+          nuclide = self._get_int(n_nuclide,path=base + str(matList[i])+'/nuclide')
+          dist_dens = self._get_int(path=base + str(matList[i])+'/distrib_dens')[0]
+          dist_comp = self._get_int(path=base + str(matList[i])+'/distrib_comp')[0]
+          n_dens = self._get_int(path=base + str(matList[i])+'/n_density')[0]
+          dens = self._get_double(n_dens, path=base + str(matList[i])+'/density')
+          n_comp = self._get_int(path=base + str(matList[i])+'/n_comp')[0]
+          a_dens = []
+          for j in range(1,n_comp + 1):
+            a_dens.append(self._get_double(n_nuclide,path=base + str(matList[i])+'/compositions/'+str(j)+"/atom_density"))
+          n_sab = self._get_int(path=base + str(matList[i])+'/n_sab')[0]
+          if n_sab > 0:
+            sab_n = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_nuclides')
+            sab_t = self._get_int(n_sab,path=base + str(matList[i])+'/i_sab_tables')
+          else:
+            sab_n = None
+            sab_t = None
+	
+          self.geom.mat.append(Material(matList[i], n_nuclide, nuclide, dens, 
+                                 a_dens, n_sab, sab_n, sab_t))
+
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
 
@@ -257,6 +714,9 @@ class StatePoint(object):
 
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
+            labelsize = self._get_int(path=base+'id')[0]
+	    t.label = self._get_string(labelsize,path=base+'id')
+	    t.estimator = self._get_int(path=base+'id')[0]
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies
@@ -270,9 +730,11 @@ class StatePoint(object):
               t.otf_filter_bin_map = self._get_int(t.otf_size_results_filters,
                                                    path=base+'otf_filter_bin_map')
 
+            # Add tally to dictionary
+            self.tallyID[t.id] = i
+
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
-
             for j in range(n_filters):
                 # Create Filter object
                 f = Filter()
@@ -282,6 +744,9 @@ class StatePoint(object):
                 # Get type of filter
                 f.type = filter_types[self._get_int(path=base+'type')[0]]
 
+                # Get offset of filter
+                f.offset = self._get_int(path=base+'offset')[0]
+
                 # Add to filter dictionary
                 t.filters[f.type] = f
 
@@ -290,12 +755,12 @@ class StatePoint(object):
                 assert f.length > 0
                 if f.type == 'energyin' or f.type == 'energyout':
                     f.bins = self._get_double(f.length + 1, path=base+'bins')
-                elif f.type == 'mesh':
+                elif f.type == 'mesh' or f.type == 'distribcell':
                     f.bins = self._get_int(path=base+'bins')
                 else:
                     f.bins = self._get_int(f.length, path=base+'bins')
-
             base = 'tallies/tally' + str(i+1) + '/'
+
 
             # Read nuclide bins
             n_nuclides = self._get_int(path=base+'n_nuclide_bins')[0]
@@ -345,10 +810,10 @@ class StatePoint(object):
             self.global_tallies.shape = (n_global_tallies, 2)
 
         # Flag indicating if tallies are present
-        tallies_present = self._get_int(path='tallies/tallies_present')[0]
+        self.tallies_present = self._get_int(path='tallies/tallies_present')[0]
 
         # Read tally results
-        if tallies_present:
+        if self.tallies_present:
             for i, t in enumerate(self.tallies):
                 if t.otf_size_results_filters < 0:
                     n_actual_filter_bins = t.total_filter_bins
@@ -445,13 +910,13 @@ class StatePoint(object):
                     if s != 0.0:
                         t.results[i,j,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
-    def get_value(self, tally_index, spec_list, score_index):
+    def get_value(self, tally_ID, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
 
         Parameters
         ----------
-        tally_index : int
-            Index for tally in StatePoint.tallies list
+        tally_ID : int
+            The ID of the tally as specified in the openMC input file
 
         spec_list : list
             A list of tuples where the first value in each tuple is the filter
@@ -460,6 +925,7 @@ class StatePoint(object):
             tuple with three integers specifying the mesh indices.
 
             Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
+            Example: [('distribcell', path)] or [('distribcell', 3)]
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in
@@ -468,7 +934,7 @@ class StatePoint(object):
         """
 
         # Get Tally object given the index
-        t = self.tallies[tally_index]
+        t = self.tallies[self.tallyID[tally_ID]]
 
         # Initialize index for filter in Tally.results[:,:,:]
         filter_index = 0
@@ -490,6 +956,13 @@ class StatePoint(object):
                          (f_index[1] - 1)*nz +
                          (f_index[2] - 1))
                 filter_index += value*t.filters[f_type].stride
+            elif f_type == 'distribcell':
+                if type(f_index) != int:
+                    filter_offset = t.filters['distribcell'].offset
+                    value = self.geom._get_offset(f_index, filter_offset)
+                    filter_index += value*t.filters[f_type].stride          
+                else:
+                    filter_index += f_index*t.filters[f_type].stride
             else:
                 filter_index += f_index*t.filters[f_type].stride
 
@@ -513,7 +986,7 @@ class StatePoint(object):
            Parameters
            ----------
            tally_id : int
-               Index for the tally in StatePoint.tallies list
+               The ID of the tally as specified in the openMC input file
 
            score_str : string
                Corresponds to the string entered for a score in tallies.xml.
@@ -523,7 +996,7 @@ class StatePoint(object):
 
         # get tally
         try:
-            tally = self.tallies[tally_id-1]
+            tally = self.tallies[self.tallyID[tally_id]]
         except:
             print('Tally does not exist')
             return

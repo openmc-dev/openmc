@@ -134,6 +134,7 @@ contains
     integer,        optional      :: search_cells(:)
 
     integer :: i                    ! index over cells
+    integer :: j                    ! index over maps
     integer :: i_x, i_y, i_z        ! indices in lattice
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
@@ -146,6 +147,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
+    type(Material),  pointer, save :: mat => null()  ! pointer to material
 !$omp threadprivate(c, lat, univ)
 
     ! Remove coordinates for any lower levels
@@ -204,6 +206,14 @@ contains
           ! Move particle to next level and set universe
           p % coord => p % coord % next
           p % coord % universe = c % fill
+
+          ! Determine all offsets for this cell level
+          if (.not. allocated(p % coord % mapping)) then
+            allocate(p % coord % mapping(n_maps))
+          end if
+          do j = 1, n_maps
+            p % coord % mapping(j) = c % offset(j)
+          end do
 
           ! Apply translation
           if (allocated(c % translation)) then
@@ -273,7 +283,7 @@ contains
               ! In this case the neutron is leaving the lattice, so we move it
               ! out, remove all lower coordinate levels and then search from
               ! universe 0.
-            
+
               p % coord => p % coord0
               call deallocate_coord(p % coord % next)
 
@@ -317,12 +327,23 @@ contains
             p % coord % next % uvw = p % coord % uvw
 
             ! set particle lattice indices
-            p % coord % next% lattice   = c % fill
-            p % coord % next% lattice_x = i_x
-            p % coord % next% lattice_y = i_y
-            p % coord % next% lattice_z = i_z
+            p % coord % next % lattice   = c % fill
+            p % coord % next % lattice_x = i_x
+            p % coord % next % lattice_y = i_y
+            p % coord % next % lattice_z = i_z
+
             if (.not. outside_lattice) then
+
               p % coord % next % universe = lat % universes(i_x,i_y,i_z)
+
+              ! Determine all offsets for this cell level
+              if (.not. allocated(p % coord % next % mapping)) then
+                allocate(p % coord % next % mapping(n_maps))
+              end if
+              do j = 1, n_maps
+                p % coord % next % mapping(j) = lat % offset(j,i_x,i_y,i_z)
+              end do
+
             else
 
               ! Set universe as the same for subsequent calls to find_cell
@@ -347,6 +368,17 @@ contains
 
         ! Found cell so we can return
         found = .true.
+        call p % sum_maps(n_maps)
+        
+        p % last_inst = p % inst
+        
+        ! make sure there is a current material  
+        if (p % material > 0 .and. .not. (run_mode == MODE_PLOTTING)) then
+          mat => materials(p % material)
+          p % inst = p % mapping(mat % map)
+        else
+          p % inst = 0
+        end if
         return
       end if
     end do
@@ -659,6 +691,7 @@ contains
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_crossed
 
+    integer :: i             ! map loop index
     integer :: i_x, i_y, i_z ! indices in lattice
     integer :: n_x, n_y, n_z ! size of lattice
     real(8) :: x0, y0, z0    ! half width of lattice element
@@ -741,8 +774,13 @@ contains
       end if
     else
       ! Find universe for next lattice element
-      p % coord % universe = lat % universes(i_x, i_y, i_z)
-
+      p % coord % universe = lat % universes(i_x, i_y, i_z)      
+      if (.not. allocated(p % coord % mapping)) then
+        allocate(p % coord % mapping(n_maps))
+      end if
+      do i = 1, n_maps
+        p % coord % mapping(i) = lat % offset(i, i_x, i_y, i_z)
+      end do
       ! Find cell in next lattice element
       call find_cell(p, found)
       if (.not. found) then
@@ -1682,5 +1720,286 @@ contains
     end if
 
   end subroutine handle_lost_particle
+  
+!===============================================================================
+! CALC_OFFSETS calculates and stores the offsets in all fill cells. This
+! routine is called once upon initialization.
+!===============================================================================
+
+  subroutine calc_offsets(goal, map, univ)
+
+    integer, intent(in) :: goal         ! target universe ID
+    integer, intent(in) :: map          ! map index in vector of maps
+    type(Universe), intent(in) :: univ  ! universe searching in
+
+    integer :: i                        ! index over cells
+    integer :: i_x, i_y, i_z            ! indices in lattice
+    integer :: n_x, n_y, n_z            ! size of lattice
+    integer :: n                        ! number of cells to search
+    integer :: tempoffset               ! total offset for a given cell
+    integer :: index_cell               ! index in cells array
+    type(Cell),     pointer :: c => null()    ! pointer to cell
+    type(Lattice),  pointer :: lat => null()  ! pointer to lattice
+    type(Universe), pointer :: univ_next => null() ! next univ to loop through
+!$omp threadprivate(c, lat, univ_next)
+
+    n = univ % n_cells
+    tempoffset = 0
+
+    do i = 1, n
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+        ! Set offset
+        c % offset(map) = tempoffset
+        univ_next => universes(c % fill)
+        ! Count contents of this cell
+
+        tempoffset = tempoffset + count_target(univ_next, goal, map)
+        ! Move into the next universe
+        univ_next => universes(c % fill)
+        c => cells(index_cell)
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        
+        else
+          n_z = 1        
+        end if
+
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+              lat % offset(map,i_x,i_y,i_z) = tempoffset
+              
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+
+              tempoffset = tempoffset + count_target(univ_next, goal, map)
+              
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+              
+            end do
+          end do
+        end do
+
+      end if
+    end do
+    
+    return
+        
+  end subroutine calc_offsets
+
+!===============================================================================
+! COUNT_TARGET recursively totals the numbers of occurances of a given
+! universe ID beginning with the universe given.
+!===============================================================================
+
+  recursive function count_target(univ, goal, map) result(kount)
+
+    type(Universe), intent(inout) :: univ  ! universe to search through
+    integer, intent(in) :: goal         ! target universe ID
+    integer             :: kount        ! number of times target located
+    integer             :: map          ! current map
+
+    integer :: i                        ! index over cells
+    integer :: i_x, i_y, i_z            ! indices in lattice
+    integer :: n_x, n_y, n_z            ! size of lattice
+    integer :: n                        ! number of cells to search
+    integer :: index_cell               ! index in cells array
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next univ to loop through
+!$omp threadprivate(c, lat, univ_next)
+
+    ! Don't research places already checked
+    if (univ % search(map)) then
+      kount = univ % kount(map)
+      return
+    end if
+
+    ! If this is the target, it can't contain itself.
+    ! Kount = 1, then quit
+    if (univ % id == goal) then
+      kount = 1
+      univ % kount(map) = 1
+      univ % search(map) = .true.
+      return
+    end if
+
+    kount = 0
+    n = univ % n_cells
+      
+    do i = 1, n
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+               
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        if (univ_next % id == goal) then
+          ! Found the target
+          kount = kount + 1
+          ! Target cannot contain itself, no point looking deeper
+          return
+        end if
+        
+        kount = kount + count_target(univ_next, goal, map)
+        c => cells(index_cell)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+            
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              if (univ_next % id == goal) then
+                ! Found the target
+                kount = kount + 1
+                ! Target cannot contain itself, no point looking deeper
+                cycle
+              end if
+              
+              kount = kount + count_target(univ_next, goal, map)
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+              
+            end do
+          end do
+        end do
+
+      end if
+    end do
+
+    univ % kount(map) = kount
+    univ % search(map) = .true.
+             
+  end function count_target
+  
+!===============================================================================
+! COUNT_INSTANCE recursively totals the numbers of occurances of a given cell id
+! beginning with the universe given.
+!===============================================================================
+
+  recursive subroutine count_instance(univ, goal, kount)
+
+    type(Universe), intent(in) :: univ  ! universe to search through
+    integer, intent(in) :: goal         ! target cell ID
+    integer, intent(inout) :: kount     ! number of times target located
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c, lat, univ_next)
+
+    n = univ % n_cells
+      
+    do i = 1, n
+    
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      if (cell_dict % get_key(c % id) == goal) then
+        kount = kount + 1
+        ! Cell can't exist more than once in this universe,
+        ! or in a universe below this
+        cycle
+      end if
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+               
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        
+        call count_instance(univ_next,goal,kount)
+        c => cells(index_cell)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              call count_instance(univ_next,goal,kount)
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+            end do
+          end do
+        end do
+
+      end if
+    end do
+             
+  end subroutine count_instance
+
 
 end module geometry

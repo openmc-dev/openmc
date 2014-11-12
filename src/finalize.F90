@@ -35,7 +35,8 @@ contains
     ! Start finalization timer
     call time_finalize % start()
 
-    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
+    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE &
+        .and. run_mode /= MODE_DISTRIBUTION) then
       ! Calculate statistics for tallies and write to tallies.out
       if (master .or. (dd_run .and. domain_decomp % local_master)) then
         if (n_realizations > 1) call tally_statistics()

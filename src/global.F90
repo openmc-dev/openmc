@@ -321,6 +321,9 @@ module global
   ! Write out initial source
   logical :: write_initial_source = .false.
 
+  ! Number of distribution maps
+  integer :: n_maps
+
   ! ============================================================================
   ! CMFD VARIABLES 
 

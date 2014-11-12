@@ -14,7 +14,7 @@ module output
   use output_header,   only: output_message
   use particle_header, only: LocalCoord, Particle
   use plot_header
-  use string,          only: to_upper, to_str
+  use string,          only: to_upper, to_str, zero_padded, count_digits
   use tally_header,    only: TallyObject
 
   implicit none
@@ -1685,9 +1685,15 @@ contains
     score_names(abs(SCORE_NU_SCATTER_YN)) = "Scattering Prod. Rate Moment"
 
     ! Create filename for tally output
-    filename = trim(path_output) // "tallies.out"
+    filename = trim(path_output) // "tallies"
 
-    if (dd_run) filename = trim(filename) // trim(to_str(rank))
+    if (dd_run) then
+      filename = trim(filename) // '.domain_' // &
+          & zero_padded(domain_decomp % meshbin, &
+                        count_digits(domain_decomp % n_domains))
+    end if
+
+    filename = trim(filename) // '.out'
 
     ! Open tally file for writing
     open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', ACTION='write')

@@ -39,12 +39,19 @@ contains
     character(MAX_FILE_LEN) :: filename
     integer                 :: i
     integer                 :: j
+    integer                 :: n
     integer, allocatable    :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
         & zero_padded(current_batch, count_digits(n_batches))
+
+    if (dd_run) then
+      filename = trim(filename) // '.domain_' // &
+          & zero_padded(domain_decomp % meshbin, &
+                        count_digits(domain_decomp % n_domains))
+    end if
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -56,7 +63,7 @@ contains
     ! Write message
     call write_message("Creating state point " // trim(filename) // "...", 1)
 
-    if (master) then
+    if (master .or. (dd_run .and. domain_decomp % local_master)) then
       ! Create statepoint file
       call sp % file_create(filename)
 
@@ -168,6 +175,25 @@ contains
         call sp % write_data(t % total_filter_bins, "total_filter_bins", &
              group="tallies/tally" // to_str(i))
 
+        ! Write on-the-fly allocation tally info
+        if (t % on_the_fly_allocation) then
+          n = t % next_filter_idx - 1
+          call sp % write_data(n, "otf_size_results_filters", &
+               group="tallies/tally" // to_str(i))
+          ! Write otf filter bin mapping
+          allocate(temp_array(n))
+          do j = 1, n
+            temp_array(j) = t % reverse_filter_index_map % get_key(j)
+          end do
+          call sp % write_data(temp_array, "otf_filter_bin_map", &
+               group="tallies/tally" // to_str(i), &
+               length=n)
+          deallocate(temp_array)
+        else
+          call sp % write_data(NONE, "otf_size_results_filters", &
+               group="tallies/tally" // to_str(i))
+        end if
+
         ! Write number of filters
         call sp % write_data(t % n_filters, "n_filters", &
              group="tallies/tally" // to_str(i))
@@ -242,9 +268,13 @@ contains
       ! If using the no-tally-reduction method, we need to collect tally
       ! results before writing them to the state point file.
 
+      if (dd_run) then
+        call fatal_error('no_reduce not implemented with domain decomposition')
+      end if
+
       call write_tally_results_nr()
 
-    elseif (master) then
+    elseif (master .or. (dd_run .and. domain_decomp % local_master)) then
 
       ! Write number of global realizations
       call sp % write_data(n_realizations, "n_realizations")
@@ -267,10 +297,19 @@ contains
           t => tallies(i)
 
           ! Write sum and sum_sq for each bin
-          call sp % write_tally_result(t % results, "results", &
-               group="tallies/tally" // to_str(i), &
-               n1=size(t % results, 1), n2=size(t % results, 2))
+          if (t % on_the_fly_allocation) then
 
+            n = t % next_filter_idx - 1
+            call sp % write_tally_result(t % results(:,1:n), "results", &
+                 group="tallies/tally" // to_str(i), &
+                 n1=size(t % results, 1), n2=n)
+          else
+
+            call sp % write_tally_result(t % results, "results", &
+                 group="tallies/tally" // to_str(i), &
+                 n1=size(t % results, 1), n2=size(t % results, 2))
+
+          endif
         end do TALLY_RESULTS
 
       else

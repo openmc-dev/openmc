@@ -6,7 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
-REVISION_STATEPOINT = 13
+REVISION_STATEPOINT = 14
 
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
@@ -96,6 +96,7 @@ score_types.update({MT: '(n,t' + str(MT-700) + ')' for MT in range(700,749)})
 score_types.update({MT: '(n,3He' + str(MT-750) + ')' for MT in range(750,649)})
 score_types.update({MT: '(n,a' + str(MT-800) + ')' for MT in range(800,849)})
 
+
 class Mesh(object):
     def __init__(self):
         pass
@@ -106,6 +107,7 @@ class Mesh(object):
         else:
             return "<Mesh>"
 
+
 class Filter(object):
     def __init__(self):
         self.type = 0
@@ -113,6 +115,7 @@ class Filter(object):
 
     def __repr__(self):
         return "<Filter: {0}>".format(self.type)
+
 
 class Tally(object):
     def __init__(self):
@@ -160,7 +163,9 @@ class StatePoint(object):
         # Read statepoint revision
         self.revision = self._get_int(path='revision')[0]
         if self.revision != REVISION_STATEPOINT:
-          raise Exception('Statepoint Revision is not consistent.')
+          raise Exception('Statepoint Revision is not consistent. '
+                          'Current file: %s, statepoint.py: %s'
+                          % (self.revision, REVISION_STATEPOINT))
 
         # Read OpenMC version
         if self._hdf5:
@@ -258,6 +263,13 @@ class StatePoint(object):
             t.total_score_bins = self._get_int(path=base+'total_score_bins')[0]
             t.total_filter_bins = self._get_int(path=base+'total_filter_bins')[0]
 
+            # Read size of results array for on-the-fly allocation tallies
+            t.otf_size_results_filters = self._get_int(path=base+'otf_size_results_filters')[0]
+
+            if t.otf_size_results_filters > 0:
+              t.otf_filter_bin_map = self._get_int(t.otf_size_results_filters,
+                                                   path=base+'otf_filter_bin_map')
+
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
 
@@ -338,15 +350,19 @@ class StatePoint(object):
         # Read tally results
         if tallies_present:
             for i, t in enumerate(self.tallies):
-                n = t.total_score_bins * t.total_filter_bins
+                if t.otf_size_results_filters < 0:
+                    n_actual_filter_bins = t.total_filter_bins
+                else:
+                    n_actual_filter_bins = t.otf_size_results_filters
+                n = t.total_score_bins * n_actual_filter_bins
                 if self._hdf5:
                     path = 'tallies/tally{0}/results'.format(i+1)
                     data = self._f[path].value
                     t.results = np.column_stack((data['sum'], data['sum_sq']))
-                    t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
+                    t.results.shape = (n_actual_filter_bins, t.total_score_bins, 2)
                 else:
                     t.results = np.array(self._get_double(2*n))
-                    t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
+                    t.results.shape = (n_actual_filter_bins, t.total_score_bins, 2)
 
         # Indicate that tally results have been read
         self._results = True
@@ -476,6 +492,15 @@ class StatePoint(object):
                 filter_index += value*t.filters[f_type].stride
             else:
                 filter_index += f_index*t.filters[f_type].stride
+
+        # If this tally was allocated on the fly, convert the real filter_index
+        # into the actual filter index using the mapping
+        if t.otf_size_results_filters >= 0:
+          if not filter_index in t.otf_filter_bin_map:
+            raise Exception('Filter index %s not in results array for OTF '
+                            'tally %s.  Spec_list: %s' %
+                            (filter_index, t.id, spec_list))
+          filter_index = t.otf_filter_bin_map.index(filter_index)
 
         # Return the desired result from Tally.results. This could be the sum and
         # sum of squares, or it could be mean and stdev if self.generate_stdev()

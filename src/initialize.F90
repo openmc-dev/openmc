@@ -828,7 +828,7 @@ contains
   end subroutine adjust_indices
 
 !===============================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for each material
+! NORMALIZE_AO normalizes the atom or weight percentages for a material
 !===============================================================================
 
   subroutine normalize_ao()
@@ -850,6 +850,9 @@ contains
     ! material
     do i = 1, n_materials
       mat => materials(i)
+
+      ! Compositions loaded from a file must already be normalize
+      if (mat % otf_compositions) cycle
 
       percent_in_atom = (mat % comp(1) % atom_density(1) > ZERO)
       density_in_atom = (mat % density % density(1) > ZERO)
@@ -1124,38 +1127,38 @@ contains
 
     end do
 
-  call allocate_offsets(univ_list)
+    call allocate_offsets(univ_list)
 
-  ! Verify correct xml input of distributed materials
-  call verify_distribmats()
+    ! Verify correct xml input of distributed materials
+    call verify_distribmats()
 
-  ! Calculate the numbers to be stored for all maps except the special end one  
-  do i = 1, n_maps - 1
-    ! This step must be done for each map for each universe
-    ! because the maps are summed as you progress down through the tree.
-    ! calc_offsets only sets values for the universe specified by 'univ'
-    do j = 1, n_universes  
-      univ => universes(j)
-      call calc_offsets(univ_list(i),i,univ)
+    ! Calculate the numbers to be stored for all maps except the special end one  
+    do i = 1, n_maps - 1
+      ! This step must be done for each map for each universe
+      ! because the maps are summed as you progress down through the tree.
+      ! calc_offsets only sets values for the universe specified by 'univ'
+      do j = 1, n_universes  
+        univ => universes(j)
+        call calc_offsets(univ_list(i),i,univ)
+      end do
     end do
-  end do
 
-  do i = 1, n_universes  
-    univ => universes(i)
-    deallocate(univ % kount)
-    deallocate(univ % search)
-  end do
+    do i = 1, n_universes  
+      univ => universes(i)
+      deallocate(univ % kount)
+      deallocate(univ % search)
+    end do
 
-  do i = 1, n_materials
-    mat => materials(i)
-    if (.not. mat % distrib_comp) then
-      mat % map = n_maps
-    end if
-  end do
+    do i = 1, n_materials
+      mat => materials(i)
+      if (.not. mat % distrib_comp) then
+        mat % map = n_maps
+      end if
+    end do
 
-  deallocate(univ_list)
+    deallocate(univ_list)
 
-end subroutine prepare_distribution
+  end subroutine prepare_distribution
 
 !===============================================================================
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates the 
@@ -1478,7 +1481,7 @@ end subroutine prepare_distribution
         end if
 
         ! If num == 1, set all compositions equal to the one given
-        if (num == 1) then
+        if (num == 1 .and. .not. mat % otf_compositions) then
 
           mat % n_comp = c % instances
           allocate(atom_density(mat % n_nuclides))

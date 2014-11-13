@@ -9,6 +9,7 @@ module input_xml
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
+  use output_interface, only: BinaryOutput
   use plot_header
   use random_lcg,       only: prn
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -1475,6 +1476,8 @@ contains
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
+    integer :: even
+    integer :: otf_initial_size
     real(8) :: val           ! value entered for density
     real(8) :: temp_dble     ! temporary double prec. real
     real(8), allocatable :: temp_real_array(:) ! temporary array for composition
@@ -1502,6 +1505,7 @@ contains
     type(NodeList), pointer :: node_nuc_list => null()
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
+    type(BinaryOutput) :: fh
 
     ! Display output message
     call write_message("Reading materials XML file...", 5)
@@ -1715,13 +1719,13 @@ contains
           call get_list_item(node_nuc_list, j, node_nuc)
 
           ! Check for empty name on nuclide
-          if (.not.check_for_node(node_nuc, "name")) then
+          if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " // &
                  trim(to_str(mat % id)))
           end if
 
           ! Check for cross section
-          if (.not.check_for_node(node_nuc, "xs")) then
+          if (.not. check_for_node(node_nuc, "xs")) then
             if (default_xs == '') then
               call fatal_error("No cross section specified for nuclide in material " &
                    // trim(to_str(mat % id)))
@@ -1781,55 +1785,103 @@ contains
 
         end do COMPOSITION_ELEMENTS
 
-        ! Verify that the input matches the number of nuclides
-        ! Get number of composition values
-        n_comp = get_arraysize_double(node_comp, "values")
-        mat % n_comp = n_comp / (n_nuclide + n_element)
-        if (mod(n_comp,n_nuclide + n_element) /= 0) then
-          call fatal_error("Number of composition values not divisible by " // &
-                    "number of nuclides + elements." // &
-                    trim(to_str(mat % id)))
-        end if
+        ! Check for OTF composition file
+        if (check_for_node(node_mat, "otf_file_path")) then
+          mat % otf_compositions = .true.
+          call get_node_value(node_mat, "otf_file_path", mat % comp_file % path)
+          call fh % file_open(mat % comp_file % path, 'r', serial=.false.)
+          call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides')
+          call fh % read_data(mat % comp_file % n_instances, 'n_instances')
+          call fh % file_close()
 
-        ! Store the number of actual compositions in the input
-        mat % n_comp = n_comp / (n_nuclide + n_element)
+          if (mat % comp_file % n_nuclides /= list_names % size()) then
+            call fatal_error("Wrong number of nuclides per composition in " // &
+                             "OTF file " // trim(mat % comp_file % path))
+          end if
 
-        allocate(temp_real_array(n_comp))
-        call get_node_array(node_comp, "values", temp_real_array)
+          n_comp = mat % comp_file % n_instances
+          mat % n_comp = n_comp
 
-        ! Allocate distribution vectors
-        allocate(mat % comp(mat % n_comp))
-        do j = 1, mat % n_comp
-          allocate(mat % comp(j) % atom_density(list_names % size()))
-        end do
+          ! Set initial guess for size of composition array and allocate
 
-        ! Write composition values
-        do j = 1, mat % n_comp
-          do k = 1, n_nuclide + n_element
+          if (dd_run) then
 
-            ! Set index in array of composition values
-            temp_dble = temp_real_array(k + (j - 1) * (n_nuclide + n_element))
+            if (domain_decomp % n_domains > n_comp) then
 
-            if (k <= n_nuclide) then
-              ! nuclide, normal handling
-              mat % comp(j) % atom_density(k) = temp_dble
+              otf_initial_size = n_comp
+
             else
-              ! element, need to expand it
-              ! clear temp lists
-              call comp_names % clear()
-              call comp_density % clear()
-              ! need to get expansion with current composition density
-              call expand_natural_element(ele_names % get_item(k - n_nuclide), & 
-                    "", temp_dble, comp_names, comp_density)
-              ! loop over this element's isotopes
-              do l = 0, comp_names % size() - 1
-                ! store the current isotope to the correct index
-                mat % comp(j) % atom_density(k + l) = &
-                      comp_density % get_item(l+1)
-              end do
+            
+              ! Assume the instances are evenly distributed across domains
+              even = n_comp / domain_decomp % n_domains
+              
+              ! Allocate a little extra
+              otf_initial_size = int(dble(even) * OTF_HEADROOM)
+
             end if
+
+          else
+            if (master) call warning("Using OTF material allocation for non-DD run")
+            otf_initial_size = n_comp
+          end if
+
+          ! Allocate compositions and their atom_density arrays
+          allocate(mat % comp(otf_initial_size))
+          mat % size_comp_array = otf_initial_size
+          do j = 1, otf_initial_size
+            allocate(mat % comp(j) % atom_density(list_names % size()))
           end do
-        end do
+
+        else
+
+          ! Verify that the input matches the number of nuclides
+          ! Get number of composition values
+          n_comp = get_arraysize_double(node_comp, "values")
+          mat % n_comp = n_comp / (n_nuclide + n_element)
+          if (mod(n_comp, n_nuclide + n_element) /= 0) then
+            call fatal_error("Number of composition values not divisible by " // &
+                      "number of nuclides + elements." // &
+                      trim(to_str(mat % id)))
+          end if
+
+          allocate(temp_real_array(n_comp))
+          call get_node_array(node_comp, "values", temp_real_array)
+
+          ! Allocate distribution vectors
+          allocate(mat % comp(mat % n_comp))
+          do j = 1, mat % n_comp
+            allocate(mat % comp(j) % atom_density(list_names % size()))
+          end do
+
+          ! Write composition values
+          do j = 1, mat % n_comp
+            do k = 1, n_nuclide + n_element
+
+              ! Set index in array of composition values
+              temp_dble = temp_real_array(k + (j - 1) * (n_nuclide + n_element))
+
+              if (k <= n_nuclide) then
+                ! nuclide, normal handling
+                mat % comp(j) % atom_density(k) = temp_dble
+              else
+                ! element, need to expand it
+                ! clear temp lists
+                call comp_names % clear()
+                call comp_density % clear()
+                ! need to get expansion with current composition density
+                call expand_natural_element(ele_names % get_item(k - n_nuclide), & 
+                      "", temp_dble, comp_names, comp_density)
+                ! loop over this element's isotopes
+                do l = 0, comp_names % size() - 1
+                  ! store the current isotope to the correct index
+                  mat % comp(j) % atom_density(k + l) = &
+                        comp_density % get_item(l+1)
+                end do
+              end if
+            end do
+          end do
+
+        end if
 
       else
         ! NOT USING DISTRIBUTED COMPOSITIONS

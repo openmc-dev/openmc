@@ -2730,7 +2730,7 @@ contains
       end select
 
       ! Set output file path
-      filename = "plot"
+      filename = trim(to_str(pl % id)) // "_plot"
       if (check_for_node(node_plot, "filename")) &
         call get_node_value(node_plot, "filename", filename)
       select case (pl % type)

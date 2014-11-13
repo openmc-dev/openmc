@@ -37,6 +37,7 @@ contains
     integer :: n                 ! temporary stride
     integer :: max_n_filters = 0 ! maximum number of filters
     integer :: even
+    integer :: otf_initial_size
     type(TallyObject), pointer :: t => null()
 
     TALLY_LOOP: do i = 1, n_tallies
@@ -68,7 +69,7 @@ contains
 
           if (domain_decomp % n_domains > t % total_filter_bins) then
 
-            t % otf_initial_size = t % total_filter_bins
+            otf_initial_size = t % total_filter_bins
 
           else
           
@@ -76,17 +77,17 @@ contains
             even = t % total_filter_bins / domain_decomp % n_domains
             
             ! Allocate a little extra
-            t % otf_initial_size = int(dble(even) * OTF_HEADROOM)
+            otf_initial_size = int(dble(even) * OTF_HEADROOM)
 
           end if
 
         else
           if (master) call warning("Using OTF tally allocation for non-DD run")
-          t % otf_initial_size = t % total_filter_bins
+          otf_initial_size = t % total_filter_bins
         end if
 
-        allocate(t % results(t % total_score_bins, t % otf_initial_size))
-        t % size_results_filters = t % otf_initial_size
+        allocate(t % results(t % total_score_bins, otf_initial_size))
+        t % size_results_filters = otf_initial_size
       else
         allocate(t % results(t % total_score_bins, t % total_filter_bins))
       end if

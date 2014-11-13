@@ -757,7 +757,10 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     is on the negative side of surface 3 and the positive side of surface 5, the
     bounding surfaces would be given as "-3 5".
 
-    *Default*: None
+    .. note:: The surface attribute/element can be omitted to make a cell fill
+              its entire universe.
+
+    *Default*: No surfaces
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in

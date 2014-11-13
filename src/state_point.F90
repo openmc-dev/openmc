@@ -16,9 +16,11 @@ module state_point
   use error,              only: fatal_error, warning
   use global
   use output,             only: write_message, time_stamp
+  use source,             only: write_source_bank, read_source_bank
   use string,             only: to_str, zero_padded, count_digits
   use output_interface
   use tally_header,       only: TallyObject
+  use tally,              only: write_tally_result, read_tally_result
   use dict_header,        only: ElemKeyValueII
 
 #ifdef MPI
@@ -635,7 +637,7 @@ contains
 
       ! Write global tallies
       call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
-      call sp % write_tally_result(global_tallies, "global_tallies", &
+      call write_tally_result(sp, global_tallies, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Write tallies
@@ -654,12 +656,12 @@ contains
           if (t % on_the_fly_allocation) then
 
             n = t % next_filter_idx - 1
-            call sp % write_tally_result(t % results(:,1:n), "results", &
+            call write_tally_result(sp, t % results(:,1:n), "results", &
                  group="tallies/tally" // to_str(i), &
                  n1=size(t % results, 1), n2=n)
           else
 
-            call sp % write_tally_result(t % results, "results", &
+            call write_tally_result(sp, t % results, "results", &
                  group="tallies/tally" // to_str(i), &
                  n1=size(t % results, 1), n2=size(t % results, 2))
 
@@ -732,7 +734,7 @@ contains
       end if
 
       ! Write out source
-      call sp % write_source_bank()
+      call write_source_bank(sp)
 
       ! Close file
       call sp % file_close()
@@ -760,7 +762,7 @@ contains
       call sp % write_data(FILETYPE_SOURCE, "filetype")
 
       ! Write out source
-      call sp % write_source_bank()
+      call write_source_bank(sp)
 
       ! Close file
       call sp % file_close()
@@ -824,7 +826,7 @@ contains
 
 
       ! Write out global tallies sum and sum_sq
-      call sp % write_tally_result(tallyresult_temp, "global_tallies", &
+      call write_tally_result(sp, tallyresult_temp, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Deallocate temporary tally result
@@ -878,7 +880,7 @@ contains
          tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
 
          ! Write reduced tally results to file
-          call sp % write_tally_result(t % results, "results", &
+          call write_tally_result(sp, t % results, "results", &
                group="tallies/tally" // to_str(i), n1=m, n2=n)
 
           ! Deallocate temporary tally result
@@ -1413,7 +1415,7 @@ contains
       end if
 
       ! Read global tally data
-      call sp % read_tally_result(global_tallies, "global_tallies", &
+      call read_tally_result(sp, global_tallies, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
@@ -1427,7 +1429,7 @@ contains
           t => tallies(i)
 
           ! Read sum and sum_sq for each bin
-          call sp % read_tally_result(t % results, "results", &
+          call read_tally_result(sp, t % results, "results", &
                group="tallies/tally" // to_str(i), &
                n1=size(t % results, 1), n2=size(t % results, 2))
 
@@ -1457,7 +1459,7 @@ contains
       end if
 
       ! Write out source
-      call sp % read_source_bank()
+      call read_source_bank(sp)
 
     end if
 

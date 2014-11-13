@@ -11,6 +11,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
+  use output_interface, only: BinaryOutput
   use particle_header,  only: LocalCoord, Particle, deallocate_coord
   use search,           only: binary_search
   use string,           only: to_str
@@ -2828,5 +2829,147 @@ contains
     end do
 
   end subroutine setup_active_cmfdtallies
+
+!===============================================================================
+! WRITE_TALLY_RESULT writes an OpenMC TallyResult type
+!===============================================================================
+
+  subroutine write_tally_result(sp, buffer, name, group, n1, n2)
+
+    type(BinaryOutput), intent(inout) :: sp
+    character(*),       intent(in), optional :: group   ! HDF5 group name
+    character(*),       intent(in)           :: name    ! name of data
+    integer,            intent(in)           :: n1, n2  ! TallyResult dims
+    type(TallyResult),  intent(in), target   :: buffer(n1, n2) ! data to write
+
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+
+#ifndef HDF5
+    integer :: j,k ! iteration counters
+#endif
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+#ifdef HDF5
+
+    ! Open up sub-group if present
+    if (present(group)) then
+      call hdf5_open_group(sp % hdf5_fh, group_, sp % hdf5_grp)
+    else
+      sp % hdf5_grp = sp % hdf5_fh
+    end if
+
+    ! Set overall size of vector to write
+    dims1(1) = n1*n2 
+
+    ! Create up a dataspace for size
+    call h5screate_simple_f(1, dims1, dspace, hdf5_err)
+
+    ! Create the dataset
+    call h5dcreate_f(sp % hdf5_grp, name_, hdf5_tallyresult_t, dspace, dset, &
+         hdf5_err)
+
+    ! Set pointer to first value and write
+    f_ptr = c_loc(buffer(1,1))
+    call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+
+    ! Close ids
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    if (present(group)) then
+      call hdf5_close_group(sp % hdf5_grp)
+    end if
+
+#else
+
+    ! Write out tally buffer
+    do k = 1, n2
+      do j = 1, n1
+        write(sp % unit_fh) buffer(j,k) % sum
+        write(sp % unit_fh) buffer(j,k) % sum_sq
+      end do
+    end do
+
+#endif 
+   
+  end subroutine write_tally_result
+
+!===============================================================================
+! READ_TALLY_RESULT reads OpenMC TallyResult data
+!===============================================================================
+
+  subroutine read_tally_result(sp, buffer, name, group, n1, n2)
+
+    type(BinaryOutput), intent(inout):: sp
+    character(*),       intent(in), optional  :: group  ! HDF5 group name
+    character(*),       intent(in)            :: name   ! name of data
+    integer,            intent(in)            :: n1, n2 ! TallyResult dims
+    type(TallyResult),  intent(inout), target :: buffer(n1, n2) ! read data here
+
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+
+#ifndef HDF5
+# ifndef MPI
+    integer :: j,k ! iteration counters
+#else
+    integer :: mpiio_err
+# endif
+#endif
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+#ifdef HDF5
+
+    ! Open up sub-group if present
+    if (present(group)) then
+      call hdf5_open_group(sp % hdf5_fh, group_, sp % hdf5_grp)
+    else
+      sp % hdf5_grp = sp % hdf5_fh
+    end if
+
+    ! Open the dataset
+    call h5dopen_f(sp % hdf5_grp, name, dset, hdf5_err)
+
+    ! Set pointer to first value and write
+    f_ptr = c_loc(buffer(1,1))
+    call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+
+    ! Close ids
+    call h5dclose_f(dset, hdf5_err)
+    if (present(group)) call hdf5_close_group(sp % hdf5_grp)
+
+# elif MPI
+
+    ! Write out tally buffer
+    call MPI_FILE_READ(sp % unit_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+         MPI_STATUS_IGNORE, mpiio_err)
+
+#else
+
+    ! Read tally result
+    do k = 1, n2
+      do j = 1, n1
+        read(sp % unit_fh) buffer(j,k) % sum
+        read(sp % unit_fh) buffer(j,k) % sum_sq
+      end do
+    end do
+
+#endif 
+   
+  end subroutine read_tally_result
 
 end module tally

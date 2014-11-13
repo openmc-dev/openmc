@@ -448,13 +448,15 @@ contains
 ! READ_DOUBLE_1DARRAY reads double precision 1-D array data
 !===============================================================================
 
-  subroutine read_double_1Darray(self, buffer, name, group, length, collect)
+  subroutine read_double_1Darray(self, buffer, name, group, length, collect, &
+                                 record)
 
     integer,        intent(in)           :: length    ! length of array to read
     real(8),        intent(inout)        :: buffer(:) ! read data to here
     character(*),   intent(in)           :: name      ! name of data
     character(*),   intent(in), optional :: group     ! HDF5 group name
     logical,        intent(in), optional :: collect   ! collective I/O
+    integer,        intent(in), optional :: record    ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -497,12 +499,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length)
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length)
+      else
+        read(self % unit_fh) buffer(1:length)
+      end if
     else
       call mpi_read_double_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length)
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length)
+    else
+      read(self % unit_fh) buffer(1:length)
+    end if
 #endif
 
   end subroutine read_double_1Darray
@@ -1081,13 +1091,15 @@ contains
 ! READ_INTEGER_1DARRAY reads integer precision 1-D array data
 !===============================================================================
 
-  subroutine read_integer_1Darray(self, buffer, name, group, length, collect)
+  subroutine read_integer_1Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,        intent(in)           :: length    ! length of array to read
     integer,        intent(inout)        :: buffer(:) ! read data to here
     character(*),   intent(in)           :: name      ! name of data
     character(*),   intent(in), optional :: group     ! HDF5 group name
     logical,        intent(in), optional :: collect   ! collective I/O
+    integer,        intent(in), optional :: record    ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1131,12 +1143,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length)
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length)
+      else
+        read(self % unit_fh) buffer(1:length)
+      end if
     else
       call mpi_read_integer_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length)
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length)
+    else
+      read(self % unit_fh) buffer(1:length)
+    end if
 #endif
 
   end subroutine read_integer_1Darray

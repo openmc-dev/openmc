@@ -1011,17 +1011,18 @@ contains
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
-      ! Check to make sure that surfaces were specified
-      if (.not. check_for_node(node_cell, "surfaces")) then
-        call fatal_error("No surfaces specified for cell " &
-             &// trim(to_str(c % id)))
-      end if
-
       ! Allocate array for surfaces and copy
-      n = get_arraysize_integer(node_cell, "surfaces")
+      if (check_for_node(node_cell, "surfaces")) then
+        n = get_arraysize_integer(node_cell, "surfaces")
+      else
+        n = 0
+      end if
       c % n_surfaces = n
-      allocate(c % surfaces(n))
-      call get_node_array(node_cell, "surfaces", c % surfaces)
+
+      if (n > 0) then
+        allocate(c % surfaces(n))
+        call get_node_array(node_cell, "surfaces", c % surfaces)
+      end if
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then

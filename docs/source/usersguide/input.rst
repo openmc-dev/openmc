@@ -1170,7 +1170,7 @@ implemented in openMC:
 ``<plot>`` Element
 ------------------
 
-Each plot must contain a combination of the following attributes or
+Each plot is specified by a combination of the following attributes or
 sub-elements:
 
   :id:
@@ -1190,6 +1190,18 @@ sub-elements:
     position.
 
     *Default*: ``cell``
+
+  :level:
+    Universe depth to plot at (optional).  This parameter controls how many
+    universe levels deep to pull cell and material ids from when setting plot
+    colors.  If a given location does not have as many levels as specified,
+    colors will be taken from the lowest level at that lcation. For example, if
+    ``level`` is set to zero colors will be taken from top-level (universe zero)
+    cells only.  However, if ``level`` is set to 1 colors will be taken from
+    cells in universes that fill top-level fill-cells, and from top-level cells
+    that contain materials.
+
+    *Default*: Whatever the deepest universe is in the model
 
   :origin:
     Specifies the (x,y,z) coordinate of the center of the plot.  Should be three

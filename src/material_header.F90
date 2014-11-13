@@ -186,14 +186,21 @@ contains
       class(CompositionFile), intent(inout) :: this 
       integer,                intent(in)    :: real_inst
       
+      integer :: record
+      character(11) :: str_record
       type(Composition) :: comp
       type(BinaryOutput) :: fh
 
       allocate(comp % atom_density(this % n_nuclides))
 
+      ! Determine where in the file to read from
+      record = real_inst * this % n_nuclides + 1
+      write (str_record, '(I11)') record
+      str_record = adjustl(str_record)
+
       call fh % file_open(this % path, 'r', serial=.true., record_len=8)
-!      call fh % read_data(comp % atom_density, '', &
-!          length = this % n_nuclides)
+      call fh % read_data(comp % atom_density, str_record, &
+          length = this % n_nuclides, record=record)
       call fh % file_close()
 
     end function composition_file_load

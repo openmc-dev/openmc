@@ -1789,9 +1789,12 @@ contains
         if (check_for_node(node_mat, "otf_file_path")) then
           mat % otf_compositions = .true.
           call get_node_value(node_mat, "otf_file_path", mat % comp_file % path)
-          call fh % file_open(mat % comp_file % path, 'r', serial=.false.)
-          call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides')
-          call fh % read_data(mat % comp_file % n_instances, 'n_instances')
+          call fh % file_open(mat % comp_file % path, 'r', &
+              direct_access=.true., serial = .true., record_len = 8)
+          call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides', &
+                              record = 1)
+          call fh % read_data(mat % comp_file % n_instances, 'n_instances', &
+                              record = 2)
           call fh % file_close()
 
           if (mat % comp_file % n_nuclides /= list_names % size()) then

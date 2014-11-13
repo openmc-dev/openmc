@@ -88,10 +88,11 @@ contains
 ! FILE_CREATE creates a new file to write data to
 !===============================================================================
 
-  subroutine file_create(self, filename, serial)
+  subroutine file_create(self, filename, serial, record_len)
 
     character(*),      intent(in) :: filename  ! name of file to be created
     logical, optional, intent(in) :: serial    ! processor rank to write from
+    integer, optional, intent(in) :: record_len ! RECL
     class(BinaryOutput) :: self
 
     ! Check for serial option
@@ -113,14 +114,24 @@ contains
 # endif
 #elif MPI
     if (self % serial) then
-      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
-           STATUS='replace', ACCESS='stream')
+      if (present(record_len)) then
+        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
+             STATUS='replace', ACCESS='direct', RECL=record_len)
+      else
+        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
+             STATUS='replace', ACCESS='stream')
+      end if
     else
       call mpi_create_file(filename, self % unit_fh)
     end if
 #else
-    open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
-         STATUS='replace', ACCESS='stream')
+    if (present(record_len)) then
+      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
+           STATUS='replace', ACCESS='direct', RECL=record_len)
+    else
+      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
+           STATUS='replace', ACCESS='stream')
+    end if
 #endif
 
   end subroutine file_create
@@ -263,12 +274,13 @@ contains
 ! WRITE_DOUBLE writes double precision scalar data
 !===============================================================================
 
-  subroutine write_double(self, buffer, name, group, collect)
+  subroutine write_double(self, buffer, name, group, collect, record)
 
     real(8),      intent(in)           :: buffer  ! data to write
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record     ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -310,12 +322,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer
+      else
+        write(self % unit_fh) buffer
+      endif
     else
       call mpi_write_double(self % unit_fh, buffer, collect_)
     end if
 #else
-    write(self % unit_fh) buffer
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer
+    else
+      write(self % unit_fh) buffer
+    endif
 #endif
 
   end subroutine write_double
@@ -324,12 +344,13 @@ contains
 ! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
-  subroutine read_double(self, buffer, name, group, collect)
+  subroutine read_double(self, buffer, name, group, collect, record)
 
     real(8),      intent(inout)        :: buffer  ! read data to here 
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -371,12 +392,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer
+      else
+        read(self % unit_fh) buffer
+      end if
     else
       call mpi_read_double(self % unit_fh, buffer, collect_)
     end if
 #else
-    read(self % unit_fh) buffer
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer
+    else
+      read(self % unit_fh) buffer
+    end if
 #endif
 
   end subroutine read_double
@@ -385,13 +414,15 @@ contains
 ! WRITE_DOUBLE_1DARRAY writes double precision 1-D array data
 !===============================================================================
 
-  subroutine write_double_1Darray(self, buffer, name, group, length, collect)
+  subroutine write_double_1Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length    ! length of array to write
     real(8),      intent(in)           :: buffer(:) ! data to write
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
     logical,      intent(in), optional :: collect   ! collective I/O
+    integer,      intent(in), optional :: record    ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -434,12 +465,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length)
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length)
+      else
+        write(self % unit_fh) buffer(1:length)
+      endif
     else
       call mpi_write_double_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length)
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length)
+    else
+      write(self % unit_fh) buffer(1:length)
+    endif
 #endif
 
   end subroutine write_double_1Darray
@@ -906,12 +945,13 @@ contains
 ! WRITE_INTEGER writes integer precision scalar data
 !===============================================================================
 
-  subroutine write_integer(self, buffer, name, group, collect)
+  subroutine write_integer(self, buffer, name, group, collect, record)
 
     integer,      intent(in)           :: buffer  ! data to write
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -953,12 +993,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer
+      else
+        write(self % unit_fh) buffer
+      end if
     else
       call mpi_write_integer(self % unit_fh, buffer, collect_)
     end if
 #else
-    write(self % unit_fh) buffer
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer
+    else
+      write(self % unit_fh) buffer
+    end if
 #endif
 
   end subroutine write_integer
@@ -967,12 +1015,13 @@ contains
 ! READ_INTEGER reads integer precision scalar data
 !===============================================================================
 
-  subroutine read_integer(self, buffer, name, group, collect)
+  subroutine read_integer(self, buffer, name, group, collect, record)
 
     integer,      intent(inout)        :: buffer  ! read data to here 
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1014,12 +1063,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer
+      else
+        read(self % unit_fh) buffer
+      end if
     else
       call mpi_read_integer(self % unit_fh, buffer, collect_)
     end if
 #else
-    read(self % unit_fh) buffer
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer
+    else
+      read(self % unit_fh) buffer
+    end if
 #endif
 
   end subroutine read_integer

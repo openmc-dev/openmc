@@ -186,6 +186,7 @@ contains
       class(CompositionFile), intent(inout) :: this 
       integer,                intent(in)    :: real_inst
       
+      integer :: i
       integer :: record
       character(11) :: str_record
       type(Composition) :: comp
@@ -194,13 +195,22 @@ contains
       allocate(comp % atom_density(this % n_nuclides))
 
       ! Determine where in the file to read from
-      record = real_inst * this % n_nuclides + 1
-      write (str_record, '(I11)') record
+      record = real_inst + 1
+      write (str_record, '(I11)') real_inst
       str_record = adjustl(str_record)
 
-      call fh % file_open(this % path, 'r', serial=.true., record_len=8)
+      call fh % file_open(this % path, 'r', serial = .true., &
+                          direct_access = .true., record_len = 8)
+#ifndef HDF5
+      do i = 1, this % n_nuclides
+        call fh % read_data(comp % atom_density(i), str_record, &
+            length = this % n_nuclides, record = record)
+        record = record + 1
+      end do
+#else
       call fh % read_data(comp % atom_density, str_record, &
-          length = this % n_nuclides, record=record)
+          length = this % n_nuclides)
+#endif
       call fh % file_close()
 
     end function composition_file_load

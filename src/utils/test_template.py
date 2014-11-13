@@ -15,7 +15,7 @@ template = """module test_{name}
   type, extends(TestClass) :: test
     contains
       procedure         :: init     => test_init
-      procedure, nopass :: setup    => test_setup
+      procedure         :: setup    => test_setup
       procedure, nopass :: execute  => test_execute
       procedure, nopass :: check    => test_check
       procedure, nopass :: teardown => test_teardown
@@ -29,11 +29,11 @@ contains
 ! INIT
 !===============================================================================
 
-  subroutine test_init(self)
+  subroutine test_init(this)
 
-    class(test), intent(inout) :: self
+    class(test), intent(inout) :: this
 
-    self % name = "test_{name}"
+    this % name = "test_{name}"
     
     ! Do any initialization specific to unit testing here
 
@@ -43,8 +43,9 @@ contains
 ! SETUP
 !===============================================================================
 
-  subroutine test_setup(suite)
+  subroutine test_setup(this, suite)
 
+    class(test), intent(inout) :: this
     class(TestSuiteClass), intent(inout) :: suite
     
     ! Do any openmc setup needed before calling the subroutine or function to
@@ -53,7 +54,7 @@ contains
 
     if (master) then
       call warning("TEST NOT IMPLEMENTED")
-      call suite % skip()
+      call suite % skip(this)
     end if
 
   end subroutine test_setup

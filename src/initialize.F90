@@ -116,7 +116,9 @@ contains
       end if
 
       ! Set indices for kinematic constraint on energy grid searches
+!$omp parallel
       call kinematic_constraint()
+!$omp end parallel
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

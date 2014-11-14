@@ -36,11 +36,13 @@ contains
       i_upscat = 1 + binary_search(e_grid, n_grid, &
         & (FREE_GAS_THRESHOLD + 16.0_8) * max_kT)
     case(GRID_NUCLIDE)
+      allocate(i_upscats(n_nuclides_total))
+      allocate(i_E_lasts(n_nuclides_total))
       do i = 1, n_nuclides_total
         nuc => nuclides(i)
-        nuc % i_E_last = nuc % n_grid
-        nuc % i_upscat = 1 + binary_search(nuc % energy, nuc % n_grid, &
-          & (FREE_GAS_THRESHOLD + 16.0_8) * max_kT)
+        i_E_lasts(i) = nuc % n_grid
+        i_upscats(i) = 1 + binary_search(nuc % energy, nuc % n_grid, &
+          & (FREE_GAS_THRESHOLD + 16.0_8) * nuc % kT)
       end do
     end select
 

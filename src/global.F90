@@ -84,7 +84,9 @@ module global
   integer :: i_E_last    ! last evaluated energy index
   integer :: i_upscat    ! max energy index after upscatter
   real(8) :: max_kT      ! max kT value for the problem
-!$omp threadprivate(i_E_last, i_upscat, max_kT)
+  integer, allocatable :: i_E_lasts(:)    ! last evaluated energy index
+  integer, allocatable :: i_upscats(:)    ! max energy index after upscatter
+!$omp threadprivate(i_E_last, i_upscat, max_kT, i_E_lasts, i_upscats)
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.

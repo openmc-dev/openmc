@@ -103,8 +103,6 @@ module ace_header
     integer :: n_grid                     ! # of nuclide grid points
     integer, allocatable :: grid_index(:) ! pointers to union grid
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
-    integer :: i_E_last                   ! last evaluated energy
-    integer :: i_upscat                   ! max energy index after upscatter
 
     ! Microscopic cross sections
     real(8), allocatable :: total(:)      ! total cross section

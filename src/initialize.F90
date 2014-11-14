@@ -113,7 +113,9 @@ contains
         continue
       else
         call time_unionize % start()
+!$omp critical
         call unionized_grid()
+!$omp end critical
         call time_unionize % stop()
       end if
 

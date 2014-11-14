@@ -22,9 +22,10 @@ contains
 
     integer :: i ! index in nuclides array
     integer :: j ! index in materials array
-    type(ListReal), pointer :: list => null()
-    type(Nuclide),  pointer :: nuc  => null()
-    type(Material), pointer :: mat  => null()
+    type(ListReal), pointer, save :: list => null()
+    type(Nuclide),  pointer, save :: nuc  => null()
+    type(Material), pointer, save :: mat  => null()
+!$omp threadprivate(list, nuc, mat)
 
     call write_message("Creating unionized energy grid...", 5)
 

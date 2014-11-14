@@ -149,7 +149,7 @@ contains
     real(8) :: f      ! interp factor on nuclide energy grid
     type(Nuclide),  pointer, save :: nuc => null()
     type(Material), pointer, save :: mat => null()
-!$omp threadprivate(nuc)
+!$omp threadprivate(nuc, mat)
 
     ! Set pointer to nuclide and material
     nuc => nuclides(i_nuclide)
@@ -515,6 +515,7 @@ contains
     real(8), intent(in) :: E     ! energy of particle
     integer, intent(in) :: i_mat ! material index
     type(Material), pointer, save :: mat => null() ! pointer to current material
+!$omp threadprivate(mat)
 
     select case(grid_method)
     case(GRID_GLOB_UNION)

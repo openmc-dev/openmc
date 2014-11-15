@@ -24,8 +24,7 @@ module tally
 
   implicit none
 
-  ! Tally map positioning array
-  integer :: position(N_FILTER_TYPES - 3) = 0
+  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
 !$omp threadprivate(position)
 
 contains
@@ -874,8 +873,8 @@ contains
                   end do REACTION_LOOP
 
                 else
-                  message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end if
               end select
 
@@ -1012,8 +1011,8 @@ contains
                   end do
 
                 else
-                  message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end if
               end select
             end if
@@ -1212,8 +1211,8 @@ contains
             end do REACTION_LOOP
 
           else
-            message = "Invalid score type on tally " // to_str(t % id) // "."
-            call fatal_error()
+            call fatal_error("Invalid score type on tally " &
+                 &// to_str(t % id) // ".")
           end if
         end select
 
@@ -1364,8 +1363,8 @@ contains
           end do
 
         else
-          message = "Invalid score type on tally " // to_str(t % id) // "."
-          call fatal_error()
+          call fatal_error("Invalid score type on tally " &
+               &// to_str(t % id) // ".")
         end if
       end select
 
@@ -1710,9 +1709,8 @@ contains
                 case (SCORE_EVENTS)
                   score = ONE
                 case default
-                  message = "Invalid score type on tally " // &
-                       to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end select
 
               else
@@ -1786,9 +1784,8 @@ contains
                 case (SCORE_EVENTS)
                   score = ONE
                 case default
-                  message = "Invalid score type on tally " // &
-                       to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end select
               end if
 
@@ -2226,8 +2223,7 @@ contains
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &
                t % total_filter_bins) then
-            message = "Score index outside range."
-            call fatal_error()
+            call fatal_error("Score index outside range.")
           end if
 
           ! Add to surface current tally
@@ -3099,18 +3095,16 @@ contains
 
     ! check to see if any of the active tally lists has been allocated
     if (active_tallies % size() > 0) then
-      message = "Active tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active tallies should not exist before CMFD tallies!")
     else if (active_analog_tallies % size() > 0) then
-      message = 'Active analog tallies should not exist before CMFD tallies!'
-      call fatal_error()
+      call fatal_error('Active analog tallies should not exist before CMFD &
+           &tallies!')
     else if (active_tracklength_tallies % size() > 0) then
-      message = "Active tracklength tallies should not exist before CMFD &
-           &tallies!"
-      call fatal_error()
+      call fatal_error("Active tracklength tallies should not exist before &
+           &CMFD tallies!")
     else if (active_current_tallies % size() > 0) then
-      message = "Active current tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active current tallies should not exist before CMFD &
+           &tallies!")
     end if
 
     do i = 1, n_cmfd_tallies

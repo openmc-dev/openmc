@@ -288,9 +288,6 @@ module global
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
-  ! Message used in message/warning/fatal_error
-  character(2*MAX_LINE_LEN) :: message
-
   ! Random number seed
   integer(8) :: seed = 1_8
 
@@ -314,6 +311,9 @@ module global
 
   ! Particle restart run
   logical :: particle_restart_run = .false.
+
+  ! Write out initial source
+  logical :: write_initial_source = .false.
 
   ! ============================================================================
   ! CMFD VARIABLES 
@@ -345,9 +345,6 @@ module global
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! Flag to hold cmfd weight adjustment factors
-  logical :: cmfd_hold_weights = .false.
-
   ! Eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'
 
@@ -360,11 +357,9 @@ module global
   ! Batch to begin cmfd
   integer :: cmfd_begin = 1
 
-  ! When and how long to flush cmfd tallies during inactive batches
-  integer :: cmfd_inact_flush(2) = (/9999,1/)
-
-  ! Batch to last flush before active batches
-  integer :: cmfd_act_flush = 0
+  ! Tally reset list
+  integer :: n_cmfd_resets
+  type(SetInt) :: cmfd_reset
 
   ! Compute effective downscatter cross section
   logical :: cmfd_downscatter = .false.
@@ -382,10 +377,17 @@ module global
 
   ! CMFD run logicals
   logical :: cmfd_on             = .false.
-  logical :: cmfd_tally_on       = .true. 
 
   ! CMFD display info
   character(len=25) :: cmfd_display = 'balance'
+
+  ! Estimate of spectral radius of CMFD matrices and tolerances
+  real(8) :: cmfd_spectral = ZERO
+  real(8) :: cmfd_shift = 1.e6
+  real(8) :: cmfd_ktol = 1.e-8_8
+  real(8) :: cmfd_stol = 1.e-8_8
+  real(8) :: cmfd_atoli = 1.e-10_8
+  real(8) :: cmfd_rtoli = 1.e-5_8
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -407,7 +409,7 @@ module global
   integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
 contains

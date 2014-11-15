@@ -282,29 +282,25 @@ contains
        
     ! When trigger threshold is reached, write information 
     if (satisfy_triggers) then
-      message = "Trigger is satisfied for batch " &
-          // trim(to_str(current_batch))
-      call write_message()
+      call write_message("Trigger is satisfied for batch " &
+          // trim(to_str(current_batch)))
     
         ! When trigger is not reached write information   
     elseif (trig_dist % temp_name == CHAR_EIGENVALUE) then
-      message = "Trigger isn't reached, the max uncertainty/threshold is " &
+      call write_message("Trigger isn't reached, the max uncertainty/threshold is " &
            // trim(to_str(trig_dist % max_ratio)) // " for " &
-           // trim(trig_dist % temp_name)
-      call write_message()
+           // trim(trig_dist % temp_name))
     elseif (trig_dist % temp_nuclide /= NO_NUCLIDE) then
-       message = "Trigger isn't reached, the max uncertainty/threshold is " & 
+       call write_message("Trigger isn't reached, the max uncertainty/threshold is " & 
             // trim(to_str(trig_dist % max_ratio)) // " of " & 
             // trim(trig_dist % temp_nuclide) // " for " & 
             // trim(trig_dist % temp_name) // " in tally " &
-            // trim(to_str(trig_dist % id))
-       call write_message()
+            // trim(to_str(trig_dist % id)))
     else
-      message = "Trigger isn't reached, the max uncertainty/threshold is " &
+      call write_message("Trigger isn't reached, the max uncertainty/threshold is " &
            // trim(to_str(trig_dist % max_ratio)) // " for " &
            // trim(trig_dist % temp_name) // " in tally " &
-           // trim(to_str(trig_dist % id))
-      call write_message()
+           // trim(to_str(trig_dist % id)))
     end if 
     
     if (satisfy_triggers) then     
@@ -328,14 +324,12 @@ contains
       ! If predicted number of batches to convergence is bigger than then
       ! n_batches print it and stop. 
       if (n_batches < n_pred_batches) then 
-        message = "The estimated number of batches is " &
+        call warning("The estimated number of batches is " &
              // trim(to_str(n_pred_batches)) & 
-             // "---bigger than max batches. "
-        call warning()
+             // "---bigger than max batches. ")
       else
-        message = "The estimated number of batches is " &
-             // trim(to_str(n_pred_batches))
-        call write_message()
+        call write_message("The estimated number of batches is " &
+             // trim(to_str(n_pred_batches)))
       end if
     end if
   end subroutine check_triggers

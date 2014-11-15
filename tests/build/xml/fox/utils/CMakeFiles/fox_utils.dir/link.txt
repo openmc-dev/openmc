@@ -1,0 +1,2 @@
+/usr/bin/ar cr ../../../lib/libfox_utils.a  CMakeFiles/fox_utils.dir/FoX_utils.f90.o CMakeFiles/fox_utils.dir/fox_m_utils_mtprng.F90.o CMakeFiles/fox_utils.dir/fox_m_utils_uri.F90.o CMakeFiles/fox_utils.dir/fox_m_utils_uuid.F90.o
+/usr/bin/ranlib ../../../lib/libfox_utils.a

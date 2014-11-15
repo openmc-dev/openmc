@@ -70,11 +70,12 @@ contains
     type(Node), pointer :: node_entropy   => null()
     type(Node), pointer :: node_ufs       => null()
     type(Node), pointer :: node_sp        => null()
+    type(Node), pointer :: node_trigger   => null() 
     type(Node), pointer :: node_output    => null()
-    type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
+    type(Node), pointer :: node_keff_trigger => null()   
     type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
@@ -133,22 +134,20 @@ contains
       call get_node_ptr(doc, "trigger", node_trigger)
       ! Get trigger status
       call get_node_value(node_trigger, "status", temp_str)
-      call lower_case(temp_str)
+      temp_str = to_lower(temp_str)
 
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
         trigger_on = .true.
       elseif (trim(temp_str) == 'false' .or. trim(temp_str) == '0') then
         trigger_on = .false.
       else
-        message = "Unknown trigger status: " // trim(temp_str)
-        call fatal_error()
+        call fatal_error("Unknown trigger status: " // trim(temp_str))
       end if
 
       if (trigger_on) then
-        ! Get number of max_batches
         if (.not. check_for_node(node_trigger, "max_batches") )then
-          message = "Need to specify number of max_batches."
-          call fatal_error()
+        ! Get number of max_batches
+          call fatal_error("Need to specify number of max_batches.")
         else
           call get_node_value(node_trigger, "max_batches", n_batches)
         end if
@@ -160,8 +159,7 @@ contains
           call get_node_value(node_trigger, "batch_interval", temp_int)
           n_batch_interval = temp_int
           if (.not. (n_batch_interval > 0)) then
-            message = "Batch_interval must be a positive integer."
-            call fatal_error()
+            call fatal_error("Batch_interval must be a positive integer.")
           end if
         end if
       end if
@@ -200,9 +198,8 @@ contains
           n_batches = n_basic_batches
         end if
       else
-        message = "Minimum number of batches is not specified when trigger is &
-             & applied."
-        call fatal_error()
+        call fatal_error("Minimum number of batches is not specified when &
+             & trigger is applied.")
       end if
 
       !Get number of inactive batches
@@ -223,7 +220,7 @@ contains
         if (check_for_node(node_keff_trigger, "type")) then
           temp_str=' '
           call get_node_value(node_keff_trigger, "type", temp_str)
-          call lower_case(temp_str)
+          temp_str = to_lower(temp_str)
 
           select case (temp_str)
           case ('std_dev')
@@ -233,23 +230,21 @@ contains
           case ('rel_err')
             keff_trigger%trigger_type = RELATIVE_ERROR
           case default
-            message= "Unknown trigger type " // trim(temp_str) // &
-                 " in eigenvalue"
-            call fatal_error()
+            call fatal_error("Unknown trigger type " // trim(temp_str) // &
+                 " in eigenvalue")
           end select
 
           else
-            message = "Must specify the type for keff_trigger in settings XML"
-            call fatal_error()
+            call fatal_error("Must specify the type for keff_trigger in & 
+                 & settings XML")
           end if
 
           if (check_for_node(node_keff_trigger, "threshold")) then
             call get_node_value(node_keff_trigger, "threshold", &
                  keff_trigger%threshold)
           else
-            message = "Must specify the threshold for keff_trigger in " // &
-                      " settings XML"
-            call fatal_error()
+            call fatal_error("Must specify the threshold for keff_trigger in " &
+                 & // " settings XML")
           end if
         end if
       end if
@@ -2747,9 +2742,8 @@ contains
       n_triggers = n_triggers + t % n_user_triggers
 
       if (n_triggers == 0) then
-        message = "Trigger is set and no trigger is found in tally XML or &
-             & settings XML file."
-        call fatal_error()
+        call fatal_error("Trigger is set and no trigger is found in tally XML &
+             & or settings XML file.")
       end if
 
       if (t % n_user_triggers > 0) then
@@ -2772,11 +2766,10 @@ contains
                   ! User requested too many orders; throw a warning and
                   ! set to the maximum order.
                   ! The above scheme will essentially take the absolute value
-                  message = "Invalid scattering order of " &
+                  call warning("Invalid scattering order of " &
                       // trim(to_str(n_order)) // " requested. Setting to the &
                       & maximum permissible value, " &
-                      // trim(to_str(MAX_ANG_ORDER))
-                  call warning()
+                      // trim(to_str(MAX_ANG_ORDER)))
                   n_order = MAX_ANG_ORDER
                 end if
                 score_name = trim(MOMENT_STRS(imomstr)) // "n"
@@ -2800,11 +2793,10 @@ contains
                     ! User requested too many orders; throw a warning and set to
                     ! the maximum order.
                     ! The above scheme will essentially take the absolute value
-                    message = "Invalid scattering order of " &
+                    call warning("Invalid scattering order of " &
                          // trim(to_str(n_order)) // " requested. Setting to &
                          & the maximum permissible value, " &
-                         // trim(to_str(MAX_ANG_ORDER))
-                    call warning()
+                         // trim(to_str(MAX_ANG_ORDER)))
                     n_order = MAX_ANG_ORDER
                   end if
                   score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
@@ -2817,10 +2809,9 @@ contains
             select case (trim(score_name))
             case ('all')
               if (t % n_user_triggers /= 1) then
-                message = "Cannot set trigger for all and other scoring &
+                call fatal_error("Cannot set trigger for all and other scoring &
                        & functions in the same tally. Separate scoring &
-                       & functions into distinct tallies"
-                call fatal_error()
+                       & functions into distinct tallies")
               else
                 t % trigger_for_all = .true.
               end if
@@ -2890,21 +2881,19 @@ contains
 
             if (.not. t % trigger_for_all .and. t % score(trig_ind) % position &
                  == 0) then
-              message = "The score " // trim(score_name) // " has not been set &
-                   & in tally " // trim(to_str(t % id)) // " in tally XML file."
-              call fatal_error()
+              call fatal_error("The score " // trim(score_name) // " has not &
+                   & been set in tally " // trim(to_str(t % id)) // " in tally & 
+                   & XML file.")
             end if
 
             temp_str = ''
             if (check_for_node(node_trigger, "type")) then
               call get_node_value(node_trigger, "type", temp_str)
             else
-              message = "Must specify type for trigger of tally " &
-                   // trim(to_str(t % id)) // " in tally XML file."
-              call fatal_error()
+              call fatal_error("Must specify type for trigger of tally " &
+                   // trim(to_str(t % id)) // " in tally XML file.")
             end if
-
-            call lower_case(temp_str)
+            temp_str = to_lower(temp_str)
 
             select case (temp_str)
             case ('std_dev')
@@ -2914,26 +2903,23 @@ contains
             case ('rel_err')
               t % score(trig_ind) % type = RELATIVE_ERROR
             case default
-              message = "Unknown trigger type " // trim(temp_str) // &
-                   " in tally " // trim(to_str(t % id))
-              call fatal_error()
+              call fatal_error("Unknown trigger type " // trim(temp_str) // &
+                   " in tally " // trim(to_str(t % id)))
             end select
 
             if (check_for_node(node_trigger, "threshold")) then
               call get_node_value(node_trigger, "threshold", &
                    t % score(trig_ind) % threshold)
             else
-              message = "Must specify threshold for trigger of tally " &
-                  // trim(to_str(t % id)) // " in tally XML file."
-              call fatal_error()
+              call fatal_error("Must specify threshold for trigger of tally " &
+                  // trim(to_str(t % id)) // " in tally XML file.")
             end if
 
           else
             if (t % n_user_triggers /= 1) then
-              message = "Cannot set trigger for all and other scoring &
+              call fatal_error( "Cannot set trigger for all and other scoring &
                     &functions in the same tally. Separate scoring &
-                    &functions into distinct tallies"
-              call fatal_error()
+                    &functions into distinct tallies")
             else
               t % trigger_for_all = .true.
             end if

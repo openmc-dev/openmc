@@ -1455,18 +1455,6 @@ OpenMC. Currently, it allows users to accelerate fission source convergence
 during inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
 
-<<<<<<< HEAD
-``<active_flush>`` Element
---------------------------
-
-The ``<active_flush>`` element controls the batch where CMFD tallies should be
-reset. CMFD tallies should be reset before active batches so they are
-accumulated without bias.
-
-  *Default*: 0
-
-=======
->>>>>>> upstream/develop
 ``<begin>`` Element
 -------------------
 
@@ -1625,22 +1613,8 @@ iteration. This option can be turned on with "true" and turned off with "false".
 -------------------------
 
 The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
-<<<<<<< HEAD
-calculation be performed on the last batch when CMFD is active.
-
-  *Default*: false
-
-``<snes_monitor>`` Element
---------------------------
-
-The ``<snes_monitor>`` element is used to view the convergence of the nonlinear
- SNES function in PETSc. This option can be turned on with "true" and turned
-off with "false".
-
-=======
 calculation be performed on the last batch when CMFD is active. OpenMC should be
 compiled with PETSc when using this option.
->>>>>>> upstream/develop
 
   *Default*: false
 

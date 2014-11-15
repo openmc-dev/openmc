@@ -61,20 +61,7 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
-<<<<<<< HEAD
-    type(Node), pointer :: doc          => null()
-    type(Node), pointer :: node_mode    => null()
-    type(Node), pointer :: node_trigger => null()
-    type(Node), pointer :: node_source  => null()
-    type(Node), pointer :: node_dist    => null()
-    type(Node), pointer :: node_cutoff  => null()
-    type(Node), pointer :: node_entropy => null()
-    type(Node), pointer :: node_ufs     => null()
-    type(Node), pointer :: node_sp      => null()
-    type(Node), pointer :: node_output  => null()
-    type(Node), pointer :: node_verb    => null()
-    type(Node), pointer :: node_keff_trigger => null()
-=======
+
     type(Node), pointer :: doc            => null()
     type(Node), pointer :: node_mode      => null()
     type(Node), pointer :: node_source    => null()
@@ -84,11 +71,11 @@ contains
     type(Node), pointer :: node_ufs       => null()
     type(Node), pointer :: node_sp        => null()
     type(Node), pointer :: node_output    => null()
+    type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
     type(NodeList), pointer :: node_scat_list => null()
->>>>>>> upstream/develop
 
     ! Display output message
     message = "Reading settings XML file..."

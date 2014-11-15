@@ -1869,7 +1869,6 @@ contains
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
     type(Node), pointer :: node_trigger=>null()
-    type(Node), pointer :: node_trigger_mode=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()

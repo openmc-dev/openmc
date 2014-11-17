@@ -1894,6 +1894,8 @@ contains
             end do
           end do
 
+          deallocate(temp_real_array)
+
         end if
 
       else

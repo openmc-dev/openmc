@@ -470,11 +470,20 @@ contains
         call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
       end if
     else
-      call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
-           collect_)
+      if (present(record)) then
+        call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
+             collect_, record)
+      else
+        call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
+             collect_)
+      end if
     end if
 # else
-    call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
+    if (present(record)) then
+      call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length, record)
+    else
+      call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
+    end if
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -547,11 +556,20 @@ contains
         call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
       end if
     else
-      call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
-         length, collect_)
+      if (present(record)) then
+        call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
+           length, collect_, record)
+      else
+        call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
+           length, collect_)
+      end if
     end if
 # else
-    call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
+    if (present(record)) then
+      call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length, record)
+    else
+      call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
+    end if
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)

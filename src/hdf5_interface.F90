@@ -24,6 +24,11 @@ module hdf5_interface
   integer(HSIZE_T) :: dims4(4)   ! dims type for 4-D array
   type(c_ptr)      :: f_ptr      ! pointer to data
 
+  integer(HID_T) :: hdf5_output_file   ! identifier for output file
+  integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
+  integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
+  integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
+
   ! Generic HDF5 write procedure interface
   interface hdf5_write_data
     module procedure hdf5_write_double

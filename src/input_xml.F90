@@ -1788,6 +1788,8 @@ contains
         ! Check for OTF composition file
         if (check_for_node(node_mat, "otf_file_path")) then
           mat % otf_compositions = .true.
+
+          ! Read information from the file
           call get_node_value(node_mat, "otf_file_path", mat % comp_file % path)
           call fh % file_open(mat % comp_file % path, 'r', &
               direct_access=.true., serial = .true., record_len = 8)

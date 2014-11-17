@@ -10,7 +10,8 @@ module finalize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
+  use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err, &
+                             hdf5_tallyresult_t, hdf5_bank_t
 #endif
 
   implicit none

@@ -15,6 +15,9 @@ module source
   use random_lcg_header,  only: STREAM_TRACKING, STREAM_SOURCE
   use string,             only: to_str
 
+#ifdef HDF5
+  use hdf5_interface
+#endif
 #ifdef MPI
   use mpi
 #endif

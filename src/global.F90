@@ -260,16 +260,6 @@ module global
   real(8) :: weight_survive = 1.0
 
   ! ============================================================================
-  ! HDF5 VARIABLES
-
-#ifdef HDF5
-  integer(HID_T) :: hdf5_output_file   ! identifier for output file
-  integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
-  integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
-  integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
-#endif
-
-  ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)

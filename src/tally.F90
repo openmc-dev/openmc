@@ -17,6 +17,9 @@ module tally
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
 
+#ifdef HDF5
+  use hdf5_interface
+#endif
 #ifdef MPI
   use mpi
 #endif

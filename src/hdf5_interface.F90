@@ -22,6 +22,9 @@ module hdf5_interface
   integer(HSIZE_T) :: dims2(2)   ! dims type for 2-D array
   integer(HSIZE_T) :: dims3(3)   ! dims type for 3-D array
   integer(HSIZE_T) :: dims4(4)   ! dims type for 4-D array
+  integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
+  integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
+  integer(HSIZE_T) :: block1(1)  ! block type for 1-D array
   type(c_ptr)      :: f_ptr      ! pointer to data
 
   integer(HID_T) :: hdf5_output_file   ! identifier for output file
@@ -483,20 +486,63 @@ contains
 ! HDF5_WRITE_DOUBLE_1DARRAY writes double 1-D array
 !===============================================================================
 
-  subroutine hdf5_write_double_1Darray(group, name, buffer, length)
+  subroutine hdf5_write_double_1Darray(group, name, buffer, length, record)
 
     integer,        intent(in) :: length    ! length of array to write
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
     real(8),        intent(in) :: buffer(:) ! data to write
+    integer, optional, intent(in) :: record  ! Position in the hyperslab to write
+
+    integer(HID_T) :: dset_id
+    integer(HID_T) :: dataspace
+    integer(HID_T) :: memspace
 
     ! Set rank and dimensions of data
     hdf5_rank = 1
     dims1(1) = length
 
-    ! Write data
-    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims1, &
-         buffer, hdf5_err)
+    if (.not. present(record)) then
+
+      ! Write data
+      call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims1, &
+           buffer, hdf5_err)
+    else
+
+      ! If a record is provided, we assume the dataset with the given name
+      ! already exists, so we open in and write the hyperslab starting at
+      ! the record starting point
+      
+      start1(1) = (record - 1) * length
+      count1(1) = 1
+      block1(1) = length
+
+      ! Open the dataset
+      call h5dopen_f(group, name, dset_id, hdf5_err)
+
+      ! Get the dataspace
+      call h5dget_space_f(dset_id, dataspace, hdf5_err)
+
+      ! Create the memory space
+      call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
+
+      ! Select the hyperslab
+      call h5sselect_hyperslab_f(dataspace, H5S_SELECT_SET_F, start1, &
+          count1, hdf5_err, block = block1)
+
+      ! Write the data
+      call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
+          file_space_id = dataspace, mem_space_id = memspace)
+
+      ! Close the dataset
+      call h5dclose_f(dset_id, hdf5_err)
+
+      ! Close the dataspaces
+      call h5sclose_f(dataspace, hdf5_err)
+      call h5sclose_f(memspace, hdf5_err)
+
+    end if
+
 
   end subroutine hdf5_write_double_1Darray
 
@@ -504,18 +550,59 @@ contains
 ! HDF5_READ_DOUBLE_1DARRAY reads double 1-D array
 !===============================================================================
 
-  subroutine hdf5_read_double_1Darray(group, name, buffer, length)
+  subroutine hdf5_read_double_1Darray(group, name, buffer, length, record)
 
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
     real(8),        intent(inout) :: buffer(:) ! read data to here
     integer,        intent(in)    :: length    ! length of array
+    integer, optional, intent(in) :: record  ! Position in the hyperslab to read
+
+    integer(HID_T) :: dset_id
+    integer(HID_T) :: dataspace
+    integer(HID_T) :: memspace
 
     ! Set dimensions
     dims1(1) = length
 
-    ! Read data
-    call h5ltread_dataset_double_f(group, name, buffer, dims1, hdf5_err)
+    if (.not. present(record)) then
+
+      ! Read data
+      call h5ltread_dataset_double_f(group, name, buffer, dims1, hdf5_err)
+
+    else
+
+      ! If a record is provided, we'll read from a hyperslab selection
+      
+      start1(1) = (record - 1) * length
+      count1(1) = 1
+      block1(1) = length
+
+      ! Open the dataset
+      call h5dopen_f(group, name, dset_id, hdf5_err)
+
+      ! Get the dataspace
+      call h5dget_space_f(dset_id, dataspace, hdf5_err)
+
+      ! Create the memory space
+      call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
+
+      ! Select the hyperslab
+      call h5sselect_hyperslab_f(dataspace, H5S_SELECT_SET_F, start1, &
+          count1, hdf5_err, block = block1)
+
+      ! Read the data
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
+          file_space_id = dataspace, mem_space_id = memspace)
+
+      ! Close the dataset
+      call h5dclose_f(dset_id, hdf5_err)
+
+      ! Close the dataspaces
+      call h5sclose_f(dataspace, hdf5_err)
+      call h5sclose_f(memspace, hdf5_err)
+
+    end if
 
   end subroutine hdf5_read_double_1Darray
 

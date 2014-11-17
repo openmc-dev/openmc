@@ -464,7 +464,11 @@ contains
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
+      if (present(record)) then
+        call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length, record)
+      else
+        call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
+      end if
     else
       call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
@@ -537,7 +541,11 @@ contains
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
+      if (present(record)) then
+        call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length, record)
+      else
+        call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
+      end if
     else
       call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
          length, collect_)

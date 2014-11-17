@@ -18,7 +18,8 @@ contains
   subroutine kinematic_constraint()
 
     integer :: i ! nuclide index
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide pointer
+!$omp threadprivate(nuc)
 
     ! max kT for the problem
     max_kT = ZERO

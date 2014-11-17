@@ -242,6 +242,11 @@ out the file and "false" will not.
 
   .. note:: The tally results will always be written to a binary/HDF5 state point file.
 
+  :distribmats:
+    Write out binary or HDF5 files containing the compositions of each distributed material.
+
+    *Default*: true
+
 ``<output_path>`` Element
 -------------------------
 

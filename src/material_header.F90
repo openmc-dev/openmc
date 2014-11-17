@@ -201,8 +201,7 @@ contains
 #endif
 
 #ifdef HDF5
-      call fh % file_open(this % path, 'r', serial = .false., &
-          direct_access = .true., record_len = 8 * this % n_nuclides)
+      call fh % file_open(this % path, 'r', serial = .false.)
 #else
       ! TODO: implement parallel MPIIO with direct record access
       call fh % file_open(this % path, 'r', serial = .true., &

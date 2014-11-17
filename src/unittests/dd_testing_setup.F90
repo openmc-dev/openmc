@@ -40,7 +40,8 @@ contains
       skip = .true.
     end if
 #else
-    call warning("Skipping test: requires MPI")
+    call warning("Skipping test: requires MPI with procs: " // &
+                 trim(to_str(procs)))
     skip = .true.
 #endif
 

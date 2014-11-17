@@ -59,11 +59,14 @@ contains
     class(TestSuiteClass), intent(inout) :: suite
 
     integer :: i
-    integer(HID_T) :: file_id
     logical :: stat
     type(BinaryOutput) :: fh
 #ifdef MPI
     integer :: mpi_err
+#endif
+
+#ifdef HDF5
+    integer(HID_T) :: file_id
 #endif
 
     filename = 'otf_material_test'

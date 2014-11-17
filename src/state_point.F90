@@ -724,6 +724,12 @@ contains
         filename = trim(path_output) // 'source.' // &
             & zero_padded(current_batch, count_digits(n_batches))
 
+        if (dd_run) then
+          filename = trim(filename) // '.domain_' // &
+              & zero_padded(domain_decomp % meshbin, &
+                            count_digits(domain_decomp % n_domains))
+        end if
+
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -745,6 +751,13 @@ contains
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
             & zero_padded(current_batch, count_digits(n_batches))
+
+        if (dd_run) then
+          filename = trim(filename) // '.domain_' // &
+              & zero_padded(domain_decomp % meshbin, &
+                            count_digits(domain_decomp % n_domains))
+        end if
+
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -1256,7 +1269,8 @@ contains
              group="geometry/materials/material ")
 
       call sp % read_data(j, "otf_compositions", &
-           group="geometry/materials/material " // trim(to_str(mat % id)))
+           group="geometry/materials/material " // &
+                 trim(to_str(materials(i) % id)))
       
       if (j == 0) then
         allocate(temp_real_array(k))
@@ -1511,22 +1525,24 @@ contains
 
     character(MAX_FILE_LEN)    :: filename
     integer :: i, j
-    integer(HID_T) :: file_id
     type(BinaryOutput) :: fh
     type(Material), pointer :: mat => null()
+
+#ifdef HDF5
+    integer(HID_T) :: file_id
+#endif
 
     ! Create files and write headers (master only)
     if (master) then
       do i = 1, n_materials
         mat => materials(i)
-        if (mat % n_comp > 0) then
+        if (mat % n_comp > 1) then
 
           filename = trim(path_output) // 'material.' // &
               & zero_padded(current_batch, count_digits(n_batches))
 
           filename = trim(filename) // '.m' // &
-              & zero_padded(domain_decomp % meshbin, &
-                            count_digits(domain_decomp % n_domains))
+              & zero_padded(mat % id, count_digits(n_materials))
 #ifdef HDF5
           filename = trim(filename) // '.h5'
 #else
@@ -1534,8 +1550,8 @@ contains
 #endif
           ! Create file and write header
           call fh % file_create(filename, record_len = 8)
-          call fh % write_data(4, 'n_nuclides', record=1)
-          call fh % write_data(5, 'n_instances', record=2)
+          call fh % write_data(mat % n_nuclides, 'n_nuclides', record=1)
+          call fh % write_data(mat % n_comp, 'n_instances', record=2)
           call fh % file_close()
 #ifdef HDF5
           ! Create the full dataset initially so all other procs can write to it
@@ -1563,25 +1579,40 @@ contains
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
       do i = 1, n_materials
         mat => materials(i)
-        if (mat % n_comp > 0) then
+        if (mat % n_comp > 1) then
+          
+          filename = trim(path_output) // 'material.' // &
+              & zero_padded(current_batch, count_digits(n_batches))
+
+          filename = trim(filename) // '.m' // &
+              & zero_padded(mat % id, count_digits(n_materials))
+#ifdef HDF5
+          filename = trim(filename) // '.h5'
+#else
+          filename = trim(filename) // '.binary'
+#endif
           ! Write message
           call write_message("Writing distributed material " // trim(filename) &
                              // "...", 1)
+#ifdef HDF5
+          call fh % file_open(filename, 'w', serial = .false.)
+#else
+          ! TODO: implement parallel MPIIO with direct record access
           call fh % file_open(filename, 'w', serial = .true., &
                               direct_access = .true., &
                               record_len = 8 * mat % n_nuclides)
-
-            do j = 1, mat % n_comp
-#ifdef HDF5
-              call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                   length=mat % n_nuclides, record=j)
-#else
-              ! Binary files include the header in the dataset
-              call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                   length=mat % n_nuclides, record=j+1)
 #endif
-            end do 
-
+          do j = 1, mat % n_comp
+#ifdef HDF5
+            call fh % write_data(mat % comp(j) % atom_density, "comps", &
+                 length=mat % n_nuclides, record=j)
+#else
+            ! Binary files include the header in the dataset
+            call fh % write_data(mat % comp(j) % atom_density, "comps", &
+                 length=mat % n_nuclides, record=j+1)
+#endif
+          end do 
+          call fh % file_close()
         end if
       end do
     end if

@@ -14,14 +14,21 @@ module state_point
 
   use constants
   use error,              only: fatal_error, warning
+  use geometry_header,    only: Cell, Universe, Lattice, Surface
   use global
   use output,             only: write_message, time_stamp
   use source,             only: write_source_bank, read_source_bank
   use string,             only: to_str, zero_padded, count_digits
+  use material_header,    only: Material
   use output_interface
   use tally_header,       only: TallyObject
   use tally,              only: write_tally_result, read_tally_result
   use dict_header,        only: ElemKeyValueII
+
+#ifdef HDF5
+  use hdf5
+  use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err
+#endif
 
 #ifdef MPI
   use mpi
@@ -30,6 +37,7 @@ module state_point
   implicit none
 
   type(BinaryOutput)        :: sp      ! Statepoint/source output file
+  type(BinaryOutput)        :: fh      ! general file handle
 
 contains
 
@@ -449,18 +457,30 @@ contains
 
         call sp % write_data(mat % n_comp, "n_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        j = 0
+        if (mat % otf_compositions) then
+          j = 1
+        end if
+        call sp % write_data(j, "otf_compositions", &
+             group="geometry/materials/material " // trim(to_str(mat % id)))
+
+        if (.not. mat % otf_compositions) then
+
 #ifdef HDF5
-        call sp % open_group("geometry/materials/material "&
-               // trim(to_str(mat % id)) // "/compositions/")
-        call sp % close_group()
+          call sp % open_group("geometry/materials/material "&
+                 // trim(to_str(mat % id)) // "/compositions/")
+          call sp % close_group()
 #endif
-        COMPOSITION_LOOP: do j = 1, mat % n_comp
-          call sp % write_data(mat % comp(j) % atom_density, "atom_density ", &
-               length=mat % n_nuclides, & 
-               group="geometry/materials/material " &
-               // trim(to_str(mat % id)) // "/compositions/" &
-               // trim(to_str(j)))
-        end do COMPOSITION_LOOP
+          COMPOSITION_LOOP: do j = 1, mat % n_comp
+            call sp % write_data(mat % comp(j) % atom_density, "atom_density ", &
+                 length=mat % n_nuclides, & 
+                 group="geometry/materials/material " &
+                 // trim(to_str(mat % id)) // "/compositions/" &
+                 // trim(to_str(j)))
+          end do COMPOSITION_LOOP
+
+        end if
 
         call sp % write_data(mat % n_sab, "n_sab", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
@@ -679,6 +699,9 @@ contains
       call sp % file_close()
 
     end if
+
+    ! Write distributed materials
+    call write_distribmat_comps()
 
   end subroutine write_state_point
 
@@ -1229,15 +1252,21 @@ contains
            group="geometry/materials/material ")
       deallocate(temp_real_array)
 
-      allocate(temp_real_array(k))
       call sp % read_data(k, "n_comp", &
              group="geometry/materials/material ")
-      COMPOSITION_LOOP: do j = 1, k
-        call sp % read_data(temp_real_array, "atom_density ", &
-             length=size(temp_real_array), & 
-             group="geometry/materials/material ")
-      end do COMPOSITION_LOOP
-      deallocate(temp_real_array)
+
+      call sp % read_data(j, "otf_compositions", &
+           group="geometry/materials/material " // trim(to_str(mat % id)))
+      
+      if (j == 0) then
+        allocate(temp_real_array(k))
+        COMPOSITION_LOOP: do j = 1, k
+          call sp % read_data(temp_real_array, "atom_density ", &
+               length=size(temp_real_array), & 
+               group="geometry/materials/material ")
+        end do COMPOSITION_LOOP
+        deallocate(temp_real_array)
+      end if
 
       call sp % read_data(j, "n_sab", &
            group="geometry/materials/material ")
@@ -1472,4 +1501,91 @@ contains
 ! TODO write this routine
 ! TODO what if n_particles does not match source bank
   end subroutine read_source
+
+
+!===============================================================================
+! WRITE_DISTRIBMAT_COMPS
+!===============================================================================
+
+  subroutine write_distribmat_comps()
+
+    character(MAX_FILE_LEN)    :: filename
+    integer :: i, j
+    integer(HID_T) :: file_id
+    type(BinaryOutput) :: fh
+    type(Material), pointer :: mat => null()
+
+    ! Create files and write headers (master only)
+    if (master) then
+      do i = 1, n_materials
+        mat => materials(i)
+        if (mat % n_comp > 0) then
+
+          filename = trim(path_output) // 'material.' // &
+              & zero_padded(current_batch, count_digits(n_batches))
+
+          filename = trim(filename) // '.m' // &
+              & zero_padded(domain_decomp % meshbin, &
+                            count_digits(domain_decomp % n_domains))
+#ifdef HDF5
+          filename = trim(filename) // '.h5'
+#else
+          filename = trim(filename) // '.binary'
+#endif
+          ! Create file and write header
+          call fh % file_create(filename, record_len = 8)
+          call fh % write_data(4, 'n_nuclides', record=1)
+          call fh % write_data(5, 'n_instances', record=2)
+          call fh % file_close()
+#ifdef HDF5
+          ! Create the full dataset initially so all other procs can write to it
+          hdf5_rank = 1
+          dims1(1) = mat % n_comp * mat % n_nuclides
+          call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+          call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+          call h5dcreate_f(file_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+          call h5dclose_f(dset, hdf5_err)
+          call h5sclose_f(dspace, hdf5_err)
+          call h5fclose_f(file_id, hdf5_err)
+#endif
+        end if
+      end do
+    end if
+
+#ifdef HDF5
+#ifdef MPI
+    ! For parallel HDF5 we need to wait for master to create the files
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+#endif
+
+    ! Write compositions
+    if (master .or. (dd_run .and. domain_decomp % local_master)) then
+      do i = 1, n_materials
+        mat => materials(i)
+        if (mat % n_comp > 0) then
+          ! Write message
+          call write_message("Writing distributed material " // trim(filename) &
+                             // "...", 1)
+          call fh % file_open(filename, 'w', serial = .true., &
+                              direct_access = .true., &
+                              record_len = 8 * mat % n_nuclides)
+
+            do j = 1, mat % n_comp
+#ifdef HDF5
+              call fh % write_data(mat % comp(j) % atom_density, "comps", &
+                   length=mat % n_nuclides, record=j)
+#else
+              ! Binary files include the header in the dataset
+              call fh % write_data(mat % comp(j) % atom_density, "comps", &
+                   length=mat % n_nuclides, record=j+1)
+#endif
+            end do 
+
+        end if
+      end do
+    end if
+
+  end subroutine write_distribmat_comps
+
 end module state_point

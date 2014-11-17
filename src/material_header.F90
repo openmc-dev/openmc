@@ -186,29 +186,15 @@ contains
       class(CompositionFile), intent(inout) :: this 
       integer,                intent(in)    :: real_inst
       
-      integer :: record
       type(Composition) :: comp
       type(BinaryOutput) :: fh
 
       allocate(comp % atom_density(this % n_nuclides))
 
-      ! Determine where in the file to read from
-#ifdef HDF5
-      record = real_inst
-#else
-      ! Binary files include the header in the dataset
-      record = real_inst + 1
-#endif
-
-#ifdef HDF5
-      call fh % file_open(this % path, 'r', serial = .false.)
-#else
-      ! TODO: implement parallel MPIIO with direct record access
-      call fh % file_open(this % path, 'r', serial = .true., &
+      call fh % file_open(this % path, 'r', serial = .false., &
           direct_access = .true., record_len = 8 * this % n_nuclides)
-#endif
       call fh % read_data(comp % atom_density, 'comps', &
-          length = this % n_nuclides, record = record)
+          length = this % n_nuclides, record = real_inst, offset = 16)
       call fh % file_close()
 
     end function composition_file_load

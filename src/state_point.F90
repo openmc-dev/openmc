@@ -1594,14 +1594,10 @@ contains
           ! Write message
           call write_message("Writing distributed material " // trim(filename) &
                              // "...", 1)
-#ifdef HDF5
-          call fh % file_open(filename, 'w', serial = .false.)
-#else
-          ! TODO: implement parallel MPIIO with direct record access
-          call fh % file_open(filename, 'w', serial = .true., &
+
+          call fh % file_open(filename, 'w', serial = .false., &
                               direct_access = .true., &
                               record_len = 8 * mat % n_nuclides)
-#endif
           do j = 1, mat % n_comp
 #ifdef HDF5
             call fh % write_data(mat % comp(j) % atom_density, "comps", &

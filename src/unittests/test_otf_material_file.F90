@@ -58,7 +58,6 @@ contains
     class(test), intent(inout) :: this
     class(TestSuiteClass), intent(inout) :: suite
 
-    integer :: i
     logical :: stat
     type(BinaryOutput) :: fh
 #ifdef MPI
@@ -96,17 +95,15 @@ contains
       call h5dclose_f(dset, hdf5_err)
       call h5sclose_f(dspace, hdf5_err)
       call h5fclose_f(file_id, hdf5_err)
-      i = 1
-#else
-      i = 2
 #endif
+
       ! Open the file for composition writing
-      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
-      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=i+3)
-      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=i+4)
-      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i)
-      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=i+2)
-      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i+1)
+      call fh % file_open(filename, 'w', serial = .false., direct_access = .true., record_len = 8*4)
+      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=4, offset=16)
+      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=5, offset=16)
+      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=1, offset=16)
+      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=3, offset=16)
+      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=2, offset=16)
 
       ! Close the file
       call fh % file_close()

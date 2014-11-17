@@ -348,12 +348,22 @@ contains
 ! MPI_WRITE_DOUBLE_1DARRAY writes integer 1-D array data using MPI File I/O
 !===============================================================================
 
-  subroutine mpi_write_double_1Darray(fh, buffer, length, collect)
+  subroutine mpi_write_double_1Darray(fh, buffer, length, collect, record, &
+                                      offset)
 
     integer, intent(in) :: fh        ! file handle
     integer, intent(in) :: length    ! length of array
     real(8), intent(in) :: buffer(:) ! data to write
     logical, intent(in) :: collect   ! collective I/O
+    integer, intent(in), optional :: offset
+    integer, intent(in), optional :: record
+
+    integer(8) :: seek
+
+    if (present(record) .and. present(offset)) then
+      seek = int(offset + 8*length*(record-1), 8)
+      call MPI_FILE_SEEK(fh, seek, MPI_SEEK_SET, mpiio_err)
+    end if
 
     if (collect) then
       call MPI_FILE_WRITE_ALL(fh, buffer, length, MPI_REAL8, &
@@ -369,12 +379,22 @@ contains
 ! MPI_READ_DOUBLE_1DARRAY reads integer 1-D array using MPI file I/O
 !===============================================================================
 
-  subroutine mpi_read_double_1Darray(fh, buffer, length, collect)
+  subroutine mpi_read_double_1Darray(fh, buffer, length, collect, record, &
+                                     offset)
 
     integer, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length    ! length of array
     real(8), intent(inout) :: buffer(:) ! read data to here
     logical, intent(in)    :: collect   ! collective I/O
+    integer, intent(in), optional :: offset
+    integer, intent(in), optional :: record
+
+    integer(8) :: seek
+
+    if (present(record) .and. present(offset)) then
+      seek = int(offset + 8*length*(record-1), 8)
+      call MPI_FILE_SEEK(fh, seek, MPI_SEEK_SET, mpiio_err)
+    end if
 
     if (collect) then
       call MPI_FILE_READ_ALL(fh, buffer, length, MPI_REAL8, &

@@ -426,13 +426,14 @@ contains
 !===============================================================================
 
   subroutine write_double_1Darray(self, buffer, name, group, length, collect, &
-                                  record)
+                                  record, offset)
 
     integer,      intent(in)           :: length    ! length of array to write
     real(8),      intent(in)           :: buffer(:) ! data to write
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
     logical,      intent(in), optional :: collect   ! collective I/O
+    integer,      intent(in), optional :: offset
     integer,      intent(in), optional :: record    ! REC
     class(BinaryOutput) :: self
 
@@ -495,7 +496,17 @@ contains
         write(self % unit_fh) buffer(1:length)
       endif
     else
-      call mpi_write_double_1Darray(self % unit_fh, buffer, length, collect_)
+      if (present(record)) then
+        if (present(offset)) then
+          call mpi_write_double_1Darray(self % unit_fh, buffer, length, &
+                                        collect_, record, offset)
+        else
+          call mpi_write_double_1Darray(self % unit_fh, buffer, length, &
+                                        collect_, record)
+        endif
+      else
+        call mpi_write_double_1Darray(self % unit_fh, buffer, length, collect_)
+      endif
     end if
 #else
     if (present(record)) then
@@ -512,7 +523,7 @@ contains
 !===============================================================================
 
   subroutine read_double_1Darray(self, buffer, name, group, length, collect, &
-                                 record)
+                                 record, offset)
 
     integer,        intent(in)           :: length    ! length of array to read
     real(8),        intent(inout)        :: buffer(:) ! read data to here
@@ -520,6 +531,7 @@ contains
     character(*),   intent(in), optional :: group     ! HDF5 group name
     logical,        intent(in), optional :: collect   ! collective I/O
     integer,        intent(in), optional :: record    ! REC
+    integer,        intent(in), optional :: offset
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -581,7 +593,17 @@ contains
         read(self % unit_fh) buffer(1:length)
       end if
     else
-      call mpi_read_double_1Darray(self % unit_fh, buffer, length, collect_)
+      if (present(record)) then
+        if (present(offset)) then
+          call mpi_read_double_1Darray(self % unit_fh, buffer, length, &
+                                       collect_, record, offset)
+        else
+          call mpi_read_double_1Darray(self % unit_fh, buffer, length, &
+                                       collect_, record)
+        end if
+      else
+        call mpi_read_double_1Darray(self % unit_fh, buffer, length, collect_)
+      end if
     end if
 #else
     if (present(record)) then

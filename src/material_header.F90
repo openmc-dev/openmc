@@ -186,7 +186,6 @@ contains
       class(CompositionFile), intent(inout) :: this 
       integer,                intent(in)    :: real_inst
       
-      integer :: i
       integer :: record
       character(11) :: str_record
       type(Composition) :: comp
@@ -200,17 +199,10 @@ contains
       str_record = adjustl(str_record)
 
       call fh % file_open(this % path, 'r', serial = .true., &
-                          direct_access = .true., record_len = 8)
-#ifndef HDF5
-      do i = 1, this % n_nuclides
-        call fh % read_data(comp % atom_density(i), str_record, &
-            length = this % n_nuclides, record = record)
-        record = record + 1
-      end do
-#else
+          direct_access = .true., record_len = 8 * this % n_nuclides)
+      ! TODO: this uses hdf5 VERY inefficiently.  We should use hyperslabs
       call fh % read_data(comp % atom_density, str_record, &
-          length = this % n_nuclides)
-#endif
+          length = this % n_nuclides, record = record)
       call fh % file_close()
 
     end function composition_file_load

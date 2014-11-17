@@ -3,6 +3,7 @@ module output_interface
   use constants
 
 #ifdef HDF5
+  use h5lt
   use hdf5_interface
 #endif
 #ifdef MPI
@@ -183,8 +184,13 @@ contains
     if (self % serial) then
       ! Check for read/write mode to open, default is read only
       if (mode == 'w') then
-        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
-             STATUS='old', ACCESS='stream', POSITION='append')
+        if (self % direct_access) then
+          open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
+               STATUS='old', ACCESS='direct', RECL=self % record_len)
+        else
+          open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
+               STATUS='old', ACCESS='stream', POSITION='append')
+        end if
       else
         if (self % direct_access) then
           open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
@@ -200,8 +206,13 @@ contains
 #else
     ! Check for read/write mode to open, default is read only
     if (mode == 'w') then
-      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
-           STATUS='old', ACCESS='stream', POSITION='append')
+        if (self % direct_access) then
+          open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
+               STATUS='old', ACCESS='direct', RECL=self % record_len)
+        else
+          open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
+               STATUS='old', ACCESS='stream', POSITION='append')
+        end if
     else
       if (self % direct_access) then
         open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
@@ -560,13 +571,15 @@ contains
 ! WRITE_DOUBLE_2DARRAY writes double precision 2-D array data
 !===============================================================================
 
-  subroutine write_double_2Darray(self, buffer, name, group, length, collect)
+  subroutine write_double_2Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(2) ! dimension of array
     real(8),      intent(in)           :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record     ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -609,12 +622,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2))
+      end if
     else
       call mpi_write_double_2Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2))
+    end if
 #endif
 
   end subroutine write_double_2Darray
@@ -623,13 +644,15 @@ contains
 ! READ_DOUBLE_2DARRAY reads double precision 2-D array data
 !===============================================================================
 
-  subroutine read_double_2Darray(self, buffer, name, group, length, collect)
+  subroutine read_double_2Darray(self, buffer, name, group, length, collect, &
+                                 record)
 
     integer,      intent(in)           :: length(2) ! dimension of array
     real(8),      intent(inout)        :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -672,12 +695,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2))
+      end if
     else
       call mpi_read_double_2Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2))
+    end if
 #endif
 
   end subroutine read_double_2Darray
@@ -686,13 +717,15 @@ contains
 ! WRITE_DOUBLE_3DARRAY writes double precision 3-D array data
 !===============================================================================
 
-  subroutine write_double_3Darray(self, buffer, name, group, length, collect)
+  subroutine write_double_3Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
     real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -735,12 +768,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      end if
     else
       call mpi_write_double_3Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    end if
 #endif
 
   end subroutine write_double_3Darray
@@ -749,13 +790,15 @@ contains
 ! READ_DOUBLE_3DARRAY reads double precision 3-D array data
 !===============================================================================
 
-  subroutine read_double_3Darray(self, buffer, name, group, length, collect)
+  subroutine read_double_3Darray(self, buffer, name, group, length, collect, &
+                                 record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
     real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))        
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -798,12 +841,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      end if
     else
       call mpi_read_double_3Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    end if
 #endif
 
   end subroutine read_double_3Darray
@@ -812,7 +863,8 @@ contains
 ! WRITE_DOUBLE_4DARRAY writes double precision 4-D array data
 !===============================================================================
 
-  subroutine write_double_4Darray(self, buffer, name, group, length, collect)
+  subroutine write_double_4Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(4) ! length of each dimension
     real(8),      intent(in)           :: buffer(length(1),length(2),&
@@ -820,6 +872,7 @@ contains
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -863,14 +916,24 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                         1:length(4))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+            1:length(3), 1:length(4))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+            1:length(4))
+      end if
     else
       call mpi_write_double_4Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                       1:length(4))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+          1:length(3), 1:length(4))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+          1:length(4))
+    end if
 #endif
 
   end subroutine write_double_4Darray
@@ -879,7 +942,8 @@ contains
 ! READ_DOUBLE_4DARRAY reads double precision 4-D array data
 !===============================================================================
 
-  subroutine read_double_4Darray(self, buffer, name, group, length, collect)
+  subroutine read_double_4Darray(self, buffer, name, group, length, collect, &
+                                 record)
 
     integer,      intent(in)           :: length(4) ! length of each dimension
     real(8),      intent(inout)        :: buffer(length(1),length(2),&
@@ -887,6 +951,7 @@ contains
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -929,14 +994,24 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                        1:length(4))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+            1:length(3), 1:length(4))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+            1:length(4))
+      end if
     else
       call mpi_read_double_4Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                      1:length(4))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+          1:length(3), 1:length(4))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+          1:length(4))
+    end if
 #endif
 
   end subroutine read_double_4Darray
@@ -1085,13 +1160,15 @@ contains
 ! WRITE_INTEGER_1DARRAY writes integer precision 1-D array data
 !===============================================================================
 
-  subroutine write_integer_1Darray(self, buffer, name, group, length, collect)
+  subroutine write_integer_1Darray(self, buffer, name, group, length, collect, &
+                                   record)
 
     integer,      intent(in)           :: length    ! length of array to write
     integer,      intent(in)           :: buffer(:) ! data to write
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
     logical,      intent(in), optional :: collect   ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1134,12 +1211,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length)
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length)
+      else
+        write(self % unit_fh) buffer(1:length)
+      end if
     else
       call mpi_write_integer_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length)
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length)
+    else
+      write(self % unit_fh) buffer(1:length)
+    end if
 #endif
 
   end subroutine write_integer_1Darray
@@ -1222,13 +1307,15 @@ contains
 ! WRITE_INTEGER_2DARRAY writes integer precision 2-D array data
 !===============================================================================
 
-  subroutine write_integer_2Darray(self, buffer, name, group, length, collect)
+  subroutine write_integer_2Darray(self, buffer, name, group, length, collect, &
+                                   record)
 
     integer,      intent(in)           :: length(2) ! dimension of array
     integer,      intent(in)           :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1271,12 +1358,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then 
-      write(self % unit_fh) buffer(1:length(1),1:length(2))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2))
+      end if
     else
       call mpi_write_integer_2Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2))
+    end if
 #endif
 
   end subroutine write_integer_2Darray
@@ -1285,13 +1380,15 @@ contains
 ! READ_INTEGER_2DARRAY reads integer precision 2-D array data
 !===============================================================================
 
-  subroutine read_integer_2Darray(self, buffer, name, group, length, collect)
+  subroutine read_integer_2Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(2) ! dimension of array
     integer,      intent(inout)        :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1334,12 +1431,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2))
+      end if
     else
       call mpi_read_integer_2Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2))
+    end if
 #endif
 
   end subroutine read_integer_2Darray
@@ -1348,13 +1453,15 @@ contains
 ! WRITE_INTEGER_3DARRAY writes integer precision 3-D array data
 !===============================================================================
 
-  subroutine write_integer_3Darray(self, buffer, name, group, length, collect)
+  subroutine write_integer_3Darray(self, buffer, name, group, length, collect, &
+                                   record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
     integer,      intent(in)           :: buffer(length(1),length(2),length(3))        
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1397,12 +1504,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      end if
     else
       call mpi_write_integer_3Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    end if
 #endif
 
   end subroutine write_integer_3Darray
@@ -1411,13 +1526,15 @@ contains
 ! READ_INTEGER_3DARRAY reads integer precision 3-D array data
 !===============================================================================
 
-  subroutine read_integer_3Darray(self, buffer, name, group, length, collect)
+  subroutine read_integer_3Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
     integer,      intent(inout)        :: buffer(length(1),length(2),length(3))        
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1460,12 +1577,20 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+      end if
     else
       call mpi_read_integer_3Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2),1:length(3))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
+    end if
 #endif
 
   end subroutine read_integer_3Darray
@@ -1474,7 +1599,8 @@ contains
 ! WRITE_INTEGER_4DARRAY writes integer precision 4-D array data
 !===============================================================================
 
-  subroutine write_integer_4Darray(self, buffer, name, group, length, collect)
+  subroutine write_integer_4Darray(self, buffer, name, group, length, collect, &
+                                   record)
 
     integer,      intent(in)           :: length(4) ! length of each dimension
     integer,      intent(in)           :: buffer(length(1),length(2),&
@@ -1482,6 +1608,7 @@ contains
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1524,14 +1651,24 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                         1:length(4))
+      if (present(record)) then
+        write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+            1:length(3), 1:length(4))
+      else
+        write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+            1:length(4))
+      end if
     else
       call mpi_write_integer_4Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                       1:length(4))
+    if (present(record)) then
+      write(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+          1:length(3), 1:length(4))
+    else
+      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+          1:length(4))
+    end if
 #endif
 
   end subroutine write_integer_4Darray
@@ -1540,7 +1677,8 @@ contains
 ! READ_INTEGER_4DARRAY reads integer precision 4-D array data
 !===============================================================================
 
-  subroutine read_integer_4Darray(self, buffer, name, group, length, collect)
+  subroutine read_integer_4Darray(self, buffer, name, group, length, collect, &
+                                  record)
 
     integer,      intent(in)           :: length(4) ! length of each dimension
     integer,      intent(inout)        :: buffer(length(1),length(2),&
@@ -1548,6 +1686,7 @@ contains
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
+    integer,      intent(in), optional :: record  ! REC
     class(BinaryOutput) :: self
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
@@ -1590,14 +1729,24 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                        1:length(4))
+      if (present(record)) then
+        read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+            1:length(3), 1:length(4))
+      else
+        read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+            1:length(4))
+      end if
     else
       call mpi_read_integer_4Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                      1:length(4))
+    if (present(record)) then
+      read(self % unit_fh, REC=record) buffer(1:length(1),1:length(2), &
+          1:length(3), 1:length(4))
+    else
+      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
+          1:length(4))
+    end if
 #endif
 
   end subroutine read_integer_4Darray

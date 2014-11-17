@@ -494,10 +494,6 @@ contains
     real(8),        intent(in) :: buffer(:) ! data to write
     integer, optional, intent(in) :: record  ! Position in the hyperslab to write
 
-    integer(HID_T) :: dset_id
-    integer(HID_T) :: dataspace
-    integer(HID_T) :: memspace
-
     ! Set rank and dimensions of data
     hdf5_rank = 1
     dims1(1) = length
@@ -518,31 +514,30 @@ contains
       block1(1) = length
 
       ! Open the dataset
-      call h5dopen_f(group, name, dset_id, hdf5_err)
+      call h5dopen_f(group, name, dset, hdf5_err)
 
       ! Get the dataspace
-      call h5dget_space_f(dset_id, dataspace, hdf5_err)
+      call h5dget_space_f(dset, dspace, hdf5_err)
 
       ! Create the memory space
       call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
 
       ! Select the hyperslab
-      call h5sselect_hyperslab_f(dataspace, H5S_SELECT_SET_F, start1, &
+      call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
           count1, hdf5_err, block = block1)
 
       ! Write the data
-      call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
-          file_space_id = dataspace, mem_space_id = memspace)
+      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
+          file_space_id = dspace, mem_space_id = memspace)
 
       ! Close the dataset
-      call h5dclose_f(dset_id, hdf5_err)
+      call h5dclose_f(dset, hdf5_err)
 
       ! Close the dataspaces
-      call h5sclose_f(dataspace, hdf5_err)
+      call h5sclose_f(dspace, hdf5_err)
       call h5sclose_f(memspace, hdf5_err)
 
     end if
-
 
   end subroutine hdf5_write_double_1Darray
 
@@ -557,10 +552,6 @@ contains
     real(8),        intent(inout) :: buffer(:) ! read data to here
     integer,        intent(in)    :: length    ! length of array
     integer, optional, intent(in) :: record  ! Position in the hyperslab to read
-
-    integer(HID_T) :: dset_id
-    integer(HID_T) :: dataspace
-    integer(HID_T) :: memspace
 
     ! Set dimensions
     dims1(1) = length
@@ -579,27 +570,27 @@ contains
       block1(1) = length
 
       ! Open the dataset
-      call h5dopen_f(group, name, dset_id, hdf5_err)
+      call h5dopen_f(group, name, dset, hdf5_err)
 
       ! Get the dataspace
-      call h5dget_space_f(dset_id, dataspace, hdf5_err)
+      call h5dget_space_f(dset, dspace, hdf5_err)
 
       ! Create the memory space
       call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
 
       ! Select the hyperslab
-      call h5sselect_hyperslab_f(dataspace, H5S_SELECT_SET_F, start1, &
+      call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
           count1, hdf5_err, block = block1)
 
       ! Read the data
-      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
-          file_space_id = dataspace, mem_space_id = memspace)
+      call h5dread_f(dset, H5T_NATIVE_DOUBLE, buffer, dims1, hdf5_err, &
+          file_space_id = dspace, mem_space_id = memspace)
 
       ! Close the dataset
-      call h5dclose_f(dset_id, hdf5_err)
+      call h5dclose_f(dset, hdf5_err)
 
       ! Close the dataspaces
-      call h5sclose_f(dataspace, hdf5_err)
+      call h5sclose_f(dspace, hdf5_err)
       call h5sclose_f(memspace, hdf5_err)
 
     end if
@@ -1376,13 +1367,14 @@ contains
 !===============================================================================
 
   subroutine hdf5_write_double_1Darray_parallel(group, name, buffer, length, &
-             collect)
+             collect, record)
 
     integer,        intent(in) :: length    ! length of array to write
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
     real(8),target, intent(in) :: buffer(length) ! data to write
     logical,        intent(in) :: collect   ! collect I/O
+    integer, optional, intent(in) :: record  ! Position in the hyperslab to write
 
     ! Set rank and dimensions of data
     hdf5_rank = 1
@@ -1398,15 +1390,48 @@ contains
       call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
     end if
 
-    ! Create dataspace
-    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+    if (.not. present(record)) then
 
-    ! Create dataset
-    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+      ! Create dataspace
+      call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
-    ! Write data
-    f_ptr = c_loc(buffer)
-    call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      ! Create dataset
+      call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+
+      ! Write data
+      f_ptr = c_loc(buffer)
+      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+
+
+    else
+
+      ! If a record is provided, we assume the dataset with the given name
+      ! already exists, so we open in and write the hyperslab starting at
+      ! the record starting point
+      
+      start1(1) = (record - 1) * length
+      count1(1) = 1
+      block1(1) = length
+
+      ! Open the dataset
+      call h5dopen_f(group, name, dset, hdf5_err)
+
+      ! Get the dataspace
+      call h5dget_space_f(dset, dspace, hdf5_err)
+
+      ! Create the memory space
+      call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
+
+      ! Select the hyperslab
+      call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+          count1, hdf5_err, block = block1)
+
+      ! Write the data
+      f_ptr = c_loc(buffer)
+      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+          file_space_id = dspace, mem_space_id = memspace, xfer_prp = plist)
+
+    end if
 
     ! Close all 
     call h5dclose_f(dset, hdf5_err)
@@ -1420,13 +1445,14 @@ contains
 !===============================================================================
 
   subroutine hdf5_read_double_1Darray_parallel(group, name, buffer, length, &
-             collect)
+             collect, record)
 
     integer,         intent(in)    :: length    ! length of array
     integer(HID_T),  intent(in)    :: group     ! name of group
     character(*),    intent(in)    :: name      ! name of data
     real(8),target,  intent(inout) :: buffer(length) ! read data to here
     logical,         intent(in)    :: collect   ! collective I/O
+    integer, optional, intent(in) :: record  ! Position in the hyperslab to write
 
     ! Create property list for independent or collective read
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -1441,11 +1467,46 @@ contains
     ! Open dataset
     call h5dopen_f(group, name, dset, hdf5_err)
 
-    ! Read data
-    f_ptr = c_loc(buffer)
-    call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+    if (.not. present(record)) then
 
-    ! Close dataset and property list
+      ! Read data
+      f_ptr = c_loc(buffer)
+      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+
+    else
+
+      ! If a record is provided, we assume the dataset with the given name
+      ! already exists, so we open in and write the hyperslab starting at
+      ! the record starting point
+      
+      ! Set rank and dimensions of data
+      hdf5_rank = 1
+      dims1(1) = length
+      start1(1) = (record - 1) * length
+      count1(1) = 1
+      block1(1) = length
+
+      ! Get the dataspace
+      call h5dget_space_f(dset, dspace, hdf5_err)
+
+      ! Create the memory space
+      call h5screate_simple_f(hdf5_rank, block1, memspace, hdf5_err)
+
+      ! Select the hyperslab
+      call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+          count1, hdf5_err, block = block1)
+
+      ! Read the data
+      f_ptr = c_loc(buffer)
+      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+          file_space_id = dspace, mem_space_id = memspace, xfer_prp=plist)
+
+      ! Close dataspace
+      call h5sclose_f(dspace, hdf5_err)
+
+    end if
+
+    ! Close all 
     call h5dclose_f(dset, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
 

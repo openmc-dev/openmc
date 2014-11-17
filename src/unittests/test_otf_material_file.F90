@@ -90,11 +90,11 @@ contains
 #endif
 
       ! Write the compositions
-      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i)
-      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i+1)
-      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=i+2)
       call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=i+3)
       call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=i+4)
+      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i)
+      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=i+2)
+      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i+1)
 
       ! Close the file
       call fh % file_close()

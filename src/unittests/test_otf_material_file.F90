@@ -9,6 +9,11 @@ module test_otf_material_file
   use testing_header,   only: TestSuiteClass, TestClass
   use string,           only: to_str
 
+#ifdef HDF5
+  use hdf5
+  use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err
+#endif
+
 #ifdef MPI
   use mpi
 #endif
@@ -54,7 +59,7 @@ contains
     class(TestSuiteClass), intent(inout) :: suite
 
     integer :: i
-    real(8), allocatable :: tmp(:)
+    integer(HID_T) :: file_id
     logical :: stat
     type(BinaryOutput) :: fh
 #ifdef MPI
@@ -76,20 +81,24 @@ contains
       call fh % write_data(5, 'n_instances', record=2)
       call fh % file_close()
       
-      ! Open the file for composition writing
-      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
-
 #ifdef HDF5
-      ! For HDF5, we need to create the whole dataset first, then write to sections with hyperslabs
-      allocate(tmp(20))
-      call fh % write_data(tmp, "comps", length=20)
-      deallocate(tmp)
+      ! For HDF5, we need to create the whole dataset first, then write to sections with hyperslabs later
+
+      hdf5_rank = 1
+      dims1(1) = 20
+
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+      call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+      call h5dcreate_f(file_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+      call h5dclose_f(dset, hdf5_err)
+      call h5sclose_f(dspace, hdf5_err)
+      call h5fclose_f(file_id, hdf5_err)
       i = 1
 #else
       i = 2
 #endif
-
-      ! Write the compositions
+      ! Open the file for composition writing
+      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
       call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=i+3)
       call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=i+4)
       call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i)

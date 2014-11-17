@@ -199,8 +199,15 @@ contains
       ! Binary files include the header in the dataset
       record = real_inst + 1
 #endif
+
+#ifdef HDF5
+      call fh % file_open(this % path, 'r', serial = .false., &
+          direct_access = .true., record_len = 8 * this % n_nuclides)
+#else
+      ! TODO: implement parallel MPIIO with direct record access
       call fh % file_open(this % path, 'r', serial = .true., &
           direct_access = .true., record_len = 8 * this % n_nuclides)
+#endif
       call fh % read_data(comp % atom_density, 'comps', &
           length = this % n_nuclides, record = record)
       call fh % file_close()

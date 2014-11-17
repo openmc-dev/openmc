@@ -864,6 +864,14 @@ contains
         if (trim(temp_str) == 'false' .or. &
              trim(temp_str) == '0') output_tallies = .false.
       end if
+
+      ! Check for distributed materials option
+      if (check_for_node(node_output, "distribmats")) then
+        call get_node_value(node_output, "distribmats", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') output_distribmats = .false.
+      end if
     end if
 
     ! Check for cmfd run

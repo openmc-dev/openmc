@@ -397,9 +397,10 @@ module global
   type(SetInt) :: sourcepoint_batch
 
   ! Various output options
-  logical :: output_summary = .false.
-  logical :: output_xs      = .false.
-  logical :: output_tallies = .true.
+  logical :: output_summary     = .false.
+  logical :: output_xs          = .false.
+  logical :: output_tallies     = .true.
+  logical :: output_distribmats = .true.
 
   ! ============================================================================
   ! RESONANCE SCATTERING VARIABLES

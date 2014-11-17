@@ -54,6 +54,7 @@ contains
     class(TestSuiteClass), intent(inout) :: suite
 
     integer :: i
+    real(8), allocatable :: tmp(:)
     logical :: stat
     type(BinaryOutput) :: fh
 #ifdef MPI
@@ -75,19 +76,27 @@ contains
       call fh % write_data(5, 'n_instances', record=2)
       call fh % file_close()
       
-      ! Write compositions
+      ! Open the file for composition writing
       call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
-      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "1", length=4, record=2)
-      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "2", length=4, record=3)
-      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "3", length=4, record=4)
-      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "4", length=4, record=5)
-      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "5", length=4, record=6)
 
-!     TODO: this uses hdf5 VERY inefficiently: we should be using hyperslabs
-!      do i=1,50000
-!        call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), trim(to_str(6+i)), length=4, record=6+i)
-!      end do
+#ifdef HDF5
+      ! For HDF5, we need to create the whole dataset first, then write to sections with hyperslabs
+      allocate(tmp(20))
+      call fh % write_data(tmp, "comps", length=20)
+      deallocate(tmp)
+      i = 1
+#else
+      i = 2
+#endif
 
+      ! Write the compositions
+      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i)
+      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=i+1)
+      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=i+2)
+      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=i+3)
+      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=i+4)
+
+      ! Close the file
       call fh % file_close()
 
     end if
@@ -170,6 +179,10 @@ contains
     if (.not. comp(5) % atom_density(2) == 7.0_8) failure = .true.
     if (.not. comp(5) % atom_density(3) == 7.0_8) failure = .true.
     if (.not. comp(5) % atom_density(4) == 7.0_8) failure = .true.
+
+    if (failure) then
+      call write_message("FAILURE: Materials file reading failure.")
+    end if
 
 #ifdef MPI
     call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &

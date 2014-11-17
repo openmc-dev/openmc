@@ -187,21 +187,21 @@ contains
       integer,                intent(in)    :: real_inst
       
       integer :: record
-      character(11) :: str_record
       type(Composition) :: comp
       type(BinaryOutput) :: fh
 
       allocate(comp % atom_density(this % n_nuclides))
 
       ! Determine where in the file to read from
+#ifdef HDF5
+      record = real_inst
+#else
+      ! Binary files include the header in the dataset
       record = real_inst + 1
-      write (str_record, '(I11)') real_inst
-      str_record = adjustl(str_record)
-
+#endif
       call fh % file_open(this % path, 'r', serial = .true., &
           direct_access = .true., record_len = 8 * this % n_nuclides)
-      ! TODO: this uses hdf5 VERY inefficiently.  We should use hyperslabs
-      call fh % read_data(comp % atom_density, str_record, &
+      call fh % read_data(comp % atom_density, 'comps', &
           length = this % n_nuclides, record = record)
       call fh % file_close()
 

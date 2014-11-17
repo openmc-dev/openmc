@@ -1,9 +1,17 @@
 module test_otf_material_file
 
+  use constants,        only: MAX_LINE_LEN
   use global,           only: master
   use error,            only: warning
-  use testing_header,   only: TestSuiteClass, TestClass
+  use material_header,  only: Composition, CompositionFile
   use output_interface, only: BinaryOutput
+  use output,           only: write_message
+  use testing_header,   only: TestSuiteClass, TestClass
+  use string,           only: to_str
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
   private
@@ -17,7 +25,10 @@ module test_otf_material_file
       procedure, nopass :: teardown => test_teardown
   end type test
 
-  type(test), public :: otf_material_file_test
+  type(test), public      :: otf_material_file_test
+  type(Composition)       :: comp(5)
+  type(CompositionFile)   :: compfile
+  character(MAX_LINE_LEN) :: filename
 
 contains
 
@@ -42,31 +53,54 @@ contains
     class(test), intent(inout) :: this
     class(TestSuiteClass), intent(inout) :: suite
 
-    real(8) :: buff(4)
+    integer :: i
+    logical :: stat
     type(BinaryOutput) :: fh
-    
+#ifdef MPI
+    integer :: mpi_err
+#endif
+
+    filename = 'otf_material_test'
+#ifdef HDF5
+    filename = trim(filename) // '.h5'
+#else
+    filename = trim(filename) // '.binary'
+#endif
+
     if (master) then
-!      open(unit=666,file='/tmp/otf_material_test.binary',access='direct',recl=8,status='replace',action='write')
-!      write(unit=666,rec=1) 1.0_8
-!      write(unit=666,rec=2) 2.0_8
-!      write(unit=666,rec=3) 3.0_8
-!      write(unit=666,rec=4) 4.0_8
-!      write(unit=666,rec=5) 5.0_8
-!      close(unit=666)
-      call fh % file_create('/tmp/otf_material_test.binary', record_len = 8)
+
+      ! Create file and write header
+      call fh % file_create(filename, record_len = 8)
       call fh % write_data(4, 'n_nuclides', record=1)
       call fh % write_data(5, 'n_instances', record=2)
-      call fh % write_data(1.0_8, '1', record=3)
-      call fh % write_data(2.0_8, '1', record=4)
-      call fh % write_data(3.0_8, '1', record=5)
-      call fh % write_data(4.0_8, '1', record=6)
-      
-!      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "1", length=4, record=2)
-!      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "2", length=4, record=3)
-!      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "3", length=4, record=4)
-!      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "4", length=4, record=5)
-!      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "5", length=4, record=6)
       call fh % file_close()
+      
+      ! Write compositions
+      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
+      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "1", length=4, record=2)
+      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "2", length=4, record=3)
+      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "3", length=4, record=4)
+      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "4", length=4, record=5)
+      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "5", length=4, record=6)
+
+!     TODO: this uses hdf5 VERY inefficiently: we should be using hyperslabs
+!      do i=1,50000
+!        call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), trim(to_str(6+i)), length=4, record=6+i)
+!      end do
+
+      call fh % file_close()
+
+    end if
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
+    INQUIRE(FILE=filename, EXIST=stat)
+    if (.not. stat) then
+      call suite % skip(this)
+      if (master) call write_message('Test file not created: ' // filename)
+      return
     end if
 
   end subroutine test_setup
@@ -77,39 +111,21 @@ contains
 
   subroutine test_execute()
 
-    real(8) :: buff(4)
-    integer :: a, b
-
+    integer :: i
     type(BinaryOutput) :: fh
 
-    if (master) then
-!      open(unit=666,file='/tmp/otf_material_test.binary',access='direct',recl=8,action='read')
-!      read(unit=666,rec=5)b
-!      print *, 'buff', b
-!      read(unit=666,rec=1)b
-!      print *, 'buff', b
-!      read(unit=666,rec=3)b
-!      print *, 'buff', b
-!      read(unit=666,rec=2)b
-!      print *, 'buff', b
-!      close(unit=666)
-      call fh % file_open('/tmp/otf_material_test.binary', 'r', &
-                          direct_access = .true., record_len = 8)
-      call fh % read_data(a, 'n_nuclides', record = 1)
-      call fh % read_data(b, 'n_instances', record = 2)
-      call fh % read_data(buff(1), '1', record = 3)
-      call fh % read_data(buff(2), '2', record = 4)
-      call fh % read_data(buff(3), '3', record = 5)
-      call fh % read_data(buff(4), '4', record = 6)
-      print *,'buff',a,b,buff
-!      call fh % read_data(buff, '1', length = 4, record = 1)
-!      print *,'buff',buff
-!      call fh % read_data(buff, '3', length = 4, record = 3)
-!      print *,'buff',buff
-!      call fh % file_close()
-      
+    ! Set up the composition file wrapper
+    compfile % path = filename
+    call fh % file_open(filename, 'r', &
+                        direct_access = .true., record_len = 8)
+    call fh % read_data(compfile % n_nuclides, 'n_nuclides', record = 1)
+    call fh % read_data(compfile % n_instances, 'n_instances', record = 2)
+    call fh % file_close()
 
-    end if
+    ! Read the compositions in
+    do i = 1, compfile % n_instances
+      comp(i) = compfile % load(i)
+    end do
 
   end subroutine test_execute
 
@@ -120,7 +136,57 @@ contains
   subroutine test_check(suite)
 
     class(TestSuiteClass), intent(inout) :: suite
+
+    logical :: failure = .false.
+#ifdef MPI
+    integer :: mpi_err
+    logical :: any_fail
+#endif
+
+    if (.not. compfile % n_nuclides == 4) failure = .true.
+    if (.not. compfile % n_instances == 5) failure = .true.
     
+    if (.not. comp(1) % atom_density(1) == 1.0_8) failure = .true.
+    if (.not. comp(1) % atom_density(2) == 2.0_8) failure = .true.
+    if (.not. comp(1) % atom_density(3) == 3.0_8) failure = .true.
+    if (.not. comp(1) % atom_density(4) == 4.0_8) failure = .true.
+
+    if (.not. comp(2) % atom_density(1) == 2.0_8) failure = .true.
+    if (.not. comp(2) % atom_density(2) == 1.0_8) failure = .true.
+    if (.not. comp(2) % atom_density(3) == 3.0_8) failure = .true.
+    if (.not. comp(2) % atom_density(4) == 4.0_8) failure = .true.
+   
+    if (.not. comp(3) % atom_density(1) == 3.0_8) failure = .true.
+    if (.not. comp(3) % atom_density(2) == 2.0_8) failure = .true.
+    if (.not. comp(3) % atom_density(3) == 1.0_8) failure = .true.
+    if (.not. comp(3) % atom_density(4) == 4.0_8) failure = .true.
+
+    if (.not. comp(4) % atom_density(1) == 4.0_8) failure = .true.
+    if (.not. comp(4) % atom_density(2) == 3.0_8) failure = .true.
+    if (.not. comp(4) % atom_density(3) == 2.0_8) failure = .true.
+    if (.not. comp(4) % atom_density(4) == 1.0_8) failure = .true.
+
+    if (.not. comp(5) % atom_density(1) == 7.0_8) failure = .true.
+    if (.not. comp(5) % atom_density(2) == 7.0_8) failure = .true.
+    if (.not. comp(5) % atom_density(3) == 7.0_8) failure = .true.
+    if (.not. comp(5) % atom_density(4) == 7.0_8) failure = .true.
+
+#ifdef MPI
+    call MPI_ALLREDUCE(failure, any_fail, 1, MPI_LOGICAL, MPI_LOR, &
+        MPI_COMM_WORLD, mpi_err)
+    if (.not. any_fail) then
+      call suite % pass()
+    else
+      call suite % fail()
+    end if
+#else
+    if (failure) then
+      call suite % fail()
+    else
+      call suite % pass()
+    end if
+#endif
+
   end subroutine test_check
 
 !===============================================================================
@@ -129,8 +195,6 @@ contains
 
   subroutine test_teardown()
 
-    ! Add teardown code here.  For example, deallocate all memory that was used.
-    
   end subroutine test_teardown
 
 end module test_otf_material_file

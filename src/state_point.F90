@@ -1588,9 +1588,10 @@ contains
 #else
         filename = trim(filename) // '.binary'
 #endif
-        ! Write message
-        call write_message("Writing distributed material " // trim(filename) &
-                           // "...", 1)
+        if (master) then
+          call write_message("Writing distributed material " // trim(filename) &
+                             // "...", 1)
+        end if
 
         call fh % file_open(filename, 'w', serial = .false., &
                             direct_access = .true., &

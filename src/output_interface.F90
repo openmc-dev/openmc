@@ -439,6 +439,7 @@ contains
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
     character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+    integer :: off
     logical :: collect_
 
     ! Set name
@@ -454,6 +455,15 @@ contains
       collect_ = collect
     else
       collect_ = .true.
+    end if
+
+    if (present(record)) then
+      if (present(offset)) then
+        ! The offset is specified in bytes for mpiio
+        off = ceiling(dble(offset)/dble(self % record_len))
+      else
+        off = 0
+      end if
     end if
 
 #ifdef HDF5
@@ -491,7 +501,7 @@ contains
 #elif MPI
     if (self % serial) then
       if (present(record)) then
-        write(self % unit_fh, REC=record) buffer(1:length)
+        write(self % unit_fh, REC=off+record) buffer(1:length)
       else
         write(self % unit_fh) buffer(1:length)
       endif
@@ -510,7 +520,7 @@ contains
     end if
 #else
     if (present(record)) then
-      write(self % unit_fh, REC=record) buffer(1:length)
+      write(self % unit_fh, REC=off+record) buffer(1:length)
     else
       write(self % unit_fh) buffer(1:length)
     endif
@@ -536,6 +546,7 @@ contains
 
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
     character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+    integer :: off
     logical :: collect_
 
     ! Set name
@@ -551,6 +562,15 @@ contains
       collect_ = collect
     else
       collect_ = .true.
+    end if
+
+    if (present(record)) then
+      if (present(offset)) then
+        ! The offset is specified in bytes for mpiio
+        off = ceiling(dble(offset)/dble(self % record_len))
+      else
+        off = 0
+      end if
     end if
 
 #ifdef HDF5
@@ -588,7 +608,7 @@ contains
 #elif MPI
     if (self % serial) then
       if (present(record)) then
-        read(self % unit_fh, REC=record) buffer(1:length)
+        read(self % unit_fh, REC=off+record) buffer(1:length)
       else
         read(self % unit_fh) buffer(1:length)
       end if
@@ -607,7 +627,7 @@ contains
     end if
 #else
     if (present(record)) then
-      read(self % unit_fh, REC=record) buffer(1:length)
+      read(self % unit_fh, REC=off+record) buffer(1:length)
     else
       read(self % unit_fh) buffer(1:length)
     end if

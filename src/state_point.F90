@@ -1568,50 +1568,46 @@ contains
       end do
     end if
 
-#ifdef HDF5
 #ifdef MPI
-    ! For parallel HDF5 we need to wait for master to create the files
+    ! For parallel io we need to wait for master to create the files
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-#endif
 #endif
 
     ! Write compositions
-    if (master .or. (dd_run .and. domain_decomp % local_master)) then
-      do i = 1, n_materials
-        mat => materials(i)
-        if (mat % n_comp > 1) then
-          
-          filename = trim(path_output) // 'material.' // &
-              & zero_padded(current_batch, count_digits(n_batches))
+    do i = 1, n_materials
+      mat => materials(i)
+      if (mat % n_comp > 1) then
+        
+        filename = trim(path_output) // 'material.' // &
+            & zero_padded(current_batch, count_digits(n_batches))
 
-          filename = trim(filename) // '.m' // &
-              & zero_padded(mat % id, count_digits(n_materials))
+        filename = trim(filename) // '.m' // &
+            & zero_padded(mat % id, count_digits(n_materials))
 #ifdef HDF5
-          filename = trim(filename) // '.h5'
+        filename = trim(filename) // '.h5'
 #else
-          filename = trim(filename) // '.binary'
+        filename = trim(filename) // '.binary'
 #endif
-          ! Write message
-          call write_message("Writing distributed material " // trim(filename) &
-                             // "...", 1)
+        ! Write message
+        call write_message("Writing distributed material " // trim(filename) &
+                           // "...", 1)
 
-          call fh % file_open(filename, 'w', serial = .false., &
-                              direct_access = .true., &
-                              record_len = 8 * mat % n_nuclides)
+        call fh % file_open(filename, 'w', serial = .false., &
+                            direct_access = .true., &
+                            record_len = 8 * mat % n_nuclides)
+
+        ! Only master processes write the compositions
+        if (master .or. (dd_run .and. domain_decomp % local_master)) then
           do j = 1, mat % n_comp
-#ifdef HDF5
             call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                 length=mat % n_nuclides, record=j)
-#else
-            ! Binary files include the header in the dataset
-            call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                 length=mat % n_nuclides, record=j+1)
-#endif
+                 length=mat % n_nuclides, record=j, offset=16, collect=.false.)
           end do 
-          call fh % file_close()
         end if
-      end do
-    end if
+
+        call fh % file_close()
+
+      end if
+    end do
 
   end subroutine write_distribmat_comps
 

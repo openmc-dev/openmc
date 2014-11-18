@@ -24,11 +24,13 @@ def main(file_, o):
   print(file_)
   fh = open(file_,'rb')
   n_nuc, n_inst = get_header(fh)
+  dummy = get_long(fh, n_nuc-2) # the rest of the first record is padding
   print('n_nuclides: %s' % n_nuc)
   print('n_instances: %s' % n_inst)
   for i in range(n_inst):
     vals = get_double(fh, n_nuc)
-    print(vals)
+    #print(vals)
+    print(vals[0]/sum(vals),vals[1]/sum(vals))
 
 ################################################################################
 def get_header(file_):

@@ -721,7 +721,7 @@ contains
     integer    :: i            ! loop indices
     integer    :: j            ! loop indices
     integer    :: alloc_err    ! allocation error code
-    integer(8) :: total        ! total sites in global fission bank
+    integer(8) :: total = 0_8  ! total sites in global fission bank
     integer(8) :: index_temp   ! index in temporary source bank
     integer(8) :: sites_needed ! # of sites to be sampled
     real(8)    :: p_sample     ! probability of sampling a site
@@ -774,7 +774,9 @@ contains
          MPI_COMM_WORLD, mpi_err)
 
 #else
-    call fatal_error("MPI must be enabled for domain decomposition.")
+    if (dd % local_master) then
+      call fatal_error("MPI must be enabled for domain decomposition.")
+    end if
 #endif
 
     ! If there are not that many particles per generation, it's possible that no

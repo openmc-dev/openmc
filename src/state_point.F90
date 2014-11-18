@@ -700,9 +700,6 @@ contains
 
     end if
 
-    ! Write distributed materials
-    call write_distribmat_comps()
-
   end subroutine write_state_point
 
 !===============================================================================
@@ -1538,9 +1535,7 @@ contains
         mat => materials(i)
         if (mat % n_comp > 1) then
 
-          filename = trim(path_output) // 'material.' // &
-              & zero_padded(current_batch, count_digits(n_batches))
-
+          filename = trim(path_output) // 'material'
           filename = trim(filename) // '.m' // &
               & zero_padded(mat % id, count_digits(n_materials))
 #ifdef HDF5
@@ -1574,41 +1569,39 @@ contains
 #endif
 
     ! Write compositions
-    do i = 1, n_materials
-      mat => materials(i)
-      if (mat % n_comp > 1) then
-        
-        filename = trim(path_output) // 'material.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
-
-        filename = trim(filename) // '.m' // &
-            & zero_padded(mat % id, count_digits(n_materials))
-#ifdef HDF5
-        filename = trim(filename) // '.h5'
-#else
-        filename = trim(filename) // '.binary'
-#endif
-        if (master) then
-          call write_message("Writing distributed material " // trim(filename) &
-                             // "...", 1)
-        end if
-
-        call fh % file_open(filename, 'w', serial = .false., &
-                            direct_access = .true., &
-                            record_len = 8 * mat % n_nuclides)
-
         ! Only master processes write the compositions
-        if (master .or. (dd_run .and. domain_decomp % local_master)) then
+    if (master .or. (dd_run .and. domain_decomp % local_master)) then
+      do i = 1, n_materials
+        mat => materials(i)
+        if (mat % n_comp > 1) then
+          
+          filename = trim(path_output) // 'material'
+          filename = trim(filename) // '.m' // &
+              & zero_padded(mat % id, count_digits(n_materials))
+#ifdef HDF5
+          filename = trim(filename) // '.h5'
+#else
+          filename = trim(filename) // '.binary'
+#endif
+          if (master) then
+            call write_message("Writing distributed material " // trim(filename) &
+                               // "...", 1)
+          end if
+
+          call fh % file_open(filename, 'w', serial = .true., &
+                              direct_access = .true., &
+                              record_len = 8 * mat % n_nuclides)
+    
           do j = 1, mat % n_comp
             call fh % write_data(mat % comp(j) % atom_density, "comps", &
                  length=mat % n_nuclides, record=j, offset=16, collect=.false.)
           end do 
+
+          call fh % file_close()
+
         end if
-
-        call fh % file_close()
-
-      end if
-    end do
+      end do
+    end if
 
   end subroutine write_distribmat_comps
 

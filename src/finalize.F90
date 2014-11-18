@@ -3,6 +3,7 @@ module finalize
   use global
   use output,         only: header, print_runtime, print_results, &
                             print_overlap_check, write_tallies, print_testing
+  use state_point,    only: write_distribmat_comps
   use tally,          only: tally_statistics
 
 #ifdef MPI
@@ -44,6 +45,7 @@ contains
         if (output_tallies) call write_tallies()
       end if
       if (check_overlaps) call reduce_overlap_count()
+      if (output_distribmats) call write_distribmat_comps()
     end if
 
 #ifdef PETSC

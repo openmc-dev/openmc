@@ -16,18 +16,4 @@
     </space>
   </source>
 
-  <domain_decomposition>
-
-    <mesh>
-      <dimension> 1 1 1 </dimension>
-      <lower_left> -2.1 -2.1 -2.1 </lower_left>
-      <upper_right> 2.1 2.1 2.1 </upper_right>
-    </mesh>
-
-    <nodemap>
-         1
-    </nodemap>
-
-  </domain_decomposition>
-
 </settings>

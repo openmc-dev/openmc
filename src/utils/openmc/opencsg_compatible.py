@@ -692,6 +692,9 @@ def get_opencsg_lattice(openmc_lattice):
                 universe_id = universes[x][y][z]._id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
+    # Reverse y-dimension in array for appropriate ordering in OpenCG
+    universe_array = universe_array[:,::-1,:]
+
     opencsg_lattice = opencsg.Lattice(lattice_id, name)
     opencsg_lattice.setDimension(dimension)
     opencsg_lattice.setWidth(width)
@@ -747,16 +750,13 @@ def get_openmc_lattice(opencsg_lattice):
                 universe_id = universes[z][y][x]._id
                 universe_array[x][y][z] = unique_universes[universe_id]
 
+    # Reverse y-dimension in array to match ordering in OpenCG
+    universe_array = universe_array[:,::-1,:]
+
     lower_left = np.array(offset, dtype=np.float64) + \
                              ((np.array(width, dtype=np.float64) * \
-                                 np.array(dimension, dtype=np.float64))) / -2.0
+                               np.array(dimension, dtype=np.float64))) / -2.0
 
-    # hack for 2d lattices only
-    lower_left = lower_left[0:2]
-    dimension = dimension[0:2]
-    width = width[0:2]
-    universe_array = np.squeeze(universe_array)
-    
     openmc_lattice = openmc.Lattice(lattice_id=lattice_id)
     openmc_lattice.set_dimension(dimension)
     openmc_lattice.set_width(width)
@@ -766,7 +766,7 @@ def get_openmc_lattice(opencsg_lattice):
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice
 
-    # Add the OpenCSG Lattice to the global collection of all OpenCSG Lattices
+    # Add the OpenCG Lattice to the global collection of all OpenCG Lattices
     OPENCSG_LATTICES[lattice_id] = opencsg_lattice
 
     return openmc_lattice
@@ -775,7 +775,7 @@ def get_openmc_lattice(opencsg_lattice):
 def get_opencsg_geometry(openmc_geometry):
 
     if not isinstance(openmc_geometry, openmc.Geometry):
-        msg = 'Unable to get OpenCSG geometry from {0} which is ' \
+        msg = 'Unable to get OpenCG geometry from {0} which is ' \
               'not an OpenMC Geometry object'.format(openmc_geometry)
         raise ValueError(msg)
 

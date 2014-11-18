@@ -3,7 +3,7 @@ module source
   use bank_header,        only: Bank
   use constants
   use dd_comm,            only: distribute_source
-  use error,              only: fatal_error
+  use error,              only: fatal_error, warning
   use geometry,           only: find_cell
   use geometry_header,    only: BASE_UNIVERSE
   use global
@@ -405,6 +405,11 @@ contains
     integer(8)               :: offset(1)        ! source data offset
 # endif
 #endif
+
+    if (dd_run) then
+      if (master) call warning('Source bank writing not implemented for DD runs.')
+      return
+    end if
 
 #ifdef HDF5
 # ifdef MPI

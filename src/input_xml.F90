@@ -2731,16 +2731,14 @@ contains
       end select
 
       ! Set output file path
-      filename = "plot"
+      filename = trim(to_str(pl % id)) // "_plot"
       if (check_for_node(node_plot, "filename")) &
         call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
-        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(filename) // ".ppm"
+        pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
-        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(filename) // ".voxel"
+        pl % path_plot = trim(path_input) // trim(filename) // ".voxel"
       end select
 
       ! Copy plot pixel size
@@ -2818,6 +2816,18 @@ contains
           call fatal_error("<width> must be length 3 in voxel plot " &
                &// trim(to_str(pl % id)))
         end if
+      end if
+
+      ! Copy plot cell universe level
+      if (check_for_node(node_plot, "level")) then
+        call get_node_value(node_plot, "level", pl % level)
+        
+        if (pl % level < 0) then
+          call fatal_error("Bad universe level in plot " &
+               &// trim(to_str(pl % id)))
+        end if
+      else
+        pl % level = PLOT_LEVEL_LOWEST
       end if
 
       ! Copy plot color type and initialize all colors randomly

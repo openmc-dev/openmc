@@ -21,7 +21,7 @@ results = np.concatenate((results0.flatten(), results1.flatten()))
 
 # set up output string
 outstr = ''
- 
+
 # write out k-combined
 outstr += 'k-combined:\n'
 outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])

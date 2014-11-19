@@ -163,12 +163,19 @@ contains
         if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
             surfaces(abs(surface_crossed)) % bc == BC_REFLECT)) then
 
-          ! Prepare particle for communication
-          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
+          ! Check for coincidence with a vacuum boundary surface - in this case
+          ! we also don't need to communicate the particle
+          if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
+              surfaces(abs(surface_crossed)) % bc == BC_VACUUM)) then
 
-          ! Exit the particle tracking loop
-          exit
-          
+            ! Prepare particle for communication
+            call cross_domain_boundary(p, domain_decomp, d_collision - distance)
+
+            ! Exit the particle tracking loop
+            exit
+
+          end if
+
         end if
 
       end if

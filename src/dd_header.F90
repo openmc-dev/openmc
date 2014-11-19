@@ -15,7 +15,10 @@ module dd_header
     integer :: n_domains
     integer :: meshbin               ! mesh domain of current processor
     integer :: ijk(3)                ! ijk corresponding to the meshbin
-    
+    logical :: allow_truncation      ! Whether or not we allow particles to 
+                                     ! leak out of the mesh (and stop tracking
+                                     ! tracking them if they do)
+
     ! Info about the local 2nd-order neighborhood
     integer :: neighbor_meshbins(42) ! domain meshbins
     type(DictIntInt) :: bins_dict    ! reverse of neighbor_meshbins

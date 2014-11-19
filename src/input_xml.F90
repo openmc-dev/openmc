@@ -619,6 +619,16 @@ contains
         call fatal_error("No <mesh> specified for domain decomposition")
       end if
 
+      ! Set feedback logical
+      if (check_for_node(node_dd, "allow_leakage")) then
+        call get_node_value(node_dd, "allow_leakage", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+             domain_decomp % allow_truncation = .true.
+      else
+          domain_decomp % allow_truncation = .false.
+      end if
+
       ! Read nodemap
       if (check_for_node(node_dd, "nodemap")) then
 

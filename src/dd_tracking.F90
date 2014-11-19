@@ -38,13 +38,16 @@ contains
     
     ! Check for particle leaking out of domain mesh - this is a user input error
     if (to_meshbin == NO_BIN_FOUND) then
-      call fatal_error("Particle " // trim(to_str(p % id)) // &
-                " leaked out of DD mesh at (" // &
-                trim(to_str(p % coord0 % xyz(1))) // ", " // &
-                trim(to_str(p % coord0 % xyz(2))) // ", " // &
-                trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
-                trim(to_str(rank)) // ". Does the DD mesh " // &
-                "completely envelope the defined geometry?")
+      if (.not. dd % allow_truncation)  then
+        call fatal_error("For non-truncated DD mode, particle " // &
+                  trim(to_str(p % id)) // " leaked out of DD mesh at (" // &
+                  trim(to_str(p % coord0 % xyz(1))) // ", " // &
+                  trim(to_str(p % coord0 % xyz(2))) // ", " // &
+                  trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
+                  trim(to_str(rank)) // ". Does the DD mesh " // &
+                  "completely envelope the defined geometry?")
+      end if
+      return
     end if
     
     ! Check for a bad determination of a change - this would be a bug

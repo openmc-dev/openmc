@@ -69,6 +69,12 @@ class SettingsFile(object):
         self._ufs_lower_left = None
         self._ufs_upper_right = None
 
+        # Domain decomposition subelement
+        self._dd_mesh_dimension = None
+        self._dd_mesh_lower_left = None
+        self._dd_mesh_upper_right = None
+        self._dd_nodemap = None
+
         self._settings_file = ET.Element("settings")
         self._eigenvalue_element = None
         self._source_element = None
@@ -703,6 +709,78 @@ class SettingsFile(object):
         self._ufs_upper_right = upper_right
 
 
+    def set_dd_mesh_dimension(self, dimension):
+
+        if not isinstance(dimension, tuple) and \
+          not isinstance(dimension, list):
+            msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
+                  'not a Python tuple or list'.format(dimension)
+            raise ValueError(msg)
+
+        if len(dimension) < 3 or len(dimension) > 3:
+            msg = 'Unable to set DD mesh upper right corner to {0} which ' \
+                  'is not a 3D point'.format(dimension)
+            raise ValueError(msg)
+
+        self._dd_mesh_dimension = dimension
+
+
+    def set_dd_mesh_lower_left(self, lower_left):
+
+        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+            msg = 'Unable to set DD mesh lower left corner to {0} which is ' \
+                  'not a Python tuple or list'.format(lower_left)
+            raise ValueError(msg)
+
+        elif len(lower_left) < 3 or len(lower_left) > 3:
+            msg = 'Unable to set DD mesh lower left corner to {0} which ' \
+                  'is not a 3D point'.format(lower_left)
+            raise ValueError(msg)
+
+        self._dd_mesh_lower_left = lower_left
+
+
+    def set_dd_mesh_upper_right(self, upper_right):
+
+        if not isinstance(upper_right, tuple) and \
+          not isinstance(upper_right, list):
+            msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
+                  'not a Python tuple or list'.format(upper_right)
+            raise ValueError(msg)
+
+        if len(upper_right) < 3 or len(upper_right) > 3:
+            msg = 'Unable to set DD mesh upper right corner to {0} which ' \
+                  'is not a 3D point'.format(upper_right)
+            raise ValueError(msg)
+
+        self._dd_mesh_upper_right = upper_right
+
+
+    def set_dd_nodemap(self, nodemap):
+
+        if not isinstance(nodemap, tuple) and \
+          not isinstance(nodemap, list):
+            msg = 'Unable to set DD nodemap {0} which is ' \
+                  'not a Python tuple or list'.format(dimension)
+            raise ValueError(msg)
+
+        nodemap = np.array(nodemap).flatten()
+
+        if self._dd_mesh_dimension is None:
+            msg = 'Must set DD mesh dimension before setting the nodemap'
+            raise ValueError(msg)
+        else:
+            len_nodemap = np.prod(self._dd_mesh_dimension)
+
+        if len(nodemap) < len_nodemap or len(nodemap) > len_nodemap:
+            msg = 'Unable to set DD nodemap with length {0} which ' \
+                  'does not have the same dimensionality as the domain ' \
+                  'mesh'.format(len(nodemap))
+            raise ValueError(msg)
+
+        self._dd_mesh_dimension = dimension
+
+
     def create_eigenvalue_subelement(self):
 
         self.create_particles_subelement()
@@ -1043,6 +1121,38 @@ class SettingsFile(object):
                                                    self._ufs_upper_right[2])
 
 
+    def create_dd_subelement(self):
+
+        if not self._dd_mesh_lower_left is None and \
+            not self._dd_mesh_upper_right is None and \
+            not self._dd_mesh_dimension is None:
+
+            element = ET.SubElement(self._settings_file, "domain_decomposition")
+
+            subelement = ET.SubElement(element, "mesh")
+            subsubelement = ET.SubElement(subelement, "dimension")
+            subsubelement.text = '{0} {1} {2}'.format(
+                    self._dd_mesh_dimension[0],
+                    self._dd_mesh_dimension[1],
+                    self._dd_mesh_dimension[2])
+
+            subsubelement = ET.SubElement(subelement, "lower_left")
+            subsubelement.text = '{0} {1} {2}'.format(
+                    self._dd_mesh_lower_left[0],
+                    self._dd_mesh_lower_left[1],
+                    self._dd_mesh_lower_left[2])
+
+            subsubelement = ET.SubElement(subelement, "upper_right")
+            subsubelement.text = '{0} {1} {2}'.format(
+                    self._dd_mesh_upper_right[0],
+                    self._dd_mesh_upper_right[1],
+                    self._dd_mesh_upper_right[2])
+
+            if not self._dd_nodemap is None:
+                subelement = ET.SubElement(element, "nodemap")
+                subsubelement.text = ' '.join([str(n) for n in self._dd_nodemap])
+                
+
     def export_to_xml(self):
 
         self.create_eigenvalue_subelement()
@@ -1065,6 +1175,7 @@ class SettingsFile(object):
         self.create_trace_subelement()
         self.create_track_subelement()
         self.create_ufs_subelement()
+        self.create_dd_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

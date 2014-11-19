@@ -1537,8 +1537,7 @@ contains
         if (mat % n_comp > 1) then
 
           filename = trim(path_output) // 'material'
-          filename = trim(filename) // '.m' // &
-              & zero_padded(mat % id, count_digits(n_materials))
+          filename = trim(filename) // '.m' // trim(to_str(mat % id))
 #ifdef HDF5
           filename = trim(filename) // '.h5'
 #else
@@ -1577,8 +1576,7 @@ contains
         if (mat % n_comp > 1) then
           
           filename = trim(path_output) // 'material'
-          filename = trim(filename) // '.m' // &
-              & zero_padded(mat % id, count_digits(n_materials))
+          filename = trim(filename) // '.m' // trim(to_str(mat % id))
 #ifdef HDF5
           filename = trim(filename) // '.h5'
 #else

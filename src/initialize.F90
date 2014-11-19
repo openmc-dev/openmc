@@ -1235,7 +1235,7 @@ contains
 
         end do
         if (mat % cell < 1) then        
-          call fatal_error("Failed to find the cell for material: " // &
+          if (master) call warning("No cell found for distributed material: " // &
               to_str(mat % id))
         end if        
 
@@ -1265,6 +1265,9 @@ contains
       mat => materials(i)
 
       if (mat % distrib_dens .or. mat % distrib_comp) then
+        
+        ! Skip unused mats
+        if (mat % cell < 1) cycle
 
         ! Add any cells which contain distributed materials. This will cause 
         ! a map to be created for them
@@ -1360,6 +1363,10 @@ contains
             do l = 1, n_materials
 
               mat => materials(l)
+
+              ! Skip unused mats
+              if (mat % cell < 1) cycle
+
               ! If this material is in the current cell, store its corresponding
               ! map index
               if (cell_dict % get_key(mat % cell) == u % cells(j)) then
@@ -1427,6 +1434,9 @@ contains
 
       if (mat % distrib_dens) then
 
+        ! Skip unused mats
+        if (mat % cell < 1) cycle
+
         c => cells(cell_dict % get_key(mat % cell))
 
         num = mat % density % num
@@ -1468,6 +1478,10 @@ contains
         deallocate(atom_density)
 
       else if (mat % distrib_comp) then
+
+        ! Skip unused mats
+        if (mat % cell < 1) cycle
+
         c => cells(cell_dict % get_key(mat % cell))
 
         num = mat % n_comp
@@ -1532,6 +1546,9 @@ end subroutine verify_distribmats
       mat => materials(i)
 
       if (mat % distrib_dens .or. mat % distrib_comp) then
+
+        ! Skip unused mats
+        if (mat % cell < 1) cycle
 
         c => cells(cell_dict % get_key(mat % cell))
 

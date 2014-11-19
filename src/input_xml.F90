@@ -1689,20 +1689,28 @@ contains
         ! Get pointer to composition node
         call get_node_ptr(node_mat, "compositions", node_comp)
 
-        ! Get units
-        call get_node_value(node_comp, "units", units)
+        ! Check for OTF composition file
+        if (check_for_node(node_comp, "otf_file_path")) then
+          mat % otf_compositions = .true.
+        end if
 
-        units = trim(to_lower(units))
-        if (units == "wo") then
-          if (check_for_node(node_comp, "element")) then
-            call fatal_error("The ability to expand a natural element based on weight &
-                 &percentage is not yet supported.")
+        ! Get units
+        if (.not. mat % otf_compositions) then
+          call get_node_value(node_comp, "units", units)
+
+          units = trim(to_lower(units))
+          if (units == "wo") then
+            if (check_for_node(node_comp, "element")) then
+              call fatal_error("The ability to expand a natural element based on weight &
+                   &percentage is not yet supported.")
+            end if
+          else if (units == "ao") then
+            ! Do nothing here
+          else
+            call fatal_error("Unknown units '" // trim(units) &
+                 // "' specified on material " // trim(to_str(mat % id)))
           end if
-        else if (units == "ao") then
-          ! Do nothing here
-        else
-          call fatal_error("Unknown units '" // trim(units) &
-               // "' specified on material " // trim(to_str(mat % id)))
+
         end if
 
         ! =======================================================================
@@ -1793,12 +1801,19 @@ contains
 
         end do COMPOSITION_ELEMENTS
 
-        ! Check for OTF composition file
-        if (check_for_node(node_mat, "otf_file_path")) then
-          mat % otf_compositions = .true.
+        ! Read composition values
+        if (mat % otf_compositions) then
 
-          ! Read information from the file
-          call get_node_value(node_mat, "otf_file_path", mat % comp_file % path)
+          ! Read from the OTF mats file
+          call get_node_value(node_comp, "otf_file_path", mat % comp_file % path)
+
+          inquire(FILE=mat % comp_file % path, EXIST=file_exists)
+          if (.not. file_exists) then
+             ! Could not find cross_sections.xml file
+             call fatal_error("OTF materials file '" &
+                  &// trim(mat % comp_file % path) // "' does not exist!")
+          end if
+
           call fh % file_open(mat % comp_file % path, 'r', &
               direct_access=.true., serial = .true., record_len = 8)
           call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides', &
@@ -1807,9 +1822,16 @@ contains
                               record = 2)
           call fh % file_close()
 
+          ! Collectively open this file for reading during execution
+          call mat % comp_file % fh % file_open(mat % comp_file % path, 'r', &
+              serial = .false., direct_access = .true., &
+              record_len = 8 * mat % comp_file % n_nuclides)
+
           if (mat % comp_file % n_nuclides /= list_names % size()) then
             call fatal_error("Wrong number of nuclides per composition in " // &
-                             "OTF file " // trim(mat % comp_file % path))
+                "OTF file " // trim(mat % comp_file % path) //". File: " // &
+                trim(to_str(mat % comp_file % n_nuclides)) // ", Geometry:" // &
+                " " // trim(to_str(list_names % size())))
           end if
 
           n_comp = mat % comp_file % n_instances
@@ -1846,6 +1868,8 @@ contains
           end do
 
         else
+
+          ! Read from the xml file
 
           ! Verify that the input matches the number of nuclides
           ! Get number of composition values

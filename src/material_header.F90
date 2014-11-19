@@ -20,6 +20,7 @@ module material_header
 
   type CompositionFile
     character(MAX_LINE_LEN) :: path         ! path to the file
+    type(BinaryOutput)      :: fh           ! file handle
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
   contains
@@ -68,7 +69,7 @@ module material_header
 
     ! On-the-fly allocation controls
     logical :: otf_compositions = .false.
-    type(CompositionFile) :: comp_file         ! compositions file
+    type(CompositionFile) :: comp_file          ! compositions file
     integer :: size_comp_array                  ! Size of composition array
                                                 ! when variable
     integer :: next_comp_idx = 1                ! Next index in the composition
@@ -187,15 +188,12 @@ contains
       integer,                intent(in)    :: real_inst
       
       type(Composition) :: comp
-      type(BinaryOutput) :: fh
 
       allocate(comp % atom_density(this % n_nuclides))
 
-      call fh % file_open(this % path, 'r', serial = .false., &
-          direct_access = .true., record_len = 8 * this % n_nuclides)
-      call fh % read_data(comp % atom_density, 'comps', &
-          length = this % n_nuclides, record = real_inst, offset = 16)
-      call fh % file_close()
+      call this % fh % read_data(comp % atom_density, 'comps', &
+          collect = .false., length = this % n_nuclides, &
+          record = real_inst, offset = 16)
 
     end function composition_file_load
 

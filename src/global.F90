@@ -422,7 +422,16 @@ contains
   subroutine free_memory()
     
     integer :: i ! Loop Index
+    type(Material),    pointer :: mat => null()
     
+    ! Close any open OTF material files
+    do i = 1, n_materials
+      mat => materials(i)
+      if (mat % otf_compositions) then
+        call mat % comp_file % fh % file_close()
+      end if
+    end do
+
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)

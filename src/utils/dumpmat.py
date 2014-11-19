@@ -23,12 +23,13 @@ def main(file_, o):
 
     print(file_)
     fh, hdf5 = open_file(file_)
-    n_nuc, n_inst = get_header(fh)
+    n_nuc, n_inst = get_header(fh, hdf5)
     print('n_nuclides: %s' % n_nuc)
     print('n_instances: %s' % n_inst)
     comps = get_comps(file_)
     for c in comps:
-        print(c)
+        #print(c)
+        print(c[0]/sum(c),c[1]/sum(c))
 
 ################################################################################
 def open_file(filename):

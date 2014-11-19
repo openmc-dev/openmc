@@ -1522,6 +1522,7 @@ contains
 
     character(MAX_FILE_LEN)    :: filename
     integer :: i, j
+    integer :: idx
     type(BinaryOutput) :: fh
     type(Material), pointer :: mat => null()
 
@@ -1588,13 +1589,24 @@ contains
                                // "...", 1)
           end if
 
-          call fh % file_open(filename, 'w', serial = .true., &
+          call fh % file_open(filename, 'w', serial = .false., &
                               direct_access = .true., &
                               record_len = 8 * mat % n_nuclides)
     
           do j = 1, mat % n_comp
+
+            if (mat % otf_compositions) then
+              if (mat % reverse_comp_index_map % has_key(j)) then
+                idx = mat % reverse_comp_index_map % get_key(j)
+              else
+                cycle
+              end if
+            else
+              idx = j
+            end if
+
             call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                 length=mat % n_nuclides, record=j, offset=16, collect=.false.)
+                 length=mat % n_nuclides, record=idx, offset=16, collect=.false.)
           end do 
 
           call fh % file_close()

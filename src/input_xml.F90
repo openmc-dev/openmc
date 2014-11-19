@@ -1807,6 +1807,12 @@ contains
           ! Read from the OTF mats file
           call get_node_value(node_comp, "otf_file_path", mat % comp_file % path)
 
+#ifdef HDF5
+          mat % comp_file % path = trim(mat % comp_file % path) // '.h5'
+#else
+          mat % comp_file % path = trim(mat % comp_file % path) // '.binary'
+#endif
+
           inquire(FILE=mat % comp_file % path, EXIST=file_exists)
           if (.not. file_exists) then
              ! Could not find cross_sections.xml file

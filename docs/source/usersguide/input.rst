@@ -1198,7 +1198,7 @@ sub-elements:
     Universe depth to plot at (optional).  This parameter controls how many
     universe levels deep to pull cell and material ids from when setting plot
     colors.  If a given location does not have as many levels as specified,
-    colors will be taken from the lowest level at that lcation. For example, if
+    colors will be taken from the lowest level at that location. For example, if
     ``level`` is set to zero colors will be taken from top-level (universe zero)
     cells only.  However, if ``level`` is set to 1 colors will be taken from
     cells in universes that fill top-level fill-cells, and from top-level cells

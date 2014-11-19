@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import warnings
+
 from openmc.checkvalue import *
 from openmc.clean_xml import *
 from xml.etree import ElementTree as ET
@@ -712,6 +714,10 @@ class SettingsFile(object):
 
     def set_dd_mesh_dimension(self, dimension):
 
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
         if not isinstance(dimension, tuple) and \
           not isinstance(dimension, list):
             msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
@@ -728,6 +734,10 @@ class SettingsFile(object):
 
     def set_dd_mesh_lower_left(self, lower_left):
 
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set DD mesh lower left corner to {0} which is ' \
                   'not a Python tuple or list'.format(lower_left)
@@ -742,6 +752,10 @@ class SettingsFile(object):
 
 
     def set_dd_mesh_upper_right(self, upper_right):
+
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
 
         if not isinstance(upper_right, tuple) and \
           not isinstance(upper_right, list):
@@ -758,6 +772,10 @@ class SettingsFile(object):
 
 
     def set_dd_nodemap(self, nodemap):
+
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
 
         if not isinstance(nodemap, tuple) and \
           not isinstance(nodemap, list):
@@ -782,6 +800,10 @@ class SettingsFile(object):
         self._dd_mesh_dimension = dimension
 
     def set_dd_allow_leakage(self, allow):
+
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
 
         if not type(allow) == bool:
             msg = 'Unable to set DD allow_leakage {0} which is ' \

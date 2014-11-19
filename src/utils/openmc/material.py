@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import warnings
+
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
@@ -218,6 +220,10 @@ class Material(object):
 
     def set_otf_mat_file(self, name):
 
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
         if not is_string(name):
             msg = 'Unable to add OTF material file to Material ID={0} with a ' \
                         'non-string name {1}'.format(self._id, name)
@@ -227,6 +233,10 @@ class Material(object):
 
 
     def set_as_distrib_comp(self):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
 
         self._convert_to_distrib_comps = True
 

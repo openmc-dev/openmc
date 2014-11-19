@@ -98,7 +98,7 @@ contains
 #endif
 
       ! Open the file for composition writing
-      call fh % file_open(filename, 'w', serial = .false., direct_access = .true., record_len = 8*4)
+      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
       call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=4, offset=16)
       call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=5, offset=16)
       call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=1, offset=16)
@@ -140,10 +140,16 @@ contains
     call fh % read_data(compfile % n_instances, 'n_instances', record = 2)
     call fh % file_close()
 
+    call compfile % fh % file_open(compfile % path, 'r', &
+        serial = .false., direct_access = .true., &
+        record_len = 8 * compfile % n_nuclides)
+
     ! Read the compositions in
     do i = 1, compfile % n_instances
       comp(i) = compfile % load(i)
     end do
+
+    call compfile % fh % file_close()
 
   end subroutine test_execute
 

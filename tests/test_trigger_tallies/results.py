@@ -11,7 +11,7 @@ import statepoint
 if len(sys.argv) > 1:
     sp = statepoint.StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.11.binary')
+    sp = statepoint.StatePoint('statepoint.15.binary')
 sp.read_results()
 
 # extract tally results and convert to vector

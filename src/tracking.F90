@@ -152,7 +152,8 @@ contains
 !$omp end critical
 
       if (dd_run .and. &
-          (abs(d_dd_mesh - d_boundary)) <= FP_COINCIDENT .and. &
+           (d_dd_mesh <= d_boundary .or. &
+            abs(d_dd_mesh - d_boundary) < FP_COINCIDENT) .and. &
            d_dd_mesh < d_collision) then
         ! ======================================================================
         ! PARTICLE CROSSES DOMAIN BOUNDARY

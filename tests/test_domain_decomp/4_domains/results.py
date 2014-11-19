@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import numpy as np
 
@@ -8,10 +9,19 @@ sys.path.insert(0, '../../../src/utils')
 import statepoint
 
 # read in statepoint files
-sp1 = statepoint.StatePoint('statepoint.20.domain_1.binary')
-sp2 = statepoint.StatePoint('statepoint.20.domain_2.binary')
-sp3 = statepoint.StatePoint('statepoint.20.domain_3.binary')
-sp4 = statepoint.StatePoint('statepoint.20.domain_4.binary')
+
+spfile = 'statepoint.20.domain_1.binary'
+if not os.path.exists(spfile): spfile = 'statepoint.20.domain_1.h5'
+sp1 = statepoint.StatePoint(spfile)
+spfile = 'statepoint.20.domain_2.binary'
+if not os.path.exists(spfile): spfile = 'statepoint.20.domain_2.h5'
+sp2 = statepoint.StatePoint(spfile)
+spfile = 'statepoint.20.domain_3.binary'
+if not os.path.exists(spfile): spfile = 'statepoint.20.domain_3.h5'
+sp3 = statepoint.StatePoint(spfile)
+spfile = 'statepoint.20.domain_4.binary'
+if not os.path.exists(spfile): spfile = 'statepoint.20.domain_4.h5'
+sp4 = statepoint.StatePoint(spfile)
 sp1.read_results()
 sp2.read_results()
 sp3.read_results()

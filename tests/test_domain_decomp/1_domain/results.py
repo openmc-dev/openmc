@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import numpy as np
 
@@ -13,7 +14,9 @@ def order_by(arr, ordering):
         ordered[ordering[i]-1] = val
     return ordered 
 
-sp = statepoint.StatePoint('statepoint.20.domain_1.binary')
+spfile = 'statepoint.20.domain_1.binary'
+if not os.path.exists(spfile): spfile = 'statepoint.20.domain_1.h5'
+sp = statepoint.StatePoint(spfile)
 sp.read_results()
 
 # extract tally results (means only) and convert to vector

@@ -20,7 +20,7 @@ module eigenvalue
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result
+                          reset_result, check_tally_triggers
   use tracking,     only: transport
 
   implicit none
@@ -95,9 +95,15 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
+      
+      if (satisfy_triggers) exit BATCH_LOOP
+      
+      ! Check batches to find whether to compare the result with trigger, check 
+      ! the trigger and write the statepoint file
+
 
     end do BATCH_LOOP
-
+    
     call time_active % stop()
 
     ! ==========================================================================
@@ -208,12 +214,25 @@ contains
       call reset_result(global_tallies)
       n_realizations = 0
     end if
-
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
 
     ! Display output
     if (master) call print_batch_keff()
+    
+    ! Check_triggers
+    if (master) then
+        call check_triggers()
+      end if
+#ifdef MPI        
+      call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, &
+             mpi_err)              
+#endif
+      if (satisfy_triggers .or. (trigger_on .and. n_batches == current_batch)) &
+           then
+        call statepoint_batch % add(current_batch)
+        call sourcepoint_batch % add(current_batch)
+      end if
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
@@ -237,7 +256,84 @@ contains
     end if
 
   end subroutine finalize_batch
-
+  
+!===============================================================================
+! CHECK_TRIGGERS checks whether to check the triggers and whether the triggers' 
+! thresholds are reached. 
+!===============================================================================
+  subroutine check_triggers()
+    implicit none
+    integer :: n_pred_batches   ! # predicted number of batches till all 
+                                ! triggers are satisfied
+    
+    ! Check the batches when current_batch meet following requirements
+      ! 1. current_batch is not smaller than n_basic_batches
+      ! 2. trigger_on equals true
+      ! 3. current_batch can be expressed as (n_basic_batches + 
+      !    n * batch_interval) or current_batch equals n_batches
+    if (current_batch < n_basic_batches .or. (.not. trigger_on)) return
+    if (mod((current_batch - n_basic_batches), n_batch_interval) /= 0 .and. &
+         current_batch /= n_batches) return
+  
+    ! Get the combined keff and compare it with trigger threshold if needed
+    call calculate_combined_keff()
+    ! Check the trigger and output the result
+    call check_tally_triggers()
+       
+    ! When trigger threshold is reached, write information 
+    if (satisfy_triggers) then
+      call write_message("Trigger is satisfied for batch " &
+          // trim(to_str(current_batch)))
+    
+        ! When trigger is not reached write information   
+    elseif (trig_dist % temp_name == CHAR_EIGENVALUE) then
+      call write_message("Trigger isn't reached, the max uncertainty/threshold is " &
+           // trim(to_str(trig_dist % max_ratio)) // " for " &
+           // trim(trig_dist % temp_name))
+    elseif (trig_dist % temp_nuclide /= NO_NUCLIDE) then
+       call write_message("Trigger isn't reached, the max uncertainty/threshold is " & 
+            // trim(to_str(trig_dist % max_ratio)) // " of " & 
+            // trim(trig_dist % temp_nuclide) // " for " & 
+            // trim(trig_dist % temp_name) // " in tally " &
+            // trim(to_str(trig_dist % id)))
+    else
+      call write_message("Trigger isn't reached, the max uncertainty/threshold is " &
+           // trim(to_str(trig_dist % max_ratio)) // " for " &
+           // trim(trig_dist % temp_name) // " in tally " &
+           // trim(to_str(trig_dist % id)))
+    end if 
+    
+    if (satisfy_triggers) then     
+          
+      ! Get n_batches for state_point file
+      n_batches = current_batch
+       
+    ! If batch_interval is not set, then then estimate the number of 
+    ! batches till tally threshold is satisfied
+    elseif (no_batch_interval) then
+         
+      ! Estimate the number of batch interval and batches
+      ! The prediction can be done because variances of the tally results are 
+      ! proportional to 1/N in theroy, where N is the number of the batches or 
+      ! particles in theory. 
+      n_batch_interval = int((current_batch-n_inactive) * &
+           (trig_dist % max_ratio ** 2)) + n_inactive-n_basic_batches + 1
+      n_pred_batches = n_batch_interval + n_basic_batches
+         
+          
+      ! If predicted number of batches to convergence is bigger than then
+      ! n_batches print it and stop. 
+      if (n_batches < n_pred_batches) then 
+        call warning("The estimated number of batches is " &
+             // trim(to_str(n_pred_batches)) & 
+             // "---bigger than max batches. ")
+      else
+        call write_message("The estimated number of batches is " &
+             // trim(to_str(n_pred_batches)))
+      end if
+    end if
+  end subroutine check_triggers
+ 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
 ! accumulated during the generation. This routine is what allows this Monte
@@ -864,5 +960,6 @@ contains
 
   end subroutine join_bank_from_threads
 #endif
+
 
 end module eigenvalue

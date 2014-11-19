@@ -12,7 +12,7 @@
   
   <trigger>
     <status>true</status>
-    <max_batches>20</max_batches>
+    <max_batches>15</max_batches>
     <batch_interval>1</batch_interval>
   </trigger>
 

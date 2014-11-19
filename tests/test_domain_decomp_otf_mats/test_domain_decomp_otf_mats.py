@@ -14,6 +14,12 @@ parser.add_option('--exe', dest='exe')
 cwd = os.getcwd()
 
 def test_run():
+    shutil.copy('mat1.binary.keep','mat1.binary')
+    shutil.copy('mat2.binary.keep','mat2.binary')
+    shutil.copy('mat3.binary.keep','mat3.binary')
+    shutil.copy('mat1.h5.keep','mat1.h5')
+    shutil.copy('mat2.h5.keep','mat2.h5')
+    shutil.copy('mat3.h5.keep','mat3.h5')
     if opts.mpi_exec != '':
         proc = Popen([opts.mpi_exec, '-np', '4', opts.exe, cwd],
                stderr=STDOUT, stdout=PIPE)

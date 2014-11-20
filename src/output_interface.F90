@@ -1,6 +1,7 @@
 module output_interface
 
   use constants
+  use tally_header,       only: TallyResult
 
 #ifdef HDF5
   use h5lt
@@ -36,7 +37,8 @@ module output_interface
                                       write_integer_3Darray, &
                                       write_integer_4Darray, &
                                       write_long, &
-                                      write_string
+                                      write_string, &
+                                      write_tallyresult_1Darray
     generic, public :: read_data => read_double, &
                                     read_double_1Darray, &
                                     read_double_2Darray, &
@@ -61,6 +63,7 @@ module output_interface
     procedure :: write_integer_4Darray => write_integer_4Darray
     procedure :: write_long => write_long
     procedure :: write_string => write_string
+    procedure :: write_tallyresult_1Darray => write_tallyresult_1Darray
     procedure :: read_double => read_double
     procedure :: read_double_1Darray => read_double_1Darray
     procedure :: read_double_2Darray => read_double_2Darray
@@ -2074,6 +2077,80 @@ contains
 #endif
 
   end subroutine read_string
+
+!===============================================================================
+! WRITE_TALLYRESULT_1DARRAY
+!===============================================================================
+
+  subroutine write_tallyresult_1Darray(self, buffer, name, group, length, &
+                                       collect, record)
+
+    integer,      intent(in)           :: length    ! length of array to write
+    type(TallyResult), intent(in)      :: buffer(:) ! data to write
+    character(*), intent(in)           :: name      ! name of data
+    character(*), intent(in), optional :: group     ! HDF5 group name
+    logical,      intent(in), optional :: collect   ! collective I/O
+    integer,      intent(in), optional :: record    ! REC
+    class(BinaryOutput) :: self
+
+    character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
+    character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
+    logical :: collect_
+
+    ! Set name
+    name_ = trim(name)
+
+    ! Set group
+    if (present(group)) then
+      group_ = trim(group)
+    end if
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
+    else
+      self % hdf5_grp = self % hdf5_fh
+    endif
+# ifdef MPI
+    if (self % serial) then
+      if (present(record)) then
+        call hdf5_write_tallyresult_1Darray(self % hdf5_grp, name_, buffer, &
+            length, record)
+      else
+        call hdf5_write_tallyresult_1Darray(self % hdf5_grp, name_, buffer, &
+            length)
+      end if
+    else
+      if (present(record)) then
+        call hdf5_write_tallyresult_1Darray_parallel(self % hdf5_grp, name_, &
+            buffer, length, collect_, record)
+      else
+        call hdf5_write_tallyresult_1Darray_parallel(self % hdf5_grp, name_, &
+            buffer, length, collect_)
+      end if
+    end if
+# else
+    if (present(record)) then
+      call hdf5_write_tallyresult_1Darray(self % hdf5_grp, name_, buffer, &
+          length, record)
+    else
+      call hdf5_write_tallyresult_1Darray(self % hdf5_grp, name_, buffer, &
+          length)
+    end if
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group(self % hdf5_grp)
+#endif
+
+  end subroutine write_tallyresult_1Darray
 
 !===============================================================================
 ! WRITE_ATTRIBUTE_STRING

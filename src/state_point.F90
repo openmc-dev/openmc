@@ -565,6 +565,10 @@ contains
     integer, allocatable       :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
+#ifndef HDF5
+    integer :: n
+#endif
+
     ! Write number of meshes
     call sp % write_data(n_meshes, "n_meshes", group="tallies")
 
@@ -729,6 +733,10 @@ contains
 
     integer :: i
     type(TallyObject), pointer :: t => null()
+
+#ifndef HDF5
+    integer :: n
+#endif
 
     ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then

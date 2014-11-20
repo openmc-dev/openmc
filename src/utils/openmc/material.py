@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import warnings
+
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
@@ -56,6 +58,12 @@ class Material(object):
 
         # If specified, a list of tuples of (table name, xs identifier)
         self._sab = list()
+
+        # If true, the material will be initialized as distributed
+        self._convert_to_distrib_comps = False
+
+        # If specified, this file will be used instead of composition values
+        self._distrib_otf_file = None
 
         # Set the Material class attributes
         self.set_id(material_id)
@@ -210,6 +218,29 @@ class Material(object):
         self._sab.append((name, xs))
 
 
+    def set_otf_mat_file(self, name):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        if not is_string(name):
+            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
+                        'non-string name {1}'.format(self._id, name)
+            raise ValueError(msg)
+
+        self._distrib_otf_file = name
+
+
+    def set_as_distrib_comp(self):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        self._convert_to_distrib_comps = True
+
+
     def get_all_nuclides(self):
 
         nuclides = dict()
@@ -256,15 +287,16 @@ class Material(object):
         return string
 
 
-    def get_nuclide_xml(self, nuclide):
+    def get_nuclide_xml(self, nuclide, distrib=False):
 
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0]._name)
 
-        if nuclide[2] is 'ao':
-            xml_element.set("ao", str(nuclide[1]))
-        else:
-            xml_element.set("wo", str(nuclide[1]))
+        if not distrib:
+            if nuclide[2] is 'ao':
+                xml_element.set("ao", str(nuclide[1]))
+            else:
+                xml_element.set("wo", str(nuclide[1]))
 
         if not nuclide[0]._xs is None:
             xml_element.set("xs", nuclide[0]._xs)
@@ -272,35 +304,36 @@ class Material(object):
         return xml_element
 
 
-    def get_element_xml(self, element):
+    def get_element_xml(self, element, distrib=False):
 
         xml_element = ET.Element("element")
         xml_element.set("name", str(element[0]._name))
 
-        if element[2] is 'ao':
-            xml_element.set("ao", str(element[1]))
-        else:
-            xml_element.set("wo", str(element[1]))
+        if not distrib:
+            if element[2] is 'ao':
+                xml_element.set("ao", str(element[1]))
+            else:
+                xml_element.set("wo", str(element[1]))
 
         return xml_element
 
 
-    def get_nuclides_xml(self, nuclides):
+    def get_nuclides_xml(self, nuclides, distrib=False):
 
         xml_elements = list()
 
         for nuclide in nuclides.values():
-            xml_elements.append(self.get_nuclide_xml(nuclide))
+            xml_elements.append(self.get_nuclide_xml(nuclide, distrib))
 
         return xml_elements
 
 
-    def get_elements_xml(self, elements):
+    def get_elements_xml(self, elements, distrib=False):
 
         xml_elements = list()
 
         for element in elements.values():
-            xml_elements.append(self.get_element_xml(element))
+            xml_elements.append(self.get_element_xml(element, distrib))
 
         return xml_elements
 
@@ -317,15 +350,57 @@ class Material(object):
             subelement.set("value", str(self._density))
         subelement.set("units", self._density_units)
 
-        # Create nuclide XML subelements
-        subelements = self.get_nuclides_xml(self._nuclides)
-        for subelement in subelements:
-            element.append(subelement)
+        if not self._convert_to_distrib_comps:
 
-        # Create element XML subelements
-        subelements = self.get_elements_xml(self._elements)
-        for subelement in subelements:
-            element.append(subelement)
+            # Create nuclide XML subelements
+            subelements = self.get_nuclides_xml(self._nuclides)
+            for subelement in subelements:
+                element.append(subelement)
+
+            # Create element XML subelements
+            subelements = self.get_elements_xml(self._elements)
+            for subelement in subelements:
+                element.append(subelement)
+
+        else:
+
+            subelement = ET.SubElement(element, "compositions")
+            
+            comps = []
+            allnucs = self._nuclides.values() + self._elements.values()
+            dist_per_type = allnucs[0][2]
+            for nuc, per, typ in allnucs:
+                if not typ == dist_per_type:
+                    msg = 'All nuclides and elements in a distributed ' \
+                          'material must have the same type, either ao or wo'
+                    raise ValueError(msg)
+                comps.append(per)
+
+
+            if self._distrib_otf_file is None:
+
+                # Create values and units subelements
+                subsubelement = ET.SubElement(subelement, "values")
+                subsubelement.text = ' '.join([str(c) for c in comps])
+                subsubelement = ET.SubElement(subelement, "units")
+                subsubelement.text = dist_per_type
+
+            else:
+
+                # Specify the materials file
+                subsubelement = ET.SubElement(subelement, "otf_file_path")
+                subsubelement.text = self._distrib_otf_file
+
+
+            # Create nuclide XML subelements
+            subelements = self.get_nuclides_xml(self._nuclides, distrib=True)
+            for subelement_nuc in subelements:
+                subelement.append(subelement_nuc)
+
+            # Create element XML subelements
+            subelements = self.get_elements_xml(self._elements, distrib=True)
+            for subelement_ele in subelements:
+                subelement.append(subelement_ele)
 
         if len(self._sab) > 0:
             for sab in self._sab:

@@ -113,6 +113,17 @@ contains
       ! Write out current batch number
       call sp % write_data(current_batch, "current_batch")
 
+      ! Write domain decomposition information
+      if (dd_run) then
+        call sp % write_data(1, "domain_decomp")
+        call sp % write_data(domain_decomp % n_domains, "n_domains")
+        call sp % write_data(domain_decomp % meshbin, "domain_id")
+      else
+        call sp % write_data(0, "domain_decomp")
+        call sp % write_data(NONE, "n_domains")
+        call sp % write_data(NONE, "domain_id")
+      end if
+
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
         call sp % write_data(n_inactive, "n_inactive")

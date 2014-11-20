@@ -151,30 +151,27 @@ contains
            material_xs % nu_fission
 !$omp end critical
 
+      ! Check if we cross a domain boundary, which could be coincident with
+      ! cell or lattice boundaries
       if (dd_run .and. &
+           d_dd_mesh < d_collision .and. &
            (d_dd_mesh <= d_boundary .or. &
-            abs(d_dd_mesh - d_boundary) < FP_COINCIDENT) .and. &
-           d_dd_mesh < d_collision) then
+            abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
         ! ======================================================================
         ! PARTICLE CROSSES DOMAIN BOUNDARY
 
-        ! Check for coincidence with a reflective surface - in this case we
-        ! don't need to communicate the particle
+        ! Check for coincidence with a boundary condition - in this case we
+        ! don't need to communicate the particle.  Here we rely on lattice
+        ! boundaries NOT being selected by distance_to_boundary when they are
+        ! coincident with boundary condition surfaces.
         if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
-            surfaces(abs(surface_crossed)) % bc == BC_REFLECT .and. lattice_crossed == NONE)) then
+                .not. surfaces(abs(surface_crossed)) % bc == BC_TRANSMIT)) then
 
-          ! Check for coincidence with a vacuum boundary surface - in this case
-          ! we also don't need to communicate the particle
-          if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
-              surfaces(abs(surface_crossed)) % bc == BC_VACUUM .and. lattice_crossed == NONE)) then
+          ! Prepare particle for communication
+          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
 
-            ! Prepare particle for communication
-            call cross_domain_boundary(p, domain_decomp, d_collision - distance)
-
-            ! Exit the particle tracking loop
-            exit
-
-          end if
+          ! Exit the particle tracking loop without killing the particle
+          exit
 
         end if
 

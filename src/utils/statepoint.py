@@ -3,6 +3,7 @@
 from sys import exit
 import struct
 from collections import OrderedDict
+import warnings
 
 import numpy as np
 import scipy.stats
@@ -125,11 +126,10 @@ class Filter(object):
 class Tally(object):
 
     def __init__(self):
-
         self.filters = OrderedDict()
         self.id = None
-	self.label = None
-	self.estimator = None
+        self.label = None
+      	self.estimator = None
         self.n_realizations = None
         self.total_score_bins = None
         self.total_filter_bins = None
@@ -169,78 +169,76 @@ class Geometry_Data(object):
         print 'n_lattices:',self.n_lattices
         print 'n_surfaces:',self.n_surfaces
         print 'n_materials:',self.n_materials
-	print ''
-	print 'Universes:'
-	print ''
+        print ''
+        print 'Universes:'
+        print ''
         for i in self.univ:
-          print 'Universe:',i.ID
-          print '--Contains Cells:',i.cells
+            print 'Universe:',i.ID
+            print '--Contains Cells:',i.cells
 
-	print ''
-	print ''	
-	print 'Cells:'
-	print ''
+        print ''
+        print ''	
+        print 'Cells:'
+        print ''
         for i in self.cell:
-          print 'Cell:',i.ID
-          print '--UserID:',i.userID
-          print '--Filltype:',i.filltype
-          print '--Fill:'
-          print i.fill
-          print '--Offset:',i.offset
-          print '--Material:',i.material
-          print '--Surfaces:'
-          print i.surf
+            print 'Cell:',i.ID
+            print '--UserID:',i.userID
+            print '--Filltype:',i.filltype
+            print '--Fill:'
+            print i.fill
+            print '--Offset:',i.offset
+            print '--Material:',i.material
+            print '--Surfaces:'
+            print i.surf
 
-	print ''
-	print ''	
-	print 'Lattices:'
-	print ''
+        print ''
+        print ''	
+        print 'Lattices:'
+        print ''
         for i in self.lat:
-          print 'Lattice:',i.ID
-          print '--Fill:',i.fill
-          if type(i.offset) == int:
-            pass
-          else:
-            print '--Offset Dimensions:',i.offset.shape
-          print '--Offset:',np.squeeze(i.offset)
-          print '--Dimenisions:',i.dim
+            print 'Lattice:',i.ID
+            print '--Fill:',i.fill
+            if type(i.offset) != int:
+                print '--Offset Dimensions:',i.offset.shape
+            print '--Offset:',np.squeeze(i.offset)
+            print '--Dimenisions:',i.dim
 
-	print ''
-	print ''	
-	print 'Surfaces:'
-	print ''
+        print ''
+        print ''	
+        print 'Surfaces:'
+        print ''
         for i in self.surf:
           print 'Surface:',i.ID
           print 'User ID:',i.userID
           print '--Type:',i.s_type
           print '--Coefficients:'
           print i.coeffs
-	  print '--# Positive Neighbors:',i.n_pos
+          print '--# Positive Neighbors:',i.n_pos
           print '--Positive Neighbors:'
-	  print i.neighbor_pos
-	  print '--# Negative Neighbors:',i.n_neg
+          print i.neighbor_pos
+          print '--# Negative Neighbors:',i.n_neg
           print '--Negative Neighbors:'
-	  print i.neighbor_neg
+          print i.neighbor_neg
           print 'Boundary Condition:',i.bc
 
 
-	print ''
-	print ''	
-	print 'Materials:'
-	print ''
+        print ''
+        print ''	
+        print 'Materials:'
+        print ''
         for i in self.mat:
           print 'Material:',i.ID
           print '--# Nuclides:',i.n_nuclide
           print '--Nuclides:'
-	  print i.nuclide
+          print i.nuclide
           print '--Density:',i.density
           print '--Atom Densities:'
-	  print i.atom_density
+          print i.atom_density
           print '--# Sab Tables:',i.n_sab
           print '--Sab Nuclides:'
-	  print i.i_sab_nuclides
+          print i.i_sab_nuclides
           print '--Tables:'
-	  print i.i_sab_tables
+          print i.i_sab_tables
 
     def _get_offset(self, path, filter_offset):
         """
@@ -463,6 +461,7 @@ class StatePoint(object):
         self._metadata = False
         self._results = False
         self._source = False
+        self.stdev_generated = False
 
         # Initialize arrays for meshes and tallies
         self.meshes = []
@@ -472,9 +471,13 @@ class StatePoint(object):
         # Initialize geometry data
         self.geom = Geometry_Data()
 
+        # Consolidated mapping of OTF results bins for DD runs
+        # map[statepoint_filename][tallyid] = [list of bins indices]
+        self.tally_domain_map = {}
+        self.results_domain_file = None
+
         # Read all metadata
         self._read_metadata()
-
 
     def _read_metadata(self):
         # Read filetype
@@ -510,6 +513,19 @@ class StatePoint(object):
 
         # Read current batch
         self.current_batch = self._get_int(path='current_batch')[0]
+
+        # Read domain decompositions info
+        self.domain_decomp = bool(self._get_int(path='domain_decomp')[0])
+        self.n_domains = self._get_int(path='n_domains')[0]
+        self.domain_id = self._get_int(path='domain_id')[0]
+
+        # set filename template
+        self.domain_filename_t = "statepoint.{0}.domain_{{d:0>{1}}}".format(
+            self.current_batch, len(str(self.n_domains)))
+        if self._hdf5:
+            self.domain_filename_t += '.h5'
+        else:
+            self.domain_filename_t += '.binary'
 
         # Read criticality information
         if self.run_mode == 2:
@@ -551,7 +567,7 @@ class StatePoint(object):
         self.geom.n_materials = self._get_int(path='geometry/n_materials')[0]
 
         if self.geom.n_lattices > 0:
-          latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
+            latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
 
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
 
@@ -560,7 +576,6 @@ class StatePoint(object):
         self.geom.surfKeys = self._get_int(self.geom.n_surfaces,path='geometry/surface_keys')
         # OpenMC IDs
         self.geom.surfList = self._get_int(self.geom.n_surfaces,path='geometry/surface_ids')
-
 
         matList = self._get_int(self.geom.n_materials,path='geometry/material_ids')
 
@@ -715,8 +730,8 @@ class StatePoint(object):
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
             labelsize = self._get_int(path=base+'id')[0]
-	    t.label = self._get_string(labelsize,path=base+'id')
-	    t.estimator = self._get_int(path=base+'id')[0]
+            t.label = self._get_string(labelsize,path=base+'id')
+            t.estimator = self._get_int(path=base+'id')[0]
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies
@@ -792,10 +807,35 @@ class StatePoint(object):
         # Set flag indicating metadata has already been read
         self._metadata = True
 
+    def read_domain_tally_metadata(self):
+        """ This routine loads tally metadata from other domains
+
+        This is needed so that if a value not in this file is requested,
+        the data from the domain that contains it can be loaded
+
+        """
+        if not self.domain_decomp: return
+
+        # Loop over all domain statepoints
+        for i in range(self.n_domains):
+            fname = self.domain_filename_t.format(d=i+1)
+            self.tally_domain_map[fname] = {}
+
+            # Read metadata for that domain
+            sp = StatePoint(fname)
+
+            # For each tally record what file each bin is in
+            for i, t in enumerate(sp.tallies):
+                self.tally_domain_map[fname][t.id] = t.otf_filter_bin_map
+
     def read_results(self):
         # Check whether metadata has been read
         if not self._metadata:
             self._read_metadata()
+
+        if self.domain_decomp:
+            self.results_domain_file = \
+                    self.domain_filename_t.format(d=self.domain_id)
 
         # Number of realizations for global tallies
         self.n_realizations = self._get_int(path='n_realizations')[0]
@@ -862,6 +902,9 @@ class StatePoint(object):
     def generate_ci(self, confidence=0.95):
         """Calculates confidence intervals for each tally bin."""
 
+        if self.domain_decomp:
+            warnings.warn('CI not implemented for DD reading')
+
         # Determine number of realizations
         n = self.n_realizations
 
@@ -878,6 +921,11 @@ class StatePoint(object):
         Calculates the sample mean and standard deviation of the mean for each
         tally bin.
         """
+
+        if self.domain_decomp:
+            warnings.warn('stdev not implemented for DD reading')
+
+        self.stdev_generated = True
 
         # Determine number of realizations
         n = self.n_realizations
@@ -912,6 +960,9 @@ class StatePoint(object):
 
     def get_value(self, tally_ID, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
+
+        For domain-decomposed runs or distributed tallies this will be much
+        slower than any other means of processing the data directly.
 
         Parameters
         ----------
@@ -969,16 +1020,50 @@ class StatePoint(object):
         # If this tally was allocated on the fly, convert the real filter_index
         # into the actual filter index using the mapping
         if t.otf_size_results_filters >= 0:
-          if not filter_index in t.otf_filter_bin_map:
-            raise Exception('Filter index %s not in results array for OTF '
-                            'tally %s.  Spec_list: %s' %
-                            (filter_index, t.id, spec_list))
-          filter_index = t.otf_filter_bin_map.index(filter_index)
+
+          # If the value is in the current file, set the index
+          current_map = self.tally_domain_map[self.results_domain_file][t.id]
+          if filter_index+1 in current_map:
+              filter_index = current_map.index(filter_index+1)
+              results = t.results
+          else:
+              # Find the index in the other domains
+              found = False
+              for i in range(self.n_domains):
+                  fname = self.domain_filename_t.format(d=i+1)
+                  domain_map = self.tally_domain_map[fname][t.id]
+                  if filter_index+1 in domain_map:
+                      filter_index = domain_map.index(filter_index+1)
+                      found = True
+
+                      # Delete the present tallies and replace with those
+                      # from the other file.  The reason to do DD was
+                      # because all the tallies won't fit in memory at
+                      # at once - this is why we do this
+                      del self.tallies
+
+                      # Read results from the other domain
+                      sp = StatePoint(fname)
+                      sp.read_results()
+                      if self.stdev_generated:
+                          #TODO: carry through CI and t_value as well
+                          sp.generate_stdev()
+                      self.tallies = sp.tallies
+                      self.results_domain_file = fname
+                      results = sp.tallies[sp.tallyID[tally_ID]].results
+                      break
+            
+              if not found:
+                raise Exception('Filter index %s not found in any domain for OTF '
+                                'tally %s.  Spec_list: %s' %
+                                (filter_index, t.id, spec_list))
+        else:
+            results = t.results
 
         # Return the desired result from Tally.results. This could be the sum and
         # sum of squares, or it could be mean and stdev if self.generate_stdev()
         # has been called already.
-        return t.results[filter_index, score_index]
+        return results[filter_index, score_index]
 
     def extract_results(self, tally_id, score_str):
         """Returns a tally results dictionary given a tally_id and score string.
@@ -993,6 +1078,9 @@ class StatePoint(object):
                For a flux score extraction it would be 'score'
 
         """
+
+        if self.domain_decomp:
+            raise NotImplementedError('extract_results not implemented for DD')
 
         # get tally
         try:

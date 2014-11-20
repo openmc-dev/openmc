@@ -1064,9 +1064,6 @@ contains
       end if
     end if
 
-#ifdef HDF5
-        ! Do not bother reading geometry
-#else
     ! Begin reading geometry information
     ! Set all values to temp variables. We already reread the geometry
     call sp % read_data(n_cell, "n_cells", group="geometry")
@@ -1302,7 +1299,6 @@ contains
       end if
 
     end do MATERIAL_LOOP
-#endif
 
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies")

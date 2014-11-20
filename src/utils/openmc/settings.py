@@ -281,7 +281,8 @@ class SettingsFile(object):
 
         for element in output:
 
-            if not element in ['summary', 'cross_sections', 'tallies']:
+            keys = ['summary', 'cross_sections', 'tallies', 'distribmats']
+            if not element in keys:
                 msg = 'Unable to set output to {0} which is unsupported by ' \
                       'OpenMC'.format(element)
                 raise ValueError(msg)

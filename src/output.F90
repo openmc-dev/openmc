@@ -2380,8 +2380,9 @@ contains
           ! ====================================================================
           ! AT LOWEST UNIVERSE, TERMINATE SEARCH
           ! NOTE: THIS SHOULD NOT HAPPEN
-          call fatal_error("Unexpected end of search with normal cell: " // &
-                           path)
+          return
+          !call fatal_error("Unexpected end of search with normal cell: " // &
+          !                 path)
 
         elseif (c % type == CELL_FILL) then
           ! ====================================================================

@@ -28,8 +28,8 @@ def main(file_, o):
     print('n_instances: %s' % n_inst)
     comps = get_comps(file_)
     for c in comps:
-        #print(c)
-        print(c[0]/sum(c),c[1]/sum(c))
+        print(c)
+        #print(c[0]/sum(c),c[1]/sum(c))
 
 ################################################################################
 def open_file(filename):

@@ -27,7 +27,9 @@ module state_point
 
 #ifdef HDF5
   use hdf5
-  use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err
+  use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err, &
+                              hdf5_open_group, hdf5_close_group, &
+                              hdf5_tallyresult_t
 #endif
 
 #ifdef MPI
@@ -47,7 +49,7 @@ contains
 
   subroutine write_state_point()
 
-    character(MAX_FILE_LEN)    :: filename
+    character(MAX_FILE_LEN) :: filename
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -55,9 +57,10 @@ contains
 
 #ifndef HDF5
     if (dd_run) then
-      ! For HDF5 we can easily have everyone write to the same file, but
+      ! For HDF5 we can easily have all procs write to the same file, but
       ! it's not so straightforward for binary files.  For now, each domain
-      ! dumps a separate statepoint
+      ! dumps a separate statepoint when not using HDF5.  This is mainly
+      ! for tally reasons.  
       filename = trim(filename) // '.domain_' // &
           & zero_padded(domain_decomp % meshbin, &
                         count_digits(domain_decomp % n_domains))
@@ -74,7 +77,14 @@ contains
     ! Write message
     call write_message("Creating state point " // trim(filename) // "...", 1)
 
+    ! Create file and write metadata
+#ifdef HDF5
+    ! Only master writes the metadata
+    if (master) then
+#else
+    ! Without HDF5, all domain masters write their own statepoint
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
+#endif
 
       ! Create statepoint file
       call sp % file_create(filename)
@@ -88,20 +98,24 @@ contains
       ! Write tally info
       call write_state_point_tally_metadata()
 
-      ! Indicate where source bank is stored in statepoint
-      if (source_separate) then
-        call sp % write_data(0, "source_present")
-      else
-        call sp % write_data(1, "source_present")
-      end if
-
     end if
 
     ! Write tally data
     call write_state_point_tally_data()
 
     ! Close the file
-    call sp % file_close()
+#ifdef HDF5
+    if (master) then
+#else
+    if (master .or. (dd_run .and. domain_decomp % local_master)) then
+#endif
+      call sp % file_close()
+    end if
+
+#ifdef HDF5
+    ! Write OTF tallies from DD runs, which were deferred for HDF5
+    call write_state_point_otf_tally_data(filename)
+#endif
 
   end subroutine write_state_point
 
@@ -606,24 +620,27 @@ contains
       call sp % write_data(t % total_filter_bins, "total_filter_bins", &
            group="tallies/tally" // to_str(i))
 
-      ! Write on-the-fly allocation tally info
-!        if (t % on_the_fly_allocation) then
-!          n = t % next_filter_idx - 1
-!          call sp % write_data(n, "otf_size_results_filters", &
-!               group="tallies/tally" // to_str(i))
-!          ! Write otf filter bin mapping
-!          allocate(temp_array(n))
-!          do j = 1, n
-!            temp_array(j) = t % reverse_filter_index_map % get_key(j)
-!          end do
-!          call sp % write_data(temp_array, "otf_filter_bin_map", &
-!               group="tallies/tally" // to_str(i), &
-!               length=n)
-!          deallocate(temp_array)
-!        else
-!          call sp % write_data(NONE, "otf_size_results_filters", &
-!               group="tallies/tally" // to_str(i))
-!        end if
+#ifndef HDF5
+      ! Write on-the-fly allocation tally info, which is only needed to
+      ! reconstruct data dumped to binary files from each domain
+      if (t % on_the_fly_allocation) then
+        n = t % next_filter_idx - 1
+        call sp % write_data(n, "otf_size_results_filters", &
+             group="tallies/tally" // to_str(i))
+        ! Write otf filter bin mapping
+        allocate(temp_array(n))
+        do j = 1, n
+          temp_array(j) = t % reverse_filter_index_map % get_key(j)
+        end do
+        call sp % write_data(temp_array, "otf_filter_bin_map", &
+             group="tallies/tally" // to_str(i), &
+             length=n)
+        deallocate(temp_array)
+      else
+        call sp % write_data(NONE, "otf_size_results_filters", &
+             group="tallies/tally" // to_str(i))
+      end if
+#endif
 
       ! Write number of filters
       call sp % write_data(t % n_filters, "n_filters", &
@@ -688,6 +705,20 @@ contains
 
     end do TALLY_METADATA
 
+    ! TODO: logically this source_present var belongs in the header
+    ! Indicate where source bank is stored in statepoint
+    if (source_separate) then
+      call sp % write_data(0, "source_present")
+    else
+      call sp % write_data(1, "source_present")
+    end if
+
+    ! Write number of global realizations
+    call sp % write_data(n_realizations, "n_realizations")
+
+    ! Write global tallies
+    call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
+
   end subroutine write_state_point_tally_metadata
 
 !===============================================================================
@@ -697,7 +728,6 @@ contains
   subroutine write_state_point_tally_data()
 
     integer :: i
-    integer :: n
     type(TallyObject), pointer :: t => null()
 
     ! Check for the no-tally-reduction method
@@ -711,13 +741,12 @@ contains
 
       call write_tally_results_nr()
 
+#ifdef HDF5
+    elseif (master) then
+#else
     elseif (master .or. (dd_run .and. domain_decomp % local_master)) then
+#endif
 
-      ! Write number of global realizations
-      call sp % write_data(n_realizations, "n_realizations")
-
-      ! Write global tallies
-      call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
       call write_tally_result(sp, global_tallies, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
 
@@ -736,10 +765,13 @@ contains
           ! Write sum and sum_sq for each bin
           if (t % on_the_fly_allocation) then
 
+#ifndef HDF5
             n = t % next_filter_idx - 1
             call write_tally_result(sp, t % results(:,1:n), "results", &
                  group="tallies/tally" // to_str(i), &
                  n1=size(t % results, 1), n2=n)
+#endif
+
           else
 
             call write_tally_result(sp, t % results, "results", &
@@ -759,6 +791,127 @@ contains
     end if
 
   end subroutine write_state_point_tally_data
+
+#ifdef HDF5
+!===============================================================================
+! WRITE_STATE_POINT_OTF_TALLY_DATA
+!===============================================================================
+
+  subroutine write_state_point_otf_tally_data(filename)
+
+    character(MAX_FILE_LEN), intent(in) :: filename
+
+    character(len=MAX_WORD_LEN) :: group ! HDF5 group name
+    integer(HID_T) :: hdf5_grp
+    integer(HID_T) :: file_id
+    integer :: i, j
+    integer :: n, m
+    integer :: idx
+    type(TallyObject), pointer :: t => null()
+
+    ! Set up OTF tally datasets
+    if (master) then
+      do i = 1, n_tallies
+
+        ! Set point to current tally
+        t => tallies(i)
+
+        ! Write sum and sum_sq for each bin
+        if (t % on_the_fly_allocation) then
+
+          n = t % total_score_bins
+          m = t % total_filter_bins
+
+          hdf5_rank = 1
+          dims1(1) = n*m
+          group = "tallies/tally" // to_str(i)
+          call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+          call hdf5_open_group(file_id, group, hdf5_grp)
+          call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+          call h5dcreate_f(hdf5_grp, 'results', hdf5_tallyresult_t, dspace, &
+              dset, hdf5_err)
+          call h5dclose_f(dset, hdf5_err)
+          call h5sclose_f(dspace, hdf5_err)
+          call hdf5_close_group(hdf5_grp)
+          call h5fclose_f(file_id, hdf5_err)
+
+        end if
+
+      end do
+    end if
+
+#ifdef MPI
+    ! All other domains need to wait for the datasets to be created before they
+    ! can write to it
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
+!    if (rank == 0) then
+!      print *, tallies(1) % results % sum
+!      print *
+!    end if
+!    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!
+!    if (rank == 1) then
+!      print *, tallies(1) % results % sum
+!      print *
+!    end if
+!    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!
+!    if (rank == 2) then
+!      print *, tallies(1) % results % sum
+!      print *
+!    end if
+!    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!
+!    if (rank == 4) then
+!      print *, tallies(1) % results % sum
+!      print *
+!    end if
+!    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+
+    ! Write tally data to the file
+    if (master .or. (dd_run .and. domain_decomp % local_master)) then
+      do i = 1, n_tallies
+
+        ! Set point to current tally
+        t => tallies(i)
+
+        ! Write sum and sum_sq for each bin.  This ensures that OTF allocated
+        ! bins will be written to the proper location in the file. As a result
+        ! we need to go through each bin one by one, which can be slow if
+        ! there's a lot of data.  It needs to be done eventually though if
+        ! any processing is to be done on the data, so might as well do it here
+        ! and insulate the user from needing to know anything about the OTF
+        ! maps.  This is the advantage of using HDF5, since for binary files
+        ! which just dump the results in the order that they were allocated, the
+        ! user would need to use the map information to combine and reorder the
+        ! data from all domains in order to do anything useful.
+
+        if (t % on_the_fly_allocation) then
+
+          !call fh % file_open(filename, 'w', serial = .true.)
+          call fh % file_open(filename, 'w', serial = .false.)
+          do j = 1, t % next_filter_idx - 1
+            if (i == i) then
+              if (rank == 0) then
+              end if
+            end if
+            idx = t % reverse_filter_index_map % get_key(j)
+            call fh % write_data(t % results(:,j), "results", &
+                group="tallies/tally" // to_str(i), &
+                length=size(t % results(:,j)), record=idx, collect=.false.)
+          end do 
+
+          call fh % file_close()
+
+        end if
+
+      end do
+    end if
+
+  end subroutine write_state_point_otf_tally_data
+#endif
 
 !===============================================================================
 ! WRITE_SOURCE_POINT
@@ -892,14 +1045,6 @@ contains
 
     ! ==========================================================================
     ! COLLECT AND WRITE GLOBAL TALLIES
-
-    if (master) then
-      ! Write number of realizations
-      call sp % write_data(n_realizations, "n_realizations")
-
-      ! Write number of global tallies
-      call sp % write_data(N_GLOBAL_TALLIES, "n_global_tallies")
-    end if
 
     ! Copy global tallies into temporary array for reducing
     n_bins = 2 * N_GLOBAL_TALLIES

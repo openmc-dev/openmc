@@ -716,7 +716,7 @@ class Lattice(object):
 
     def set_outside(self, outside):
 
-        if not isinstance(outside, Universe):
+        if not isinstance(outside, (Universe, openmc.Material)):
             msg = 'Unable to set Lattice ID={0} outside universe to {1} ' \
                   'since it is not a Universe object'.format(self._id, outside)
             raise ValueError(msg)

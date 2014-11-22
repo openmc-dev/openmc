@@ -83,7 +83,8 @@ contains
       end if
     end do SURFACE_LOOP
 
-    ! If we've reached here, then the sense matched on every surface
+    ! If we've reached here, then the sense matched on every surface or there
+    ! are no surfaces.
     in_cell = .true.
 
   end function simple_cell_contains

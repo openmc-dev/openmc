@@ -1463,6 +1463,12 @@ contains
       ! Plot id
       write(ou,100) "Plot ID:", trim(to_str(pl % id))
 
+      ! Plot filename
+      write(ou,100) "Plot file:", trim(pl % path_plot)
+
+      ! Plot level
+      write(ou,100) "Universe depth:", trim(to_str(pl % level))
+
       ! Plot type
       if (pl % type == PLOT_TYPE_SLICE) then
         write(ou,100) "Plot Type:", "Slice"

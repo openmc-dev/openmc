@@ -435,7 +435,6 @@ contains
           i = i + 1
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
-          i = i + 1
         case default
           call fatal_error("Unknown command line option: " // argv(i))
         end select

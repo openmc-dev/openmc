@@ -370,6 +370,12 @@ def get_opencg_cell(openmc_cell):
     else:
         opencg_cell.setFill(get_opencg_lattice(fill))
 
+    if openmc_cell._rotation:
+        opencg_cell.setRotation(openmc_cell._rotation)
+
+    if openmc_cell._translation:
+        opencg_cell.setTranslation(openmc_cell._translation)
+
     surfaces = openmc_cell._surfaces
 
     for surface_id in surfaces:
@@ -554,7 +560,6 @@ def get_openmc_cell(opencg_cell):
     openmc_cell = openmc.Cell(cell_id, name)
 
     fill = opencg_cell._fill
-    rot = opencg_cell._rotation
 
     if (opencg_cell._type == 'universe'):
         openmc_cell.set_fill(get_openmc_universe(fill))
@@ -563,8 +568,13 @@ def get_openmc_cell(opencg_cell):
     else:
         openmc_cell.set_fill(get_openmc_material(fill))
 
-    if rot:
-        openmc_cell.set_rotation(rot)
+    if opencg_cell._rotation:
+        rotation = np.asarray(opencg_cell._rotation, dtype=np.int)
+        openmc_cell.set_rotation(rotation)
+
+    if opencg_cell._translation:
+        translation = np.asarray(opencg_cell._translation, dtype=np.int)
+        openmc_cell.setTranslation(translation)
 
     surfaces = opencg_cell._surfaces
 
@@ -692,7 +702,10 @@ def get_opencg_lattice(openmc_lattice):
                 universe_id = universes[x][y][z]._id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
-    # Reverse y-dimension in array for appropriate ordering in OpenCG
+    # Transpose, reverse y-dimension in array for appropriate ordering in OpenCG
+    shape = universe_array.shape
+    universe_array = np.transpose(universe_array)
+    universe_array.shape = shape
     universe_array = universe_array[:,::-1,:]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)

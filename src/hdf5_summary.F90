@@ -124,6 +124,10 @@ contains
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
 
+      ! Write internal OpenMC index for this cell
+      call su % write_data(i, "index", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
+
       ! Write universe for this cell
       call su % write_data(universes(c % universe) % id, "universe", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -140,11 +144,33 @@ contains
           call su % write_data(materials(c % material) % id, "material", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
         end if
+
       case (CELL_FILL)
         call su % write_data("universe", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(universes(c % fill) % id, "material", &
+        call su % write_data(universes(c % fill) % id, "universe", &
              group="geometry/cells/cell " // trim(to_str(c % id))) 
+
+        if (allocated(c % translation)) then
+          call su % write_data(1, "translated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call su % write_data(c % translation, "translation", length=3, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        else
+          call su % write_data(0, "translated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
+        if (allocated(c % rotation_matrix)) then
+          call su % write_data(1, "rotated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call su % write_data(c % rotation, "rotation", length=3, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        else
+          call su % write_data(0, "rotated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
       case (CELL_LATTICE)
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -170,6 +196,10 @@ contains
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
       s => surfaces(i)
+
+      ! Write internal OpenMC index for this surface
+      call su % write_data(i, "index", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write surface type
       select case (s % type)
@@ -255,6 +285,10 @@ contains
     UNIVERSE_LOOP: do i = 1, n_universes
       u => universes(i)
 
+      ! Write internal OpenMC index for this universe
+      call su % write_data(i, "index", &
+           group="geometry/universes/universe " // trim(to_str(u % id)))
+
       ! Write list of cells in this universe
       if (u % n_cells > 0) then
         call su % write_data(u % cells, "cells", length=u % n_cells, &
@@ -273,6 +307,10 @@ contains
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
       lat => lattices(i)
+
+      ! Write internal OpenMC index for this lattice
+      call su % write_data(i, "index", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
       select case(lat % type)
@@ -295,6 +333,9 @@ contains
            length=lat % n_dimension, &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
+      call su % write_data(lat % outside, "outside", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
       ! Determine dimensions of lattice
       n_x = lat % dimension(1)
       n_y = lat % dimension(2)
@@ -303,7 +344,7 @@ contains
       else
         n_z = 1
       end if
-        
+
       ! Write lattice universes
       allocate(lattice_universes(n_x, n_y, n_z))
       do j = 1, n_x
@@ -340,6 +381,10 @@ contains
     do i = 1, n_materials
       m => materials(i)
 
+      ! Write internal OpenMC index for this material
+      call su % write_data(i, "index", &
+           group="materials/material " // trim(to_str(m % id)))
+
       ! Write atom density with units
       call su % write_data(m % density, "atom_density", &
            group="materials/material " // trim(to_str(m % id)))
@@ -365,13 +410,21 @@ contains
            group="materials/material " // trim(to_str(m % id)))
 
       ! Write S(a,b) information if present
+      call su % write_data(m % n_sab, "n_sab", &
+           group="materials/material " // trim(to_str(m % id)))
+
       if (m % n_sab > 0) then
         call su % write_data(m % i_sab_nuclides, "i_sab_nuclides", &
              length=m % n_sab, &
              group="materials/material " // trim(to_str(m % id)))
         call su % write_data(m % i_sab_tables, "i_sab_tables", &
              length=m % n_sab, &
-             group="materials/material " // trim(to_str(m % id))) 
+             group="materials/material " // trim(to_str(m % id)))
+        do j = 1, m % n_sab
+          call su % write_data(m % sab_names(j), to_str(j), &
+               group="materials/material " // &
+               trim(to_str(m % id)) // "/sab_tables")
+        end do
       end if
 
     end do
@@ -550,12 +603,18 @@ contains
     NUCLIDE_LOOP: do i = 1, n_nuclides_total
       nuc => nuclides(i)
 
+      ! Write internal OpenMC index for this nuclide
+      call su % write_data(i, "index", &
+           group="nuclides/" // trim(nuc % name))
+
       ! Determine size of cross-sections
       size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
       size_total = size_xs
 
       ! Write some basic attributes
       call su % write_data(nuc % zaid, "zaid", &
+           group="nuclides/" // trim(nuc % name))
+      call su % write_data(xs_listings(nuc % listing) % alias, "alias", &
            group="nuclides/" // trim(nuc % name))
       call su % write_data(nuc % awr, "awr", &
            group="nuclides/" // trim(nuc % name))

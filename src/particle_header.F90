@@ -143,6 +143,7 @@ module particle_header
     integer    :: n_collision
     integer    :: material
     integer    :: last_material
+    integer    :: last_inst
 
   end type ParticleBuffer
 
@@ -240,6 +241,7 @@ contains
     buf % stored_uvw      = part % stored_uvw
     buf % material        = part % material
     buf % last_material   = part % last_material
+    buf % last_inst       = part % last_inst
     buf % prn_seed        = part % prn_seed
     buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
@@ -281,6 +283,7 @@ contains
     part % stored_uvw      = buf % stored_uvw
     part % material        = buf % material
     part % last_material   = buf % last_material
+    part % last_inst       = buf % last_inst
     part % prn_seed        = buf % prn_seed
     part % xs_seed         = buf % xs_seed
     part % stored_distance = buf % stored_distance

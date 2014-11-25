@@ -38,6 +38,7 @@ module hdf5_interface
     module procedure hdf5_write_integer_4Darray
     module procedure hdf5_write_long
     module procedure hdf5_write_string
+    module procedure hdf5_write_string_1Darray
 #ifdef MPI
     module procedure hdf5_write_double_parallel
     module procedure hdf5_write_double_1Darray_parallel
@@ -51,6 +52,7 @@ module hdf5_interface
     module procedure hdf5_write_integer_4Darray_parallel
     module procedure hdf5_write_long_parallel
     module procedure hdf5_write_string_parallel
+!    module procedure hdf5_write_string_1Darray_parallel
 #endif
   end interface hdf5_write_data
 
@@ -68,6 +70,7 @@ module hdf5_interface
     module procedure hdf5_read_integer_4Darray
     module procedure hdf5_read_long
     module procedure hdf5_read_string
+    module procedure hdf5_read_string_1Darray
 #ifdef MPI
     module procedure hdf5_read_double_parallel
     module procedure hdf5_read_double_1Darray_parallel
@@ -81,6 +84,7 @@ module hdf5_interface
     module procedure hdf5_read_integer_4Darray_parallel
     module procedure hdf5_read_long_parallel
     module procedure hdf5_read_string_parallel
+!    module procedure hdf5_read_string_1Darray_parallel
 #endif
   end interface hdf5_read_data
 
@@ -785,6 +789,76 @@ contains
     call h5dclose_f(dset, hdf5_err)
 
   end subroutine hdf5_read_string
+
+!===============================================================================
+! HDF5_WRITE_STRING_1DARRAY writes string data
+!===============================================================================
+
+  subroutine hdf5_write_string_1Darray(group, name, buffer, length, rank)
+
+    integer(HID_T), intent(in)    :: group              ! name of group
+    character(*),   intent(in)    :: name               ! name of data
+    integer,        intent(in)    :: length             ! length of strings
+    integer,        intent(in)    :: rank               ! number of strings
+    character(*),   intent(in)    :: buffer(length,rank) ! data to write
+    
+    integer            :: dims               ! number of strings
+    
+    ! Insert null character at end of string when writing
+    call h5tset_strpad_f(H5T_STRING, H5T_STR_NULLPAD_F, hdf5_err)
+
+    ! Create the dataspace and dataset
+    call h5screate_simple_f(1, dims1, dspace, hdf5_err)
+    call h5dcreate_f(group, name, H5T_STRING, dspace, dset, hdf5_err)
+
+    ! Set up dimesnions of string to write
+    dims2 = (/length, rank/) ! full array of strings to write 
+    dims = 1     ! length of string
+
+    ! Write the variable dataset
+    !call h5ltmake_dataset_string_f(dset, H5T_STRING, buffer, dims2, dims1, hdf5_err, &
+    !    mem_space_id=dspace)
+
+    !call h5ltmake_dataset_f(group, name, dims, dims2, H5T_STRING, buffer, hdf5_err)
+
+    ! Close all
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+
+  end subroutine hdf5_write_string_1Darray
+
+!===============================================================================
+! HDF5_READ_STRING_1DARRAY reads string data
+!===============================================================================
+
+  subroutine hdf5_read_string_1Darray(group, name, buffer, length, rank)
+
+    integer(HID_T), intent(in)    :: group              ! name of group
+    character(*),   intent(in)    :: name               ! name of data
+    integer,        intent(in)    :: length             ! length of strings
+    integer,        intent(in)    :: rank                ! number of strings
+    character(*),   intent(inout) :: buffer(length,rank) ! read data to here
+
+    ! Open dataset
+    call h5dopen_f(group, name, dset, hdf5_err)
+
+    ! Get dataspace to read
+    call h5dget_space_f(dset, dspace, hdf5_err)
+
+    ! Set dimensions
+    dims2 = (/length, rank/)
+    dims1(1) = length
+
+    ! Read in the data
+    !call h5ltread_dataset_string_f(dset, H5T_STRING, buffer, dims2, dims1, hdf5_err, &
+    !     mem_space_id=dspace, xfer_prp = plist)
+
+    !call h5ltread_dataset_f(group, name, dims, dims2, H5T_STRING, buffer, hdf5_err)
+
+    ! Close dataset
+    call h5dclose_f(dset, hdf5_err)
+
+  end subroutine hdf5_read_string_1Darray
 
 !===============================================================================
 ! HDF5_WRITE_ATTRIBUTE_STRING writes a string attribute to a variables

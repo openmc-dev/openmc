@@ -261,7 +261,7 @@ class Summary(object):
             if fill_type == 'normal':
                 fill = self._f['geometry/cells'][key]['material'][0]
             elif fill_type == 'fill':
-                fill = self._f['geometry/cells'][key]['universe'][0]
+                fill = self._f['geometry/cells'][key]['fill'][0]
             else:
                 fill = self._f['geometry/cells'][key]['lattice'][0]
 

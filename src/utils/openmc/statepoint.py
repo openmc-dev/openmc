@@ -1,137 +1,38 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
-import struct
-from collections import OrderedDict
-
+import struct, copy
 import numpy as np
 import scipy.stats
+import openmc
+from openmc.constants import *
 
-REVISION_STATEPOINT = 13
-
-filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
-                5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
-
-score_types = {-1: 'flux',
-               -2: 'total',
-               -3: 'scatter',
-               -4: 'nu-scatter',
-               -5: 'scatter-n',
-               -6: 'scatter-pn',
-               -7: 'nu-scatter-n',
-               -8: 'nu-scatter-pn',
-               -9: 'transport',
-               -10: 'n1n',
-               -11: 'absorption',
-               -12: 'fission',
-               -13: 'nu-fission',
-               -14: 'kappa-fission',
-               -15: 'current',
-               -16: 'flux-yn',
-               -17: 'total-yn',
-               -18: 'scatter-yn',
-               -19: 'nu-scatter-yn',
-               -20: 'events',
-               1: '(n,total)',
-               2: '(n,elastic)',
-               4: '(n,level)',
-               11: '(n,2nd)',
-               16: '(n,2n)',
-               17: '(n,3n)',
-               18: '(n,fission)',
-               19: '(n,f)',
-               20: '(n,nf)',
-               21: '(n,2nf)',
-               22: '(n,na)',
-               23: '(n,n3a)',
-               24: '(n,2na)',
-               25: '(n,3na)',
-               28: '(n,np)',
-               29: '(n,n2a)',
-               30: '(n,2n2a)',
-               32: '(n,nd)',
-               33: '(n,nt)',
-               34: '(n,nHe-3)',
-               35: '(n,nd2a)',
-               36: '(n,nt2a)',
-               37: '(n,4n)',
-               38: '(n,3nf)',
-               41: '(n,2np)',
-               42: '(n,3np)',
-               44: '(n,n2p)',
-               45: '(n,npa)',
-               91: '(n,nc)',
-               101: '(n,disappear)',
-               102: '(n,gamma)',
-               103: '(n,p)',
-               104: '(n,d)',
-               105: '(n,t)',
-               106: '(n,3He)',
-               107: '(n,a)',
-               108: '(n,2a)',
-               109: '(n,3a)',
-               111: '(n,2p)',
-               112: '(n,pa)',
-               113: '(n,t2a)',
-               114: '(n,d2a)',
-               115: '(n,pd)',
-               116: '(n,pt)',
-               117: '(n,da)',
-               201: '(n,Xn)',
-               202: '(n,Xgamma)',
-               203: '(n,Xp)',
-               204: '(n,Xd)',
-               205: '(n,Xt)',
-               206: '(n,X3He)',
-               207: '(n,Xa)',
-               444: '(damage)',
-               649: '(n,pc)',
-               699: '(n,dc)',
-               749: '(n,tc)',
-               799: '(n,3Hec)',
-               849: '(n,tc)'}
-score_types.update({MT: '(n,n' + str(MT-50) + ')' for MT in range(51,91)})
-score_types.update({MT: '(n,p' + str(MT-600) + ')' for MT in range(600,649)})
-score_types.update({MT: '(n,d' + str(MT-650) + ')' for MT in range(650,699)})
-score_types.update({MT: '(n,t' + str(MT-700) + ')' for MT in range(700,749)})
-score_types.update({MT: '(n,3He' + str(MT-750) + ')' for MT in range(750,649)})
-score_types.update({MT: '(n,a' + str(MT-800) + ')' for MT in range(800,849)})
-
-class Mesh(object):
-    def __init__(self):
-        pass
-
-    def __repr__(self):
-        if hasattr(self, "dimension"):
-            return "<Mesh: {0}>".format(tuple(self.dimension))
-        else:
-            return "<Mesh>"
-
-class Filter(object):
-    def __init__(self):
-        self.type = 0
-        self.bins = []
-
-    def __repr__(self):
-        return "<Filter: {0}>".format(self.type)
-
-class Tally(object):
-    def __init__(self):
-        self.filters = OrderedDict()
 
 
 class SourceSite(object):
+
     def __init__(self):
-        self.weight = None
-        self.xyz = None
-        self.uvw = None
-        self.E = None
+
+        self._weight = None
+        self._xyz = None
+        self._uvw = None
+        self._E = None
+
 
     def __repr__(self):
-        return "<SourceSite: xyz={0} at E={1}>".format(self.xyz, self.E)
+
+        string = 'SourceSite\n'
+        string += '{0: <16}{1}{2}\n'.format('\tweight', '=\t', self._weight)
+        string += '{0: <16}{1}{2}\n'.format('\tE', '=\t', self._E)
+        string += '{0: <16}{1}{2}\n'.format('\t(x,y,z)', '=\t', self._xyz)
+        string += '{0: <16}{1}{2}\n'.format('\t(u,v,w)', '=\t', self._uvw)
+        return string
+
 
 
 class StatePoint(object):
+
     def __init__(self, filename):
+
         if filename.endswith('.h5'):
             import h5py
             self._f = h5py.File(filename, 'r')
@@ -140,460 +41,640 @@ class StatePoint(object):
             self._f = open(filename, 'rb')
             self._hdf5 = False
 
-        # Set flags for what data  was read
-        self._metadata = False
+        # Set flags for what data has been read
         self._results = False
         self._source = False
-
-        # Initialize arrays for meshes and tallies
-        self.meshes = []
-        self.tallies = []
-        self.source = []
+        self._with_summary = False
 
         # Read all metadata
         self._read_metadata()
 
+        # Read information about tally meshes
+        self._read_meshes()
+
+        # Read tally metadata
+        self._read_tallies()
+
+
+    @property
+    def k_combined(self):
+        return self._k_combined
+
+    @property
+    def n_particles(self):
+        return self._n_particles
+
+    @property
+    def n_batches(self):
+        return self._n_batches
+
+    @property
+    def current_batch(self):
+        return self._current_batch
+
+    @property
+    def results(self):
+        return self._results
+
+    @property
+    def source(self):
+        return self._source
+
+    @property
+    def with_summary(self):
+        return self._with_summary
+
+    @property
+    def tallies(self):
+        return self._tallies
+
+
     def _read_metadata(self):
+
         # Read filetype
-        self.filetype = self._get_int(path='filetype')[0]
+        self._filetype = self._get_int(path='filetype')[0]
 
         # Read statepoint revision
-        self.revision = self._get_int(path='revision')[0]
-        if self.revision != REVISION_STATEPOINT:
-          raise Exception('Statepoint Revision is not consistent.')
+        self._revision = self._get_int(path='revision')[0]
+        if self._revision != 13:
+            raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
         if self._hdf5:
-            self.version = [self._get_int(path='version_major')[0],
-                            self._get_int(path='version_minor')[0],
-                            self._get_int(path='version_release')[0]]
+            self._version = [self._get_int(path='version_major')[0],
+                             self._get_int(path='version_minor')[0],
+                             self._get_int(path='version_release')[0]]
         else:
-            self.version = self._get_int(3)
+            self._version = self._get_int(3)
 
         # Read date and time
-        self.date_and_time = self._get_string(19, path='date_and_time')
+        self._date_and_time = self._get_string(19, path='date_and_time')
 
         # Read path
-        self.path = self._get_string(255, path='path').strip()
+        self._path = self._get_string(255, path='path').strip()
 
         # Read random number seed
-        self.seed = self._get_long(path='seed')[0]
+        self._seed = self._get_long(path='seed')[0]
 
         # Read run information
-        self.run_mode = self._get_int(path='run_mode')[0]
-        self.n_particles = self._get_long(path='n_particles')[0]
+        self._run_mode = self._get_int(path='run_mode')[0]
+        self._n_particles = self._get_long(path='n_particles')[0]
+        self._n_batches = self._get_int(path='n_batches')[0]
 
         # Read current batch
-        self.current_batch = self._get_int(path='current_batch')[0]
+        self._current_batch = self._get_int(path='current_batch')[0]
+
+        # Read whether or not the source site distribution is present
+        self._source_present = self._get_int(path='source_present')[0]
 
         # Read criticality information
-        if self.run_mode == 2:
-            self.n_inactive = self._get_int(path='n_inactive')[0]
-            self.gen_per_batch = self._get_int(path='gen_per_batch')[0]
-            self.k_batch = self._get_double(
-                self.current_batch*self.gen_per_batch, path='k_generation')
-            self.entropy = self._get_double(
-                self.current_batch*self.gen_per_batch, path='entropy')
-            self.k_col_abs = self._get_double(path='k_col_abs')[0]
-            self.k_col_tra = self._get_double(path='k_col_tra')[0]
-            self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
-            self.k_combined = self._get_double(2, path='k_combined')
+        if self._run_mode == 2:
+            self._read_criticality()
 
-            # Read CMFD information
-            cmfd_present = self._get_int(path='cmfd_on')[0]
-            if cmfd_present == 1:
-                self.cmfd_indices = self._get_int(4, path='cmfd/indices')
-                self.k_cmfd = self._get_double(self.current_batch,
-                              path='cmfd/k_cmfd')
-                self.cmfd_src = self._get_double_array(np.product(self.cmfd_indices),
-                                path='cmfd/cmfd_src')
-                self.cmfd_src = np.reshape(self.cmfd_src,
-                                tuple(self.cmfd_indices), order='F')
-                self.cmfd_entropy = self._get_double(self.current_batch,
-                                    path='cmfd/cmfd_entropy')
-                self.cmfd_balance = self._get_double(self.current_batch,
-                                    path='cmfd/cmfd_balance')
-                self.cmfd_dominance = self._get_double(self.current_batch,
-                                      path='cmfd/cmfd_dominance')
-                self.cmfd_srccmp = self._get_double(self.current_batch,
-                                   path='cmfd/cmfd_srccmp')
 
-        # Read number of meshes
-        n_meshes = self._get_int(path='tallies/n_meshes')[0]
+    def _read_criticality(self):
 
-        # Read meshes
-        for i in range(n_meshes):
-            m = Mesh()
-            self.meshes.append(m)
+        # Read criticality information
+        if self._run_mode == 2:
 
-            base = 'tallies/mesh' + str(i+1) + '/'
+            self._n_inactive = self._get_int(path='n_inactive')[0]
+            self._gen_per_batch = self._get_int(path='gen_per_batch')[0]
+            self._k_batch = self._get_double(
+                 self._current_batch*self._gen_per_batch,
+                 path='k_generation')
+            self._entropy = self._get_double(
+                 self._current_batch*self._gen_per_batch, path='entropy')
 
-            # Read id, mesh type, and number of dimensions
-            m.id = self._get_int(path=base+'id')[0]
-            m.type = self._get_int(path=base+'type')[0]
-            n = self._get_int(path=base+'n_dimension')[0]
+            self._k_col_abs = self._get_double(path='k_col_abs')[0]
+            self._k_col_tra = self._get_double(path='k_col_tra')[0]
+            self._k_abs_tra = self._get_double(path='k_abs_tra')[0]
+            self._k_combined = self._get_double(2, path='k_combined')
 
-            # Read mesh size, lower-left coordinates, upper-right coordinates,
-            # and width of each mesh cell
-            m.dimension = self._get_int(n, path=base+'dimension')
-            m.lower_left = self._get_double(n, path=base+'lower_left')
-            m.upper_right = self._get_double(n, path=base+'upper_right')
-            m.width = self._get_double(n, path=base+'width')
+            # Read CMFD information (if used)
+            self._read_cmfd()
 
-        # Read number of tallies
-        n_tallies = self._get_int(path='tallies/n_tallies')[0]
 
-        for i in range(n_tallies):
-            # Create Tally object and add to list of tallies
-            t = Tally()
-            self.tallies.append(t)
+    def _read_cmfd(self):
 
-            base = 'tallies/tally' + str(i+1) + '/'
+        base = 'cmfd'
 
-            # Read id and number of realizations
-            t.id = self._get_int(path=base+'id')[0]
-            t.n_realizations = self._get_int(path=base+'n_realizations')[0]
+        # Read CMFD information
+        self._cmfd_on = self._get_int(path='cmfd_on')[0]
 
-            # Read sizes of tallies
-            t.total_score_bins = self._get_int(path=base+'total_score_bins')[0]
-            t.total_filter_bins = self._get_int(path=base+'total_filter_bins')[0]
+        if self._cmfd_on == 1:
 
-            # Read number of filters
-            n_filters = self._get_int(path=base+'n_filters')[0]
+            self._cmfd_indices = self._get_int(4, path='{0}/indices'.format(base))
+            self._k_cmfd = self._get_double(self._current_batch,
+                 path='{0}/k_cmfd'.format(base))
+            self._cmfd_src = self._get_double_array(np.product(self._cmfd_indices),
+                 path='{0}/cmfd_src'.format(base))
+            self._cmfd_src = np.reshape(self._cmfd_src, tuple(self._cmfd_indices),
+                  order='F')
+            self._cmfd_entropy = self._get_double(self._current_batch,
+                  path='{0}/cmfd_entropy'.format(base))
+            self._cmfd_balance = self._get_double(self._current_batch,
+                  path='{0}/cmfd_balance'.format(base))
+            self._cmfd_dominance = self._get_double(self._current_batch,
+                  path='{0}/cmfd_dominance'.format(base))
+            self._cmfd_srccmp = self._get_double(self._current_batch,
+                  path='{0}/cmfd_srccmp'.format(base))
 
-            for j in range(n_filters):
-                # Create Filter object
-                f = Filter()
 
-                base = 'tallies/tally{0}/filter{1}/'.format(i+1, j+1)
+    def _read_meshes(self):
 
-                # Get type of filter
-                f.type = filter_types[self._get_int(path=base+'type')[0]]
+        # Initialize dictionaries for the Meshes
+        # Keys     - Mesh IDs
+        # Values - Mesh objects
+        self._meshes = dict()
 
-                # Add to filter dictionary
-                t.filters[f.type] = f
+        # Read the number of Meshes
+        self._n_meshes = self._get_int(path='tallies/meshes/n_meshes')[0]
 
-                # Determine how many bins are in this filter
-                f.length = self._get_int(path=base+'n_bins')[0]
-                assert f.length > 0
-                if f.type == 'energyin' or f.type == 'energyout':
-                    f.bins = self._get_double(f.length + 1, path=base+'bins')
-                elif f.type == 'mesh':
-                    f.bins = self._get_int(path=base+'bins')
-                else:
-                    f.bins = self._get_int(f.length, path=base+'bins')
+        # Read a list of the IDs for each Mesh
+        if self._n_meshes > 0:
 
-            base = 'tallies/tally' + str(i+1) + '/'
+            # OpenMC Mesh IDs (redefined internally from user definitions)
+            self._mesh_ids = self._get_int(self._n_meshes,
+                 path='tallies/meshes/ids')
 
-            # Read nuclide bins
-            n_nuclides = self._get_int(path=base+'n_nuclide_bins')[0]
-            t.n_nuclides = n_nuclides
-            t.nuclides = self._get_int(n_nuclides, path=base+'nuclide_bins')
+            # User-defined Mesh IDs
+            self._mesh_keys = self._get_int(self._n_meshes,
+                 path='tallies/meshes/keys')
 
-            # Read score bins and scattering order
-            t.n_scores = self._get_int(path=base+'n_score_bins')[0]
-            t.scores = [score_types[j] for j in self._get_int(
-                    t.n_scores, path=base+'score_bins')]
-            t.moment_order = self._get_int(t.n_scores, path=base+'moment_order')
-
-            # Read number of user score bins
-            t.n_user_scores = self._get_int(path=base+'n_user_score_bins')[0]
-
-            # Set up stride
-            stride = 1
-            for f in list(t.filters.values())[::-1]:
-                f.stride = stride
-                stride *= f.length
-
-        # Source bank present
-        source_present = self._get_int(path='source_present')[0]
-        if source_present == 1:
-            self.source_present = True
         else:
-            self.source_present = False
+            self._mesh_keys = list()
+            self._mesh_ids = list()
 
-        # Set flag indicating metadata has already been read
-        self._metadata = True
+        # Build dictionary of Meshes
+        base = 'tallies/meshes/mesh '
+
+        # Iterate over all Meshes
+        for mesh_key in self._mesh_keys:
+
+            # Read the user-specified Mesh ID and type
+            mesh_id = self._get_int(path='{0}{1}/id'.format(base, mesh_key))[0]
+            mesh_type = self._get_int(path='{0}{1}/type'.format(base, mesh_key))[0]
+
+            # Get the Mesh dimension
+            n_dimension = self._get_int(
+                 path='{0}{1}/n_dimension'.format(base, mesh_key))[0]
+
+            # Read the mesh dimensions, lower-left coordinates,
+            # upper-right coordinates, and width of each mesh cell
+            dimension = self._get_int(
+                 n_dimension, path='{0}{1}/dimension'.format(base, mesh_key))
+            lower_left = self._get_double(
+                 n_dimension, path='{0}{1}/lower_left'.format(base, mesh_key))
+            upper_right = self._get_double(
+                 n_dimension, path='{0}{1}/upper_right'.format(base, mesh_key))
+            width = self._get_double(
+                 n_dimension, path='{0}{1}/width'.format(base, mesh_key))
+
+            # Create the Mesh and assign properties to it
+            mesh = openmc.Mesh(mesh_id)
+
+            mesh.set_dimension(dimension)
+            mesh.set_width(width)
+            mesh.set_lower_left(lower_left)
+            mesh.set_upper_right(upper_right)
+
+            #FIXME: Set the mesh type to 'rectangular' by default
+            mesh.set_type('rectangular')
+
+            # Add mesh to the global dictionary of all Meshes
+            self._meshes[mesh_id] = mesh
+
+
+    def _read_tallies(self):
+
+        # Initialize dictionaries for the Tallies
+        # Keys     - Tally IDs
+        # Values   - Tally objects
+        self._tallies = dict()
+
+        # Read the number of tallies
+        self._n_tallies = self._get_int(path='/tallies/n_tallies')[0]
+
+        # Read a list of the IDs for each Tally
+        if self._n_tallies > 0:
+
+            # OpenMC Tally IDs (redefined internally from user definitions)
+            self._tally_ids = self._get_int(
+                 self._n_tallies, path='tallies/ids')
+
+            # User-defined Tally IDs
+            self._tally_keys = self._get_int(
+                 self._n_tallies, path='tallies/keys')
+
+        else:
+            self._tally_keys = list()
+            self._tally_ids = list()
+
+        base = 'tallies/tally '
+
+        # Iterate over all Tallies
+        for tally_key in self._tally_keys:
+
+            # Read user-specified Tally label (if specified)
+            label_size = self._get_int(
+                 path='{0}{1}/label_size'.format(base, tally_key))[0]
+
+            if label_size > 0:
+                label = self._get_string(
+                     label_size, path='{0}{1}/label'.format(base, tally_key))
+
+            # Remove leading and trailing characters from string label
+            label = label.lstrip('[\'')
+            label = label.rstrip('\']')
+
+            # Read integer Tally estimator type code (analog or tracklength)
+            estimator_type = self._get_int(
+                 path='{0}{1}/estimator'.format(base, tally_key))[0]
+
+            # Read the Tally size specifications
+            n_realizations = self._get_int(
+                 path='{0}{1}/n_realizations'.format(base, tally_key))[0]
+
+            # Create Tally object and assign basic properties
+            tally = openmc.Tally(tally_key, label)
+            tally.set_estimator(ESTIMATOR_TYPES[estimator_type])
+            tally.set_num_realizations(n_realizations)
+
+            # Read the number of Filters
+            n_filters = self._get_int(
+                 path='{0}{1}/n_filters'.format(base, tally_key))[0]
+
+            subbase = '{0}{1}/filter '.format(base, tally_key)
+
+            # Initialize the stride
+            stride = 1
+
+            # Initialize all Filters
+            for j in range(1, n_filters+1):
+
+                # Read the integer Filter type code
+                filter_type = self._get_int(
+                     path='{0}{1}/type'.format(subbase, j))[0]
+
+                n_bins = self._get_int(
+                     path='{0}{1}/n_bins'.format(subbase, j))[0]
+
+                if n_bins <= 0:
+                    msg = 'Unable to create Filter {0} for Tally ID={2} ' \
+                          'since no bins were specified'.format(j, tally_key)
+                    raise ValueError(msg)
+
+                # Read the bin values
+                if FILTER_TYPES[filter_type] in ['energy', 'energyout']:
+                    bins = self._get_double(
+                         n_bins+1, path='{0}{1}/bins'.format(subbase, j))
+
+                # FIXME
+                elif FILTER_TYPES[filter_type] in ['mesh', 'distribcell']:
+                    bins = self._get_int(
+                         path='{0}{1}/bins'.format(subbase, j))[0]
+
+                else:
+                    bins = self._get_int(
+                         n_bins, path='{0}{1}/bins'.format(subbase, j))
+
+                # Create Filter object
+                filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
+                filter.set_stride(stride)
+                filter.set_num_bins(n_bins)
+
+                if FILTER_TYPES[filter_type] == 'mesh':
+                    filter.set_mesh(self._meshes[bins])
+
+                # Add Filter to the Tally
+                tally.add_filter(filter)
+
+                # Update the stride for the next Filter
+                stride *= n_bins
+
+            # Read Nuclide bins
+            n_nuclides = self._get_int(
+                 path='{0}{1}/n_nuclides'.format(base, tally_key))[0]
+
+            nuclide_zaids = self._get_int(
+                 n_nuclides, path='{0}{1}/nuclides'.format(base, tally_key))
+
+            # Add all Nuclides to the Tally
+            for nuclide_zaid in nuclide_zaids:
+                tally.add_nuclide(nuclide_zaid)
+
+            # Read score bins
+            n_score_bins = self._get_int(
+                 path='{0}{1}/n_score_bins'.format(base, tally_key))[0]
+
+            tally.set_num_score_bins(n_score_bins)
+
+            scores = [SCORE_TYPES[j] for j in self._get_int(
+                 n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
+
+            # Read the scattering moment order for all scores
+            scatt_order = self._get_int(
+                 n_score_bins, path='{0}{1}/moment_order'.format(base, tally_key))
+
+            # Add the scores to the Tally
+            for j, score in enumerate(scores):
+
+                # If this is a scattering moment, insert the scattering order
+                if 'scatter-n' in score or 'scatter-yn' in score or 'scatter-pn' in score:
+                    score = score.replace('n', str(scatt_order[j]))
+
+                tally.add_score(score)
+
+            # Add Tally to the global dictionary of all Tallies
+            self._tallies[tally_key] = tally
+
 
     def read_results(self):
-        # Check whether metadata has been read
-        if not self._metadata:
-            self._read_metadata()
 
-        # Number of realizations for global tallies
-        self.n_realizations = self._get_int(path='n_realizations')[0]
+         # Number of realizations for global Tallies
+        self._n_realizations = self._get_int(path='n_realizations')[0]
 
-        # Read global tallies
+        # Read global Tallies
         n_global_tallies = self._get_int(path='n_global_tallies')[0]
+
         if self._hdf5:
             data = self._f['global_tallies'].value
-            self.global_tallies = np.column_stack((data['sum'], data['sum_sq']))
+            self._global_tallies = np.column_stack((data['sum'], data['sum_sq']))
+
         else:
-            self.global_tallies = np.array(self._get_double(2*n_global_tallies))
-            self.global_tallies.shape = (n_global_tallies, 2)
+            self._global_tallies = np.array(self._get_double(2*n_global_tallies))
+            self._global_tallies.shape = (n_global_tallies, 2)
 
-        # Flag indicating if tallies are present
-        tallies_present = self._get_int(path='tallies/tallies_present')[0]
+        # Flag indicating if Tallies are present
+        self._tallies_present = self._get_int(path='tallies/tallies_present')[0]
 
-        # Read tally results
-        if tallies_present:
-            for i, t in enumerate(self.tallies):
-                n = t.total_score_bins * t.total_filter_bins
+        base = 'tallies/tally '
+
+        # Read Tally results
+        if self._tallies_present:
+
+            # Iterate over and extract the results for all Tallies
+            for tally_key in self._tally_keys:
+
+                # Get this Tally
+                tally = self._tallies[tally_key]
+
+                # Compute the total number of bins for this Tally
+                num_tot_bins = tally.get_num_bins()
+
+                # Extract Tally data from the file
                 if self._hdf5:
-                    path = 'tallies/tally{0}/results'.format(i+1)
-                    data = self._f[path].value
-                    t.results = np.column_stack((data['sum'], data['sum_sq']))
-                    t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
-                else:
-                    t.results = np.array(self._get_double(2*n))
-                    t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
+                    data = self._f['{0}{1}/results'.format(base, tally_key)].value
+                    sum = data['sum']
+                    sum_sq = data['sum_sq']
 
-        # Indicate that tally results have been read
+                else:
+                    results = np.array(self._get_double(2*num_tot_bins))
+                    sum = results[0::2]
+                    sum_sq = results[1::2]
+
+                # Define a routine to convert 0 to 1
+                nonzero = lambda val: 1 if not val else val
+
+                # Reshape the results arrays
+                new_shape = (nonzero(tally.get_num_filter_bins()),
+                             nonzero(tally.get_num_nuclides()),
+                             nonzero(tally.get_num_score_bins()))
+
+                sum = np.reshape(sum, new_shape)
+                sum_sq = np.reshape(sum_sq, new_shape)
+
+                # Set the data for this Tally
+                tally.set_results(sum=sum, sum_sq=sum_sq)
+
+        # Indicate that Tally results have been read
         self._results = True
 
+
     def read_source(self):
-        # Check whether tally results have been read
+
+        # Check whether Tally results have been read
         if not self._results:
             self.read_results()
 
         # Check if source bank is in statepoint
-        if not self.source_present:
-            print('Source not in statepoint file.')
+        if not self._source_present:
+            print('Unable to read source since it is not in statepoint file')
             return
+
+        # Initialize a NumPy array for the source sites
+        self._source = np.empty(self._n_particles, dtype=SourceSite)
 
         # For HDF5 state points, copy entire bank
         if self._hdf5:
             source_sites = self._f['source_bank'].value
 
-        for i in range(self.n_particles):
-            s = SourceSite()
-            self.source.append(s)
+        # Initialize SourceSite object for each particle
+        for i in range(self._n_particles):
+
+            # Initialize new source site
+            site = SourceSite()
 
             # Read position, angle, and energy
             if self._hdf5:
-                s.weight, s.xyz, s.uvw, s.E = source_sites[i]
+                site._weight, site._xyz, site._uvw, site._E = source_sites[i]
             else:
-                s.weight = self._get_double()[0]
-                s.xyz = self._get_double(3)
-                s.uvw = self._get_double(3)
-                s.E = self._get_double()[0]
+                site._weight = self._get_double()[0]
+                site._xyz = self._get_double(3)
+                site._uvw = self._get_double(3)
+                site._E = self._get_double()[0]
 
-    def generate_ci(self, confidence=0.95):
-        """Calculates confidence intervals for each tally bin."""
+            # Store the source site in the NumPy array
+            self._source[i] = site
 
-        # Determine number of realizations
-        n = self.n_realizations
+
+    def compute_ci(self, confidence=0.95):
+        """Computes confidence intervals for each Tally bin."""
 
         # Determine significance level and percentile for two-sided CI
         alpha = 1 - confidence
         percentile = 1 - alpha/2
 
         # Calculate t-value
-        t_value = scipy.stats.t.ppf(percentile, n - 1)
-        self.generate_stdev(t_value)
+        t_value = scipy.stats.t.ppf(percentile, self._n_realizations - 1)
+        self.compute_stdev(t_value)
 
-    def generate_stdev(self, t_value=1.0):
+
+    def compute_stdev(self, t_value=1.0):
         """
-        Calculates the sample mean and standard deviation of the mean for each
-        tally bin.
+        Computes the sample mean and the standard deviation of the mean
+        for each Tally bin.
         """
 
         # Determine number of realizations
-        n = self.n_realizations
+        n = self._n_realizations
 
-        # Global tallies
-        for i in range(len(self.global_tallies)):
+        # Calculate the standard deviation for each global tally
+        for i in range(len(self._global_tallies)):
+
             # Get sum and sum of squares
-            s, s2 = self.global_tallies[i]
+            s, s2 = self._global_tallies[i]
 
             # Calculate sample mean and replace value
             s /= n
-            self.global_tallies[i,0] = s
+            self._global_tallies[i, 0] = s
 
             # Calculate standard deviation
             if s != 0.0:
-                self.global_tallies[i,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
+                self._global_tallies[i, 1] = t_value * np.sqrt((s2 / n - s**2) / (n-1))
 
-        # Regular tallies
-        for t in self.tallies:
-            for i in range(t.results.shape[0]):
-                for j in range(t.results.shape[1]):
-                    # Get sum and sum of squares
-                    s, s2 = t.results[i,j]
 
-                    # Calculate sample mean and replace value
-                    s /= n
-                    t.results[i,j,0] = s
+        # Calculate sample mean and standard deviation for user-defined Tallies
+        for tally_id, tally in self._tallies.items():
+            tally.compute_std_dev(t_value)
 
-                    # Calculate standard deviation
-                    if s != 0.0:
-                        t.results[i,j,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
-    def get_value(self, tally_index, spec_list, score_index):
-        """Returns a tally score given a list of filters to satisfy.
+    def get_tally(self, score, filters, nuclides,
+                  label='', estimator='tracklength'):
+        """Finds and returns a Tally object with certain properties.
 
         Parameters
         ----------
-        tally_index : int
-            Index for tally in StatePoint.tallies list
+        score : str
+                The score string
 
-        spec_list : list
-            A list of tuples where the first value in each tuple is the filter
-            type, e.g. 'cell', and the second value is the desired index. If the
-            first value in the tuple is 'mesh', the second value should be a
-            tuple with three integers specifying the mesh indices.
+        filters : list
+                A list of Filter objects
 
-            Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
+        nuclides : list
+                A list of Nuclide objects
 
-        score_index : int
-            Index corresponding to score for tally, i.e. the second index in
-            Tally.results[:,:,:].
+        label : str
+                The label specified for the Tally (default is '')
 
+        estimator: str
+                The type of estimator ('tracklength' (default) or 'analog')
         """
 
-        # Get Tally object given the index
-        t = self.tallies[tally_index]
+        # Loop over the domain-to-tallies mapping to find the Tally
+        tally = None
 
-        # Initialize index for filter in Tally.results[:,:,:]
-        filter_index = 0
+        # Iterate over all tallies to find the appropriate one
+        for tally_id, test_tally in self._tallies.items():
 
-        # Loop over specified filters in spec_list
-        for f_type, f_index in spec_list:
+            # Determine if the queried Tally label is the same as this Tally
+            if not label == test_tally._label:
+                continue
 
-            # Treat mesh filter separately
-            if f_type == 'mesh':
-                # Get index in StatePoint.meshes
-                mesh_index = t.filters['mesh'].bins[0] - 1
+            # Determine if the queried Tally estimator is the same as this Tally
+            if not estimator == test_tally._estimator:
+                continue
 
-                # Get dimensions of corresponding mesh
-                nx, ny, nz = self.meshes[mesh_index].dimension
+            # Determine if the queried Tally scores are the same as this Tally
+            if not score in test_tally._scores:
+                continue
 
-                # Convert (x,y,z) to a single bin -- this is similar to
-                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                value = ((f_index[0] - 1)*ny*nz +
-                         (f_index[1] - 1)*nz +
-                         (f_index[2] - 1))
-                filter_index += value*t.filters[f_type].stride
-            else:
-                filter_index += f_index*t.filters[f_type].stride
+            # Determine if queried Tally filters is the same length as this Tally
+            if len(filters) != len(test_tally._filters):
+                continue
 
-        # Return the desired result from Tally.results. This could be the sum and
-        # sum of squares, or it could be mean and stdev if self.generate_stdev()
-        # has been called already.
-        return t.results[filter_index, score_index]
+            # Determine if the queried Tally filters are the same as this Tally
+            contains_filters = True
 
-    def extract_results(self, tally_id, score_str):
-        """Returns a tally results dictionary given a tally_id and score string.
+            # Iterate over the filters requested by the user
+            for filter in filters:
+                if not filter in test_tally._filters:
+                    contains_filters = False
+                    break
 
-           Parameters
-           ----------
-           tally_id : int
-               Index for the tally in StatePoint.tallies list
+            # Determine if the queried Nuclide is in this Tally
+            contains_nuclides = True
 
-           score_str : string
-               Corresponds to the string entered for a score in tallies.xml.
-               For a flux score extraction it would be 'score'
+            # Iterate over the Nuclides requested by the user
+            for nuclide in nuclides:
+                if not nuclide in test_tally._nuclides:
+                    contains_nuclides = False
+                    break
 
+            # If the Tally contained all Filters and Nuclides, return the Tally
+            if contains_filters and contains_nuclides:
+                tally = test_tally
+                break
+
+        # If we did not find the Tally, return an error message
+        if tally is None:
+            raise LookupError('Unable to get Tally')
+
+        return tally
+
+
+    def get_tally_id(self, score, filters, label='', estimator='tracklength'):
+        """Retrieve the Tally ID for a given list of filters and score(s).
+
+        Parameters
+        ----------
+        score : str
+                The score string
+
+        filters : list
+                A list of Filter objects
+
+        label : str
+                The label specified for the Tally (default is '')
+
+        estimator: str
+                The type of estimator ('tracklength' (default) or 'analog')
         """
 
-        # get tally
-        try:
-            tally = self.tallies[tally_id-1]
-        except:
-            print('Tally does not exist')
-            return
+        tally = self.get_tally(score, filters, label, estimator)
+        return tally._id
 
-        # get the score index if it is present
-        try:
-            idx = tally.scores.index(score_str)
-        except ValueError:
-            print('Score does not exist')
-            print(tally.scores)
-            return
 
-        # create numpy array for mean and 95% CI
-        n_bins = len(tally.results)
-        n_filters = len(tally.filters)
-        n_scores = len(tally.scores)
-        meanv = np.zeros(n_bins)
-        unctv = np.zeros(n_bins)
-        filters = np.zeros((n_bins,n_filters))
-        filtmax = np.zeros(n_filters+1)
-        meshmax = np.zeros(4)
-        filtmax[0] = 1
-        meshmax[0] = 1
+    def link_with_summary(self, summary):
 
-        # get number of realizations
-        n = tally.n_realizations
+        if not isinstance(summary, openmc.summary.Summary):
+            msg = 'Unable to link statepoint with {0} which ' \
+                  'is not a Summary object'.format(summary)
+            raise ValueError(msg)
 
-        # get t-value
-        t_value = scipy.stats.t.ppf(0.975, n - 1)
+        for tally_id, tally in self._tallies.items():
 
-        # calculate mean
-        meanv = tally.results[:,idx,0]
-        meanv = meanv / n
+            nuclides = copy.deepcopy(tally._nuclides)
 
-        # calculate 95% two-sided CI
-        unctv = tally.results[:,idx,1]
-        unctv = t_value*np.sqrt((unctv/n - meanv*meanv)/(n-1))/meanv
+            for nuclide_index in nuclides:
+                tally.remove_nuclide(nuclide_index)
+                if nuclide_index == -1:
+                    tally.add_nuclide(openmc.Nuclide('total'))
+                else:
+                    tally.add_nuclide(summary.nuclides[nuclide_index])
 
-        # create output dictionary
-        data = {'mean':meanv,'CI95':unctv}
+            for filter in tally._filters:
 
-        # get bounds of filter bins
-        for akey in tally.filters.keys():
-            idx = list(tally.filters.keys()).index(akey)
-            filtmax[n_filters - idx] = tally.filters[akey].length
+                if filter._type == 'surface':
+                    surface_ids = list()
+                    for bin in filter._bins:
+                        surface_ids.append(summary.surfaces[bin]._id)
+                    filter.set_bin_edges(surface_ids)
 
-        # compute bin info
-        for i in range(n_filters):
+                if filter._type in ['cell', 'distribcell']:
+                    distribcell_ids = list()
+                    for bin in filter._bins:
+                        distribcell_ids.append(summary.cells[bin]._id)
+                    filter.set_bin_edges(distribcell_ids)
 
-            # compute indices for filter combination
-            filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) %
-                   np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
+                if filter._type == 'universe':
+                    universe_ids = list()
+                    for bin in filter._bins:
+                        universe_ids.append(summary.universes[bin]._id)
+                    filter.set_bin_edges(universe_ids)
 
-            # append in dictionary bin with filter
-            data.update({list(tally.filters.keys())[n_filters - i - 1]:
-                             filters[:,n_filters - i - 1]})
+                if filter._type == 'material':
+                    material_ids = list()
+                    for bin in filter._bins:
+                        material_ids.append(summary.materials[bin]._id)
+                    filter.set_bin_edges(material_ids)
 
-            # check for mesh
-            if list(tally.filters.keys())[n_filters - i - 1] == 'mesh':
-                dims = list(self.meshes[tally.filters['mesh'].bins[0] - 1].dimension)
-                dims.reverse()
-                dims = np.asarray(dims)
-                if score_str == 'current':
-                    dims += 1
-                meshmax[1:4] = dims
-                mesh_bins = np.zeros((n_bins,3))
-                mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) %
-                            np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
-                mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) %
-                            np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
-                mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) %
-                            np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
-                data.update({'mesh': list(zip(mesh_bins[:,0], mesh_bins[:,1],
-                                              mesh_bins[:,2]))})
-            i += 1
+        self._with_summary = True
 
-        # add in maximum bin filters and order
-        b = list(tally.filters.keys())
-        b.reverse()
-        filtmax = list(filtmax[1:])
-        try:
-            idx = b.index('mesh')
-            filtmax[idx] = np.max(mesh_bins[:,2])
-            filtmax.insert(idx,np.max(mesh_bins[:,1]))
-            filtmax.insert(idx,np.max(mesh_bins[:,0]))
-
-        except ValueError:
-            pass
-        data.update({'bin_order':b,'bin_max':filtmax})
-
-        return data
 
     def _get_data(self, n, typeCode, size):
         return list(struct.unpack('={0}{1}'.format(n,typeCode),
-                                  self._f.read(n*size)))
+                    self._f.read(n*size)))
 
     def _get_int(self, n=1, path=None):
         if self._hdf5:
@@ -603,9 +684,9 @@ class StatePoint(object):
 
     def _get_long(self, n=1, path=None):
         if self._hdf5:
-            return [int(v) for v in self._f[path].value]
+            return [long(v) for v in self._f[path].value]
         else:
-            return [int(v) for v in self._get_data(n, 'q', 8)]
+            return [long(v) for v in self._get_data(n, 'q', 8)]
 
     def _get_float(self, n=1, path=None):
         if self._hdf5:

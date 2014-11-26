@@ -101,8 +101,8 @@ class Cell(object):
 
         if not isinstance(fill, (openmc.Material, Universe, Lattice)) \
             and fill != 'void':
-            msg = 'Unable to set Cell ID={0} to use a a non-Material or ' \
-                        'Universe fill {1}'.format(self._id, fill)
+            msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
+                   'Universe fill {1}'.format(self._id, fill)
             raise ValueError(msg)
 
         self._fill = fill

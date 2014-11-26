@@ -10,6 +10,7 @@ class Nuclide(object):
         # Initialize class attributes
         self._name = ''
         self._xs = None
+        self._zaid = None
 
         # Set the Material class attributes
         self.set_name(name)
@@ -63,8 +64,20 @@ class Nuclide(object):
         self._xs = xs
 
 
+    def set_zaid(self, zaid):
+
+        if not is_integer(zaid):
+            msg = 'Unable to set zaid for Nuclide ' \
+                  'with a non-integer {0}'.format(zaid)
+            raise ValueError(msg)
+
+        self._zaid = zaid
+
+
     def __repr__(self):
 
         string = 'Nuclide    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        if self._zaid is not None:
+          string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
         return string

@@ -148,8 +148,8 @@ contains
       case (CELL_FILL)
         call su % write_data("universe", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(universes(c % fill) % id, "universe", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
+        call su % write_data(universes(c % fill) % id, "fill", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
 
         if (allocated(c % translation)) then
           call su % write_data(1, "translated", &

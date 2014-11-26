@@ -14,21 +14,22 @@ else:
 sp.read_results()
 
 # extract tally results and convert to vector
-results1 = sp.tallies[0].results
-shape1 = results1.shape
-size1 = (np.product(shape1))
-results1 = np.reshape(results1, size1)
-results2 = sp.tallies[1].results
-shape2 = results2.shape
-size2 = (np.product(shape2))
-results2 = np.reshape(results2, size2)
+tally1 = sp._tallies[1]
+results1 = np.empty((tally1._sum.size + tally1._sum.size, ), dtype=np.float64)
+results1[0::2] = tally1._sum.ravel()
+results1[1::2] = tally1._sum_sq.ravel()
+
+tally2 = sp._tallies[2]
+results2 = np.empty((tally2._sum.size + tally2._sum.size, ), dtype=np.float64)
+results2[0::2] = tally2._sum.ravel()
+results2[1::2] = tally2._sum_sq.ravel()
 
 # set up output string
 outstr = ''
- 
+
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:12.6E} {1:12.6E}\n".format(sp._k_combined[0], sp._k_combined[1])
 
 # write out tally results
 outstr += 'tally 1:\n'

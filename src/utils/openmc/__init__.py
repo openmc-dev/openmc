@@ -14,6 +14,6 @@ from openmc.executor import *
 #from statepoint import *
 
 try:
-  from openmc.opencg_compatible import *
+    from openmc.opencg_compatible import *
 except ImportError:
-  pass
+    pass

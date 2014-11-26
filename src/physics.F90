@@ -256,22 +256,19 @@ contains
       p % last_wgt = p % wgt
 
       ! Score implicit absorption estimate of keff
-!$omp critical
+!$omp atomic
       global_tallies(K_ABSORPTION) % value = &
            global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
            micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-!$omp end critical
-
     else
       ! See if disappearance reaction happens
       if (micro_xs(i_nuclide) % absorption > &
            prn() * micro_xs(i_nuclide) % total) then
         ! Score absorption estimate of keff
-!$omp critical
+!$omp atomic
         global_tallies(K_ABSORPTION) % value = &
              global_tallies(K_ABSORPTION) % value + p % wgt * &
              micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-!$omp end critical
 
         p % alive = .false.
         p % event = EVENT_ABSORB
@@ -797,7 +794,7 @@ contains
         sampling_scheme = 'cxs'
       end if
 
-    ! otherwise, use free gas model  
+    ! otherwise, use free gas model
     else
       if (E >= FREE_GAS_THRESHOLD * kT .and. awr > ONE) then
         v_target = ZERO
@@ -859,7 +856,7 @@ contains
       m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
-      
+
       ! get max 0K xs value over range of practical relative energies
       xs_max = max(xs_low, &
         & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
@@ -972,7 +969,7 @@ contains
     case default
       call fatal_error("Not a recognized resonance scattering treatment!")
     end select
-    
+
   end subroutine sample_target_velocity
 
 !===============================================================================

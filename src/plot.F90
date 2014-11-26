@@ -7,7 +7,7 @@ module plot
   use global
   use mesh,            only: get_mesh_indices
   use output,          only: write_message
-  use particle_header, only: deallocate_coord, Particle
+  use particle_header, only: deallocate_coord, Particle, LocalCoord
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
@@ -32,7 +32,7 @@ contains
 
       ! Display output message
       call write_message("Processing plot " // trim(to_str(pl % id)) &
-           &// "...", 5)
+           &// ": " // trim(pl % path_plot) // " ...", 5)
 
       if (pl % type == PLOT_TYPE_SLICE) then
         ! create 2d image
@@ -58,7 +58,9 @@ contains
     integer, intent(out)                  :: id
     
     logical :: found_cell
-    type(Cell), pointer :: c => null()
+    integer :: level
+    type(Cell),       pointer :: c => null()
+    type(LocalCoord), pointer :: coord => null()
     
     call deallocate_coord(p % coord0 % next)
     p % coord => p % coord0
@@ -66,6 +68,16 @@ contains
     call find_cell(p, found_cell)
     if (check_overlaps) call check_cell_overlap(p)
 
+    ! Loop through universes and stop on any specified level
+    level = 0
+    coord => p % coord0
+    do
+      if (level == pl % level) exit
+      if (.not. associated(coord % next)) exit
+      coord => coord % next
+      level = level + 1
+    end do
+    
     if (.not. found_cell) then
       ! If no cell, revert to default color
       rgb = pl % not_found % rgb
@@ -73,10 +85,14 @@ contains
     else
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
-        c => cells(p % coord % cell)
+        c => cells(coord % cell)
         if (c % material == MATERIAL_VOID) then
           ! By default, color void cells white
           rgb = 255
+          id = -1
+        else if (c % type == CELL_FILL) then
+          ! If we stopped on a middle universe level, treat as if not found
+          rgb = pl % not_found % rgb
           id = -1
         else
           rgb = pl % colors(c % material) % rgb
@@ -84,8 +100,8 @@ contains
         end if
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
-        rgb = pl % colors(p % coord % cell) % rgb
-        id = cells(p % coord % cell) % id
+        rgb = pl % colors(coord % cell) % rgb
+        id = cells(coord % cell) % id
       else
         rgb = 0
         id = -1

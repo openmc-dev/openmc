@@ -1,6 +1,7 @@
 module energy_grid
 
   use constants,        only: MAX_LINE_LEN
+  use error,            only: fatal_error
   use global
   use list_header,      only: ListReal
   use output,           only: write_message
@@ -126,13 +127,19 @@ contains
     integer :: i            ! loop index for nuclides
     integer :: j            ! loop index for nuclide energy grid
     integer :: index_e      ! index on union energy grid
+    integer :: alloc_err    ! allocate error code
     real(8) :: union_energy ! energy on union grid
     real(8) :: energy       ! energy on nuclide grid
     type(Nuclide), pointer :: nuc => null()
 
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
-      allocate(nuc % grid_index(n_grid))
+      allocate(nuc % grid_index(n_grid), STAT=alloc_err)
+      if (alloc_err /= 0) then
+        call fatal_error('Energy grid allocation error.  This likely means &
+             &there is not enough memory available.  Try rerunning OpenMC &
+             &without a unionzied energy grid.')
+      end if
 
       index_e = 1
       energy = nuc % energy(index_e)

@@ -27,6 +27,7 @@ module plot_header
     integer :: basis                 ! direction of plot slice 
     integer :: pixels(3)             ! pixel width/height of plot slice
     integer :: meshlines_width       ! pixel width of meshlines
+    integer :: level                 ! universe depth to plot the cells of
     type(StructuredMesh), pointer :: meshlines_mesh => null() ! mesh to plot
     type(ObjectColor) :: meshlines_color ! Color for meshlines
     type(ObjectColor) :: not_found   ! color for positions where no cell found
@@ -36,6 +37,9 @@ module plot_header
   ! Plot type
   integer, parameter :: PLOT_TYPE_SLICE = 1
   integer, parameter :: PLOT_TYPE_VOXEL = 2
+  
+  ! Plot level
+  integer, parameter :: PLOT_LEVEL_LOWEST = -1
 
   ! Plot basis plane
   integer, parameter :: PLOT_BASIS_XY = 1

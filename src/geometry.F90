@@ -14,7 +14,7 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
- 
+
 contains
 
 !===============================================================================
@@ -62,7 +62,8 @@ contains
       end if
     end do SURFACE_LOOP
 
-    ! If we've reached here, then the sense matched on every surface
+    ! If we've reached here, then the sense matched on every surface or there
+    ! are no surfaces.
     in_cell = .true.
 
   end function simple_cell_contains
@@ -277,9 +278,9 @@ contains
                 lattice_edge = .true.
               end if
             end if
-            
+
             if (lattice_edge) then
-              
+
               ! In this case the neutron is leaving the lattice, so we move it
               ! out, remove all lower coordinate levels and then search from
               ! universe 0.
@@ -300,7 +301,7 @@ contains
               p % last_material = p % material
               p % material = c % material
 
-              ! We'll still make a new coordinate for the particle, as 
+              ! We'll still make a new coordinate for the particle, as
               ! distance_to_boundary will still need to track through lattice
               ! widths even though there's nothing in them but this material
 
@@ -441,10 +442,9 @@ contains
 
       ! Score to global leakage tally
       if (tallies_on) then
-!$omp critical
+!$omp atomic
         global_tallies(LEAKAGE) % value = &
            global_tallies(LEAKAGE) % value + p % wgt
-!$omp end critical
       end if
 
       ! Display message
@@ -679,7 +679,7 @@ contains
         return
       end if
     end if
-       
+
   end subroutine cross_surface
 
 !===============================================================================
@@ -947,7 +947,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -996,7 +996,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -1045,7 +1045,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -1092,7 +1092,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with sphere
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the sphere, thus one distance is
@@ -1139,7 +1139,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1158,7 +1158,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1188,7 +1188,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1207,7 +1207,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1237,7 +1237,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1256,7 +1256,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1314,7 +1314,7 @@ contains
           ! logic here checks whether the relative difference is within floating
           ! point precision.
 
-          if (d < dist) then 
+          if (d < dist) then
             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
               dist = d
               if (u > 0) then
@@ -1709,9 +1709,8 @@ contains
 
     ! Increment number of lost particles
     p % alive = .false.
-!$omp critical
+!$omp atomic
     n_lost_particles = n_lost_particles + 1
-!$omp end critical
 
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached

@@ -286,10 +286,9 @@ contains
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
 
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
-!$omp end critical
             end do
             j = j + t % moment_order(j)
             cycle SCORE_LOOP
@@ -352,10 +351,9 @@ contains
               ! get the score and tally it
               score = wgt * calc_pn(n, mu)
 
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
-!$omp end critical
             end do
             j = j + t % moment_order(j)
             cycle SCORE_LOOP
@@ -547,10 +545,9 @@ contains
           end select
 
           ! Add score to tally
-!$omp critical
+!$omp atomic
           t % results(score_index, filter_index) % value = &
                t % results(score_index, filter_index) % value + score
-!$omp end critical
 
         end do SCORE_LOOP
 
@@ -622,10 +619,9 @@ contains
       i_filter = t % get_filter_index(matching_bins)
 
       ! Add score to tally
-!$omp critical
+!$omp atomic
       t % results(i_score, i_filter) % value = &
            t % results(i_score, i_filter) % value + score
-!$omp end critical
     end do
 
     ! reset outgoing energy bin and score index
@@ -1019,10 +1015,9 @@ contains
             end if
 
             ! Add score to tally
-!$omp critical
+!$omp atomic
             t % results(score_index, filter_index) % value = &
                  t % results(score_index, filter_index) % value + score
-!$omp end critical
 
           end do SCORE_LOOP
 
@@ -1219,10 +1214,9 @@ contains
         end select
 
         ! Add score to tally
-!$omp critical
+!$omp atomic
         t % results(score_index, filter_index) % value = &
              t % results(score_index, filter_index) % value + score
-!$omp end critical
 
       end do SCORE_LOOP
 
@@ -1372,10 +1366,9 @@ contains
       end select
 
       ! Add score to tally
-!$omp critical
+!$omp atomic
       t % results(score_index, filter_index) % value = &
            t % results(score_index, filter_index) % value + score
-!$omp end critical
 
     end do MATERIAL_SCORE_LOOP
 
@@ -1792,10 +1785,9 @@ contains
               end if
 
               ! Add score to tally
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                    t % results(score_index, filter_index) % value + score
-!$omp end critical
 
             end do SCORE_LOOP
 
@@ -2044,10 +2036,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2058,10 +2049,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2076,10 +2066,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2090,10 +2079,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2108,10 +2096,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2122,10 +2109,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = t % get_filter_index(matching_bins)
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2247,10 +2233,9 @@ contains
           end if
 
           ! Add to surface current tally
-!$omp critical
+!$omp atomic
           t % results(1, filter_index) % value = &
                t % results(1, filter_index) % value + p % wgt
-!$omp end critical
         end if
 
         ! Calculate new coordinates

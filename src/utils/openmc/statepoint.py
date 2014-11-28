@@ -380,8 +380,12 @@ class StatePoint(object):
             for j, score in enumerate(scores):
 
                 # If this is a scattering moment, insert the scattering order
-                if 'scatter-n' in score or 'scatter-yn' in score or 'scatter-pn' in score:
-                    score = score.replace('n', str(scatt_order[j]))
+                if '-n' in score:
+                    score = score.replace('-n', '-' + str(scatt_order[j]))
+                elif '-yn' in score:
+                    score = score.replace('-pn', '-p' + str(scatt_order[j]))
+                elif '-pn' in score:
+                    score = score.replace('-yn', '-y' + str(scatt_order[j]))
 
                 tally.add_score(score)
 

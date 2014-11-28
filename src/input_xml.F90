@@ -1323,6 +1323,7 @@ contains
       end if
 
       ! Boundary conditions
+      s % bc = BC_TRANSMIT
       word = ''
       if (check_for_node(node_surf, "boundary")) &
         call get_node_value(node_surf, "boundary", word)

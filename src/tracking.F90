@@ -19,7 +19,7 @@ module tracking
                              score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              finalize_particle_track
-
+use mpi
   implicit none
 
 contains
@@ -40,9 +40,18 @@ contains
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: d_dd_mesh       ! sampled distance to boundary on the DD mesh
     real(8) :: distance        ! distance particle travels
+    real(8) :: stored_distance ! distance to store when crossing a DD boundary
     logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
+
+!    integer(8) :: starting_seed
+!    integer(8) :: debug1 = 1996532800454882015_8
+!    integer(8) :: debug2 = 2473864439985676658_8
+!    integer(8) :: debug3 = 0_8
+!    integer(8) :: debug4 = 0_8
+
+!    starting_seed = prn_seed(1)
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
@@ -88,13 +97,13 @@ contains
       ! here with the same random number seed so we get the same thing as before
       ! (because URR ptables)
       if (p % material == p % last_material .and. p % material /= NONE) then
-        prn_seed = p % xs_seed
         call calculate_xs(p)
-        prn_seed = p % prn_seed
       end if
     end if
 
     do while (p % alive)
+      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+      !    print *, prn_seed(1), p % coord0 % xyz(1:2)
 
       ! Write particle track.
       if (p % write_track) call write_particle_track(p)
@@ -105,10 +114,23 @@ contains
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
 
+      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+      !    print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
+      if (dd_run) then
+        ! TODO: the optimization for not re-calculating XS on a per-nuclide
+        ! basis means that for reproducibility we'd need to send a prn seed
+        ! for each nuclide along with particles as they cross domain
+        ! boundaries.  This would just about double the amount of info that
+        ! goes with particles across boundaries, so I'll disable it for now.
+        micro_xs % last_E = ZERO
+        micro_xs % last_index_sab = NONE
+      end if
       if (p % material /= p % last_material &
             & .or. p % inst /= p % last_inst) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
+      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+      !    print *, prn_seed(1), 'd2b',p % coord0 % xyz
       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
 
       ! Sample a distance to collision
@@ -133,12 +155,16 @@ contains
         distance = min(distance, d_dd_mesh)
       end if
 
+      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+      !    print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))
         coord % xyz = coord % xyz + distance * coord % uvw
         coord => coord % next
       end do
+      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+      !    print *, prn_seed(1), 'advanced', distance, p % coord0 % xyz(1:2)
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
@@ -160,15 +186,30 @@ contains
         ! ======================================================================
         ! PARTICLE CROSSES DOMAIN BOUNDARY
 
+!        print *, rank,p %id,'checking',d_dd_mesh, d_boundary, d_collision, distance, surface_crossed, &
+!lattice_crossed, surfaces(abs(surface_crossed)) % bc
+
         ! Check for coincidence with a boundary condition - in this case we
         ! don't need to communicate the particle.  Here we rely on lattice
         ! boundaries NOT being selected by distance_to_boundary when they are
         ! coincident with boundary condition surfaces.
-        if (.not. (abs(d_dd_mesh - d_boundary) < FP_COINCIDENT .and. &
+        if (lattice_crossed /= NONE .or. &
+            .not. (d_collision > d_boundary .and. &
+                abs(d_dd_mesh - distance) < FP_COINCIDENT .and. &
                 .not. surfaces(abs(surface_crossed)) % bc == BC_TRANSMIT)) then
 
+          ! If the next interaction would have been a collision, we need to use
+          ! the same distance to that collision when the particle is continued
+          ! in the adjacent domain
+          stored_distance = ZERO
+          if (.not. d_collision > d_boundary) then
+            stored_distance = d_collision - distance
+          end if
+
+          !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          !    print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % xyz(1:2)
           ! Prepare particle for communication
-          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
+          call cross_domain_boundary(p, domain_decomp, stored_distance)
 
           ! Exit the particle tracking loop without killing the particle
           exit
@@ -254,6 +295,7 @@ contains
         end do
       end if
 
+
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1
       if (n_event == MAX_EVENTS) then
@@ -263,6 +305,10 @@ contains
       end if
 
     end do
+
+!    if (current_batch == 1) then
+!      if (.not. p % alive) print *, prn_seed(1), starting_seed, p % coord0 % xyz(1), rank, p % id
+!    end if
 
     ! Finish particle track output.
     if (p % write_track) then

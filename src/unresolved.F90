@@ -345,17 +345,24 @@ contains
           nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
           nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
 
-          ! set energy of the lowest-lying contributing resonance
-          E_res = nuc % EL(nuc % i_urr) &
-            & - (n_res/2 + ONE - TWO * prn()) * nuc % D_mean(i_l) % data(i_J) % data(1)
+          ! set energy of the lowest-lying contributing URR resonance
+          nuc % D = nuc % D_mean(i_l) % data(i_J) % data(1)
+          if (i_l > nuc % NLS(nuc % i_urr - 1)) then
+            ! the URR has more l-states than the RRR; place resonance energy
+            ! randomly about lower URR energy bound
+            E_res = nuc % EL(nuc % i_urr) + (ONE - TWO * prn()) * wigner_dist(nuc % D)
+          else
+            ! offset first URR resonance energy from the highest-energy RRR
+            ! resonance with the same (l,J) spin sequence
+            E_res = E_last_rrr(i_nuc, nuc % L, nuc % J) + wigner_dist(nuc % D)
+          end if
 
           ! resonance index
           i_res = 1
 
           n_above_urr = 0
 
-          RESONANCE_LOOP: do while(n_above_urr < n_res/2)!E_res < nuc % EH(nuc % i_urr) &
-!            & + n_res/2 * nuc % D_mean(i_l) % data(i_J) % data(nuc % NE))
+          RESONANCE_LOOP: do while(n_above_urr < n_res/2)
 
             ! compute interpolation factor
             if (E_res < nuc % ES(1)) then
@@ -441,15 +448,17 @@ contains
     type(CrossSection) :: sig_f   ! fission xs object
     type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
     type(CrossSection) :: sig_t   ! total xs object
-    integer :: i_nuc  ! nuclide index
-    integer :: i_E    ! URR resonance parameters energy grid index
-    integer :: i_l    ! orbital quantum #
-    integer :: i_J    ! total angular momentum quantum #
-    integer :: n_res  ! number of resonances to include for a given l-wave
-    integer :: i_low  ! index of lowest-lying resonance
-    integer :: i_res  ! resonance counter
-    integer :: i_grid ! cross section energy grid index
-    integer :: n_pts  ! cross section energy grid point counter
+    integer :: i_nuc     ! nuclide index
+    integer :: i_E       ! URR resonance parameters energy grid index
+    integer :: i_l       ! orbital quantum #
+    integer :: i_J       ! total angular momentum quantum #
+    integer :: n_res     ! number of contributing l-state resonances
+    integer :: n_rrr_res ! number of RRR resonances we need to grab
+    integer :: i_low     ! index of lowest-lying resonance
+    integer :: i_res     ! resonance counter
+    integer :: i_rrr_res ! RRR resonance index
+    integer :: i_grid    ! xs energy grid index
+    integer :: n_pts     ! xs energy grid point counter
     real(8) :: m        ! URR resonance parameters interpolation factor
     real(8) :: f        ! cross section energy grid interpolation factor
     real(8) :: xsidnval ! averaged elastic cross section
@@ -535,33 +544,109 @@ contains
               i_low = i_low + 1
             end do
             i_low = i_low - 1
+            if (i_low == 0) i_low = 1
             i_last(i_l) % data(i_J) = dble(i_low)
 
             ! loop over the addition of resonances to this ladder
-            RESONANCES_LOOP: do i_res=max(i_low-n_res/2,1),max(i_low-n_res/2,1)+20
+            if (i_low - n_res/2 < 1) then
+              ! if we're near the lower end of the URR, need to incorporate
+              ! resolved resonance region resonances in order to fix-up
+              ! (i.e. smooth out) cross sections at the RRR-URR crossover
+              ! energy
 
-              ! set URR resonance parameters
-              res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-              res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-              res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-              res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-              res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-              res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
+              ! if the RRR has resonances with this l-state
+              if (i_l <= nuc % NLS(nuc % i_urr - 1)) then
 
-              ! calculate the contribution to the partial cross sections,
-              ! at this energy, from an additional resonance 
-              call res % calc_xs(i_nuc)
+                ! how many RRR resonances are contributing
+                n_rrr_res = abs(i_low - n_res/2) + 1
 
-              ! add this contribution to the accumulated partial cross
-              ! section values built up from all resonances
+                ! loop over contributing resolved resonance region resonances
+                RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
+
+                  i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
+
+                  ! set RRR resonance parameters
+                  res % E_lam   = nuc % rm_resonances(i_l) % E_lam(i_rrr_res)
+                  res % Gam_n   = nuc % rm_resonances(i_l) % GN(i_rrr_res)
+                  res % Gam_gam = nuc % rm_resonances(i_l) % GG(i_rrr_res)
+                  res % Gam_f   = nuc % rm_resonances(i_l) % GFA(i_rrr_res) &
+                              & + nuc % rm_resonances(i_l) % GFB(i_rrr_res)
+                  res % Gam_x   = ZERO
+                  res % Gam_t   = res % Gam_n &
+                              & + res % Gam_gam &
+                              & + res % Gam_f &
+                              & + res % Gam_x
+
+                  ! calculate the contribution to the partial cross sections,
+                  ! at this energy, from an additional resonance 
+                  call res % calc_xs(i_nuc)
+
+                  ! add this contribution to the accumulated partial cross
+                  ! section values built up from all resonances
 ! TODO: move sig_t outside of loop
-              call sig_n   % accum_resonance(res % dsig_n)
-              call sig_gam % accum_resonance(res % dsig_gam)
-              call sig_f   % accum_resonance(res % dsig_f)
-              call sig_x   % accum_resonance(res % dsig_x)
-              call sig_t   % accum_resonance(res % dsig_t)
+                  call sig_n   % accum_resonance(res % dsig_n)
+                  call sig_gam % accum_resonance(res % dsig_gam)
+                  call sig_f   % accum_resonance(res % dsig_f)
+                  call sig_x   % accum_resonance(res % dsig_x)
+                  call sig_t   % accum_resonance(res % dsig_t)
 
-            end do RESONANCES_LOOP
+                end do RRR_RESONANCES_LOOP
+              end if
+
+              ! loop over contributing unresolved resonance region resonances
+              URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
+
+                ! set URR resonance parameters
+                res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
+                res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
+                res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
+                res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
+                res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
+                res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
+
+                ! calculate the contribution to the partial cross sections,
+                ! at this energy, from an additional resonance 
+                call res % calc_xs(i_nuc)
+
+                ! add this contribution to the accumulated partial cross
+                ! section values built up from all resonances
+! TODO: move sig_t outside of loop
+                call sig_n   % accum_resonance(res % dsig_n)
+                call sig_gam % accum_resonance(res % dsig_gam)
+                call sig_f   % accum_resonance(res % dsig_f)
+                call sig_x   % accum_resonance(res % dsig_x)
+                call sig_t   % accum_resonance(res % dsig_t)
+
+              end do URR_RESONANCES_LOOP
+
+            else
+              ! we're firmly in the URR and can ignore anything going on in the
+              ! upper resolved resonance region energies
+              RESONANCES_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+
+                ! set URR resonance parameters
+                res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
+                res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
+                res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
+                res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
+                res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
+                res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
+
+                ! calculate the contribution to the partial cross sections,
+                ! at this energy, from an additional resonance 
+                call res % calc_xs(i_nuc)
+
+                ! add this contribution to the accumulated partial cross
+                ! section values built up from all resonances
+! TODO: move sig_t outside of loop
+                call sig_n   % accum_resonance(res % dsig_n)
+                call sig_gam % accum_resonance(res % dsig_gam)
+                call sig_f   % accum_resonance(res % dsig_f)
+                call sig_x   % accum_resonance(res % dsig_x)
+                call sig_t   % accum_resonance(res % dsig_t)
+
+              end do RESONANCES_LOOP
+            end if
           end do TOTAL_ANG_MOM_LOOP
         end do ORBITAL_ANG_MOM_LOOP
 
@@ -577,7 +662,7 @@ contains
           i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
         end if
 
-        ! check for rare case where two energy points are the same                                                                                                         
+        ! check for rare case where two energy points are the same
         if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
@@ -704,6 +789,8 @@ contains
 
       end do ENERGY_LOOP
 
+      ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
+      ! the proper length
       call nuc % alloc_pointwise(n_pts)
       nuc % urr_energy    = nuc % urr_energy_tmp(1:n_pts)
       nuc % urr_elastic   = nuc % urr_elastic_tmp(1:n_pts)
@@ -711,6 +798,13 @@ contains
       nuc % urr_fission   = nuc % urr_fission_tmp(1:n_pts)
       nuc % urr_inelastic = nuc % urr_inelastic_tmp(1:n_pts)
       nuc % urr_total     = nuc % urr_total_tmp(1:n_pts)
+
+      ! enforce xs continuity at RRR-URR energy crossover
+      i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % ES(1))
+      nuc % urr_elastic(1)   = nuc % elastic(i_grid)
+      nuc % urr_capture(1)   = nuc % absorption(i_grid) - nuc % fission(i_grid)
+      nuc % urr_fission(1)   = nuc % fission(i_grid)
+      nuc % urr_total(1)     = nuc % total(i_grid)
       call nuc % dealloc_pointwise_tmp()
 
     end do NUCLIDE_LOOP
@@ -1926,5 +2020,66 @@ contains
     end select
 
   end function interpolator
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! E_LAST_RRR determines the energy of the highest-energy resolved resonance
+! region resonance for a given (l,J) spin sequence
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function E_last_rrr(i_nuc, l_val, J_val) result(E_val)
+
+    integer :: i_nuc ! nuclide index
+    integer :: i_res ! RRR resonance index for a given l
+    integer :: l_val ! orbital quantum number
+    real(8) :: J_val ! total angular momentum quantum number
+    real(8) :: E_val ! highest-energy RRR resonance energy for (l,J)
+    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
+!$omp threadprivate(nuc)
+
+    nuc => nuclides(i_nuc)
+
+    do i_res = size(nuc % rm_resonances(l_val + 1) % E_lam), 1, -1
+      if (nuc % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
+        .and. nuc % rm_resonances(l_val + 1) % E_lam(i_res) < nuc % EL(nuc % i_urr)) then
+        E_val = nuc % rm_resonances(l_val + 1) % E_lam(i_res)
+        exit
+      end if
+    end do
+
+  end function E_last_rrr
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! RRR_RES finds the index of the RRR resonance which we need to add the
+! contribution of to a URR xs
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function rrr_res(i_nuc, n_rrr_res, l_val, J_val) result(i_res)
+
+    integer :: i_nuc     ! nuclide index
+    integer :: n_rrr_res ! how many RRR resonances to go back
+    integer :: cnt_res   ! how many RRR resonances have we gone back
+    integer :: i_res     ! index of the RRR resonance cnt_res resonances back
+    integer :: l_val ! orbital quantum number
+    real(8) :: J_val ! total angular momentum quantum number
+    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
+!$omp threadprivate(nuc)
+
+    nuc => nuclides(i_nuc)
+
+    cnt_res   = 0
+
+    do i_res = size(nuc % rm_resonances(l_val + 1) % E_lam), 1, -1
+      if (nuc % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
+        .and. nuc % rm_resonances(l_val + 1) % E_lam(i_res) < nuc % EL(nuc % i_urr)) then
+        cnt_res = cnt_res + 1
+      end if
+      if (cnt_res == n_rrr_res) exit
+    end do
+
+  end function rrr_res
 
 end module unresolved

@@ -206,8 +206,8 @@ module ace_header
     integer, allocatable :: LRF(:)  ! resonance formalism #
     integer, allocatable :: NRO(:)  ! AP energy-dependence flag
     integer, allocatable :: NAPS(:) ! channel radius handling flag
-    real(8), allocatable :: EL(:)  ! lower energy bound of URR
-    real(8), allocatable :: EH(:)  ! upper energy bound of URR
+    real(8), allocatable :: EL(:)  ! lower energy bound of energy region
+    real(8), allocatable :: EH(:)  ! upper energy bound of energy region
     real(8), allocatable :: AP(:)  ! scattering radius
     real(8), allocatable :: ac(:)  ! channel radius
     real(8), allocatable :: SPI(:) ! total spin
@@ -242,7 +242,7 @@ module ace_header
     real(8) :: GG  ! radiative capture width
     real(8) :: GF  ! fission width
     real(8) :: GX  ! competitive inelastic width
-    integer :: L   ! orbital quantum number
+    integer :: L    ! orbital quantum number
     integer :: AMUN ! number of neutron channels (degrees of freedom)
     integer :: AMUG ! number of capture channels (degrees of freedom)
     integer :: AMUF ! number of fission channels(degrees of freedom)
@@ -268,12 +268,12 @@ module ace_header
     real(8), allocatable :: urr_fission_tmp(:)   ! fission
     real(8), allocatable :: urr_inelastic_tmp(:) ! first level inelastic scattering
     real(8), allocatable :: urr_total_tmp(:)     ! total
-    real(8), allocatable :: urr_energy(:)    ! energy grid values
-    real(8), allocatable :: urr_elastic(:)   ! elastic scattering
-    real(8), allocatable :: urr_capture(:)   ! capture
-    real(8), allocatable :: urr_fission(:)   ! fission
-    real(8), allocatable :: urr_inelastic(:) ! first level inelastic scattering
-    real(8), allocatable :: urr_total(:)     ! total
+    real(8), allocatable :: urr_energy(:)        ! energy grid values
+    real(8), allocatable :: urr_elastic(:)       ! elastic scattering
+    real(8), allocatable :: urr_capture(:)       ! capture
+    real(8), allocatable :: urr_fission(:)       ! fission
+    real(8), allocatable :: urr_inelastic(:)     ! first level inelastic scattering
+    real(8), allocatable :: urr_total(:)         ! total
 
     ! pointwise URR cross section parameters
     integer :: n_urr_resonances = 1000000 ! max URR resonances for a given (l,J)

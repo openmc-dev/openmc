@@ -51,6 +51,11 @@ elseif($ENV{FC} MATCHES "h5pfc$")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
   set(HDF5_ENABLED TRUE)
+elseif($ENV{FC} MATCHES "ftn$")
+  message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
+  add_definitions(-DMPI -DHDF5)
+  set(MPI_ENABLED TRUE)
+  set(HDF5_ENABLED TRUE)
 endif()
 
 #===============================================================================

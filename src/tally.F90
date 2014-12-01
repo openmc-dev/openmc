@@ -2409,6 +2409,8 @@ contains
           t % results(:,:) % value = 0
         end if
 
+        deallocate(tally_temp)
+
       else
 
         ! Reduce tallies to local masters within each domain

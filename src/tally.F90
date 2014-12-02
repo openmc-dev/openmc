@@ -2867,8 +2867,10 @@ contains
          hdf5_err)
 
     ! Set pointer to first value and write
-    f_ptr = c_loc(buffer(1,1))
-    call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+    if (n1 > 0 .and. n2 > 0) then
+      f_ptr = c_loc(buffer(1,1))
+      call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+    end if
 
     ! Close ids
     call h5dclose_f(dset, hdf5_err)

@@ -796,8 +796,6 @@ def get_opencg_geometry(openmc_geometry):
     OPENMC_LATTICES.clear()
     OPENCSG_LATTICES.clear()
 
-    opencg.geometry.reset_auto_ids()
-
     openmc_root_universe = openmc_geometry._root_universe
     opencg_root_universe = get_opencg_universe(openmc_root_universe)
 
@@ -831,8 +829,6 @@ def get_openmc_geometry(opencg_geometry):
     OPENCSG_UNIVERSES.clear()
     OPENMC_LATTICES.clear()
     OPENCSG_LATTICES.clear()
-
-    openmc.reset_auto_ids()
 
     opencg_root_universe = opencg_geometry._root_universe
     openmc_root_universe = get_openmc_universe(opencg_root_universe)

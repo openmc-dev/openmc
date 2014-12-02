@@ -722,6 +722,11 @@ contains
     type(BinaryOutput) :: sp
     character(MAX_FILE_LEN) :: filename
 
+    if (dd_run) then
+      if (master) call warning('Source bank writing not implemented for DD runs.')
+      return
+    end if
+
     ! Check to write out source for a specified batch
     if (sourcepoint_batch % contains(current_batch)) then
 
@@ -790,6 +795,13 @@ contains
 
       ! Set filename
       filename = trim(path_output) // 'source'
+
+      if (dd_run) then
+        filename = trim(filename) // '.domain_' // &
+            & zero_padded(domain_decomp % meshbin, &
+                          count_digits(domain_decomp % n_domains))
+      end if
+
 #ifdef HDF5
       filename = trim(filename) // '.h5'
 #else
@@ -1575,8 +1587,7 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 #endif
 
-    ! Write compositions
-        ! Only master processes write the compositions
+    ! Only master processes write the compositions
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
       do i = 1, n_materials
         mat => materials(i)

@@ -2117,12 +2117,14 @@ contains
            
       ! Check to make sure either all atom percents or all weight percents
       ! are given
-      if (.not. (all(mat % comp(1) % atom_density >= ZERO) .or. & 
-         all(mat % comp(1) % atom_density <= ZERO))) then
-        call fatal_error("Cannot mix atom and weight percents in material " // &
-             to_str(mat % id))
+      if (.not. mat % otf_compositions) then
+        if (.not. (all(mat % comp(1) % atom_density >= ZERO) .or. & 
+           all(mat % comp(1) % atom_density <= ZERO))) then
+          call fatal_error("Cannot mix atom and weight percents in material " // &
+               to_str(mat % id))
+        end if
       end if
-        
+
       ! Determine density if it is a sum value  
       if (sum_density .and. mat % distrib_comp) then
         call fatal_error("Distributed Compositions does not support " // &

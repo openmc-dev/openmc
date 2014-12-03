@@ -53,7 +53,15 @@ contains
     ! Check for a bad determination of a change - this would be a bug
     if (to_meshbin == dd % meshbin) then
       call fatal_error("Can't determine which domain to send particle " // &
-          "on rank " // trim(to_str(rank)))
+          "on rank " // trim(to_str(rank)) // ". Particle "// &
+                  trim(to_str(p % id)) // " at (" // &
+                  trim(to_str(p % coord0 % xyz(1))) // ", " // &
+                  trim(to_str(p % coord0 % xyz(2))) // ", " // &
+                  trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
+                  trim(to_str(rank)) // ". (to_meshbin, dd % meshbin): (" // &
+                  trim(to_str(to_meshbin)) // ", " // &
+                  trim(to_str(dd % meshbin)) // ").  prn_seed: " // &
+                  trim(to_str(prn_seed(1))))
     end if
 
     if (verbosity >= 10 .or. trace) then

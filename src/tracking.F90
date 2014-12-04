@@ -10,6 +10,7 @@ module tracking
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use material_header
+  use mesh,            only: get_mesh_bin
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
@@ -36,23 +37,26 @@ contains
     integer :: lattice_crossed ! lattice boundary which particle crossed
     integer :: last_cell       ! most recent cell particle was in
     integer :: n_event         ! number of collisions/crossings
+    integer :: meshbin         ! Current DD meshbin
     real(8) :: d_boundary      ! distance to nearest boundary
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: d_dd_mesh       ! sampled distance to boundary on the DD mesh
     real(8) :: distance        ! distance particle travels
     real(8) :: stored_distance ! distance to store when crossing a DD boundary
+    real(8) :: xyz(3)
     logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
-!    integer(8) :: starting_seed
-!    integer(8) :: debug1 = 1996532800454882015_8
-!    integer(8) :: debug2 = 2473864439985676658_8
-!    integer(8) :: debug3 = 0_8
-!    integer(8) :: debug4 = 0_8
+    integer(8) :: starting_seed
+    integer(8) :: debug1 = 0_8
+    integer(8) :: debug2 = 0_8
+    integer(8) :: debug3 = 0_8
+    integer(8) :: debug4 = 0_8
 
 !    starting_seed = prn_seed(1)
-
+!    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!        print *,'starting particle', starting_seed, p % id, p % new_particle
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
       call write_message("Simulating Particle " // trim(to_str(p % id)))
@@ -101,8 +105,13 @@ contains
     end if
 
     do while (p % alive)
-      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-      !    print *, prn_seed(1), p % coord0 % xyz(1:2)
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), p % coord0 % xyz
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!        then
+!          call get_mesh_bin(domain_decomp % mesh, p % coord0 % xyz, meshbin)
+!          print *, 'meshbin',meshbin
+!        end if
 
       ! Write particle track.
       if (p % write_track) call write_particle_track(p)
@@ -113,8 +122,8 @@ contains
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
 
-      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-      !    print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
       if (dd_run) then
         ! TODO: the optimization for not re-calculating XS on a per-nuclide
         ! basis means that for reproducibility we'd need to send a prn seed
@@ -128,8 +137,8 @@ contains
             & .or. p % inst /= p % last_inst) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
-      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-      !    print *, prn_seed(1), 'd2b',p % coord0 % xyz
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), 'd2b',p % coord0 % xyz
       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
 
       ! Sample a distance to collision
@@ -154,16 +163,18 @@ contains
         distance = min(distance, d_dd_mesh)
       end if
 
-      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-      !    print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), 'direction', p % coord0 % uvw
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))
         coord % xyz = coord % xyz + distance * coord % uvw
         coord => coord % next
       end do
-      !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-      !    print *, prn_seed(1), 'advanced', distance, p % coord0 % xyz(1:2)
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), 'advanced', p % coord0 % xyz
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
@@ -204,8 +215,13 @@ contains
             stored_distance = d_collision - distance
           end if
 
-          !if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-          !    print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % xyz(1:2)
+          
+          !if (current_batch == 2) print *, 'crossing boundary', prn_seed(1), starting_seed, p % coord0 % xyz
+
+          !if (rank == 124) print *,'starting is crossing', prn_seed(1), starting_seed, p % id, p % coord0 % xyz(1)
+
+!          if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!              print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % xyz
           ! Prepare particle for communication
           call cross_domain_boundary(p, domain_decomp, stored_distance)
 
@@ -215,6 +231,23 @@ contains
         end if
 
       end if
+
+!      if (dd_run) then
+!        ! Check for a bug where this domain continues tracking a particle it shouldn't
+!        xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+!        call get_mesh_bin(domain_decomp % mesh, xyz, meshbin)
+!        if (meshbin /= domain_decomp % meshbin) then
+!          call fatal_error("Tracking particle " // trim(to_str(p % id)) // &
+!                      " on rank " // trim(to_str(rank)) // " in DD meshbin "// &
+!                      trim(to_str(meshbin)) // " at (" // &
+!                      trim(to_str(p % coord0 % xyz(1))) // ", " // &
+!                      trim(to_str(p % coord0 % xyz(2))) // ", " // &
+!                      trim(to_str(p % coord0 % xyz(3))) // "), but this " // &
+!                      "rank is set to track DD meshbin " // &
+!                      trim(to_str(domain_decomp % meshbin)) // &
+!                      ".  prn_seed: " // trim(to_str(prn_seed(1))))
+!        end if
+!      end if
 
       if (d_collision > d_boundary) then
         ! ====================================================================

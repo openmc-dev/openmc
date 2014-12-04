@@ -260,7 +260,7 @@ class Summary(object):
 
             if fill_type == 'normal':
                 fill = self._f['geometry/cells'][key]['material'][0]
-            elif fill_type == 'fill':
+            elif fill_type == 'universe':
                 fill = self._f['geometry/cells'][key]['fill'][0]
             else:
                 fill = self._f['geometry/cells'][key]['lattice'][0]
@@ -274,12 +274,6 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id)
 
             if fill_type == 'universe':
-                maps = self._f['geometry/cells'][key]['maps'][0]
-
-                if maps > 0:
-                    offset = self._f['geometry/cells'][key]['offset'][...]
-                    cell.set_offset(offset)
-
                 translated = self._f['geometry/cells'][key]['translated'][0]
                 if translated:
                     translation = \
@@ -360,13 +354,6 @@ class Summary(object):
             dimension = self._f['geometry/lattices'][key]['dimension'][...]
             lower_left = self._f['geometry/lattices'][key]['lower_left'][...]
             outside = self._f['geometry/lattices'][key]['outside'][0]
-            maps = self._f['geometry/lattices'][key]['maps'][0]
-            offset_size = self._f['geometry/lattices'][key]['offset_size'][0]
-
-            if offset_size > 0:
-                offsets = self._f['geometry/lattices'][key]['offsets'][...]
-                offsets = np.swapaxes(offsets, 0, 1)
-                offsets = np.swapaxes(offsets, 1, 2)
 
             universe_ids = self._f['geometry/lattices'][key]['universes'][...]
             universe_ids = np.swapaxes(universe_ids, 0, 1)
@@ -397,9 +384,6 @@ class Summary(object):
             # If the Material specified outside the Lattice is not void (-1)
             if outside != -1:
                 lattice.set_outside(self.materials[outside])
-
-            if offset_size > 0:
-                lattice.set_offsets(offsets)
 
             # Add the Lattice to the global dictionary of all Lattices
             self.lattices[index] = lattice

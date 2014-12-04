@@ -1391,12 +1391,13 @@ contains
 ! a particle travelling in a certain direction
 !===============================================================================
 
-  subroutine distance_to_mesh_surface(p, m, testdist, dist)
+  subroutine distance_to_mesh_surface(p, m, testdist, dist, meshbin)
 
     type(Particle),                intent(in) :: p
     type(StructuredMesh), pointer, intent(in) :: m
     real(8), intent(in)           :: testdist  ! dist for testing intersection
     real(8), intent(out)          :: dist
+    integer, intent(in), optional :: meshbin ! specified meshbin
     
     integer :: bin        ! bin in mesh of particle
     integer :: ijk(3)     ! indices in mesh
@@ -1407,14 +1408,21 @@ contains
     real(8) :: d          ! temporary distance
     
     dist = INFINITY
-    
-    call get_mesh_bin(m, p % coord0 % xyz, bin)
-    
-    if (bin /= NO_BIN_FOUND .and. &
-        (bin < 1 .or. bin > product(m % dimension))) then
-      call fatal_error("Invalid meshbin: " // trim(to_str(bin)))
+
+    if (present(meshbin)) then
+
+      bin = meshbin
+
+    else
+
+      call get_mesh_bin(m, p % coord0 % xyz, bin)
+      if (bin /= NO_BIN_FOUND .and. &
+          (bin < 1 .or. bin > product(m % dimension))) then
+        call fatal_error("Invalid meshbin: " // trim(to_str(bin)))
+      end if
+
     end if
-    
+
     if (bin == NO_BIN_FOUND) then
     
       ! If we're not in the mesh, we test for intersection
@@ -1431,7 +1439,7 @@ contains
       ! We're in the mesh
     
       call bin_to_mesh_indices(m, bin, ijk)
-      
+    
       ! Copy particle position and direction
       x = p % coord0 % xyz(1)
       y = p % coord0 % xyz(2)
@@ -1447,11 +1455,9 @@ contains
       ! determine oncoming edge
       x0 = x0 + sign(0.5_8, u) * m % width(1)
       y0 = y0 + sign(0.5_8, v) * m % width(2)
-      
+
       ! left and right sides
-      if (abs(x - x0) < FP_PRECISION) then
-        d = INFINITY
-      elseif (u == ZERO) then
+      if (u == ZERO) then
         d = INFINITY
       else
         d = (x0 - x)/u
@@ -1459,9 +1465,7 @@ contains
       if (d < dist) dist = d
       
       ! front and back sides
-      if (abs(y - y0) < FP_PRECISION) then
-        d = INFINITY
-      elseif (v == ZERO) then
+      if (v == ZERO) then
         d = INFINITY
       else
         d = (y0 - y)/v
@@ -1469,14 +1473,12 @@ contains
       if (d < dist) dist = d
       
       if (m % n_dimension == 3) then
-      
+        
         z0 = m % lower_left(3) + m % width(3) * (0.5_8 + dble(ijk(3) - 1))
         z0 = z0 + sign(0.5_8, w) * m % width(3)
-        
+      
         ! top and bottom sides
-        if (abs(z - z0) < FP_PRECISION) then
-          d = INFINITY
-        elseif (w == ZERO) then
+        if (w == ZERO) then
           d = INFINITY
         else
           d = (z0 - z)/w

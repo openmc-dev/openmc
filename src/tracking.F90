@@ -150,7 +150,7 @@ contains
       ! Check domain mesh boundary
       if (dd_run) then
         call distance_to_mesh_surface(p, domain_decomp % mesh, &
-                                      distance, d_dd_mesh)
+            distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
         distance = min(distance, d_dd_mesh)
       end if
 

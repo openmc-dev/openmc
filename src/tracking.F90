@@ -336,6 +336,11 @@ contains
 
     end do
 
+    ! Add number of events to DD object
+    if (dd_run .and. domain_decomp % count_interactions) then
+      domain_decomp % interaction_count = domain_decomp % interaction_count + n_event
+    end if
+
 !    if (current_batch == 1) then
 !      if (.not. p % alive) print *, prn_seed(1), starting_seed, p % coord0 % xyz(1), rank, p % id
 !    end if

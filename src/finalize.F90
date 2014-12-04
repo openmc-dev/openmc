@@ -2,7 +2,8 @@ module finalize
 
   use global
   use output,         only: header, print_runtime, print_results, &
-                            print_overlap_check, write_tallies, print_testing
+                            print_overlap_check, write_tallies, print_testing, &
+                            print_domain_interactions
   use state_point,    only: write_distribmat_comps
   use tally,          only: tally_statistics
 
@@ -64,6 +65,14 @@ contains
       call print_runtime()
       call print_results()
       if (check_overlaps) call print_overlap_check()
+    end if
+
+    ! Print number of domain interactions
+    if (dd_run .and. domain_decomp % count_interactions) then
+#ifdef MPI
+      call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+      if (domain_decomp % local_master) call print_domain_interactions()
     end if
 
     ! Deallocate arrays

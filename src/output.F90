@@ -1631,6 +1631,33 @@ contains
   end subroutine print_overlap_check
 
 !===============================================================================
+! PRINT_DOMAIN_INTERACTIONS displays how many events each domain simulated over
+! the entire course of the simulation
+!===============================================================================
+
+  subroutine print_domain_interactions
+
+    character(MAX_FILE_LEN) :: ijk
+
+    ! display header block for geometry debugging section
+    if (master) then
+      call header("Domain Interaction Counts")
+      write(ou,100) 'Domain Mesh I-J-K','No. Interactions'
+    end if
+
+    ! TODO: really this should be reduced to master for printing in order, and
+    ! so that no ranks print overtop other ranks
+    ijk = trim(to_str(domain_decomp % ijk(1))) // "-" // &
+          trim(to_str(domain_decomp % ijk(2))) // "-" // &
+          trim(to_str(domain_decomp % ijk(3)))
+    write(ou,101) trim(ijk), domain_decomp % interaction_count
+
+100 format (1X,A,T30,A)
+101 format (1X,A,T30,I12)
+
+  end subroutine print_domain_interactions
+
+!===============================================================================
 ! PRINT_TESTING displays the pass/skip/fail unit testing results
 !===============================================================================
 

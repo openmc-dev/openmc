@@ -67,7 +67,13 @@ module dd_header
     integer, allocatable :: n_scatters_domain(:) ! (to_bin) just this domain
     integer, allocatable :: n_scatters_local(:) ! (to bin) just this processor
     integer, allocatable :: scatter_offest(:) ! (to bin) offset this processor
-    
+
+    ! To help with setting nodemaps, we can run in a mode that counts all
+    ! particle interactions in a domain(a counter in the while(alive) particle
+    ! loop.  This will be printed as output for the domain masters only
+    logical    :: count_interactions = .false.
+    integer(8) :: interaction_count = 0_8
+
   end type dd_type
 
 contains

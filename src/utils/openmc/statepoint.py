@@ -56,6 +56,9 @@ class StatePoint(object):
         self._read_tallies()
 
 
+    def close(self):
+        self._f.close()
+
     @property
     def k_combined(self):
         return self._k_combined
@@ -382,9 +385,9 @@ class StatePoint(object):
                 # If this is a scattering moment, insert the scattering order
                 if '-n' in score:
                     score = score.replace('-n', '-' + str(scatt_order[j]))
-                elif '-yn' in score:
-                    score = score.replace('-pn', '-p' + str(scatt_order[j]))
                 elif '-pn' in score:
+                    score = score.replace('-pn', '-p' + str(scatt_order[j]))
+                elif '-yn' in score:
                     score = score.replace('-yn', '-y' + str(scatt_order[j]))
 
                 tally.add_score(score)

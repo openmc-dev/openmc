@@ -276,9 +276,10 @@ module ace_header
     real(8), allocatable :: urr_total(:)         ! total
 
     ! pointwise URR cross section parameters
-    integer :: n_urr_resonances = 1000000 ! max URR resonances for a given (l,J)
+    integer :: n_urr_resonances = 1000000   ! max URR resonances for a given (l,J)
     integer :: n_urr_gridpoints = 100000000 ! max URR energy-cross section gridpoints
-    real(8) :: urr_dE = 0.1_8 ! difference between URR energy grid points [eV]
+    real(8) :: urr_dE  = 0.1_8   ! diff between URR energy grid points [eV]
+    real(8) :: urr_tol = 0.001_8 ! max pointwise xs reconstruction relative error
 
     ! Reactions
     integer :: n_reaction ! # of reactions

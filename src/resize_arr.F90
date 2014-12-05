@@ -52,9 +52,9 @@ contains
       tmp(1:current_size) = array
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine extend_array_bank
 
@@ -77,12 +77,11 @@ contains
       tmp(1:current_size) = array
       call move_alloc(FROM=tmp, TO=array)
 
+      current_size = requested_size
+
     end if
 
-    current_size = requested_size
-
   end subroutine extend8_array_bank
-
 
 !===============================================================================
 ! EXTEND_ARRAY_PARTICLEBUFFER
@@ -103,9 +102,9 @@ contains
       tmp(1:current_size) = array
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine extend_array_particlebuffer
 
@@ -128,9 +127,9 @@ contains
       tmp(1:current_size) = array
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine extend8_array_particlebuffer
 
@@ -152,9 +151,9 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine resize_array_bank
 
@@ -176,9 +175,9 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine resize8_array_bank
 
@@ -200,9 +199,9 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine resize_array_particle
 
@@ -224,9 +223,9 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine resize8_array_particle
 
@@ -248,9 +247,9 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
-    end if
+      current_size = requested_size
 
-    current_size = requested_size
+    end if
 
   end subroutine resize_array_particlebuffer
 
@@ -272,11 +271,10 @@ contains
       allocate(tmp(requested_size), STAT=alloc_err)
       call move_alloc(FROM=tmp, TO=array)
 
+      current_size = requested_size
+
     end if
 
-    current_size = requested_size
-
   end subroutine resize8_array_particlebuffer
-
 
 end module resize_arr

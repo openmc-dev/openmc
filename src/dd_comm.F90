@@ -688,9 +688,8 @@ contains
       
       ! We also need to resize the source bank and fission bank now that we
       ! have more particles
-      call resize_array(source_bank, size_source_bank, int(size_buff, 8), &
-          alloc_err)
-      call extend_array(fission_bank, size_fission_bank, int(3*size_buff, 8), &
+      call resize_array(source_bank, size_source_bank, size_buff, alloc_err)
+      call extend_array(fission_bank, size_fission_bank, 3_8*size_buff, &
           alloc_err)
       !TODO: fission bank might not be big enough! This only covers the particle
       ! buffer from this stage!
@@ -984,8 +983,8 @@ contains
       call resize_array(source_bank, size_source_bank, size_bank,  alloc_err)
       call resize_array(fission_bank, &
                         size_fission_bank, &
-                        3*size_bank, alloc_err)
-      call extend_array(temp_sites, size_fission_bank, 3*size_bank, alloc_err)
+                        3_8*size_bank, alloc_err)
+      call extend_array(temp_sites, size_fission_bank, 3_8*size_bank, alloc_err)
     end if
        
     ! ========================================================================

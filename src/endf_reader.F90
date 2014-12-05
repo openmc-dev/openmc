@@ -1,9 +1,10 @@
 module endf_reader
 
-  use ace_header, only: Nuclide
-  use error,      only: fatal_error, warning
+  use ace_header,        only: Nuclide
+  use avg_urr_xs_values, only: set_avg_urr_xs
+  use error,             only: fatal_error, warning
   use global
-  use output,     only: write_message
+  use output,            only: write_message
 
   implicit none
 
@@ -359,7 +360,7 @@ contains
 
   subroutine read_urr_parameters(i_n, i_ER)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Nuclide), pointer, save :: nuc => null()
     character(80) :: rec ! ENDF-6 file record
     integer :: i_n  ! index in global nuclides array
     integer :: i_ER ! energy range index
@@ -368,6 +369,7 @@ contains
     integer :: i_J  ! total angular momentum quantum number index
     integer :: i_E  ! tabulated energy grid index
     real(8) :: AWRI ! isotope/neutron mass ratio
+!$omp threadprivate(nuc)
 
     nuc => nuclides(i_n)
 
@@ -423,7 +425,8 @@ contains
         read(rec(23:33),  '(I11)') nuc % INT
         read(rec(56:66),  '(I11)') nuc % NE
 
-        ! allocate energies, mean level spacings and partial widths
+        ! allocate energies, mean level spacings, partial widths, 
+        ! and avgeraged URR cross section values
         if (.not. (allocated(nuc % ES))) then
           allocate(nuc % ES(nuc % NE))
           allocate(nuc % D_mean  (nuc % NLS(i_ER)))
@@ -431,6 +434,10 @@ contains
           allocate(nuc % GG_mean (nuc % NLS(i_ER)))
           allocate(nuc % GF_mean (nuc % NLS(i_ER)))
           allocate(nuc % GX_mean (nuc % NLS(i_ER)))
+          if (nuc % LSSF == 1) then
+            call nuc % alloc_avg_urr()
+            call set_avg_urr_xs(i_n)
+          end if
         end if
         if (.not. (allocated(nuc % D_mean(i_l + 1) % data))) then
           allocate(nuc % D_mean  (i_l + 1) % data(nuc % NJS(i_l + 1)))

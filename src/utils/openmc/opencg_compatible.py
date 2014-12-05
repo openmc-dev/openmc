@@ -699,7 +699,7 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[x][y][z]._id
+                universe_id = universes[x][dimension[1]-y-1][z]._id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)

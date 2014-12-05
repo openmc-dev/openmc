@@ -29,7 +29,9 @@ module state_point
   use hdf5
   use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err, &
                               hdf5_open_group, hdf5_close_group, &
-                              hdf5_tallyresult_t
+                              hdf5_tallyresult_t, memspace, plist, start1, &
+                              count1, block1, f_ptr
+  use, intrinsic :: ISO_C_BINDING
 #endif
 
 #ifdef MPI
@@ -479,29 +481,29 @@ contains
         call sp % write_data(mat % n_comp, "n_comp", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
 
-        j = 0
-        if (mat % otf_compositions) then
-          j = 1
-        end if
-        call sp % write_data(j, "otf_compositions", &
-             group="geometry/materials/material " // trim(to_str(mat % id)))
-
-        if (.not. mat % otf_compositions) then
-
-#ifdef HDF5
-          call sp % open_group("geometry/materials/material "&
-                 // trim(to_str(mat % id)) // "/compositions/")
-          call sp % close_group()
-#endif
-          COMPOSITION_LOOP: do j = 1, mat % n_comp
-            call sp % write_data(mat % comp(j) % atom_density, "atom_density ", &
-                 length=mat % n_nuclides, & 
-                 group="geometry/materials/material " &
-                 // trim(to_str(mat % id)) // "/compositions/" &
-                 // trim(to_str(j)))
-          end do COMPOSITION_LOOP
-
-        end if
+!        j = 0
+!        if (mat % otf_compositions) then
+!          j = 1
+!        end if
+!        call sp % write_data(j, "otf_compositions", &
+!             group="geometry/materials/material " // trim(to_str(mat % id)))
+!
+!        if (.not. mat % otf_compositions) then
+!
+!#ifdef HDF5
+!          call sp % open_group("geometry/materials/material "&
+!                 // trim(to_str(mat % id)) // "/compositions/")
+!          call sp % close_group()
+!#endif
+!          COMPOSITION_LOOP: do j = 1, mat % n_comp
+!            call sp % write_data(mat % comp(j) % atom_density, "atom_density ", &
+!                 length=mat % n_nuclides, & 
+!                 group="geometry/materials/material " &
+!                 // trim(to_str(mat % id)) // "/compositions/" &
+!                 // trim(to_str(j)))
+!          end do COMPOSITION_LOOP
+!
+!        end if
 
         call sp % write_data(mat % n_sab, "n_sab", &
              group="geometry/materials/material " // trim(to_str(mat % id)))
@@ -1650,13 +1652,13 @@ contains
   subroutine write_distribmat_comps()
 
     character(MAX_FILE_LEN)    :: filename
+    character(MAX_FILE_LEN)    :: groupname
     integer :: i, j
     integer :: idx
     type(BinaryOutput) :: fh
     type(Material), pointer :: mat => null()
 
 #ifdef HDF5
-    character(MAX_FILE_LEN)    :: groupname
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 #endif
@@ -1736,28 +1738,92 @@ contains
                                trim(to_str(mat % id)) // "...", 1)
           end if
 
+#ifdef HDF5
+          ! The output interface isn't stable, so to maintain fine-grain control
+          ! I use the hdf5 functions here directly
+
+          block1 = mat % n_nuclides
+          count1 = 1
+
+          ! Open the file and group
+          call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+          call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
+  
+          ! Create the property list to describe independent parallel I/O
+          call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+          call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+
+          ! Open the dataset, dataspace, and memory space
+          call h5dopen_f(group_id, 'comps', dset, hdf5_err)
+          call h5dget_space_f(dset, dspace, hdf5_err)
+          call h5screate_simple_f(1, block1, memspace, hdf5_err)
+
+#else
           call fh % file_open(filename, 'w', serial = .false., &
                               direct_access = .true., &
                               record_len = 8 * mat % n_nuclides)
-    
-          do j = 1, mat % n_comp
+#endif
 
-            if (mat % otf_compositions) then
-              if (mat % reverse_comp_index_map % has_key(j)) then
-                idx = mat % reverse_comp_index_map % get_key(j)
-              else
-                cycle
-              end if
-            else
-              idx = j
-            end if
+          if (mat % otf_compositions) then
+            ! OTF mats are spread across all ranks
 
-            call fh % write_data(mat % comp(j) % atom_density, "comps", &
-                 group=trim(groupname), &
-                 length=mat % n_nuclides, record=idx, offset=16, collect=.false.)
-          end do 
+            ! For on-the-fly distributes materials, we need to unscramble
+            do j = 1, mat % next_comp_idx - 1
 
+              idx = mat % reverse_comp_index_map % get_key(j)
+              start1 = (idx - 1) * block1
+
+              ! Select the hyperslab
+              call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+                  count1, hdf5_err, block = block1)
+
+              ! Write the data
+              f_ptr = c_loc(mat % comp(j) % atom_density)
+              call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+                  file_space_id = dspace, mem_space_id = memspace, xfer_prp = plist)
+
+!              call fh % write_data(mat % comp(j) % atom_density, "comps", &
+!                  group=trim(groupname), length=mat % n_nuclides, &
+!                  record=idx, offset=16, collect=.false.)
+
+            end do
+
+          else if (master) then
+            ! All ranks have all of normal distribmats, so only master writes
+
+            ! For normal distribmats, the compositions are in order
+            do j = 1, mat % n_comp
+
+              start1 = (j - 1) * block1
+
+              ! Select the hyperslab
+              call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+                  count1, hdf5_err, block = block1)
+
+              ! Write the data
+              f_ptr = c_loc(mat % comp(j) % atom_density)
+              call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+                  file_space_id = dspace, mem_space_id = memspace, xfer_prp = plist)
+
+!              call fh % write_data(mat % comp(j) % atom_density, "comps", &
+!                  group=trim(groupname), length=mat % n_nuclides, &
+!                  record=j, offset=16, collect=.false.)
+
+            end do
+
+          end if
+
+#ifdef HDF5
+          ! Close all 
+          call h5dclose_f(dset, hdf5_err)
+          call h5sclose_f(dspace, hdf5_err)
+          call h5sclose_f(memspace, hdf5_err)
+          call h5pclose_f(plist, hdf5_err)
+          call h5gclose_f(group_id, hdf5_err)
+          call h5fclose_f(file_id, hdf5_err)
+#else
           call fh % file_close()
+#endif
 
         end if
       end do

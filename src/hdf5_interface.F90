@@ -1501,6 +1501,7 @@ contains
     ! Close all 
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
+    !TODO: close the memspace? call h5sclose_f(memspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
 
   end subroutine hdf5_write_double_1Darray_parallel

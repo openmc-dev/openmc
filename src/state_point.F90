@@ -788,30 +788,6 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 #endif
 
-    if (rank == 0) then
-      print *, tallies(1) % results % sum
-      print *
-    end if
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
-    if (rank == 1) then
-      print *, tallies(1) % results % sum
-      print *
-    end if
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
-    if (rank == 2) then
-      print *, tallies(1) % results % sum
-      print *
-    end if
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
-    if (rank == 4) then
-      print *, tallies(1) % results % sum
-      print *
-    end if
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-
     ! Write tally data to the file
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
       do i = 1, n_tallies
@@ -1680,38 +1656,57 @@ contains
     type(Material), pointer :: mat => null()
 
 #ifdef HDF5
+    character(MAX_FILE_LEN)    :: groupname
     integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
 #endif
 
     ! Create files and write headers (master only)
     if (master) then
+
+#ifdef HDF5
+      filename = 'materials-out.h5'
+      call fh % file_create(filename)
+#endif
+
       do i = 1, n_materials
         mat => materials(i)
         if (mat % n_comp > 1) then
 
+#ifdef HDF5
+          groupname = 'mat-' // trim(to_str(mat % id))
+#else
           filename = trim(path_output) // 'material'
           filename = trim(filename) // '.m' // trim(to_str(mat % id))
-#ifdef HDF5
-          filename = trim(filename) // '.h5'
-#else
           filename = trim(filename) // '.binary'
 #endif
+
           ! Create file and write header
+#ifdef HDF5
+          call fh % file_open(filename, 'w')
+#else
           call fh % file_create(filename, record_len = 8)
-          call fh % write_data(mat % n_nuclides, 'n_nuclides', record=1)
-          call fh % write_data(mat % n_comp, 'n_instances', record=2)
+#endif
+          call fh % write_data(mat % n_nuclides, 'n_nuclides', &
+              group=trim(groupname), record=1)
+          call fh % write_data(mat % n_comp, 'n_instances', &
+              group=trim(groupname), record=2)
           call fh % file_close()
+
 #ifdef HDF5
           ! Create the full dataset initially so all other procs can write to it
           hdf5_rank = 1
           dims1(1) = mat % n_comp * mat % n_nuclides
           call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+          call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
-          call h5dcreate_f(file_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+          call h5dcreate_f(group_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
           call h5dclose_f(dset, hdf5_err)
           call h5sclose_f(dspace, hdf5_err)
+          call h5gclose_f(group_id, hdf5_err)
           call h5fclose_f(file_id, hdf5_err)
 #endif
+
         end if
       end do
     end if
@@ -1727,16 +1722,18 @@ contains
         mat => materials(i)
         if (mat % n_comp > 1) then
           
+#ifdef HDF5
+          filename = 'materials-out.h5'
+          groupname = 'mat-' // trim(to_str(mat % id))
+#else
           filename = trim(path_output) // 'material'
           filename = trim(filename) // '.m' // trim(to_str(mat % id))
-#ifdef HDF5
-          filename = trim(filename) // '.h5'
-#else
           filename = trim(filename) // '.binary'
 #endif
+
           if (master) then
-            call write_message("Writing distributed material " // trim(filename) &
-                               // "...", 1)
+            call write_message("Writing distributed material " // &
+                               trim(to_str(mat % id)) // "...", 1)
           end if
 
           call fh % file_open(filename, 'w', serial = .false., &
@@ -1756,6 +1753,7 @@ contains
             end if
 
             call fh % write_data(mat % comp(j) % atom_density, "comps", &
+                 group=trim(groupname), &
                  length=mat % n_nuclides, record=idx, offset=16, collect=.false.)
           end do 
 

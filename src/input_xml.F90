@@ -1506,6 +1506,7 @@ contains
     integer :: index_sab     ! index in sab_tables
     integer :: even
     integer :: otf_initial_size
+    logical :: otf_hdf5_mats = .false.
     real(8) :: val           ! value entered for density
     real(8) :: temp_dble     ! temporary double prec. real
     real(8), allocatable :: temp_real_array(:) ! temporary array for composition
@@ -1825,14 +1826,12 @@ contains
         if (mat % otf_compositions) then
 
           ! Read from the OTF mats file
-          call get_node_value(node_comp, "otf_file_path", mat % comp_file % path)
-
 #ifdef HDF5
-          mat % comp_file % path = trim(mat % comp_file % path) // '.h5'
+          mat % comp_file % path = trim(path_input) // 'materials.h5'
+          call get_node_value(node_comp, "otf_file_path", mat % comp_file % group)
 #else
-          mat % comp_file % path = trim(mat % comp_file % path) // '.binary'
+          call get_node_value(node_comp, "otf_file_path", mat % comp_file % path)
 #endif
-
           inquire(FILE=mat % comp_file % path, EXIST=file_exists)
           if (.not. file_exists) then
              ! Could not find cross_sections.xml file
@@ -1840,18 +1839,19 @@ contains
                   &// trim(mat % comp_file % path) // "' does not exist!")
           end if
 
-          call fh % file_open(mat % comp_file % path, 'r', &
-              direct_access=.true., serial = .true., record_len = 8)
-          call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides', &
-                              record = 1)
-          call fh % read_data(mat % comp_file % n_instances, 'n_instances', &
-                              record = 2)
-          call fh % file_close()
+          call fh % file_open(trim(mat % comp_file % path), 'r', &
+              direct_access=.true., serial = .false., record_len = 8)
 
-          ! Collectively open this file for reading during execution
-          call mat % comp_file % fh % file_open(mat % comp_file % path, 'r', &
-              serial = .false., direct_access = .true., &
-              record_len = 8 * mat % comp_file % n_nuclides)
+#ifdef HDF5
+          !TODO: (important) check that the proper group exists
+#endif
+
+          ! Read material metadata
+          call fh % read_data(mat % comp_file % n_nuclides, 'n_nuclides', &
+                              group=trim(mat % comp_file % group), record = 1)
+          call fh % read_data(mat % comp_file % n_instances, 'n_instances', &
+                              group=trim(mat % comp_file % group), record = 2)
+          call fh % file_close()
 
           if (mat % comp_file % n_nuclides /= list_names % size()) then
             call fatal_error("Wrong number of nuclides per composition in " // &
@@ -1862,6 +1862,16 @@ contains
 
           n_comp = mat % comp_file % n_instances
           mat % n_comp = n_comp
+
+          ! Collectively open this file for reading during execution
+#ifndef HDF5
+          ! Only open the file once for HDF5
+          otf_hdf5_mats = .true.
+#else
+          call mat % comp_file % fh % file_open(mat % comp_file % path, 'r', &
+              serial = .false., direct_access = .true., &
+              record_len = 8 * mat % comp_file % n_nuclides)
+#endif
 
           ! Set initial guess for size of composition array and allocate
 
@@ -2206,6 +2216,16 @@ contains
       ! Add material to dictionary
       call material_dict % add_key(mat % id, i)
     end do
+
+    if (otf_hdf5_mats) then
+#ifdef HDF5
+      call materials(1) % comp_file % fh % file_open( &
+          trim(path_input) // 'materials.h5', 'r', serial = .false.)
+      do i = 2, n_materials
+        materials(i) % comp_file = materials(1) % comp_file
+      end do
+#endif
+    end if
 
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide

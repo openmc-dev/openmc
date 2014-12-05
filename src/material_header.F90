@@ -20,6 +20,7 @@ module material_header
 
   type CompositionFile
     character(MAX_LINE_LEN) :: path         ! path to the file
+    character(MAX_LINE_LEN) :: group        ! group in HDF5 file
     type(BinaryOutput)      :: fh           ! file handle
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
@@ -192,6 +193,7 @@ contains
       allocate(comp % atom_density(this % n_nuclides))
 
       call this % fh % read_data(comp % atom_density, 'comps', &
+          group = trim(this % group), &
           collect = .false., length = this % n_nuclides, &
           record = real_inst, offset = 16)
 

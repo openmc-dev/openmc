@@ -26,7 +26,7 @@ module initialize
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
   use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,       &
-                              n_otf_urr_xs, n_avg_urr_xs, calculate_avg_urr_xs,&
+                              n_otf_urr_xs, n_avg_urr_nuclides, calculate_avg_urr_xs,&
                               resonance_ensemble, urr_frequency, pointwise_urr,&
                               urr_pointwise
 
@@ -193,7 +193,7 @@ contains
     do i = 1, n_urr_method
       do j = 1, n_nuclides_total
         if (allocated(urr_zaids) .and. nuclides(j) % zaid == urr_zaids(i)) then
-          if (n_avg_urr_xs == n_urr_method) then
+          if (n_avg_urr_nuclides == n_urr_method) then
             nuclides(j) % avg_urr_xs = .true.
           else
             nuclides(j) % avg_urr_xs = .false.

@@ -103,10 +103,10 @@ module ace_header
      contains
 
        ! allocate vector of URR resonances (for a J, for a given (i_lam,i_l))
-       procedure :: alloc_resonances => resonances_alloc
+       procedure :: alloc_resonances => alloc_resonances
 
        ! deallocate vector of URR resonances (for a J, for a given (i_lam,i_l))
-       procedure :: dealloc_resonances => resonances_dealloc
+       procedure :: dealloc_resonances => dealloc_resonances
 
   end type URRResonances
 
@@ -191,10 +191,10 @@ module ace_header
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
     ! URR treatment parameters and indices
-    logical :: urr_present
-    logical :: otf_urr_xs   ! do an on-the-fly URR cross section calculation?
-    logical :: avg_urr_xs   ! do an average URR cross section calculation?
-    logical :: point_urr_xs ! calculate pointwise URR cross sections?
+    logical :: urr_present = .false.
+    logical :: otf_urr_xs = .false.   ! on-the-fly URR xs calculation?
+    logical :: avg_urr_xs = .false.   ! do an averaged URR xs calculation?
+    logical :: point_urr_xs = .false. ! calculate pointwise URR xs?
     integer :: urr_inelastic_index
     integer :: i_urr ! energy range index of unresolved resonance region
     type(UrrData), pointer :: urr_data => null()
@@ -289,43 +289,43 @@ module ace_header
     contains
 
       ! allocate resonance energy range variables
-      procedure :: alloc_energy_range => energy_range_alloc
+      procedure :: alloc_energy_range => alloc_energy_range
 
       ! deallocate resonance energy range variables
-      procedure :: dealloc_energy_range => energy_range_dealloc
+      procedure :: dealloc_energy_range => dealloc_energy_range
 
       ! allocate average (infinite-dilute) cross sections
-      procedure :: alloc_avg_urr => avg_urr_alloc
+      procedure :: alloc_avg_urr => alloc_avg_urr
 
       ! deallocate average (infinite-dilute) cross sections
-      procedure :: dealloc_avg_urr => avg_urr_dealloc
+      procedure :: dealloc_avg_urr => dealloc_avg_urr
 
       ! allocate URR resonance ensemble realization
-      procedure :: alloc_ensemble => ensemble_alloc
+      procedure :: alloc_ensemble => alloc_ensemble
 
       ! deallocate URR resonance ensemble realization
-      procedure :: dealloc_ensemble => ensemble_dealloc
+      procedure :: dealloc_ensemble => dealloc_ensemble
 
       ! allocate temporary pointwise URR cross sections
-      procedure :: alloc_pointwise_tmp => pointwise_tmp_alloc
+      procedure :: alloc_pointwise_tmp => alloc_pointwise_tmp
 
       ! deallocate temporary pointwise URR cross sections
-      procedure :: dealloc_pointwise_tmp => pointwise_tmp_dealloc
+      procedure :: dealloc_pointwise_tmp => dealloc_pointwise_tmp
 
       ! allocate pointwise URR cross sections
-      procedure :: alloc_pointwise => pointwise_alloc
+      procedure :: alloc_pointwise => alloc_pointwise
 
       ! deallocate pointwise URR cross sections
-      procedure :: dealloc_pointwise => pointwise_dealloc
+      procedure :: dealloc_pointwise => dealloc_pointwise
 
       ! Deallocates Nuclide
       procedure :: clear => nuclide_clear
 
       ! pre-process data that needs it
-      procedure :: pre_process => process_pre
+      procedure :: pre_process => pre_process
 
       ! set channel radius
-      procedure :: channel_radius => radius_channel
+      procedure :: channel_radius => channel_radius
 
   end type Nuclide
 
@@ -532,11 +532,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ENERGY_RANGE_ALLOC allocated variables for the resonance energy ranges
+! ALLOC_ENERGY_RANGE allocated variables for the resonance energy ranges
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine energy_range_alloc(this)
+  subroutine alloc_energy_range(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -551,15 +551,15 @@ contains
     allocate(this % ac(this % NER))
     allocate(this % SPI(this % NER))
 
-  end subroutine energy_range_alloc
+  end subroutine alloc_energy_range
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: ENERGY_RANGE_DEALLOC deallocates variables for the resonance energy ranges
+! !TODO: DEALLOC_ENERGY_RANGE deallocates variables for the resonance energy ranges
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine energy_range_dealloc(this)
+  subroutine dealloc_energy_range(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -574,15 +574,15 @@ contains
     deallocate(this % ac)
     deallocate(this % SPI)
 
-  end subroutine energy_range_dealloc
+  end subroutine dealloc_energy_range
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! AVG_URR_ALLOC allocates average (infinite-dilute) cross sections
+! ALLOC_AVG_URR allocates average (infinite-dilute) cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine avg_urr_alloc(this)
+  subroutine alloc_avg_urr(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -591,15 +591,15 @@ contains
     allocate(this % avg_urr_g(this % NE))
     allocate(this % avg_urr_x(this % NE))
 
-  end subroutine avg_urr_alloc
+  end subroutine alloc_avg_urr
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: AVG_URR_DEALLOC deallocates average (infinite-dilute) cross sections
+! !TODO: DEALLOC_AVG_URR deallocates average (infinite-dilute) cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine avg_urr_dealloc(this)
+  subroutine dealloc_avg_urr(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -608,15 +608,15 @@ contains
     deallocate(this % avg_urr_g)
     deallocate(this % avg_urr_x)
 
-  end subroutine avg_urr_dealloc
+  end subroutine dealloc_avg_urr
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ENSEMBLE_ALLOC allocates a URR resonance ensemble realization
+! ALLOC_ENSEMBLE allocates a URR resonance ensemble realization
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine ensemble_alloc(this)
+  subroutine alloc_ensemble(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
     integer :: i_l   ! orbital angular momentum quantum number index
@@ -638,30 +638,30 @@ contains
       end do
     end do
 
-  end subroutine ensemble_alloc
+  end subroutine alloc_ensemble
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: ! ENSEMBLE_DEALLOC deallocates a URR resonance ensemble realization
+! TODO: ! DEALLOC_ENSEMBLE deallocates a URR resonance ensemble realization
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine ensemble_dealloc(this)
+  subroutine dealloc_ensemble(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
     
 
-  end subroutine ensemble_dealloc
+  end subroutine dealloc_ensemble
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RESONANCES_ALLOC allocates a vector of URR resonances for a given J, for a
+! ALLOC_RESONANCES allocates a vector of URR resonances for a given J, for a
 ! given (i_lam, i_l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine resonances_alloc(this, N_J)
+  subroutine alloc_resonances(this, N_J)
 
     class(URRResonances), intent(inout) :: this ! resonance vector object
     integer :: N_J
@@ -673,31 +673,31 @@ contains
     allocate(this % GX(N_J))
     allocate(this % GT(N_J))
 
-  end subroutine resonances_alloc
+  end subroutine alloc_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: ! RESONANCES_DEALLOC deallocates a vector of URR resonances for a given J, for a
+! TODO: ! DEALLOC_RESONANCES deallocates a vector of URR resonances for a given J, for a
 ! given (i_lam, i_l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine resonances_dealloc(this)
+  subroutine dealloc_resonances(this)
 
     class(URRResonances), intent(inout) :: this ! resonance vector object
 
     
 
-  end subroutine resonances_dealloc
+  end subroutine dealloc_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! POINTWISE_TMP_ALLOC allocates the temporary pointwise URR energy-cross section
+! ALLOC_POINTWISE_TMP allocates the temporary pointwise URR energy-cross section
 ! grids
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pointwise_tmp_alloc(this)
+  subroutine alloc_pointwise_tmp(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -708,16 +708,16 @@ contains
     allocate(this % urr_inelastic_tmp(this % n_urr_gridpoints))
     allocate(this % urr_total_tmp(this % n_urr_gridpoints))
 
-  end subroutine pointwise_tmp_alloc
+  end subroutine alloc_pointwise_tmp
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! POINTWISE_TMP_DEALLOC deallocates the temporary pointwise URR energy-cross
+! DEALLOC_POINTWISE_TMP deallocates the temporary pointwise URR energy-cross
 ! section grids
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pointwise_tmp_dealloc(this)
+  subroutine dealloc_pointwise_tmp(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -728,15 +728,15 @@ contains
     deallocate(this % urr_inelastic_tmp)
     deallocate(this % urr_total_tmp)
 
-  end subroutine pointwise_tmp_dealloc
+  end subroutine dealloc_pointwise_tmp
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! POINTWISE_ALLOC allocates the pointwise URR energy-cross section grids
+! ALLOC_POINTWISE allocates the pointwise URR energy-cross section grids
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pointwise_alloc(this, n_pts)
+  subroutine alloc_pointwise(this, n_pts)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
     integer :: n_pts ! number of points in grid
@@ -748,15 +748,15 @@ contains
     allocate(this % urr_inelastic(n_pts))
     allocate(this % urr_total(n_pts))
 
-  end subroutine pointwise_alloc
+  end subroutine alloc_pointwise
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: use this : POINTWISE_DEALLOC deallocates the pointwise URR energy-cross section grids
+! TODO: use this : DEALLOC_POINTWISE deallocates the pointwise URR energy-cross section grids
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pointwise_dealloc(this)
+  subroutine dealloc_pointwise(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
 
@@ -767,7 +767,7 @@ contains
     deallocate(this % urr_inelastic)
     deallocate(this % urr_total)
 
-  end subroutine pointwise_dealloc
+  end subroutine dealloc_pointwise
 
 !===============================================================================
 ! !TODO: deallocate URR structures NUCLIDE_CLEAR resets and deallocates data in Nuclide.
@@ -832,11 +832,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! PROCESS_PRE pre-processes any nuclear data that needs it
+! PRE_PROCESS pre-processes any nuclear data that needs it
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine process_pre(this, i_ER)
+  subroutine pre_process(this, i_ER)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
     integer :: i_ER ! resonance energy range index
@@ -844,15 +844,15 @@ contains
     ! set the channel radius
     call this % channel_radius(i_ER)
 
-  end subroutine process_pre
+  end subroutine pre_process
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RADIUS_CHANNEL computes or sets the channel radius depending on ENDF flags
+! CHANNEL_RADIUS computes or sets the channel radius depending on ENDF flags
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine radius_channel(this, i_ER)
+  subroutine channel_radius(this, i_ER)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
     integer :: i_ER ! resonance energy range index
@@ -915,6 +915,6 @@ contains
   
     end select
 
-  end subroutine radius_channel
+  end subroutine channel_radius
 
 end module ace_header

@@ -15,12 +15,11 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: urr_frequency, urr_formalism, urr_endf_filenames,&
-                              urr_zaids, n_s_wave, n_p_wave, n_d_wave,         &
-                              n_f_wave, competitive, urr_avg_histories,        &
-                              urr_avg_tol, urr_avg_batches, n_urr_method,      &
-                              n_otf_urr_xs, n_avg_urr_xs, urr_method,          &
-                              urr_pointwise
+  use unresolved,       only: competitive, l_waves, n_avg_urr_nuclides, n_otf_urr_xs,&
+                              n_urr_method, urr_avg_batches, urr_avg_histories,&
+                              urr_avg_tol,  urr_endf_filenames, urr_formalism, &
+                              urr_frequency, urr_method, urr_pointwise,        &
+                              urr_zaids
 
   use xml_interface
 
@@ -3227,24 +3226,24 @@ contains
 
     ! Assign number of l-wave resonances to be used in xs calculations
     if (check_for_node(doc, 'n_s_wave')) then
-      call get_node_value(doc, 'n_s_wave', n_s_wave)
+      call get_node_value(doc, 'n_s_wave', l_waves(1))
     else
-      n_s_wave = 32
+      l_waves(1) = 32
     end if
     if (check_for_node(doc, 'n_p_wave')) then
-      call get_node_value(doc, 'n_p_wave', n_p_wave)
+      call get_node_value(doc, 'n_p_wave', l_waves(2))
     else
-      n_p_wave = 32
+      l_waves(2) = 32
     end if
     if (check_for_node(doc, 'n_d_wave')) then
-      call get_node_value(doc, 'n_d_wave', n_d_wave)
+      call get_node_value(doc, 'n_d_wave', l_waves(3))
     else
-      n_d_wave = 32
+      l_waves(3) = 32
     end if
     if (check_for_node(doc, 'n_f_wave')) then
-      call get_node_value(doc, 'n_f_wave', n_f_wave)
+      call get_node_value(doc, 'n_f_wave', l_waves(4))
     else
-      n_f_wave = 32
+      l_waves(4) = 32
     end if
 
     ! Check for pointwise cross section calculation
@@ -3338,11 +3337,11 @@ contains
       end if
     end if
 
-    n_avg_urr_xs = 0
+    n_avg_urr_nuclides = 0
     ! Check for average (infinite-dilute) xs calculation parameters
     if (check_for_node(doc, "average_xs")) then
 
-      n_avg_urr_xs = n_urr_method
+      n_avg_urr_nuclides = n_urr_method
 
       call get_node_ptr(doc, "average_xs", avg_xs_node)
 

@@ -106,8 +106,11 @@ contains
         /)
 
     case default
-      write(*, '(A40,I4,A66)') 'Averaged URR cross sections for MAT ', nuc % MAT,&
-        & ' are not pre-computed and must be calculated at initialization'
+      if (nuc % LSSF == 1) then
+        write(*, '(A40,I4,A66)') &
+          & 'Averaged URR cross sections for MAT ', nuc % MAT, &
+          & ' are not pre-computed and must be calculated at initialization'
+      end if
 
     end select
 

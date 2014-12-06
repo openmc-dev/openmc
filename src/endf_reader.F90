@@ -52,6 +52,9 @@ contains
 
     nuc => nuclides(i_n)
 
+    MF1_read = .false.
+    MF2_read = .false.
+
     do
       read(in, 10) rec
 10    format(A80)

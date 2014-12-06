@@ -508,7 +508,7 @@ contains
           elseif (nuc % LSSF == 1) then
             ! multipy the self-shielding factors by the infinite-dilute xs
 
-            call set_avg_urr_xs(m, i_nuc, i_E, &
+            call interp_avg_urr_xs(m, i_nuc, i_E, &
               & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
             ! competitive xs
@@ -688,7 +688,7 @@ contains
           elseif (nuc % LSSF == 1) then
             ! multipy the self-shielding factors by the infinite-dilute xs
 
-            call set_avg_urr_xs(m, i_nuc, i_E, &
+            call interp_avg_urr_xs(m, i_nuc, i_E, &
               & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
             ! competitive xs
@@ -1315,7 +1315,7 @@ contains
       f = interp_factor(E, nuc % ES(i_energy), nuc % ES(i_energy+1), nuc % INT)
 
       ! interpolate evaluator-supplied URR background xs
-      call set_avg_urr_xs(f, i_nuc, i_energy, &
+      call interp_avg_urr_xs(f, i_nuc, i_energy, &
         avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       if (avg_urr_x_xs > ZERO) then
@@ -2474,7 +2474,7 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine set_avg_urr_xs(m, i_nuc, i_E, n_xs, f_xs, g_xs, x_xs)
+  subroutine interp_avg_urr_xs(m, i_nuc, i_E, n_xs, f_xs, g_xs, x_xs)
 
     type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
     integer :: i_nuc
@@ -2505,7 +2505,7 @@ contains
     x_xs = interpolator(m, &
       & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), LINEAR_LINEAR)
 
-  end subroutine set_avg_urr_xs
+  end subroutine interp_avg_urr_xs
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

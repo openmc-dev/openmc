@@ -191,10 +191,10 @@ module ace_header
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
     ! URR treatment parameters and indices
-    logical :: urr_present
-    logical :: otf_urr_xs   ! do an on-the-fly URR cross section calculation?
-    logical :: avg_urr_xs   ! do an average URR cross section calculation?
-    logical :: point_urr_xs ! calculate pointwise URR cross sections?
+    logical :: urr_present = .false.
+    logical :: otf_urr_xs = .false.   ! on-the-fly URR xs calculation?
+    logical :: avg_urr_xs = .false.   ! do an averaged URR xs calculation?
+    logical :: point_urr_xs = .false. ! calculate pointwise URR xs?
     integer :: urr_inelastic_index
     integer :: i_urr ! energy range index of unresolved resonance region
     type(UrrData), pointer :: urr_data => null()

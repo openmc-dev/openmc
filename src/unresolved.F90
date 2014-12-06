@@ -316,8 +316,8 @@ contains
     real(8) :: avg_urr_g_xs ! averaged capture cross section
     real(8) :: avg_urr_x_xs ! averaged competitive inelastic cross section
     real(8) :: dE_trial     ! trial energy spacing for xs grid
-    real(8) :: xs_trial     ! trial xs via interpolation between energy gridpoints
-    real(8) :: rel_err      ! computed relative error between interpolated and exact xs
+    real(8) :: xs_trial     ! trial xs via interpolation between gridpoints
+    real(8) :: rel_err      ! relative error between interpolated and exact xs
     logical :: enhance ! refine energy-xs grid?
 !$omp threadprivate(nuc)
 
@@ -351,7 +351,8 @@ contains
       i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
       nuc % urr_energy_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
       nuc % urr_elastic_tmp(n_pts) = nuc % elastic(i_grid)
-      nuc % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) - nuc % fission(i_grid)
+      nuc % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) &
+                                 & - nuc % fission(i_grid)
       nuc % urr_fission_tmp(n_pts) = nuc % fission(i_grid)
       nuc % urr_total_tmp(n_pts)   = nuc % total(i_grid)
 
@@ -388,14 +389,10 @@ contains
             i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
           end if
 
-          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
+          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
 
           ! reset xs objects
-          call sig_n   % flush_history()
-          call sig_gam % flush_history()
-          call sig_f   % flush_history()
-          call sig_x   % flush_history()
-          call sig_t   % flush_history()
+          call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
           ! loop over orbital quantum #'s
           ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
@@ -447,30 +444,9 @@ contains
 
                     i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
 
-                    ! set RRR resonance parameters
-                    res % E_lam   = nuc % rm_resonances(i_l) % E_lam(i_rrr_res)
-                    res % Gam_n   = nuc % rm_resonances(i_l) % GN(i_rrr_res)
-                    res % Gam_gam = nuc % rm_resonances(i_l) % GG(i_rrr_res)
-                    res % Gam_f   = nuc % rm_resonances(i_l) % GFA(i_rrr_res) &
-                                & + nuc % rm_resonances(i_l) % GFB(i_rrr_res)
-                    res % Gam_x   = ZERO
-                    res % Gam_t   = res % Gam_n &
-                                & + res % Gam_gam &
-                                & + res % Gam_f &
-                                & + res % Gam_x
-
-                    ! calculate the contribution to the partial cross sections,
-                    ! at this energy, from an additional resonance 
-                    call res % calc_xs(i_nuc)
-
-                    ! add this contribution to the accumulated partial cross
-                    ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                    call sig_n   % accum_resonance(res % dsig_n)
-                    call sig_gam % accum_resonance(res % dsig_gam)
-                    call sig_f   % accum_resonance(res % dsig_f)
-                    call sig_x   % accum_resonance(res % dsig_x)
-                    call sig_t   % accum_resonance(res % dsig_t)
+                    call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
+                      & nuc % LRF(nuc % i_urr - 1), &
+                      & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                   end do RRR_RESONANCES_LOOP
                 end if
@@ -478,56 +454,22 @@ contains
                 ! loop over contributing unresolved resonance region resonances
                 URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
 
-                  ! set URR resonance parameters
-                  res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-                  res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-                  res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-                  res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-                  res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-                  res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
-
-                  ! calculate the contribution to the partial cross sections,
-                  ! at this energy, from an additional resonance 
-                  call res % calc_xs(i_nuc)
-
-                  ! add this contribution to the accumulated partial cross
-                  ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                  call sig_n   % accum_resonance(res % dsig_n)
-                  call sig_gam % accum_resonance(res % dsig_gam)
-                  call sig_f   % accum_resonance(res % dsig_f)
-                  call sig_x   % accum_resonance(res % dsig_x)
-                  call sig_t   % accum_resonance(res % dsig_t)
+                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                    & nuc % LRF(nuc % i_urr), &
+                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                 end do URR_RESONANCES_LOOP
 
               else
-                ! we're firmly in the URR and can ignore anything going on in the
-                ! upper resolved resonance region energies
-                RESONANCES_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+                ! we're firmly in the URR and can ignore anything going on in
+                ! the upper resolved resonance region energies
+                URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
 
-                  ! set URR resonance parameters
-                  res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-                  res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-                  res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-                  res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-                  res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-                  res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
+                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                    & nuc % LRF(nuc % i_urr), &
+                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
-                  ! calculate the contribution to the partial cross sections,
-                  ! at this energy, from an additional resonance 
-                  call res % calc_xs(i_nuc)
-
-                  ! add this contribution to the accumulated partial cross
-                  ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                  call sig_n   % accum_resonance(res % dsig_n)
-                  call sig_gam % accum_resonance(res % dsig_gam)
-                  call sig_f   % accum_resonance(res % dsig_f)
-                  call sig_x   % accum_resonance(res % dsig_x)
-                  call sig_t   % accum_resonance(res % dsig_t)
-
-                end do RESONANCES_LOOP
+                end do URR_LOOP
               end if
             end do TOTAL_ANG_MOM_LOOP
           end do ORBITAL_ANG_MOM_LOOP
@@ -541,93 +483,42 @@ contains
           elseif (nuc % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
             i_grid = nuc % n_grid - 1
           else
-            i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
+            i_grid = binary_search(1.0e6_8*nuc % energy, nuc % n_grid, nuc % E)
           end if
 
           ! check for rare case where two energy points are the same
-          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
+            & i_grid = i_grid + 1
 
           ! calculate xs energy grid interpolation factor
           f = interp_factor(nuc % E, 1.0e6_8 * nuc % energy(i_grid), &
             & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
 
           ! calculate evaluator-supplied backgrounds at the current energy
-          ! elastic scattering xs
-          nuc % urr_elastic_tmp(n_pts)&
-            & = interpolator(f, nuc % elastic(i_grid),&
-            & nuc % elastic(i_grid + 1),&
-            & LINEAR_LINEAR)
+          call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
 
-          ! radiative capture xs
-          nuc % urr_capture_tmp(n_pts)&
-            & = interpolator(f, nuc % absorption(i_grid) - nuc % fission(i_grid),&
-            & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! fission xs
-          nuc % urr_fission_tmp(n_pts)&
-            & = interpolator(f, nuc % fission(i_grid),&
-            & nuc % fission(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! competitive first level inelastic scattering xs
-          nuc % urr_inelastic_tmp(n_pts)&
-            & = interpolator(f, nuc % total(i_grid)&
-            &                 - nuc % absorption(i_grid)&
-            &                 - nuc % elastic(i_grid),&
-            &                   nuc % total(i_grid + 1)&
-            &                 - nuc % absorption(i_grid + 1)&
-            &                 - nuc % elastic(i_grid + 1), LINEAR_LINEAR)
-
-          ! total xs
-          nuc % urr_total_tmp(n_pts)&
-            & = interpolator(f, nuc % total(i_grid),&
-            & nuc % total(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
-          ! MF3 contains background xs values (add to MF2 resonance contributions)
+          ! interpret MF3 data according to ENDF-6 LSSF flag:
+          ! MF3 contains background xs, add to MF2 resonance contributions
           if (nuc % LSSF == 0) then
             call fatal_error('LSSF = 0 not yet supported')
 
-            ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
-              & + sig_n % val
-
-            ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
-              & + sig_gam % val
-
-            ! fission xs
-            nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
-              & + sig_f % val
-
-            ! competitive first level inelastic scattering xs
-            nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
-              & + sig_x % val
-
-            ! total xs
-            nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
-              & + sig_t % val
+            ! add resonance xs component to background
+            call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
           elseif (nuc % LSSF == 1) then
-            ! multipy the self-shielding factors by the average (infinite-dilute)
-            ! cross sections
+            ! multipy the self-shielding factors by the infinite-dilute xs
 
-! TODO: LOG_LOG?
-            xsidnval = interpolator(m, xsidn(i_E), xsidn(i_E + 1), LINEAR_LINEAR)
-            xsidfval = interpolator(m, xsidf(i_E), xsidf(i_E + 1), LINEAR_LINEAR)
-            xsidgval = interpolator(m, xsidg(i_E), xsidg(i_E + 1), LINEAR_LINEAR)
-            xsidxval = interpolator(m, xsidx(i_E), xsidx(i_E + 1), LINEAR_LINEAR)
+            call set_avg_urr_xs(m, i_nuc, i_E, &
+              & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
             ! competitive xs
-            if (xsidxval > ZERO) then
+            if (avg_urr_x_xs > ZERO) then
               if (competitive) then
-                ! self-shielded treatment of competitive inelastic cross section
-                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / xsidxval &
+                ! self-shielded treatment of competitive inelastic xs
+                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / avg_urr_x_xs &
                   & * nuc % urr_inelastic_tmp(n_pts)
               else
-                ! infinite-dilute treatment of competitive inelastic cross section
+                ! infinite-dilute treatment of competitive inelastic xs
                 nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
               end if
             else
@@ -636,35 +527,38 @@ contains
             end if
 
             ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = sig_n % val / xsidnval &
+            nuc % urr_elastic_tmp(n_pts) = sig_n % val / avg_urr_n_xs &
               & * nuc % urr_elastic_tmp(n_pts)
 
             ! set negative SLBW elastic xs to zero
-            if (nuc % urr_elastic_tmp(n_pts) < ZERO) nuc % urr_elastic_tmp(n_pts) = ZERO
+            if (nuc % urr_elastic_tmp(n_pts) < ZERO) &
+              & nuc % urr_elastic_tmp(n_pts) = ZERO
 
             ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = sig_gam % val / xsidgval &
+            nuc % urr_capture_tmp(n_pts) = sig_gam % val / avg_urr_g_xs &
               & * nuc % urr_capture_tmp(n_pts)
 
             ! fission xs
-            if (xsidfval > ZERO) then
-              nuc % urr_fission_tmp(n_pts) = sig_f % val / xsidfval &
+            if (avg_urr_f_xs > ZERO) then
+              nuc % urr_fission_tmp(n_pts) = sig_f % val / avg_urr_f_xs &
                 & * nuc % urr_fission_tmp(n_pts)
             else
               nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts)
             end if
 
-            nuc % urr_total_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts)&
-              &                        + nuc % urr_capture_tmp(n_pts)&
-              &                        + nuc % urr_fission_tmp(n_pts)&
-              &                        + nuc % urr_inelastic_tmp(n_pts)
+            nuc % urr_total_tmp(n_pts) &
+              & = nuc % urr_elastic_tmp(n_pts)&
+              & + nuc % urr_capture_tmp(n_pts)&
+              & + nuc % urr_fission_tmp(n_pts)&
+              & + nuc % urr_inelastic_tmp(n_pts)
 
           else
-            call fatal_error('Self-shielding flag (LSSF) not allowed - must be 0 or 1.')
+            call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
           end if
 
-          xs_trial = (nuc % urr_total_tmp(n_pts) + nuc % urr_total_tmp(n_pts - 1)) * HALF
-          dE_trial = dE_trial * HALF
+          xs_trial = HALF &
+            & * (nuc % urr_total_tmp(n_pts) + nuc % urr_total_tmp(n_pts - 1))
+          dE_trial = HALF * dE_trial
           nuc % E  = nuc % E - dE_trial
 
           if (nuc % E > nuc % ES(nuc % NE)) then
@@ -673,14 +567,10 @@ contains
             i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
           end if
 
-          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
+          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
 
           ! reset xs objects
-          call sig_n   % flush_history()
-          call sig_gam % flush_history()
-          call sig_f   % flush_history()
-          call sig_x   % flush_history()
-          call sig_t   % flush_history()
+          call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
           ! loop over orbital quantum #'s
           ORBITAL_ANG_MOM_LOOP1: do i_l = 1, nuc % NLS(nuc % i_urr)
@@ -732,30 +622,9 @@ contains
 
                     i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
 
-                    ! set RRR resonance parameters
-                    res % E_lam   = nuc % rm_resonances(i_l) % E_lam(i_rrr_res)
-                    res % Gam_n   = nuc % rm_resonances(i_l) % GN(i_rrr_res)
-                    res % Gam_gam = nuc % rm_resonances(i_l) % GG(i_rrr_res)
-                    res % Gam_f   = nuc % rm_resonances(i_l) % GFA(i_rrr_res) &
-                                & + nuc % rm_resonances(i_l) % GFB(i_rrr_res)
-                    res % Gam_x   = ZERO
-                    res % Gam_t   = res % Gam_n &
-                                & + res % Gam_gam &
-                                & + res % Gam_f &
-                                & + res % Gam_x
-
-                    ! calculate the contribution to the partial cross sections,
-                    ! at this energy, from an additional resonance 
-                    call res % calc_xs(i_nuc)
-
-                    ! add this contribution to the accumulated partial cross
-                    ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                    call sig_n   % accum_resonance(res % dsig_n)
-                    call sig_gam % accum_resonance(res % dsig_gam)
-                    call sig_f   % accum_resonance(res % dsig_f)
-                    call sig_x   % accum_resonance(res % dsig_x)
-                    call sig_t   % accum_resonance(res % dsig_t)
+                    call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
+                      & nuc % LRF(nuc % i_urr - 1), &
+                      & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                   end do RRR_RESONANCES_LOOP1
                 end if
@@ -763,54 +632,22 @@ contains
                 ! loop over contributing unresolved resonance region resonances
                 URR_RESONANCES_LOOP1: do i_res = 1, i_low + n_res/2 - 1
 
-                  ! set URR resonance parameters
-                  res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-                  res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-                  res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-                  res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-                  res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-                  res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
-
-                  ! calculate the contribution to the partial cross sections,
-                  ! at this energy, from an additional resonance 
-                  call res % calc_xs(i_nuc)
-
-                  ! add this contribution to the accumulated partial cross
-                  ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                  call sig_n   % accum_resonance(res % dsig_n)
-                  call sig_gam % accum_resonance(res % dsig_gam)
-                  call sig_f   % accum_resonance(res % dsig_f)
-                  call sig_x   % accum_resonance(res % dsig_x)
-                  call sig_t   % accum_resonance(res % dsig_t)
+                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                    & nuc % LRF(nuc % i_urr), &
+                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                 end do URR_RESONANCES_LOOP1
 
               else
-                ! we're firmly in the URR and can ignore anything going on in the
+                ! we're deep in the URR and can ignore anything going on in the
                 ! upper resolved resonance region energies
-                RESONANCES_LOOP1: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
-
-                  ! set URR resonance parameters
-                  res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-                  res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-                  res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-                  res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-                  res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-                  res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
-
-                  ! calculate the contribution to the partial cross sections,
-                  ! at this energy, from an additional resonance 
-                  call res % calc_xs(i_nuc)
-
-                  ! add this contribution to the accumulated partial cross
-                  ! section values built up from all resonances
 ! TODO: move sig_t outside of loop
-                  call sig_n   % accum_resonance(res % dsig_n)
-                  call sig_gam % accum_resonance(res % dsig_gam)
-                  call sig_f   % accum_resonance(res % dsig_f)
-                  call sig_x   % accum_resonance(res % dsig_x)
-                  call sig_t   % accum_resonance(res % dsig_t)
+                RESONANCES_LOOP1: do i_res &
+                  & = i_low - n_res/2, i_low + n_res/2 - 1
+
+                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                    & nuc % LRF(nuc % i_urr), &
+                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                 end do RESONANCES_LOOP1
               end if
@@ -826,93 +663,42 @@ contains
           elseif (nuc % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
             i_grid = nuc % n_grid - 1
           else
-            i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
+            i_grid = binary_search(1.0e6_8*nuc % energy, nuc % n_grid, nuc % E)
           end if
 
           ! check for rare case where two energy points are the same
-          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
+            & i_grid = i_grid + 1
 
           ! calculate xs energy grid interpolation factor
           f = interp_factor(nuc % E, 1.0e6_8 * nuc % energy(i_grid), &
             & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
 
           ! calculate evaluator-supplied backgrounds at the current energy
-          ! elastic scattering xs
-          nuc % urr_elastic_tmp(n_pts)&
-            & = interpolator(f, nuc % elastic(i_grid),&
-            & nuc % elastic(i_grid + 1),&
-            & LINEAR_LINEAR)
+          call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
 
-          ! radiative capture xs
-          nuc % urr_capture_tmp(n_pts)&
-            & = interpolator(f, nuc % absorption(i_grid) - nuc % fission(i_grid),&
-            & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! fission xs
-          nuc % urr_fission_tmp(n_pts)&
-            & = interpolator(f, nuc % fission(i_grid),&
-            & nuc % fission(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! competitive first level inelastic scattering xs
-          nuc % urr_inelastic_tmp(n_pts)&
-            & = interpolator(f, nuc % total(i_grid)&
-            &                 - nuc % absorption(i_grid)&
-            &                 - nuc % elastic(i_grid),&
-            &                   nuc % total(i_grid + 1)&
-            &                 - nuc % absorption(i_grid + 1)&
-            &                 - nuc % elastic(i_grid + 1), LINEAR_LINEAR)
-
-          ! total xs
-          nuc % urr_total_tmp(n_pts)&
-            & = interpolator(f, nuc % total(i_grid),&
-            & nuc % total(i_grid + 1),&
-            & LINEAR_LINEAR)
-
-          ! interpret MF3 data according to ENDF self-shielding factor flag (LSSF):
-          ! MF3 contains background xs values (add to MF2 resonance contributions)
+          ! interpret MF3 data according to ENDF-6 LSSF flag:
+          ! MF3 contains background xs, add to MF2 resonance contributions
           if (nuc % LSSF == 0) then
             call fatal_error('LSSF = 0 not yet supported')
 
-            ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
-              & + sig_n % val
-
-            ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
-              & + sig_gam % val
-
-            ! fission xs
-            nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
-              & + sig_f % val
-
-            ! competitive first level inelastic scattering xs
-            nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
-              & + sig_x % val
-
-            ! total xs
-            nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
-              & + sig_t % val
+            ! add resonance xs component to background
+            call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
           elseif (nuc % LSSF == 1) then
-            ! multipy the self-shielding factors by the average (infinite-dilute)
-            ! cross sections
+            ! multipy the self-shielding factors by the infinite-dilute xs
 
-! TODO: LOG_LOG?
-            xsidnval = interpolator(m, xsidn(i_E), xsidn(i_E + 1), LINEAR_LINEAR)
-            xsidfval = interpolator(m, xsidf(i_E), xsidf(i_E + 1), LINEAR_LINEAR)
-            xsidgval = interpolator(m, xsidg(i_E), xsidg(i_E + 1), LINEAR_LINEAR)
-            xsidxval = interpolator(m, xsidx(i_E), xsidx(i_E + 1), LINEAR_LINEAR)
+            call set_avg_urr_xs(m, i_nuc, i_E, &
+              & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
             ! competitive xs
-            if (xsidxval > ZERO) then
+            if (avg_urr_x_xs > ZERO) then
               if (competitive) then
-                ! self-shielded treatment of competitive inelastic cross section
-                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / xsidxval &
+                ! self-shielded treatment of competitive inelastic xs
+                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / avg_urr_x_xs &
                   & * nuc % urr_inelastic_tmp(n_pts)
               else
-                ! infinite-dilute treatment of competitive inelastic cross section
+                ! infinite-dilute treatment of competitive inelastic xs
                 nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
               end if
             else
@@ -921,19 +707,20 @@ contains
             end if
 
             ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = sig_n % val / xsidnval &
+            nuc % urr_elastic_tmp(n_pts) = sig_n % val / avg_urr_n_xs &
               & * nuc % urr_elastic_tmp(n_pts)
 
             ! set negative SLBW elastic xs to zero
-            if (nuc % urr_elastic_tmp(n_pts) < ZERO) nuc % urr_elastic_tmp(n_pts) = ZERO
+            if (nuc % urr_elastic_tmp(n_pts) < ZERO) &
+              & nuc % urr_elastic_tmp(n_pts) = ZERO
 
             ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = sig_gam % val / xsidgval &
+            nuc % urr_capture_tmp(n_pts) = sig_gam % val / avg_urr_g_xs &
               & * nuc % urr_capture_tmp(n_pts)
 
             ! fission xs
-            if (xsidfval > ZERO) then
-              nuc % urr_fission_tmp(n_pts) = sig_f % val / xsidfval &
+            if (avg_urr_f_xs > ZERO) then
+              nuc % urr_fission_tmp(n_pts) = sig_f % val / avg_urr_f_xs &
                 & * nuc % urr_fission_tmp(n_pts)
             else
               nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts)
@@ -945,10 +732,11 @@ contains
               &                        + nuc % urr_inelastic_tmp(n_pts)
 
           else
-            call fatal_error('Self-shielding flag (LSSF) not allowed - must be 0 or 1.')
+            call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
           end if
 
-          rel_err = abs(xs_trial - nuc % urr_total_tmp(n_pts)) / nuc % urr_total_tmp(n_pts)
+          rel_err = abs(xs_trial - nuc % urr_total_tmp(n_pts)) &
+            & / nuc % urr_total_tmp(n_pts)
           if (rel_err < nuc % urr_tol .or. dE_trial < 1.0e-11_8) then
             enhance = .false.
           end if
@@ -1021,7 +809,7 @@ contains
                   i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
 
                   call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
-                    & nuc & LRF(nuc % i_urr - 1), &
+                    & nuc % LRF(nuc % i_urr - 1), &
                     & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                 end do RRR_RESONANCES_LOOP2
@@ -1030,18 +818,9 @@ contains
               ! loop over contributing unresolved resonance region resonances
               URR_RESONANCES_LOOP2: do i_res = 1, i_low + n_res/2 - 1
 
-                ! set URR resonance parameters
-                call set_parameters(res, i_nuc, i_res, i_l, i_J, &
-                  & nuc % LRF(nuc % i_urr))
-
-                ! calculate the contribution to the partial cross sections,
-                ! at this energy, from an additional resonance 
-                call res % calc_xs(i_nuc)
-
-                ! add this contribution to the accumulated partial cross
-                ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+                call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                  & nuc % LRF(nuc % i_urr), &
+                  & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
               end do URR_RESONANCES_LOOP2
 
@@ -1050,18 +829,9 @@ contains
               ! upper resolved resonance region energies
               RESONANCES_LOOP2: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
 
-                ! set URR resonance parameters
-                call set_parameters(res, i_nuc, i_res, i_l, i_J, &
-                  & nuc % LRF(nuc % i_urr))
-
-                ! calculate the contribution to the partial cross sections,
-                ! at this energy, from an additional resonance 
-                call res % calc_xs(i_nuc)
-
-                ! add this contribution to the accumulated partial cross
-                ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+                call add_resonance(res, i_nuc, i_res, i_l, i_J, &
+                  & nuc % LRF(nuc % i_urr), &
+                  & sig_t, sig_n, sig_gam, sig_f, sig_x)
 
               end do RESONANCES_LOOP2
             end if
@@ -1088,67 +858,15 @@ contains
           & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        ! elastic scattering xs
-        nuc % urr_elastic_tmp(n_pts)&
-          & = interpolator(f, &
-          & nuc % elastic(i_grid),&
-          & nuc % elastic(i_grid + 1),&
-          & LINEAR_LINEAR)
-
-        ! radiative capture xs
-        nuc % urr_capture_tmp(n_pts)&
-          & = interpolator(f, &
-          & nuc % absorption(i_grid) - nuc % fission(i_grid),&
-          & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1),&
-          & LINEAR_LINEAR)
-
-        ! fission xs
-        nuc % urr_fission_tmp(n_pts)&
-          & = interpolator(f, &
-          & nuc % fission(i_grid),&
-          & nuc % fission(i_grid + 1),&
-          & LINEAR_LINEAR)
-
-        ! competitive first level inelastic scattering xs
-        nuc % urr_inelastic_tmp(n_pts)&
-          & = interpolator(f, nuc % total(i_grid)&
-          &                 - nuc % absorption(i_grid)&
-          &                 - nuc % elastic(i_grid),&
-          &                   nuc % total(i_grid + 1)&
-          &                 - nuc % absorption(i_grid + 1)&
-          &                 - nuc % elastic(i_grid + 1), LINEAR_LINEAR)
-
-        ! total xs
-        nuc % urr_total_tmp(n_pts)&
-          & = interpolator(f, &
-          & nuc % total(i_grid),&
-          & nuc % total(i_grid + 1),&
-          & LINEAR_LINEAR)
+        call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs values, add to MF2 resonance contributions
         if (nuc % LSSF == 0) then
           call fatal_error('LSSF = 0 not yet supported')
 
-          ! elastic scattering xs
-          nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
-            & + sig_n % val
-
-          ! radiative capture xs
-          nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
-            & + sig_gam % val
-
-          ! fission xs
-          nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
-            & + sig_f % val
-
-          ! competitive first level inelastic scattering xs
-          nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
-            & + sig_x % val
-
-          ! total xs
-          nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
-            & + sig_t % val
+          ! add resonance xs component to background
+          call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
         elseif (nuc % LSSF == 1) then
           ! multipy the self-shielding factors by the average (infinite-dilute)
@@ -1557,11 +1275,7 @@ contains
           ! add this contribution to the accumulated partial cross
           ! section values built up from all resonances
 ! TODO: move sig_t outside of loop
-          call sig_t   % accum_resonance(res % dsig_t)
-          call sig_n   % accum_resonance(res % dsig_n)
-          call sig_gam % accum_resonance(res % dsig_gam)
-          call sig_f   % accum_resonance(res % dsig_f)
-          call sig_x   % accum_resonance(res % dsig_x)
+          call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
         end do RESONANCES_LOOP
       end do TOTAL_ANG_MOM_LOOP
@@ -1595,26 +1309,14 @@ contains
     ! MF3 contains evaluator-supplied infinite dilute xs values that we multipy
     ! the self-shielding factors computed from MF2 by
     elseif (nuc % LSSF == 1) then
-      ! TODO: LOG_LOG?
+      ! TODO: LOG_LOG or maybe just nuc % INT?
 
       ! tabulated unresolved resonance parameters interpolation factor
       f = interp_factor(E, nuc % ES(i_energy), nuc % ES(i_energy+1), nuc % INT)
 
-      ! infinite-dilute elastic scattering xs
-      avg_urr_n_xs = interpolator(f, &
-        & nuc % avg_urr_n(i_energy), nuc % avg_urr_n(i_energy+1), nuc % INT)
-
-      ! infinite-dilute fission xs
-      avg_urr_f_xs = interpolator(f, &
-        & nuc % avg_urr_f(i_energy), nuc % avg_urr_f(i_energy+1), nuc % INT)
-
-      ! infinite-dilute capture xs
-      avg_urr_g_xs = interpolator(f, &
-        & nuc % avg_urr_g(i_energy), nuc % avg_urr_g(i_energy+1), nuc % INT)
-
-      ! infinite-dilute competitive reaction xs
-      avg_urr_x_xs = interpolator(f, &
-        & nuc % avg_urr_x(i_energy), nuc % avg_urr_x(i_energy+1), nuc % INT)
+      ! interpolate evaluator-supplied URR background xs
+      call set_avg_urr_xs(f, i_nuc, i_energy, &
+        avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       if (avg_urr_x_xs > ZERO) then
 
@@ -2738,20 +2440,22 @@ contains
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & nuc & LRF(nuc % i_urr - 1), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
+                    & LRF_val, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
     type(Resonance) :: res ! resonance object
-    integer :: i_nuc ! nuclide index
-    integer :: i_res ! resonance index
-    integer :: i_E   ! tabulated URR parameters energy index
-    integer :: i_l   ! orbital quantum number index
-    integer :: i_J   ! total angular momentum quantum #
+    type(CrossSection) :: sig_t   ! total xs object
+    type(CrossSection) :: sig_n   ! elastic scattering xs object
+    type(CrossSection) :: sig_gam ! radiative capture xs object
+    type(CrossSection) :: sig_f   ! fission xs object
+    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    integer :: i_nuc   ! nuclide index
+    integer :: i_res   ! resonance index
+    integer :: i_l     ! orbital quantum number index
+    integer :: i_J     ! total angular momentum quantum #
+    integer :: LRF_val ! ENDF-6 LRF resonance parameter representation flag
 
     ! set resonance parameters
-    call set_parameters(res, i_nuc, i_rrr_res, i_l, i_J, &
-      & nuc % LRF(nuc % i_urr - 1))
+    call set_parameters(res, i_nuc, i_res, i_l, i_J, LRF_val)
 
     ! calculate the contribution to the partial cross sections,
     ! at this energy, from an additional resonance 
@@ -2760,8 +2464,150 @@ contains
     ! add this contribution to the accumulated partial cross
     ! section values built up from all resonances
 ! TODO: move sig_t outside of loop
-    call accum_resonances(res,sig_t,sig_n,sig_gam,sig_f,sig_x)
+    call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
   end subroutine add_resonance
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ADD_RESONANCE add an additional contributing resonance
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine set_avg_urr_xs(m, i_nuc, i_E, n_xs, f_xs, g_xs, x_xs)
+
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    integer :: i_nuc
+    integer :: i_E
+    real(8) :: m
+    real(8) :: n_xs
+    real(8) :: f_xs
+    real(8) :: g_xs
+    real(8) :: x_xs
+!$omp threadprivate(nuc)
+
+    nuc => nuclides(i_nuc)
+
+! TODO: LOG_LOG?
+    ! infinite-dilute elastic scattering
+    n_xs = interpolator(m, &
+      & nuc % avg_urr_n(i_E), nuc % avg_urr_n(i_E + 1), LINEAR_LINEAR)
+
+    ! infinite-dilute fission
+    f_xs = interpolator(m, &
+      & nuc % avg_urr_f(i_E), nuc % avg_urr_f(i_E + 1), LINEAR_LINEAR)
+
+    ! infinite-dilute capture
+    g_xs = interpolator(m, &
+      & nuc % avg_urr_g(i_E), nuc % avg_urr_g(i_E + 1), LINEAR_LINEAR)
+
+    ! infinite-dilute competitive reaction xs
+    x_xs = interpolator(m, &
+      & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), LINEAR_LINEAR)
+
+  end subroutine set_avg_urr_xs
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CALC_URR_BCKGRND interpolates the evaluator-supplied background xs at the
+! current energy
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, int_style)
+
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    integer :: i_nuc
+    integer :: n_pts
+    integer :: i_grid
+    integer :: int_style ! interpolation scheme
+    real(8) :: f
+!$omp threadprivate(nuc)
+
+    nuc => nuclides(i_nuc)
+
+    select case(int_style)
+    case(LINEAR_LINEAR)
+      ! elastic scattering xs
+      nuc % urr_elastic_tmp(n_pts) = interpolator(f, &
+        & nuc % elastic(i_grid), nuc % elastic(i_grid + 1), &
+        & int_style)
+
+      ! radiative capture xs
+      nuc % urr_capture_tmp(n_pts) = interpolator(f, &
+        & nuc % absorption(i_grid) - nuc % fission(i_grid), &
+        & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), &
+        & int_style)
+
+      ! fission xs
+      nuc % urr_fission_tmp(n_pts) = interpolator(f, &
+        & nuc % fission(i_grid), nuc % fission(i_grid + 1), &
+        & int_style)
+
+      ! competitive first level inelastic scattering xs
+      nuc % urr_inelastic_tmp(n_pts) = interpolator(f, &
+        &   nuc % total(i_grid) &
+        & - nuc % absorption(i_grid) &
+        & - nuc % elastic(i_grid), &
+        &   nuc % total(i_grid + 1) &
+        & - nuc % absorption(i_grid + 1) &
+        & - nuc % elastic(i_grid + 1), &
+        & int_style)
+
+      ! total xs
+      nuc % urr_total_tmp(n_pts) = interpolator(f, &
+        & nuc % total(i_grid), nuc % total(i_grid + 1), &
+        & int_style)
+
+    case default
+      call fatal_error('Only lin-lin interpolation on the evaluator-supplied &
+        &URR background grid is supported.')
+
+    end select
+
+  end subroutine calc_urr_bckgrnd
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ADD2BCKGRND adds the resonance xs component to the evaluator-supplied
+! background
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
+
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(CrossSection) :: sig_t   ! total xs object
+    type(CrossSection) :: sig_n   ! elastic scattering xs object
+    type(CrossSection) :: sig_gam ! radiative capture xs object
+    type(CrossSection) :: sig_f   ! fission xs object
+    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    integer :: i_nuc
+    integer :: n_pts
+!$omp threadprivate(nuc)
+
+    nuc => nuclides(i_nuc)
+
+    ! elastic scattering xs
+    nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
+      & + sig_n % val
+
+    ! radiative capture xs
+    nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
+      & + sig_gam % val
+
+    ! fission xs
+    nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
+      & + sig_f % val
+
+    ! competitive first level inelastic scattering xs
+    nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
+      & + sig_x % val
+
+    ! total xs
+    nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
+      & + sig_t % val
+
+  end subroutine add2bckgrnd
 
 end module unresolved

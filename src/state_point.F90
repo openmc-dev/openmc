@@ -1663,39 +1663,31 @@ contains
     integer(HID_T) :: group_id
 #endif
 
+#ifndef HDF5
+    call warning('Distribmat material writing only implemented for HDF5.')
+    return
+#else
+
     ! Create files and write headers (master only)
     if (master) then
 
-#ifdef HDF5
       filename = 'materials-out.h5'
       call fh % file_create(filename)
-#endif
 
       do i = 1, n_materials
         mat => materials(i)
         if (mat % n_comp > 1) then
 
-#ifdef HDF5
           groupname = 'mat-' // trim(to_str(mat % id))
-#else
-          filename = trim(path_output) // 'material'
-          filename = trim(filename) // '.m' // trim(to_str(mat % id))
-          filename = trim(filename) // '.binary'
-#endif
 
           ! Create file and write header
-#ifdef HDF5
           call fh % file_open(filename, 'w')
-#else
-          call fh % file_create(filename, record_len = 8)
-#endif
           call fh % write_data(mat % n_nuclides, 'n_nuclides', &
               group=trim(groupname), record=1)
           call fh % write_data(mat % n_comp, 'n_instances', &
               group=trim(groupname), record=2)
           call fh % file_close()
 
-#ifdef HDF5
           ! Create the full dataset initially so all other procs can write to it
           hdf5_rank = 1
           dims1(1) = mat % n_comp * mat % n_nuclides
@@ -1707,16 +1699,15 @@ contains
           call h5sclose_f(dspace, hdf5_err)
           call h5gclose_f(group_id, hdf5_err)
           call h5fclose_f(file_id, hdf5_err)
-#endif
 
         end if
       end do
     end if
 
-#ifdef MPI
+# ifdef MPI
     ! For parallel io we need to wait for master to create the files
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-#endif
+# endif
 
     ! Only master processes write the compositions
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
@@ -1724,21 +1715,14 @@ contains
         mat => materials(i)
         if (mat % n_comp > 1) then
           
-#ifdef HDF5
           filename = 'materials-out.h5'
           groupname = 'mat-' // trim(to_str(mat % id))
-#else
-          filename = trim(path_output) // 'material'
-          filename = trim(filename) // '.m' // trim(to_str(mat % id))
-          filename = trim(filename) // '.binary'
-#endif
 
           if (master) then
             call write_message("Writing distributed material " // &
                                trim(to_str(mat % id)) // "...", 1)
           end if
 
-#ifdef HDF5
           ! The output interface isn't stable, so to maintain fine-grain control
           ! I use the hdf5 functions here directly
 
@@ -1753,16 +1737,9 @@ contains
           call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
           call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
 
-          ! Open the dataset, dataspace, and memory space
+          ! Open the dataset and dataspace
           call h5dopen_f(group_id, 'comps', dset, hdf5_err)
-          call h5dget_space_f(dset, dspace, hdf5_err)
-          call h5screate_simple_f(1, block1, memspace, hdf5_err)
 
-#else
-          call fh % file_open(filename, 'w', serial = .false., &
-                              direct_access = .true., &
-                              record_len = 8 * mat % n_nuclides)
-#endif
 
           if (mat % otf_compositions) then
             ! OTF mats are spread across all ranks
@@ -1773,6 +1750,10 @@ contains
               idx = mat % reverse_comp_index_map % get_key(j)
               start1 = (idx - 1) * block1
 
+              ! Open the dataspace and memory space
+              call h5dget_space_f(dset, dspace, hdf5_err)
+              call h5screate_simple_f(1, block1, memspace, hdf5_err)
+
               ! Select the hyperslab
               call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
                   count1, hdf5_err, block = block1)
@@ -1780,19 +1761,24 @@ contains
               ! Write the data
               f_ptr = c_loc(mat % comp(j) % atom_density)
               call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
-                  file_space_id = dspace, mem_space_id = memspace, xfer_prp = plist)
+                  file_space_id = dspace, mem_space_id = memspace, &
+                  xfer_prp = plist)
 
-!              call fh % write_data(mat % comp(j) % atom_density, "comps", &
-!                  group=trim(groupname), length=mat % n_nuclides, &
-!                  record=idx, offset=16, collect=.false.)
+              call h5sclose_f(dspace, hdf5_err)
+              call h5sclose_f(memspace, hdf5_err)
 
             end do
 
           else if (master) then
             ! All ranks have all of normal distribmats, so only master writes
+            ! TODO: give each rank an equal number of mats to write out
 
             ! For normal distribmats, the compositions are in order
             do j = 1, mat % n_comp
+
+              ! Open the dataspace and memory space
+              call h5dget_space_f(dset, dspace, hdf5_err)
+              call h5screate_simple_f(1, block1, memspace, hdf5_err)
 
               start1 = (j - 1) * block1
 
@@ -1803,31 +1789,26 @@ contains
               ! Write the data
               f_ptr = c_loc(mat % comp(j) % atom_density)
               call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
-                  file_space_id = dspace, mem_space_id = memspace, xfer_prp = plist)
+                  file_space_id = dspace, mem_space_id = memspace, &
+                  xfer_prp = plist)
 
-!              call fh % write_data(mat % comp(j) % atom_density, "comps", &
-!                  group=trim(groupname), length=mat % n_nuclides, &
-!                  record=j, offset=16, collect=.false.)
+              call h5sclose_f(dspace, hdf5_err)
+              call h5sclose_f(memspace, hdf5_err)
 
             end do
 
           end if
 
-#ifdef HDF5
           ! Close all 
           call h5dclose_f(dset, hdf5_err)
-          call h5sclose_f(dspace, hdf5_err)
-          call h5sclose_f(memspace, hdf5_err)
           call h5pclose_f(plist, hdf5_err)
           call h5gclose_f(group_id, hdf5_err)
           call h5fclose_f(file_id, hdf5_err)
-#else
-          call fh % file_close()
-#endif
 
         end if
       end do
     end if
+#endif
 
   end subroutine write_distribmat_comps
 

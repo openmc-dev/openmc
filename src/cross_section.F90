@@ -11,7 +11,8 @@ module cross_section
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
-  use unresolved,      only: calculate_urr_xs_otf
+  use unresolved,      only: calculate_urr_xs_otf, calc_urr_xs_otf, &
+                             urr_frequency
 
   implicit none
   save
@@ -398,12 +399,20 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
     if (nuc % otf_urr_xs) then
-      if (E * 1.0E6_8 >= nuc % EL(nuc % i_urr) .and. E * 1.0E6_8 <= nuc % EH(nuc % i_urr)) then
-        call calculate_urr_xs_otf(i_nuclide, E * 1.0E6_8)
+      if (E * 1.0E6_8 >= nuc % EL(nuc % i_urr) &
+        & .and. E * 1.0E6_8 <= nuc % EH(nuc % i_urr)) then
+        select case(trim(adjustl(urr_frequency)))
+        case('event')
+          call calculate_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+        case('simulation')
+          call calc_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+        case default
+          call fatal_error('Not a supported URR xs realization frequency.')
+        end select
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then
-      if (E > nuc % urr_data % energy(1) .and. &
-           E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+      if (E > nuc % urr_data % energy(1) &
+        & .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
         call calculate_urr_xs_ptable(i_nuclide, E)
       end if
     end if

@@ -10,7 +10,7 @@ module tally
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
-  use output,           only: header
+  use output,           only: header, write_message
   use output_interface, only: BinaryOutput
   use particle_header,  only: LocalCoord, Particle, deallocate_coord
   use search,           only: binary_search
@@ -2313,6 +2313,8 @@ contains
     real(8) :: k_abs ! Copy of batch absorption estimate of keff
     real(8) :: k_tra ! Copy of batch tracklength estimate of keff
 
+    call write_message("Synchronizing tallies...", 7)
+
 #ifdef MPI
     ! Combine tally results onto master process
     if (reduce_tallies) call reduce_tally_results()
@@ -2372,8 +2374,11 @@ contains
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
 
+    call write_message("Reducing tallies...", 7)
+
     do i = 1, active_tallies % size()
       t => tallies(active_tallies % get_item(i))
+      call write_message("Reducing tally" // trim(to_str(t % id)) // "...", 9)
 
       if (.not. dd_run) then
         

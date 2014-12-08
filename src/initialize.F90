@@ -1037,6 +1037,10 @@ contains
 
     call write_message("Initialized distribcell maps...", 7)
 
+    ! sum the number of occurrences of all cells
+    univ => universes(BASE_UNIVERSE)
+    call count_instance(univ)
+
     ! begin with filters    
     ! Loop over tallies    
     do i = 1, n_tallies
@@ -1111,19 +1115,9 @@ contains
         if (t % filters(j) % type == FILTER_DISTRIBCELL) then
           call write_message("Setting up distribcel tally "//trim(to_str(t%id))//"...", 9)
 
-          ! Determine the number of occurrences of the listed cells
-          l = 0
-          univ => universes(BASE_UNIVERSE)
-
-          ! sum the number of occurrences of all cells requested
-          call count_instance(univ,t % filters(j) % int_bins(1),l)
-
           ! Set number of bins      
-          t % filters(j) % n_bins = l 
-
-          ! Set the number of instances of this cell
           c => cells(t % filters(j) % int_bins(1))
-          c % instances = l
+          t % filters(j) % n_bins = c % instances 
 
         end if
 
@@ -1284,23 +1278,6 @@ contains
         end if
 
       end if  
-
-    end do
-
-    ! Finish counting the instances of all target cells
-    do i = 1, n_cells
-
-      c => cells(i)
-      if (cell_list % has_key(cell_dict % get_key(c % id)) .and. c % instances == 0) then
-
-          j = 0
-          u => universes(BASE_UNIVERSE)
-
-          ! sum the number of occurrences of all cells requested
-          call count_instance(u,cell_dict % get_key(c % id),j)
-          c % instances = j
-
-      end if          
 
     end do
 

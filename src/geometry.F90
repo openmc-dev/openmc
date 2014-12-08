@@ -1921,17 +1921,15 @@ contains
     univ % search(map) = .true.
              
   end function count_target
-  
+
 !===============================================================================
-! COUNT_INSTANCE recursively totals the numbers of occurances of a given cell id
+! COUNT_INSTANCE recursively totals the number of occurrences of all cells
 ! beginning with the universe given.
 !===============================================================================
 
-  recursive subroutine count_instance(univ, goal, kount)
+  recursive subroutine count_instance(univ)
 
     type(Universe), intent(in) :: univ  ! universe to search through
-    integer, intent(in) :: goal         ! target cell ID
-    integer, intent(inout) :: kount     ! number of times target located
 
     integer :: i                    ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
@@ -1951,12 +1949,7 @@ contains
 
       ! get pointer to cell
       c => cells(index_cell)
-      if (cell_dict % get_key(c % id) == goal) then
-        kount = kount + 1
-        ! Cell can't exist more than once in this universe,
-        ! or in a universe below this
-        cycle
-      end if
+      c % instances = c % instances + 1
       if (c % type == CELL_NORMAL) then
         ! ====================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
@@ -1967,7 +1960,7 @@ contains
 
         univ_next => universes(c % fill)
         
-        call count_instance(univ_next,goal,kount)
+        call count_instance(univ_next)
         c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
@@ -1990,7 +1983,7 @@ contains
           do i_y = 1, n_y
             do i_z = 1, n_z
               univ_next => universes(lat % universes(i_x,i_y,i_z))
-              call count_instance(univ_next,goal,kount)
+              call count_instance(univ_next)
               c => cells(index_cell)
               lat => lattices(c % fill)
             end do
@@ -2000,7 +1993,6 @@ contains
       end if
     end do
              
-  end subroutine count_instance
-
-
+  end subroutine count_instance 
+ 
 end module geometry

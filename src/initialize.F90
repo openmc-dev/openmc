@@ -845,6 +845,8 @@ contains
     logical        :: density_in_atom ! density specified in atom/b-cm?
     type(Material), pointer :: mat => null()
 
+    call write_message("Normalizing materials...", 7)
+
     ! first find the index in the xs_listings array for each nuclide in each
     ! material
     do i = 1, n_materials
@@ -1033,6 +1035,8 @@ contains
     type(Cell),           pointer :: c
     type(Material),       pointer :: mat
 
+    call write_message("Initialized distribcell maps...", 7)
+
     ! begin with filters    
     ! Loop over tallies    
     do i = 1, n_tallies
@@ -1094,8 +1098,8 @@ contains
 
         end do
 
-      ! Move the tally filter array back into the real tally object
-      call move_alloc(filters,t % filters)
+        ! Move the tally filter array back into the real tally object
+        call move_alloc(filters,t % filters)
 
       end if
 
@@ -1105,6 +1109,7 @@ contains
       do j = 1, t % n_filters
         ! Determine type of filter
         if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          call write_message("Setting up distribcel tally "//trim(to_str(t%id))//"...", 9)
 
           ! Determine the number of occurrences of the listed cells
           l = 0
@@ -1179,6 +1184,8 @@ contains
     type(Material),    pointer :: mat => null()       ! pointer to material
     type(TallyObject), pointer :: t => null()         ! pointer to tally
     type(TallyFilter), pointer :: tf => null()        ! pointer to filter
+
+    call write_message("Allocating distribcell offsets...", 7)
 
     ! Begin gathering list of cells in distribcell tallies
     maps = 0
@@ -1425,11 +1432,14 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Material), pointer, save :: mat => null()  ! pointer to material
 
+    call write_message("Verifying distributed materials...", 7)
+
     ! Verify that all distributed materials have a composition / density length
     ! equal to either 1 or the number of instance
     do i = 1, n_materials
 
       mat => materials(i)
+      call write_message("Verifying mat "//trim(to_str(mat%id))//"...", 9)
 
       if (mat % distrib_dens) then
 

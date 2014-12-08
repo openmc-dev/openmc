@@ -3,6 +3,8 @@ module tally_initialize
   use constants
   use global
   use error,        only: warning
+  use output,       only: write_message
+  use string,       only: to_str
   use tally_header, only: TallyObject, TallyMapElement, TallyMapItem
 
   implicit none
@@ -43,9 +45,12 @@ contains
     integer :: otf_initial_size
     type(TallyObject), pointer :: t => null()
 
+    call write_message("Setting up tally arrays...", 7)
+
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+      call write_message("Setting up tally array "//trim(to_str(t%id))//"...", 9)
 
       ! Allocate stride and matching_bins arrays
       allocate(t % stride(t % n_filters))
@@ -120,6 +125,8 @@ contains
     integer :: type ! type of tally filter
     type(TallyObject), pointer :: t => null()
 
+    call write_message("Setting up tally maps...", 7)
+
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters
     allocate(tally_maps(N_FILTER_TYPES - 3))
@@ -134,6 +141,7 @@ contains
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+      call write_message("Setting up tally map "//trim(to_str(t%id))//"...", 9)
 
       ! No need to set up tally maps for surface current tallies
       if (t % type == TALLY_SURFACE_CURRENT) cycle

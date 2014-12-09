@@ -745,13 +745,14 @@ contains
 
     character(MAX_FILE_LEN), intent(in) :: filename
 
-    character(len=MAX_WORD_LEN) :: group ! HDF5 group name
-    integer(HID_T) :: hdf5_grp
-    integer(HID_T) :: file_id
+    character(MAX_FILE_LEN) :: groupname
     integer :: i, j
     integer :: n, m
     integer :: idx
     type(TallyObject), pointer :: t => null()
+
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
 
     ! Set up OTF tally datasets
     if (master) then
@@ -768,15 +769,15 @@ contains
 
           hdf5_rank = 1
           dims1(1) = n*m
-          group = "tallies/tally" // to_str(i)
+          groupname = "tallies/tally" // to_str(i)
           call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
-          call hdf5_open_group(file_id, group, hdf5_grp)
+          call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
-          call h5dcreate_f(hdf5_grp, 'results', hdf5_tallyresult_t, dspace, &
+          call h5dcreate_f(group_id, 'results', hdf5_tallyresult_t, dspace, &
               dset, hdf5_err)
           call h5dclose_f(dset, hdf5_err)
           call h5sclose_f(dspace, hdf5_err)
-          call hdf5_close_group(hdf5_grp)
+          call h5gclose_f(group_id, hdf5_err)
           call h5fclose_f(file_id, hdf5_err)
 
         end if
@@ -784,14 +785,24 @@ contains
       end do
     end if
 
-#ifdef MPI
+# ifdef MPI
     ! All other domains need to wait for the datasets to be created before they
     ! can write to it
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-#endif
+# endif
 
     ! Write tally data to the file
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
+
+      ! Open the file
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+
+      ! Create the property list to describe independent parallel I/O
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+    
+      count1 = 1
+
       do i = 1, n_tallies
 
         ! Set point to current tally
@@ -807,19 +818,52 @@ contains
 
         if (t % on_the_fly_allocation) then
 
-          call fh % file_open(filename, 'w', serial = .false.)
+          ! Open the group
+          groupname = 'tallies/tally' // trim(to_str(i))
+          call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
+
+          ! Open the dataset and dataspace
+          call h5dopen_f(group_id, 'results', dset, hdf5_err)
+
+          ! Loop through OTF filter bins and write
           do j = 1, t % next_filter_idx - 1
             idx = t % reverse_filter_index_map % get_key(j)
-            call fh % write_data(t % results(:,j), "results", &
-                group="tallies/tally" // to_str(i), &
-                length=size(t % results(:,j)), record=idx, collect=.false.)
-          end do 
+            
+            block1 = size(t % results(:,j))
+            start1 = (idx - 1) * block1
 
-          call fh % file_close()
+            ! Open the dataspace and memory space
+            call h5dget_space_f(dset, dspace, hdf5_err)
+            call h5screate_simple_f(1, block1, memspace, hdf5_err)
+
+            ! Select the hyperslab
+            call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+                count1, hdf5_err, block = block1)
+
+            ! Write the data
+            f_ptr = c_loc(t % results(1,j))
+            call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err, &
+                file_space_id = dspace, mem_space_id = memspace, &
+                xfer_prp = plist)
+
+            ! Close the dataspace and memory space
+            call h5sclose_f(dspace, hdf5_err)
+            call h5sclose_f(memspace, hdf5_err)
+
+          end do
+
+          ! Close dataset and group
+          call h5dclose_f(dset, hdf5_err)
+          call h5gclose_f(group_id, hdf5_err)
 
         end if
 
       end do
+
+      ! Close property list and file
+      call h5pclose_f(plist, hdf5_err)
+      call h5fclose_f(file_id, hdf5_err)
+
     end if
 
   end subroutine write_state_point_otf_tally_data
@@ -1711,11 +1755,19 @@ contains
 
     ! Only master processes write the compositions
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
+
+      ! Open the file
+      filename = 'materials-out.h5'
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+
+      ! Create the property list to describe independent parallel I/O
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+
       do i = 1, n_materials
         mat => materials(i)
         if (mat % n_comp > 1) then
           
-          filename = 'materials-out.h5'
           groupname = 'mat-' // trim(to_str(mat % id))
 
           if (master) then
@@ -1729,14 +1781,9 @@ contains
           block1 = mat % n_nuclides
           count1 = 1
 
-          ! Open the file and group
-          call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
+          ! Open the group
           call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
   
-          ! Create the property list to describe independent parallel I/O
-          call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-          call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
-
           ! Open the dataset and dataspace
           call h5dopen_f(group_id, 'comps', dset, hdf5_err)
 
@@ -1792,6 +1839,7 @@ contains
                   file_space_id = dspace, mem_space_id = memspace, &
                   xfer_prp = plist)
 
+              ! Close the dataspace and memory space
               call h5sclose_f(dspace, hdf5_err)
               call h5sclose_f(memspace, hdf5_err)
 
@@ -1799,14 +1847,17 @@ contains
 
           end if
 
-          ! Close all 
+          ! Close dataset and group
           call h5dclose_f(dset, hdf5_err)
-          call h5pclose_f(plist, hdf5_err)
           call h5gclose_f(group_id, hdf5_err)
-          call h5fclose_f(file_id, hdf5_err)
 
         end if
       end do
+
+      ! Close property list and file
+      call h5pclose_f(plist, hdf5_err)
+      call h5fclose_f(file_id, hdf5_err)
+
     end if
 #endif
 

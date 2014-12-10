@@ -247,6 +247,7 @@ module global
   type(Timer) :: time_inactive      ! timer for inactive batches
   type(Timer) :: time_active        ! timer for active batches
   type(Timer) :: time_transport     ! timer for transport only
+  type(Timer) :: time_statepoint    ! timer for statepoint writing
   type(Timer) :: time_finalize      ! timer for finalization
   type(Timer) :: time_dd_sync       ! timer for DD total scatter sync
   type(Timer) :: time_dd_info       ! timer for DD information sync only

@@ -66,6 +66,9 @@ contains
     type(ElemKeyValueII), pointer :: current => null()
     type(ElemKeyValueII), pointer :: next => null()
 
+    ! Start statepoint timer
+    call time_statepoint % start()
+
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
         & zero_padded(current_batch, count_digits(n_batches))
@@ -733,6 +736,9 @@ contains
     ! Write OTF tallies from DD runs, which were deferred for HDF5
     call write_state_point_otf_tally_data(filename)
 #endif
+
+    ! Start statepoint timer
+    call time_statepoint % stop()
 
   end subroutine write_state_point
 

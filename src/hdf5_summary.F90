@@ -685,6 +685,8 @@ contains
          group="timing")
     call su % write_data(time_finalize % elapsed, "time_finalize", &
          group="timing")
+    call su % write_data(time_statepoint % elapsed, "time_statepoint", &
+         group="timing")
     call su % write_data(time_total % elapsed, "time_total", &
          group="timing")
 

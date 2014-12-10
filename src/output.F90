@@ -1495,6 +1495,7 @@ contains
     write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
     write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
+    write(ou,100) "  Time writing statepoints", time_statepoint % elapsed
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
     if (cmfd_run) write(ou,100) "    Building matrices", &
                   time_cmfdbuild % elapsed

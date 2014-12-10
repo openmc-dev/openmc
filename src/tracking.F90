@@ -20,7 +20,6 @@ module tracking
                              score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              finalize_particle_track
-use mpi
   implicit none
 
 contains

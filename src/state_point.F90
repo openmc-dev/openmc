@@ -791,19 +791,20 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 # endif
 
-    ! Setup file access property list with parallel I/O access
-    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
-
-    ! Open the file
-    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
-        access_prp = plist)
-
-    ! Close property list
-    call h5pclose_f(plist, hdf5_err)
-
     ! Write tally data to the file
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
+
+      ! Setup file access property list with parallel I/O access
+      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+      call h5pset_fapl_mpio_f(plist, domain_decomp % comm_domain_masters, &
+          MPI_INFO_NULL, hdf5_err)
+
+      ! Open the file
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
+          access_prp = plist)
+
+      ! Close property list
+      call h5pclose_f(plist, hdf5_err)
 
       ! Create the property list to describe independent parallel I/O
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -871,10 +872,10 @@ contains
       ! Close property list
       call h5pclose_f(plist, hdf5_err)
 
-    end if
+      ! Close the file
+      call h5fclose_f(file_id, hdf5_err)
 
-    ! Close the file
-    call h5fclose_f(file_id, hdf5_err)
+    end if
 
   end subroutine write_state_point_otf_tally_data
 #endif
@@ -1763,20 +1764,21 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 # endif
 
-    ! Setup file access property list with parallel I/O access
-    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
-
-    ! Open the file
-    filename = 'materials-out.h5'
-    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
-        access_prp = plist)
-
-    ! Close property list
-    call h5pclose_f(plist, hdf5_err)
-
     ! Only master processes write the compositions
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
+
+      ! Setup file access property list with parallel I/O access
+      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+      call h5pset_fapl_mpio_f(plist, domain_decomp % comm_domain_masters, &
+          MPI_INFO_NULL, hdf5_err)
+
+      ! Open the file
+      filename = 'materials-out.h5'
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
+          access_prp = plist)
+
+      ! Close property list
+      call h5pclose_f(plist, hdf5_err)
 
       ! Create the property list to describe independent parallel I/O
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -1876,10 +1878,10 @@ contains
       ! Close property list
       call h5pclose_f(plist, hdf5_err)
 
-    end if
+      ! Close the file
+      call h5fclose_f(file_id, hdf5_err)
 
-    ! Close the file
-    call h5fclose_f(file_id, hdf5_err)
+    end if
 #endif
 
   end subroutine write_distribmat_comps

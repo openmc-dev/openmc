@@ -29,6 +29,8 @@ contains
     integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
+    integer :: world_group
+    integer :: domain_master_group
 
     call write_message("Initializing domain decomposition parameters...", 6)
 
@@ -79,12 +81,21 @@ contains
       call dd % bins_dict % add_key(neighbor_meshbin, d)
     end do
     
+#ifdef MPI
     ! Initialize different MPI communicators for each domain, for fission bank
     ! and tally synchronization
-#ifdef MPI
     call MPI_COMM_SPLIT(MPI_COMM_WORLD, dd % meshbin, rank, dd % comm, mpi_err)
     call MPI_COMM_SIZE(dd % comm, dd % n_domain_procs, mpi_err)
     call MPI_COMM_RANK(dd % comm, dd % rank, mpi_err)
+
+
+    ! Initialize a communicator containing only domain master ranks
+    call MPI_COMM_GROUP(MPI_COMM_WORLD, world_group, mpi_err)
+    call MPI_GROUP_INCL(world_group, dd % n_domains, dd % domain_masters, &
+        domain_master_group, mpi_err)
+    call MPI_COMM_CREATE(MPI_COMM_WORLD, domain_master_group, &
+        dd % comm_domain_masters, mpi_err)
+
 #endif    
 
     ! Set local_master

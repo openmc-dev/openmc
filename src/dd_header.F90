@@ -25,6 +25,7 @@ module dd_header
     
     ! DD communication information
     integer :: comm   ! communicator for fission bank and tallies in this domain
+    integer :: comm_domain_masters ! communicator for local domain masters
     integer :: rank   ! this processes's rank in domain sub-communicator
     logical :: local_master         ! master process in this domain?
     integer :: n_domain_procs       ! number of processors in domain sub-comm

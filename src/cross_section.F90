@@ -2,12 +2,12 @@ module cross_section
 
   use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
-  use error,           only: fatal_error, warning
+  use error,           only: fatal_error
   use fission,         only: nu_total
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
-  use output,          only: write_coords
+  use output,          only: write_coords, write_message
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
@@ -45,8 +45,8 @@ contains
       mat => materials(i)
 
       if (mat % nat_elements) then
-        call warning('xs_gridpoints element(s) in material(s) with natural&
-          & elements will be ignored')
+        call write_message('xs_gridpoints element(s) in material(s) with natural&
+          & elements will be ignored', 6)
         cycle
       end if
 

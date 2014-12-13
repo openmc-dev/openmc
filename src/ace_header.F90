@@ -256,7 +256,8 @@ module ace_header
 
     ! URR resonance realization (vector of resonances for a value
     ! of J for a given (i_lam, L))
-    type(URRResonances), allocatable :: urr_resonances(:,:)
+    type(URRResonances), allocatable :: urr_resonances(:,:,:)
+    integer :: n_real = 100 ! number of independent realizations
 
     ! set of Reich-Moore resonances (vector of resonances for each l
     type(ReichMooreResonances), allocatable :: rm_resonances(:)
@@ -276,7 +277,7 @@ module ace_header
     real(8), allocatable :: urr_total(:)         ! total
 
     ! pointwise URR cross section parameters
-    integer :: n_urr_resonances = 1000000   ! max URR resonances for a given (l,J)
+    integer :: n_urr_resonances = 20000   ! max URR resonances for a given (l,J)
     integer :: n_urr_gridpoints = 100000000 ! max URR energy-cross section gridpoints
     real(8) :: urr_dE  = 0.1_8   ! diff between URR energy grid points [eV]
     real(8) :: urr_tol = 0.001_8 ! max pointwise xs reconstruction relative error
@@ -619,22 +620,28 @@ contains
   subroutine alloc_ensemble(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
-    integer :: i_l   ! orbital angular momentum quantum number index
-    integer :: i_lam ! resonance index
+    integer :: i_real ! realization index
+    integer :: i_l    ! orbital angular momentum quantum number index
+    integer :: i_lam  ! resonance index
 
     ! allocate energies and orbital quantum numbers for resonances
-    allocate(this % urr_resonances(this % n_urr_resonances, &
+    allocate(this % urr_resonances(this % n_real, this % n_urr_resonances, &
       & this % NLS(this % i_urr)))
 
-    ! loop over orbital quantum numbers
-    do i_l = 1, this % NLS(this % i_urr)
+    ! loop over realizations
+    do i_real = 1, this % n_real
 
-      ! loop over resonances
-      do i_lam = 1, this % n_urr_resonances
+      ! loop over orbital quantum numbers
+      do i_l = 1, this % NLS(this % i_urr)
 
-        ! allocate resonance parameters
-        call this % urr_resonances(i_lam, i_l) % alloc_resonances(this % NJS(i_l))
+        ! loop over resonances
+        do i_lam = 1, this % n_urr_resonances
 
+          ! allocate resonance parameters
+          call this % urr_resonances(i_real, i_lam, i_l) % alloc_resonances&
+            & (this % NJS(i_l))
+
+        end do
       end do
     end do
 
@@ -649,8 +656,28 @@ contains
   subroutine dealloc_ensemble(this)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: i_real ! realization index
+    integer :: i_l    ! orbital angular momentum quantum number index
+    integer :: i_lam  ! resonance index
 
-    
+    ! loop over realizations
+    do i_real = 1, this % n_real
+
+      ! loop over orbital quantum numbers
+      do i_l = 1, this % NLS(this % i_urr)
+
+        ! loop over resonances
+        do i_lam = 1, this % n_urr_resonances
+
+          ! allocate resonance parameters
+          call this % urr_resonances(i_real, i_lam, i_l) % dealloc_resonances()
+
+        end do
+      end do
+    end do    
+
+    ! allocate energies and orbital quantum numbers for resonances
+    deallocate(this % urr_resonances)
 
   end subroutine dealloc_ensemble
 
@@ -677,7 +704,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: ! DEALLOC_RESONANCES deallocates a vector of URR resonances for a given J, for a
+! DEALLOC_RESONANCES deallocates a vector of URR resonances for a given J, for a
 ! given (i_lam, i_l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -686,7 +713,12 @@ contains
 
     class(URRResonances), intent(inout) :: this ! resonance vector object
 
-    
+    deallocate(this % E_lam)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GF)
+    deallocate(this % GX)
+    deallocate(this % GT)    
 
   end subroutine dealloc_resonances
 

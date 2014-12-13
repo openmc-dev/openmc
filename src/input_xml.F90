@@ -15,10 +15,20 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: competitive, l_waves, n_avg_urr_nuclides, n_otf_urr_xs,&
-                              n_urr_method, urr_avg_batches, urr_avg_histories,&
-                              urr_avg_tol,  urr_endf_filenames, urr_formalism, &
-                              urr_frequency, urr_method, urr_pointwise,        &
+  use unresolved,       only: competitive, &
+                              i_realization, &
+                              l_waves, &
+                              n_avg_urr_nuclides, &
+                              n_otf_urr_xs, &
+                              n_urr_method, &
+                              urr_avg_batches, &
+                              urr_avg_histories, &
+                              urr_avg_tol, &
+                              urr_endf_filenames, &
+                              urr_formalism, &
+                              urr_frequency, &
+                              urr_method, &
+                              urr_pointwise, &
                               urr_zaids
 
   use xml_interface
@@ -3176,7 +3186,7 @@ contains
     end if
 
     ! Display output message
-    call write_message("Reading urr XML file...")
+    call write_message("Reading urr XML file...", 5)
 
     ! Parse urr.xml file
     call open_xmldoc(doc, filename)
@@ -3319,6 +3329,15 @@ contains
         end select
       else
         urr_frequency = 'event'
+      end if
+
+      ! determine which realization to use if multiple are generated
+      i_realization = 0
+      if (check_for_node(otf_node, "realization_index")) then
+        call get_node_value(otf_node, "realization_index", i_realization)
+        if (i_realization < 0) then
+          call fatal_error('realization_index must be non-negative')
+        end if
       end if
 
       ! Include resonance structure of competitive URR cross sections?

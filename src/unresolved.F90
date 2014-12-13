@@ -19,6 +19,7 @@ module unresolved
   character(80)              :: urr_formalism         ! URR formalism
   character(80)              :: urr_frequency         ! freq of realizations
   integer, allocatable :: urr_zaids(:)    ! ZAID's for URR nuclides
+! TODO: remove n_resonances?
   integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
   integer :: n_otf_urr_xs       ! number of nuclides to calc otf urr xs for
   integer :: n_avg_urr_nuclides ! number of nuclides to calc average urr xs for
@@ -26,9 +27,10 @@ module unresolved
   integer :: l_waves(4)         ! number of contributing l-wave
   integer :: urr_avg_batches    ! min number of batches for inf dil xs calc
   integer :: urr_avg_histories  ! number of histories for inf dil xs calc
-  integer :: n_real = 1         ! number of URR xs independent realizations
   integer :: i_real             ! URR xs realization index for calculation
+  integer :: i_realization      ! user-specified realization index
   real(8) :: urr_avg_tol ! max rel error for inf dil xs calc termination
+!$omp threadprivate(i_real)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -200,6 +202,7 @@ contains
     integer :: i_l         ! orbital quantum number index
     integer :: i_J         ! total angular momentum quantum #
     integer :: i_E         ! tabulated URR parameters energy index
+    integer :: i_ens       ! ensemble index
     integer :: i_res       ! resonance counter
     integer :: n_res       ! number of l-wave resonances to include
     integer :: n_above_urr ! number of resonances abover upper URR energy
@@ -222,105 +225,109 @@ contains
 
       allocate(n_resonances(nuc % NLS(nuc % i_urr)))
 
-      ! loop over orbital angular momenta
-      ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
+      ! loop over independent realizations
+      ENSEMBLE_LOOP: do i_ens = 1, nuc % n_real
+        
+        ! loop over orbital angular momenta
+        ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
 
-        ! set current orbital angular momentum quantum #
-        nuc % L = i_l - 1
+          ! set current orbital angular momentum quantum #
+          nuc % L = i_l - 1
 
-        ! get the number of contributing l-wave resonances for this l
-        n_res = l_wave_resonances(nuc % L)
+          ! get the number of contributing l-wave resonances for this l
+          n_res = l_wave_resonances(nuc % L)
 
-        ! loop over total angular momenta
-        TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+          ! loop over total angular momenta
+          TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
 
-          ! set current total angular momentum quantum #
-          nuc % J = nuc % AJ(i_l) % data(i_J)
+            ! set current total angular momentum quantum #
+            nuc % J = nuc % AJ(i_l) % data(i_J)
 
-          ! set current partial width degrees of freedom
-          nuc % AMUX = int(nuc % DOFX(i_l) % data(i_J))
-          nuc % AMUN = int(nuc % DOFN(i_l) % data(i_J))
-          nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
-          nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
+            ! set current partial width degrees of freedom
+            nuc % AMUX = int(nuc % DOFX(i_l) % data(i_J))
+            nuc % AMUN = int(nuc % DOFN(i_l) % data(i_J))
+            nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
+            nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
 
-          ! set energy of the lowest-lying contributing URR resonance
-          nuc % D = nuc % D_mean(i_l) % data(i_J) % data(1)
-          if (i_l > nuc % NLS(nuc % i_urr - 1)) then
-            ! the URR has more l-states than the RRR; place resonance energy
-            ! randomly about lower URR energy bound
-            E_res = nuc % EL(nuc % i_urr) &
+            ! set energy of the lowest-lying contributing URR resonance
+            nuc % D = nuc % D_mean(i_l) % data(i_J) % data(1)
+            if (i_l > nuc % NLS(nuc % i_urr - 1)) then
+              ! the URR has more l-states than the RRR; place resonance energy
+              ! randomly about lower URR energy bound
+              E_res = nuc % EL(nuc % i_urr) &
                 & + (ONE - TWO * prn()) * wigner_dist(nuc % D)
-          else
-            ! offset first URR resonance energy from the highest-energy RRR
-            ! resonance with the same (l,J) spin sequence
-            E_res = E_last_rrr(i_nuc, nuc % L, nuc % J) + wigner_dist(nuc % D)
-          end if
-
-          ! resonance index
-          i_res = 1
-
-          n_above_urr = 0
-
-          RESONANCE_LOOP: do while(n_above_urr < n_res/2)
-
-            ! compute interpolation factor
-            if (E_res < nuc % ES(1)) then
-              i_E = 1
-            else if (E_res > nuc % ES(nuc % NE)) then
-              i_E = nuc % NE - 1
             else
-              i_E = binary_search(nuc % ES, nuc % NE, E_res)
+              ! offset first URR resonance energy from the highest-energy RRR
+              ! resonance with the same (l,J) spin sequence
+              E_res = E_last_rrr(i_nuc, nuc % L, nuc % J) + wigner_dist(nuc % D)
             end if
 
-            m = interp_factor(E_res, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
+            ! resonance index
+            i_res = 1
 
-            ! set current mean unresolved resonance parameters
-            nuc % D = interpolator(m, &
-              & nuc % D_mean(i_l) % data(i_J) % data(i_E), &
-              & nuc % D_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-            nuc % GN0 = interpolator(m, &
-              & nuc % GN0_mean(i_l) % data(i_J) % data(i_E), &
-              & nuc % GN0_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-            nuc % GG = interpolator(m, &
-              & nuc % GG_mean(i_l) % data(i_J) % data(i_E), &
-              & nuc % GG_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+            n_above_urr = 0
+
+            RESONANCE_LOOP: do while(n_above_urr < n_res/2)
+
+              ! compute interpolation factor
+              if (E_res < nuc % ES(1)) then
+                i_E = 1
+              else if (E_res > nuc % ES(nuc % NE)) then
+                i_E = nuc % NE - 1
+              else
+                i_E = binary_search(nuc % ES, nuc % NE, E_res)
+              end if
+
+              m = interp_factor(E_res, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
+
+              ! set current mean unresolved resonance parameters
+              nuc % D = interpolator(m, &
+                & nuc % D_mean(i_l) % data(i_J) % data(i_E), &
+                & nuc % D_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+              nuc % GN0 = interpolator(m, &
+                & nuc % GN0_mean(i_l) % data(i_J) % data(i_E), &
+                & nuc % GN0_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+              nuc % GG = interpolator(m, &
+                & nuc % GG_mean(i_l) % data(i_J) % data(i_E), &
+                & nuc % GG_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
 ! TODO: add in catch here for when threshold occurs between tabulated pts
-            if (nuc % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-              & .and. nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-              nuc % GF = interpolator(m, &
-                & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
-                & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-            else
-              nuc % GF = ZERO
-            end if
+              if (nuc % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
+                & .and. nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+                nuc % GF = interpolator(m, &
+                  & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
+                  & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+              else
+                nuc % GF = ZERO
+              end if
 ! TODO: add in catch here for when threshold occurs between tabulated pts
-            if (nuc % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-              & .and. nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-              nuc % GX = interpolator(m, &
-                & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
-                & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-            else
-              nuc % GX = ZERO
-            end if
+              if (nuc % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
+                & .and. nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+                nuc % GX = interpolator(m, &
+                  & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
+                  & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+              else
+                nuc % GX = ZERO
+              end if
 
-            ! sample unresolved resonance parameters for this spin
-            ! sequence, at this energy
-            res % E_lam = E_res
-            call res % channel_width(i_nuc)
-            call add_parameters(res, i_nuc, i_res, i_l, i_J)
+              ! sample unresolved resonance parameters for this spin
+              ! sequence, at this energy
+              res % E_lam = E_res
+              call res % channel_width(i_nuc)
+              call add_parameters(res, i_nuc, i_ens, i_res, i_l, i_J)
 
-            ! add an additional resonance
-            i_res = i_res + 1
-            E_res = E_res + wigner_dist(nuc % D)
+              ! add an additional resonance
+              i_res = i_res + 1
+              E_res = E_res + wigner_dist(nuc % D)
 
-            if (E_res > nuc % EH(nuc % i_urr)) n_above_urr = n_above_urr + 1
+              if (E_res > nuc % EH(nuc % i_urr)) n_above_urr = n_above_urr + 1
 
-          end do RESONANCE_LOOP
-        end do TOTAL_ANG_MOM_LOOP
+            end do RESONANCE_LOOP
+          end do TOTAL_ANG_MOM_LOOP
 
-        n_resonances(i_l) = i_res - 1
+          n_resonances(i_l) = i_res - 1
 
-      end do ORBITAL_ANG_MOM_LOOP
+        end do ORBITAL_ANG_MOM_LOOP
+      end do ENSEMBLE_LOOP
     end do NUCLIDE_LOOP
 
   end subroutine resonance_ensemble
@@ -396,7 +403,7 @@ contains
       nuc % urr_energy_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
       nuc % urr_elastic_tmp(n_pts) = nuc % elastic(i_grid)
       nuc % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) &
-                                 & - nuc % fission(i_grid)
+        & - nuc % fission(i_grid)
       nuc % urr_fission_tmp(n_pts) = nuc % fission(i_grid)
       nuc % urr_total_tmp(n_pts)   = nuc % total(i_grid)
 
@@ -463,7 +470,8 @@ contains
               ! find the nearest lower resonance
               i_low = int(i_last(i_l) % data(i_J))
 
-              do while(nuc % urr_resonances(i_low, i_l) % E_lam(i_J) < nuc % E)
+              do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
+                & < nuc % E)
                 i_low = i_low + 1
               end do
               i_low = i_low - 1
@@ -641,7 +649,7 @@ contains
               ! find the nearest lower resonance
               i_low = int(i_last(i_l) % data(i_J))
 
-              do while(nuc % urr_resonances(i_low, i_l) % E_lam(i_J) < nuc % E)
+              do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
                 i_low = i_low + 1
               end do
               i_low = i_low - 1
@@ -827,7 +835,7 @@ contains
             ! find the nearest lower resonance
             i_low = int(i_last(i_l) % data(i_J))
 
-            do while(nuc % urr_resonances(i_low, i_l) % E_lam(i_J) < nuc % E)
+            do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
               i_low = i_low + 1
             end do
             i_low = i_low - 1
@@ -1042,6 +1050,16 @@ contains
     ! reset xs objects
     call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
+    if (i_realization == 0) then
+      ! randomly select which realization to use
+      i_real = ceiling(prn() * nuc % n_real)
+      if (i_real == 0) call fatal_error('i_real is sampled to be 0')
+      if (i_real == nuc % n_real + 1) call fatal_error('i_real is sampled to be n_real+1')
+    else
+      i_real = i_realization
+    end if
+
+
     ! loop over orbital quantum #'s
     ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
 
@@ -1065,7 +1083,7 @@ contains
         call res % reset_resonance(i_nuc)
 
         i_low = 1
-        do while(nuc % urr_resonances(i_low, i_l) % E_lam(i_J) < nuc % E)
+        do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
           i_low = i_low + 1
         end do
         i_low = i_low - 1
@@ -1235,6 +1253,8 @@ contains
     type(CrossSection) :: sig_gam ! radiative capture xs object
     type(CrossSection) :: sig_f   ! fission xs object
     type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    character(6) :: zaid_str ! ENDF-6 MAT number as a string
+    integer :: out_unit = 99 ! output file unit
     integer :: i_nuc ! nuclide index
     integer :: i_E   ! energy grid index
     integer :: i_b   ! batch index
@@ -1253,10 +1273,22 @@ contains
       ! skip nuclides without an OTF URR treatment
       if (.not. nuc % avg_urr_xs) cycle
 
-      micro_xs(i_nuc) % use_ptable = .true.
+      write(zaid_str, '(I6)') nuc % zaid
+      open(unit = out_unit, file = trim(adjustl(zaid_str)) // '-avg-urr-xs.txt')
+      write(out_unit, '(A5,A14,A14,A14,A14,A14,A14,A14,A14,A14)') &
+        & 'batch', 'E [eV]', &
+        & 'n_xs mean [b]', 'n_xs sig [b]', &
+        & 'f_xs mean [b]', 'f_xs sig [b]', &
+        & 'g_xs mean [b]', 'g_xs sig [b]', &
+        & 'x_xs mean [b]', 'x_xs sig [b]'
+      write(*, '(A5,A14,A14,A14,A14,A14,A14,A14,A14,A14)') &
+        & 'batch', 'E [eV]', &
+        & 'n_xs mean [b]', 'n_xs sig [b]', &
+        & 'f_xs mean [b]', 'f_xs sig [b]', &
+        & 'g_xs mean [b]', 'g_xs sig [b]', &
+        & 'x_xs mean [b]', 'x_xs sig [b]'
 
-      ! allocate infinite-dilute cross section objects
-      call nuc % alloc_avg_urr()
+      micro_xs(i_nuc) % use_ptable = .true.
 
       ! loop over tabulated ENDF energies
       ENERGY_LOOP: do i_E = 1, nuc % NE
@@ -1374,7 +1406,12 @@ contains
             & .and. max(sig_n % rel_unc, sig_f % rel_unc, sig_gam % rel_unc, &
             & sig_x % rel_unc) < urr_avg_tol) then
             if (1==1) then
-              write(*,'(I5,ES10.3,ES10.3,ES10.3,ES10.3,ES10.3,ES10.3,ES10.3,ES10.3,ES10.3)') &
+              write(out_unit, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
+                & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
+                &         sig_f % xs_mean, sig_f % xs_sem, &
+                &         sig_gam % xs_mean, sig_gam % xs_sem, &
+                &         sig_x % xs_mean, sig_x % xs_sem
+              write(*, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
                 & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
                 &         sig_f % xs_mean, sig_f % xs_sem, &
                 &         sig_gam % xs_mean, sig_gam % xs_sem, &
@@ -1392,6 +1429,9 @@ contains
         nuc % avg_urr_x(i_E) = sig_x % xs_mean
 
       end do ENERGY_LOOP
+
+      close(out_unit)
+
     end do NUCLIDE_LOOP
 
   end subroutine calculate_avg_urr_xs
@@ -2578,11 +2618,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_parameters(res, i_nuc, i_res, i_l, i_J)
+  subroutine add_parameters(res, i_nuc, i_ens, i_res, i_l, i_J)
 
     type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
     type(Resonance) :: res ! resonance object
     integer :: i_nuc ! nuclide index
+    integer :: i_ens ! resonance ensemble index
     integer :: i_res ! resonance counter
     integer :: i_l   ! orbital quantum number index
     integer :: i_J   ! total angular momentum quantum #
@@ -2590,12 +2631,12 @@ contains
 
     nuc => nuclides(i_nuc)
 
-    nuc % urr_resonances(i_res, i_l) % E_lam(i_J) = res % E_lam
-    nuc % urr_resonances(i_res, i_l) % GN(i_J)    = res % Gam_n
-    nuc % urr_resonances(i_res, i_l) % GG(i_J)    = res % Gam_gam
-    nuc % urr_resonances(i_res, i_l) % GF(i_J)    = res % Gam_f
-    nuc % urr_resonances(i_res, i_l) % GX(i_J)    = res % Gam_x
-    nuc % urr_resonances(i_res, i_l) % GT(i_J)    = res % Gam_t
+    nuc % urr_resonances(i_ens, i_res, i_l) % E_lam(i_J) = res % E_lam
+    nuc % urr_resonances(i_ens, i_res, i_l) % GN(i_J)    = res % Gam_n
+    nuc % urr_resonances(i_ens, i_res, i_l) % GG(i_J)    = res % Gam_gam
+    nuc % urr_resonances(i_ens, i_res, i_l) % GF(i_J)    = res % Gam_f
+    nuc % urr_resonances(i_ens, i_res, i_l) % GX(i_J)    = res % Gam_x
+    nuc % urr_resonances(i_ens, i_res, i_l) % GT(i_J)    = res % Gam_t
 
   end subroutine add_parameters
 
@@ -2621,12 +2662,12 @@ contains
     select case(LRF_val)
 ! TODO: LRF == 2 indicates MLBW if LRU == 1, but if LRU == 2, always use SLBW
     case (2)
-      res % E_lam   = nuc % urr_resonances(i_res, i_l) % E_lam(i_J)
-      res % Gam_n   = nuc % urr_resonances(i_res, i_l) % GN(i_J)
-      res % Gam_gam = nuc % urr_resonances(i_res, i_l) % GG(i_J)
-      res % Gam_f   = nuc % urr_resonances(i_res, i_l) % GF(i_J)
-      res % Gam_x   = nuc % urr_resonances(i_res, i_l) % GX(i_J)
-      res % Gam_t   = nuc % urr_resonances(i_res, i_l) % GT(i_J)
+      res % E_lam   = nuc % urr_resonances(i_real, i_res, i_l) % E_lam(i_J)
+      res % Gam_n   = nuc % urr_resonances(i_real, i_res, i_l) % GN(i_J)
+      res % Gam_gam = nuc % urr_resonances(i_real, i_res, i_l) % GG(i_J)
+      res % Gam_f   = nuc % urr_resonances(i_real, i_res, i_l) % GF(i_J)
+      res % Gam_x   = nuc % urr_resonances(i_real, i_res, i_l) % GX(i_J)
+      res % Gam_t   = nuc % urr_resonances(i_real, i_res, i_l) % GT(i_J)
     
     case (3)
       res % E_lam   = nuc % rm_resonances(i_l) % E_lam(i_res)

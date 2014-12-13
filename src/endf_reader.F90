@@ -2,7 +2,7 @@ module endf_reader
 
   use ace_header,        only: Nuclide
   use avg_urr_xs_values, only: set_avg_urr_xs
-  use error,             only: fatal_error, warning
+  use error,             only: fatal_error
   use global
   use output,            only: write_message
 
@@ -45,7 +45,7 @@ contains
     end if
 
     ! display message
-    call write_message("Loading ENDF-6 file: "//trim(filename))
+    call write_message("Loading ENDF-6 file: "//trim(filename), 6)
 
     open(unit = in, &
       file = trim(path_endf)//trim(filename))
@@ -509,8 +509,8 @@ contains
     real(8) :: awr_ref
 
     if (awr_val /= awr_ref) then
-      call warning(trim(adjustl(filename))//' and the corresponding ACE file give&
-        & conflicting AWR values')
+      call write_message(trim(adjustl(filename))//' and the corresponding ACE file give&
+        & conflicting AWR values', 6)
    end if
 
   end subroutine check_mass

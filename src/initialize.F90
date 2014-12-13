@@ -25,10 +25,10 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,       &
-                              n_otf_urr_xs, n_avg_urr_nuclides, calculate_avg_urr_xs,&
-                              resonance_ensemble, urr_frequency, pointwise_urr,&
-                              urr_pointwise
+  use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,&
+                              n_otf_urr_xs, n_avg_urr_nuclides,&
+                              calculate_avg_urr_xs, resonance_ensemble,&
+                              urr_frequency, pointwise_urr, urr_pointwise
 
 #ifdef MPI
   use mpi
@@ -202,6 +202,7 @@ contains
             nuclides(j) % otf_urr_xs = .true.
           else
             nuclides(j) % otf_urr_xs = .false.
+            call fatal_error('n_otf_urr_xs /= n_urr_method')
           end if
           call read_endf6(urr_endf_filenames(i), j)
         else

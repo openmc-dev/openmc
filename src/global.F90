@@ -79,6 +79,7 @@ module global
 
   ! Unionized energy grid
   integer :: grid_method ! how to treat the energy grid
+  integer :: n_log_bins  ! number of bins for logarithmic grid
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   ! Unreoslved resonance probablity tables

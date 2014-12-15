@@ -1,6 +1,5 @@
 module energy_grid
 
-  use constants, only: N_LOG_BINS
   use global
 
   implicit none
@@ -26,7 +25,7 @@ contains
     E_min = 1.0e-11_8
 
     ! Determine equal-logarithmic energy spacing
-    M = N_LOG_BINS
+    M = n_log_bins
     log_spacing = log(E_max/E_min)/M
 
     ! Create equally log-spaced energy grid

@@ -220,6 +220,17 @@ contains
       call fatal_error("Unknown energy grid method: " // trim(temp_str))
     end select
 
+    ! Number of bins for logarithmic grid
+    if (check_for_node(doc, "log_grid_bins")) then
+      call get_node_value(doc, "log_grid_bins", n_log_bins)
+      if (n_log_bins < 1) then
+        call fatal_error("Number of bins for logarithmic grid must be &
+             &greater than zero.")
+      end if
+    else
+      n_log_bins = 8000
+    end if
+
     ! Verbosity
     if (check_for_node(doc, "verbosity")) then
       call get_node_ptr(doc, "verbosity", node_verb)

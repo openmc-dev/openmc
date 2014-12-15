@@ -118,7 +118,7 @@ module global
   !   2) track-length estimate of k-eff
   !   3) leakage fraction
 
-  type(TallyResult), target :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyResult), allocatable, target :: global_tallies(:)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -447,6 +447,7 @@ contains
     if (allocated(entropy_p)) deallocate(entropy_p)
 
     ! Deallocate tally-related arrays
+    if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) then
     ! First call the clear routines

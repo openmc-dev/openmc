@@ -367,7 +367,6 @@ module constants
   integer, parameter :: &
        GRID_NUCLIDE   = 1, & ! non-unionized energy grid
        GRID_LOGARITHM = 2    ! logarithmic mapping
-  integer, parameter :: N_LOG_BINS = 8000
 
   ! Running modes
   integer, parameter ::        &

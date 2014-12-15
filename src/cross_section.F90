@@ -168,8 +168,23 @@ contains
       elseif (E > nuc % energy(nuc % n_grid)) then
         i_grid = nuc % n_grid - 1
       else
-        i_grid = binary_search(nuc % energy, nuc % n_grid, E)
+        if (E < nuc % energy(i_E_lasts(i_nuclide))) then
+          i_grid = binary_search(nuc % energy(1:i_E_lasts(i_nuclide)), &
+                               & i_E_lasts(i_nuclide), E)
+        else
+          if (E < nuc % energy(i_upscats(i_nuclide))) then
+            i_grid = i_E_lasts(i_nuclide) - 1 &
+              & + binary_search(nuc % energy(i_E_lasts(i_nuclide):i_upscats(i_nuclide)), &
+              & i_upscats(i_nuclide) - i_E_lasts(i_nuclide) + 1, E)
+          else
+            i_grid = i_E_lasts(i_nuclide) - 1 &
+              & + binary_search(nuc % energy(i_E_lasts(i_nuclide):nuc % n_grid), &
+              & nuc % n_grid - i_E_lasts(i_nuclide) + 1, E)
+          end if
+        end if
       end if
+
+      i_E_lasts(i_nuclide) = i_grid
 
     end select
 
@@ -512,8 +527,22 @@ contains
     elseif (E > e_grid(n_grid)) then
       union_grid_index = n_grid - 1
     else
-      union_grid_index = binary_search(e_grid, n_grid, E)
+      if (E < e_grid(i_E_last)) then
+        union_grid_index = binary_search(e_grid(1:i_E_last), i_E_last, E)
+      else
+        if (E < e_grid(i_upscat)) then
+          union_grid_index = i_E_last - 1 &
+            & + binary_search(e_grid(i_E_last:i_upscat), &
+            & i_upscat - i_E_last + 1, E)
+        else
+          union_grid_index = i_E_last - 1 &
+            & + binary_search(e_grid(i_E_last:n_grid), &
+            & n_grid - i_E_last + 1, E)
+        end if
+      end if
     end if
+
+    i_E_last = union_grid_index
 
   end subroutine find_energy_index
 

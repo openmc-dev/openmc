@@ -1,13 +1,53 @@
 module energy_grid
 
-  use constants,        only: MAX_LINE_LEN
+  use constants,        only: MAX_LINE_LEN, FREE_GAS_THRESHOLD
   use global
   use list_header,      only: ListReal
   use output,           only: write_message
+  use search,           only: binary_search
 
   implicit none
 
 contains
+
+!===============================================================================
+! KINEMATIC_CONSTRAINT sets indices to be used in constraining binary energy
+! grid searches to only those energy values that are physically possible
+!===============================================================================
+
+  subroutine kinematic_constraint()
+
+    integer :: i ! nuclide index
+    type(Nuclide), pointer, save :: nuc => null() ! nuclide pointer
+!$omp threadprivate(nuc)
+
+    ! max kT for the problem
+    max_kT = ZERO
+
+    ! find the max kT for the problem
+    do i = 1, n_nuclides_total
+      nuc => nuclides(i)
+      if (nuc % kT > max_kT) max_kT = nuc % kT
+    end do
+
+    ! set indices for kinematic energy grid search constraints
+    select case(grid_method)
+    case(GRID_UNION)
+      i_E_last = n_grid
+      i_upscat = 1 + binary_search(e_grid, n_grid, &
+        & (FREE_GAS_THRESHOLD + 16.0_8) * max_kT)
+    case(GRID_NUCLIDE)
+      allocate(i_upscats(n_nuclides_total))
+      allocate(i_E_lasts(n_nuclides_total))
+      do i = 1, n_nuclides_total
+        nuc => nuclides(i)
+        i_E_lasts(i) = nuc % n_grid
+        i_upscats(i) = 1 + binary_search(nuc % energy, nuc % n_grid, &
+          & (FREE_GAS_THRESHOLD + 16.0_8) * nuc % kT)
+      end do
+    end select
+
+  end subroutine kinematic_constraint
 
 !===============================================================================
 ! UNIONIZED_GRID creates a single unionized energy grid combined from each

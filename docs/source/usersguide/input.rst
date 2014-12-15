@@ -184,6 +184,16 @@ performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
+``<log_grid_bins>`` Element
+---------------------------
+
+The ``<log_grid_bins>`` element indicates the number of bins to use for the
+logarithmic-mapped energy grid. Using more bins will result in energy grid
+searches over a smaller range at the expense of more memory. The default is
+based on the recommended value in LA-UR-14-24530_.
+
+  *Default*: 8000
+
 .. _natural_elements:
 
 ``<natural_elements>`` Element

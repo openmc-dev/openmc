@@ -830,7 +830,13 @@ def get_openmc_geometry(opencg_geometry):
     OPENMC_LATTICES.clear()
     OPENCG_LATTICES.clear()
 
+    # Make the entire geometry "compatible" before assigning auto IDs
+    universes = opencg_geometry.getAllUniverses()
+    for universe_id, universe in universes.items():
+      make_opencg_cells_compatible(universe)
+
     opencg_geometry.assignAutoIds()
+
     opencg_root_universe = opencg_geometry._root_universe
     openmc_root_universe = get_openmc_universe(opencg_root_universe)
 

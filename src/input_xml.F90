@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -2832,7 +2833,7 @@ contains
       ! Copy plot cell universe level
       if (check_for_node(node_plot, "level")) then
         call get_node_value(node_plot, "level", pl % level)
-        
+
         if (pl % level < 0) then
           call fatal_error("Bad universe level in plot " &
                &// trim(to_str(pl % id)))

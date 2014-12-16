@@ -77,11 +77,6 @@ module global
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
 
-  ! Unionized energy grid
-  integer :: grid_method ! how to treat the energy grid
-  integer :: n_log_bins  ! number of bins for logarithmic grid
-  real(8) :: log_spacing ! spacing on logarithmic grid
-
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 

@@ -2,6 +2,7 @@ module cross_section
 
   use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
+  use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global

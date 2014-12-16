@@ -1572,3 +1572,15 @@ into MATLAB using PETSc-MATLAB utilities. This option can be
 turned on with "true" and off with "false".
 
   *Default*: false
+
+------------------------------------
+ERSN-OpenMC Graphical User Interface
+------------------------------------
+
+A third-party Java-based user-friendly graphical user interface for creating XML
+input files called ERSN-OpenMC_ is developed and maintained by members of the
+Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
+The GUI also allows one to automatically download prerequisites for installing and
+running OpenMC.
+
+.. _ERSN-OpenMC: https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC

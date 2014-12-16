@@ -4,7 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: logarithmic_grid
+  use energy_grid,      only: logarithmic_grid, grid_method
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE

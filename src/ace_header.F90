@@ -101,7 +101,7 @@ module ace_header
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
-    integer, allocatable :: grid_index(:) ! pointers to union grid
+    integer, allocatable :: grid_index(:) ! union grid pointers / log grid mapping
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
     ! Microscopic cross sections

@@ -211,7 +211,7 @@ contains
     case (SRC_ENERGY_MONO)
       ! Monoenergtic source
       site % E = external_source % params_energy(1)
-      if (site % E > 20) then
+      if (site % E >= 20) then
         call fatal_error("Source energies above 20 MeV not allowed.")
       end if
 

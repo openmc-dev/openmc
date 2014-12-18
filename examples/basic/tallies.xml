@@ -19,4 +19,23 @@
     <scores>scatter nu-scatter nu-fission</scores>
   </tally>
 
+
+ <tally id="4">
+    <filter type="cell" bins="100" />
+    <filter type="energy" bins="0 20.0" />
+    <scores>scatter-3</scores>
+  </tally>
+
+  <tally id="5">
+    <filter type="cell" bins="100" />
+    <filter type="energy" bins="0 20.0" />
+    <scores>absorption scatter-P3 flux</scores>
+  </tally>
+
+  <tally id="6">
+    <filter type="cell" bins="100" />
+    <filter type="energy" bins="0 20.0" />
+    <scores>scatter-Y3 flux</scores>
+  </tally>
+
 </tallies>

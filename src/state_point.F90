@@ -778,14 +778,12 @@ contains
           call sp % read_data(moment_name, "order", &
                group="tallies/tally" // trim(to_str(i)) // &
                "/moments/" // trim(to_str(k)))
-          call write_message("moment name = " // moment_name)
           k = k + 1
         case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
           do n_order = 0, t % moment_order(k)
             call sp % read_data(moment_name,  "order", &
                  group="tallies/tally" // trim(to_str(i)) // &
                  "/moments/" // trim(to_str(k)))
-            call write_message("moment name = " // moment_name)
             k = k + 1
           end do
         case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -795,7 +793,6 @@ contains
               call sp % read_data(moment_name, "order", &
                    group="tallies/tally" // trim(to_str(i)) // &
                    "/moments/" // trim(to_str(k)))
-              call write_message("moment name = " // moment_name)
               k = k + 1
             end do
           end do
@@ -803,7 +800,6 @@ contains
           call sp % read_data(moment_name, "order", &
                group="tallies/tally" // trim(to_str(i)) // &
                "/moments/" // trim(to_str(k)))
-          call write_message("moment name = " // moment_name)
           k = k + 1
         end select
 

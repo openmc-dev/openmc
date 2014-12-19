@@ -1291,6 +1291,7 @@ contains
     real(8) :: E_in        ! incoming energy
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
+    real(8) :: yield       ! neutron yield
 
     ! copy energy of neutron
     E_in = E
@@ -1330,8 +1331,13 @@ contains
     ! change direction of particle
     uvw = rotate_angle(uvw, mu)
 
-    ! change weight of particle based on multiplicity
-    wgt = rxn % multiplicity * wgt
+    ! change weight of particle based on yield
+    if (rxn % multiplicity_with_E) then
+      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+    else
+      yield = rxn % multiplicity
+    end if
+    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 

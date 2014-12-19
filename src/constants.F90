@@ -53,7 +53,7 @@ module constants
 
   ! Maximum number of external source spatial resamples to encounter before an
   ! error is thrown.
-  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
+  integer, parameter :: MAX_EXTSRC_RESAMPLES = 1000000
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS

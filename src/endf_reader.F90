@@ -2,7 +2,7 @@ module endf_reader
 
   use ace_header,        only: Nuclide
   use avg_urr_xs_values, only: set_avg_urr_xs
-  use error,             only: fatal_error
+  use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
 
@@ -28,6 +28,7 @@ contains
     logical       :: file_exists ! does ENDF-6 file exist?
     logical       :: MF1_read    ! has MF=1 been read?
     logical       :: MF2_read    ! has MF=2 been read?
+    logical       :: MF3_read    ! has MF=3 been read?
     integer       :: i_n ! index in global nuclides array
     integer       :: MF  ! MF file number
     integer       :: MT  ! MT type number
@@ -54,6 +55,7 @@ contains
 
     MF1_read = .false.
     MF2_read = .false.
+    MF3_read = .false.
 
     do
       read(in, 10) rec
@@ -68,6 +70,9 @@ contains
       else if (MF == 2 .and. MT == 151 .and. (.not. MF2_read)) then
         call read_MF2(i_n, rec)
         MF2_read = .true.
+      else if (MF == 3 .and. MT == 1 .and. (.not. MF3_read)) then
+        call read_MF3(i_n, rec)
+        MF3_read = .true.
       else if (nuc % MAT == -1) then
         exit
       end if
@@ -172,9 +177,6 @@ contains
       ! check number of resonance energy ranges and their bounding energies
       call check_energy_ranges(nuc % NER, nuc % EL(i_ER), nuc % EH(i_ER))
 
-      ! check for resonance region order and formalism
-      call check_formalism(i_ER, nuc % LRU(i_ER))
-
       ! check channel, scattering radius energy dependence flags
       call check_radius_flags(nuc % NRO(i_ER), nuc % NAPS(i_ER))
 
@@ -185,6 +187,320 @@ contains
     end do
 
   end subroutine read_MF2
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! READ_MF3 reads in an ENDF-6 format MF 3 file
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine read_MF3(i_n, rec)
+
+    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
+    integer :: i_n   ! index in global nuclides array
+    integer :: i_rec ! record index
+    integer :: i_e   ! index in energy grid
+    integer :: MF    ! ENDF-6 MF flag
+    integer :: MT    ! ENDF-6 MT flag
+    integer :: NP     ! number of energy-xs pairs
+    integer :: NR     ! number of interpolation regions
+    integer :: NBT    ! number of entries separating interp. ranges N and N+1
+    integer :: INTERP ! interp. scheme flag for an interpolation region
+    character(80) :: rec ! ENDF-6 file record
+    real(8) :: ZA
+    real(8) :: AWR
+
+    nuc => nuclides(i_n)
+
+10  format(A80)
+
+    if (nuc % LSSF == 0) then
+
+      do
+        read(in, 10) rec
+        read(rec(71:72), '(I2)') MF
+        read(rec(73:75), '(I3)') MT
+        if (MF == 3 .and. MT == 2) exit
+        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+          & elastic, inelastic, fission, or capture cross section in '&
+          &//trim(filename))
+      end do
+
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') AWR
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), nuc % zaid)
+
+      ! check that mass is consistent
+      call check_mass(AWR, nuc % awr)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(45:55), '(I11)') NR
+      read(rec(56:66), '(I11)') NP
+
+      ! check number of interpolation regions
+      call check_interp_regions(NR)
+
+      ! read MF=3, record=3
+      read(in, 10) rec
+      read(rec( 1:11), '(I11)') NBT
+      read(rec(12:22), '(I11)') INTERP
+
+      ! check number of energy-xs pairs in this interpolation region
+      call check_n_pairs(NBT, NP)
+
+      ! check interpolation scheme is same as nuclide interpolation scheme
+      call check_interp_scheme(INTERP, nuc % INT)
+
+      allocate(nuc % avg_urr_n_e(NP))
+      allocate(nuc % avg_urr_n(NP))
+
+      i_e = 1
+      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') nuc % avg_urr_n_e(i_e)
+        read(rec(12:22), '(E11.0)') nuc % avg_urr_n(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(23:33), '(E11.0)') nuc % avg_urr_n_e(i_e)
+        read(rec(34:44), '(E11.0)') nuc % avg_urr_n(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(45:55), '(E11.0)') nuc % avg_urr_n_e(i_e)
+        read(rec(56:66), '(E11.0)') nuc % avg_urr_n(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+      end do
+
+      do
+        read(in, 10) rec
+        read(rec(71:72), '(I2)') MF
+        read(rec(73:75), '(I3)') MT
+        if (MF == 3 .and. MT == 4) exit
+        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+          & elastic, inelastic, fission, or capture cross section in '&
+          &//trim(filename))
+      end do
+
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') AWR
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), nuc % zaid)
+
+      ! check that mass is consistent
+      call check_mass(AWR, nuc % awr)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(45:55), '(I11)') NR
+      read(rec(56:66), '(I11)') NP
+
+      ! check number of interpolation regions
+      call check_interp_regions(NR)
+
+      ! read MF=3, record=3
+      read(in, 10) rec
+      read(rec( 1:11), '(I11)') NBT
+      read(rec(12:22), '(I11)') INTERP
+
+      ! check number of energy-xs pairs in this interpolation region
+      call check_n_pairs(NBT, NP)
+
+      ! check interpolation scheme is same as nuclide interpolation scheme
+      call check_interp_scheme(INTERP, nuc % INT)
+
+      allocate(nuc % avg_urr_x_e(NP))
+      allocate(nuc % avg_urr_x(NP))
+
+      i_e = 1
+      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') nuc % avg_urr_x_e(i_e)
+        read(rec(12:22), '(E11.0)') nuc % avg_urr_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(23:33), '(E11.0)') nuc % avg_urr_x_e(i_e)
+        read(rec(34:44), '(E11.0)') nuc % avg_urr_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(45:55), '(E11.0)') nuc % avg_urr_x_e(i_e)
+        read(rec(56:66), '(E11.0)') nuc % avg_urr_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+      end do
+
+      do
+        read(in, 10) rec
+        read(rec(71:72), '(I2)') MF
+        read(rec(73:75), '(I3)') MT
+        if (MF == 3 .and. MT == 18) exit
+        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+          & elastic, inelastic, fission, or capture cross section in '&
+          &//trim(filename))
+      end do
+
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') AWR
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), nuc % zaid)
+
+      ! check that mass is consistent
+      call check_mass(AWR, nuc % awr)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(45:55), '(I11)') NR
+      read(rec(56:66), '(I11)') NP
+
+      ! check number of interpolation regions
+      call check_interp_regions(NR)
+
+      ! read MF=3, record=3
+      read(in, 10) rec
+      read(rec( 1:11), '(I11)') NBT
+      read(rec(12:22), '(I11)') INTERP
+
+      ! check number of energy-xs pairs in this interpolation region
+      call check_n_pairs(NBT, NP)
+
+      ! check interpolation scheme is same as nuclide interpolation scheme
+      call check_interp_scheme(INTERP, nuc % INT)
+
+      allocate(nuc % avg_urr_f_e(NP))
+      allocate(nuc % avg_urr_f(NP))
+
+      i_e = 1
+      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') nuc % avg_urr_f_e(i_e)
+        read(rec(12:22), '(E11.0)') nuc % avg_urr_f(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(23:33), '(E11.0)') nuc % avg_urr_f_e(i_e)
+        read(rec(34:44), '(E11.0)') nuc % avg_urr_f(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(45:55), '(E11.0)') nuc % avg_urr_f_e(i_e)
+        read(rec(56:66), '(E11.0)') nuc % avg_urr_f(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+      end do
+
+      do
+        read(in, 10) rec
+        read(rec(71:72), '(I2)') MF
+        read(rec(73:75), '(I3)') MT
+        if (MF == 3 .and. MT == 102) exit
+        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+          & elastic, inelastic, fission, or capture cross section in '&
+          &//trim(filename))
+      end do
+
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') AWR
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), nuc % zaid)
+
+      ! check that mass is consistent
+      call check_mass(AWR, nuc % awr)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(45:55), '(I11)') NR
+      read(rec(56:66), '(I11)') NP
+
+      ! check number of interpolation regions
+      call check_interp_regions(NR)
+
+      ! read MF=3, record=3
+      read(in, 10) rec
+      read(rec( 1:11), '(I11)') NBT
+      read(rec(12:22), '(I11)') INTERP
+
+      ! check number of energy-xs pairs in this interpolation region
+      call check_n_pairs(NBT, NP)
+
+      ! check interpolation scheme is same as nuclide interpolation scheme
+      call check_interp_scheme(INTERP, nuc % INT)
+
+      allocate(nuc % avg_urr_g_e(NP))
+      allocate(nuc % avg_urr_g(NP))
+
+      i_e = 1
+      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') nuc % avg_urr_g_e(i_e)
+        read(rec(12:22), '(E11.0)') nuc % avg_urr_g(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(23:33), '(E11.0)') nuc % avg_urr_g_e(i_e)
+        read(rec(34:44), '(E11.0)') nuc % avg_urr_g(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(45:55), '(E11.0)') nuc % avg_urr_g_e(i_e)
+        read(rec(56:66), '(E11.0)') nuc % avg_urr_g(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+      end do
+
+    else
+      continue
+    end if
+
+  end subroutine read_MF3
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CHECK_INTERP_REGIONS checks that there is an allowable number of interpolation
+! regions
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine check_interp_regions(NR)
+
+    integer :: NR ! number of interpolation regions
+
+    if (NR /= 1) call fatal_error('More than 1 MF3 interpolation region not&
+      & supported in '//trim(filename))
+
+  end subroutine check_interp_regions
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CHECK_N_PAIRS checks that there is an allowable number of energy-xs pairs
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine check_n_pairs(NBT, NP)
+
+    integer :: NBT ! number of pairs between this and the next interp. region
+    integer :: NP  ! number of energy-xs pairs
+
+    if (NBT /= NP) call fatal_error('Different NBT and NP values in MF3 for '&
+      &//trim(filename))
+
+  end subroutine check_n_pairs
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! CHECK_INTERP_SCHEME checks that there is an allowable interpolation scheme
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine check_interp_scheme(INTERP, nuc_INT)
+
+    integer :: INTERP     ! interpolation scheme for current region
+    integer :: nuc_INT ! overall nuclide interpolation scheme
+
+    if (INTERP /= nuc_INT) call fatal_error('Different interpolation schemes for&
+      & an MF3 region and the MF2 parameters in '//trim(filename))
+
+  end subroutine check_interp_scheme
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -203,7 +519,7 @@ contains
     ! select energy range
     select case(LRU)
 
-    ! resolved region
+    ! resolved parameters
     case(1)
 
       ! select formalism
@@ -219,7 +535,7 @@ contains
 
       ! Reich-Moore
       case(3)
-        call read_reich_moore_parameters(i_n, i_ER)
+        call read_rm_parameters(i_n, i_ER)
 
       ! Adler-Adler
       case(4)
@@ -247,7 +563,7 @@ contains
           & //trim(filename))
       end select
 
-    ! unresolved region
+    ! unresolved parameters
     case(2)
 
       nuclides(i_n) % i_urr = i_ER
@@ -262,7 +578,7 @@ contains
 
       ! all parameters are energy-dependent
       case(2)
-        call read_urr_parameters(i_n, i_ER)
+        call read_urr_slbw_parameters(i_n, i_ER)
 
       ! default case
       case default
@@ -280,12 +596,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_REICH_MOORE_PARAMETERS reads in Reich-Moore resolved resonance region
+! READ_RM_PARAMETERS reads in Reich-Moore resolved resonance region
 ! parameters
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_reich_moore_parameters(i_n, i_ER)
+  subroutine read_rm_parameters(i_n, i_ER)
 
     type(Nuclide), pointer :: nuc => null()
     character(80) :: rec ! ENDF-6 file record
@@ -320,12 +636,7 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate Reich-Moore resonances
-      allocate(nuc % rm_resonances(i_l + 1) % E_lam(NRS))
-      allocate(nuc % rm_resonances(i_l + 1) % AJ(NRS))
-      allocate(nuc % rm_resonances(i_l + 1) % GN(NRS))
-      allocate(nuc % rm_resonances(i_l + 1) % GG(NRS))
-      allocate(nuc % rm_resonances(i_l + 1) % GFA(NRS))
-      allocate(nuc % rm_resonances(i_l + 1) % GFB(NRS))
+      call nuc % rm_resonances(i_l + 1) % alloc_rm_resonances(NRS)
 
       ! check mass ratios
       call check_mass(AWRI, nuc % awr)
@@ -349,19 +660,25 @@ contains
 
         ! check sign of total angular momentum, J
         call check_j_sign(nuc % rm_resonances(i_l + 1) % AJ(i_R))
-
       end do
+
+      if (i_ER < nuc % NER - 1) then
+        call nuc % rm_resonances(i_l + 1) % dealloc_rm_resonances()
+      end if
+
     end do
 
-  end subroutine read_reich_moore_parameters
+    if (i_ER < nuc % NER - 1) deallocate(nuc % rm_resonances)
+
+  end subroutine read_rm_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_URR_PARAMETERS reads in unresolved resonance region parameters
+! READ_URR_SLBW_PARAMETERS reads in unresolved resonance region parameters
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_urr_parameters(i_n, i_ER)
+  subroutine read_urr_slbw_parameters(i_n, i_ER)
 
     type(Nuclide), pointer, save :: nuc => null()
     character(80) :: rec ! ENDF-6 file record
@@ -438,7 +755,7 @@ contains
           allocate(nuc % GF_mean (nuc % NLS(i_ER)))
           allocate(nuc % GX_mean (nuc % NLS(i_ER)))
           if (nuc % LSSF == 1) then
-            call nuc % alloc_avg_urr()
+            call nuc % alloc_avg_urr(nuc % NE)
             call set_avg_urr_xs(i_n)
           end if
         end if
@@ -475,7 +792,7 @@ contains
       end do
     end do
 
-  end subroutine read_urr_parameters
+  end subroutine read_urr_slbw_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -589,8 +906,10 @@ contains
     real(8) :: e_high
 
     if (n_ranges /= 2) then
-      call fatal_error('NER values other than 2 are not supported (see &
-        &'//trim(filename))
+      if (master) then
+        call warning('More than 2 resonance energy ranges (i.e. NER > 2); see &
+          &'//trim(filename))
+      end if
     end if
 
     if (e_high <= e_low) then
@@ -599,23 +918,6 @@ contains
     end if
 
   end subroutine check_energy_ranges
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! CHECK_FORMALISM checks for an allowed resonance formalism
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine check_formalism(lru_ref, lru_val)
-
-    integer :: lru_ref
-    integer :: lru_val
-
-    if (lru_val /= lru_ref) then
-      call fatal_error('Unexpected resonance range ordering in '//trim(filename))
-    end if
-
-  end subroutine check_formalism
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -640,7 +942,10 @@ contains
           & //trim(filename))
       end select
     case(1)
-      call fatal_error('ENDF-6 NRO flag value 1 not supported in '//trim(filename))
+      if (master) then
+        call warning('ENDF-6 NRO flag value 1 ignored in energy range for ' &
+          & //trim(filename))
+      end if
       select case(naps_val)
       case(0)
         continue
@@ -671,7 +976,7 @@ contains
     real(8) :: ap_ref
 
     if (ap_val /= ap_ref) then
-      call fatal_error('AP value changes within a resonance energy range in '&
+      if (master) call warning('AP value changes within a resonance energy range in '&
         & //trim(filename))
     end if
 

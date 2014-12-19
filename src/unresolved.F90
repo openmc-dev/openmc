@@ -552,7 +552,6 @@ contains
           ! interpret MF3 data according to ENDF-6 LSSF flag:
           ! MF3 contains background xs, add to MF2 resonance contributions
           if (nuc % LSSF == 0) then
-            call fatal_error('LSSF = 0 not yet supported')
 
             ! add resonance xs component to background
             call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
@@ -732,7 +731,6 @@ contains
           ! interpret MF3 data according to ENDF-6 LSSF flag:
           ! MF3 contains background xs, add to MF2 resonance contributions
           if (nuc % LSSF == 0) then
-            call fatal_error('LSSF = 0 not yet supported')
 
             ! add resonance xs component to background
             call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
@@ -915,7 +913,6 @@ contains
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs values, add to MF2 resonance contributions
         if (nuc % LSSF == 0) then
-          call fatal_error('LSSF = 0 not yet supported')
 
           ! add resonance xs component to background
           call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
@@ -1059,7 +1056,6 @@ contains
       i_real = i_realization
     end if
 
-
     ! loop over orbital quantum #'s
     ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
 
@@ -1155,13 +1151,9 @@ contains
     ! interpret MF3 data according to ENDF-6 LSSF flag:
     ! MF3 contains background xs, add to MF2 resonance contributions
     if (nuc % LSSF == 0) then
-      call fatal_error('LSSF = 0 not yet supported')
-! TODO: inelastic xs
-      micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
-      micro_xs(i_nuc) % elastic    = sig_n % val + micro_xs(i_nuc) % elastic
-      micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val &
-                                 & + micro_xs(i_nuc) % absorption
-      micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
+
+      ! add resonance xs component to background
+      call add2bckgrnd(i_nuc, NONE, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
     elseif (nuc % LSSF == 1) then
 ! TODO: LOG_LOG or maybe just nuc % INT?
@@ -1614,14 +1606,11 @@ contains
     ! interpret MF3 data according to ENDF-6 LSSF flag:
     ! MF3 contains background xs values, add to MF2 resonance contributions
     if (nuc % LSSF == 0) then
-      call fatal_error('LSSF = 0 not yet supported')
-      micro_xs(i_nuc) % total      = sig_t % val + micro_xs(i_nuc) % total
-      micro_xs(i_nuc) % elastic    = sig_n % val + micro_xs(i_nuc) % elastic
-      micro_xs(i_nuc) % absorption = sig_f % val + sig_gam % val &
-                                 & + micro_xs(i_nuc) % absorption
-      micro_xs(i_nuc) % fission    = sig_f % val + micro_xs(i_nuc) % fission
+
+      ! add resonance xs component to background
+      call add2bckgrnd(i_nuc, NONE, sig_t, sig_n, sig_gam, sig_f, sig_x)
     
-    ! MF3 contains evaluator-supplied infinite dilute xs values that we multipy
+    ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
     elseif (nuc % LSSF == 1) then
       ! TODO: LOG_LOG or maybe just nuc % INT?
@@ -1629,12 +1618,11 @@ contains
       ! tabulated unresolved resonance parameters interpolation factor
       f = interp_factor(E, nuc % ES(i_energy), nuc % ES(i_energy+1), nuc % INT)
 
-      ! interpolate evaluator-supplied URR background xs
+      ! interpolate infinite-dilute URR xs
       call interp_avg_urr_xs(f, i_nuc, i_energy, &
         avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       if (avg_urr_x_xs > ZERO) then
-
         if (competitive) then
           ! self-shielded treatment of competitive inelastic cross section
           inelastic_xs = sig_x % val / avg_urr_x_xs &
@@ -1647,7 +1635,6 @@ contains
             & - micro_xs(i_nuc) % absorption &
             & - micro_xs(i_nuc) % elastic
         end if
-
       else
         inelastic_xs = micro_xs(i_nuc) % total &
           & - micro_xs(i_nuc) % absorption &
@@ -2899,31 +2886,94 @@ contains
     type(CrossSection) :: sig_gam ! radiative capture xs object
     type(CrossSection) :: sig_f   ! fission xs object
     type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    integer :: i_nuc
-    integer :: n_pts
+    integer :: i_nuc ! nuclide index
+    integer :: n_pts ! URR pointwise xs energy grid index
+    integer :: i_e   ! URR background xs energy grid index
+    real(8) :: m            ! URR background energy interpolation factor
+    real(8) :: capture_xs   ! radiative capture xs
+    real(8) :: inelastic_xs ! first level inelastic scattering xs
 !$omp threadprivate(nuc)
 
     nuc => nuclides(i_nuc)
 
-    ! elastic scattering xs
-    nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
-      & + sig_n % val
+    if (nuc % point_urr_xs) then
 
-    ! radiative capture xs
-    nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
-      & + sig_gam % val
+      ! elastic scattering xs
+      nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
+        & + sig_n % val
 
-    ! fission xs
-    nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
-      & + sig_f % val
+      ! radiative capture xs
+      nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
+        & + sig_gam % val
 
-    ! competitive first level inelastic scattering xs
-    nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
-      & + sig_x % val
+      ! fission xs
+      nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
+        & + sig_f % val
 
-    ! total xs
-    nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
-      & + sig_t % val
+      ! competitive first level inelastic scattering xs
+      nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
+        & + sig_x % val
+
+      ! total xs
+      nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
+        & + sig_t % val
+
+    else
+
+      ! first level inelastic scattering xs
+      if (1 == 1) then
+        if (nuc % E < nuc % avg_urr_x_e(1)) then
+          inelastic_xs = ZERO
+        else
+          i_e = binary_search(nuc % avg_urr_x_e, size(nuc % avg_urr_x_e), nuc % E)
+          m = interp_factor(nuc % E, &
+            & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % INT)
+          inelastic_xs = interpolator(m, &
+            & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), LINEAR_LINEAR)
+        end if
+      else
+        inelastic_xs = micro_xs(i_nuc) % total &
+          &          - micro_xs(i_nuc) % elastic &
+          &          - micro_xs(i_nuc) % absorption
+      end if
+      if (competitive) inelastic_xs = inelastic_xs + sig_x % val
+
+      ! elastic scattering xs
+      i_e = binary_search(nuc % avg_urr_n_e, size(nuc % avg_urr_n_e), nuc % E)
+      m = interp_factor(nuc % E, &
+        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % INT)
+      micro_xs(i_nuc) % elastic = interpolator(m, &
+        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), LINEAR_LINEAR) &
+        & + sig_n % val
+
+      ! set negative SLBW elastic xs to zero
+      if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
+
+      ! capture xs
+      i_e = binary_search(nuc % avg_urr_g_e, size(nuc % avg_urr_g_e), nuc % E)
+      m = interp_factor(nuc % E, &
+        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % INT)
+      capture_xs = interpolator(m, &
+        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), LINEAR_LINEAR) &
+        & + sig_gam % val
+
+      ! fission xs
+      i_e = binary_search(nuc % avg_urr_f_e, size(nuc % avg_urr_f_e), nuc % E)
+      m = interp_factor(nuc % E, &
+        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % INT)
+      micro_xs(i_nuc) % fission = interpolator(m, &
+        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), LINEAR_LINEAR) &
+        & + sig_f % val
+
+      ! absorption xs
+      micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
+
+      ! total xs
+      micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
+        &                     + micro_xs(i_nuc) % absorption &
+        &                     + inelastic_xs
+
+    end if
 
   end subroutine add2bckgrnd
 

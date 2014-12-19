@@ -313,6 +313,7 @@ contains
 
     integer :: i
     integer :: i_grid
+    integer :: i_rxn
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
@@ -360,9 +361,15 @@ contains
       if (nuc % otf_urr_xs) then
         if (p % E > nuc % EL(nuc % i_urr) / 1.0E6_8 .and. &
           & p % E < nuc % EH(nuc % i_urr) / 1.0E6_8) then
-          rxn => nuc % reactions(nuc % urr_inelastic_index)
+          i_rxn = 1
+          do
+            if (nuc % reactions(i_rxn) % MT == 51) exit
+            i_rxn = i_rxn + 1
+          end do
+          rxn => nuc % reactions(i_rxn)!nuc % urr_inelastic_index)
         else
-! TODO: get rid of this repeating code          ! note that indexing starts from 2 since nuc % reactions(1) is elastic
+! TODO: get rid of this repeating code
+          ! note that indexing starts from 2 since nuc % reactions(1) is elastic
           ! scattering
           i = 1
           do while (prob < cutoff)
@@ -436,7 +443,6 @@ contains
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
         p % mu, p % wgt)
       p % event_MT = rxn % MT
-      
     end if
 
     ! Set event component

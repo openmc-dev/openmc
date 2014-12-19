@@ -85,48 +85,85 @@ module ace_header
   end type UrrData
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!                                                                               
-! URR_RESONANCES is an object containing a vector of URR resonances' information
+!
+! SLBWRESONANCES is an object containing a vector of SLBW resonances'
+! information
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type URRResonances
+  type SLBWResonances
+     
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GF(:)
+    real(8), allocatable :: GX(:)
+    real(8), allocatable :: GT(:)
 
-     real(8), allocatable :: E_lam(:)
-     real(8), allocatable :: GN(:)
-     real(8), allocatable :: GG(:)
-     real(8), allocatable :: GF(:)
-     real(8), allocatable :: GX(:)
-     real(8), allocatable :: GT(:)
+    ! type-bound procedures
+    contains
 
-     ! type-bound procedures
-     contains
+      ! allocate vector of SLBW resonances (for a J, for a given (i_lam,i_l))
+      procedure :: alloc_slbw_resonances => alloc_slbw_resonances
 
-       ! allocate vector of URR resonances (for a J, for a given (i_lam,i_l))
-       procedure :: alloc_resonances => alloc_resonances
+      ! deallocate vector of SLBW resonances (for a J, for a given (i_lam,i_l))
+      procedure :: dealloc_slbw_resonances => dealloc_slbw_resonances
 
-       ! deallocate vector of URR resonances (for a J, for a given (i_lam,i_l))
-       procedure :: dealloc_resonances => dealloc_resonances
-
-  end type URRResonances
+  end type SLBWResonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!                                                                               
-! REICHMOORERESONANCES is an object containing a vector of Reich-Moore resonance
+!
+! MLBWRESONANCES is an object containing a vector of MLBW resonances'
+! information
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type MLBWResonances
+
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GF(:)
+    real(8), allocatable :: GX(:)
+    real(8), allocatable :: GT(:)
+
+    ! type-bound procedures
+    contains
+
+      ! allocate vector of MLBW resonances (for a J, for a given (i_lam,i_l))
+      procedure :: alloc_mlbw_resonances => alloc_mlbw_resonances
+
+      ! deallocate vector of MLBW resonances (for a J, for a given (i_lam,i_l))
+      procedure :: dealloc_mlbw_resonances => dealloc_mlbw_resonances
+
+  end type MLBWResonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! RMRESONANCES is an object containing a vector of Reich-Moore resonance
 ! data
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type ReichMooreResonances
+  type RMResonances
 
-     real(8), allocatable :: E_lam(:)
-     real(8), allocatable :: AJ(:)
-     real(8), allocatable :: GN(:)
-     real(8), allocatable :: GG(:)
-     real(8), allocatable :: GFA(:)
-     real(8), allocatable :: GFB(:)
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GFA(:)
+    real(8), allocatable :: GFB(:)
 
-  end type ReichMooreResonances
+    ! type-bound procedures
+    contains
+
+      ! allocate vector of R-M resonances (for a J, for a given (i_lam,i_l))
+      procedure :: alloc_rm_resonances => alloc_rm_resonances
+
+      ! deallocate vector of R-M resonances (for a J, for a given (i_lam,i_l))
+      procedure :: dealloc_rm_resonances => dealloc_rm_resonances
+
+  end type RMResonances
 
 !===============================================================================
 ! NUCLIDE contains all the data for an ACE-format continuous-energy cross
@@ -249,6 +286,10 @@ module ace_header
     integer :: AMUX ! number of competitive channels (degrees of freedom)
 
     ! average (infinite-dilute) cross sections values
+    real(8), allocatable :: avg_urr_n_e(:)
+    real(8), allocatable :: avg_urr_f_e(:)
+    real(8), allocatable :: avg_urr_g_e(:)
+    real(8), allocatable :: avg_urr_x_e(:)
     real(8), allocatable :: avg_urr_n(:)
     real(8), allocatable :: avg_urr_f(:)
     real(8), allocatable :: avg_urr_g(:)
@@ -256,11 +297,11 @@ module ace_header
 
     ! URR resonance realization (vector of resonances for a value
     ! of J for a given (i_lam, L))
-    type(URRResonances), allocatable :: urr_resonances(:,:,:)
+    type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
     integer :: n_real = 100 ! number of independent realizations
 
-    ! set of Reich-Moore resonances (vector of resonances for each l
-    type(ReichMooreResonances), allocatable :: rm_resonances(:)
+    ! set of Reich-Moore resonances (vector of resonances for each l)
+    type(RMResonances), allocatable :: rm_resonances(:)
 
     ! pointwise URR cross section data
     real(8), allocatable :: urr_energy_tmp(:)    ! energy grid values
@@ -277,10 +318,10 @@ module ace_header
     real(8), allocatable :: urr_total(:)         ! total
 
     ! pointwise URR cross section parameters
-    integer :: n_urr_resonances = 20000   ! max URR resonances for a given (l,J)
-    integer :: n_urr_gridpoints = 100000000 ! max URR energy-cross section gridpoints
+    integer :: n_urr_resonances = 20000     ! max resonances for a given (l,J)
+    integer :: n_urr_gridpoints = 100000000 ! max URR energy-xs gridpoints
     real(8) :: urr_dE  = 0.1_8   ! diff between URR energy grid points [eV]
-    real(8) :: urr_tol = 0.001_8 ! max pointwise xs reconstruction relative error
+    real(8) :: urr_tol = 0.001_8 ! max pointwise xs reconstruction rel. error
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -583,14 +624,15 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_avg_urr(this)
+  subroutine alloc_avg_urr(this, n)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
+    integer :: n ! size of averaged, background URR xs grid
 
-    allocate(this % avg_urr_n(this % NE))
-    allocate(this % avg_urr_f(this % NE))
-    allocate(this % avg_urr_g(this % NE))
-    allocate(this % avg_urr_x(this % NE))
+    allocate(this % avg_urr_n(n))
+    allocate(this % avg_urr_f(n))
+    allocate(this % avg_urr_g(n))
+    allocate(this % avg_urr_x(n))
 
   end subroutine alloc_avg_urr
 
@@ -638,9 +680,8 @@ contains
         do i_lam = 1, this % n_urr_resonances
 
           ! allocate resonance parameters
-          call this % urr_resonances(i_real, i_lam, i_l) % alloc_resonances&
-            & (this % NJS(i_l))
-
+          call this % urr_resonances(i_real, i_lam, i_l) &
+            & % alloc_slbw_resonances(this % NJS(i_l))
         end do
       end do
     end do
@@ -670,8 +711,8 @@ contains
         do i_lam = 1, this % n_urr_resonances
 
           ! allocate resonance parameters
-          call this % urr_resonances(i_real, i_lam, i_l) % dealloc_resonances()
-
+          call this % urr_resonances(i_real, i_lam, i_l) &
+            & % dealloc_slbw_resonances()
         end do
       end do
     end do    
@@ -683,14 +724,14 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_RESONANCES allocates a vector of URR resonances for a given J, for a
-! given (i_lam, i_l)
+! !TODO: use this: ALLOC_SLBW_RESONANCES allocates a vector of URR resonances for a given J, for
+! a given (i_lam, i_l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_resonances(this, N_J)
+  subroutine alloc_slbw_resonances(this, N_J)
 
-    class(URRResonances), intent(inout) :: this ! resonance vector object
+    class(SLBWResonances), intent(inout) :: this ! resonance vector object
     integer :: N_J
 
     allocate(this % E_lam(N_J))
@@ -700,18 +741,18 @@ contains
     allocate(this % GX(N_J))
     allocate(this % GT(N_J))
 
-  end subroutine alloc_resonances
+  end subroutine alloc_slbw_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! DEALLOC_RESONANCES deallocates a vector of URR resonances for a given J, for a
-! given (i_lam, i_l)
+! !TODO: use this: DEALLOC_SLBW_RESONANCES deallocates a vector of URR resonances for a given J,
+! for a given (i_lam, i_l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine dealloc_resonances(this)
+  subroutine dealloc_slbw_resonances(this)
 
-    class(URRResonances), intent(inout) :: this ! resonance vector object
+    class(SLBWResonances), intent(inout) :: this ! resonance vector object
 
     deallocate(this % E_lam)
     deallocate(this % GN)
@@ -720,7 +761,89 @@ contains
     deallocate(this % GX)
     deallocate(this % GT)    
 
-  end subroutine dealloc_resonances
+  end subroutine dealloc_slbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! !TODO: use this: ALLOC_MLBW_RESONANCES allocates a vector of MLBW resonances for a given J, for
+! a given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine alloc_mlbw_resonances(this, N_J)
+
+    class(MLBWResonances), intent(inout) :: this ! resonance vector object
+    integer :: N_J
+
+    allocate(this % E_lam(N_J))
+    allocate(this % GN(N_J))
+    allocate(this % GG(N_J))
+    allocate(this % GF(N_J))
+    allocate(this % GX(N_J))
+    allocate(this % GT(N_J))
+
+  end subroutine alloc_mlbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! !TODO: use this: DEALLOC_MLBW_RESONANCES deallocates a vector of MLBW resonances for a given J,
+! for a given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine dealloc_mlbw_resonances(this)
+
+    class(MLBWResonances), intent(inout) :: this ! resonance vector object
+
+    deallocate(this % E_lam)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GF)
+    deallocate(this % GX)
+    deallocate(this % GT)    
+
+  end subroutine dealloc_mlbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ALLOC_RM_RESONANCES allocates a vector of Reich-Moore resonances for a given
+! J, for a given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine alloc_rm_resonances(this, NRS)
+
+    class(RMResonances), intent(inout) :: this ! resonance vector object
+    integer :: NRS
+
+    allocate(this % E_lam(NRS))
+    allocate(this % AJ(NRS))
+    allocate(this % GN(NRS))
+    allocate(this % GG(NRS))
+    allocate(this % GFA(NRS))
+    allocate(this % GFB(NRS))
+
+  end subroutine alloc_rm_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! !TODO: use this: DEALLOC_RM_RESONANCES deallocates a vector of Reich-Moore resonances for a given J,
+! for a given (i_lam, i_l)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine dealloc_rm_resonances(this)
+
+    class(RMResonances), intent(inout) :: this ! resonance vector object
+
+    deallocate(this % E_lam)
+    deallocate(this % AJ)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GFA)
+    deallocate(this % GFB)
+
+  end subroutine dealloc_rm_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

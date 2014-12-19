@@ -110,6 +110,28 @@ contains
             y_vals = nuc % fission
             filename = trim(adjustl(nuc % name)) // "-fission.dat"
 
+          ! write a nuclide's energy-capture xs grid values
+          case ('capture')
+
+            x_size = size(nuc % energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % energy
+            y_size = size(nuc % absorption)
+            allocate(y_vals(y_size))
+            y_vals = nuc % absorption - nuc % fission
+            filename = trim(adjustl(nuc % name)) // "-capture.dat"
+
+          ! write a nuclide's energy-capture xs grid values
+          case ('inelastic')
+
+            x_size = size(nuc % energy)
+            allocate(x_vals(x_size))
+            x_vals = nuc % energy
+            y_size = size(nuc % total)
+            allocate(y_vals(y_size))
+            y_vals = nuc % total - nuc % absorption - nuc % elastic
+            filename = trim(adjustl(nuc % name)) // "-inelastic.dat"
+
           ! write a nuclide's URR energy-total xs grid values
           case ('urr-total')
 
@@ -646,8 +668,8 @@ contains
     ! Multiply by smooth cross-section if needed
     if (urr % multiply_smooth) then
       elastic = elastic * micro_xs(i_nuclide) % elastic
-      capture = capture * (micro_xs(i_nuclide) % absorption - &
-           micro_xs(i_nuclide) % fission)
+      capture = capture * (micro_xs(i_nuclide) % absorption &
+        & - micro_xs(i_nuclide) % fission)
       fission = fission * micro_xs(i_nuclide) % fission
     end if
 

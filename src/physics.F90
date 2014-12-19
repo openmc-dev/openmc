@@ -90,7 +90,7 @@ contains
     ! change when sampling fission sites. The following block handles all
     ! absorption (including fission)
 
-    if (nuc % fissionable) then
+    if (nuc % fissionable .and. run_mode == MODE_EIGENVALUE) then
       call sample_fission(i_nuclide, i_reaction)
       call create_fission_sites(p, i_nuclide, i_reaction)
     end if

@@ -94,7 +94,7 @@ contains
                   & scheme)
                 nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
                 nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
-                if (.not. already_read % contains(nuclides(i_nuclide) % & 
+                if (.not. already_read % contains(nuclides(i_nuclide) % &
                   & name_0K)) then
                   i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % &
                     & name_0K)
@@ -369,14 +369,6 @@ contains
         call read_unr_res(nuc)
       end if
 
-      ! Currently subcritical fixed source calculations are not allowed. Thus,
-      ! if any fissionable material is found in a fixed source calculation,
-      ! abort the run.
-      if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
-        call fatal_error("Cannot have fissionable material in a fixed source &
-             &run.")
-      end if
-
       ! for fissionable nuclides, precalculate microscopic nu-fission cross
       ! sections so that we don't need to call the nu_total function during
       ! cross section lookups (except if we're dealing w/ 0K data for resonant
@@ -444,7 +436,7 @@ contains
 
       ! Skip total and absorption
       XSS_index = XSS_index + 2*NE
-      
+
       ! Continue reading elastic scattering and heating
       nuc % elastic_0K = get_real(NE)
 
@@ -480,13 +472,13 @@ contains
       ! Read data from XSS -- only the energy grid, elastic scattering and heating
       ! cross section values are actually read from here. The total and absorption
       ! cross sections are reconstructed from the partial reaction data.
-      
+
       XSS_index = 1
       nuc % energy = get_real(NE)
-      
+
       ! Skip total and absorption
       XSS_index = XSS_index + 2*NE
-      
+
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 

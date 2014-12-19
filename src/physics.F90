@@ -1572,6 +1572,7 @@ contains
     real(8) :: E_max       ! parameter for n-body dist
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
+    logical :: histogram_interp ! use histogram interpolation on incoming energy
 
     ! ==========================================================================
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
@@ -1668,8 +1669,7 @@ contains
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
-        if (master) call warning("Assuming linear-linear interpolation when &
-             &sampling continuous tabular distribution")
+        histogram_interp = (edist % data(3) == 1)
       else if (NR > 1) then
         ! call write_particle_restart(p)
         call fatal_error("Multiple interpolation regions not supported while &
@@ -1693,11 +1693,15 @@ contains
       end if
 
       ! Sample between the ith and (i+1)th bin
-      r2 = prn()
-      if (r > r2) then
-        l = i + 1
-      else
+      if (histogram_interp) then
         l = i
+      else
+        r2 = prn()
+        if (r > r2) then
+          l = i + 1
+        else
+          l = i
+        end if
       end if
 
       ! interpolation for energy E1 and EK
@@ -1776,10 +1780,12 @@ contains
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      if (.not. histogram_interp) then
+        if (l == i) then
+          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+        else
+          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+        end if
       end if
 
     case (5)

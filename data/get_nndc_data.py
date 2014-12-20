@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tarfile
 import glob
+import hashlib
 
 try:
     from urllib.request import urlopen
@@ -20,6 +21,8 @@ from convert_binary import ascii_to_binary
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
          'ENDF-B-VII.1-tsl.tar.gz']
+checksums = ['9729a17eb62b75f285d8a7628ace1449',
+             'e17d827c92940a30f22f096d910ea186']
 block_size = 16384
 
 # ==============================================================================
@@ -66,6 +69,16 @@ for f in files:
         filesComplete.append(f)
 
 # ==============================================================================
+# VERIFY MD5 CHECKSUMS
+
+print('Verifying MD5 checksums...')
+for f, checksum in zip(files, checksums):
+    downloadsum = hashlib.md5(open(f, 'r').read()).hexdigest()
+    if downloadsum != checksum:
+        raise IOError("MD5 checksum for {} does not match. Contact OpenMC "
+                      "developers by emailing openmc-users@googlegroups.com.")
+
+# ==============================================================================
 # EXTRACT FILES FROM TGZ
 
 for f in files:
@@ -77,6 +90,10 @@ for f in files:
     with tarfile.open(f, 'r') as tgz:
         print('Extracting {0}...'.format(f))
         tgz.extractall(path='nndc/' + suffix)
+
+# Move ACE files down one level
+for filename in glob.glob('nndc/293.6K/ENDF-B-VII.1-neutron-293.6K/*'):
+    shutil.move(filename, 'nndc/293.6K/')
 
 #===============================================================================
 # EDIT GRAPHITE ZAID (6012 to 6000)

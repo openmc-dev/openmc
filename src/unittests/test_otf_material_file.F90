@@ -1,17 +1,16 @@
 module test_otf_material_file
 
-  use constants,        only: MAX_LINE_LEN
-  use global,           only: master
+  use constants,        only: MAX_FILE_LEN
+  use global,           only: master, rank, n_procs, n_materials, materials
   use error,            only: warning
-  use material_header,  only: Composition, CompositionFile
-  use output_interface, only: BinaryOutput
+  use input_xml,        only: init_otf_materials
   use output,           only: write_message
   use testing_header,   only: TestSuiteClass, TestClass
+  use state_point,      only: write_distribmat_comps
   use string,           only: to_str
 
 #ifdef HDF5
   use hdf5
-  use hdf5_interface,   only: dims1, hdf5_rank, dset, dspace, hdf5_err
 #endif
 
 #ifdef MPI
@@ -31,9 +30,6 @@ module test_otf_material_file
   end type test
 
   type(test), public      :: otf_material_file_test
-  type(Composition)       :: comp(5)
-  type(CompositionFile)   :: compfile
-  character(MAX_LINE_LEN) :: filename
 
 contains
 
@@ -58,68 +54,112 @@ contains
     class(test), intent(inout) :: this
     class(TestSuiteClass), intent(inout) :: suite
 
+    character(MAX_FILE_LEN) :: filename
+    integer :: i
     logical :: stat
-    type(BinaryOutput) :: fh
 #ifdef MPI
     integer :: mpi_err
 #endif
 
-#ifdef HDF5
-    integer(HID_T) :: file_id
-#endif
-
-    filename = 'otf_material_test'
-#ifdef HDF5
-    filename = trim(filename) // '.h5'
+#ifdef MPI
+    if (.not. n_procs == 5) then
+      if (master) call write_message("Skipping test: must be run 5 MPI ranks")
+      call suite % skip(this)
+      return
+    end if   
 #else
-    filename = trim(filename) // '.binary'
+    call write_message("Skipping test: must be run with MPI")
+    call suite % skip(this)
+    return
 #endif
 
-    if (master) then
-
-      ! Create file and write header
-      call fh % file_create(filename, record_len = 8)
-      call fh % write_data(4, 'n_nuclides', record=1)
-      call fh % write_data(5, 'n_instances', record=2)
-      call fh % file_close()
-      
-#ifdef HDF5
-      ! For HDF5, we need to create the whole dataset first, then write to sections with hyperslabs later
-
-      hdf5_rank = 1
-      dims1(1) = 20
-
-      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
-      call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
-      call h5dcreate_f(file_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
-      call h5dclose_f(dset, hdf5_err)
-      call h5sclose_f(dspace, hdf5_err)
-      call h5fclose_f(file_id, hdf5_err)
+#ifndef HDF5
+    if (master) call write_message("Skipping test: must be run with HDF5")
+    call suite % skip(this)
+    return
 #endif
 
-      ! Open the file for composition writing
-      call fh % file_open(filename, 'w', serial = .true., direct_access = .true., record_len = 8*4)
-      call fh % write_data((/4.0_8, 3.0_8, 2.0_8, 1.0_8/), "comps", length=4, record=4, offset=16)
-      call fh % write_data((/7.0_8, 7.0_8, 7.0_8, 7.0_8/), "comps", length=4, record=5, offset=16)
-      call fh % write_data((/1.0_8, 2.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=1, offset=16)
-      call fh % write_data((/3.0_8, 2.0_8, 1.0_8, 4.0_8/), "comps", length=4, record=3, offset=16)
-      call fh % write_data((/2.0_8, 1.0_8, 3.0_8, 4.0_8/), "comps", length=4, record=2, offset=16)
-
-      ! Close the file
-      call fh % file_close()
-
-    end if
+    ! Set up a material with some OTF compositions
+    n_materials = 1
+    allocate(materials(1))
+    materials(1) % id = 1
+    materials(1) % n_nuclides = 4
+    materials(1) % n_comp = 5
+    materials(1) % otf_compositions = .true.
+    allocate(materials(1) % comp(5))
+    do i = 1, 5   
+      allocate(materials(1) % comp(i) % atom_density(4))
+    end do
+    select case(rank)
+      case(0)
+        materials(1) % next_comp_idx = 3
+        call materials(1) % reverse_comp_index_map % add_key(1, 5)
+        materials(1) % comp(1) % atom_density = (/7.0_8, 7.0_8, 7.0_8, 7.0_8/)
+        call materials(1) % reverse_comp_index_map % add_key(2, 2)
+        materials(1) % comp(2) % atom_density = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+      case(1)
+        materials(1) % next_comp_idx = 4
+        call materials(1) % reverse_comp_index_map % add_key(1, 3)
+        materials(1) % comp(1) % atom_density = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+        call materials(1) % reverse_comp_index_map % add_key(2, 1)
+        materials(1) % comp(2) % atom_density = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        call materials(1) % reverse_comp_index_map % add_key(3, 2)
+        materials(1) % comp(3) % atom_density = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+      case(2)
+        materials(1) % next_comp_idx = 1
+      case(3)
+        materials(1) % next_comp_idx = 3
+        call materials(1) % reverse_comp_index_map % add_key(1, 1)
+        materials(1) % comp(1) % atom_density = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        call materials(1) % reverse_comp_index_map % add_key(2, 4)
+        materials(1) % comp(2) % atom_density = (/4.0_8, 3.0_8, 2.0_8, 1.0_8/)
+      case(4)
+        materials(1) % next_comp_idx = 2
+        call materials(1) % reverse_comp_index_map % add_key(1, 3)
+        materials(1) % comp(1) % atom_density = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+    end select
 
 #ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 #endif
 
-    INQUIRE(FILE=filename, EXIST=stat)
+    ! Write materials to disk
+    filename = 'materials.h5'
+    call write_distribmat_comps(filename)
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
+    ! Check if the file exists
+    INQUIRE(FILE='materials.h5', EXIST=stat)
     if (.not. stat) then
-      call suite % skip(this)
-      if (master) call write_message('Test file not created: ' // filename)
+      call suite % fail()
+      if (master) call write_message('FAILURE: Test file not created.')
       return
     end if
+
+    ! Return to blank slate
+    do i = 1, 5   
+      deallocate(materials(1) % comp(i) % atom_density)
+    end do
+    deallocate(materials)
+
+    ! Now recreate the mat initialization that happens in input_xml
+    n_materials = 1
+    allocate(materials(n_materials))
+    materials(1) % id = 1
+    materials(1) % n_nuclides = 4
+    materials(1) % n_comp = 5
+    materials(1) % otf_compositions = .true.
+    materials(1) % comp_file % group = 'mat-1'
+    materials(1) % comp_file % n_nuclides = 4
+    materials(1) % comp_file % n_instances = 5
+    allocate(materials(1) % comp(5))
+    do i = 1, 5   
+      allocate(materials(1) % comp(i) % atom_density(4))
+    end do
+    call init_otf_materials()
 
   end subroutine test_setup
 
@@ -129,27 +169,25 @@ contains
 
   subroutine test_execute()
 
-    integer :: i
-    type(BinaryOutput) :: fh
-
-    ! Set up the composition file wrapper
-    compfile % path = filename
-    call fh % file_open(filename, 'r', &
-                        direct_access = .true., record_len = 8)
-    call fh % read_data(compfile % n_nuclides, 'n_nuclides', record = 1)
-    call fh % read_data(compfile % n_instances, 'n_instances', record = 2)
-    call fh % file_close()
-
-    call compfile % fh % file_open(compfile % path, 'r', &
-        serial = .false., direct_access = .true., &
-        record_len = 8 * compfile % n_nuclides)
+    real(8) :: density
 
     ! Read the compositions in
-    do i = 1, compfile % n_instances
-      comp(i) = compfile % load(i)
-    end do
-
-    call compfile % fh % file_close()
+    select case(rank)
+      case(0)
+        density = materials(1) % get_density(5, 1)
+        density = materials(1) % get_density(2, 1)
+      case(1)
+        density = materials(1) % get_density(3, 1)
+        density = materials(1) % get_density(1, 1)
+        density = materials(1) % get_density(2, 1)
+      case(2)
+        ! don't load anything
+      case(3)
+        density = materials(1) % get_density(1, 1)
+        density = materials(1) % get_density(4, 1)
+      case(4)
+        density = materials(1) % get_density(3, 1)
+    end select
 
   end subroutine test_execute
 
@@ -167,36 +205,53 @@ contains
     logical :: any_fail
 #endif
 
-    if (.not. compfile % n_nuclides == 4) failure = .true.
-    if (.not. compfile % n_instances == 5) failure = .true.
-    
-    if (.not. comp(1) % atom_density(1) == 1.0_8) failure = .true.
-    if (.not. comp(1) % atom_density(2) == 2.0_8) failure = .true.
-    if (.not. comp(1) % atom_density(3) == 3.0_8) failure = .true.
-    if (.not. comp(1) % atom_density(4) == 4.0_8) failure = .true.
-
-    if (.not. comp(2) % atom_density(1) == 2.0_8) failure = .true.
-    if (.not. comp(2) % atom_density(2) == 1.0_8) failure = .true.
-    if (.not. comp(2) % atom_density(3) == 3.0_8) failure = .true.
-    if (.not. comp(2) % atom_density(4) == 4.0_8) failure = .true.
-   
-    if (.not. comp(3) % atom_density(1) == 3.0_8) failure = .true.
-    if (.not. comp(3) % atom_density(2) == 2.0_8) failure = .true.
-    if (.not. comp(3) % atom_density(3) == 1.0_8) failure = .true.
-    if (.not. comp(3) % atom_density(4) == 4.0_8) failure = .true.
-
-    if (.not. comp(4) % atom_density(1) == 4.0_8) failure = .true.
-    if (.not. comp(4) % atom_density(2) == 3.0_8) failure = .true.
-    if (.not. comp(4) % atom_density(3) == 2.0_8) failure = .true.
-    if (.not. comp(4) % atom_density(4) == 1.0_8) failure = .true.
-
-    if (.not. comp(5) % atom_density(1) == 7.0_8) failure = .true.
-    if (.not. comp(5) % atom_density(2) == 7.0_8) failure = .true.
-    if (.not. comp(5) % atom_density(3) == 7.0_8) failure = .true.
-    if (.not. comp(5) % atom_density(4) == 7.0_8) failure = .true.
+    select case(rank)
+      case(0)
+        if (.not. materials(1) % next_comp_idx == 3) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(1) == 7.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(2) == 7.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(3) == 7.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(4) == 7.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(1) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(2) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(4) == 4.0_8) failure = .true.
+      case(1)
+        if (.not. materials(1) % next_comp_idx == 4) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(1) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(3) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(1) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % comp(3) % atom_density(1) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(3) % atom_density(2) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(3) % atom_density(3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(3) % atom_density(4) == 4.0_8) failure = .true.
+      case(2)
+        if (.not. materials(1) % next_comp_idx == 1) failure = .true.
+      case(3)
+        if (.not. materials(1) % next_comp_idx == 3) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(1) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(1) == 4.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(2) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(3) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(2) % atom_density(4) == 1.0_8) failure = .true.
+      case(4)
+        if (.not. materials(1) % next_comp_idx == 2) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(1) == 3.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(3) == 1.0_8) failure = .true.
+        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
+    end select
 
     if (failure) then
-      call write_message("FAILURE: Materials file reading failure.")
+      call write_message("FAILURE: Materials file reading failure on rank " // trim(to_str(rank)))
     end if
 
 #ifdef MPI

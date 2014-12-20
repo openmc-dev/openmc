@@ -78,6 +78,13 @@ for f in files:
         print('Extracting {0}...'.format(f))
         tgz.extractall(path='nndc/' + suffix)
 
+    # move files down one dir
+    nndc_293 = os.path.join('nndc', '293.6K')
+    aces = glob.glob(os.path.join(nndc_293 , '*', '*'))
+    for ace in aces:
+        fname = os.path.basename(ace)
+        shutil.move(ace, os.path.join(nndc_293, fname))
+
 #===============================================================================
 # EDIT GRAPHITE ZAID (6012 to 6000)
 

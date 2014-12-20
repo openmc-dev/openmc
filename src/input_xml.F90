@@ -1584,7 +1584,7 @@ contains
 
     do i = 1, n_materials
       mat => materials(i)
-      
+
       ! set default values
       mat % cell = 0
       mat % map = 0
@@ -1921,8 +1921,10 @@ contains
           mat % n_comp = n_comp / (n_nuclide + n_element)
           if (mod(n_comp, n_nuclide + n_element) /= 0) then
             call fatal_error("Number of composition values not divisible by " // &
-                      "number of nuclides + elements." // &
-                      trim(to_str(mat % id)))
+                      "number of nuclides + elements. Mat: " // &
+                      trim(to_str(mat % id)) // ", n_comp: " // &
+                      trim(to_str(n_comp)) // ", n_nuc+n_elem: " // &
+                      trim(to_str(n_nuclide + n_element)))
           end if
 
           allocate(temp_real_array(n_comp))

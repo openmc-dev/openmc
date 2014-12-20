@@ -713,9 +713,16 @@ class Tally(object):
                 raise ValueError(msg)
 
         elif not score in SCORE_TYPES.values():
-            msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
-                  'supported score in OpenMC'.format(score, self._id)
-            raise ValueError(msg)
+            try:
+                mt = int(score)
+                if not mt in SCORE_TYPES:
+                    msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
+                          'supported MT reaction'.format(score, self._id)
+                    raise ValueError(msg)
+            except:
+                msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
+                      'supported score in OpenMC'.format(score, self._id)
+                raise ValueError(msg)
 
         # If the score is already in the Tally, don't add it again
         if score in self._scores:

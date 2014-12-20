@@ -76,7 +76,9 @@ class Material(object):
 
         # If the Material already has an ID, remove it from global list
         if not self._id is None:
-            MATERIAL_IDS.remove(self._id)
+            try:
+                MATERIAL_IDS.remove(self._id)
+            except: pass
 
         if material_id is None:
             global AUTO_MATERIAL_ID
@@ -90,10 +92,10 @@ class Material(object):
                   'ID {0}'.format(material_id)
             raise ValueError(msg)
 
-        elif material_id in MATERIAL_IDS:
-            msg = 'Unable to set Material ID to {0} since a Material with ' \
-                  'this ID was already initialized'.format(material_id)
-            raise ValueError(msg)
+        #elif material_id in MATERIAL_IDS:
+        #    msg = 'Unable to set Material ID to {0} since a Material with ' \
+        #          'this ID was already initialized'.format(material_id)
+        #    raise ValueError(msg)
 
         elif material_id < 0:
             msg = 'Unable to set Material ID to {0} since it must be a ' \

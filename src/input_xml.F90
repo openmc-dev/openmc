@@ -1544,11 +1544,6 @@ contains
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
     type(BinaryOutput) :: fh
-#ifdef HDF5
-    integer(HID_T) :: file_id
-    integer(HID_T) :: plist
-    integer        :: hdf5_err
-#endif
 
     ! Display output message
     call write_message("Reading materials XML file...", 5)
@@ -2228,39 +2223,7 @@ contains
     end do
 
     ! Prepare OTF material file for reading
-    if (otf_hdf5_mats) then
-
-#ifndef MPI
-      call fatal_error("OTF materials not implemented for non-MPI runs.")
-#endif
-
-      ! Create property list
-      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-
-      ! Setup file access property list with parallel I/O access
-      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
-
-      ! Open the file
-      filename = 'materials.h5'
-      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
-          access_prp = plist)
-
-      ! Close property list
-      call h5pclose_f(plist, hdf5_err)
-
-      ! Create the property list to describe independent parallel I/O
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
-
-      ! Initialize each material
-      do i = 1, n_materials
-        mat => materials(i)
-        if (mat % otf_compositions) then
-          call mat % comp_file % init(mat % n_nuclides, file_id, plist)
-        end if
-      end do
-
-    end if
+    if (otf_hdf5_mats) call init_otf_materials()
 
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
@@ -2270,6 +2233,55 @@ contains
     call close_xmldoc(doc)
 
   end subroutine read_materials_xml
+
+!===============================================================================
+! INIT_OTF_MATERIALS sets up materials for OTF reading
+!===============================================================================
+
+  subroutine init_otf_materials()
+
+    integer :: i
+    type(Material),    pointer :: mat => null()
+#ifdef HDF5
+    integer(HID_T) :: file_id
+    integer(HID_T) :: plist
+    integer        :: hdf5_err
+#endif
+
+#ifndef MPI
+    call fatal_error("OTF materials not implemented for non-MPI runs.")
+#else
+# ifndef HDF5
+    call fatal_error("OTF materials supported only for HDF5.")
+# else
+    ! Create property list
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+
+    ! Setup file access property list with parallel I/O access
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+
+    ! Open the file
+    call h5fopen_f('materials.h5', H5F_ACC_RDWR_F, file_id, hdf5_err, &
+        access_prp = plist)
+
+    ! Close property list
+    call h5pclose_f(plist, hdf5_err)
+
+    ! Create the property list to describe independent parallel I/O
+    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+
+    ! Initialize each material
+    do i = 1, n_materials
+      mat => materials(i)
+      if (mat % otf_compositions) then
+        call mat % comp_file % init(mat % n_nuclides, file_id, plist)
+      end if
+    end do
+# endif
+#endif
+
+  end subroutine init_otf_materials
 
 !===============================================================================
 ! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking

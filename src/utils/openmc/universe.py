@@ -14,6 +14,8 @@ import numpy as np
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
+WRITTEN_IDS = {}
+
 def reset_auto_cell_id():
     global AUTO_CELL_ID
     AUTO_CELL_ID = 10000
@@ -532,14 +534,18 @@ class Universe(object):
     def create_xml_subelement(self, xml_element):
 
         # Iterate over all Cells
-        for cell_id, cell in self._cells.items():
+        n = len(self._cells.items())
+        for i,(cell_id, cell) in enumerate(self._cells.items()):
 
             # Determine if XML element already contains subelement for this Cell
-            path = './cell[@id=\'{0}\']'.format(cell_id)
-            test = xml_element.find(path)
+            #path = './cell[@id=\'{0}\']'.format(cell_id)
+            #test = xml_element.find(path)
 
             # If the element does not contain the Cell subelement, then add it
-            if test is None:
+            #if test is None:
+            if not cell_id in WRITTEN_IDS:
+                WRITTEN_IDS[cell_id] = None
+                print '%s of %s' %(i,n), cell_id, cell._name
 
                 # Create XML subelement for this Cell
                 cell_subelement = cell.create_xml_subelement(xml_element)

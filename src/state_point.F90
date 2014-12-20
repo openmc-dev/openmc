@@ -1710,10 +1710,11 @@ contains
 ! WRITE_DISTRIBMAT_COMPS
 !===============================================================================
 
-  subroutine write_distribmat_comps()
+  subroutine write_distribmat_comps(filename)
 
-    character(MAX_FILE_LEN)    :: filename
-    character(MAX_FILE_LEN)    :: groupname
+    character(MAX_FILE_LEN), intent(in)    :: filename
+
+    character(MAX_FILE_LEN) :: groupname
     integer :: i, j
     integer :: idx
     type(BinaryOutput) :: fh
@@ -1735,7 +1736,6 @@ contains
     ! Create files and write headers (master only)
     if (master) then
 
-      filename = 'materials-out.h5'
       call fh % file_create(filename)
 
       do i = 1, n_materials
@@ -1782,7 +1782,6 @@ contains
           MPI_INFO_NULL, hdf5_err)
 
       ! Open the file
-      filename = 'materials-out.h5'
       call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
           access_prp = plist)
 

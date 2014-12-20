@@ -1,5 +1,6 @@
 module finalize
 
+  use constants
   use global
   use output,         only: header, print_runtime, print_results, &
                             print_overlap_check, write_tallies, print_testing, &
@@ -46,7 +47,7 @@ contains
         if (output_tallies) call write_tallies()
       end if
       if (check_overlaps) call reduce_overlap_count()
-      if (output_distribmats) call write_distribmat_comps()
+      if (output_distribmats) call write_distribmat_comps(OUTPUT_MATFILE)
     end if
 
 #ifdef PETSC

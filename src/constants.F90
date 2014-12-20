@@ -399,6 +399,9 @@ module constants
   ! controls how much larger than the needed size they will be allocated to
   real(8), parameter :: OTF_HEADROOM = 1.1_8
 
+
+  character(MAX_FILE_LEN), parameter :: OUTPUT_MATFILE = 'materials-out.h5'
+
   !=============================================================================
   ! CMFD CONSTANTS
 

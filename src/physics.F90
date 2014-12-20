@@ -1680,6 +1680,8 @@ contains
         ! call write_particle_restart(p)
         call fatal_error("Multiple interpolation regions not supported while &
              &attempting to sample continuous tabular distribution.")
+      else
+        histogram_interp = .false.
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is

@@ -248,6 +248,7 @@ module global
   type(Timer) :: time_active        ! timer for active batches
   type(Timer) :: time_transport     ! timer for transport only
   type(Timer) :: time_statepoint    ! timer for statepoint writing
+  type(Timer) :: time_matdump       ! timer for dumping materials
   type(Timer) :: time_finalize      ! timer for finalization
   type(Timer) :: time_dd_sync       ! timer for DD total scatter sync
   type(Timer) :: time_dd_info       ! timer for DD information sync only
@@ -429,7 +430,7 @@ contains
     do i = 1, n_materials
       mat => materials(i)
       if (mat % otf_compositions) then
-        call mat % comp_file % fh % file_close()
+        call mat % comp_file % close()
       end if
     end do
 

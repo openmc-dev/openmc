@@ -4,7 +4,15 @@ module material_header
   use dict_header,      only: DictIntInt
   use output_interface, only: BinaryOutput
 
+#ifdef HDF5
+  use hdf5
+#endif
+
   implicit none
+
+#ifdef HDF5
+    integer :: hdf5_err
+#endif
 
 !===============================================================================
 ! COMPOSITION describes a material by its constituent nuclide atom fractions
@@ -24,8 +32,20 @@ module material_header
     type(BinaryOutput)      :: fh           ! file handle
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
+#ifdef HDF5
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
+    integer(HID_T) :: dset       ! data set handle
+    integer(HID_T) :: dspace     ! data or file space handle
+    integer(HID_T) :: memspace   ! data space handle for individual procs
+    integer(HID_T) :: plist      ! property list handle
+    integer(HSIZE_T) :: block1(1)
+    integer(HSIZE_T) :: dims1(1)
+#endif
   contains
+    procedure :: init => composition_file_init
     procedure :: load => composition_file_load
+    procedure :: close => composition_file_close
   end type CompositionFile
 
   integer, parameter :: COMPFILE_TYPE_BINARY = 1
@@ -180,6 +200,39 @@ contains
     end subroutine grow_composition_array
 
 !===============================================================================
+! COMPOSITION_FILE_INIT
+!===============================================================================
+
+    subroutine composition_file_init(this, length, file_id, plist)
+
+      class(CompositionFile), intent(inout) :: this 
+      integer, intent(in) :: length
+#ifndef HDF5
+      integer, intent(in) :: file_id
+      integer, intent(in) :: plist
+#else
+      integer(HID_T), intent(in) :: file_id
+      integer(HID_T), intent(in) :: plist
+
+      this % file_id = file_id
+      this % plist = plist
+      this % block1 = length
+      this % dims1 = length
+
+      ! Open the group
+      call h5gopen_f(this % file_id, trim(this % group), this % group_id, hdf5_err)
+  
+      ! Open the dataset
+      call h5dopen_f(this % group_id, 'comps', this % dset, hdf5_err)
+
+      ! Open the dataspace and memory space
+      call h5dget_space_f(this % dset, this % dspace, hdf5_err)
+      call h5screate_simple_f(1, this % block1, this % memspace, hdf5_err)
+#endif
+
+    end subroutine composition_file_init
+
+!===============================================================================
 ! COMPOSITION_FILE_LOAD
 !===============================================================================
 
@@ -189,14 +242,45 @@ contains
       integer,                intent(in)    :: real_inst
       
       type(Composition) :: comp
+#ifdef HDF5
+      integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
+      integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
 
       allocate(comp % atom_density(this % n_nuclides))
 
-      call this % fh % read_data(comp % atom_density, 'comps', &
-          group = trim(this % group), &
-          collect = .false., length = this % n_nuclides, &
-          record = real_inst, offset = 16)
+      start1 = (real_inst - 1) * this % block1
+      count1 = 1
+
+      ! Select the hyperslab
+      call h5sselect_hyperslab_f(this % dspace, H5S_SELECT_SET_F, start1, &
+          count1, hdf5_err, block = this % block1)
+
+      ! Read data from file into memory
+      call H5dread_f(this % dset, H5T_NATIVE_DOUBLE, comp % atom_density, &
+          this % dims1, hdf5_err, xfer_prp = this % plist, &
+          mem_space_id = this % memspace, file_space_id = this % dspace)
+#endif
 
     end function composition_file_load
+
+!===============================================================================
+! COMPOSITION_FILE_CLOSE
+!===============================================================================
+
+    subroutine composition_file_close(this)
+
+      class(CompositionFile), intent(inout) :: this 
+
+#ifdef HDF5
+      ! Close the dataspace and memory space
+      call h5sclose_f(this % dspace, hdf5_err)
+      call h5sclose_f(this % memspace, hdf5_err)
+
+      ! Close dataset and group
+      call h5dclose_f(this % dset, hdf5_err)
+      call h5gclose_f(this % group_id, hdf5_err)
+#endif
+
+    end subroutine composition_file_close
 
 end module material_header

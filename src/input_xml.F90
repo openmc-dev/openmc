@@ -7,6 +7,7 @@ module input_xml
   use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
   use global
   use list_header,      only: ListChar, ListReal
+  use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
   use output_interface, only: BinaryOutput
@@ -17,6 +18,14 @@ module input_xml
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
+
+#ifdef MPI
+  use mpi
+#endif
+
+#ifdef HDF5
+  use hdf5
+#endif
 
   implicit none
   save
@@ -1535,6 +1544,11 @@ contains
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
     type(BinaryOutput) :: fh
+#ifdef HDF5
+    integer(HID_T) :: file_id
+    integer(HID_T) :: plist
+    integer        :: hdf5_err
+#endif
 
     ! Display output message
     call write_message("Reading materials XML file...", 5)
@@ -1825,13 +1839,14 @@ contains
         ! Read composition values
         if (mat % otf_compositions) then
 
+#ifndef HDF5
+          call fatal_error("OTF materials only supported for HDF5.")
+#endif
+
           ! Read from the OTF mats file
-#ifdef HDF5
           mat % comp_file % path = trim(path_input) // 'materials.h5'
           call get_node_value(node_comp, "otf_file_path", mat % comp_file % group)
-#else
-          call get_node_value(node_comp, "otf_file_path", mat % comp_file % path)
-#endif
+
           inquire(FILE=mat % comp_file % path, EXIST=file_exists)
           if (.not. file_exists) then
              ! Could not find cross_sections.xml file
@@ -1864,17 +1879,10 @@ contains
           mat % n_comp = n_comp
 
           ! Collectively open this file for reading during execution
-#ifndef HDF5
-          ! Only open the file once for HDF5
+          ! Only open the file once for HDF5, so defer until after all mats read
           otf_hdf5_mats = .true.
-#else
-          call mat % comp_file % fh % file_open(mat % comp_file % path, 'r', &
-              serial = .false., direct_access = .true., &
-              record_len = 8 * mat % comp_file % n_nuclides)
-#endif
 
           ! Set initial guess for size of composition array and allocate
-
           if (dd_run) then
 
             if (domain_decomp % n_domains > n_comp) then
@@ -2217,14 +2225,39 @@ contains
       call material_dict % add_key(mat % id, i)
     end do
 
+    ! Prepare OTF material file for reading
     if (otf_hdf5_mats) then
-#ifdef HDF5
-      call materials(1) % comp_file % fh % file_open( &
-          trim(path_input) // 'materials.h5', 'r', serial = .false.)
-      do i = 2, n_materials
-        materials(i) % comp_file = materials(1) % comp_file
-      end do
+
+#ifndef MPI
+      call fatal_error("OTF materials not implemented for non-MPI runs.")
 #endif
+
+      ! Create property list
+      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+
+      ! Setup file access property list with parallel I/O access
+      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+
+      ! Open the file
+      filename = 'materials.h5'
+      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
+          access_prp = plist)
+
+      ! Close property list
+      call h5pclose_f(plist, hdf5_err)
+
+      ! Create the property list to describe independent parallel I/O
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+
+      ! Initialize each material
+      do i = 1, n_materials
+        mat => materials(i)
+        if (mat % otf_compositions) then
+          call mat % comp_file % init(mat % n_nuclides, file_id, plist)
+        end if
+      end do
+
     end if
 
     ! Set total number of nuclides and S(a,b) tables

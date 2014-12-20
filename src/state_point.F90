@@ -1729,6 +1729,9 @@ contains
     return
 #else
 
+    ! Start matdump timer
+    call time_matdump % start()
+
     ! Create files and write headers (master only)
     if (master) then
 
@@ -1881,6 +1884,9 @@ contains
         end if
       end do
 
+      print *, 'Rank ' // trim(to_str(rank)) // ' finished writing mats ' // &
+               'from domain ' // trim(to_str(domain_decomp % meshbin))
+
       ! Close property list
       call h5pclose_f(plist, hdf5_err)
 
@@ -1889,6 +1895,14 @@ contains
 
     end if
 #endif
+
+#ifdef MPI
+    ! Everyone should wait here - master needs a good matdump time
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
+    ! Start matdump timer
+    call time_matdump % stop()
 
   end subroutine write_distribmat_comps
 

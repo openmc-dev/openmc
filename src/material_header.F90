@@ -89,7 +89,7 @@ module material_header
     logical                        :: distrib_comp ! distributed compositions
 
     ! On-the-fly allocation controls
-    real(8), allocatable           :: otf_comp(:)
+    real(8), allocatable           :: otf_comp(:, :)
     logical :: otf_compositions = .false.
     type(CompositionFile) :: comp_file          ! compositions file
     integer :: size_comp_array                  ! Size of composition array
@@ -124,7 +124,7 @@ contains
     real(8)                        :: density ! density to be returned
 
     if (this % otf_compositions) then
-      density = this % otf_comp(this % otf_comp_index(i) + j - 1)
+      density = this % otf_comp(j, this % otf_comp_index(i))
     else
       density = this % comp(i) % atom_density(j)
     end if
@@ -140,7 +140,7 @@ contains
       class(Material), intent(inout) :: this 
       integer,         intent(in)    :: real_inst
       
-      integer :: idx, idx_s
+      integer :: idx
 
       ! If we're doing on-the-fly memory allocation, we use the map
       if (this % comp_index_map % has_key(real_inst)) then
@@ -161,11 +161,10 @@ contains
             this % next_comp_idx, real_inst)
 
         ! Set the return index
-        idx = (this % next_comp_idx - 1) * this % n_nuclides + 1
-        idx_s = idx + this % n_nuclides - 1
+        idx = this % next_comp_idx
         
         ! Load the compositions for this instance
-        this % otf_comp(idx:idx_s) = this % comp_file % load(real_inst)
+        this % otf_comp(:, idx) = this % comp_file % load(real_inst)
 
         ! Increment the next index
         this % next_comp_idx = this % next_comp_idx + 1
@@ -183,18 +182,19 @@ contains
       class(Material), intent(inout) :: this 
 
       integer :: newsize
-      type(Composition), allocatable :: temp(:)
+      real(8), allocatable :: temp(:, :)
 
       newsize = ceiling(real(this % size_comp_array, 8) * OTF_HEADROOM)
 
       ! Allocate results array with increased size
-      allocate(temp(newsize))
+      allocate(temp(this % n_nuclides, newsize))
 
       ! Copy original results to temporary array
-      temp(1:this % size_comp_array) = this % comp(1:this % size_comp_array)
+      temp(:, 1:this % size_comp_array) = &
+          this % otf_comp(:, 1:this % size_comp_array)
 
       ! Move allocation from temporary array
-      call move_alloc(FROM=temp, TO=this % comp)
+      call move_alloc(FROM=temp, TO=this % otf_comp)
 
       ! Update size
       this % size_comp_array = newsize
@@ -262,6 +262,7 @@ contains
       call H5dread_f(this % dset, H5T_NATIVE_DOUBLE, comp, &
           this % dims1, hdf5_err, xfer_prp = this % plist, &
           mem_space_id = this % memspace, file_space_id = this % dspace)
+
 #endif
 
     end function composition_file_load

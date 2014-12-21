@@ -1847,7 +1847,7 @@ contains
             end do
 
             ! Write the data
-            f_ptr = c_loc(mat % otf_comp(1))
+            f_ptr = c_loc(mat % otf_comp(1, 1))
             call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
                 file_space_id = dspace, mem_space_id = memspace, &
                 xfer_prp = plist)
@@ -1947,8 +1947,6 @@ contains
     type(Material), pointer, intent(inout) :: mat
     integer, intent(in) :: a, b ! actual composition indices in otf_comp
 
-    integer :: idx_s_a, idx_e_a
-    integer :: idx_s_b, idx_e_b
     real(8), allocatable :: tmp(:)
     integer :: real_inst_a, real_inst_b
 
@@ -1963,13 +1961,9 @@ contains
     call mat % comp_index_map % add_key(real_inst_b, a)
 
     ! Swap the compositions
-    idx_s_a = (a - 1) * mat % n_nuclides + 1
-    idx_e_a = idx_s_a + mat % n_nuclides - 1
-    idx_s_b = (b - 1) * mat % n_nuclides + 1
-    idx_e_b = idx_s_b + mat % n_nuclides - 1
-    tmp = mat % otf_comp(idx_s_b:idx_e_b)
-    mat % otf_comp(idx_s_b:idx_e_b) = mat % otf_comp(idx_s_a:idx_e_a)
-    mat % otf_comp(idx_s_a:idx_e_a) = tmp
+    tmp = mat % otf_comp(:, b)
+    mat % otf_comp(:, b) = mat % otf_comp(:, a)
+    mat % otf_comp(:, a) = tmp
 
     deallocate(tmp)
 
@@ -2057,7 +2051,7 @@ contains
     call t % filter_index_map % add_key(real_inst_a, b)
     call t % filter_index_map % add_key(real_inst_b, a)
 
-    ! Swap the compositions
+    ! Swap the results
     tmp = t % results(:, b)
     t % results(:, b) = t % results(:, a)
     t % results(:, a) = tmp

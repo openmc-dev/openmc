@@ -2313,7 +2313,7 @@ contains
     real(8) :: k_abs ! Copy of batch absorption estimate of keff
     real(8) :: k_tra ! Copy of batch tracklength estimate of keff
 
-    call write_message("Synchronizing tallies...", 7)
+    call write_message("Synchronizing tallies...", 8)
 
 #ifdef MPI
     ! Combine tally results onto master process
@@ -2374,7 +2374,7 @@ contains
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
 
-    call write_message("Reducing tallies...", 7)
+    call write_message("Reducing tallies...", 8)
 
     do i = 1, active_tallies % size()
       t => tallies(active_tallies % get_item(i))

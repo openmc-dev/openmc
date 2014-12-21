@@ -21,7 +21,7 @@ module state_point
   use string,             only: to_str, zero_padded, count_digits
   use material_header,    only: Material
   use output_interface
-  use tally_header,       only: TallyObject
+  use tally_header,       only: TallyObject, TallyResult
   use tally,              only: write_tally_result, read_tally_result
   use dict_header,        only: ElemKeyValueII
 
@@ -823,15 +823,12 @@ contains
         ! Set point to current tally
         t => tallies(i)
 
-        ! Write sum and sum_sq for each bin.  This ensures that OTF allocated
-        ! bins will be written to the proper location in the file. As a result
-        ! we need to go through each bin one by one, which can be slow if
-        ! there's a lot of data.  It needs to be done eventually though if
-        ! any processing is to be done on the data, so might as well do it here
-        ! and insulate the user from needing to know anything about the OTF
-        ! maps.
-
         if (t % on_the_fly_allocation) then
+
+          ! Skip this tally if no bins were scored to
+          if (t % next_filter_idx == 1) cycle
+
+          block1 = size(t % results(:,1))
 
           ! Open the group
           groupname = 'tallies/tally' // trim(to_str(i))
@@ -840,32 +837,39 @@ contains
           ! Open the dataset
           call h5dopen_f(group_id, 'results', dset, hdf5_err)
 
+          ! Open the dataspace and memory space
+          call h5dget_space_f(dset, dspace, hdf5_err)
+          call h5screate_simple_f(1, block1 * (t % next_filter_idx - 1), &
+              memspace, hdf5_err)
+
+          ! For on-the-fly distributed tallies, we need to unscramble. We
+          ! do this by selecting an irregular hyperslab in the dataset, and
+          ! ensure that the filter bins are in the same order. This means we
+          ! need to sort the results bins.
+          call heapsort_results(t)
+
           ! Loop through OTF filter bins and write
+          call h5sselect_none_f(dspace, hdf5_err)
           do j = 1, t % next_filter_idx - 1
+
             idx = t % reverse_filter_index_map % get_key(j)
-            
-            block1 = size(t % results(:,j))
             start1 = (idx - 1) * block1
 
-            ! Open the dataspace and memory space
-            call h5dget_space_f(dset, dspace, hdf5_err)
-            call h5screate_simple_f(1, block1, memspace, hdf5_err)
-
             ! Select the hyperslab
-            call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+            call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &
                 count1, hdf5_err, block = block1)
 
-            ! Write the data
-            f_ptr = c_loc(t % results(1,j))
-            call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err, &
-                file_space_id = dspace, mem_space_id = memspace, &
-                xfer_prp = plist)
-
-            ! Close the dataspace and memory space
-            call h5sclose_f(dspace, hdf5_err)
-            call h5sclose_f(memspace, hdf5_err)
-
           end do
+
+          ! Write the data
+          f_ptr = c_loc(t % results(1,1))
+          call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err, &
+              file_space_id = dspace, mem_space_id = memspace, &
+              xfer_prp = plist)
+
+          ! Close the dataspace and memory space
+          call h5sclose_f(dspace, hdf5_err)
+          call h5sclose_f(memspace, hdf5_err)
 
           ! Close dataset and group
           call h5dclose_f(dset, hdf5_err)
@@ -1791,6 +1795,8 @@ contains
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
 
+      count1 = 1
+
       do i = 1, n_materials
         mat => materials(i)
         if (mat % n_comp > 1) then
@@ -1806,7 +1812,6 @@ contains
           ! I use the hdf5 functions here directly
 
           block1 = mat % n_nuclides
-          count1 = 1
 
           ! Open the group
           call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
@@ -1889,9 +1894,6 @@ contains
         end if
       end do
 
-      print *, 'Rank ' // trim(to_str(rank)) // ' finished writing mats ' // &
-               'from domain ' // trim(to_str(domain_decomp % meshbin))
-
       ! Close property list
       call h5pclose_f(plist, hdf5_err)
 
@@ -1936,9 +1938,8 @@ contains
    
   end subroutine heapsort_matcomps
 
-
 !===============================================================================
-! SWAP_MATCOMPS swapts two sections of the otf_comp array in a material, and
+! SWAP_MATCOMPS swaps two sections of the otf_comp array in a material, and
 ! updates the otf mapping dictionaries
 !===============================================================================
   
@@ -2008,5 +2009,96 @@ contains
     end do      
    
   end subroutine siftdown_matcomps
+
+!===============================================================================
+! HEAPSORT_RESULTS performs a heapsort on OTF results arrays within a tally
+! to order the array by real filter indices
+!===============================================================================
+
+  subroutine heapsort_results(t)
+   
+    type(TallyObject), pointer, intent(inout) :: t
+
+    integer :: start, n, bottom
+
+    ! Build the heap - O(log(n))
+    n = t % next_filter_idx - 1
+    do start = (n - 2) / 2, 0, -1
+      call siftdown_results(t, start, n);
+    end do
+   
+    ! Do the sort - O(n)
+    do bottom = n - 1, 1, -1
+      call swap_results(t, 1, bottom + 1)
+      call siftdown_results(t, 0, bottom)
+    end do
+   
+  end subroutine heapsort_results
+
+!===============================================================================
+! SWAP_RESULTS swaps two sections of the results array in a tally, and
+! updates the otf mapping dictionaries
+!===============================================================================
+  
+  subroutine swap_results(t, a, b)
+    type(TallyObject), pointer, intent(inout) :: t
+    integer, intent(in) :: a, b ! actual composition indices in otf_comp
+
+    type(TallyResult), allocatable :: tmp(:)
+    integer :: real_inst_a, real_inst_b
+
+    allocate(tmp(t % total_score_bins))
+
+    ! Swap the maps
+    real_inst_a = t % reverse_filter_index_map % get_key(a)
+    real_inst_b = t % reverse_filter_index_map % get_key(b)
+    call t % reverse_filter_index_map % add_key(a, real_inst_b)
+    call t % reverse_filter_index_map % add_key(b, real_inst_a)
+    call t % filter_index_map % add_key(real_inst_a, b)
+    call t % filter_index_map % add_key(real_inst_b, a)
+
+    ! Swap the compositions
+    tmp = t % results(:, b)
+    t % results(:, b) = t % results(:, a)
+    t % results(:, a) = tmp
+
+    deallocate(tmp)
+
+  end subroutine swap_results
+
+!===============================================================================
+! SIFTDOWN_RESULTS
+!===============================================================================
+
+  subroutine siftdown_results(t, start, bottom)
+   
+    type(TallyObject), pointer, intent(inout) :: t
+    integer, intent(in) :: start, bottom
+
+    integer :: child, root
+    integer :: real_inst_a, real_inst_b
+
+    root = start
+    do while(root*2 + 1 < bottom)
+      child = root * 2 + 1
+   
+      if (child + 1 < bottom) then
+        real_inst_a = t % reverse_filter_index_map % get_key(child + 1)
+        real_inst_b = t % reverse_filter_index_map % get_key(child + 2)
+        if (real_inst_a < real_inst_b) child = child + 1
+      end if
+   
+      real_inst_a = t % reverse_filter_index_map % get_key(root + 1)
+      real_inst_b = t % reverse_filter_index_map % get_key(child + 1)
+      if (real_inst_a < real_inst_b) then
+        call swap_results(t, root + 1, child + 1)
+        root = child
+      else
+        return
+      end if
+
+    end do      
+   
+  end subroutine siftdown_results
 
 end module state_point

@@ -1900,11 +1900,8 @@ contains
           end if
 
           ! Allocate compositions and their atom_density arrays
-          allocate(mat % comp(otf_initial_size))
+          allocate(mat % otf_comp(otf_initial_size * mat % n_nuclides))
           mat % size_comp_array = otf_initial_size
-          do j = 1, otf_initial_size
-            allocate(mat % comp(j) % atom_density(list_names % size()))
-          end do
 
         else
 

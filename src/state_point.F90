@@ -1705,7 +1705,6 @@ contains
 ! TODO what if n_particles does not match source bank
   end subroutine read_source
 
-
 !===============================================================================
 ! WRITE_DISTRIBMAT_COMPS
 !===============================================================================
@@ -1815,35 +1814,42 @@ contains
           ! Open the dataset and dataspace
           call h5dopen_f(group_id, 'comps', dset, hdf5_err)
 
-
           if (mat % otf_compositions) then
             ! OTF mats are spread across all ranks
 
-            ! For on-the-fly distributes materials, we need to unscramble
+            ! Open the dataspace and memory space
+            call h5dget_space_f(dset, dspace, hdf5_err)
+            call h5screate_simple_f(1, block1 * (mat % next_comp_idx - 1), &
+                memspace, hdf5_err)
+
+            ! For on-the-fly distributes materials, we need to unscramble. We
+            ! do this by selecting an irregular hyperslab in the dataset, and
+            ! ensure that the materials are in the same order.  This means we
+            ! need to sort the compositions.
+            call heapsort_matcomps(mat)
+
+            ! Select the irregular hyperslab
+            call h5sselect_none_f(dspace, hdf5_err)
             do j = 1, mat % next_comp_idx - 1
 
               idx = mat % reverse_comp_index_map % get_key(j)
               start1 = (idx - 1) * block1
 
-              ! Open the dataspace and memory space
-              call h5dget_space_f(dset, dspace, hdf5_err)
-              call h5screate_simple_f(1, block1, memspace, hdf5_err)
-
               ! Select the hyperslab
-              call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+              call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &
                   count1, hdf5_err, block = block1)
 
-              ! Write the data
-              f_ptr = c_loc(mat % comp(j) % atom_density)
-              call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
-                  file_space_id = dspace, mem_space_id = memspace, &
-                  xfer_prp = plist)
-
-              ! Close the dataspace and memory space
-              call h5sclose_f(dspace, hdf5_err)
-              call h5sclose_f(memspace, hdf5_err)
-
             end do
+
+            ! Write the data
+            f_ptr = c_loc(mat % otf_comp(1))
+            call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+                file_space_id = dspace, mem_space_id = memspace, &
+                xfer_prp = plist)
+
+            ! Close the dataspace and memory space
+            call h5sclose_f(dspace, hdf5_err)
+            call h5sclose_f(memspace, hdf5_err)
 
           else if (master) then
             ! All ranks have all of normal distribmats, so only master writes
@@ -1904,5 +1910,103 @@ contains
     call time_matdump % stop()
 
   end subroutine write_distribmat_comps
+
+!===============================================================================
+! HEAPSORT_MATCOMPS performs a heapsort on OTF compositions within a material
+! to order the array by real distribcell index
+!===============================================================================
+
+  subroutine heapsort_matcomps(mat)
+   
+    type(Material), pointer, intent(inout) :: mat
+
+    integer :: start, n, bottom
+
+    ! Build the heap - O(log(n))
+    n = mat % next_comp_idx - 1
+    do start = (n - 2) / 2, 0, -1
+      call siftdown_matcomps(mat, start, n);
+    end do
+   
+    ! Do the sort - O(n)
+    do bottom = n - 1, 1, -1
+      call swap_matcomps(mat, 1, bottom + 1)
+      call siftdown_matcomps(mat, 0, bottom)
+    end do
+   
+  end subroutine heapsort_matcomps
+
+
+!===============================================================================
+! SWAP_MATCOMPS swapts two sections of the otf_comp array in a material, and
+! updates the otf mapping dictionaries
+!===============================================================================
+  
+  subroutine swap_matcomps(mat, a, b)
+    type(Material), pointer, intent(inout) :: mat
+    integer, intent(in) :: a, b ! actual composition indices in otf_comp
+
+    integer :: idx_s_a, idx_e_a
+    integer :: idx_s_b, idx_e_b
+    real(8), allocatable :: tmp(:)
+    integer :: real_inst_a, real_inst_b
+
+    allocate(tmp(mat % n_nuclides))
+
+    ! Swap the maps
+    real_inst_a = mat % reverse_comp_index_map % get_key(a)
+    real_inst_b = mat % reverse_comp_index_map % get_key(b)
+    call mat % reverse_comp_index_map % add_key(a, real_inst_b)
+    call mat % reverse_comp_index_map % add_key(b, real_inst_a)
+    call mat % comp_index_map % add_key(real_inst_a, b)
+    call mat % comp_index_map % add_key(real_inst_b, a)
+
+    ! Swap the compositions
+    idx_s_a = (a - 1) * mat % n_nuclides + 1
+    idx_e_a = idx_s_a + mat % n_nuclides - 1
+    idx_s_b = (b - 1) * mat % n_nuclides + 1
+    idx_e_b = idx_s_b + mat % n_nuclides - 1
+    tmp = mat % otf_comp(idx_s_b:idx_e_b)
+    mat % otf_comp(idx_s_b:idx_e_b) = mat % otf_comp(idx_s_a:idx_e_a)
+    mat % otf_comp(idx_s_a:idx_e_a) = tmp
+
+    deallocate(tmp)
+
+  end subroutine swap_matcomps
+
+!===============================================================================
+! SIFTDOWN_MATCOMPS
+!===============================================================================
+
+  subroutine siftdown_matcomps(mat, start, bottom)
+   
+    type(Material), pointer, intent(inout) :: mat
+    integer, intent(in) :: start, bottom
+
+    integer :: child, root
+    integer :: real_inst_a, real_inst_b
+
+    root = start
+    do while(root*2 + 1 < bottom)
+      child = root * 2 + 1
+   
+      if (child + 1 < bottom) then
+        real_inst_a = mat % reverse_comp_index_map % get_key(child + 1)
+        real_inst_b = mat % reverse_comp_index_map % get_key(child + 2)
+        if (real_inst_a < real_inst_b) child = child + 1
+      end if
+   
+      real_inst_a = mat % reverse_comp_index_map % get_key(root + 1)
+      real_inst_b = mat % reverse_comp_index_map % get_key(child + 1)
+      if (real_inst_a < real_inst_b) then
+        call swap_matcomps(mat, root + 1, child + 1)
+        root = child
+      else
+        return
+      end if
+
+    end do      
+   
+  end subroutine siftdown_matcomps
 
 end module state_point

@@ -55,7 +55,6 @@ contains
     class(TestSuiteClass), intent(inout) :: suite
 
     character(MAX_FILE_LEN) :: filename
-    integer :: i
     logical :: stat
 #ifdef MPI
     integer :: mpi_err
@@ -86,37 +85,34 @@ contains
     materials(1) % n_nuclides = 4
     materials(1) % n_comp = 5
     materials(1) % otf_compositions = .true.
-    allocate(materials(1) % comp(5))
-    do i = 1, 5   
-      allocate(materials(1) % comp(i) % atom_density(4))
-    end do
+    allocate(materials(1) % otf_comp(20))
     select case(rank)
       case(0)
         materials(1) % next_comp_idx = 3
         call materials(1) % reverse_comp_index_map % add_key(1, 5)
-        materials(1) % comp(1) % atom_density = (/7.0_8, 7.0_8, 7.0_8, 7.0_8/)
+        materials(1) % otf_comp(1:4) = (/7.0_8, 7.0_8, 7.0_8, 7.0_8/)
         call materials(1) % reverse_comp_index_map % add_key(2, 2)
-        materials(1) % comp(2) % atom_density = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+        materials(1) % otf_comp(5:8) = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
       case(1)
         materials(1) % next_comp_idx = 4
         call materials(1) % reverse_comp_index_map % add_key(1, 3)
-        materials(1) % comp(1) % atom_density = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+        materials(1) % otf_comp(1:4) = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
         call materials(1) % reverse_comp_index_map % add_key(2, 1)
-        materials(1) % comp(2) % atom_density = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        materials(1) % otf_comp(5:8) = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
         call materials(1) % reverse_comp_index_map % add_key(3, 2)
-        materials(1) % comp(3) % atom_density = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+        materials(1) % otf_comp(9:12) = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
       case(2)
         materials(1) % next_comp_idx = 1
       case(3)
         materials(1) % next_comp_idx = 3
         call materials(1) % reverse_comp_index_map % add_key(1, 1)
-        materials(1) % comp(1) % atom_density = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        materials(1) % otf_comp(1:4) = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
         call materials(1) % reverse_comp_index_map % add_key(2, 4)
-        materials(1) % comp(2) % atom_density = (/4.0_8, 3.0_8, 2.0_8, 1.0_8/)
+        materials(1) % otf_comp(5:8) = (/4.0_8, 3.0_8, 2.0_8, 1.0_8/)
       case(4)
         materials(1) % next_comp_idx = 2
         call materials(1) % reverse_comp_index_map % add_key(1, 3)
-        materials(1) % comp(1) % atom_density = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+        materials(1) % otf_comp(1:4) = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
     end select
 
 #ifdef MPI
@@ -140,9 +136,6 @@ contains
     end if
 
     ! Return to blank slate
-    do i = 1, 5   
-      deallocate(materials(1) % comp(i) % atom_density)
-    end do
     deallocate(materials)
 
     ! Now recreate the mat initialization that happens in input_xml
@@ -155,10 +148,7 @@ contains
     materials(1) % comp_file % group = 'mat-1'
     materials(1) % comp_file % n_nuclides = 4
     materials(1) % comp_file % n_instances = 5
-    allocate(materials(1) % comp(5))
-    do i = 1, 5   
-      allocate(materials(1) % comp(i) % atom_density(4))
-    end do
+    allocate(materials(1) % otf_comp(20))
     call init_otf_materials()
 
   end subroutine test_setup
@@ -208,46 +198,46 @@ contains
     select case(rank)
       case(0)
         if (.not. materials(1) % next_comp_idx == 3) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(1) == 7.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(2) == 7.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(3) == 7.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(4) == 7.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(1) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(2) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(3) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(5) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(6) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(7) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(8) == 4.0_8) failure = .true.
       case(1)
         if (.not. materials(1) % next_comp_idx == 4) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(1) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(3) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(1) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(2) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(3) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(4) == 4.0_8) failure = .true.
-        if (.not. materials(1) % comp(3) % atom_density(1) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(3) % atom_density(2) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(3) % atom_density(3) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(3) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(5) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(6) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(7) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(8) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(9) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(10) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(11) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(12) == 4.0_8) failure = .true.
       case(2)
         if (.not. materials(1) % next_comp_idx == 1) failure = .true.
       case(3)
         if (.not. materials(1) % next_comp_idx == 3) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(1) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(3) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(1) == 4.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(2) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(3) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(2) % atom_density(4) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(5) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(6) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(7) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(8) == 1.0_8) failure = .true.
       case(4)
         if (.not. materials(1) % next_comp_idx == 2) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(1) == 3.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(2) == 2.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(3) == 1.0_8) failure = .true.
-        if (.not. materials(1) % comp(1) % atom_density(4) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4) == 4.0_8) failure = .true.
     end select
 
     if (failure) then

@@ -89,6 +89,7 @@ module material_header
     logical                        :: distrib_comp ! distributed compositions
 
     ! On-the-fly allocation controls
+    real(8), allocatable           :: otf_comp(:)
     logical :: otf_compositions = .false.
     type(CompositionFile) :: comp_file          ! compositions file
     integer :: size_comp_array                  ! Size of composition array
@@ -123,7 +124,7 @@ contains
     real(8)                        :: density ! density to be returned
 
     if (this % otf_compositions) then
-      density = this % comp(this % otf_comp_index(i)) % atom_density(j)
+      density = this % otf_comp(this % otf_comp_index(i) + j - 1)
     else
       density = this % comp(i) % atom_density(j)
     end if
@@ -139,9 +140,9 @@ contains
       class(Material), intent(inout) :: this 
       integer,         intent(in)    :: real_inst
       
-      integer :: idx
+      integer :: idx, idx_s
 
-      ! If we're doing on-the-fly memory allocation, we must use the map
+      ! If we're doing on-the-fly memory allocation, we use the map
       if (this % comp_index_map % has_key(real_inst)) then
 
         idx = this % comp_index_map % get_key(real_inst)
@@ -160,10 +161,11 @@ contains
             this % next_comp_idx, real_inst)
 
         ! Set the return index
-        idx = this % next_comp_idx
+        idx = (this % next_comp_idx - 1) * this % n_nuclides + 1
+        idx_s = idx + this % n_nuclides - 1
         
         ! Load the compositions for this instance
-        this % comp(idx) = this % comp_file % load(real_inst)
+        this % otf_comp(idx:idx_s) = this % comp_file % load(real_inst)
 
         ! Increment the next index
         this % next_comp_idx = this % next_comp_idx + 1
@@ -240,13 +242,14 @@ contains
       
       class(CompositionFile), intent(inout) :: this 
       integer,                intent(in)    :: real_inst
-      
-      type(Composition) :: comp
+ 
+      real(8), allocatable :: comp(:)
+     
 #ifdef HDF5
       integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
       integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
 
-      allocate(comp % atom_density(this % n_nuclides))
+      allocate(comp(this % block1(1)))
 
       start1 = (real_inst - 1) * this % block1
       count1 = 1
@@ -256,7 +259,7 @@ contains
           count1, hdf5_err, block = this % block1)
 
       ! Read data from file into memory
-      call H5dread_f(this % dset, H5T_NATIVE_DOUBLE, comp % atom_density, &
+      call H5dread_f(this % dset, H5T_NATIVE_DOUBLE, comp, &
           this % dims1, hdf5_err, xfer_prp = this % plist, &
           mem_space_id = this % memspace, file_space_id = this % dspace)
 #endif

@@ -32,6 +32,7 @@ module material_header
     type(BinaryOutput)      :: fh           ! file handle
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
+    logical                 :: initialized = .false.
 #ifdef HDF5
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
@@ -230,6 +231,9 @@ contains
       ! Open the dataspace and memory space
       call h5dget_space_f(this % dset, this % dspace, hdf5_err)
       call h5screate_simple_f(1, this % block1, this % memspace, hdf5_err)
+
+      this % initialized = .true.
+
 #endif
 
     end subroutine composition_file_init
@@ -248,6 +252,11 @@ contains
 #ifdef HDF5
       integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
       integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
+
+      if (.not. this % initialized) then
+        print *, 'Trying to load OTF materials with an uninitialized file!'
+        stop
+      end if
 
       allocate(comp(this % block1(1)))
 
@@ -273,7 +282,7 @@ contains
 
     subroutine composition_file_close(this)
 
-      class(CompositionFile), intent(inout) :: this 
+      class(CompositionFile), intent(inout) :: this
 
 #ifdef HDF5
       ! Close the dataspace and memory space

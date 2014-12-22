@@ -316,6 +316,9 @@ module global
   ! Number of distribution maps
   integer :: n_maps
 
+  ! OTF materials HDF5 file handle
+  logical :: otf_matfile_open = .false.
+
   ! ============================================================================
   ! CMFD VARIABLES
 
@@ -423,16 +426,7 @@ contains
 
   subroutine free_memory()
 
-    integer :: i ! Loop Index
-    type(Material),    pointer :: mat => null()
-    
-    ! Close any open OTF material files
-    do i = 1, n_materials
-      mat => materials(i)
-      if (mat % otf_compositions) then
-        call mat % comp_file % close()
-      end if
-    end do
+    integer :: i ! Loop index
 
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)

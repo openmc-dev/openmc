@@ -2275,6 +2275,9 @@ contains
         call mat % comp_file % init(mat % n_nuclides, file_id, plist)
       end if
     end do
+
+    otf_matfile_open = .true.
+
 # endif
 #endif
 

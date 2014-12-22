@@ -14,7 +14,7 @@ module finalize
 
 #ifdef HDF5
   use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err, &
-                             hdf5_tallyresult_t, hdf5_bank_t
+                             hdf5_tallyresult_t, hdf5_bank_t, h5fclose_f
 #endif
 
   implicit none
@@ -27,6 +27,8 @@ contains
 !===============================================================================
 
   subroutine finalize_run()
+
+    integer :: i
 
     if (run_mode == MODE_TESTING) then
       if (master) call print_testing()
@@ -74,6 +76,23 @@ contains
       call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 #endif
       if (domain_decomp % local_master) call print_domain_interactions()
+    end if
+
+    ! Clearn up OTF file reading
+    do i = 1, n_materials
+      if (materials(i) % otf_compositions) then
+        call materials(i) % comp_file % close()
+      end if
+    end do
+    ! Close the OTF file
+    if (otf_matfile_open) then
+      do i = 1, n_materials
+        if (materials(i) % otf_compositions) then
+          call h5fclose_f(materials(i) % comp_file % file_id, hdf5_err)
+          otf_matfile_open = .false.
+          exit
+        end if
+      end do
     end if
 
     ! Deallocate arrays

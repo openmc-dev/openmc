@@ -1709,6 +1709,181 @@ contains
 ! TODO what if n_particles does not match source bank
   end subroutine read_source
 
+
+!===============================================================================
+! SYNCHRONIZE_OTF_MATERIALS ensures that all processes within each domain have
+! loaded the same otf materials.  These will be sorted to the same order in
+! write_distribmat_comps
+!===============================================================================
+
+  subroutine synchronize_otf_materials(mat, reduce_comm)
+
+    type(Material), pointer, intent(inout) :: mat
+    integer,                    intent(in) :: reduce_comm
+
+    integer :: j
+    integer :: p
+    integer :: idx
+    integer :: real_bin
+    integer :: reduce_n_procs
+    integer :: reduce_rank
+    logical :: reduce_master
+    integer :: n_comps
+    integer :: max_comps ! max number of compositions on any proc
+    integer, allocatable :: proc_n_comps(:) ! number of compositions on proc
+    integer, allocatable :: proc_comp_map(:,:) ! index -> real bin on proc
+    integer              :: n_request
+    integer              :: request(10000) ! TODO: make this something real!
+
+    !=======================================================================
+    ! SEND MAPS TO LOCAL MASTER
+
+    reduce_master = .false.
+    call MPI_COMM_SIZE(reduce_comm, reduce_n_procs, mpi_err)
+    call MPI_COMM_RANK(reduce_comm, reduce_rank, mpi_err)
+    if (reduce_rank == 0) reduce_master = .true.
+    
+    ! Master needs to know the max number of compositions
+    call MPI_REDUCE(mat % next_comp_idx - 1, max_comps, 1, MPI_INTEGER, &
+         MPI_MAX, 0, reduce_comm, mpi_err) 
+
+    n_request = 0
+    if (reduce_master) then
+
+      allocate(proc_n_comps(reduce_n_procs - 1))
+      allocate(proc_comp_map(max_comps, reduce_n_procs - 1))
+
+      ! Receive composition information from all other procs in domain
+      do p = 1, reduce_n_procs - 1
+
+        ! Receive number of compositions
+        n_request = n_request + 1
+        call MPI_IRECV(proc_n_comps(p), 1, MPI_INTEGER, p, p, &
+            reduce_comm, request(n_request), mpi_err)
+
+        ! Receive composition maps
+        n_request = n_request + 1
+        call MPI_IRECV(proc_comp_map(:,p), max_comps, MPI_INTEGER, p, &
+            p, reduce_comm, request(n_request), mpi_err)
+
+      end do
+
+    else
+
+      ! Build composition  map
+      n_comps = mat % next_comp_idx - 1
+      allocate(proc_comp_map(n_comps, 1))
+      do j = 1, n_comps
+        real_bin = mat % reverse_comp_index_map % get_key(j)
+        proc_comp_map(j, 1) = real_bin
+      end do
+
+      ! Send number of compositions
+      n_request = n_request + 1
+      call MPI_ISEND(n_comps, 1, MPI_INTEGER, &
+          0, reduce_rank, &
+          reduce_comm, request(n_request), mpi_err)
+
+      ! Send composition maps
+      n_request = n_request + 1
+      call MPI_ISEND(proc_comp_map(:,1), n_comps, MPI_INTEGER, &
+          0, reduce_rank, &
+          reduce_comm, request(n_request), mpi_err)
+
+    end if
+
+    ! Wait for composition information to synchronize
+    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+
+    !=======================================================================
+    ! SYNCHRONIZE MAPS
+
+    if (reduce_master) then
+
+      ! go through all received maps and load materials
+      do p = 1, reduce_n_procs - 1
+        do j = 1, proc_n_comps(p)
+          real_bin = proc_comp_map(j, p)
+          idx = mat % otf_comp_index(real_bin)
+        end do
+      end do
+
+      ! Build composition map
+      deallocate(proc_comp_map)
+      n_comps = mat % next_comp_idx - 1
+      allocate(proc_comp_map(n_comps, 1))
+      do j = 1, n_comps
+        real_bin = mat % reverse_comp_index_map % get_key(j)
+        proc_comp_map(j, 1) = real_bin
+      end do
+
+      ! broadcast the updated master n_comp
+      call MPI_BCAST(n_comps, 1, MPI_INTEGER, 0, reduce_comm, mpi_err)
+
+      ! broadcast the updated master composition map
+      call MPI_BCAST(proc_comp_map(:, 1), n_comps, MPI_INTEGER, 0, &
+          reduce_comm, mpi_err)
+
+    else
+
+      ! receive master n_comps
+      call MPI_BCAST(n_comps, 1, MPI_INTEGER, 0, reduce_comm, mpi_err)
+
+      deallocate(proc_comp_map)
+      allocate(proc_comp_map(n_comps, 1))
+
+      ! recieve master composition map
+      call MPI_BCAST(proc_comp_map(:, 1), n_comps, MPI_INTEGER, 0, &
+          reduce_comm, mpi_err)
+
+      ! load any materials present on master
+      do j = 1, n_comps
+        real_bin = proc_comp_map(j, 1)
+        idx = mat % otf_comp_index(real_bin)
+      end do
+
+    end if
+
+  end subroutine synchronize_otf_materials
+
+!===============================================================================
+! GET_COMP_ARRAY_OWNERSHIP_SLICE
+!===============================================================================
+
+  subroutine get_comp_array_ownership_boundaries(mat, slice_start, slice_end)
+
+    type(Material), pointer, intent(inout) :: mat
+    integer,                 intent(out)   :: slice_start, slice_end
+
+    integer :: arr_size
+    integer :: minwork, remainder
+    integer :: n_slice, slice_idx, slice_size
+
+    ! Determine slicing params based on OTF or DD
+    arr_size = mat % n_comp
+    slice_idx = rank
+    n_slice = n_procs
+    if (mat % otf_compositions) arr_size = mat % next_comp_idx - 1
+    if (dd_run) then
+      slice_idx = domain_decomp % rank
+      n_slice = domain_decomp % n_domain_procs
+    end if
+
+    ! Determine equal slicing - if there are more processes than array positions,
+    ! slice_start should be higher than slice_end
+    minwork = (arr_size)/n_slice
+    remainder = mod(arr_size, n_slice)
+    if (slice_idx < remainder) then
+      slice_size = minwork + 1
+      slice_start = slice_idx * (minwork + 1) + 1
+    else
+      slice_size = minwork
+      slice_start = slice_idx * (minwork + 1) - slice_idx + remainder + 1
+    endif
+    slice_end = slice_start + slice_size - 1
+
+  end subroutine get_comp_array_ownership_boundaries
+
 !===============================================================================
 ! WRITE_DISTRIBMAT_COMPS
 !===============================================================================
@@ -1720,12 +1895,15 @@ contains
     character(MAX_FILE_LEN) :: groupname
     integer :: i, j
     integer :: idx
+    integer :: slice_start, slice_end
     type(BinaryOutput) :: fh
     type(Material), pointer :: mat => null()
 
 #ifdef HDF5
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
+    integer(HSIZE_T) :: chunk(1)
+    integer(HID_T) :: chunk_plist
 #endif
 
 #ifndef HDF5
@@ -1761,7 +1939,17 @@ contains
           call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err)
           call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
-          call h5dcreate_f(group_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+          call h5pcreate_f(H5P_DATASET_CREATE_F, chunk_plist, hdf5_err)
+          ! Tune chunking and chunk caching to the filesystem if performance is needed
+!          chunk(1) = mat % n_nuclides *  800
+!          call h5pset_chunk_f(chunk_plist, 1, chunk, hdf5_err)
+!          call h5pset_chunk_cache_f(chunk_plist, 0_8, 0_8, 1.0_4, hdf5_err) ! Turn chunk caching off
+!          call h5pset_chunk_cache_f(chunk_plist, 211_8, 16777216_8, 1.0_4, hdf5_err) ! OR: tune chunk cache to filesystem
+          ! Set the fill value if needed for debugging (slow for large datasets)
+!         call h5pset_fill_value_f(chunk_plist, H5T_NATIVE_DOUBLE, -1.0_8, hdf5_err)
+          call h5dcreate_f(group_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err, &
+              dcpl_id = chunk_plist)
+          call h5pclose_f(chunk_plist, hdf5_err)
           call h5dclose_f(dset, hdf5_err)
           call h5sclose_f(dspace, hdf5_err)
           call h5gclose_f(group_id, hdf5_err)
@@ -1772,82 +1960,136 @@ contains
     end if
 
 # ifdef MPI
-    ! For parallel io we need to wait for master to create the files
+    ! For parallel IO we need to wait for master to create the files
     call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
 # endif
 
-    ! Only master processes write the compositions
-    if (master .or. (dd_run .and. domain_decomp % local_master)) then
+    do i = 1, n_materials
+      mat => materials(i)
+      if (mat % n_comp > 1) then
+        if (mat % otf_compositions) then
 
-      ! Setup file access property list with parallel I/O access
-      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-      call h5pset_fapl_mpio_f(plist, domain_decomp % comm_domain_masters, &
-          MPI_INFO_NULL, hdf5_err)
+          call write_message("Preparing distributed material " // &
+                             trim(to_str(mat % id)) // " for writing...", 6)
 
-      ! Open the file
-      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
-          access_prp = plist)
-
-      ! Close property list
-      call h5pclose_f(plist, hdf5_err)
-
-      ! Create the property list to describe independent parallel I/O
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
-
-      count1 = 1
-
-      do i = 1, n_materials
-        mat => materials(i)
-        if (mat % n_comp > 1) then
-          
-          groupname = 'mat-' // trim(to_str(mat % id))
-
-          if (master) then
-            call write_message("Writing distributed material " // &
-                               trim(to_str(mat % id)) // "...", 1)
+          ! All processes need to participate in IO for efficiency on HPC
+          ! machines. We want this anyways for large arrays, where each
+          ! processor dumps a slice. As a result, we need to make sure all
+          ! processes have the same array before setting slice boundaries. If
+          ! enough particles were run the OTF arrays would have the same
+          ! elements anyways, but for large problems this isn't always
+          ! guaranteed.
+          if (dd_run) then
+            call synchronize_otf_materials(mat, domain_decomp % comm)
+          else
+            call synchronize_otf_materials(mat, MPI_COMM_WORLD)
           end if
 
-          ! The output interface isn't stable, so to maintain fine-grain control
-          ! I use the hdf5 functions here directly
+          ! For on-the-fly distributes materials, we need to unscramble. We
+          ! do this by selecting an irregular hyperslab in the dataset, and
+          ! ensure that the materials are in the same order.  This means we
+          ! need to sort the compositions.
+          call heapsort_matcomps(mat)
 
-          block1 = mat % n_nuclides
+        end if
+      end if
+    end do
 
-          ! Open the group
-          call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
-  
-          ! Open the dataset and dataspace
-          call h5dopen_f(group_id, 'comps', dset, hdf5_err)
+    ! Setup file access property list with parallel I/O access
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
 
-          if (mat % otf_compositions) then
-            ! OTF mats are spread across all ranks
+    ! Open the file
+    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
+        access_prp = plist)
+
+    ! Close property list
+    call h5pclose_f(plist, hdf5_err)
+
+    ! Create the property list to describe collective parallel I/O
+    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+
+    count1 = 1
+
+    do i = 1, n_materials
+      mat => materials(i)
+      if (mat % n_comp > 1) then
+        
+        groupname = 'mat-' // trim(to_str(mat % id))
+
+        if (master) then
+          call write_message("Writing distributed material " // &
+                             trim(to_str(mat % id)) // "...", 6)
+        end if
+
+        block1 = mat % n_nuclides
+
+        ! Calculate boundaries of compositions array slice for this process
+        call get_comp_array_ownership_boundaries(mat, slice_start, slice_end)
+
+        ! Open the group
+        call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
+
+        ! Open the dataset
+        call h5dopen_f(group_id, 'comps', dset, hdf5_err)
+
+        if (mat % otf_compositions) then
+          ! OTF mats are spread across all ranks
+
+          ! Open the dataspace and memory space
+          call h5dget_space_f(dset, dspace, hdf5_err)
+          call h5screate_simple_f(1, block1 * (slice_end - slice_start + 1), &
+              memspace, hdf5_err)
+
+          ! Select the irregular hyperslab
+          call h5sselect_none_f(dspace, hdf5_err)
+          do j = slice_start, slice_end
+
+            idx = mat % reverse_comp_index_map % get_key(j)
+            start1 = (idx - 1) * block1
+
+            if (mat % id == 20000) then
+              print *,rank, j, (idx-1) * mat % n_nuclides
+            end if
+
+            ! Select the hyperslab
+            call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &
+                count1, hdf5_err, block = block1)
+
+          end do
+
+          ! Write the data
+          f_ptr = c_loc(mat % otf_comp(1, slice_start))
+          call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
+              file_space_id = dspace, mem_space_id = memspace, &
+              xfer_prp = plist)
+
+          ! Close the dataspace and memory space
+          call h5sclose_f(dspace, hdf5_err)
+          call h5sclose_f(memspace, hdf5_err)
+
+        else
+
+          ! TODO: change non-otf distrib comps to use 2d array instead of
+          ! comp datastructure - would be more efficient, and allow this
+          ! section of code to be combined with the previous
+
+          ! For normal distribmats, the compositions are in order
+          do j = 1, mat % n_comp
 
             ! Open the dataspace and memory space
             call h5dget_space_f(dset, dspace, hdf5_err)
-            call h5screate_simple_f(1, block1 * (mat % next_comp_idx - 1), &
-                memspace, hdf5_err)
+            call h5screate_simple_f(1, block1, memspace, hdf5_err)
 
-            ! For on-the-fly distributes materials, we need to unscramble. We
-            ! do this by selecting an irregular hyperslab in the dataset, and
-            ! ensure that the materials are in the same order.  This means we
-            ! need to sort the compositions.
-            call heapsort_matcomps(mat)
+            start1 = (j - 1) * block1
 
-            ! Select the irregular hyperslab
-            call h5sselect_none_f(dspace, hdf5_err)
-            do j = 1, mat % next_comp_idx - 1
-
-              idx = mat % reverse_comp_index_map % get_key(j)
-              start1 = (idx - 1) * block1
-
-              ! Select the hyperslab
-              call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &
-                  count1, hdf5_err, block = block1)
-
-            end do
+            ! Select the hyperslab
+            call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
+                count1, hdf5_err, block = block1)
 
             ! Write the data
-            f_ptr = c_loc(mat % otf_comp(1, 1))
+            f_ptr = c_loc(mat % comp(j) % atom_density)
             call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
                 file_space_id = dspace, mem_space_id = memspace, &
                 xfer_prp = plist)
@@ -1856,51 +2098,23 @@ contains
             call h5sclose_f(dspace, hdf5_err)
             call h5sclose_f(memspace, hdf5_err)
 
-          else if (master) then
-            ! All ranks have all of normal distribmats, so only master writes
-            ! TODO: give each rank an equal number of mats to write out
-
-            ! For normal distribmats, the compositions are in order
-            do j = 1, mat % n_comp
-
-              ! Open the dataspace and memory space
-              call h5dget_space_f(dset, dspace, hdf5_err)
-              call h5screate_simple_f(1, block1, memspace, hdf5_err)
-
-              start1 = (j - 1) * block1
-
-              ! Select the hyperslab
-              call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, start1, &
-                  count1, hdf5_err, block = block1)
-
-              ! Write the data
-              f_ptr = c_loc(mat % comp(j) % atom_density)
-              call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, &
-                  file_space_id = dspace, mem_space_id = memspace, &
-                  xfer_prp = plist)
-
-              ! Close the dataspace and memory space
-              call h5sclose_f(dspace, hdf5_err)
-              call h5sclose_f(memspace, hdf5_err)
-
-            end do
-
-          end if
-
-          ! Close dataset and group
-          call h5dclose_f(dset, hdf5_err)
-          call h5gclose_f(group_id, hdf5_err)
+          end do
 
         end if
-      end do
 
-      ! Close property list
-      call h5pclose_f(plist, hdf5_err)
+        ! Close dataset and group
+        call h5dclose_f(dset, hdf5_err)
+        call h5gclose_f(group_id, hdf5_err)
 
-      ! Close the file
-      call h5fclose_f(file_id, hdf5_err)
+      end if
+    end do
 
-    end if
+    ! Close property list
+    call h5pclose_f(plist, hdf5_err)
+
+    ! Close the file
+    call h5fclose_f(file_id, hdf5_err)
+
 #endif
 
 #ifdef MPI

@@ -1,4 +1,4 @@
-module test_otf_material_file
+module test_otf_material_file_write
 
   use constants,        only: MAX_FILE_LEN
   use dd_init,          only: initialize_domain_decomp
@@ -10,6 +10,7 @@ module test_otf_material_file
                               domain_decomp, dd_run, free_memory
   use error,            only: warning
   use output,           only: write_message
+  use state_point,      only: write_distribmat_comps
   use string,           only: to_str
   use testing_header,   only: TestSuiteClass, TestClass
 
@@ -33,7 +34,7 @@ module test_otf_material_file
       procedure, nopass :: teardown => test_teardown
   end type test
 
-  type(test), public      :: otf_material_file_test
+  type(test), public      :: otf_material_file_test_write
 
 contains
 
@@ -45,7 +46,7 @@ contains
 
     class(test), intent(inout) :: this
 
-    this % name = "test_otf_material_file"
+    this % name = "test_otf_material_file_write"
 
   end subroutine test_init
 
@@ -60,6 +61,9 @@ contains
 
     character(MAX_FILE_LEN) :: filename
     logical :: stat
+#ifdef MPI
+    integer :: mpi_err
+#endif
 
     if (check_procs(5)) then
       call suite % skip(this)
@@ -83,6 +87,10 @@ contains
       return
     end if
 
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
     ! Return to blank slate
     call free_memory()
 
@@ -98,6 +106,48 @@ contains
     ! Initialize some OTF mats
     call dd_setup_four_nuc_five_comp_otf_mats()
 
+    ! Manually set some materials
+    select case(rank)
+      case(0)
+        materials(1) % next_comp_idx = 3
+        call materials(1) % comp_index_map % add_key(5, 1)
+        call materials(1) % reverse_comp_index_map % add_key(1, 5)
+        materials(1) % otf_comp(:,1) = (/7.0_8, 7.0_8, 7.0_8, 7.0_8/)
+        call materials(1) % comp_index_map % add_key(2, 2)
+        call materials(1) % reverse_comp_index_map % add_key(2, 2)
+        materials(1) % otf_comp(:,2) = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+      case(1)
+        materials(1) % next_comp_idx = 4
+        call materials(1) % comp_index_map % add_key(3, 1)
+        call materials(1) % reverse_comp_index_map % add_key(1, 3)
+        materials(1) % otf_comp(:,1) = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+        call materials(1) % comp_index_map % add_key(1, 2)
+        call materials(1) % reverse_comp_index_map % add_key(2, 1)
+        materials(1) % otf_comp(:,2) = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        call materials(1) % comp_index_map % add_key(2, 3)
+        call materials(1) % reverse_comp_index_map % add_key(3, 2)
+        materials(1) % otf_comp(:,3) = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+      case(2)
+        materials(1) % next_comp_idx = 1
+      case(3)
+        materials(1) % next_comp_idx = 3
+        call materials(1) % comp_index_map % add_key(1, 1)
+        call materials(1) % reverse_comp_index_map % add_key(1, 1)
+        materials(1) % otf_comp(:,1) = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+        call materials(1) % comp_index_map % add_key(4, 2)
+        call materials(1) % reverse_comp_index_map % add_key(2, 4)
+        materials(1) % otf_comp(:,2) = (/4.0_8, 3.0_8, 2.0_8, 1.0_8/)
+      case(4)
+        materials(1) % next_comp_idx = 2
+        call materials(1) % comp_index_map % add_key(3, 1)
+        call materials(1) % reverse_comp_index_map % add_key(1, 3)
+        materials(1) % otf_comp(:,1) = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+    end select
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
   end subroutine test_setup
 
 !===============================================================================
@@ -106,25 +156,11 @@ contains
 
   subroutine test_execute()
 
-    real(8) :: density
+    character(MAX_FILE_LEN) :: filename
 
-    ! Read the compositions in
-    select case(rank)
-      case(0)
-        density = materials(1) % get_density(5, 1)
-        density = materials(1) % get_density(2, 1)
-      case(1)
-        density = materials(1) % get_density(3, 1)
-        density = materials(1) % get_density(1, 1)
-        density = materials(1) % get_density(2, 1)
-      case(2)
-        ! don't load anything
-      case(3)
-        density = materials(1) % get_density(1, 1)
-        density = materials(1) % get_density(4, 1)
-      case(4)
-        density = materials(1) % get_density(3, 1)
-    end select
+    ! Write materials to disk
+    filename = 'materials-out.h5'
+    call write_distribmat_comps(filename)
 
   end subroutine test_execute
 
@@ -136,37 +172,42 @@ contains
 
     class(TestSuiteClass), intent(inout) :: suite
 
+    logical :: stat
+
     logical :: failure = .false.
 #ifdef MPI
     integer :: mpi_err
     logical :: any_fail
 #endif
 
+    ! Check if the file exists
+    INQUIRE(FILE='materials-out.h5', EXIST=stat)
+    if (.not. stat) then
+      call suite % fail()
+      if (master) call write_message('FAILURE: Test file not created.')
+      return
+    end if
+
     select case(rank)
-      case(0)
-        if (.not. materials(1) % next_comp_idx == 3) failure = .true.
-        if (.not. materials(1) % otf_comp(1,1) == 7.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(2,1) == 7.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(3,1) == 7.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(4,1) == 7.0_8) failure = .true.
+      case(0, 1)
+        ! OTF mat writing should have sorted the composition array in real_bin order
+        if (.not. materials(1) % next_comp_idx == 5) failure = .true.
+        if (.not. materials(1) % otf_comp(1,1) == 1.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2,1) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3,1) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4,1) == 4.0_8) failure = .true.
         if (.not. materials(1) % otf_comp(1,2) == 2.0_8) failure = .true.
         if (.not. materials(1) % otf_comp(2,2) == 1.0_8) failure = .true.
         if (.not. materials(1) % otf_comp(3,2) == 3.0_8) failure = .true.
         if (.not. materials(1) % otf_comp(4,2) == 4.0_8) failure = .true.
-      case(1)
-        if (.not. materials(1) % next_comp_idx == 4) failure = .true.
-        if (.not. materials(1) % otf_comp(1,1) == 3.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(2,1) == 2.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(3,1) == 1.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(4,1) == 4.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(1,2) == 1.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(2,2) == 2.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(3,2) == 3.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(4,2) == 4.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(1,3) == 2.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(2,3) == 1.0_8) failure = .true.
-        if (.not. materials(1) % otf_comp(3,3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1,3) == 3.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2,3) == 2.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3,3) == 1.0_8) failure = .true.
         if (.not. materials(1) % otf_comp(4,3) == 4.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(1,4) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(2,4) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(3,4) == 7.0_8) failure = .true.
+        if (.not. materials(1) % otf_comp(4,4) == 7.0_8) failure = .true.
       case(2)
         if (.not. materials(1) % next_comp_idx == 1) failure = .true.
       case(3)
@@ -188,7 +229,7 @@ contains
     end select
 
     if (failure) then
-      call write_message("FAILURE: Materials file reading failure on rank " // trim(to_str(rank)))
+      call write_message("FAILURE: OTF comp sync or ordering failure on rank " // trim(to_str(rank)))
     end if
 
 #ifdef MPI
@@ -216,7 +257,6 @@ contains
   subroutine test_teardown()
 
     integer :: stat
-
 #ifdef MPI
     integer :: mpi_err
 
@@ -228,6 +268,8 @@ contains
     if (master) then
       open(unit=1234, iostat=stat, file='materials.h5', status='old')
       if (stat.eq.0) close(1234, status='delete')
+      open(unit=1234, iostat=stat, file='materials-out.h5', status='old')
+      if (stat.eq.0) close(1234, status='delete')
     end if
 
 #ifdef MPI
@@ -236,4 +278,4 @@ contains
 
   end subroutine test_teardown
 
-end module test_otf_material_file
+end module test_otf_material_file_write

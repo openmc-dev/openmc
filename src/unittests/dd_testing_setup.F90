@@ -5,9 +5,12 @@ module dd_testing_setup
   use error,            only: warning
   use global,           only: master, n_procs, rank, n_particles, n_tallies, &
                               tallies, n_cells, n_user_tallies, micro_xs, &
-                              material_xs, total_weight
+                              material_xs, total_weight, materials, &
+                              n_materials, otf_matfile_open
+  use input_xml,        only: init_otf_materials
   use output,           only: write_message
   use particle_header,  only: Particle
+  use state_point,      only: write_distribmat_comps
   use string,           only: to_str
   use tally,            only: setup_active_usertallies
   use tally,            only: score_analog_tally
@@ -298,5 +301,65 @@ contains
     end select
 
   end subroutine dd_score_to_four_domain_tallies
+
+!===============================================================================
+! DD_CREATE_FOUR_NUC_FIVE_COMP_FILE
+!===============================================================================
+
+  subroutine dd_create_four_nuc_five_comp_file(filename)
+
+    character(MAX_FILE_LEN), intent(in) :: filename
+
+    integer :: mpi_err
+
+    ! Set up a material with some OTF compositions
+    n_materials = 1
+    allocate(materials(1))
+    materials(1) % id = 1
+    materials(1) % n_nuclides = 4
+    materials(1) % n_comp = 5
+    materials(1) % otf_compositions = .false.
+    allocate(materials(1) % comp(5))
+    allocate(materials(1) % comp(1) % atom_density(4))
+    allocate(materials(1) % comp(2) % atom_density(4))
+    allocate(materials(1) % comp(3) % atom_density(4))
+    allocate(materials(1) % comp(4) % atom_density(4))
+    allocate(materials(1) % comp(5) % atom_density(4))
+    materials(1) % comp(1) % atom_density = (/1.0_8, 2.0_8, 3.0_8, 4.0_8/)
+    materials(1) % comp(2) % atom_density = (/2.0_8, 1.0_8, 3.0_8, 4.0_8/)
+    materials(1) % comp(3) % atom_density = (/3.0_8, 2.0_8, 1.0_8, 4.0_8/)
+    materials(1) % comp(4) % atom_density = (/4.0_8, 3.0_8, 2.0_8, 1.0_8/)
+    materials(1) % comp(5) % atom_density = (/7.0_8, 7.0_8, 7.0_8, 7.0_8/)
+
+    ! Write non-OTF materials to disk
+    call write_distribmat_comps(filename)
+
+#ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+#endif
+
+  end subroutine dd_create_four_nuc_five_comp_file
+
+!===============================================================================
+! DD_CREATE_FOUR_NUC_FIVE_COMP_OTF_MATS
+!===============================================================================
+
+  subroutine dd_setup_four_nuc_five_comp_otf_mats()
+
+    ! Set up OTF materials
+    n_materials = 1
+    allocate(materials(1))
+    materials(1) % id = 1
+    materials(1) % n_nuclides = 4
+    materials(1) % n_comp = 5
+    materials(1) % otf_compositions = .true.
+    materials(1) % size_comp_array = 5
+    materials(1) % comp_file % group = 'mat-1'
+    materials(1) % comp_file % n_nuclides = 4
+    materials(1) % comp_file % n_instances = 5
+    allocate(materials(1) % otf_comp(materials(1) % n_nuclides, materials(1) % size_comp_array))
+    call init_otf_materials()
+
+  end subroutine dd_setup_four_nuc_five_comp_otf_mats
 
 end module dd_testing_setup

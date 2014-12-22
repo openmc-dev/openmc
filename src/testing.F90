@@ -14,6 +14,7 @@ module testing
   use test_dd_synchronize_destination_info, only: dd_sync_destination_info_test
   use test_dd_otf_tally_allocation,         only: dd_otf_tally_allocation_test
   use test_dd_reduce_tally_results,         only: dd_reduce_tally_results_test
+  use test_otf_material_file_write,         only: otf_material_file_test_write
   use test_otf_material_file,               only: otf_material_file_test
 #endif
 
@@ -49,6 +50,7 @@ contains
     call run_test(unittests, dd_reduce_tally_results_test)
 
     ! OTF material file tests
+    call run_test(unittests, otf_material_file_test_write)
     call run_test(unittests, otf_material_file_test)
 #else
     call fatal_error("Must be compiled with testing mode enabled to run tests.")

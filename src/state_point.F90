@@ -73,13 +73,11 @@ contains
     filename = trim(path_output) // 'statepoint.' // &
         & zero_padded(current_batch, count_digits(n_batches))
 
-#ifndef HDF5
     if (dd_run) then
       filename = trim(filename) // '.domain_' // &
           & zero_padded(domain_decomp % meshbin, &
                         count_digits(domain_decomp % n_domains))
     end if
-#endif
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -91,13 +89,8 @@ contains
     ! Write message
     call write_message("Creating state point " // trim(filename) // "...", 1)
 
-#ifdef HDF5
-    ! Only master writes the metadata
-    if (master) then
-#else
-    ! Without HDF5, all domain masters write their own statepoint
     if (master .or. (dd_run .and. domain_decomp % local_master)) then
-#endif
+
       ! Create statepoint file
       call sp % file_create(filename)
 
@@ -703,13 +696,10 @@ contains
           ! Write sum and sum_sq for each bin
           if (t % on_the_fly_allocation) then
 
-#ifndef HDF5
-            ! For OTF tallies with HDF5, defer writing the results array until later
             n = t % next_filter_idx - 1
             call write_tally_result(sp, t % results(:,1:n), "results", &
                  group="tallies/tally" // to_str(i), &
                  n1=size(t % results, 1), n2=n)
-#endif
 
           else
 
@@ -734,7 +724,7 @@ contains
 
 #ifdef HDF5
     ! Write OTF tallies from DD runs, which were deferred for HDF5
-    call write_state_point_otf_tally_data(filename)
+!    call write_state_point_otf_tally_data(filename)
 #endif
 
     ! Start statepoint timer
@@ -1708,7 +1698,6 @@ contains
 ! TODO write this routine
 ! TODO what if n_particles does not match source bank
   end subroutine read_source
-
 
 !===============================================================================
 ! SYNCHRONIZE_OTF_MATERIALS ensures that all processes within each domain have

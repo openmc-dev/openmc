@@ -818,6 +818,11 @@ contains
           ! Skip this tally if no bins were scored to
           if (t % next_filter_idx == 1) cycle
 
+          if (master) then
+            call write_message("Writing distributed OTF tally " // &
+                               trim(to_str(t % id)) // "...", 6)
+          end if
+
           block1 = size(t % results(:,1))
 
           ! Open the group
@@ -1930,12 +1935,12 @@ contains
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
           call h5pcreate_f(H5P_DATASET_CREATE_F, chunk_plist, hdf5_err)
           ! Tune chunking and chunk caching to the filesystem if performance is needed
-!          chunk(1) = mat % n_nuclides *  800
+          chunk(1) = mat % n_nuclides *  800
 !          call h5pset_chunk_f(chunk_plist, 1, chunk, hdf5_err)
 !          call h5pset_chunk_cache_f(chunk_plist, 0_8, 0_8, 1.0_4, hdf5_err) ! Turn chunk caching off
 !          call h5pset_chunk_cache_f(chunk_plist, 211_8, 16777216_8, 1.0_4, hdf5_err) ! OR: tune chunk cache to filesystem
           ! Set the fill value if needed for debugging (slow for large datasets)
-!         call h5pset_fill_value_f(chunk_plist, H5T_NATIVE_DOUBLE, -1.0_8, hdf5_err)
+!          call h5pset_fill_value_f(chunk_plist, H5T_NATIVE_DOUBLE, -1.0_8, hdf5_err)
           call h5dcreate_f(group_id, 'comps', H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err, &
               dcpl_id = chunk_plist)
           call h5pclose_f(chunk_plist, hdf5_err)
@@ -2037,10 +2042,6 @@ contains
 
             idx = mat % reverse_comp_index_map % get_key(j)
             start1 = (idx - 1) * block1
-
-            if (mat % id == 20000) then
-              print *,rank, j, (idx-1) * mat % n_nuclides
-            end if
 
             ! Select the hyperslab
             call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &

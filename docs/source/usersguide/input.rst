@@ -1035,10 +1035,10 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :estimator:
-    The estimator element is used to force the us eof either ``analog`` or
+    The estimator element is used to force the use of either ``analog`` or
     ``tracklength`` tally estimation.  ''analog'' is generally less efficient
     though it can be used with every score type.  ''tracklength'' is generally
-    the most efficient, though its usage is restricted to tallies which do not
+    the most efficient, though its usage is restricted to tallies that do not
     score particle information which requires a collision to have occured, such
     as a scattering tally which utilizes outgoing energy filters.
 

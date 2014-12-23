@@ -668,11 +668,9 @@ contains
       end if
 
       call write_tally_results_nr()
-#ifdef HDF5
-    elseif (master) then
-#else
+
     elseif (master .or. (dd_run .and. domain_decomp % local_master)) then
-#endif
+
       ! Write number of global realizations
       call sp % write_data(n_realizations, "n_realizations")
 

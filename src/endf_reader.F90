@@ -125,9 +125,10 @@ contains
     character(80) :: rec ! ENDF-6 file record
     integer :: i_n  ! index in global nuclides array
     integer :: i_ER ! resonance energy range index
+    integer :: NIS  ! number of isotopes in material
+    integer :: LFW  ! URR average fission widths flag
     real(8) :: ZA
     real(8) :: ZAI
-    integer :: NIS
     real(8) :: AWR
     real(8) :: ABN
 
@@ -151,6 +152,7 @@ contains
 10  format(A80)
     read(rec(1:11),  '(E11.0)') ZAI
     read(rec(12:22), '(E11.0)') ABN
+    read(rec(34:44), '(I11)')   LFW
     read(rec(45:55), '(I11)')   nuc % NER
 
     ! allocate energy range variables
@@ -161,6 +163,9 @@ contains
 
     ! check abundance is unity
     call check_abundance(ABN)
+
+    ! check URR average fission widths treatment
+    call check_fission_widths(LFW)
 
     ! loop over energy ranges
     do i_ER = 1, nuc % NER
@@ -205,7 +210,7 @@ contains
     integer :: NP     ! number of energy-xs pairs
     integer :: NR     ! number of interpolation regions
     integer :: NBT    ! number of entries separating interp. ranges N and N+1
-    integer :: INTERP ! interp. scheme flag for an interpolation region
+    integer :: INTERP ! File 3 reaction xs interpolation flag
     character(80) :: rec ! ENDF-6 file record
     real(8) :: ZA
     real(8) :: AWR
@@ -246,13 +251,10 @@ contains
       ! read MF=3, record=3
       read(in, 10) rec
       read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') INTERP
+      read(rec(12:22), '(I11)') nuc % MF3_INT
 
       ! check number of energy-xs pairs in this interpolation region
       call check_n_pairs(NBT, NP)
-
-      ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % INT)
 
       allocate(nuc % avg_urr_n_e(NP))
       allocate(nuc % avg_urr_n(NP))
@@ -310,7 +312,7 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % INT)
+      call check_interp_scheme(INTERP, nuc % MF3_INT)
 
       allocate(nuc % avg_urr_x_e(NP))
       allocate(nuc % avg_urr_x(NP))
@@ -368,7 +370,7 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % INT)
+      call check_interp_scheme(INTERP, nuc % MF3_INT)
 
       allocate(nuc % avg_urr_f_e(NP))
       allocate(nuc % avg_urr_f(NP))
@@ -426,7 +428,7 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % INT)
+      call check_interp_scheme(INTERP, nuc % MF3_INT)
 
       allocate(nuc % avg_urr_g_e(NP))
       allocate(nuc % avg_urr_g(NP))
@@ -465,8 +467,10 @@ contains
 
     integer :: NR ! number of interpolation regions
 
-    if (NR /= 1) call fatal_error('More than 1 MF3 interpolation region not&
-      & supported in '//trim(filename))
+    if (NR /= 1) then
+      if (master) call warning('More than 1 File 3 interpolation region&
+        & in '//trim(filename))
+    end if
 
   end subroutine check_interp_regions
 
@@ -481,8 +485,10 @@ contains
     integer :: NBT ! number of pairs between this and the next interp. region
     integer :: NP  ! number of energy-xs pairs
 
-    if (NBT /= NP) call fatal_error('Different NBT and NP values in MF3 for '&
-      &//trim(filename))
+    if (NBT /= NP) then
+      if (master) call warning('Different NBT and NP values in File 3 for '&
+        &//trim(filename))
+    end if
 
   end subroutine check_n_pairs
 
@@ -492,13 +498,13 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine check_interp_scheme(INTERP, nuc_INT)
+  subroutine check_interp_scheme(INTERP, MF3_INT)
 
     integer :: INTERP     ! interpolation scheme for current region
-    integer :: nuc_INT ! overall nuclide interpolation scheme
+    integer :: MF3_INT ! overall nuclide interpolation scheme
 
-    if (INTERP /= nuc_INT) call fatal_error('Different interpolation schemes for&
-      & an MF3 region and the MF2 parameters in '//trim(filename))
+    if (INTERP /= MF3_INT) call fatal_error('Different interpolation schemes for&
+      & different File 3 regions in '//trim(filename))
 
   end subroutine check_interp_scheme
 
@@ -519,6 +525,12 @@ contains
     ! select energy range
     select case(LRU)
 
+    ! only the scattering radius is given (LRF=0; NLS=0; LFW=0)
+    case(0)
+
+      call fatal_error('Only scattering radius given (LRU = 0) in &
+        &'//trim(filename))
+
     ! resolved parameters
     case(1)
 
@@ -527,11 +539,11 @@ contains
 
       ! SLBW
       case(1)
-        call fatal_error('SLBW (LRF=1) formalism not supported in '//trim(filename))
+        call read_slbw_parameters(i_n, i_ER)
 
       ! MLBW
       case(2)
-        call fatal_error('MLBW (LRF=2) formalism not supported in '//trim(filename))
+        call read_mlbw_parameters(i_n, i_ER)
 
       ! Reich-Moore
       case(3)
@@ -588,11 +600,195 @@ contains
 
     ! default case
     case default
-      call fatal_error('LRU values other than 1 or 2 are not allowed in '&
+      call fatal_error('LRU values other than 0, 1 or 2 are not allowed in '&
         & //trim(filename))
     end select
 
   end subroutine read_resonance_subsection
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! READ_SLBW_PARAMETERS reads in Single-level Breit-Wigner resolved resonance
+! region parameters
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine read_slbw_parameters(i_n, i_ER)
+
+    type(Nuclide), pointer :: nuc => null()
+    character(80) :: rec ! ENDF-6 file record
+    integer :: i_n  ! index in global nuclides array
+    integer :: i_ER ! energy range index
+    integer :: i_l  ! orbital quantum number index
+    integer :: L    ! orbital quantum number
+    integer :: NRS  ! number of resonances for this orbital quantum number
+    integer :: i_R  ! resonance index
+    integer :: LRX  ! competitive width flag
+    real(8) :: AWRI ! isotope/neutron mass ratio
+    real(8) :: QX   ! Q-value to be added to COM energy
+
+    nuc => nuclides(i_n)
+
+    ! read first line of energy range subsection
+    read(in, 10) rec
+10  format(A80)
+    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
+    call nuc % pre_process(i_ER)
+    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+
+    ! allocate SLBW resonance vectors for each l
+    allocate(nuc % slbw_resonances(nuc % NLS(i_ER)))
+
+    ! loop over orbital quantum numbers
+    do i_l = 0, nuc % NLS(i_ER) - 1
+      read(in, 10) rec
+      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(12:22), '(E11.0)') QX
+      read(rec(23:33),   '(I11)') L
+      read(rec(34:44),   '(I11)') LRX
+      read(rec(56:66),   '(I11)') NRS
+
+      ! allocate SLBW resonances
+      call nuc % slbw_resonances(i_l + 1) % alloc_slbw_resonances(NRS)
+
+      ! check mass ratios
+      call check_mass(AWRI, nuc % awr)
+
+      ! check that Q-value is 0.0
+      call check_q_value(QX)
+
+      ! check orbital quantum number
+      call check_l_number(L, i_L)
+
+      ! loop over resonances
+      do i_R = 1, NRS
+
+        read(in, 10) rec
+        read(rec(1:11),  '(E11.0)') nuc % slbw_resonances(i_l + 1) % E_lam(i_R)
+        read(rec(12:22), '(E11.0)') nuc % slbw_resonances(i_l + 1) % AJ(i_R)
+        read(rec(23:33), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GT(i_R)
+        read(rec(34:44), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GN(i_R)
+        read(rec(45:55), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GG(i_R)
+        read(rec(56:66), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GF(i_R)
+
+        if (LRX == 0) then
+          nuc % slbw_resonances(i_l + 1) % GX(i_R) = ZERO
+        else if (LRX == 1) then
+          nuc % slbw_resonances(i_l + 1) % GX(i_R) &
+            & = nuc % slbw_resonances(i_l + 1) % GT(i_R) &
+            & - nuc % slbw_resonances(i_l + 1) % GN(i_R) &
+            & - nuc % slbw_resonances(i_l + 1) % GG(i_R) &
+            & - nuc % slbw_resonances(i_l + 1) % GF(i_R)
+        else
+          call fatal_error('LRX must be 0 or 1 in '//trim(filename))
+        end if
+
+        ! check sign of total angular momentum, J
+        call check_j_sign(nuc % slbw_resonances(i_l + 1) % AJ(i_R))
+      end do
+
+      if (i_ER < nuc % NER - 1) then
+        call nuc % slbw_resonances(i_l + 1) % dealloc_slbw_resonances()
+      end if
+
+    end do
+
+    if (i_ER < nuc % NER - 1) deallocate(nuc % slbw_resonances)
+
+  end subroutine read_slbw_parameters
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! READ_MLBW_PARAMETERS reads in Multi-level Breit-Wigner resolved resonance
+! region parameters
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine read_mlbw_parameters(i_n, i_ER)
+
+    type(Nuclide), pointer :: nuc => null()
+    character(80) :: rec ! ENDF-6 file record
+    integer :: i_n  ! index in global nuclides array
+    integer :: i_ER ! energy range index
+    integer :: i_l  ! orbital quantum number index
+    integer :: L    ! orbital quantum number
+    integer :: NRS  ! number of resonances for this orbital quantum number
+    integer :: i_R  ! resonance index
+    integer :: LRX  ! competitive width flag
+    real(8) :: AWRI ! isotope/neutron mass ratio
+    real(8) :: QX   ! Q-value to be added to COM energy
+
+    nuc => nuclides(i_n)
+
+    ! read first line of energy range subsection
+    read(in, 10) rec
+10  format(A80)
+    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
+    call nuc % pre_process(i_ER)
+    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+
+    ! allocate MLBW resonance vectors for each l
+    allocate(nuc % mlbw_resonances(nuc % NLS(i_ER)))
+
+    ! loop over orbital quantum numbers
+    do i_l = 0, nuc % NLS(i_ER) - 1
+      read(in, 10) rec
+      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(12:22), '(E11.0)') QX
+      read(rec(23:33),   '(I11)') L
+      read(rec(34:44),   '(I11)') LRX
+      read(rec(56:66),   '(I11)') NRS
+
+      ! allocate MLBW resonances
+      call nuc % mlbw_resonances(i_l + 1) % alloc_mlbw_resonances(NRS)
+
+      ! check mass ratios
+      call check_mass(AWRI, nuc % awr)
+
+      ! check that Q-value is 0.0
+      call check_q_value(QX)
+
+      ! check orbital quantum number
+      call check_l_number(L, i_L)
+
+      ! loop over resonances
+      do i_R = 1, NRS
+
+        read(in, 10) rec
+        read(rec(1:11),  '(E11.0)') nuc % mlbw_resonances(i_l + 1) % E_lam(i_R)
+        read(rec(12:22), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % AJ(i_R)
+        read(rec(23:33), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GT(i_R)
+        read(rec(34:44), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GN(i_R)
+        read(rec(45:55), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GG(i_R)
+        read(rec(56:66), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GF(i_R)
+
+        if (LRX == 0) then
+          nuc % mlbw_resonances(i_l + 1) % GX(i_R) = ZERO
+        else if (LRX == 1) then
+          nuc % mlbw_resonances(i_l + 1) % GX(i_R) &
+            & = nuc % mlbw_resonances(i_l + 1) % GT(i_R) &
+            & - nuc % mlbw_resonances(i_l + 1) % GN(i_R) &
+            & - nuc % mlbw_resonances(i_l + 1) % GG(i_R) &
+            & - nuc % mlbw_resonances(i_l + 1) % GF(i_R)
+        else
+          call fatal_error('LRX must be 0 or 1 in '//trim(filename))
+        end if
+
+        ! check sign of total angular momentum, J
+        call check_j_sign(nuc % mlbw_resonances(i_l + 1) % AJ(i_R))
+      end do
+
+      if (i_ER < nuc % NER - 1) then
+        call nuc % mlbw_resonances(i_l + 1) % dealloc_mlbw_resonances()
+      end if
+
+    end do
+
+    if (i_ER < nuc % NER - 1) deallocate(nuc % mlbw_resonances)
+
+  end subroutine read_mlbw_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -834,6 +1030,22 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
+! CHECK_Q_VALUE checks that the Q-value is 0.0
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine check_q_value(QX)
+
+    real(8) :: QX
+
+    if (QX /= ZERO) then
+      call fatal_error('Q-value is not equal to 0.0 in '//trim(filename))
+   end if
+
+ end subroutine check_q_value
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
 ! CHECK_PARAMETERS checks that resonance parameters are given in MF=2
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -894,6 +1106,31 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
+! CHECK_FISSION_WIDTHS checks that the treatment of average fission widths in
+! the URR is supported
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine check_fission_widths(LFW)
+
+    integer :: LFW
+
+    select case(LFW)
+    ! average URR fission widths are not given
+    case(0)
+      if (master) call warning('Average URR fission widths are not given &
+        &(LFW = 0) in '//trim(filename))
+    ! average URR fission widths are given
+    case(1)
+      continue
+    case default
+      if (master) call fatal_error('LFW must be 0 or 1 in '//trim(filename))
+    end select
+
+  end subroutine check_fission_widths
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
 ! CHECK_ENERGY_RANGES makes sure the upper energy is greater than the lower and
 ! that the number of resonance energy ranges is allowable
 !
@@ -913,8 +1150,8 @@ contains
     end if
 
     if (e_high <= e_low) then
-      call fatal_error('Upper resonance energy range bound is not greater &
-        &than the lower in '//trim(filename))
+      if (master) call fatal_error('Upper resonance energy range bound is not &
+        &greater than the lower in '//trim(filename))
     end if
 
   end subroutine check_energy_ranges
@@ -938,14 +1175,12 @@ contains
       case(1)
         continue
       case default
-        call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO is 0 in '&
-          & //trim(filename))
+        if (master) call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO &
+          &is 0 in '//trim(filename))
       end select
     case(1)
-      if (master) then
-        call warning('ENDF-6 NRO flag value 1 ignored in energy range for ' &
-          & //trim(filename))
-      end if
+      if (master) call fatal_error('ENDF-6 NRO flag value 1 not supported in '&
+        &//trim(filename))
       select case(naps_val)
       case(0)
         continue
@@ -954,11 +1189,12 @@ contains
       case(2)
         continue
       case default
-        call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1 in '&
-          & //trim(filename))
+        if (master) call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when &
+          &NRO is 1 in '//trim(filename))
       end select
     case default
-      call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '//trim(filename))
+      if (master) call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '&
+        &//trim(filename))
     end select
 
   end subroutine check_radius_flags
@@ -994,8 +1230,8 @@ contains
     integer :: l_ref
 
     if (l_val /= l_ref) then
-      call fatal_error('Unexpected ordering of orbital quantum numbers in '&
-        & //trim(filename))
+      if (master) call fatal_error('Unexpected ordering of orbital quantum &
+        &numbers in '//trim(filename))
     end if
 
   end subroutine check_l_number
@@ -1012,8 +1248,8 @@ contains
     real(8) :: j_val
 
     if (j_val < ZERO) then
-      call fatal_error('Negative total angular momentum not supported in '&
-        //trim(filename))
+      if (master) call fatal_error('Negative total angular momentum not &
+        &supported in '//trim(filename))
     end if
 
   end subroutine check_j_sign

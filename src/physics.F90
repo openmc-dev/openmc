@@ -231,7 +231,7 @@ contains
       prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-      ! Create fission bank sites if fission occus
+      ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
@@ -385,7 +385,7 @@ contains
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
       end do
 
-      ! Perform collision physics for inelastics scattering
+      ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
            p % mu, p % wgt)
       p % event_MT = rxn % MT

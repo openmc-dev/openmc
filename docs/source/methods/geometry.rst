@@ -385,6 +385,101 @@ is found that contains the specified point.
 
 .. _cell-contains:
 
+----------------------
+Finding a Lattice Tile
+----------------------
+
+If a particle is inside a lattice, its position inside the lattice must be
+determined before assigning it to a cell.  Throughout this section, the
+volumetric units of the lattice will be referred to as "tiles".  Tiles are
+identified by thier indices, and the process of discovering which tile contains
+the particle is referred to as "indexing".
+
+Rectilinear Lattice Indexing
+----------------------------
+
+Indices are assigned to tiles in a rectilinear lattice based on the tile's
+position along the :math:`x`, :math:`y`, and :math:`z` axes.  The figure below
+maps the indecies for a 2d lattice.  The indices, (1, 1), map to the
+lower-left tile.  (5, 1) and (5, 5) map to the lower-right and upper-right
+tiles, respectively.
+
+.. figure:: ../_images/rect_lat.*
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+   Rectilinear lattice tile indices.
+
+In general, a lattice tile is specified by the three indices,
+:math:`(i_x, i_y, i_z)`.  If a particle's current coordinates are
+:math:`(x, y, z)` then the indices can be determined from these formulas:
+
+.. math::
+    :label: rect_indexing
+
+    i_x = \Bigg \lceil \frac{x - x_0}{p_0} \Bigg \rceil
+
+    i_y = \Bigg \lceil \frac{y - y_0}{p_1} \Bigg \rceil
+
+    i_z = \Bigg \lceil \frac{z - z_0}{p_2} \Bigg \rceil
+
+where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
+corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
+:math:`x`, :math:`y`, and :math:`z` axes, respectively.
+
+Hexagonal Lattice Indexing
+--------------------------
+
+A skewed coordinate system is used for indexing hexagonal lattice tiles.  Rather
+than a :math:`y`-axis, another axis is used that is rotated 30 degrees
+counter-clockwise from the :math:`y`-axis.  This axis is referred to as the
+:math:`\alpha`-axis.  The figure below shows how 2d hexagonal tiles are mapped
+with the :math:`(x, \alpha)` basis.  In this system, (0, 0) maps to the center
+tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the right side.
+
+.. figure:: ../_images/hex_lat.*
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+   Hexagonal lattice tile indices.
+
+Unfortunately, the indices cannot be determined with one simple formula as
+before.  Indexing requires a two-step process, a coarse step which determines a
+set of 4 tiles that contains the particle and a fine step that determines which
+of those 4 tiles actually contains the particle.
+
+In the first step, indices are found using these formulas:
+
+.. math::
+    :label: hex_indexing
+
+    \alpha = -\frac{x}{\sqrt{3}} + y
+
+    i_x^* = \Bigg \lfloor \frac{x}{p_0 \sqrt{3} / 2} \Bigg \rfloor
+
+    i_\alpha^* = \Bigg \lfloor \frac{\alpha}{p_0} \Bigg \rfloor
+
+where :math:`p_0` is the lattice pitch (in the :math:`x`-:math:`y` plane).  The
+true index of the particle could be :math:`(i_x^*, i_\alpha^*)`,
+:math:`(i_x^* + 1, i_\alpha^*)`, :math:`(i_x^*, i_\alpha^* + 1)`, or
+:math:`(i_x^* + 1, i_\alpha^* + 1)`.
+
+The second step selects the correct tile from that neighborhood of 4.  OpenMC
+does this by calculating the distance between the particle and the centers of
+each of the 4 tiles, and then picking the closest tile.  This works because
+regular hexagonal tiles form a Voronoi tessellation which means that all of the
+points within a tile are closest to the center of that same tile.
+
+Indexing along the :math:`z`-axis uses the same method from rectilinear
+lattices, i.e.
+
+.. math::
+    :label: hex_indexing_z
+
+    i_z = \Bigg \lceil \frac{z - z_0}{p_2} \Bigg \rceil
+
 ----------------------------------------
 Determining if a Coordinate is in a Cell
 ----------------------------------------

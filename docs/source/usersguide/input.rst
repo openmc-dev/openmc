@@ -840,7 +840,7 @@ Here is an example of a properly defined 2d rectangular lattice:
     </lattice>
 
 ``<hex_lattice>`` Element
----------------------
+-------------------------
 
 The ``<hex_lattice>`` can be used to represent repeating structures (e.g. fuel
 pins in an assembly) or other geometry which naturally fits onto a hexagonal

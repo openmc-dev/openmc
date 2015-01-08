@@ -1832,14 +1832,15 @@ contains
       lc = 2 + 2*NR + 2*NE
       U = edist % data(lc + 1)
 
+      y = (E_in - U)/T
+      v = 1 - exp(-y)
+
       ! sample outgoing energy based on evaporation spectrum probability
       ! density function
       n_sample = 0
       do
-        r1 = prn()
-        r2 = prn()
-        E_out = -T * log(r1*r2)
-        if (E_out <= E_in - U) exit
+        x = -log((1 - v*prn())*(1 - v*prn()))
+        if (x <= y) exit
 
         ! check for large number of rejections
         n_sample = n_sample + 1
@@ -1848,6 +1849,8 @@ contains
           call fatal_error("Too many rejections on evaporation spectrum.")
         end if
       end do
+
+      E_out = x*T
 
     case (11)
       ! =======================================================================

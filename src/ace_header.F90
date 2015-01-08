@@ -92,8 +92,9 @@ module ace_header
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   type SLBWResonances
-     
+
     real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
     real(8), allocatable :: GN(:)
     real(8), allocatable :: GG(:)
     real(8), allocatable :: GF(:)
@@ -121,6 +122,7 @@ module ace_header
   type MLBWResonances
 
     real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
     real(8), allocatable :: GN(:)
     real(8), allocatable :: GG(:)
     real(8), allocatable :: GF(:)
@@ -253,7 +255,9 @@ module ace_header
     integer :: LRP  ! resonance parameter flag
     integer :: NER  ! number of resonance energy ranges
     integer :: LSSF ! self-shielding factor flag
-    integer :: INT  ! interpolation scheme #
+! TODO: check that correct interpolation schemes are being used
+    integer :: INT  ! an interpolation scheme #
+    integer :: MF3_INT ! interpolation scheme for File 3 background xs
 ! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
     integer :: LRX  ! competitive inelastic width flag
     integer :: NE   ! number of URR tabulated data energies
@@ -302,6 +306,12 @@ module ace_header
 
     ! set of Reich-Moore resonances (vector of resonances for each l)
     type(RMResonances), allocatable :: rm_resonances(:)
+
+    ! set of SLBW resonances (vector of resonances for each l)
+    type(SLBWResonances), allocatable :: slbw_resonances(:)
+
+    ! set of MLBW resonances (vector of resonances for each l)
+    type(MLBWResonances), allocatable :: mlbw_resonances(:)
 
     ! pointwise URR cross section data
     real(8), allocatable :: urr_energy_tmp(:)    ! energy grid values
@@ -724,29 +734,32 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: ALLOC_SLBW_RESONANCES allocates a vector of URR resonances for a given J, for
-! a given (i_lam, i_l)
+! ALLOC_SLBW_RESONANCES allocates a vector of SLBW resonances for a given J, for
+! a given (i_lam, i_l) in the URR case, and for a given number of resonances,
+! NRS, in the RRR case
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_slbw_resonances(this, N_J)
+  subroutine alloc_slbw_resonances(this, N_res)
 
     class(SLBWResonances), intent(inout) :: this ! resonance vector object
-    integer :: N_J
+    integer :: N_res
 
-    allocate(this % E_lam(N_J))
-    allocate(this % GN(N_J))
-    allocate(this % GG(N_J))
-    allocate(this % GF(N_J))
-    allocate(this % GX(N_J))
-    allocate(this % GT(N_J))
+    allocate(this % E_lam(N_res))
+    allocate(this % AJ(N_res))
+    allocate(this % GN(N_res))
+    allocate(this % GG(N_res))
+    allocate(this % GF(N_res))
+    allocate(this % GX(N_res))
+    allocate(this % GT(N_res))
 
   end subroutine alloc_slbw_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_SLBW_RESONANCES deallocates a vector of URR resonances for a given J,
-! for a given (i_lam, i_l)
+! !TODO: use this: DEALLOC_SLBW_RESONANCES deallocates a vector of SLBW resonances for a given J,
+! for a given (i_lam, i_l) in the URR case, and for a given number of resonances,
+! NRS, in the RRR case
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -755,6 +768,7 @@ contains
     class(SLBWResonances), intent(inout) :: this ! resonance vector object
 
     deallocate(this % E_lam)
+    deallocate(this % AJ)
     deallocate(this % GN)
     deallocate(this % GG)
     deallocate(this % GF)
@@ -765,29 +779,28 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: ALLOC_MLBW_RESONANCES allocates a vector of MLBW resonances for a given J, for
-! a given (i_lam, i_l)
+! ALLOC_MLBW_RESONANCES allocates a vector of NRS MLBW resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_mlbw_resonances(this, N_J)
+  subroutine alloc_mlbw_resonances(this, NRS)
 
     class(MLBWResonances), intent(inout) :: this ! resonance vector object
-    integer :: N_J
+    integer :: NRS
 
-    allocate(this % E_lam(N_J))
-    allocate(this % GN(N_J))
-    allocate(this % GG(N_J))
-    allocate(this % GF(N_J))
-    allocate(this % GX(N_J))
-    allocate(this % GT(N_J))
+    allocate(this % E_lam(NRS))
+    allocate(this % AJ(NRS))
+    allocate(this % GN(NRS))
+    allocate(this % GG(NRS))
+    allocate(this % GF(NRS))
+    allocate(this % GX(NRS))
+    allocate(this % GT(NRS))
 
   end subroutine alloc_mlbw_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_MLBW_RESONANCES deallocates a vector of MLBW resonances for a given J,
-! for a given (i_lam, i_l)
+! !TODO: use this: DEALLOC_MLBW_RESONANCES deallocates a vector of NRS MLBW resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -796,6 +809,7 @@ contains
     class(MLBWResonances), intent(inout) :: this ! resonance vector object
 
     deallocate(this % E_lam)
+    deallocate(this % AJ)
     deallocate(this % GN)
     deallocate(this % GG)
     deallocate(this % GF)
@@ -806,8 +820,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_RM_RESONANCES allocates a vector of Reich-Moore resonances for a given
-! J, for a given (i_lam, i_l)
+! ALLOC_RM_RESONANCES allocates a vector of NRS Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -827,8 +840,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_RM_RESONANCES deallocates a vector of Reich-Moore resonances for a given J,
-! for a given (i_lam, i_l)
+! !TODO: use this: DEALLOC_RM_RESONANCES deallocates a vector of NRS Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 

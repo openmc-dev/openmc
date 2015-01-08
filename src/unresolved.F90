@@ -1434,6 +1434,10 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+! TODO: fix-up the RRR-URR energy crossover as in calc_urr_xs_otf; probably need
+! to utilize mlbw_resonances, slbw_resonances, in place of rm_resonances, where
+! appropriate
+
   subroutine calculate_urr_xs_otf(i_nuc, E)
 
     type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
@@ -2921,29 +2925,23 @@ contains
     else
 
       ! first level inelastic scattering xs
-      if (1 == 1) then
-        if (nuc % E < nuc % avg_urr_x_e(1)) then
-          inelastic_xs = ZERO
-        else
-          i_e = binary_search(nuc % avg_urr_x_e, size(nuc % avg_urr_x_e), nuc % E)
-          m = interp_factor(nuc % E, &
-            & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % INT)
-          inelastic_xs = interpolator(m, &
-            & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), LINEAR_LINEAR)
-        end if
+      if (nuc % E < nuc % avg_urr_x_e(1)) then
+        inelastic_xs = ZERO
       else
-        inelastic_xs = micro_xs(i_nuc) % total &
-          &          - micro_xs(i_nuc) % elastic &
-          &          - micro_xs(i_nuc) % absorption
+        i_e = binary_search(nuc % avg_urr_x_e, size(nuc % avg_urr_x_e), nuc % E)
+        m = interp_factor(nuc % E, &
+          & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % MF3_INT)
+        inelastic_xs = interpolator(m, &
+          & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), nuc % MF3_INT)
       end if
       if (competitive) inelastic_xs = inelastic_xs + sig_x % val
 
       ! elastic scattering xs
       i_e = binary_search(nuc % avg_urr_n_e, size(nuc % avg_urr_n_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % INT)
+        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % MF3_INT)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), LINEAR_LINEAR) &
+        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), nuc % MF3_INT) &
         & + sig_n % val
 
       ! set negative SLBW elastic xs to zero
@@ -2952,17 +2950,17 @@ contains
       ! capture xs
       i_e = binary_search(nuc % avg_urr_g_e, size(nuc % avg_urr_g_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % INT)
+        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % MF3_INT)
       capture_xs = interpolator(m, &
-        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), LINEAR_LINEAR) &
+        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), nuc % MF3_INT) &
         & + sig_gam % val
 
       ! fission xs
       i_e = binary_search(nuc % avg_urr_f_e, size(nuc % avg_urr_f_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % INT)
+        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % MF3_INT)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), LINEAR_LINEAR) &
+        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), nuc % MF3_INT) &
         & + sig_f % val
 
       ! absorption xs

@@ -682,17 +682,20 @@ nuclear temperature, which is a function of the incoming energy of the
 neutron. The ACE format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
 energies using a specified interpolation law. Once the temperature :math:`T` is
-determined, we then calculate a candidate outgoing energy based on rule C45 in
-the `Monte Carlo Sampler`_:
+determined, we then calculate a candidate outgoing energy based on the algorithm
+given in LA-UR-14-27694_:
 
 .. math::
     :label: evaporation-E
 
-    E' = -T \log (\xi_1 \xi_2)
+    E' = -T \log ((1 - g\xi_1)(1 - g\xi_2))
 
-where :math:`\xi_1, \xi_2` are random numbers sampled on the unit
-interval. The outgoing energy is only accepted according to a specified
-restriction energy as in equation :eq:`maxwell-restriction`.
+where :math:`g = 1 - e^{-w}`, :math:`w = (E - U)/T`, :math:`U` is the
+restriction energy, and :math:`\xi_1, \xi_2` are random numbers sampled on the
+unit interval. The outgoing energy is only accepted according to the restriction
+energy as in equation :eq:`maxwell-restriction`. This algorithm has a much
+higher rejection efficiency than the standard technique, i.e. rule C45 in the
+`Monte Carlo Sampler`_.
 
 ACE Law 11 - Energy-Dependent Watt Spectrum
 +++++++++++++++++++++++++++++++++++++++++++
@@ -1590,6 +1593,8 @@ References
 .. _ENDF-6 Format: http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 .. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf
+
+.. _LA-UR-14-27694: http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
 

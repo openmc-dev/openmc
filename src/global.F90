@@ -62,7 +62,7 @@ module global
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
+  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -76,11 +76,6 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
-
-  ! Unionized energy grid
-  integer :: grid_method ! how to treat the energy grid
-  integer :: n_grid      ! number of points on unionized grid
-  real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
@@ -119,7 +114,7 @@ module global
   !   2) track-length estimate of k-eff
   !   3) leakage fraction
 
-  type(TallyResult), target :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyResult), allocatable, target :: global_tallies(:)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -223,7 +218,6 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for unionizing energy grid
   type(Timer) :: time_bank          ! timer for fission bank synchronization
   type(Timer) :: time_bank_sample   ! timer for fission bank sampling
   type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
@@ -300,7 +294,7 @@ module global
   logical :: write_initial_source = .false.
 
   ! ============================================================================
-  ! CMFD VARIABLES 
+  ! CMFD VARIABLES
 
   ! Main object
   type(cmfd_type) :: cmfd
@@ -310,11 +304,11 @@ module global
 
   ! CMFD communicator
   integer :: cmfd_comm
- 
+
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
   type(Timer) :: time_cmfdbuild ! timer for matrix build
-  type(Timer) :: time_cmfdsolve ! timer for solver 
+  type(Timer) :: time_cmfdsolve ! timer for solver
 
   ! Flag for active core map
   logical :: cmfd_coremap = .false.
@@ -390,7 +384,7 @@ module global
   ! RESONANCE SCATTERING VARIABLES
 
   logical :: treat_res_scat = .false. ! is resonance scattering treated?
-  integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers 
+  integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
@@ -399,14 +393,14 @@ module global
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates and clears  all global allocatable arrays in the 
+! FREE_MEMORY deallocates and clears  all global allocatable arrays in the
 ! program
 !===============================================================================
 
   subroutine free_memory()
-    
+
     integer :: i ! Loop Index
-    
+
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -449,6 +443,7 @@ contains
     if (allocated(entropy_p)) deallocate(entropy_p)
 
     ! Deallocate tally-related arrays
+    if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) then
     ! First call the clear routines
@@ -460,9 +455,6 @@ contains
     end if
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
-
-    ! Deallocate energy grid
-    if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel
@@ -488,7 +480,7 @@ contains
 
     ! Deallocate track_identifiers
     if (allocated(track_identifiers)) deallocate(track_identifiers)
-    
+
     ! Deallocate dictionaries
     call cell_dict % clear()
     call universe_dict % clear()
@@ -525,7 +517,7 @@ contains
         if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
         deallocate(ufs_mesh)
     end if
-    
+
   end subroutine free_memory
 
 end module global

@@ -348,10 +348,9 @@ contains
 
       ! Score to global leakage tally
       if (tallies_on) then
-!$omp critical
+!$omp atomic
         global_tallies(LEAKAGE) % value = &
-             global_tallies(LEAKAGE) % value + p % wgt
-!$omp end critical
+           global_tallies(LEAKAGE) % value + p % wgt
       end if
 
       ! Display message
@@ -586,7 +585,7 @@ contains
         return
       end if
     end if
-       
+
   end subroutine cross_surface
 
 !===============================================================================
@@ -823,7 +822,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -872,7 +871,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -921,7 +920,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -968,7 +967,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with sphere
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the sphere, thus one distance is
@@ -1015,7 +1014,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1034,7 +1033,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1064,7 +1063,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1083,7 +1082,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1113,7 +1112,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1132,7 +1131,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1604,9 +1603,8 @@ contains
 
     ! Increment number of lost particles
     p % alive = .false.
-!$omp critical
+!$omp atomic
     n_lost_particles = n_lost_particles + 1
-!$omp end critical
 
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached

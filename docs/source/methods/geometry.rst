@@ -516,7 +516,7 @@ satisfy the following equations
 
     x^2 + y^2 + z^2 - 10^2 < 0 \\
     x - (-3) > 0 \\
-    x - 2 < 0
+    y - 2 < 0
 
 In order to determine if a point is inside the cell, we would substitute its
 coordinates into equation :eq:`cell-contains-example`. If the inequalities are

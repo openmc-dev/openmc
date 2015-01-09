@@ -62,9 +62,8 @@ contains
     n_event = 0
 
     ! Add paricle's starting weight to count for normalizing tallies later
-!$omp critical
+!$omp atomic
     total_weight = total_weight + p % wgt
-!$omp end critical
 
     ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO
@@ -113,11 +112,10 @@ contains
            call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
-!$omp critical
+!$omp atomic
       global_tallies(K_TRACKLENGTH) % value = &
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
-!$omp end critical
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -141,11 +139,10 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-!$omp critical
+!$omp atomic
         global_tallies(K_COLLISION) % value = &
              global_tallies(K_COLLISION) % value + p % wgt * &
              material_xs % nu_fission / material_xs % total
-!$omp end critical
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the

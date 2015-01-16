@@ -883,7 +883,7 @@ contains
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: i_J  ! total angular momentum quantum number index
-    integer :: i_E  ! tabulated energy grid index
+    integer :: i_E  ! energy region index
     real(8) :: AWRI ! isotope/neutron mass ratio
 !$omp threadprivate(nuc)
 

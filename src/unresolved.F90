@@ -19,7 +19,7 @@ module unresolved
   character(80)              :: urr_formalism         ! URR formalism
   character(80)              :: urr_frequency         ! freq of realizations
   integer, allocatable :: urr_zaids(:)    ! ZAID's for URR nuclides
-! TODO: remove n_resonances?
+! TODO: use n_resonances
   integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
   integer :: n_otf_urr_xs       ! number of nuclides to calc otf urr xs for
   integer :: n_avg_urr_nuclides ! number of nuclides to calc average urr xs for
@@ -29,7 +29,7 @@ module unresolved
   integer :: urr_avg_histories  ! number of histories for inf dil xs calc
   integer :: i_real             ! URR xs realization index for calculation
   integer :: i_realization      ! user-specified realization index
-  real(8) :: urr_avg_tol ! max rel error for inf dil xs calc termination
+  real(8) :: urr_avg_tol        ! max rel error for inf dil xs calc termination
 !$omp threadprivate(i_real)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -162,7 +162,7 @@ module unresolved
 ! TODO: extend tabulated values beyond Mathematica's precision
   ! tabulated chi-square distribution for 1-4 degrees of freedom with values
   ! taken to preserve integral probabilities for equiprobable bins
-  real(8), dimension(20,4), parameter :: chi2=reshape((/&
+  real(8), dimension(20,4), parameter :: chi2 = reshape((/&
      & 1.31003e-3_8,  9.19501e-3_8, 0.0250905e0_8, 0.049254e0_8, &
      & 0.0820892e0_8, 0.124169e0_8, 0.176268e0_8,  0.239417e0_8, &
      & 0.314977e0_8,  0.404749e0_8, 0.511145e0_8,  0.637461e0_8, &
@@ -1238,7 +1238,7 @@ contains
 
   subroutine calculate_avg_urr_xs()
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(Resonance)    :: res     ! resonance object
     type(CrossSection) :: sig_t   ! total xs object
     type(CrossSection) :: sig_n   ! elastic scattering xs object
@@ -1332,26 +1332,28 @@ contains
                 nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
                 nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
 
-                ! set current mean unresolved resonance parameters
-                
-                nuc % D   = nuc % D_mean(i_l)   % data(i_J) % data(i_E)
-                nuc % GN0 = nuc % GN0_mean(i_l) % data(i_J) % data(i_E)
-                nuc % GG  = nuc % GG_mean(i_l)  % data(i_J) % data(i_E)
-                nuc % GF  = nuc % GF_mean(i_l)  % data(i_J) % data(i_E)
-                nuc % GX  = nuc % GX_mean(i_l)  % data(i_J) % data(i_E)
-
                 ! reset the resonance object for a new spin sequence
                 call res % reset_resonance(i_nuc)
-        
+
+                ! set mean URR parameters to neutron energy
+                call set_mean_parameters(i_nuc, E, i_l, i_J)
+
+                ! sample unresolved resonance parameters for this spin
+                ! sequence, at this energy
+                call res % sample_parameters(i_nuc)
+
                 ! loop over the addition of resonances to this ladder
                 RESONANCES_LOOP: do i_r = 1, n_res
+
+                  ! set current temperature
+                  nuc % T = nuc % kT / K_BOLTZMANN
+
+                  ! interpolate mean URR parameters to current resonance energy
+                  call set_mean_parameters(i_nuc, res % E_lam, i_l, i_J)
 
                   ! sample unresolved resonance parameters for this spin
                   ! sequence, at this energy
                   call res % sample_parameters(i_nuc)
-
-                  ! set current temperature
-                  nuc % T = nuc % kT / K_BOLTZMANN
 
                   ! calculate the contribution to the partial cross sections,
                   ! at this energy, from an additional resonance 
@@ -1359,7 +1361,8 @@ contains
 
                   ! add this contribution to the accumulated partial cross
                   ! section values built up from all resonances
-                  call accum_resonances(res,sig_t,sig_n,sig_gam,sig_f,sig_x)
+! TODO: move sig_t outside of loop
+                  call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
                 end do RESONANCES_LOOP
               end do TOTAL_ANG_MOM_LOOP
@@ -1503,11 +1506,6 @@ contains
     ! set current temperature
     nuc % T = nuc % kT / K_BOLTZMANN
 
-    ! set current energy and interpolation factor
-    nuc % E = E
-    i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
-    m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
-
     ! reset xs objects
     call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
@@ -1536,44 +1534,22 @@ contains
         nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
         nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
 
-        ! set current mean unresolved resonance parameters
-        nuc % D   = interpolator(m, &
-          & nuc % D_mean(i_l) % data(i_J) % data(i_E), &
-          & nuc % D_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-
-        nuc % GN0 = interpolator(m, &
-          & nuc % GN0_mean(i_l) % data(i_J) % data(i_E), &
-          & nuc % GN0_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-
-        nuc % GG  = interpolator(m, &
-          & nuc % GG_mean(i_l) % data(i_J) % data(i_E), &
-          & nuc % GG_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-
-        ! TODO: add in catch here for when threshold occurs between tabulated pts
-        if (nuc % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-          & .and. nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-          nuc % GF  = interpolator(m, &
-            & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
-            & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-        else
-          nuc % GF = ZERO
-        end if
-
-        ! TODO: add in catch here for when threshold occurs between tabulated pts
-        if (nuc % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-          & .and. nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-          nuc % GX  = interpolator(m, &
-            & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
-            & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-        else
-          nuc % GX = ZERO
-        end if
-
         ! reset the resonance object for a new spin sequence
         call res % reset_resonance(i_nuc)
 
+        ! set mean URR parameters to neutron energy
+        nuc % E = E
+        call set_mean_parameters(i_nuc, nuc % E, i_l, i_J)
+
+        ! sample unresolved resonance parameters for this spin
+        ! sequence, at this energy
+        call res % sample_parameters(i_nuc)
+
         ! loop over the addition of resonances to this ladder
         RESONANCES_LOOP: do i_r = 1, n_res
+
+          ! interpolate mean URR parameters to current resonance energy
+          call set_mean_parameters(i_nuc, res % E_lam, i_l, i_J)
 
           ! sample unresolved resonance parameters for this spin
           ! sequence, at this energy
@@ -1750,6 +1726,7 @@ contains
     if (this % i_res == 0) then
       this % E_lam = (nuc % E - n_res/2 * nuc % D) &
                  & + (ONE - TWO * prn()) * this % D_lJ
+      this % i_res = this % i_res + 1
 
     ! add subsequent resonance energies at the sampled spacing above the last
     ! resonance
@@ -1940,8 +1917,8 @@ contains
 
     Gam_t_n = this % Gam_t - this % Gam_n + Gam_n_n
 
-    theta = Gam_t_n &
-      & / (TWO * sqrt(K_BOLTZMANN * 1.0E6_8 * nuc % T * nuc % E / nuc % awr))
+    theta = HALF * Gam_t_n &
+      & / sqrt(K_BOLTZMANN * 1.0E6_8 * nuc % T * nuc % E / nuc % awr)
 
     x = (TWO * (nuc % E - E_shift)) / Gam_t_n
 
@@ -2143,7 +2120,7 @@ contains
 
     ! call S.G. Johnson's Faddeeva evaluation
     case (MIT_W)
-      relerr = 1.0e-1
+      relerr = 1.0e-6
       w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
       psi_val = SQRT_PI * HALF * theta &
         & * real(real(w_val, 8), 8)
@@ -2179,7 +2156,7 @@ contains
     ! call S.G. Johnson's Faddeeva evaluation
     case (MIT_W)
 
-      relerr = 1.0e-1
+      relerr = 1.0e-6
       w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
       chi_val = SQRT_PI * HALF * theta &
         & * real(aimag(w_val), 8)
@@ -2639,7 +2616,7 @@ contains
 
   subroutine set_parameters(res, i_nuc, i_res, i_l, i_J, LRF_val)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(Resonance) :: res ! resonance object
     integer :: i_nuc   ! nuclide index
     integer :: i_res   ! resonance counter
@@ -2685,9 +2662,9 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine set_mean_parameters(i_nuc, i_E, E_res, i_l, i_J)
+  subroutine set_mean_parameters(i_nuc, E_res, i_l, i_J)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     integer :: i_nuc ! nuclide index
     integer :: i_E   ! tabulated URR parameters energy index
     integer :: i_l   ! orbital quantum number index
@@ -2726,6 +2703,7 @@ contains
         & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
         & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
     else
+      call warning('Zero mean fission width encountered')
       nuc % GF = ZERO
     end if
 
@@ -2799,19 +2777,19 @@ contains
 ! TODO: LOG_LOG?
     ! infinite-dilute elastic scattering
     n_xs = interpolator(m, &
-      & nuc % avg_urr_n(i_E), nuc % avg_urr_n(i_E + 1), LINEAR_LINEAR)
+      & nuc % avg_urr_n(i_E), nuc % avg_urr_n(i_E + 1), nuc % INT)
 
     ! infinite-dilute fission
     f_xs = interpolator(m, &
-      & nuc % avg_urr_f(i_E), nuc % avg_urr_f(i_E + 1), LINEAR_LINEAR)
+      & nuc % avg_urr_f(i_E), nuc % avg_urr_f(i_E + 1), nuc % INT)
 
     ! infinite-dilute capture
     g_xs = interpolator(m, &
-      & nuc % avg_urr_g(i_E), nuc % avg_urr_g(i_E + 1), LINEAR_LINEAR)
+      & nuc % avg_urr_g(i_E), nuc % avg_urr_g(i_E + 1), nuc % INT)
 
     ! infinite-dilute competitive reaction xs
     x_xs = interpolator(m, &
-      & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), LINEAR_LINEAR)
+      & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), nuc % INT)
 
   end subroutine interp_avg_urr_xs
 
@@ -2882,6 +2860,9 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!TODO: this is wrong - nedd to add resonance File 2 contribution to Doppler
+! broadened File 3 evaluator-supplied background
+
   subroutine add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
 
     type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
@@ -2930,18 +2911,18 @@ contains
       else
         i_e = binary_search(nuc % avg_urr_x_e, size(nuc % avg_urr_x_e), nuc % E)
         m = interp_factor(nuc % E, &
-          & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % MF3_INT)
+          & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % INT)
         inelastic_xs = interpolator(m, &
-          & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), nuc % MF3_INT)
+          & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), nuc % INT)
       end if
       if (competitive) inelastic_xs = inelastic_xs + sig_x % val
 
       ! elastic scattering xs
       i_e = binary_search(nuc % avg_urr_n_e, size(nuc % avg_urr_n_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % MF3_INT)
+        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % INT)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), nuc % MF3_INT) &
+        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), nuc % INT) &
         & + sig_n % val
 
       ! set negative SLBW elastic xs to zero
@@ -2950,17 +2931,17 @@ contains
       ! capture xs
       i_e = binary_search(nuc % avg_urr_g_e, size(nuc % avg_urr_g_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % MF3_INT)
+        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % INT)
       capture_xs = interpolator(m, &
-        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), nuc % MF3_INT) &
+        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), nuc % INT) &
         & + sig_gam % val
 
       ! fission xs
       i_e = binary_search(nuc % avg_urr_f_e, size(nuc % avg_urr_f_e), nuc % E)
       m = interp_factor(nuc % E, &
-        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % MF3_INT)
+        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % INT)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), nuc % MF3_INT) &
+        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), nuc % INT) &
         & + sig_f % val
 
       ! absorption xs

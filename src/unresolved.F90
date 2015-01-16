@@ -1820,7 +1820,6 @@ contains
     if (nuc % AMUN > 0) then
       this % Gam_n = nuc % GN0 * sqrt(this % E_lam) * nu &
         & * chi2(i_tabn, nuc % AMUN)
-      this % Gam_n = this % Gam_n / dble(nuc % AMUN)
     else
       this % Gam_n = ZERO
     end if

@@ -12,24 +12,29 @@ module unresolved
 
   implicit none
 
-  logical :: urr_method    ! new urr method?
-  logical :: competitive   ! competitve reaction xs resonance structure?
-  logical :: urr_pointwise ! pointwise cross section calculation?
-  character(80), allocatable :: urr_endf_filenames(:) ! ENDF filename list
-  character(80)              :: urr_formalism         ! URR formalism
-  character(80)              :: urr_frequency         ! freq of realizations
-  integer, allocatable :: urr_zaids(:)    ! ZAID's for URR nuclides
-! TODO: use n_resonances
+  logical :: run_fasturr ! use special treatment for Fast/URR data?
+  logical :: competitive ! model competitve reaction xs resonance structure?
+  logical :: inf_dil     ! calculate averaged, infinite-dilute cross sections?
+  logical :: otf_urr     ! calculate cross sections on-the-fly?
+  integer :: n_fasturr           ! number of nuclides to treat with a new method
+  integer :: represent_urr       ! representation of URR xs
+  integer :: formalism           ! URR resonance formalism
+  integer :: real_freq           ! frequency of URR realizations
+  integer :: l_waves(4)          ! number of contributing l-wave
+  integer :: min_batches_avg_urr ! min batches for averaged cross section calc
+  integer :: max_batches_avg_urr ! max batches for averaged cross section calc
+  integer :: histories_avg_urr   ! histories for averaged cross section calc
+  integer :: n_reals             ! number of independent URR realizations
+  integer :: i_real              ! index of URR realization used for calc
+  integer :: i_real_user         ! user-specified realization index
+  real(8) :: tol_avg_urr         ! max rel error for inf dil xs calc termination
+  real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
+  real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
+  real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
+  character(80), allocatable :: endf_files(:) ! list of ENDF-6 filenames
+  integer, allocatable :: zais(:)! ZAID values for Fast/URR nuclides
   integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
-  integer :: n_otf_urr_xs       ! number of nuclides to calc otf urr xs for
-  integer :: n_avg_urr_nuclides ! number of nuclides to calc average urr xs for
-  integer :: n_urr_method       ! number of nuclides to treat with a new method
-  integer :: l_waves(4)         ! number of contributing l-wave
-  integer :: urr_avg_batches    ! min number of batches for inf dil xs calc
-  integer :: urr_avg_histories  ! number of histories for inf dil xs calc
-  integer :: i_real             ! URR xs realization index for calculation
-  integer :: i_realization      ! user-specified realization index
-  real(8) :: urr_avg_tol        ! max rel error for inf dil xs calc termination
+! TODO: use n_resonances
 !$omp threadprivate(i_real)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -221,12 +226,12 @@ contains
       micro_xs(i_nuc) % use_ptable = .true.
 
       ! allocate a realization of a URR resonance ensemble
-      call nuc % alloc_ensemble
+      call nuc % alloc_ensemble(n_reals)
 
       allocate(n_resonances(nuc % NLS(nuc % i_urr)))
 
       ! loop over independent realizations
-      ENSEMBLE_LOOP: do i_ens = 1, nuc % n_real
+      ENSEMBLE_LOOP: do i_ens = 1, n_reals
         
         ! loop over orbital angular momenta
         ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
@@ -235,7 +240,7 @@ contains
           nuc % L = i_l - 1
 
           ! get the number of contributing l-wave resonances for this l
-          n_res = l_wave_resonances(nuc % L)
+          n_res = n_res_contrib(nuc % L)
 
           ! loop over total angular momenta
           TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -377,13 +382,8 @@ contains
 
       nuc => nuclides(i_nuc)
 
-      ! skip nuclides without an OTF URR treatment
-      if (urr_pointwise .and. nuc % otf_urr_xs) then
-        nuc % point_urr_xs = .true.
-      else
-        nuc % point_urr_xs = .false.
-        cycle
-      end if
+      ! skip nuclides without a URR treatment
+      if (.not. nuc % point_urr_xs) cycle
 
       micro_xs(i_nuc) % use_ptable = .true.
 
@@ -419,7 +419,7 @@ contains
 
       ENERGY_LOOP: do
 
-        dE_trial = nuc % urr_dE
+        dE_trial = max_dE_point_urr
         nuc % E = nuc % E + dE_trial
         if (nuc % E > nuc % EH(nuc % i_urr) + dE_trial) exit
         if (i_ES < nuc % NE) then
@@ -452,7 +452,7 @@ contains
             nuc % L = i_l - 1
 
             ! get the number of contributing l-wave resonances for this l
-            n_res = l_wave_resonances(nuc % L)
+            n_res = n_res_contrib(nuc % L)
 
             ! loop over total angular momentum quantum #'s
             TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -630,7 +630,7 @@ contains
             nuc % L = i_l - 1
 
             ! get the number of contributing l-wave resonances for this l
-            n_res = l_wave_resonances(nuc % L)
+            n_res = n_res_contrib(nuc % L)
 
             ! loop over total angular momentum quantum #'s
             TOTAL_ANG_MOM_LOOP1: do i_J = 1, nuc % NJS(i_l)
@@ -787,7 +787,7 @@ contains
 
           rel_err = abs(xs_trial - nuc % urr_total_tmp(n_pts)) &
             & / nuc % urr_total_tmp(n_pts)
-          if (rel_err < nuc % urr_tol .or. dE_trial < 1.0e-11_8) then
+          if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr) then
             enhance = .false.
           end if
 
@@ -815,7 +815,7 @@ contains
           nuc % L = i_l - 1
 
           ! get the number of contributing l-wave resonances for this l
-          n_res = l_wave_resonances(nuc % L)
+          n_res = n_res_contrib(nuc % L)
 
           ! loop over total angular momentum quantum #'s
           TOTAL_ANG_MOM_LOOP2: do i_J = 1, nuc % NJS(i_l)
@@ -1047,13 +1047,14 @@ contains
     ! reset xs objects
     call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
-    if (i_realization == 0) then
+    if (i_real_user == 0) then
       ! randomly select which realization to use
-      i_real = ceiling(prn() * nuc % n_real)
+      i_real = ceiling(prn() * n_reals)
       if (i_real == 0) call fatal_error('i_real is sampled to be 0')
-      if (i_real == nuc % n_real + 1) call fatal_error('i_real is sampled to be n_real+1')
+      if (i_real == n_reals + 1) &
+        & call fatal_error('i_real is sampled to be > n_reals')
     else
-      i_real = i_realization
+      i_real = i_real_user
     end if
 
     ! loop over orbital quantum #'s
@@ -1063,7 +1064,7 @@ contains
       nuc % L = i_l - 1
 
       ! get the number of contributing l-wave resonances for this l
-      n_res = l_wave_resonances(nuc % L)
+      n_res = n_res_contrib(nuc % L)
 
       ! loop over total angular momentum quantum #'s
       TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -1302,7 +1303,7 @@ contains
           call flush_batches(sig_t, sig_n, sig_gam, sig_f, sig_x)
 
           ! loop over realizations
-          HISTORY_LOOP: do i_h = 1, urr_avg_histories
+          HISTORY_LOOP: do i_h = 1, histories_avg_urr
 
             ! reset accumulator of histories
             call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
@@ -1314,7 +1315,7 @@ contains
               nuc % L = i_l - 1
 
               ! get the number of contributing l-wave resonances for this l
-              n_res = l_wave_resonances(nuc % L)
+              n_res = n_res_contrib(nuc % L)
 
               ! loop over total angular momentum quantum #'s
               TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -1396,22 +1397,19 @@ contains
           call sig_gam % calc_stats(i_b)
           call sig_x % calc_stats(i_b)
 
-! TODO: format avg urr xs output
-          if (i_b > urr_avg_batches &
+          if ((i_b > min_batches_avg_urr &
             & .and. max(sig_n % rel_unc, sig_f % rel_unc, sig_gam % rel_unc, &
-            & sig_x % rel_unc) < urr_avg_tol) then
-            if (1==1) then
-              write(out_unit, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
-                & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
-                &         sig_f % xs_mean, sig_f % xs_sem, &
-                &         sig_gam % xs_mean, sig_gam % xs_sem, &
-                &         sig_x % xs_mean, sig_x % xs_sem
-              write(*, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
-                & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
-                &         sig_f % xs_mean, sig_f % xs_sem, &
-                &         sig_gam % xs_mean, sig_gam % xs_sem, &
-                &         sig_x % xs_mean, sig_x % xs_sem
-            end if
+            & sig_x % rel_unc) < tol_avg_urr) .or. i_b == max_batches_avg_urr) then
+            write(out_unit, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
+              & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
+              &         sig_f % xs_mean, sig_f % xs_sem, &
+              &         sig_gam % xs_mean, sig_gam % xs_sem, &
+              &         sig_x % xs_mean, sig_x % xs_sem
+            write(*, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
+              & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
+              &         sig_f % xs_mean, sig_f % xs_sem, &
+              &         sig_gam % xs_mean, sig_gam % xs_sem, &
+              &         sig_x % xs_mean, sig_x % xs_sem
             exit
           end if
 
@@ -1516,7 +1514,7 @@ contains
       nuc % L = i_l - 1
 
       ! get the number of contributing l-wave resonances for this l
-      n_res = l_wave_resonances(nuc % L)
+      n_res = n_res_contrib(nuc % L)
 
       ! loop over total angular momentum quantum #'s
       TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
@@ -1716,7 +1714,7 @@ contains
 
     nuc => nuclides(i_nuc)
 
-    n_res = l_wave_resonances(nuc % L)
+    n_res = n_res_contrib(nuc % L)
 
     ! sample a level spacing from the Wigner distribution
     this % D_lJ = wigner_dist(nuc % D)
@@ -1738,12 +1736,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! L_WAVE_RESONANCES determines the number of resonances to include from the lth
-! wave when computing a URR cross section on-the-fly
+! N_RES_CONTRIB determines the number of resonances to include from the lth
+! wave that contribute to a URR cross section value
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function l_wave_resonances(L) result(n_res)
+  function n_res_contrib(L) result(n_res)
 
     integer :: L     ! orbital quantum number
     integer :: n_res ! number of resonances to include for this l
@@ -1762,7 +1760,7 @@ contains
         & in ENDF-6')
     end select
 
-  end function l_wave_resonances
+  end function n_res_contrib
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -1865,8 +1863,19 @@ contains
     ! accumulate the resonance counter by 1 for this ladder realization
     this % i_res = this % i_res + 1
 
-    ! calculate SLBW xs contributions from an additional resonance
-    call this % slbw_xs(i_nuc)
+    ! calculate cross section contributions from an additional resonance
+    select case(formalism)
+    case (SLBW)
+      call this % slbw_xs(i_nuc)
+    case (MLBW)
+      call fatal_error('MLBW formalism not yet supported for the URR')
+    case (MNBW)
+      call fatal_error('MNBW formalism not yet supported for the URR')
+    case (REICH_MOORE)
+      call fatal_error('Reich-Moore formalism not yet supported for the URR')
+    case default
+      call fatal_error('Unrecognized URR resonance formalism')
+    end select
 
   end subroutine calc_xs
 
@@ -2292,12 +2301,12 @@ contains
     class(CrossSection), intent(inout) :: this ! cross section object
 
     ! accumulate batch-wise mean
-    this % xs_sum = this % xs_sum + this % xs_sum_tmp / dble(urr_avg_histories)
+    this % xs_sum = this % xs_sum + this % xs_sum_tmp / dble(histories_avg_urr)
 
     ! accumulate squared batch-wise mean
     this % xs_sum2 = this % xs_sum2 &
-      & + (this % xs_sum_tmp / dble(urr_avg_histories)) &
-      & * (this % xs_sum_tmp / dble(urr_avg_histories))
+      & + (this % xs_sum_tmp / dble(histories_avg_urr)) &
+      & * (this % xs_sum_tmp / dble(histories_avg_urr))
 
   end subroutine accum_batch
 

@@ -2702,7 +2702,6 @@ contains
         & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
         & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
     else
-      call warning('Zero mean fission width encountered')
       nuc % GF = ZERO
     end if
 

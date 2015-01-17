@@ -8,12 +8,12 @@ module initialize
   use endf_reader,      only: read_endf6
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
-  use faddeeva,         only: initialize_w_tabulated
+  use faddeeva,         only: tabulate_w
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict, read_plots_xml, n_urr_method
+                              cells_in_univ_dict, read_plots_xml, n_fasturr
   use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
@@ -25,10 +25,10 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: urr_method, urr_endf_filenames, urr_zaids,&
-                              n_otf_urr_xs, n_avg_urr_nuclides,&
+  use unresolved,       only: run_fasturr, endf_files, zais,&
+                              inf_dil, otf_urr,&
                               calculate_avg_urr_xs, resonance_ensemble,&
-                              urr_frequency, pointwise_urr, urr_pointwise
+                              real_freq, pointwise_urr, represent_urr
 
 #ifdef MPI
   use mpi
@@ -113,13 +113,35 @@ contains
       call time_read_xs % stop()
 
       ! Read ENDF-6 format nuclear data file
-      if (urr_method) then
+      if (run_fasturr) then
         call initialize_endf()
-        call initialize_w_tabulated()
-        call calculate_avg_urr_xs()
-        if (trim(adjustl(urr_frequency)) == 'simulation') &
-          & call resonance_ensemble()
-        if (urr_pointwise) call pointwise_urr()
+        call tabulate_w()
+        if (inf_dil) call calculate_avg_urr_xs()
+
+        select case (real_freq)
+        case (EVENT)
+          continue
+        case (HISTORY)
+          continue
+          call fatal_error('History-based URR realizations not yet supported')
+        case (BATCH)
+          continue
+          call fatal_error('Batch-based URR realizations not yet supported')
+        case (SIMULATION)
+          call resonance_ensemble()
+        case default
+          call fatal_error('Unrecognized URR realization frequency')
+        end select
+
+        select case (represent_urr)
+        case (PARAMETERS)
+          continue
+        case (POINTWISE)
+          call pointwise_urr()
+        case default
+          call fatal_error('Unrecognized URR representation format')
+        end select
+
       end if
 
       ! Create linked lists for multiple instances of the same nuclide
@@ -185,29 +207,37 @@ contains
 
   end subroutine initialize_run
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! INITIALIZE_ENDF cycles through the nuclides w/ a Fast/URR treatment,
+! performing checks and reading in ENDF-6 evaluated nuclear data files
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
   subroutine initialize_endf()
 
-    integer :: i ! URR method nuclide index
+    integer :: i ! fasturr nuclide index
     integer :: j ! global nuclide index
 
-    do i = 1, n_urr_method
+    do i = 1, n_fasturr
       do j = 1, n_nuclides_total
-        if (allocated(urr_zaids) .and. nuclides(j) % zaid == urr_zaids(i)) then
-          if (n_avg_urr_nuclides == n_urr_method) then
+        if (nuclides(j) % zaid == zais(i)) then
+          if (inf_dil) then
             nuclides(j) % avg_urr_xs = .true.
           else
             nuclides(j) % avg_urr_xs = .false.
           end if
-          if (n_otf_urr_xs == n_urr_method) then
+          if (otf_urr) then
             nuclides(j) % otf_urr_xs = .true.
           else
             nuclides(j) % otf_urr_xs = .false.
-            call fatal_error('n_otf_urr_xs /= n_urr_method')
           end if
-          call read_endf6(urr_endf_filenames(i), j)
-        else
-          nuclides(j) % avg_urr_xs = .false.
-          nuclides(j) % otf_urr_xs = .false.
+          if (represent_urr == POINTWISE) then
+            nuclides(j) % point_urr_xs = .true.
+          else
+            nuclides(j) % point_urr_xs = .false.
+          end if
+          call read_endf6(endf_files(i), j)
         end if
       end do
     end do

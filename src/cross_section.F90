@@ -12,7 +12,7 @@ module cross_section
   use random_lcg,      only: prn
   use search,          only: binary_search
   use unresolved,      only: calculate_urr_xs_otf, calc_urr_xs_otf, &
-                             urr_frequency
+                             real_freq, represent_urr
 
   implicit none
   save
@@ -423,13 +423,21 @@ contains
     if (nuc % otf_urr_xs) then
       if (E * 1.0E6_8 >= nuc % EL(nuc % i_urr) &
         & .and. E * 1.0E6_8 <= nuc % EH(nuc % i_urr)) then
-        select case(trim(adjustl(urr_frequency)))
-        case('event')
+        select case(real_freq)
+        case (EVENT)
           call calculate_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
-        case('simulation')
-          call calc_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+        case (HISTORY)
+          call fatal_error('History-based URR realizations not yet supported')
+        case (BATCH)
+          call fatal_error('Batch-based URR realizations not yet supported')
+        case (SIMULATION)
+          if (represent_urr == PARAMETERS) then
+            call calc_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+          else if (represent_urr == POINTWISE) then
+            call calculate_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+          end if
         case default
-          call fatal_error('Not a supported URR xs realization frequency.')
+          call fatal_error('Unrecognized URR realization frequency')
         end select
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then

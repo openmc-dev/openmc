@@ -230,12 +230,12 @@ module ace_header
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
     ! URR treatment parameters and indices
-    logical :: urr_present = .false.
-    logical :: otf_urr_xs = .false.   ! on-the-fly URR xs calculation?
-    logical :: avg_urr_xs = .false.   ! do an averaged URR xs calculation?
-    logical :: point_urr_xs = .false. ! calculate pointwise URR xs?
+    logical :: urr_present  = .false.
+    logical :: otf_urr_xs   = .false. ! calculate URR cross sections on-the-fly?
+    logical :: avg_urr_xs   = .false. ! calculate averaged, infinite-dilute URR cross sections?
+    logical :: point_urr_xs = .false. ! calculate pointwise URR cross sections?
     integer :: urr_inelastic_index
-    integer :: i_urr ! energy range index of unresolved resonance region
+    integer :: i_urr ! index of URR energy range
     type(UrrData), pointer :: urr_data => null()
 
     ! ENDF-6 nuclear data
@@ -289,7 +289,7 @@ module ace_header
     integer :: AMUF ! number of fission channels(degrees of freedom)
     integer :: AMUX ! number of competitive channels (degrees of freedom)
 
-    ! average (infinite-dilute) cross sections values
+    ! averaged, infinite-dilute URR cross section values and energies
     real(8), allocatable :: avg_urr_n_e(:)
     real(8), allocatable :: avg_urr_f_e(:)
     real(8), allocatable :: avg_urr_g_e(:)
@@ -302,7 +302,6 @@ module ace_header
     ! URR resonance realization (vector of resonances for a value
     ! of J for a given (i_lam, L))
     type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
-    integer :: n_real = 100 ! number of independent realizations
 
     ! set of Reich-Moore resonances (vector of resonances for each l)
     type(RMResonances), allocatable :: rm_resonances(:)
@@ -330,8 +329,6 @@ module ace_header
     ! pointwise URR cross section parameters
     integer :: n_urr_resonances = 20000     ! max resonances for a given (l,J)
     integer :: n_urr_gridpoints = 100000000 ! max URR energy-xs gridpoints
-    real(8) :: urr_dE  = 0.1_8   ! diff between URR energy grid points [eV]
-    real(8) :: urr_tol = 0.001_8 ! max pointwise xs reconstruction rel. error
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -669,19 +666,20 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_ensemble(this)
+  subroutine alloc_ensemble(this, n_reals)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
-    integer :: i_real ! realization index
-    integer :: i_l    ! orbital angular momentum quantum number index
-    integer :: i_lam  ! resonance index
+    integer :: n_reals ! number of realizations
+    integer :: i_real  ! realization index
+    integer :: i_l     ! orbital angular momentum quantum number index
+    integer :: i_lam   ! resonance index
 
     ! allocate energies and orbital quantum numbers for resonances
-    allocate(this % urr_resonances(this % n_real, this % n_urr_resonances, &
+    allocate(this % urr_resonances(n_reals, this % n_urr_resonances, &
       & this % NLS(this % i_urr)))
 
     ! loop over realizations
-    do i_real = 1, this % n_real
+    do i_real = 1, n_reals
 
       ! loop over orbital quantum numbers
       do i_l = 1, this % NLS(this % i_urr)
@@ -704,15 +702,16 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine dealloc_ensemble(this)
+  subroutine dealloc_ensemble(this, n_reals)
 
     class(Nuclide), intent(inout) :: this ! nuclide object
-    integer :: i_real ! realization index
-    integer :: i_l    ! orbital angular momentum quantum number index
-    integer :: i_lam  ! resonance index
+    integer :: n_reals ! number of realizations
+    integer :: i_real  ! realization index
+    integer :: i_l     ! orbital angular momentum quantum number index
+    integer :: i_lam   ! resonance index
 
     ! loop over realizations
-    do i_real = 1, this % n_real
+    do i_real = 1, n_reals
 
       ! loop over orbital quantum numbers
       do i_l = 1, this % NLS(this % i_urr)

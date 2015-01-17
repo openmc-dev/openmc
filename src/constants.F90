@@ -2,6 +2,26 @@ module constants
 
   implicit none
 
+  ! Faddeeva (W) function evaluation methods
+  integer, parameter :: MIT_W   = 1
+  integer, parameter :: QUICK_W = 2
+
+  ! Resonance formalisms
+  integer, parameter :: SLBW        = 1
+  integer, parameter :: MLBW        = 2
+  integer, parameter :: MNBW        = 3
+  integer, parameter :: REICH_MOORE = 4
+
+  ! Cross section representation formats
+  integer, parameter :: PARAMETERS = 1
+  integer, parameter :: POINTWISE  = 2
+
+  ! URR realization frequencies
+  integer, parameter :: EVENT      = 1
+  integer, parameter :: HISTORY    = 2
+  integer, parameter :: BATCH      = 3
+  integer, parameter :: SIMULATION = 4
+
   ! ============================================================================
   ! VERSIONING NUMBERS
 
@@ -239,11 +259,6 @@ module constants
        JENDL_32   = 6, &
        JENDL_33   = 7, &
        JENDL_40   = 8
-
-  ! W function evaluation method
-  integer, parameter :: &
-    MIT_W   = 1, &
-    QUICK_W = 2
 
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS

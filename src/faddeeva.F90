@@ -129,13 +129,13 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! INITIALIZE_W_TABULATED calculates the Faddeeva function on a 62 x 62 grid
+! TABULATE_W calculates the Faddeeva (W) function on a 62 x 62 grid
 ! using MIT W (http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package). The
 ! implementation has accuracy of at least 13 significant digits.
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine initialize_w_tabulated()
+  subroutine tabulate_w()
 
     integer                   :: i, j      ! loop indices
     real(C_DOUBLE), parameter :: w = 0.1_8 ! width on grid
@@ -157,6 +157,6 @@ contains
       end do RE
     end do IM
 
-  end subroutine initialize_w_tabulated
+  end subroutine tabulate_w
 
 end module faddeeva

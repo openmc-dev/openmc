@@ -16,20 +16,25 @@ module input_xml
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use unresolved,       only: competitive, &
-                              i_realization, &
+                              inf_dil, &
+                              otf_urr, &
+                              i_real_user, &
                               l_waves, &
-                              n_avg_urr_nuclides, &
-                              n_otf_urr_xs, &
-                              n_urr_method, &
-                              urr_avg_batches, &
-                              urr_avg_histories, &
-                              urr_avg_tol, &
-                              urr_endf_filenames, &
-                              urr_formalism, &
-                              urr_frequency, &
-                              urr_method, &
-                              urr_pointwise, &
-                              urr_zaids
+                              n_fasturr, &
+                              min_batches_avg_urr, &
+                              max_batches_avg_urr, &
+                              histories_avg_urr, &
+                              tol_avg_urr, &
+                              endf_files, &
+                              formalism, &
+                              real_freq, &
+                              run_fasturr, &
+                              represent_urr, &
+                              zais, &
+                              n_reals, &
+                              min_dE_point_urr, &
+                              max_dE_point_urr, &
+                              tol_point_urr
 
   use xml_interface
 
@@ -3156,37 +3161,40 @@ contains
 
   end subroutine read_plots_xml
 
-!===============================================================================
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
 ! READ_URR_XML reads data from a urr.xml file and parses it, checking for
 ! errors and placing properly-formatted data in the right data structures
-!===============================================================================
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_urr_xml()
 
     integer :: i ! URR nuclides loop index
-    character(MAX_LINE_LEN) :: temp_str
-    character(MAX_LINE_LEN) :: filename
-    logical                 :: file_exists ! does urr.xml file exist?
-    type(Node),     pointer :: doc => null()
-    type(Node),     pointer :: otf_node => null()
-    type(Node),     pointer :: avg_xs_node => null()
+    character(80) :: temp_str
+    character(80) :: filename
+    logical :: file_exists ! does urr.xml file exist?
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: otf_xs_node => null()
+    type(Node), pointer :: avg_xs_node => null()
+    type(Node), pointer :: point_xs_node => null()
+    type(Node), pointer :: nuc_node => null()
     type(NodeList), pointer :: nuc_list_node => null()
-    type(Node),     pointer :: nuc_node => null()
 
     ! Check if urr.xml exists
     filename = trim(path_input) // "urr.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
-      urr_method = .false.
+      run_fasturr = .false.
       return
     else
-      urr_method = .true.
+      run_fasturr = .true.
       continue
     end if
 
     ! Display output message
-    call write_message("Reading urr XML file...", 5)
+    call write_message("Reading URR XML file...", 5)
 
     ! Parse urr.xml file
     call open_xmldoc(doc, filename)
@@ -3196,15 +3204,16 @@ contains
       & .or. check_for_node(doc, "average_xs")) then
       continue
     else
-      call fatal_error('no on-the-fly or average cross section calculation&
-        & parameters specified in urr.xml')
+      call fatal_error('No on-the-fly or average cross section calculation&
+        & parameters given in urr.xml')
     end if
 
     ! Check that a path to ENDF data is specified
     if (check_for_node(doc, "endf_datapath")) then
       call get_node_value(doc, "endf_datapath", path_endf)
     else
-      call fatal_error('No path to ENDF data files for URR treatment is specified')
+      call fatal_error('No path to ENDF-6 data files for URR treatment&
+        & given in urr.xml')
     end if
 
     ! Check which formalism for the on-the-fly URR treatment is specified
@@ -3212,16 +3221,24 @@ contains
       call get_node_value(doc, 'formalism', temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
       case ('slbw')
-        urr_formalism = 'slbw'
+        formalism = SLBW
+      case ('mlbw')
+        formalism = MLBW
+        call fatal_error('MLBW formalism not yet supported for the URR')
+      case ('mnbw')
+        formalism = MNBW
+        call fatal_error('MNBW formalism not yet supported for the URR')
+      case ('reich-moore')
+        formalism = REICH_MOORE
+        call fatal_error('Reich-Moore formalism not yet supported for the URR')
       case default
-        call fatal_error('Unrecognized on-the-fly URR formalism given in urr.xml')
+        call fatal_error('Unrecognized resonance formalism given in urr.xml')
       end select
     else
-      urr_formalism = 'slbw'
+      call fatal_error('No resonance formalism given in urr.xml')
     end if
 
     ! Determine which W function evaluation to use
-    w_eval = QUICK_W
     if (check_for_node(doc, "w_function")) then
       call get_node_value(doc, "w_function", temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
@@ -3230,120 +3247,160 @@ contains
       case ('quick_w')
         w_eval = QUICK_W
       case default
-        call fatal_error('Unrecognized W function evaluation method')
+        call fatal_error('Unrecognized Faddeeva function evaluation method&
+          & in urr.xml')
       end select
+    else
+      call fatal_error('No Faddeeva function evaluation method given in urr.xml')
     end if
 
     ! Assign number of l-wave resonances to be used in xs calculations
     if (check_for_node(doc, 'n_s_wave')) then
       call get_node_value(doc, 'n_s_wave', l_waves(1))
     else
-      l_waves(1) = 32
+      call fatal_error('Must specify number of s-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_p_wave')) then
       call get_node_value(doc, 'n_p_wave', l_waves(2))
     else
-      l_waves(2) = 32
+      call fatal_error('Must specify number of p-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_d_wave')) then
       call get_node_value(doc, 'n_d_wave', l_waves(3))
     else
-      l_waves(3) = 32
+      call fatal_error('Must specify number of d-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_f_wave')) then
       call get_node_value(doc, 'n_f_wave', l_waves(4))
     else
-      l_waves(4) = 32
+      call fatal_error('Must specify number of f-wave resonances in urr.xml')
     end if
 
     ! Check for pointwise cross section calculation
-    urr_pointwise = .false.
-    if (check_for_node(doc, 'pointwise')) then
-      call get_node_value(doc, "pointwise", temp_str)
-      if (trim(adjustl(to_lower(temp_str))) == 'false' &
-        & .or. trim(adjustl(temp_str)) == '0') then
-        urr_pointwise = .false.
-      else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-        & .or. trim(adjustl(temp_str)) == '1') then
-        urr_pointwise = .true.
-      else
-        call fatal_error('pointwise element in urr.xml must be true or false')
-      end if
+    if (check_for_node(doc, 'representation')) then
+      call get_node_value(doc, "representation", temp_str)
+      select case (trim(adjustl(to_lower(temp_str))))
+      case ('parameters')
+        represent_urr = PARAMETERS
+      case ('pointwise')
+        represent_urr = POINTWISE
+        if (check_for_node(doc, "pointwise")) then
+          call get_node_ptr(doc, "pointwise", point_xs_node)
+          if (check_for_node(point_xs_node, 'min_spacing')) then
+            call get_node_value(point_xs_node, 'min_spacing', min_dE_point_urr)
+          else
+            call fatal_error('No min energy spacing [eV] for cross section reconstruction&
+              & is given in urr.xml')
+          end if
+          if (check_for_node(point_xs_node, 'max_spacing')) then
+            call get_node_value(point_xs_node, 'max_spacing', max_dE_point_urr)
+          else
+            call fatal_error('No max energy spacing [eV] for cross section reconstruction&
+              & is given in urr.xml')
+          end if
+          if (check_for_node(point_xs_node, 'tolerance')) then
+            call get_node_value(point_xs_node, 'tolerance', tol_point_urr)
+          else
+            call fatal_error('No maximum fractional error tolerance for cross section&
+              & reconstruction is given in urr.xml')
+          end if
+        else
+          call fatal_error('No pointwise cross section reconstruction parameters&
+            & are given in urr.xml')
+        end if
+      case default
+        call fatal_error('Unrecognized cross section representation format in urr.xml')
+      end select
+    else
+      call fatal_error('No cross section representation format given in urr.xml')
     end if
 
-    n_urr_method = 0
     ! Check for list of nuclides to apply the treatment to
+    n_fasturr = 0
     if (check_for_node(doc, 'nuclide')) then
       call get_node_list(doc, 'nuclide', nuc_list_node)
+      n_fasturr = get_list_size(nuc_list_node)
+      allocate(zais(n_fasturr))
+      allocate(endf_files(n_fasturr))
 
-      n_urr_method = get_list_size(nuc_list_node)
-      allocate(urr_zaids(n_urr_method))
-      allocate(urr_endf_filenames(n_urr_method))
-
-      ! Read in nuclide id's and ENDF filenames for the nuclide(s)
-      do i = 1, n_urr_method
+      ! Read in ZAID values and ENDF filenames for the nuclide(s)
+      do i = 1, n_fasturr
         call get_list_item(nuc_list_node, i, nuc_node)
 
         ! Check that a nuclide ZAID is given
-        if (.not. check_for_node(nuc_node, 'zaid')) then
+        if (check_for_node(nuc_node, 'zaid')) then
+          call get_node_value(nuc_node, 'zaid', zais(i))
+        else
           call fatal_error('No nuclide ZAID specified for nuclide ' &
-            & // trim(to_str(i)) // ' in urr.xml file.')
+            & // trim(to_str(i)) // ' in urr.xml file')
         end if
 
         ! Check that an ENDF data file is given
-        if (.not. check_for_node(nuc_node, 'endf')) then
+        if (check_for_node(nuc_node, 'endf')) then
+          call get_node_value(nuc_node, 'endf', endf_files(i))
+        else          
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
-            & // trim(to_str(i)) // ' in urr.xml file.')
+            & // trim(to_str(i)) // ' in urr.xml file')
         end if
-
-        call get_node_value(nuc_node, 'zaid', urr_zaids(i))
-        call get_node_value(nuc_node, 'endf', urr_endf_filenames(i))
       end do
+
     else
-      call fatal_error('No nuclide(s) specified for URR treatment.')
+      call fatal_error('No nuclide(s) specified in urr.xml')
     end if
 
-    n_otf_urr_xs = 0
     ! Check if an on-the-fly treatment is specified
     if (check_for_node(doc, "on_the_fly")) then
-      
-      n_otf_urr_xs = n_urr_method
-
-      call get_node_ptr(doc, "on_the_fly", otf_node)
+      otf_urr = .true.
+      call get_node_ptr(doc, "on_the_fly", otf_xs_node)
 
       ! Check if a xs calculation frequency is specified
-      if (check_for_node(otf_node, 'frequency')) then
-        call get_node_value(otf_node, 'frequency', temp_str)
+      if (check_for_node(otf_xs_node, 'frequency')) then
+        call get_node_value(otf_xs_node, 'frequency', temp_str)
         select case (trim(adjustl(to_lower(temp_str))))
         case ('event')
-          urr_frequency = 'event'
-          ! TODO: allow for different otf xs calculation frequencies
-          !      case ('particle')
-          !        urr_frequency = 'particle'
-          !      case ('batch')
-          !        urr_frequency = 'batch'
+          real_freq = EVENT
+        case ('history')
+          real_freq = HISTORY
+          call fatal_error('History-based URR realization frequency not yet supported')
+        case ('batch')
+          real_freq = BATCH
+          call fatal_error('Batch-based URR realization frequency not yet supported')
         case ('simulation')
-          urr_frequency = 'simulation'
+          real_freq = SIMULATION
         case default
-          call fatal_error('Unrecognized OTF URR xs calculation frequency in urr.xml')
+          call fatal_error('Unrecognized URR realization frequency in urr.xml')
         end select
       else
-        urr_frequency = 'event'
+        call fatal_error('No URR realization frequency given in urr.xml')
       end if
 
-      ! determine which realization to use if multiple are generated
-      i_realization = 0
-      if (check_for_node(otf_node, "realization_index")) then
-        call get_node_value(otf_node, "realization_index", i_realization)
-        if (i_realization < 0) then
-          call fatal_error('realization_index must be non-negative')
+      if (real_freq /= EVENT) then
+        ! determine number of independent URR realizations to generate
+        if (check_for_node(otf_xs_node, 'realizations')) then
+          call get_node_value(otf_xs_node, 'realizations', n_reals)
+          if (n_reals < 1) &
+            & call fatal_error('Number of independent URR realizations&
+            & must be greater than 0 in urr.xml')
+        else
+          call fatal_error('No number of independent URR realizations to generate&
+            & is given in urr.xml')
+        end if
+
+        ! determine which realization to use if multiple are generated
+        if (check_for_node(otf_xs_node, "realization_index")) then
+          call get_node_value(otf_xs_node, "realization_index", i_real_user)
+          if (i_real_user < 0) &
+            & call fatal_error('realization_index must be non-negative in urr.xml&
+            & - 0 for a randomly selected realization or a positive integer&
+            & equal to the index of the single, desired realization')
+        else
+          call fatal_error('No URR realization index given in urr.xml')
         end if
       end if
 
       ! Include resonance structure of competitive URR cross sections?
-      competitive = .true.
-      if (check_for_node(otf_node, "competitive")) then
-        call get_node_value(otf_node, "competitive", temp_str)
+      if (check_for_node(otf_xs_node, "competitive")) then
+        call get_node_value(otf_xs_node, "competitive", temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'false' &
           & .or. trim(adjustl(temp_str)) == '0') then
           competitive = .false.
@@ -3351,36 +3408,54 @@ contains
           & .or. trim(adjustl(temp_str)) == '1') then
           competitive = .true.
         else
-          call fatal_error('competitive element in urr.xml must be true or false')
+          call fatal_error('Modeling of competitive reaction cross section resonance&
+            & structure must be true or false in urr.xml')
         end if
+      else
+        call fatal_error('Must specify whether or not to model resonance structure&
+          & of competitive reaction cross section in urr.xml')
       end if
+
+    else
+      otf_urr = .false.
     end if
 
-    n_avg_urr_nuclides = 0
     ! Check for average (infinite-dilute) xs calculation parameters
     if (check_for_node(doc, "average_xs")) then
-
-      n_avg_urr_nuclides = n_urr_method
-
+      inf_dil = .true.
+      competitive = .true.
       call get_node_ptr(doc, "average_xs", avg_xs_node)
 
-      if (check_for_node(avg_xs_node, "batches")) then
-        call get_node_value(avg_xs_node, "batches", urr_avg_batches)
+      if (check_for_node(avg_xs_node, "min_batches")) then
+        call get_node_value(avg_xs_node, "min_batches", min_batches_avg_urr)
       else
-        urr_avg_batches = 50
+        call fatal_error('No minimum batches for averaged,&
+          & infinite-dilute cross section calculation given in urr.xml')
       end if
 
-      if (check_for_node(avg_xs_node, "realizations")) then
-        call get_node_value(avg_xs_node, "realizations", urr_avg_histories)
+      if (check_for_node(avg_xs_node, "max_batches")) then
+        call get_node_value(avg_xs_node, "max_batches", max_batches_avg_urr)
       else
-        urr_avg_histories = 1000
+        call fatal_error('No maximum batches for averaged,&
+          & infinite-dilute cross section calculation given in urr.xml')
+      end if
+
+      if (check_for_node(avg_xs_node, "histories")) then
+        call get_node_value(avg_xs_node, "histories", histories_avg_urr)
+      else
+        call fatal_error('No number of realization histories for averaged,&
+          & infinite-dilute cross section calculation given in urr.xml')
       end if
 
       if (check_for_node(avg_xs_node, "tolerance")) then
-        call get_node_value(avg_xs_node, "tolerance", urr_avg_tol)
+        call get_node_value(avg_xs_node, "tolerance", tol_avg_urr)
       else
-        urr_avg_tol = 0.001
+        call fatal_error('No relative uncertainty tolerance for averaged,&
+          & infinite-dilute cross section calculation given in urr.xml')
       end if
+
+    else
+      inf_dil = .false.
     end if
 
     ! Close URR XML file

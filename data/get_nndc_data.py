@@ -75,8 +75,10 @@ print('Verifying MD5 checksums...')
 for f, checksum in zip(files, checksums):
     downloadsum = hashlib.md5(open(f, 'r').read()).hexdigest()
     if downloadsum != checksum:
-        raise IOError("MD5 checksum for {} does not match. Contact OpenMC "
-                      "developers by emailing openmc-users@googlegroups.com.")
+        raise IOError("MD5 checksum for {} does not match. If this is your first "
+                      "time receiving this message, please re-run the script. "
+                      "Otherwise, please contact OpenMC developers by emailing "
+                      "openmc-users@googlegroups.com.")
 
 # ==============================================================================
 # EXTRACT FILES FROM TGZ

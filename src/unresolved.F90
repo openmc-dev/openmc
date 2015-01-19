@@ -1894,7 +1894,9 @@ contains
 
     ! energy variables
     real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
+    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QX
     real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
+    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QX|
     real(8) :: E_shift ! shifted resonance energy in the lab system
 
     ! broadening variables
@@ -1904,6 +1906,7 @@ contains
     ! unresolved resonance parameters
     real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
     real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
+    real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
     real(8) :: sig_lam ! peak resonance cross section
     real(8) :: sig_lam_Gam_t_n_psi
 
@@ -1911,8 +1914,11 @@ contains
 
     ! set variables
     k_n = wavenumber(nuc % awr, nuc % E)
-
+    k_n_x = k_n!wavenumber(nuc % awr, abs(nuc % E - nuc % QI(4)))
     k_lam = wavenumber(nuc % awr, this % E_lam)
+    k_lam_x = k_lam!wavenumber(nuc % awr, abs(this % E_lam - nuc % QI(4)))
+
+! TODO: handle reaction channel energies correctly
 
     E_shift = this % E_lam &
       & + (this % Gam_n * (shift(nuc % L, k_lam*nuc % ac(nuc % i_urr)) &
@@ -1923,7 +1929,12 @@ contains
       & * penetration(nuc % L, k_n*nuc % ac(nuc % i_urr)) &
       & / penetration(nuc % L, k_lam*nuc % ac(nuc % i_urr))
 
-    Gam_t_n = this % Gam_t - this % Gam_n + Gam_n_n
+    Gam_x_n = this % Gam_x &
+      & * penetration(nuc % L, k_n_x*nuc % ac(nuc % i_urr)) &
+      & / penetration(nuc % L, k_lam_x*nuc % ac(nuc % i_urr))
+
+    Gam_t_n = this % Gam_t - this % Gam_n - this % Gam_x &
+      & + Gam_n_n + Gam_x_n
 
     theta = HALF * Gam_t_n &
       & / sqrt(K_BOLTZMANN * 1.0E6_8 * nuc % T * nuc % E / nuc % awr)
@@ -1964,8 +1975,8 @@ contains
       this % dsig_f   = ZERO
     end if
 
-    if (this % Gam_x > ZERO) then
-      this % dsig_x   = sig_lam_Gam_t_n_psi * this % Gam_x
+    if (Gam_x_n > ZERO) then
+      this % dsig_x   = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dsig_x   = ZERO
     end if
@@ -2715,8 +2726,7 @@ contains
     end if
 
     ! TODO: add in catch here for when threshold occurs between tabulated pts
-    if (nuc % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-      & .and. nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+    if (nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
       nuc % GX  = interpolator(m, &
         & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
         & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)

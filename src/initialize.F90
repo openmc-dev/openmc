@@ -130,7 +130,7 @@ contains
         case (SIMULATION)
           call resonance_ensemble()
         case default
-          call fatal_error('Unrecognized URR realization frequency')
+          continue
         end select
 
         select case (represent_urr)

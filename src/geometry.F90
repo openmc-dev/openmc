@@ -275,7 +275,7 @@ contains
           ! need the lattice coordinates so distance_to_boundary will
           ! correctly handle the particle if it reenters the lattice.
           p % last_material = p % material
-          p % material = lat % outside
+          p % material = c % material
           p % coord % next % universe = p % coord % universe
           p % coord % next % cell = index_cell
 

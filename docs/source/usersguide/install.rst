@@ -66,14 +66,11 @@ Prerequisites
       To compile with support for parallel runs on a distributed-memory
       architecture, you will need to have a valid implementation of MPI
       installed on your machine. The code has been tested and is known to work
-      with the latest versions of both OpenMPI_ and MPICH_. Note that if using
-      OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
-      since this may prevent MPI calls from completing successfully in
-      OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
-      with::
+      with the latest versions of both OpenMPI_ and MPICH_. OpenMPI and/or MPICH
+      can be installed on Debian derivatives with::
 
-          sudo apt-get install mpich2 libmpich2-dev
-          sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev
+          sudo apt-get install mpich libmpich-dev
+          sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
 
     * HDF5_ Library for portable binary output format
 

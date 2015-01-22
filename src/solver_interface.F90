@@ -7,6 +7,8 @@ module solver_interface
 #ifdef PETSC
   use petscksp
   use petscsnes
+# include <finclude/petscsysdef.h>
+# include <petscversion.h>
 #endif
 
   implicit none
@@ -67,6 +69,11 @@ module solver_interface
 
 #ifdef PETSC
   integer :: petsc_err ! petsc error code
+# if (PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR <= 4)
+  PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_DOUBLE_PRECISION
+# else
+  PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_REAL
+# endif
 #endif
 
 contains
@@ -86,7 +93,7 @@ contains
 
     call KSPCreate(PETSC_COMM_WORLD, self % ksp_, petsc_err)
     call KSPSetTolerances(self % ksp_, rtol, atol, &
-         PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_INTEGER, petsc_err)
+         PETSC_DEFAULT_DOUBLE, PETSC_DEFAULT_INTEGER, petsc_err)
     call KSPSetType(self % ksp_, 'gmres', petsc_err)
     call KSPSetInitialGuessNonzero(self % ksp_, PETSC_TRUE, petsc_err)
     call KSPGetPC(self % ksp_, self % pc_, petsc_err)

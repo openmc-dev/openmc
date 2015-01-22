@@ -69,11 +69,17 @@ module solver_interface
 
 #ifdef PETSC
   integer :: petsc_err ! petsc error code
+
+! This handles the variable change from PETSc 3.4 to PETSc 3.5
+! Developers should use PETSC_DEFAULT_DOUBLE when they want to
+! use PETSC_DEFAULT_REAL so that we have compatiblity with 
+! PETSc < 3.5.
 # if (PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR <= 4)
   PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_DOUBLE_PRECISION
 # else
   PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_REAL
 # endif
+
 #endif
 
 contains

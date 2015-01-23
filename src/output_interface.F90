@@ -1942,7 +1942,6 @@ contains
 #ifdef MPI
 # ifndef HDF5
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
-    integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to write
     integer                  :: datatype
 # endif

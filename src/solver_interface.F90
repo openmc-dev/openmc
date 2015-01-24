@@ -7,7 +7,6 @@ module solver_interface
 #ifdef PETSC
   use petscksp
   use petscsnes
-# include <finclude/petscsysdef.h>
 # include <petscversion.h>
 #endif
 
@@ -70,16 +69,10 @@ module solver_interface
 #ifdef PETSC
   integer :: petsc_err ! petsc error code
 
-! This handles the variable change from PETSc 3.4 to PETSc 3.5
-! Developers should use PETSC_DEFAULT_DOUBLE when they want to
-! use PETSC_DEFAULT_REAL so that we have compatiblity with 
-! PETSc < 3.5.
-# if (PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR <= 4)
-    PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_DOUBLE_PRECISION
-# else
-    PetscReal :: PETSC_DEFAULT_DOUBLE = PETSC_DEFAULT_REAL
+! Checks for PETSc version to handle 3.5 changes
+# if (PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR > 4)
+#   define PETSC_GREATER_34 
 # endif
-
 #endif
 
 contains
@@ -98,8 +91,13 @@ contains
     real(8) :: atol = 1.0e-10_8
 
     call KSPCreate(PETSC_COMM_WORLD, self % ksp_, petsc_err)
+#ifdef PETSC_GREATER_34
     call KSPSetTolerances(self % ksp_, rtol, atol, &
-         PETSC_DEFAULT_DOUBLE, PETSC_DEFAULT_INTEGER, petsc_err)
+         PETSC_DEFAULT_REAL, PETSC_DEFAULT_INTEGER, petsc_err)
+#else
+    call KSPSetTolerances(self % ksp_, rtol, atol, &
+         PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_INTEGER, petsc_err)
+#endif
     call KSPSetType(self % ksp_, 'gmres', petsc_err)
     call KSPSetInitialGuessNonzero(self % ksp_, PETSC_TRUE, petsc_err)
     call KSPGetPC(self % ksp_, self % pc_, petsc_err)
@@ -118,8 +116,13 @@ contains
     type(Matrix), intent(inout)       :: prec_mat ! preconditioner matrix
     type(Matrix), intent(inout)       :: mat_in   ! coefficient matrix
 
+#ifdef PETSC_GREATER_34
+    call KSPSetOperators(self % ksp_, mat_in % petsc_mat, prec_mat % petsc_mat, &
+         petsc_err)
+#else
     call KSPSetOperators(self % ksp_, mat_in % petsc_mat, prec_mat % petsc_mat, &
          SAME_NONZERO_PATTERN, petsc_err)
+#endif
     call KSPSetUp(self % ksp_, petsc_err) 
 
   end subroutine petsc_gmres_set_oper
@@ -272,16 +275,24 @@ contains
 ! PETSC_JFNK_COMPUTE_JACOBIAN buffer routine to user specified jacobian routine
 !===============================================================================
 
+#ifdef PETSC_GREATER_34 
+  subroutine petsc_jfnk_compute_jacobian(snes_, x, jac_mf, jac_prec, &
+             ctx, ierr)
+#else
   subroutine petsc_jfnk_compute_jacobian(snes_, x, jac_mf, jac_prec, flag, &
              ctx, ierr)
+#endif
 
     type(snes), intent(inout)     :: snes_     ! PETSc snes instance
     type(vec), intent(inout)      :: x         ! PETSc solution vector
     type(mat), intent(inout)      :: jac_mf    ! PETSc matrix free jacobian
     type(mat), intent(inout)      :: jac_prec  ! PETSc matrix jacobian precond.
-    integer, intent(inout)        :: flag      ! unused madatory flag
     type(Jfnk_ctx), intent(inout) :: ctx       ! JFNK context instance
     integer, intent(inout)        :: ierr      ! error code
+
+#ifndef PETSC_GREATER_34
+    integer, intent(inout)        :: flag      ! unused madatory flag
+#endif
 
     type(Vector) :: xvec ! solution vector
 

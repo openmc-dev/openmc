@@ -1,23 +1,23 @@
 module avg_urr_xs_values
 
-  use ace_header, only: Nuclide
   use global
+  use unresolved, only: Isotope, isotopes
 
   implicit none
 
 contains
 
-  subroutine set_avg_urr_xs(i_nuc)
+  subroutine set_avg_urr_xs(i)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
-    integer :: i_nuc ! nuclide index
+    type(Isotope), pointer :: tope => null() ! nuclide object pointer
+    integer :: i ! isotope index
 !$omp threadprivate(nuc)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i)
 
-    select case(nuc % MAT)
+    select case(tope % MAT)
     case(9228)
-      nuc % avg_urr_n =&
+      tope % avg_urr_n =&
         (/&
         1.208415E+01_8, &
         1.206545E+01_8, &
@@ -35,7 +35,7 @@ contains
         1.131365E+01_8  &
         /)
 
-      nuc % avg_urr_f =&
+      tope % avg_urr_f =&
         (/&
         5.636060E+00_8, &
         5.354305E+00_8, &
@@ -53,7 +53,7 @@ contains
         2.180881E+00_8  &
         /)
 
-      nuc % avg_urr_g =&
+      tope % avg_urr_g =&
         (/&
         2.034389E+00_8, &
         1.926581E+00_8, &
@@ -71,7 +71,7 @@ contains
         7.579173E-01_8  &
         /)
 
-      nuc % avg_urr_x =&
+      tope % avg_urr_x =&
         (/&
         ZERO, &
         ZERO, &
@@ -90,7 +90,7 @@ contains
         /)
 
     case(9237)
-      nuc % avg_urr_n =&
+      tope % avg_urr_n =&
         (/&
         1.382182E+01_8, &
         1.366665E+01_8, &
@@ -112,7 +112,7 @@ contains
         1.123894E+01_8  &
         /)
 
-      nuc % avg_urr_f =&
+      tope % avg_urr_f =&
         (/&
         ZERO, &
         ZERO, &
@@ -134,7 +134,7 @@ contains
         ZERO  &
         /)
 
-      nuc % avg_urr_g =&
+      tope % avg_urr_g =&
         (/&
         5.310637E-01_8, &
         4.961408E-01_8, &
@@ -156,7 +156,7 @@ contains
         1.424347E-01_8  &
         /)
 
-      nuc % avg_urr_x =&
+      tope % avg_urr_x =&
         (/&
         ZERO, &
         ZERO, &
@@ -178,9 +178,9 @@ contains
         7.249919E-01_8  &
         /)
     case default
-      if (nuc % LSSF == 1) then
+      if (tope % LSSF == 1) then
         write(*, '(A40,I4,A66)') &
-          & 'Averaged URR cross sections for MAT ', nuc % MAT, &
+          & 'Averaged URR cross sections for MAT ', tope % MAT, &
           & ' are not pre-computed and must be calculated at initialization'
       end if
 

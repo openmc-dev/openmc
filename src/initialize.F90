@@ -25,9 +25,9 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: run_fasturr, endf_files, zais,&
-                              inf_dil, otf_urr,&
-                              calculate_avg_urr_xs, resonance_ensemble,&
+  use unresolved,       only: run_fasturr, n_fasturr, endf_files, &
+                              prob_bands, otf_urr, isotopes,&
+                              prob_tables, resonance_ensemble,&
                               real_freq, pointwise_urr, represent_urr
 
 #ifdef MPI
@@ -55,6 +55,9 @@ contains
 !===============================================================================
 
   subroutine initialize_run()
+
+    integer :: i_nuc
+    integer :: i_sotope
 
     ! Start total and initialization timer
     call time_total % start()
@@ -116,7 +119,20 @@ contains
       if (run_fasturr) then
         call initialize_endf()
         call tabulate_w()
-        if (inf_dil) call calculate_avg_urr_xs()
+ 
+        if (prob_bands) then
+          do i_sotope = 1, n_fasturr
+            call isotopes(i_sotope) % alloc_prob_tables()
+            do i_nuc = 1, n_nuclides_total
+              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                micro_xs(i_nuc) % use_ptable = .true.
+                call prob_tables(i_sotope, nuclides(i_nuc) % kT / K_BOLTZMANN)
+                exit
+! TODO: handle the same isotope at multiple temperatures
+              end if
+            end do
+          end do
+        end if
 
         select case (real_freq)
         case (EVENT)
@@ -128,7 +144,13 @@ contains
           continue
           call fatal_error('Batch-based URR realizations not yet supported')
         case (SIMULATION)
-          call resonance_ensemble()
+          do i_sotope = 1, n_fasturr
+            do i_nuc = 1, n_nuclides_total
+              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                call resonance_ensemble(i_sotope)
+              end if
+            end do
+          end do
         case default
           continue
         end select
@@ -137,7 +159,13 @@ contains
         case (PARAMETERS)
           continue
         case (POINTWISE)
-          call pointwise_urr()
+          do i_sotope = 1, n_fasturr
+            do i_nuc = 1, n_nuclides_total
+              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                call pointwise_urr(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
+              end if
+            end do
+          end do
         case default
           call fatal_error('Unrecognized URR representation format')
         end select
@@ -217,27 +245,34 @@ contains
   subroutine initialize_endf()
 
     integer :: i ! fasturr nuclide index
-    integer :: j ! global nuclide index
+    integer :: i_nuc    ! global nuclide index
 
     do i = 1, n_fasturr
-      do j = 1, n_nuclides_total
-        if (nuclides(j) % zaid == zais(i)) then
-          if (inf_dil) then
-            nuclides(j) % avg_urr_xs = .true.
+      do i_nuc = 1, n_nuclides_total
+        if (nuclides(i_nuc) % zaid == isotopes(i) % ZAI) then
+          nuclides(i_nuc) % i_sotope = i
+          micro_xs(i_nuc) % use_ptable = .true.
+          if (nuclides(i_nuc) % fissionable) then
+            isotopes(i) % fissionable = .true.
           else
-            nuclides(j) % avg_urr_xs = .false.
+            isotopes(i) % fissionable = .false.
+          end if
+          if (prob_bands) then
+            isotopes(i) % prob_bands = .true.
+          else
+            isotopes(i) % prob_bands = .false.
           end if
           if (otf_urr) then
-            nuclides(j) % otf_urr_xs = .true.
+            isotopes(i) % otf_urr_xs = .true.
           else
-            nuclides(j) % otf_urr_xs = .false.
+            isotopes(i) % otf_urr_xs = .false.
           end if
           if (represent_urr == POINTWISE) then
-            nuclides(j) % point_urr_xs = .true.
+            isotopes(i) % point_urr_xs = .true.
           else
-            nuclides(j) % point_urr_xs = .false.
+            isotopes(i) % point_urr_xs = .false.
           end if
-          call read_endf6(endf_files(i), j)
+          call read_endf6(endf_files(i), i)
         end if
       end do
     end do

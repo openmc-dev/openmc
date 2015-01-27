@@ -1,6 +1,5 @@
 module unresolved
 
-  use ace_header,    only: Nuclide, Reaction
   use error,         only: fatal_error, warning
   use faddeeva,      only: quickw, faddeeva_w
   use fission,       only: nu_total
@@ -8,18 +7,24 @@ module unresolved
   use output,        only: write_message
   use random_lcg,    only: prn
   use search,        only: binary_search
-  use vector_header, only: Vector
+  use vector_header, only: Vector, JaggedArray
 
   implicit none
 
   logical :: run_fasturr ! use special treatment for Fast/URR data?
   logical :: competitive ! model competitve reaction xs resonance structure?
-  logical :: inf_dil     ! calculate averaged, infinite-dilute cross sections?
+  logical :: prob_bands  ! calculate averaged, infinite-dilute cross sections?
   logical :: otf_urr     ! calculate cross sections on-the-fly?
-  integer :: n_fasturr           ! number of nuclides to treat with a new method
+  integer :: n_fasturr           ! number of isotopes to treat with a new method
   integer :: represent_urr       ! representation of URR xs
   integer :: formalism           ! URR resonance formalism
   integer :: real_freq           ! frequency of URR realizations
+  integer :: band_spacing        ! cross section probability band spacing scheme
+  integer :: E_spacing           ! probability table energy spacing
+  integer :: n_bands             ! number of probability table xs bands
+! TODO: get number of temperatures from ACE data that is actually present
+  integer :: n_temps             ! number of probability table temperatures
+  integer :: n_energies          ! number of probability table energies
   integer :: l_waves(4)          ! number of contributing l-wave
   integer :: min_batches_avg_urr ! min batches for averaged cross section calc
   integer :: max_batches_avg_urr ! max batches for averaged cross section calc
@@ -27,14 +32,15 @@ module unresolved
   integer :: n_reals             ! number of independent URR realizations
   integer :: i_real              ! index of URR realization used for calc
   integer :: i_real_user         ! user-specified realization index
+  integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
+! TODO: use n_resonances
   real(8) :: tol_avg_urr         ! max rel error for inf dil xs calc termination
   real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
   real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
   real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
+  real(8), allocatable :: band_values(:) ! probability table xs band boundaries
+  real(8), allocatable :: E_values(:)    ! probability table E grid values [eV]
   character(80), allocatable :: endf_files(:) ! list of ENDF-6 filenames
-  integer, allocatable :: zais(:)! ZAID values for Fast/URR nuclides
-  integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
-! TODO: use n_resonances
 !$omp threadprivate(i_real)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -49,13 +55,6 @@ module unresolved
 ! TODO: account for temperature correlation?
 !        need to store last resonace ensemble?
 
-    ! partial and total xs contributions
-    real(8) :: dsig_t    ! contribution of resonance to E_0 total xs
-    real(8) :: dsig_n    ! contribution of resonance to E_0 scatter xs
-    real(8) :: dsig_gam  ! contribution of resonance to E_0 capture xs
-    real(8) :: dsig_f    ! contribution of resonance to E_0 fission xs
-    real(8) :: dsig_x    ! contribution of resonance to E_0 competitive xs
-
     ! sampled unresolved resonance parameters
     real(8) :: D_lJ      ! sampled nuclear level spacing
     real(8) :: Gam_t     ! sampled total width
@@ -66,35 +65,119 @@ module unresolved
 
     ! resonance energy variables
     real(8) :: E_lam     ! sampled resonance energy
-    real(8) :: E_lam_up  ! highest-energy level that has been added
-    real(8) :: E_lam_low ! lowest-energy level that has been added
-    real(8) :: E_lam_tmp ! temporary storage of resonance energy just below ES
 
     ! counter for the number of resonances added for a given spin sequence
     integer :: i_res
 
-    ! type-bound procedures
-    contains
+    ! partial and total xs contributions
+    real(8) :: dxs_t    ! contribution of resonance to E_0 total xs
+    real(8) :: dxs_n    ! contribution of resonance to E_0 scatter xs
+    real(8) :: dxs_gam  ! contribution of resonance to E_0 capture xs
+    real(8) :: dxs_f    ! contribution of resonance to E_0 fission xs
+    real(8) :: dxs_x    ! contribution of resonance to E_0 competitive xs
 
-      ! reset the resonance object before starting the next spin sequence
-      procedure :: reset_resonance => reset_resonance
+  ! type-bound procedures
+  contains
 
-      ! sample unresolved resonance parameters
-      procedure :: sample_parameters => sample_parameters
+    ! sample unresolved resonance parameters
+    procedure :: sample_parameters => sample_parameters
 
-      ! sample level spacing
-      procedure :: level_spacing => level_spacing
+    ! sample level spacing
+    procedure :: level_spacing => level_spacing
 
-      ! sample channel widths
-      procedure :: channel_width => channel_width
+    ! sample channel widths
+    procedure :: channel_width => channel_width
 
-      ! interface for calculation of partial cross sections at E_0
-      procedure :: calc_xs => calc_xs
+    ! interface for calculation of partial cross sections at E_0
+    procedure :: calc_xs => calc_xs
 
-      ! calculate SLBW partial cross sections
-      procedure :: slbw_xs => slbw_xs
+    ! calculate SLBW partial cross sections
+    procedure :: slbw_xs => slbw_xs
 
   end type Resonance
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! SLBWRESONANCES is an object containing a vector of SLBW resonances'                                                                       
+! information                                                                                                                               
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  type SLBWResonances
+
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GF(:)
+    real(8), allocatable :: GX(:)
+    real(8), allocatable :: GT(:)
+
+    ! type-bound procedures                                                                                                                 
+    contains
+
+      ! allocate vector of SLBW resonances (for a J, for a given (i_lam,i_l))                                                               
+      procedure :: alloc_slbw_resonances => alloc_slbw_resonances
+
+      ! deallocate vector of SLBW resonances (for a J, for a given (i_lam,i_l))                                                             
+      procedure :: dealloc_slbw_resonances => dealloc_slbw_resonances
+
+  end type SLBWResonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                   
+!                                                                                                                                  
+! MLBWRESONANCES is an object containing a vector of MLBW resonances'                                                              
+! information                                                                                                                      
+!                                                                                                                                  
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                   
+
+  type MLBWResonances
+
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GF(:)
+    real(8), allocatable :: GX(:)
+    real(8), allocatable :: GT(:)
+
+    ! type-bound procedures                                                                                                        
+    contains
+
+      ! allocate vector of MLBW resonances (for a J, for a given (i_lam,i_l))                                                      
+      procedure :: alloc_mlbw_resonances => alloc_mlbw_resonances
+
+      ! deallocate vector of MLBW resonances (for a J, for a given (i_lam,i_l))                                                    
+      procedure :: dealloc_mlbw_resonances => dealloc_mlbw_resonances
+
+  end type MLBWResonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                   
+!                                                                                                                                  
+! RMRESONANCES is an object containing a vector of Reich-Moore resonance                                                           
+! data                                                                                                                             
+!                                                                                                                                  
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                   
+
+  type RMResonances
+
+    real(8), allocatable :: E_lam(:)
+    real(8), allocatable :: AJ(:)
+    real(8), allocatable :: GN(:)
+    real(8), allocatable :: GG(:)
+    real(8), allocatable :: GFA(:)
+    real(8), allocatable :: GFB(:)
+
+    ! type-bound procedures                                                                                                        
+    contains
+
+      ! allocate vector of R-M resonances (for a J, for a given (i_lam,i_l))                                                       
+      procedure :: alloc_rm_resonances => alloc_rm_resonances
+
+      ! deallocate vector of R-M resonances (for a J, for a given (i_lam,i_l))                                                     
+      procedure :: dealloc_rm_resonances => dealloc_rm_resonances
+
+  end type RMResonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -105,58 +188,235 @@ module unresolved
 
   type CrossSection
 
-    ! cross section value accumulator at an energy
-    real(8) :: val
+    real(8) :: xs          ! cross section value accumulator
+    real(8) :: xs_tmp_sum  ! single-batch sum of xs history values
+    integer :: cnt_tmp_sum ! single-batch band count
+    real(8) :: xs_sum      ! sum of single-batch xs sums
+    real(8) :: xs_sum2     ! sum of squares of single-batch xs sums
+    integer :: cnt         ! sum of single-batch band counts
+    integer :: cnt2        ! sum of squares of single-batch band counts
+    real(8) :: xs_mean     ! overall mean band xs value per band count
+    real(8) :: cnt_mean    ! overall mean band count per history
+    real(8) :: xs_sem      ! standard error of the mean band xs
+    real(8) :: cnt_sem     ! standard error of the mean band count
+    real(8) :: rel_unc     ! relative uncertainty (SEM / mean)
 
-    ! cross section value at an energy with one less contributing resonance
-    real(8) :: val_last
+  ! type-bound procedures
+  contains
 
-    ! history-based sum of cross section values
-    real(8) :: xs_sum_tmp
+    ! accumulate resonance contribution to ladder partial cross section
+    procedure :: accum_resonance => accum_resonance
 
-    ! batch-based sum of cross section values
-    real(8) :: xs_sum
+    ! add contribution of potential scattering cross section
+    procedure :: potential_xs => potential_xs
 
-    ! sum of squares of batch-based cross section value sums
-    real(8) :: xs_sum2
-
-    ! mean of batch-based cross section values
-    real(8) :: xs_mean
-
-    ! standard error of the mean cross section values
-    real(8) :: xs_sem
-
-    ! relative uncertainty
-    real(8) :: rel_unc
-
-    ! type-bound procedures
-    contains
-
-      ! accumulate resonance contribution to ladder partial cross section
-      procedure :: accum_resonance => accum_resonance
-
-      ! add contribution of potential scattering cross section
-      procedure :: potential_xs => potential_xs
-
-      ! accumulate values for a single history
-      procedure :: accum_history => accum_history
-
-      ! clear values for a single history
-      procedure :: flush_history => flush_history
-
-      ! accumulate values for a single batch
-      procedure :: accum_batch => accum_batch
-
-      ! clear values for a single batch
-      procedure :: flush_batch => flush_batch
-
-      ! calculate batch statistics
-      procedure :: calc_stats => calc_stats
-
-      ! clear batch statistics
-      procedure :: flush_stats => flush_stats
+    ! clear batch statistics
+    procedure :: flush_xs_stats => flush_xs_stats
 
   end type CrossSection
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! PROBABILITYTABLE is an object containing data for a single table
+! (i.e. one isotope, one temperature, one energy)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type ProbabilityTable
+
+    type(CrossSection), allocatable :: t(:)   ! total xs object
+    type(CrossSection), allocatable :: n(:)   ! elastic scattering xs object
+    type(CrossSection), allocatable :: g(:) ! radiative capture xs object
+    type(CrossSection), allocatable :: f(:)   ! fission xs object
+    type(CrossSection), allocatable :: x(:)   ! competitive inelastic scattering xs object
+    type(CrossSection) :: avg_t   ! infinite-dilute total xs object
+    type(CrossSection) :: avg_n   ! infinite-dilute elastic xs object
+    type(CrossSection) :: avg_g   ! infinite-dilute capture xs object
+    type(CrossSection) :: avg_f   ! infinite-dilute fission xs object
+    type(CrossSection) :: avg_x   ! infinite-dilute competitive xs object
+
+  end type ProbabilityTable
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ISOTOPE is an object containing data for a single isotope with a URR that is
+! to be processed
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type Isotope
+
+    real(8) :: AWR ! weight of nucleus in neutron masses                                                                          
+    real(8) :: T   ! isotope temperature [K]
+    logical :: fissionable
+
+    ! ENDF-6 nuclear data                                                                                                                   
+    integer, allocatable :: NLS(:)  ! number of orbital quantum numbers                                                                     
+    integer, allocatable :: NJS(:)  ! number of J values for each l                                                                         
+    integer, allocatable :: LRU(:)  ! resolved (1) or unresolved (2)?                                                                       
+    integer, allocatable :: LRF(:)  ! resonance formalism #                                                                                 
+    integer, allocatable :: NRO(:)  ! AP energy-dependence flag                                                                             
+    integer, allocatable :: NAPS(:) ! channel radius handling flag                                                                          
+    real(8), allocatable :: EL(:)  ! lower energy bound of energy region                                                                    
+    real(8), allocatable :: EH(:)  ! upper energy bound of energy region                                                                    
+    real(8), allocatable :: AP(:)  ! scattering radius                                                                                      
+    real(8), allocatable :: ac(:)  ! channel radius                                                                                         
+    real(8), allocatable :: SPI(:) ! total spin                                                                                             
+    real(8), allocatable :: ES(:)  ! URR tabulated data energies                                                                            
+    integer :: MAT  ! isotope MAT number                                                                                                    
+    integer :: ZAI  ! isotope ZAID number
+    integer :: LRP  ! resonance parameter flag                                                                                              
+    integer :: NER  ! number of resonance energy ranges                                                                                     
+    integer :: LSSF ! self-shielding factor flag                                                                                            
+! TODO: check that correct interpolation schemes are being used                                                                             
+    integer :: INT  ! an interpolation scheme #                                                                                             
+    integer :: MF3_INT ! interpolation scheme for File 3 background xs                                                                      
+! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0                                                             
+    integer :: LRX  ! competitive inelastic width flag                                                                                      
+    integer :: NE   ! number of URR tabulated data energies                                                                                 
+
+    ! mean values                                                                                                                           
+    type(JaggedArray), allocatable :: D_mean(:)   ! level spacing                                                                           
+    type(JaggedArray), allocatable :: GN0_mean(:) ! reduced neutron width                                                                   
+    type(JaggedArray), allocatable :: GG_mean(:)  ! radiative capture width                                                                 
+    type(JaggedArray), allocatable :: GF_mean(:)  ! fission width                                                                           
+    type(JaggedArray), allocatable :: GX_mean(:)  ! competitive inelastic width                                                             
+    type(Vector), allocatable :: AJ(:)   ! total angular momentum                                                                           
+    type(Vector), allocatable :: DOFN(:) ! # neutron channels                                                                               
+    type(Vector), allocatable :: DOFG(:) ! # capture channels                                                                               
+    type(Vector), allocatable :: DOFF(:) ! # fission channels                                                                               
+    type(Vector), allocatable :: DOFX(:) ! # competitive channels
+
+    ! current values                                                                                                                        
+    real(8) :: E   ! neutron energy                                                                                                         
+    real(8) :: J   ! total angular momentum                                                                                                 
+    real(8) :: g_J ! statistical spin factor                                                                                                
+    real(8) :: D   ! level spacing                                                                                                          
+    real(8) :: GN0 ! reduced neutron width                                                                                                  
+    real(8) :: GG  ! radiative capture width                                                                                                
+    real(8) :: GF  ! fission width                                                                                                          
+    real(8) :: GX  ! competitive inelastic width                                                                                            
+    integer :: L    ! orbital quantum number                                                                                                
+    integer :: AMUN ! number of neutron channels (degrees of freedom)                                                                       
+    integer :: AMUG ! number of capture channels (degrees of freedom)                                                                       
+    integer :: AMUF ! number of fission channels(degrees of freedom)                                                                        
+    integer :: AMUX ! number of competitive channels (degrees of freedom)
+
+    ! averaged, infinite-dilute URR cross section values and energies
+    real(8), allocatable :: avg_urr_n_e(:)
+    real(8), allocatable :: avg_urr_f_e(:)
+    real(8), allocatable :: avg_urr_g_e(:)
+    real(8), allocatable :: avg_urr_x_e(:)
+    real(8), allocatable :: avg_urr_n(:)
+    real(8), allocatable :: avg_urr_f(:)
+    real(8), allocatable :: avg_urr_g(:)
+    real(8), allocatable :: avg_urr_x(:)
+
+    ! URR treatment parameters and indices                                                                                                  
+    logical :: otf_urr_xs   = .false. ! calculate URR cross sections on-the-fly?                                                            
+    logical :: prob_bands   = .false. ! calculate averaged, infinite-dilute URR cross sections?                                             
+    logical :: point_urr_xs = .false. ! calculate pointwise URR cross sections?                                                             
+    integer :: i_urr ! index of URR energy range                                                                                            
+    ! probability tables for given (energy, temperature) pairs                                                                              
+    type(ProbabilityTable), allocatable :: prob_tables(:,:)
+
+    ! URR resonance realization (vector of resonances for a value                                                                           
+    ! of J for a given (i_lam, L))                                                                                                          
+    type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
+
+    ! set of Reich-Moore resonances (vector of resonances for each l)                                                                       
+    type(RMResonances), allocatable :: rm_resonances(:)
+
+    ! set of SLBW resonances (vector of resonances for each l)                                                                              
+    type(SLBWResonances), allocatable :: slbw_resonances(:)
+
+    ! set of MLBW resonances (vector of resonances for each l)                                                                              
+    type(MLBWResonances), allocatable :: mlbw_resonances(:)
+
+    ! pointwise URR cross section data                                                                                                      
+    real(8), allocatable :: urr_energy_tmp(:)    ! energy grid values                                                                       
+    real(8), allocatable :: urr_elastic_tmp(:)   ! elastic scattering                                                                       
+    real(8), allocatable :: urr_capture_tmp(:)   ! capture                                                                                  
+    real(8), allocatable :: urr_fission_tmp(:)   ! fission                                                                                  
+    real(8), allocatable :: urr_inelastic_tmp(:) ! first level inelastic scattering                                                         
+    real(8), allocatable :: urr_total_tmp(:)     ! total                                                                                    
+    real(8), allocatable :: urr_energy(:)        ! energy grid values                                                                       
+    real(8), allocatable :: urr_elastic(:)       ! elastic scattering                                                                       
+    real(8), allocatable :: urr_capture(:)       ! capture                                                                                  
+    real(8), allocatable :: urr_fission(:)       ! fission                                                                                  
+    real(8), allocatable :: urr_inelastic(:)     ! first level inelastic scattering                                                         
+    real(8), allocatable :: urr_total(:)         ! total
+
+    ! pointwise URR cross section parameters
+    integer :: n_urr_resonances = 20000     ! max resonances for a given (l,J)
+    integer :: n_urr_gridpoints = 100000000 ! max URR energy-xs gridpoints
+
+  ! Type-Bound procedures
+  contains
+
+    ! allocate resonance energy range variables
+    procedure :: alloc_energy_range => alloc_energy_range
+
+    ! deallocate resonance energy range variables
+    procedure :: dealloc_energy_range => dealloc_energy_range
+
+    ! allocate average (infinite-dilute) cross sections
+    procedure :: alloc_avg_urr => alloc_avg_urr
+
+    ! deallocate average (infinite-dilute) cross sections
+    procedure :: dealloc_avg_urr => dealloc_avg_urr
+
+    ! allocate URR resonance ensemble realization
+    procedure :: alloc_ensemble => alloc_ensemble
+
+    ! deallocate URR resonance ensemble realization
+    procedure :: dealloc_ensemble => dealloc_ensemble
+
+    ! allocate temporary pointwise URR cross sections
+    procedure :: alloc_pointwise_tmp => alloc_pointwise_tmp
+
+    ! deallocate temporary pointwise URR cross sections
+    procedure :: dealloc_pointwise_tmp => dealloc_pointwise_tmp
+
+    ! allocate pointwise URR cross sections
+    procedure :: alloc_pointwise => alloc_pointwise
+
+    ! deallocate pointwise URR cross sections
+    procedure :: dealloc_pointwise => dealloc_pointwise
+
+    ! allocate probability tables
+    procedure :: alloc_prob_tables => alloc_prob_tables
+
+    ! deallocate probability tables
+    procedure :: dealloc_prob_tables => dealloc_prob_tables
+
+    ! zeros out statistics accumulators
+    procedure :: flush_ptable_stats => flush_ptable_stats
+
+    ! zeros out batch accumulators
+    procedure :: flush_batches => flush_batches
+
+    ! zeros out xs value accumulator
+    procedure :: flush_histories => flush_histories
+
+    ! calculate xs means and standard errors
+    procedure :: calc_stats => calc_stats
+
+    ! add the contribution of an additional reference
+    procedure :: res_contrib => res_contrib
+
+    ! update batch accumulators with history result
+    procedure :: accum_history => accum_history
+
+    ! accumulate values for a single batch
+    procedure :: accum_batch => accum_batch
+
+    ! set channel radius
+    procedure :: channel_radius => channel_radius
+
+  end type Isotope
+
+  type(Isotope), allocatable, target :: isotopes(:)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -199,11 +459,11 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine resonance_ensemble()
+  subroutine resonance_ensemble(i_sotope)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
     type(Resonance) :: res ! resonance object
-    integer :: i_nuc       ! nuclide index
+    integer :: i_sotope    ! isotope index
     integer :: i_l         ! orbital quantum number index
     integer :: i_J         ! total angular momentum quantum #
     integer :: i_E         ! tabulated URR parameters energy index
@@ -213,127 +473,118 @@ contains
     integer :: n_above_urr ! number of resonances abover upper URR energy
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
     real(8) :: m     ! energy interpolation factor
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    ! loop over all nuclides
-    NUCLIDE_LOOP: do i_nuc = 1, n_nuclides_total
+    tope => isotopes(i_sotope)
 
-      nuc => nuclides(i_nuc)
+    ! allocate a realization of a URR resonance ensemble
+    call tope % alloc_ensemble(n_reals)
 
-      ! skip nuclides without an OTF URR treatment
-      if (.not. nuc % otf_urr_xs) cycle
+    allocate(n_resonances(tope % NLS(tope % i_urr)))
 
-      micro_xs(i_nuc) % use_ptable = .true.
-
-      ! allocate a realization of a URR resonance ensemble
-      call nuc % alloc_ensemble(n_reals)
-
-      allocate(n_resonances(nuc % NLS(nuc % i_urr)))
-
-      ! loop over independent realizations
-      ENSEMBLE_LOOP: do i_ens = 1, n_reals
+    ! loop over independent realizations
+    ENSEMBLE_LOOP: do i_ens = 1, n_reals
         
-        ! loop over orbital angular momenta
-        ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
+      ! loop over orbital angular momenta
+      ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
-          ! set current orbital angular momentum quantum #
-          nuc % L = i_l - 1
+        ! set current orbital angular momentum quantum #
+        tope % L = i_l - 1
 
-          ! get the number of contributing l-wave resonances for this l
-          n_res = n_res_contrib(nuc % L)
+        ! get the number of contributing l-wave resonances for this l
+        n_res = n_res_contrib(tope % L)
 
-          ! loop over total angular momenta
-          TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+        ! loop over total angular momenta
+        TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
-            ! set current total angular momentum quantum #
-            nuc % J = nuc % AJ(i_l) % data(i_J)
+          ! set current total angular momentum quantum #
+          tope % J = tope % AJ(i_l) % data(i_J)
 
-            ! set current partial width degrees of freedom
-            nuc % AMUX = int(nuc % DOFX(i_l) % data(i_J))
-            nuc % AMUN = int(nuc % DOFN(i_l) % data(i_J))
-            nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
-            nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
+          ! set current partial width degrees of freedom
+          tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
+          tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
+          tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
+          tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
 
-            ! set energy of the lowest-lying contributing URR resonance
-            nuc % D = nuc % D_mean(i_l) % data(i_J) % data(1)
-            if (i_l > nuc % NLS(nuc % i_urr - 1)) then
-              ! the URR has more l-states than the RRR; place resonance energy
-              ! randomly about lower URR energy bound
-              E_res = nuc % EL(nuc % i_urr) &
-                & + (ONE - TWO * prn()) * wigner_dist(nuc % D)
+          ! set energy of the lowest-lying contributing URR resonance
+          tope % D = tope % D_mean(i_l) % data(i_J) % data(1)
+          if (i_l > tope % NLS(tope % i_urr - 1)) then
+            ! the URR has more l-states than the RRR; place resonance energy
+            ! randomly about lower URR energy bound
+            E_res = tope % EL(tope % i_urr) &
+              & + (ONE - TWO * prn()) * wigner_dist(tope % D)
+          else
+            ! offset first URR resonance energy from the highest-energy RRR
+            ! resonance with the same (l,J) spin sequence
+            E_res = E_last_rrr(i_sotope, tope % L, tope % J) + wigner_dist(tope % D)
+          end if
+
+          ! resonance index
+          i_res = 1
+
+          n_above_urr = 0
+
+          RESONANCE_LOOP: do while(n_above_urr < n_res/2)
+
+            ! compute interpolation factor
+            if (E_res < tope % ES(1)) then
+              i_E = 1
+            else if (E_res > tope % ES(tope % NE)) then
+              i_E = tope % NE - 1
             else
-              ! offset first URR resonance energy from the highest-energy RRR
-              ! resonance with the same (l,J) spin sequence
-              E_res = E_last_rrr(i_nuc, nuc % L, nuc % J) + wigner_dist(nuc % D)
+              i_E = binary_search(tope % ES, tope % NE, E_res)
             end if
 
-            ! resonance index
-            i_res = 1
+            m = interp_factor(E_res, tope % ES(i_E), tope % ES(i_E+1), tope % INT)
 
-            n_above_urr = 0
-
-            RESONANCE_LOOP: do while(n_above_urr < n_res/2)
-
-              ! compute interpolation factor
-              if (E_res < nuc % ES(1)) then
-                i_E = 1
-              else if (E_res > nuc % ES(nuc % NE)) then
-                i_E = nuc % NE - 1
-              else
-                i_E = binary_search(nuc % ES, nuc % NE, E_res)
-              end if
-
-              m = interp_factor(E_res, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
-
-              ! set current mean unresolved resonance parameters
-              nuc % D = interpolator(m, &
-                & nuc % D_mean(i_l) % data(i_J) % data(i_E), &
-                & nuc % D_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-              nuc % GN0 = interpolator(m, &
-                & nuc % GN0_mean(i_l) % data(i_J) % data(i_E), &
-                & nuc % GN0_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-              nuc % GG = interpolator(m, &
-                & nuc % GG_mean(i_l) % data(i_J) % data(i_E), &
-                & nuc % GG_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+            ! set current mean unresolved resonance parameters
+            tope % D = interpolator(m, &
+              & tope % D_mean(i_l) % data(i_J) % data(i_E), &
+              & tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+            tope % GN0 = interpolator(m, &
+              & tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
+              & tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+            tope % GG = interpolator(m, &
+              & tope % GG_mean(i_l) % data(i_J) % data(i_E), &
+              & tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
 ! TODO: add in catch here for when threshold occurs between tabulated pts
-              if (nuc % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-                & .and. nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-                nuc % GF = interpolator(m, &
-                  & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
-                  & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-              else
-                nuc % GF = ZERO
-              end if
+            if (tope % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
+              & .and. tope % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+              tope % GF = interpolator(m, &
+                & tope % GF_mean(i_l) % data(i_J) % data(i_E), &
+                & tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+            else
+              tope % GF = ZERO
+            end if
 ! TODO: add in catch here for when threshold occurs between tabulated pts
-              if (nuc % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-                & .and. nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-                nuc % GX = interpolator(m, &
-                  & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
-                  & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-              else
-                nuc % GX = ZERO
-              end if
+            if (tope % GX_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
+              & .and. tope % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+              tope % GX = interpolator(m, &
+                & tope % GX_mean(i_l) % data(i_J) % data(i_E), &
+                & tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+            else
+              tope % GX = ZERO
+            end if
 
-              ! sample unresolved resonance parameters for this spin
-              ! sequence, at this energy
-              res % E_lam = E_res
-              call res % channel_width(i_nuc)
-              call add_parameters(res, i_nuc, i_ens, i_res, i_l, i_J)
+            ! sample unresolved resonance parameters for this spin
+            ! sequence, at this energy
+            res % E_lam = E_res
+            call res % channel_width(i_sotope)
+            call add_parameters(res, i_sotope, i_ens, i_res, i_l, i_J)
 
-              ! add an additional resonance
-              i_res = i_res + 1
-              E_res = E_res + wigner_dist(nuc % D)
+            ! add an additional resonance
+            i_res = i_res + 1
+            E_res = E_res + wigner_dist(tope % D)
 
-              if (E_res > nuc % EH(nuc % i_urr)) n_above_urr = n_above_urr + 1
+            if (E_res > tope % EH(tope % i_urr)) n_above_urr = n_above_urr + 1
 
-            end do RESONANCE_LOOP
-          end do TOTAL_ANG_MOM_LOOP
+          end do RESONANCE_LOOP
+        end do TOTAL_ANG_MOM_LOOP
 
-          n_resonances(i_l) = i_res - 1
+        n_resonances(i_l) = i_res - 1
 
-        end do ORBITAL_ANG_MOM_LOOP
-      end do ENSEMBLE_LOOP
-    end do NUCLIDE_LOOP
+      end do ORBITAL_ANG_MOM_LOOP
+    end do ENSEMBLE_LOOP
 
   end subroutine resonance_ensemble
 
@@ -343,16 +594,18 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine pointwise_urr()
+  subroutine pointwise_urr(i_sotope, i_nuc, T_K)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(Vector), allocatable :: i_last(:) ! last i_low for (l,J)
     type(Resonance) :: res ! resonance object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    type(CrossSection) :: sig_t   ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
+    type(CrossSection) :: t ! total xs object
+    integer :: i_sotope  ! isotope index
     integer :: i_nuc     ! nuclide index
     integer :: i_E       ! URR resonance parameters energy grid index
     integer :: i_l       ! orbital quantum #
@@ -365,8 +618,9 @@ contains
     integer :: i_grid    ! xs energy grid index
     integer :: n_pts     ! xs energy grid point counter
     integer :: i_ES      ! index of current URR tabulated energy
+    real(8) :: T_K      ! isotope temperature [K]
     real(8) :: m            ! URR resonance parameters interpolation factor
-    real(8) :: f            ! cross section energy grid interpolation factor
+    real(8) :: fact         ! cross section energy grid interpolation factor
     real(8) :: avg_urr_n_xs ! averaged elastic cross section
     real(8) :: avg_urr_f_xs ! averaged fission cross section
     real(8) :: avg_urr_g_xs ! averaged capture cross section
@@ -375,465 +629,95 @@ contains
     real(8) :: xs_trial     ! trial xs via interpolation between gridpoints
     real(8) :: rel_err      ! relative error between interpolated and exact xs
     logical :: enhance ! refine energy-xs grid?
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    ! loop over all nuclides
-    NUCLIDE_LOOP: do i_nuc = 1, n_nuclides_total
+    tope => isotopes(i_sotope)
+    nuc  => nuclides(i_nuc)
 
-      nuc => nuclides(i_nuc)
+    tope % T = T_K
 
-      ! skip nuclides without a URR treatment
-      if (.not. nuc % point_urr_xs) cycle
+    ! set current energy
+    tope % E = tope % EL(tope % i_urr)
 
-      micro_xs(i_nuc) % use_ptable = .true.
+    ! allocate pointwise URR cross sections
+    call tope % alloc_pointwise_tmp()
 
-      ! set current temperature
-      nuc % T = nuc % kT / K_BOLTZMANN
+    n_pts = 1
 
-      ! set current energy
-      nuc % E = nuc % EL(nuc % i_urr)
+    ! enforce xs continuity at RRR-URR energy crossover
+    i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
+    tope % urr_energy_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
+    tope % urr_elastic_tmp(n_pts) = nuc % elastic(i_grid)
+    tope % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) &
+      & - nuc % fission(i_grid)
+    tope % urr_fission_tmp(n_pts) = nuc % fission(i_grid)
+    tope % urr_total_tmp(n_pts)   = nuc % total(i_grid)
 
-      ! allocate pointwise URR cross sections
-      call nuc % alloc_pointwise_tmp()
+    tope % E = 1.0e6_8 * nuc % energy(i_grid + 1)
 
-      n_pts = 1
+    allocate(i_last(tope % NLS(tope % i_urr)))
+    do i_l = 1, tope % NLS(tope % i_urr)
+      allocate(i_last(i_l) % data(tope % NJS(i_l)))
+      i_last(i_l) % data = ONE
+    end do
 
-      ! enforce xs continuity at RRR-URR energy crossover
-      i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
-      nuc % urr_energy_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
-      nuc % urr_elastic_tmp(n_pts) = nuc % elastic(i_grid)
-      nuc % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) &
-        & - nuc % fission(i_grid)
-      nuc % urr_fission_tmp(n_pts) = nuc % fission(i_grid)
-      nuc % urr_total_tmp(n_pts)   = nuc % total(i_grid)
+    i_ES = 1
 
-      nuc % E = 1.0e6_8 * nuc % energy(i_grid + 1)
+    ENERGY_LOOP: do
 
-      allocate(i_last(nuc % NLS(nuc % i_urr)))
-      do i_l = 1, nuc % NLS(nuc % i_urr)
-        allocate(i_last(i_l) % data(nuc % NJS(i_l)))
-        i_last(i_l) % data = ONE
-      end do
-
-      i_ES = 1
-
-      ENERGY_LOOP: do
-
-        dE_trial = max_dE_point_urr
-        nuc % E = nuc % E + dE_trial
-        if (nuc % E > nuc % EH(nuc % i_urr) + dE_trial) exit
-        if (i_ES < nuc % NE) then
-          if (nuc % E > nuc % ES(i_ES + 1)) then
-            i_ES = i_ES + 1
-            write(*,'(A40,ES23.16,A12)') &
-              & 'Reconstructing URR xs in', nuc % ES(i_ES), ' eV interval'
-          end if
+      dE_trial = max_dE_point_urr
+      tope % E = tope % E + dE_trial
+      if (tope % E > tope % EH(tope % i_urr) + dE_trial) exit
+      if (i_ES < tope % NE) then
+        if (tope % E > tope % ES(i_ES + 1)) then
+          i_ES = i_ES + 1
+          write(*,'(A40,ES23.16,A12)') &
+            & 'Reconstructing URR xs in', tope % ES(i_ES), ' eV interval'
         end if
-        n_pts = n_pts + 1
-        enhance  = .true.
+      end if
+      n_pts = n_pts + 1
+      enhance  = .true.
 
-        do while(enhance)
+      do while(enhance)
 
-          if (nuc % E > nuc % ES(nuc % NE)) then
-            i_E = nuc % NE - 1
-          else
-            i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
-          end if
-
-          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
-
-          ! reset xs objects
-          call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-          ! loop over orbital quantum #'s
-          ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
-
-            ! set current orbital angular momentum quantum #
-            nuc % L = i_l - 1
-
-            ! get the number of contributing l-wave resonances for this l
-            n_res = n_res_contrib(nuc % L)
-
-            ! loop over total angular momentum quantum #'s
-            TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
-
-              ! set current total angular momentum quantum #
-              nuc % J = nuc % AJ(i_l) % data(i_J)
-
-              ! compute statistical spin factor
-              nuc % g_J = (TWO * nuc % J + ONE) &
-                & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
-
-              ! reset the resonance object for a new spin sequence
-              call res % reset_resonance(i_nuc)
-
-              ! find the nearest lower resonance
-              i_low = int(i_last(i_l) % data(i_J))
-
-              do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
-                & < nuc % E)
-                i_low = i_low + 1
-              end do
-              i_low = i_low - 1
-              if (i_low == 0) i_low = 1
-              i_last(i_l) % data(i_J) = dble(i_low)
-
-              ! loop over the addition of resonances to this ladder
-              if (i_low - n_res/2 < 1) then
-                ! if we're near the lower end of the URR, need to incorporate
-                ! resolved resonance region resonances in order to fix-up
-                ! (i.e. smooth out) cross sections at the RRR-URR crossover
-                ! energy
-
-                ! if the RRR has resonances with this l-state
-                if (i_l <= nuc % NLS(nuc % i_urr - 1)) then
-
-                  ! how many RRR resonances are contributing
-                  n_rrr_res = abs(i_low - n_res/2) + 1
-
-                  ! loop over contributing resolved resonance region resonances
-                  RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
-
-                    i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
-
-                    call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
-                      & nuc % LRF(nuc % i_urr - 1), &
-                      & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                  end do RRR_RESONANCES_LOOP
-                end if
-
-                ! loop over contributing unresolved resonance region resonances
-                URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
-
-                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & nuc % LRF(nuc % i_urr), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                end do URR_RESONANCES_LOOP
-
-              else
-                ! we're firmly in the URR and can ignore anything going on in
-                ! the upper resolved resonance region energies
-                URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
-
-                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & nuc % LRF(nuc % i_urr), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                end do URR_LOOP
-              end if
-            end do TOTAL_ANG_MOM_LOOP
-          end do ORBITAL_ANG_MOM_LOOP
-
-          ! add potential scattering contribution
-          call sig_n % potential_xs(i_nuc)
-          call sig_t % potential_xs(i_nuc)
-
-          if (nuc % E < 1.0e6_8 * nuc % energy(1)) then
-            i_grid = 1
-          elseif (nuc % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
-            i_grid = nuc % n_grid - 1
-          else
-            i_grid = binary_search(1.0e6_8*nuc % energy, nuc % n_grid, nuc % E)
-          end if
-
-          ! check for rare case where two energy points are the same
-          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
-            & i_grid = i_grid + 1
-
-          ! calculate xs energy grid interpolation factor
-          f = interp_factor(nuc % E, 1.0e6_8 * nuc % energy(i_grid), &
-            & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
-
-          ! calculate evaluator-supplied backgrounds at the current energy
-          call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
-
-          ! interpret MF3 data according to ENDF-6 LSSF flag:
-          ! MF3 contains background xs, add to MF2 resonance contributions
-          if (nuc % LSSF == 0) then
-
-            ! add resonance xs component to background
-            call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-          elseif (nuc % LSSF == 1) then
-            ! multipy the self-shielding factors by the infinite-dilute xs
-
-            call interp_avg_urr_xs(m, i_nuc, i_E, &
-              & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
-
-            ! competitive xs
-            if (avg_urr_x_xs > ZERO) then
-              if (competitive) then
-                ! self-shielded treatment of competitive inelastic xs
-                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / avg_urr_x_xs &
-                  & * nuc % urr_inelastic_tmp(n_pts)
-              else
-                ! infinite-dilute treatment of competitive inelastic xs
-                nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
-              end if
-            else
-              ! use background competitive inelastic cross section, as is
-              nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
-            end if
-
-            ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = sig_n % val / avg_urr_n_xs &
-              & * nuc % urr_elastic_tmp(n_pts)
-
-            ! set negative SLBW elastic xs to zero
-            if (nuc % urr_elastic_tmp(n_pts) < ZERO) &
-              & nuc % urr_elastic_tmp(n_pts) = ZERO
-
-            ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = sig_gam % val / avg_urr_g_xs &
-              & * nuc % urr_capture_tmp(n_pts)
-
-            ! fission xs
-            if (avg_urr_f_xs > ZERO) then
-              nuc % urr_fission_tmp(n_pts) = sig_f % val / avg_urr_f_xs &
-                & * nuc % urr_fission_tmp(n_pts)
-            else
-              nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts)
-            end if
-
-            nuc % urr_total_tmp(n_pts) &
-              & = nuc % urr_elastic_tmp(n_pts)&
-              & + nuc % urr_capture_tmp(n_pts)&
-              & + nuc % urr_fission_tmp(n_pts)&
-              & + nuc % urr_inelastic_tmp(n_pts)
-
-          else
-            call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
-          end if
-
-          xs_trial = HALF &
-            & * (nuc % urr_total_tmp(n_pts) + nuc % urr_total_tmp(n_pts - 1))
-          dE_trial = HALF * dE_trial
-          nuc % E  = nuc % E - dE_trial
-
-          if (nuc % E > nuc % ES(nuc % NE)) then
-            i_E = nuc % NE - 1
-          else
-            i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
-          end if
-
-          m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E+1), nuc % INT)
-
-          ! reset xs objects
-          call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-          ! loop over orbital quantum #'s
-          ORBITAL_ANG_MOM_LOOP1: do i_l = 1, nuc % NLS(nuc % i_urr)
-
-            ! set current orbital angular momentum quantum #
-            nuc % L = i_l - 1
-
-            ! get the number of contributing l-wave resonances for this l
-            n_res = n_res_contrib(nuc % L)
-
-            ! loop over total angular momentum quantum #'s
-            TOTAL_ANG_MOM_LOOP1: do i_J = 1, nuc % NJS(i_l)
-
-              ! set current total angular momentum quantum #
-              nuc % J = nuc % AJ(i_l) % data(i_J)
-
-              ! compute statistical spin factor
-              nuc % g_J = (TWO * nuc % J + ONE) &
-                & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
-
-              ! reset the resonance object for a new spin sequence
-              call res % reset_resonance(i_nuc)
-
-              ! find the nearest lower resonance
-              i_low = int(i_last(i_l) % data(i_J))
-
-              do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
-                i_low = i_low + 1
-              end do
-              i_low = i_low - 1
-              if (i_low == 0) i_low = 1
-              i_last(i_l) % data(i_J) = dble(i_low)
-
-              ! loop over the addition of resonances to this ladder
-              if (i_low - n_res/2 < 1) then
-                ! if we're near the lower end of the URR, need to incorporate
-                ! resolved resonance region resonances in order to fix-up
-                ! (i.e. smooth out) cross sections at the RRR-URR crossover
-                ! energy
-
-                ! if the RRR has resonances with this l-state
-                if (i_l <= nuc % NLS(nuc % i_urr - 1)) then
-
-                  ! how many RRR resonances are contributing
-                  n_rrr_res = abs(i_low - n_res/2) + 1
-
-                  ! loop over contributing resolved resonance region resonances
-                  RRR_RESONANCES_LOOP1: do i_res = n_rrr_res, 1, -1
-
-                    i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
-
-                    call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
-                      & nuc % LRF(nuc % i_urr - 1), &
-                      & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                  end do RRR_RESONANCES_LOOP1
-                end if
-
-                ! loop over contributing unresolved resonance region resonances
-                URR_RESONANCES_LOOP1: do i_res = 1, i_low + n_res/2 - 1
-
-                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & nuc % LRF(nuc % i_urr), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                end do URR_RESONANCES_LOOP1
-
-              else
-                ! we're deep in the URR and can ignore anything going on in the
-                ! upper resolved resonance region energies
-! TODO: move sig_t outside of loop
-                RESONANCES_LOOP1: do i_res &
-                  & = i_low - n_res/2, i_low + n_res/2 - 1
-
-                  call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & nuc % LRF(nuc % i_urr), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-                end do RESONANCES_LOOP1
-              end if
-            end do TOTAL_ANG_MOM_LOOP1
-          end do ORBITAL_ANG_MOM_LOOP1
-
-          ! add potential scattering contribution
-          call sig_n % potential_xs(i_nuc)
-          call sig_t % potential_xs(i_nuc)
-
-          if (nuc % E < 1.0e6_8 * nuc % energy(1)) then
-            i_grid = 1
-          elseif (nuc % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
-            i_grid = nuc % n_grid - 1
-          else
-            i_grid = binary_search(1.0e6_8*nuc % energy, nuc % n_grid, nuc % E)
-          end if
-
-          ! check for rare case where two energy points are the same
-          if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
-            & i_grid = i_grid + 1
-
-          ! calculate xs energy grid interpolation factor
-          f = interp_factor(nuc % E, 1.0e6_8 * nuc % energy(i_grid), &
-            & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
-
-          ! calculate evaluator-supplied backgrounds at the current energy
-          call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
-
-          ! interpret MF3 data according to ENDF-6 LSSF flag:
-          ! MF3 contains background xs, add to MF2 resonance contributions
-          if (nuc % LSSF == 0) then
-
-            ! add resonance xs component to background
-            call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
-
-          elseif (nuc % LSSF == 1) then
-            ! multipy the self-shielding factors by the infinite-dilute xs
-
-            call interp_avg_urr_xs(m, i_nuc, i_E, &
-              & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
-
-            ! competitive xs
-            if (avg_urr_x_xs > ZERO) then
-              if (competitive) then
-                ! self-shielded treatment of competitive inelastic xs
-                nuc % urr_inelastic_tmp(n_pts) = sig_x % val / avg_urr_x_xs &
-                  & * nuc % urr_inelastic_tmp(n_pts)
-              else
-                ! infinite-dilute treatment of competitive inelastic xs
-                nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
-              end if
-            else
-              ! use background competitive inelastic cross section, as is
-              nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
-            end if
-
-            ! elastic scattering xs
-            nuc % urr_elastic_tmp(n_pts) = sig_n % val / avg_urr_n_xs &
-              & * nuc % urr_elastic_tmp(n_pts)
-
-            ! set negative SLBW elastic xs to zero
-            if (nuc % urr_elastic_tmp(n_pts) < ZERO) &
-              & nuc % urr_elastic_tmp(n_pts) = ZERO
-
-            ! radiative capture xs
-            nuc % urr_capture_tmp(n_pts) = sig_gam % val / avg_urr_g_xs &
-              & * nuc % urr_capture_tmp(n_pts)
-
-            ! fission xs
-            if (avg_urr_f_xs > ZERO) then
-              nuc % urr_fission_tmp(n_pts) = sig_f % val / avg_urr_f_xs &
-                & * nuc % urr_fission_tmp(n_pts)
-            else
-              nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts)
-            end if
-
-            nuc % urr_total_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts)&
-              &                        + nuc % urr_capture_tmp(n_pts)&
-              &                        + nuc % urr_fission_tmp(n_pts)&
-              &                        + nuc % urr_inelastic_tmp(n_pts)
-
-          else
-            call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
-          end if
-
-          rel_err = abs(xs_trial - nuc % urr_total_tmp(n_pts)) &
-            & / nuc % urr_total_tmp(n_pts)
-          if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr) then
-            enhance = .false.
-          end if
-
-        end do
-
-        ! add energy point to grid
-        nuc % E = nuc % E + dE_trial
-        nuc % urr_energy_tmp(n_pts) = nuc % E
-
-        if (nuc % E > nuc % ES(nuc % NE)) then
-          i_E = nuc % NE - 1
+        if (tope % E > tope % ES(tope % NE)) then
+          i_E = tope % NE - 1
         else
-          i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
+          i_E = binary_search(tope % ES, tope % NE, tope % E)
         end if
 
-        m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
+        m = interp_factor(tope % E, tope % ES(i_E), tope % ES(i_E+1), tope % INT)
 
-        ! reset xs objects
-        call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
+        ! reset xs accumulators
+        call flush_sigmas(t, n, g, f, x)
 
         ! loop over orbital quantum #'s
-        ORBITAL_ANG_MOM_LOOP2: do i_l = 1, nuc % NLS(nuc % i_urr)
+        ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
           ! set current orbital angular momentum quantum #
-          nuc % L = i_l - 1
+          tope % L = i_l - 1
 
           ! get the number of contributing l-wave resonances for this l
-          n_res = n_res_contrib(nuc % L)
+          n_res = n_res_contrib(tope % L)
 
           ! loop over total angular momentum quantum #'s
-          TOTAL_ANG_MOM_LOOP2: do i_J = 1, nuc % NJS(i_l)
+          TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
             ! set current total angular momentum quantum #
-            nuc % J = nuc % AJ(i_l) % data(i_J)
+            tope % J = tope % AJ(i_l) % data(i_J)
 
             ! compute statistical spin factor
-            nuc % g_J = (TWO * nuc % J + ONE) &
-              & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
+            tope % g_J = (TWO * tope % J + ONE) &
+              & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-            ! reset the resonance object for a new spin sequence
-            call res % reset_resonance(i_nuc)
+            ! zero the resonance counter
+            res % i_res = 0
 
             ! find the nearest lower resonance
             i_low = int(i_last(i_l) % data(i_J))
 
-            do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
+            do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
+              & < tope % E)
               i_low = i_low + 1
             end do
             i_low = i_low - 1
@@ -848,148 +732,508 @@ contains
               ! energy
 
               ! if the RRR has resonances with this l-state
-              if (i_l <= nuc % NLS(nuc % i_urr - 1)) then
+              if (i_l <= tope % NLS(tope % i_urr - 1)) then
 
                 ! how many RRR resonances are contributing
                 n_rrr_res = abs(i_low - n_res/2) + 1
 
                 ! loop over contributing resolved resonance region resonances
-                RRR_RESONANCES_LOOP2: do i_res = n_rrr_res, 1, -1
+                RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
 
-                  i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
+                  i_rrr_res = rrr_res(i_sotope, i_res, tope % L, tope % J)
 
-                  call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
-                    & nuc % LRF(nuc % i_urr - 1), &
-                    & sig_t, sig_n, sig_gam, sig_f, sig_x)
+                  call add_resonance(res, i_sotope, i_rrr_res, i_l, i_J, &
+                    & tope % LRF(tope % i_urr - 1), &
+                    & t, n, g, f, x)
 
-                end do RRR_RESONANCES_LOOP2
+                end do RRR_RESONANCES_LOOP
               end if
 
               ! loop over contributing unresolved resonance region resonances
-              URR_RESONANCES_LOOP2: do i_res = 1, i_low + n_res/2 - 1
+              URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
 
-                call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                  & nuc % LRF(nuc % i_urr), &
-                  & sig_t, sig_n, sig_gam, sig_f, sig_x)
+                call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                  & tope % LRF(tope % i_urr), &
+                  & t, n, g, f, x)
 
-              end do URR_RESONANCES_LOOP2
+              end do URR_RESONANCES_LOOP
 
             else
-              ! we're firmly in the URR and can ignore anything going on in the
-              ! upper resolved resonance region energies
-              RESONANCES_LOOP2: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+              ! we're firmly in the URR and can ignore anything going on in
+              ! the upper resolved resonance region energies
+              URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
 
-                call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                  & nuc % LRF(nuc % i_urr), &
-                  & sig_t, sig_n, sig_gam, sig_f, sig_x)
+                call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                  & tope % LRF(tope % i_urr), &
+                  & t, n, g, f, x)
 
-              end do RESONANCES_LOOP2
+              end do URR_LOOP
             end if
-          end do TOTAL_ANG_MOM_LOOP2
-        end do ORBITAL_ANG_MOM_LOOP2
+          end do TOTAL_ANG_MOM_LOOP
+        end do ORBITAL_ANG_MOM_LOOP
 
         ! add potential scattering contribution
-        call sig_n % potential_xs(i_nuc)
-        call sig_t % potential_xs(i_nuc)
+        call n % potential_xs(i_sotope)
+        call t % potential_xs(i_sotope)
 
-        if (nuc % E < 1.0e6_8 * nuc % energy(1)) then
+        if (tope % E < 1.0e6_8 * nuc % energy(1)) then
           i_grid = 1
-        elseif (nuc % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
+        elseif (tope % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
           i_grid = nuc % n_grid - 1
         else
-          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, nuc % E)
+          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
         end if
 
         ! check for rare case where two energy points are the same
-        if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+        if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
+          & i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
-        f = interp_factor(nuc % E, 1.0e6_8 * nuc % energy(i_grid), &
+        fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
           & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, LINEAR_LINEAR)
+        call calc_urr_bckgrnd(i_sotope, i_nuc, n_pts, fact, i_grid, LINEAR_LINEAR)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
-        ! MF3 contains background xs values, add to MF2 resonance contributions
-        if (nuc % LSSF == 0) then
+        ! MF3 contains background xs, add to MF2 resonance contributions
+        if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
+          call add2bckgrnd(i_sotope, i_nuc, n_pts, t, n, g, f, x)
 
-        elseif (nuc % LSSF == 1) then
-          ! multipy the self-shielding factors by the average (infinite-dilute)
-          ! cross sections
+        elseif (tope % LSSF == 1) then
+          ! multipy the self-shielding factors by the infinite-dilute xs
 
-! TODO: LOG_LOG?
-          avg_urr_n_xs = interpolator(m, &
-            & nuc % avg_urr_n(i_E), nuc % avg_urr_n(i_E + 1), LINEAR_LINEAR)
-          avg_urr_f_xs = interpolator(m, &
-            & nuc % avg_urr_f(i_E), nuc % avg_urr_f(i_E + 1), LINEAR_LINEAR)
-          avg_urr_g_xs = interpolator(m, &
-            & nuc % avg_urr_g(i_E), nuc % avg_urr_g(i_E + 1), LINEAR_LINEAR)
-          avg_urr_x_xs = interpolator(m, &
-            & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), LINEAR_LINEAR)
+          call interp_avg_urr_xs(m, i_sotope, i_E, &
+            & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
           if (avg_urr_x_xs > ZERO) then
             if (competitive) then
-              ! self-shielded treatment of competitive inelastic cross section
-              nuc % urr_inelastic_tmp(n_pts) = sig_x % val / avg_urr_x_xs &
-                & * nuc % urr_inelastic_tmp(n_pts)
+              ! self-shielded treatment of competitive inelastic xs
+              tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
+                & * tope % urr_inelastic_tmp(n_pts)
             else
-              ! infinite-dilute treatment of competitive inelastic cross section
-              nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
+              ! infinite-dilute treatment of competitive inelastic xs
+              tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
             end if
           else
             ! use background competitive inelastic cross section, as is
-            nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts)
+            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
           end if
 
           ! elastic scattering xs
-          nuc % urr_elastic_tmp(n_pts) = sig_n % val / avg_urr_n_xs &
-            & * nuc % urr_elastic_tmp(n_pts)
+          tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
+            & * tope % urr_elastic_tmp(n_pts)
 
           ! set negative SLBW elastic xs to zero
-          if (nuc % urr_elastic_tmp(n_pts) < ZERO) &
-            & nuc % urr_elastic_tmp(n_pts) = ZERO
+          if (tope % urr_elastic_tmp(n_pts) < ZERO) &
+            & tope % urr_elastic_tmp(n_pts) = ZERO
 
           ! radiative capture xs
-          nuc % urr_capture_tmp(n_pts) = sig_gam % val / avg_urr_g_xs &
-            & * nuc % urr_capture_tmp(n_pts)
+          tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
+            & * tope % urr_capture_tmp(n_pts)
 
           ! fission xs
           if (avg_urr_f_xs > ZERO) then
-            nuc % urr_fission_tmp(n_pts) = sig_f % val / avg_urr_f_xs &
-              & * nuc % urr_fission_tmp(n_pts)
+            tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
+              & * tope % urr_fission_tmp(n_pts)
           else
-            nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts)
+            tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
           end if
 
-          nuc % urr_total_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts)&
-            &                        + nuc % urr_capture_tmp(n_pts)&
-            &                        + nuc % urr_fission_tmp(n_pts)&
-            &                        + nuc % urr_inelastic_tmp(n_pts)
+          tope % urr_total_tmp(n_pts) &
+            & = tope % urr_elastic_tmp(n_pts)&
+            & + tope % urr_capture_tmp(n_pts)&
+            & + tope % urr_fission_tmp(n_pts)&
+            & + tope % urr_inelastic_tmp(n_pts)
 
         else
-          call fatal_error('Self-shielding flag (LSSF) not allowed -&
-            & must be 0 or 1.')
+          call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
         end if
 
-      end do ENERGY_LOOP
+        xs_trial = HALF &
+          & * (tope % urr_total_tmp(n_pts) + tope % urr_total_tmp(n_pts - 1))
+        dE_trial = HALF * dE_trial
+        tope % E  = tope % E - dE_trial
 
-      ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
-      ! the proper length
-      call nuc % alloc_pointwise(n_pts)
-      nuc % urr_energy    = nuc % urr_energy_tmp(1:n_pts)
-      nuc % urr_elastic   = nuc % urr_elastic_tmp(1:n_pts)
-      nuc % urr_capture   = nuc % urr_capture_tmp(1:n_pts)
-      nuc % urr_fission   = nuc % urr_fission_tmp(1:n_pts)
-      nuc % urr_inelastic = nuc % urr_inelastic_tmp(1:n_pts)
-      nuc % urr_total     = nuc % urr_total_tmp(1:n_pts)
-      call nuc % dealloc_pointwise_tmp()
+        if (tope % E > tope % ES(tope % NE)) then
+          i_E = tope % NE - 1
+        else
+          i_E = binary_search(tope % ES, tope % NE, tope % E)
+        end if
 
-    end do NUCLIDE_LOOP
+        m = interp_factor(tope % E, tope % ES(i_E), tope % ES(i_E+1), tope % INT)
+
+        ! reset xs accumulators
+        call flush_sigmas(t, n, g, f, x)
+
+        ! loop over orbital quantum #'s
+        ORBITAL_ANG_MOM_LOOP1: do i_l = 1, tope % NLS(tope % i_urr)
+
+          ! set current orbital angular momentum quantum #
+          tope % L = i_l - 1
+
+          ! get the number of contributing l-wave resonances for this l
+          n_res = n_res_contrib(tope % L)
+
+          ! loop over total angular momentum quantum #'s
+          TOTAL_ANG_MOM_LOOP1: do i_J = 1, tope % NJS(i_l)
+
+            ! set current total angular momentum quantum #
+            tope % J = tope % AJ(i_l) % data(i_J)
+
+            ! compute statistical spin factor
+            tope % g_J = (TWO * tope % J + ONE) &
+              & / (FOUR * tope % SPI(tope % i_urr) + TWO)
+
+            ! zero the resonance counter
+            res % i_res = 0
+
+            ! find the nearest lower resonance
+            i_low = int(i_last(i_l) % data(i_J))
+
+            do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < tope % E)
+              i_low = i_low + 1
+            end do
+            i_low = i_low - 1
+            if (i_low == 0) i_low = 1
+            i_last(i_l) % data(i_J) = dble(i_low)
+
+            ! loop over the addition of resonances to this ladder
+            if (i_low - n_res/2 < 1) then
+              ! if we're near the lower end of the URR, need to incorporate
+              ! resolved resonance region resonances in order to fix-up
+              ! (i.e. smooth out) cross sections at the RRR-URR crossover
+              ! energy
+
+              ! if the RRR has resonances with this l-state
+              if (i_l <= tope % NLS(tope % i_urr - 1)) then
+
+                ! how many RRR resonances are contributing
+                n_rrr_res = abs(i_low - n_res/2) + 1
+
+                ! loop over contributing resolved resonance region resonances
+                RRR_RESONANCES_LOOP1: do i_res = n_rrr_res, 1, -1
+
+                  i_rrr_res = rrr_res(i_sotope, i_res, tope % L, tope % J)
+
+                  call add_resonance(res, i_sotope, i_rrr_res, i_l, i_J, &
+                    & tope % LRF(tope % i_urr - 1), &
+                    & t, n, g, f, x)
+
+                end do RRR_RESONANCES_LOOP1
+              end if
+
+              ! loop over contributing unresolved resonance region resonances
+              URR_RESONANCES_LOOP1: do i_res = 1, i_low + n_res/2 - 1
+
+                call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                  & tope % LRF(tope % i_urr), &
+                  & t, n, g, f, x)
+
+              end do URR_RESONANCES_LOOP1
+
+            else
+              ! we're deep in the URR and can ignore anything going on in the
+              ! upper resolved resonance region energies
+              ! TODO: move t outside of loop
+              RESONANCES_LOOP1: do i_res &
+                & = i_low - n_res/2, i_low + n_res/2 - 1
+
+                call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                  & tope % LRF(tope % i_urr), &
+                  & t, n, g, f, x)
+
+              end do RESONANCES_LOOP1
+            end if
+          end do TOTAL_ANG_MOM_LOOP1
+        end do ORBITAL_ANG_MOM_LOOP1
+
+        ! add potential scattering contribution
+        call n % potential_xs(i_sotope)
+        call t % potential_xs(i_sotope)
+
+        if (tope % E < 1.0e6_8 * nuc % energy(1)) then
+          i_grid = 1
+        elseif (tope % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
+          i_grid = nuc % n_grid - 1
+        else
+          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
+        end if
+
+        ! check for rare case where two energy points are the same
+        if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) &
+          & i_grid = i_grid + 1
+
+        ! calculate xs energy grid interpolation factor
+        fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+          & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
+
+        ! calculate evaluator-supplied backgrounds at the current energy
+        call calc_urr_bckgrnd(i_sotope, i_nuc, n_pts, fact, i_grid, LINEAR_LINEAR)
+
+        ! interpret MF3 data according to ENDF-6 LSSF flag:
+        ! MF3 contains background xs, add to MF2 resonance contributions
+        if (tope % LSSF == 0) then
+
+          ! add resonance xs component to background
+          call add2bckgrnd(i_sotope, i_nuc, n_pts, t, n, g, f, x)
+
+        elseif (tope % LSSF == 1) then
+          ! multipy the self-shielding factors by the infinite-dilute xs
+
+          call interp_avg_urr_xs(m, i_sotope, i_E, &
+            & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+
+          ! competitive xs
+          if (avg_urr_x_xs > ZERO) then
+            if (competitive) then
+              ! self-shielded treatment of competitive inelastic xs
+              tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
+                & * tope % urr_inelastic_tmp(n_pts)
+            else
+              ! infinite-dilute treatment of competitive inelastic xs
+              tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+            end if
+          else
+            ! use background competitive inelastic cross section, as is
+            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+          end if
+
+          ! elastic scattering xs
+          tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
+            & * tope % urr_elastic_tmp(n_pts)
+
+          ! set negative SLBW elastic xs to zero
+          if (tope % urr_elastic_tmp(n_pts) < ZERO) &
+            & tope % urr_elastic_tmp(n_pts) = ZERO
+
+          ! radiative capture xs
+          tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
+            & * tope % urr_capture_tmp(n_pts)
+
+          ! fission xs
+          if (avg_urr_f_xs > ZERO) then
+            tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
+              & * tope % urr_fission_tmp(n_pts)
+          else
+            tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
+          end if
+
+          tope % urr_total_tmp(n_pts) = tope % urr_elastic_tmp(n_pts)&
+            &                         + tope % urr_capture_tmp(n_pts)&
+            &                         + tope % urr_fission_tmp(n_pts)&
+            &                         + tope % urr_inelastic_tmp(n_pts)
+
+        else
+          call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
+        end if
+
+        rel_err = abs(xs_trial - tope % urr_total_tmp(n_pts)) &
+          & / tope % urr_total_tmp(n_pts)
+        if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr) then
+          enhance = .false.
+        end if
+
+      end do
+
+      ! add energy point to grid
+      tope % E = tope % E + dE_trial
+      tope % urr_energy_tmp(n_pts) = tope % E
+
+      if (tope % E > tope % ES(tope % NE)) then
+        i_E = tope % NE - 1
+      else
+        i_E = binary_search(tope % ES, tope % NE, tope % E)
+      end if
+
+      m = interp_factor(tope % E, tope % ES(i_E), tope % ES(i_E + 1), tope % INT)
+
+      ! reset xs accumulators
+      call flush_sigmas(t, n, g, f, x)
+
+      ! loop over orbital quantum #'s
+      ORBITAL_ANG_MOM_LOOP2: do i_l = 1, tope % NLS(tope % i_urr)
+
+        ! set current orbital angular momentum quantum #
+        tope % L = i_l - 1
+
+        ! get the number of contributing l-wave resonances for this l
+        n_res = n_res_contrib(tope % L)
+
+        ! loop over total angular momentum quantum #'s
+        TOTAL_ANG_MOM_LOOP2: do i_J = 1, tope % NJS(i_l)
+
+          ! set current total angular momentum quantum #
+          tope % J = tope % AJ(i_l) % data(i_J)
+
+          ! compute statistical spin factor
+          tope % g_J = (TWO * tope % J + ONE) &
+            & / (FOUR * tope % SPI(tope % i_urr) + TWO)
+
+          ! zero the resonance counter
+          res % i_res = 0
+
+          ! find the nearest lower resonance
+          i_low = int(i_last(i_l) % data(i_J))
+
+          do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < tope % E)
+            i_low = i_low + 1
+          end do
+          i_low = i_low - 1
+          if (i_low == 0) i_low = 1
+          i_last(i_l) % data(i_J) = dble(i_low)
+
+          ! loop over the addition of resonances to this ladder
+          if (i_low - n_res/2 < 1) then
+            ! if we're near the lower end of the URR, need to incorporate
+            ! resolved resonance region resonances in order to fix-up
+            ! (i.e. smooth out) cross sections at the RRR-URR crossover
+            ! energy
+
+            ! if the RRR has resonances with this l-state
+            if (i_l <= tope % NLS(tope % i_urr - 1)) then
+
+              ! how many RRR resonances are contributing
+              n_rrr_res = abs(i_low - n_res/2) + 1
+
+              ! loop over contributing resolved resonance region resonances
+              RRR_RESONANCES_LOOP2: do i_res = n_rrr_res, 1, -1
+
+                i_rrr_res = rrr_res(i_sotope, i_res, tope % L, tope % J)
+
+                call add_resonance(res, i_sotope, i_rrr_res, i_l, i_J, &
+                  & tope % LRF(tope % i_urr - 1), &
+                  & t, n, g, f, x)
+
+              end do RRR_RESONANCES_LOOP2
+            end if
+
+            ! loop over contributing unresolved resonance region resonances
+            URR_RESONANCES_LOOP2: do i_res = 1, i_low + n_res/2 - 1
+
+              call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                & tope % LRF(tope % i_urr), &
+                & t, n, g, f, x)
+
+            end do URR_RESONANCES_LOOP2
+
+          else
+            ! we're firmly in the URR and can ignore anything going on in the
+            ! upper resolved resonance region energies
+            RESONANCES_LOOP2: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+
+              call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                & tope % LRF(tope % i_urr), &
+                & t, n, g, f, x)
+
+            end do RESONANCES_LOOP2
+          end if
+        end do TOTAL_ANG_MOM_LOOP2
+      end do ORBITAL_ANG_MOM_LOOP2
+
+      ! add potential scattering contribution
+      call n % potential_xs(i_sotope)
+      call t % potential_xs(i_sotope)
+
+      if (tope % E < 1.0e6_8 * nuc % energy(1)) then
+        i_grid = 1
+      elseif (tope % E > 1.0e6_8 * nuc % energy(nuc % n_grid)) then
+        i_grid = nuc % n_grid - 1
+      else
+        i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
+      end if
+
+      ! check for rare case where two energy points are the same
+      if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+
+      ! calculate xs energy grid interpolation factor
+      fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+        & 1.0e6_8 * nuc % energy(i_grid + 1), LINEAR_LINEAR)
+
+      ! calculate evaluator-supplied backgrounds at the current energy
+      call calc_urr_bckgrnd(i_sotope, i_nuc, n_pts, fact, i_grid, LINEAR_LINEAR)
+
+      ! interpret MF3 data according to ENDF-6 LSSF flag:
+      ! MF3 contains background xs values, add to MF2 resonance contributions
+      if (tope % LSSF == 0) then
+
+        ! add resonance xs component to background
+        call add2bckgrnd(i_sotope, i_nuc, n_pts, t, n, g, f, x)
+
+      elseif (tope % LSSF == 1) then
+        ! multipy the self-shielding factors by the average (infinite-dilute)
+        ! cross sections
+
+! TODO: LOG_LOG?
+        avg_urr_n_xs = interpolator(m, &
+          & tope % avg_urr_n(i_E), tope % avg_urr_n(i_E + 1), LINEAR_LINEAR)
+        avg_urr_f_xs = interpolator(m, &
+          & tope % avg_urr_f(i_E), tope % avg_urr_f(i_E + 1), LINEAR_LINEAR)
+        avg_urr_g_xs = interpolator(m, &
+          & tope % avg_urr_g(i_E), tope % avg_urr_g(i_E + 1), LINEAR_LINEAR)
+        avg_urr_x_xs = interpolator(m, &
+          & tope % avg_urr_x(i_E), tope % avg_urr_x(i_E + 1), LINEAR_LINEAR)
+
+        ! competitive xs
+        if (avg_urr_x_xs > ZERO) then
+          if (competitive) then
+            ! self-shielded treatment of competitive inelastic cross section
+            tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
+              & * tope % urr_inelastic_tmp(n_pts)
+          else
+            ! infinite-dilute treatment of competitive inelastic cross section
+            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+          end if
+        else
+          ! use background competitive inelastic cross section, as is
+          tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+        end if
+
+        ! elastic scattering xs
+        tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
+          & * tope % urr_elastic_tmp(n_pts)
+
+        ! set negative SLBW elastic xs to zero
+        if (tope % urr_elastic_tmp(n_pts) < ZERO) &
+          & tope % urr_elastic_tmp(n_pts) = ZERO
+
+        ! radiative capture xs
+        tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
+          & * tope % urr_capture_tmp(n_pts)
+
+        ! fission xs
+        if (avg_urr_f_xs > ZERO) then
+          tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
+            & * tope % urr_fission_tmp(n_pts)
+        else
+          tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
+        end if
+
+        tope % urr_total_tmp(n_pts) = tope % urr_elastic_tmp(n_pts)&
+          &                         + tope % urr_capture_tmp(n_pts)&
+          &                         + tope % urr_fission_tmp(n_pts)&
+          &                         + tope % urr_inelastic_tmp(n_pts)
+
+      else
+        call fatal_error('Self-shielding flag (LSSF) not allowed -&
+          & must be 0 or 1.')
+      end if
+
+    end do ENERGY_LOOP
+
+    ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
+    ! the proper length
+    call tope % alloc_pointwise(n_pts)
+    tope % urr_energy    = tope % urr_energy_tmp(1:n_pts)
+    tope % urr_elastic   = tope % urr_elastic_tmp(1:n_pts)
+    tope % urr_capture   = tope % urr_capture_tmp(1:n_pts)
+    tope % urr_fission   = tope % urr_fission_tmp(1:n_pts)
+    tope % urr_inelastic = tope % urr_inelastic_tmp(1:n_pts)
+    tope % urr_total     = tope % urr_total_tmp(1:n_pts)
+    call tope % dealloc_pointwise_tmp()
 
   end subroutine pointwise_urr
 
@@ -1000,15 +1244,17 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calc_urr_xs_otf(i_nuc, E)
+  subroutine calc_urr_xs_otf(i_sotope, i_nuc, E, T_K)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(Resonance) :: res ! resonance object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    type(CrossSection) :: sig_t   ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
+    type(CrossSection) :: t ! total xs object
+    integer :: i_sotope  ! isotope index
     integer :: i_nuc     ! nuclide index
     integer :: i_E       ! URR resonance parameters energy grid index
     integer :: i_energy
@@ -1020,32 +1266,30 @@ contains
     integer :: i_res     ! resonance counter
     integer :: i_rrr_res ! RRR resonance index
     real(8) :: E            ! neutron energy
+    real(8) :: T_K          ! isotope temperature [K]
     real(8) :: m            ! URR resonance parameters interpolation factor
-    real(8) :: f            ! cross section energy grid interpolation factor
+    real(8) :: fact         ! cross section energy grid interpolation factor
     real(8) :: avg_urr_n_xs ! averaged elastic cross section
     real(8) :: avg_urr_f_xs ! averaged fission cross section
     real(8) :: avg_urr_g_xs ! averaged capture cross section
     real(8) :: avg_urr_x_xs ! averaged competitive inelastic cross section
     real(8) :: capture_xs   ! radiative capture cross section
     real(8) :: inelastic_xs ! competitive inelastic scattering cross section
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope, nuc)
 
-    ! set nuclide pointer
-    nuc => nuclides(i_nuc)
-
-    ! this is used in physics, even though we aren't actually using ptables
-    micro_xs(i_nuc) % use_ptable = .true.
+    tope => isotopes(i_sotope)
+    nuc  => nuclides(i_nuc)
 
     ! set current temperature
-    nuc % T = nuc % kT / K_BOLTZMANN
+    tope % T = T_K
 
     ! set current energy and interpolation factor
-    nuc % E = E
-    i_E = binary_search(nuc % ES, nuc % NE, nuc % E)
-    m = interp_factor(nuc % E, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
+    tope % E = E
+    i_E = binary_search(tope % ES, tope % NE, tope % E)
+    m = interp_factor(tope % E, tope % ES(i_E), tope % ES(i_E + 1), tope % INT)
 
-    ! reset xs objects
-    call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
+    ! reset xs accumulators
+    call flush_sigmas(t, n, g, f, x)
 
     if (i_real_user == 0) then
       ! randomly select which realization to use
@@ -1058,29 +1302,29 @@ contains
     end if
 
     ! loop over orbital quantum #'s
-    ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
+    ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
       ! set current orbital angular momentum quantum #
-      nuc % L = i_l - 1
+      tope % L = i_l - 1
 
       ! get the number of contributing l-wave resonances for this l
-      n_res = n_res_contrib(nuc % L)
+      n_res = n_res_contrib(tope % L)
 
       ! loop over total angular momentum quantum #'s
-      TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+      TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum #
-        nuc % J = nuc % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % data(i_J)
 
         ! compute statistical spin factor
-        nuc % g_J = (TWO * nuc % J + ONE) &
-          & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
+        tope % g_J = (TWO * tope % J + ONE) &
+          & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-        ! reset the resonance object for a new spin sequence
-        call res % reset_resonance(i_nuc)
+        ! zero the resonance counter
+        res % i_res = 0
 
         i_low = 1
-        do while(nuc % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < nuc % E)
+        do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < tope % E)
           i_low = i_low + 1
         end do
         i_low = i_low - 1
@@ -1094,7 +1338,7 @@ contains
           ! energy
 
           ! if the RRR has resonances with this l-state
-          if (i_l <= nuc % NLS(nuc % i_urr - 1)) then
+          if (i_l <= tope % NLS(tope % i_urr - 1)) then
 
             ! how many RRR resonances are contributing
             n_rrr_res = abs(i_low - n_res/2) + 1
@@ -1102,11 +1346,11 @@ contains
             ! loop over contributing resolved resonance region resonances
             RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
 
-              i_rrr_res = rrr_res(i_nuc, i_res, nuc % L, nuc % J)
+              i_rrr_res = rrr_res(i_sotope, i_res, tope % L, tope % J)
 
-              call add_resonance(res, i_nuc, i_rrr_res, i_l, i_J, &
-                & nuc % LRF(nuc % i_urr - 1), &
-                & sig_t, sig_n, sig_gam, sig_f, sig_x)
+              call add_resonance(res, i_sotope, i_rrr_res, i_l, i_J, &
+                & tope % LRF(tope % i_urr - 1), &
+                & t, n, g, f, x)
 
             end do RRR_RESONANCES_LOOP
           end if
@@ -1114,9 +1358,9 @@ contains
           ! loop over contributing unresolved resonance region resonances
           URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
 
-            call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-              & nuc % LRF(nuc % i_urr), &
-              & sig_t, sig_n, sig_gam, sig_f, sig_x)
+            call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+              & tope % LRF(tope % i_urr), &
+              & t, n, g, f, x)
 
           end do URR_RESONANCES_LOOP
 
@@ -1125,9 +1369,9 @@ contains
           ! the upper resolved resonance region energies
           URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
 
-            call add_resonance(res, i_nuc, i_res, i_l, i_J, &
-              & nuc % LRF(nuc % i_urr), &
-              & sig_t, sig_n, sig_gam, sig_f, sig_x)
+            call add_resonance(res, i_sotope, i_res, i_l, i_J, &
+              & tope % LRF(tope % i_urr), &
+              & t, n, g, f, x)
 
           end do URR_LOOP
         end if
@@ -1135,43 +1379,43 @@ contains
     end do ORBITAL_ANG_MOM_LOOP
 
     ! add potential scattering contribution
-    call sig_n % potential_xs(i_nuc)
-    call sig_t % potential_xs(i_nuc)
+    call n % potential_xs(i_sotope)
+    call t % potential_xs(i_sotope)
 
     ! determine energy table                                                    
     i_energy = 1
     do
-      if (E <= nuc % ES(i_energy + 1)) exit
+      if (E <= tope % ES(i_energy + 1)) exit
       i_energy = i_energy + 1
-      if (i_energy >= nuc % NE) then
-        i_energy = nuc % NE - 1
+      if (i_energy >= tope % NE) then
+        i_energy = tope % NE - 1
         exit
       end if
     end do
 
     ! interpret MF3 data according to ENDF-6 LSSF flag:
     ! MF3 contains background xs, add to MF2 resonance contributions
-    if (nuc % LSSF == 0) then
+    if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add2bckgrnd(i_nuc, NONE, sig_t, sig_n, sig_gam, sig_f, sig_x)
+      call add2bckgrnd(i_sotope, i_nuc, NONE, t, n, g, f, x)
 
-    elseif (nuc % LSSF == 1) then
-! TODO: LOG_LOG or maybe just nuc % INT?
+    elseif (tope % LSSF == 1) then
+! TODO: LOG_LOG or maybe just tope % INT?
       ! multipy the self-shielding factors by the infinite-dilute xs
 
       ! tabulated unresolved resonance parameters interpolation factor
-      f = interp_factor(E, nuc % ES(i_energy), nuc % ES(i_energy+1), nuc % INT)
+      fact = interp_factor(E, tope % ES(i_energy), tope % ES(i_energy+1), tope % INT)
 
       ! interpolate evaluator-supplied URR background xs
-      call interp_avg_urr_xs(f, i_nuc, i_energy, &
+      call interp_avg_urr_xs(fact, i_sotope, i_energy, &
         & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       ! competitive xs
       if (avg_urr_x_xs > ZERO) then
         if (competitive) then
           ! self-shielded treatment of competitive inelastic xs
-          inelastic_xs = sig_x % val / avg_urr_x_xs &
+          inelastic_xs = x % xs / avg_urr_x_xs &
             & * (micro_xs(i_nuc) % total &
             & - micro_xs(i_nuc) % absorption &
             & - micro_xs(i_nuc) % elastic)
@@ -1189,7 +1433,7 @@ contains
       end if
 
       ! elastic scattering xs
-      micro_xs(i_nuc) % elastic = sig_n % val / avg_urr_n_xs &
+      micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
       ! set negative SLBW elastic xs to zero
@@ -1198,12 +1442,12 @@ contains
       end if
 
       ! radiative capture xs
-      capture_xs = sig_gam % val / avg_urr_g_xs &
+      capture_xs = g % xs / avg_urr_g_xs &
         & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
 
       ! fission xs
       if (avg_urr_f_xs > ZERO) then
-        micro_xs(i_nuc) % fission = sig_f % val / avg_urr_f_xs &
+        micro_xs(i_nuc) % fission = f % xs / avg_urr_f_xs &
           & * micro_xs(i_nuc) % fission
       else
         micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
@@ -1223,7 +1467,7 @@ contains
     end if
 
     ! Determine nu-fission cross section                                        
-    if (nuc % fissionable) then
+    if (tope % fissionable) then
       micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0e6_8) &
         & * micro_xs(i_nuc) % fission
     end if
@@ -1232,202 +1476,257 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CALCULATE_AVG_URR_XS computes the infinite-dilute partial cross sections in
-! the URR
+! PROB_TABLES computes probability tables for the URR
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calculate_avg_urr_xs()
+  subroutine prob_tables(i_sotope, T)
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
-    type(Resonance)    :: res     ! resonance object
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
+    type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
+    type(Resonance) :: res ! resonance object
     character(6) :: zaid_str ! ENDF-6 MAT number as a string
-    integer :: out_unit = 99 ! output file unit
-    integer :: i_nuc ! nuclide index
+    integer :: tab_unit = 99 ! probability tables output file unit
+    integer :: i_sotope ! isotope index
     integer :: i_E   ! energy grid index
     integer :: i_b   ! batch index
     integer :: i_h   ! history index
     integer :: i_l   ! orbital quantum #
     integer :: i_J   ! total angular momentum quantum #
     integer :: i_r   ! resonance index
+    integer :: i_T   ! temperature index
     integer :: n_res ! number of resonances to include for a given l-wave
+    integer :: i_band ! probability band index
+    integer :: i_temp ! temperature index
     real(8) :: E ! neutron lab energy [eV]
+    real(8) :: T ! isotope temperature [K]
 
-    ! loop over all nuclides
-    NUCLIDE_LOOP: do i_nuc = 1, n_nuclides_total
+    tope => isotopes(i_sotope)
 
-      nuc => nuclides(i_nuc)
+    ! set current temperature
+    tope % T = T
 
-      ! skip nuclides without an OTF URR treatment
-      if (.not. nuc % avg_urr_xs) cycle
+    write(zaid_str, '(I6)') tope % ZAI
+    open(unit = tab_unit, file = trim(adjustl(zaid_str)) // '-prob-tables.out')
 
-      write(zaid_str, '(I6)') nuc % zaid
-      open(unit = out_unit, file = trim(adjustl(zaid_str)) // '-avg-urr-xs.txt')
-      write(out_unit, '(A5,A14,A14,A14,A14,A14,A14,A14,A14,A14)') &
-        & 'batch', 'E [eV]', &
-        & 'n_xs mean [b]', 'n_xs sig [b]', &
-        & 'f_xs mean [b]', 'f_xs sig [b]', &
-        & 'g_xs mean [b]', 'g_xs sig [b]', &
-        & 'x_xs mean [b]', 'x_xs sig [b]'
-      write(*, '(A5,A14,A14,A14,A14,A14,A14,A14,A14,A14)') &
-        & 'batch', 'E [eV]', &
-        & 'n_xs mean [b]', 'n_xs sig [b]', &
-        & 'f_xs mean [b]', 'f_xs sig [b]', &
-        & 'g_xs mean [b]', 'g_xs sig [b]', &
-        & 'x_xs mean [b]', 'x_xs sig [b]'
+    ! loop over tabulated ENDF energies
+    ENERGY_LOOP: do i_E = 1, n_energies
 
-      micro_xs(i_nuc) % use_ptable = .true.
+      tope % E = E_values(i_E)
+      E = tope % E
 
-      ! loop over tabulated ENDF energies
-      ENERGY_LOOP: do i_E = 1, nuc % NE
+      ! reset accumulator of statistics
+      call tope % flush_ptable_stats()
 
-        nuc % E = nuc % ES(i_E)
-        E = nuc % E
+      i_b = 0
 
-        ! reset accumulator of statistics
-        call flush_statistics(sig_t, sig_n, sig_gam, sig_f, sig_x)
+      ! loop over batches until convergence
+      BATCH_LOOP: do
 
-        i_b = 0
+        i_b = i_b + 1
 
-        ! loop over batches until convergence
-        BATCH_LOOP: do
+        ! reset batch accumulators
+        call tope % flush_batches()
 
-          i_b = i_b + 1
+        ! loop over realizations
+        HISTORY_LOOP: do i_h = 1, histories_avg_urr
 
-          ! reset batch accumulators
-          call flush_batches(sig_t, sig_n, sig_gam, sig_f, sig_x)
+          ! reset accumulator of histories
+          call tope % flush_histories()
 
-          ! loop over realizations
-          HISTORY_LOOP: do i_h = 1, histories_avg_urr
+          ! loop over orbital quantum #'s
+          ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
-            ! reset accumulator of histories
-            call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
+            ! set current orbital angular momentum quantum #
+            tope % L = i_l - 1
 
-            ! loop over orbital quantum #'s
-            ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
+            ! get the number of contributing l-wave resonances for this l
+            n_res = n_res_contrib(tope % L)
 
-              ! set current orbital angular momentum quantum #
-              nuc % L = i_l - 1
+            ! loop over total angular momentum quantum #'s
+            TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
-              ! get the number of contributing l-wave resonances for this l
-              n_res = n_res_contrib(nuc % L)
+              ! set current total angular momentum quantum #
+              tope % J = tope % AJ(i_l) % data(i_J)
 
-              ! loop over total angular momentum quantum #'s
-              TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+              ! compute statistical spin factor
+              tope % g_J = (TWO * tope % J + ONE) &
+                & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-                ! set current total angular momentum quantum #
-                nuc % J = nuc % AJ(i_l) % data(i_J)
+              ! set current partial width degrees of freedom
+              tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
+              tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
+              tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
+              tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
 
-                ! compute statistical spin factor
-                nuc % g_J = (TWO * nuc % J + ONE) &
-                        & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
+              ! zero the resonance counter
+              res % i_res = 0
 
-                ! set current partial width degrees of freedom
-                nuc % AMUX = int(nuc % DOFX(i_l) % data(i_J))
-                nuc % AMUN = int(nuc % DOFN(i_l) % data(i_J))
-                nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
-                nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
+              ! set mean URR parameters to neutron energy
+              call set_mean_parameters(i_sotope, E, i_l, i_J)
 
-                ! reset the resonance object for a new spin sequence
-                call res % reset_resonance(i_nuc)
+              ! sample unresolved resonance parameters for this spin
+              ! sequence, at this energy
+              call res % sample_parameters(i_sotope)
 
-                ! set mean URR parameters to neutron energy
-                call set_mean_parameters(i_nuc, E, i_l, i_J)
+              ! loop over the addition of resonances to this ladder
+              RESONANCES_LOOP: do i_r = 1, n_res
+
+                ! interpolate mean URR parameters to current resonance energy
+                call set_mean_parameters(i_sotope, res % E_lam, i_l, i_J)
 
                 ! sample unresolved resonance parameters for this spin
                 ! sequence, at this energy
-                call res % sample_parameters(i_nuc)
+                call res % sample_parameters(i_sotope)
 
-                ! loop over the addition of resonances to this ladder
-                RESONANCES_LOOP: do i_r = 1, n_res
-
-                  ! set current temperature
-                  nuc % T = nuc % kT / K_BOLTZMANN
-
-                  ! interpolate mean URR parameters to current resonance energy
-                  call set_mean_parameters(i_nuc, res % E_lam, i_l, i_J)
-
-                  ! sample unresolved resonance parameters for this spin
-                  ! sequence, at this energy
-                  call res % sample_parameters(i_nuc)
+                TEMPERATURES_LOOP: do i_T = 1, n_temps
 
                   ! calculate the contribution to the partial cross sections,
                   ! at this energy, from an additional resonance 
-                  call res % calc_xs(i_nuc)
+                  call res % calc_xs(i_sotope)
 
                   ! add this contribution to the accumulated partial cross
                   ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-                  call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+! TODO: move t outside of loop
+                  call tope % res_contrib(res, i_E, i_T)
 
-                end do RESONANCES_LOOP
-              end do TOTAL_ANG_MOM_LOOP
-            end do ORBITAL_ANG_MOM_LOOP
+                end do TEMPERATURES_LOOP
+              end do RESONANCES_LOOP
+            end do TOTAL_ANG_MOM_LOOP
+          end do ORBITAL_ANG_MOM_LOOP
 
+          do i_T = 1, n_temps
             ! add potential scattering contribution
-            call sig_n % potential_xs(i_nuc)
+            call tope % prob_tables(i_E, i_T) % avg_n % potential_xs(i_sotope)
+            call tope % prob_tables(i_E, i_T) % avg_t % potential_xs(i_sotope)
 
             ! set negative SLBW elastic xs to zero
-            if (sig_n % val < ZERO) then
-              sig_n % val = ZERO
+            if (tope % prob_tables(i_E, i_T) % avg_n % xs < ZERO) then
+              tope % prob_tables(i_E, i_T) % avg_t % xs &
+                & = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                & + abs(tope % prob_tables(i_E, i_T) % avg_n % xs)
+              tope % prob_tables(i_E, i_T) % avg_n % xs = ZERO
             end if
 
             ! accumulate the result of this history
-            call sig_n % accum_history()
-            call sig_f % accum_history()
-            call sig_gam % accum_history()
-            call sig_x % accum_history()
+            call tope % accum_history(i_E, i_T)
 
-          end do HISTORY_LOOP
+          end do
 
-          ! accumulate the result of this batch
-          call sig_n % accum_batch()
-          call sig_f % accum_batch()
-          call sig_gam % accum_batch()
-          call sig_x % accum_batch()
+        end do HISTORY_LOOP
 
-          ! calculate statistics for this batch
-          call sig_n % calc_stats(i_b)
-          call sig_f % calc_stats(i_b)
-          call sig_gam % calc_stats(i_b)
-          call sig_x % calc_stats(i_b)
+        ! accumulate the result of this batch
+        call tope % accum_batch()
 
-          if ((i_b > min_batches_avg_urr &
-            & .and. max(sig_n % rel_unc, sig_f % rel_unc, sig_gam % rel_unc, &
-            & sig_x % rel_unc) < tol_avg_urr) .or. i_b == max_batches_avg_urr) then
-            write(out_unit, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
-              & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
-              &         sig_f % xs_mean, sig_f % xs_sem, &
-              &         sig_gam % xs_mean, sig_gam % xs_sem, &
-              &         sig_x % xs_mean, sig_x % xs_sem
-            write(*, '(I5,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7,ES14.7)') &
-              & i_b, E, sig_n % xs_mean, sig_n % xs_sem, &
-              &         sig_f % xs_mean, sig_f % xs_sem, &
-              &         sig_gam % xs_mean, sig_gam % xs_sem, &
-              &         sig_x % xs_mean, sig_x % xs_sem
-            exit
+        ! calculate statistics for this batch
+        call tope % calc_stats(i_b)
+
+        if ((i_b > min_batches_avg_urr &
+          & .and. max(tope % prob_tables(i_E, 1) % avg_t % rel_unc, &
+          &           tope % prob_tables(i_E, 1) % avg_n % rel_unc, &
+          &           tope % prob_tables(i_E, 1) % avg_g % rel_unc, &
+          &           tope % prob_tables(i_E, 1) % avg_f % rel_unc, &
+          &           tope % prob_tables(i_E, 1) % avg_x % rel_unc) &
+          & < tol_avg_urr) &
+          & .or. i_b == max_batches_avg_urr) exit
+
+      end do BATCH_LOOP
+
+      do i_temp = 1, n_temps
+        write(tab_unit, '(A13,ES13.6)') 'E [eV]', E_values(i_E)
+        write(tab_unit, '(A13,ES13.6)') 'T [K]', tope % T
+        write(tab_unit, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
+          & 'lower [b]', 'upper [b]', &
+          & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
+        write(*, '(A13,ES13.6)') 'E [eV]', E_values(i_E)
+        write(*, '(A13,ES13.6)') 'T [K]', tope % T
+        write(*, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
+          & 'lower [b]', 'upper [b]', &
+          & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
+        ptable => tope % prob_tables(i_E, i_temp)
+        do i_band = 1, n_bands
+          if (i_band == 1) then
+            write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & ZERO, band_values(1), &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
+            write(*, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & ZERO, band_values(1), &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
+          else if (i_band == n_bands) then
+            write(tab_unit, '(ES13.6,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & band_values(i_band - 1), 'inf', &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
+            write(*, '(ES13.6,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & band_values(i_band - 1), 'inf', &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
+          else
+            write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & band_values(i_band - 1), band_values(i_band), &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
+            write(*, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+              & band_values(i_band - 1), band_values(i_band), &
+              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+              & ptable % n(i_band) % xs_mean, &
+              & ptable % g(i_band) % xs_mean, &
+              & ptable % f(i_band) % xs_mean, &
+              & ptable % x(i_band) % xs_mean
           end if
+        end do
+        write(tab_unit, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+          & 'batch', 'averaged xs', &
+          & ONE, ptable % avg_t % xs_mean, &
+          & ptable % avg_n % xs_mean, &
+          & ptable % avg_g % xs_mean, &
+          & ptable % avg_f % xs_mean, &
+          & ptable % avg_x % xs_mean
+        write(tab_unit, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+          & i_b, '1sigma', &
+          & ZERO, ptable % avg_t % xs_sem, &
+          & ptable % avg_n % xs_sem, &
+          & ptable % avg_g % xs_sem, &
+          & ptable % avg_f % xs_sem, &
+          & ptable % avg_x % xs_sem
+        write(*, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+          & 'batch', 'averaged xs', &
+          & ONE, ptable % avg_t % xs_mean, &
+          & ptable % avg_n % xs_mean, &
+          & ptable % avg_g % xs_mean, &
+          & ptable % avg_f % xs_mean, &
+          & ptable % avg_x % xs_mean
+        write(*, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+          & i_b, '1sigma', &
+          & ZERO, ptable % avg_t % xs_sem, &
+          & ptable % avg_n % xs_sem, &
+          & ptable % avg_g % xs_sem, &
+          & ptable % avg_f % xs_sem, &
+          & ptable % avg_x % xs_sem
+      end do
 
-        end do BATCH_LOOP
+    end do ENERGY_LOOP
 
-        ! set infinite-dilute xs values at this energy to converged means
-        nuc % avg_urr_n(i_E) = sig_n % xs_mean
-        nuc % avg_urr_f(i_E) = sig_f % xs_mean
-        nuc % avg_urr_g(i_E) = sig_gam % xs_mean
-        nuc % avg_urr_x(i_E) = sig_x % xs_mean
+    close(tab_unit)
 
-      end do ENERGY_LOOP
-
-      close(out_unit)
-
-    end do NUCLIDE_LOOP
-
-  end subroutine calculate_avg_urr_xs
+  end subroutine prob_tables
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -1439,16 +1738,18 @@ contains
 ! to utilize mlbw_resonances, slbw_resonances, in place of rm_resonances, where
 ! appropriate
 
-  subroutine calculate_urr_xs_otf(i_nuc, E)
+  subroutine calculate_urr_xs_otf(i_sotope, i_nuc, E, T_K)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(Resonance) :: res ! resonance object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    type(CrossSection) :: sig_t   ! total xs object
-    integer :: i_nuc  ! nuclide index
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
+    type(CrossSection) :: t ! total xs object
+    integer :: i_sotope ! isotope index
+    integer :: i_nuc    ! nuclide index
     integer :: i_E    ! energy grid index
     integer :: i_l    ! orbital quantum #
     integer :: i_J    ! total angular momentum quantum #
@@ -1463,29 +1764,28 @@ contains
     real(8) :: capture_xs   ! radiative capture cross section
     real(8) :: E            ! neutron energy [eV]
     real(8) :: m            ! pointwise xs energy interpolation factor
-    real(8) :: f            ! resonance parameters energy interpolation factor
-!$omp threadprivate(nuc) 
+    real(8) :: fact         ! resonance parameters energy interpolation factor
+    real(8) :: T_K          ! isotope temperature [K]
+!$omp threadprivate(tope, nuc) 
 
-    ! Set pointer to nuclide
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
+    nuc  => nuclides(i_nuc)
 
-    micro_xs(i_nuc) % use_ptable = .true.
-
-    if (nuc % point_urr_xs) then
-      i_E = binary_search(nuc % urr_energy, size(nuc % urr_energy), E)
-      m = interp_factor(E, nuc % urr_energy(i_E), nuc % urr_energy(i_E + 1), &
-        & nuc % INT)
+    if (tope % point_urr_xs) then
+      i_E = binary_search(tope % urr_energy, size(tope % urr_energy), E)
+      m = interp_factor(E, tope % urr_energy(i_E), tope % urr_energy(i_E + 1), &
+        & tope % INT)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & nuc % urr_elastic(i_E), nuc % urr_elastic(i_E + 1), nuc % INT)
+        & tope % urr_elastic(i_E), tope % urr_elastic(i_E + 1), tope % INT)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & nuc % urr_fission(i_E), nuc % urr_fission(i_E + 1), nuc % INT)
+        & tope % urr_fission(i_E), tope % urr_fission(i_E + 1), tope % INT)
       micro_xs(i_nuc) % absorption = interpolator(m, &
-        & nuc % urr_capture(i_E) + nuc % urr_fission(i_E), &
-        & nuc % urr_capture(i_E + 1) + nuc % urr_fission(i_E + 1), nuc % INT)
-      if ((nuc % urr_inelastic(i_E) >= ZERO) &
-        & .and. (nuc % urr_inelastic(i_E + 1) >= ZERO)) then
+        & tope % urr_capture(i_E) + tope % urr_fission(i_E), &
+        & tope % urr_capture(i_E + 1) + tope % urr_fission(i_E + 1), tope % INT)
+      if ((tope % urr_inelastic(i_E) >= ZERO) &
+        & .and. (tope % urr_inelastic(i_E + 1) >= ZERO)) then
         inelastic_xs = interpolator(m, &
-          & nuc % urr_inelastic(i_E), nuc % urr_inelastic(i_E + 1), nuc % INT)
+          & tope % urr_inelastic(i_E), tope % urr_inelastic(i_E + 1), tope % INT)
       else
         inelastic_xs = ZERO
       end if
@@ -1494,7 +1794,7 @@ contains
                             & + inelastic_xs
 
       ! Determine nu-fission cross section
-      if (nuc % fissionable) then
+      if (tope % fissionable) then
         micro_xs(i_nuc) % nu_fission = nu_total(nuc, E/1.0e6_8) * &
           micro_xs(i_nuc) % fission
       end if
@@ -1502,108 +1802,108 @@ contains
     end if
 
     ! set current temperature
-    nuc % T = nuc % kT / K_BOLTZMANN
+    tope % T = T_K
 
-    ! reset xs objects
-    call flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
+    ! reset xs accumulators
+    call flush_sigmas(t, n, g, f, x)
 
     ! loop over orbital quantum #'s
-    ORBITAL_ANG_MOM_LOOP: do i_l = 1, nuc % NLS(nuc % i_urr)
+    ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
       ! set current orbital angular momentum quantum #
-      nuc % L = i_l - 1
+      tope % L = i_l - 1
 
       ! get the number of contributing l-wave resonances for this l
-      n_res = n_res_contrib(nuc % L)
+      n_res = n_res_contrib(tope % L)
 
       ! loop over total angular momentum quantum #'s
-      TOTAL_ANG_MOM_LOOP: do i_J = 1, nuc % NJS(i_l)
+      TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum #
-        nuc % J = nuc % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % data(i_J)
 
         ! compute statistical spin factor
-        nuc % g_J = (TWO * nuc % J + ONE) &
-                & / (FOUR * nuc % SPI(nuc % i_urr) + TWO)
+        tope % g_J = (TWO * tope % J + ONE) &
+                & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
         ! set current partial width degrees of freedom
-        nuc % AMUX = int(nuc % DOFX(i_l) % data(i_J))
-        nuc % AMUN = int(nuc % DOFN(i_l) % data(i_J))
-        nuc % AMUG = int(nuc % DOFG(i_l) % data(i_J))
-        nuc % AMUF = int(nuc % DOFF(i_l) % data(i_J))
+        tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
+        tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
+        tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
+        tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
 
-        ! reset the resonance object for a new spin sequence
-        call res % reset_resonance(i_nuc)
+        ! zero the resonance counter
+        res % i_res = 0
 
         ! set mean URR parameters to neutron energy
-        nuc % E = E
-        call set_mean_parameters(i_nuc, nuc % E, i_l, i_J)
+        tope % E = E
+        call set_mean_parameters(i_sotope, tope % E, i_l, i_J)
 
         ! sample unresolved resonance parameters for this spin
         ! sequence, at this energy
-        call res % sample_parameters(i_nuc)
+        call res % sample_parameters(i_sotope)
 
         ! loop over the addition of resonances to this ladder
         RESONANCES_LOOP: do i_r = 1, n_res
 
           ! interpolate mean URR parameters to current resonance energy
-          call set_mean_parameters(i_nuc, res % E_lam, i_l, i_J)
+          call set_mean_parameters(i_sotope, res % E_lam, i_l, i_J)
 
           ! sample unresolved resonance parameters for this spin
           ! sequence, at this energy
-          call res % sample_parameters(i_nuc)
+          call res % sample_parameters(i_sotope)
 
           ! calculate the contribution to the partial cross sections,
           ! at this energy, from an additional resonance 
-          call res % calc_xs(i_nuc)
+          call res % calc_xs(i_sotope)
 
           ! add this contribution to the accumulated partial cross
           ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-          call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+! TODO: move t outside of loop
+          call accum_resonances(res, t, n, g, f, x)
 
         end do RESONANCES_LOOP
       end do TOTAL_ANG_MOM_LOOP
     end do ORBITAL_ANG_MOM_LOOP
 
     ! add potential scattering contribution
-    call sig_t % potential_xs(i_nuc)
-    call sig_n % potential_xs(i_nuc)
+    call t % potential_xs(i_sotope)
+    call n % potential_xs(i_sotope)
 
     ! determine energy table
     i_energy = 1
     do
-      if (E <= nuc % ES(i_energy + 1)) exit
+      if (E <= tope % ES(i_energy + 1)) exit
       i_energy = i_energy + 1
-      if (i_energy >= nuc % NE) then
-        i_energy = nuc % NE - 1
+      if (i_energy >= tope % NE) then
+        i_energy = tope % NE - 1
         exit
       end if
     end do
 
     ! interpret MF3 data according to ENDF-6 LSSF flag:
     ! MF3 contains background xs values, add to MF2 resonance contributions
-    if (nuc % LSSF == 0) then
+    if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add2bckgrnd(i_nuc, NONE, sig_t, sig_n, sig_gam, sig_f, sig_x)
+      call add2bckgrnd(i_sotope, i_nuc, NONE, t, n, g, f, x)
     
     ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
-    elseif (nuc % LSSF == 1) then
-      ! TODO: LOG_LOG or maybe just nuc % INT?
+    elseif (tope % LSSF == 1) then
+      ! TODO: LOG_LOG or maybe just tope % INT?
 
       ! tabulated unresolved resonance parameters interpolation factor
-      f = interp_factor(E, nuc % ES(i_energy), nuc % ES(i_energy+1), nuc % INT)
+      fact = interp_factor(E, tope % ES(i_energy), tope % ES(i_energy+1), tope % INT)
 
       ! interpolate infinite-dilute URR xs
-      call interp_avg_urr_xs(f, i_nuc, i_energy, &
+      call interp_avg_urr_xs(fact, i_sotope, i_energy, &
         avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       if (avg_urr_x_xs > ZERO) then
         if (competitive) then
           ! self-shielded treatment of competitive inelastic cross section
-          inelastic_xs = sig_x % val / avg_urr_x_xs &
+          inelastic_xs = x % xs / avg_urr_x_xs &
             & * (micro_xs(i_nuc) % total &
             & - micro_xs(i_nuc) % absorption &
             & - micro_xs(i_nuc) % elastic)
@@ -1619,7 +1919,7 @@ contains
           & - micro_xs(i_nuc) % elastic
       end if
 
-      micro_xs(i_nuc) % elastic = sig_n % val / avg_urr_n_xs &
+      micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
       ! set negative SLBW elastic xs to zero
@@ -1627,11 +1927,11 @@ contains
         micro_xs(i_nuc) % elastic = ZERO
       end if
 
-      capture_xs = sig_gam % val / avg_urr_g_xs &
+      capture_xs = g % xs / avg_urr_g_xs &
         & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
 
       if (avg_urr_f_xs > ZERO) then
-        micro_xs(i_nuc) % fission = sig_f % val / avg_urr_f_xs &
+        micro_xs(i_nuc) % fission = f % xs / avg_urr_f_xs &
           & * micro_xs(i_nuc) % fission
       else
         micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
@@ -1648,7 +1948,7 @@ contains
     end if
 
     ! Determine nu-fission cross section
-    if (nuc % fissionable) then
+    if (tope % fissionable) then
       micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0e6_8) &
         & * micro_xs(i_nuc) % fission
     end if
@@ -1657,44 +1957,20 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RESET_RESONANCE resets the resonance object before proceeding to add
-! contributions from the next spin sequence
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine reset_resonance(this, i_nuc)
-
-    class(Resonance), intent(inout) :: this ! pseudo-resonance object
-
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-    integer :: i_nuc ! nuclide index
-
-    nuc => nuclides(i_nuc)
-
-    ! prepare to construct a new ladder (reset resonance counter and energies)
-    this % i_res     = 0
-    this % E_lam_up  = nuc % E
-    this % E_lam_low = nuc % E
-    this % E_lam_tmp = nuc % E
-
-  end subroutine reset_resonance
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
 ! SAMPLE_PARAMETERS samples unresolved resonance parameters for the next
 ! pseudo-resonance added to the ladder
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine sample_parameters(this, i_nuc)
+  subroutine sample_parameters(this, i_sotope)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
-    integer :: i_nuc ! nuclide index
+    integer :: i_sotope ! isotope index
 
     ! sample unresolved resonance parameters for this resonance
-    call this % level_spacing(i_nuc)
-    call this % channel_width(i_nuc)
+    call this % level_spacing(i_sotope)
+    call this % channel_width(i_sotope)
 
   end subroutine sample_parameters
 
@@ -1704,25 +1980,25 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine level_spacing(this, i_nuc)
+  subroutine level_spacing(this, i_sotope)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-    integer :: i_nuc ! nuclide index
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+    integer :: i_sotope ! isotope index
     integer :: n_res ! number of resonances to include for a given l-wave
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
-    n_res = n_res_contrib(nuc % L)
+    n_res = n_res_contrib(tope % L)
 
     ! sample a level spacing from the Wigner distribution
-    this % D_lJ = wigner_dist(nuc % D)
+    this % D_lJ = wigner_dist(tope % D)
 
     ! set lowest energy (i.e. the first) resonance for this ladder well below
     ! the energy grid point such that the ladder spans a sufficient energy range
     if (this % i_res == 0) then
-      this % E_lam = (nuc % E - n_res/2 * nuc % D) &
+      this % E_lam = (tope % E - n_res/2 * tope % D) &
                  & + (ONE - TWO * prn()) * this % D_lJ
       this % i_res = this % i_res + 1
 
@@ -1784,12 +2060,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine channel_width(this, i_nuc)
+  subroutine channel_width(this, i_sotope)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
-    integer :: i_nuc  ! nuclide index
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
+    integer :: i_sotope  ! isotope index
     integer :: i_tabn ! elastic chi-squared table index
     integer :: i_tabg ! capture chi-squared table index
     integer :: i_tabf ! fission chi-squared table index
@@ -1797,7 +2073,7 @@ contains
     real(8) :: rho    ! derived variable
     real(8) :: nu     ! derived variable
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
 ! TODO: Actually sample a chi-squared distribution rather than using
 ! tabulated values. Look at the third Monte Carlo Sampler?
@@ -1810,34 +2086,34 @@ contains
 
     ! compute factors needed to go from the mean reduced width amplitude that is
     ! provided by ENDF for scattering to what we want - a partial width
-    rho = wavenumber(nuc % awr, this % E_lam) * nuc % ac(nuc % i_urr)
-    nu  = penetration(nuc % L, rho) / rho
+    rho = wavenumber(tope % AWR, this % E_lam) * tope % ac(tope % i_urr)
+    nu  = penetration(tope % L, rho) / rho
 
     ! use the sampled tabulated chi-squared values to calculate sample widths
     ! neutron width
-    if (nuc % AMUN > 0) then
-      this % Gam_n = nuc % GN0 * sqrt(this % E_lam) * nu &
-        & * chi2(i_tabn, nuc % AMUN)
+    if (tope % AMUN > 0) then
+      this % Gam_n = tope % GN0 * sqrt(this % E_lam) * nu &
+        & * chi2(i_tabn, tope % AMUN)
     else
       this % Gam_n = ZERO
     end if
 
     ! fission width
-    if (nuc % AMUF > 0) then
-      this % Gam_f = nuc % GF  * chi2(i_tabf, nuc % AMUF)
-      this % Gam_f = this % Gam_f / dble(nuc % AMUF)
+    if (tope % AMUF > 0) then
+      this % Gam_f = tope % GF  * chi2(i_tabf, tope % AMUF)
+      this % Gam_f = this % Gam_f / dble(tope % AMUF)
     else 
       this % Gam_f = ZERO
     end if
 
     ! constant radiative width
     ! (many channels -> many degrees of freedom -> Dirac delta)
-    this % Gam_gam = nuc % GG
+    this % Gam_gam = tope % GG
 
     ! competitive width
-    if (nuc % AMUX > 0) then
-      this % Gam_x = nuc % GX  * chi2(i_tabx, nuc % AMUX)
-      this % Gam_x = this % Gam_x / dble(nuc % AMUX)
+    if (tope % AMUX > 0) then
+      this % Gam_x = tope % GX  * chi2(i_tabx, tope % AMUX)
+      this % Gam_x = this % Gam_x / dble(tope % AMUX)
     else
       this % Gam_x = ZERO
     end if
@@ -1854,11 +2130,11 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calc_xs(this, i_nuc)
+  subroutine calc_xs(this, i_sotope)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
-    integer :: i_nuc ! nuclide index
+    integer :: i_sotope ! isotope index
 
     ! accumulate the resonance counter by 1 for this ladder realization
     this % i_res = this % i_res + 1
@@ -1866,7 +2142,7 @@ contains
     ! calculate cross section contributions from an additional resonance
     select case(formalism)
     case (SLBW)
-      call this % slbw_xs(i_nuc)
+      call this % slbw_xs(i_sotope)
     case (MLBW)
       call fatal_error('MLBW formalism not yet supported for the URR')
     case (MNBW)
@@ -1885,12 +2161,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine slbw_xs(this, i_nuc)
+  subroutine slbw_xs(this, i_sotope)
 
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-    integer :: i_nuc ! nuclide index
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+    integer :: i_sotope ! isotope index
 
     ! energy variables
     real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
@@ -1910,38 +2186,38 @@ contains
     real(8) :: sig_lam ! peak resonance cross section
     real(8) :: sig_lam_Gam_t_n_psi
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
     ! set variables
-    k_n = wavenumber(nuc % awr, nuc % E)
-    k_n_x = k_n!wavenumber(nuc % awr, abs(nuc % E - nuc % QI(4)))
-    k_lam = wavenumber(nuc % awr, this % E_lam)
-    k_lam_x = k_lam!wavenumber(nuc % awr, abs(this % E_lam - nuc % QI(4)))
+    k_n = wavenumber(tope % AWR, tope % E)
+    k_n_x = k_n!wavenumber(tope % AWR, abs(tope % E - tope % QI(4)))
+    k_lam = wavenumber(tope % AWR, this % E_lam)
+    k_lam_x = k_lam!wavenumber(tope % AWR, abs(this % E_lam - tope % QI(4)))
 
 ! TODO: handle reaction channel energies correctly
 
     E_shift = this % E_lam &
-      & + (this % Gam_n * (shift(nuc % L, k_lam*nuc % ac(nuc % i_urr)) &
-      & - shift(nuc % L, k_n*nuc % ac(nuc % i_urr)))) &
-      & / (TWO * penetration(nuc % L, k_lam*nuc % ac(nuc % i_urr)))
+      & + (this % Gam_n * (shift(tope % L, k_lam*tope % ac(tope % i_urr)) &
+      & - shift(tope % L, k_n*tope % ac(tope % i_urr)))) &
+      & / (TWO * penetration(tope % L, k_lam*tope % ac(tope % i_urr)))
 
     Gam_n_n = this % Gam_n &
-      & * penetration(nuc % L, k_n*nuc % ac(nuc % i_urr)) &
-      & / penetration(nuc % L, k_lam*nuc % ac(nuc % i_urr))
+      & * penetration(tope % L, k_n*tope % ac(tope % i_urr)) &
+      & / penetration(tope % L, k_lam*tope % ac(tope % i_urr))
 
     Gam_x_n = this % Gam_x &
-      & * penetration(nuc % L, k_n_x*nuc % ac(nuc % i_urr)) &
-      & / penetration(nuc % L, k_lam_x*nuc % ac(nuc % i_urr))
+      & * penetration(tope % L, k_n_x*tope % ac(tope % i_urr)) &
+      & / penetration(tope % L, k_lam_x*tope % ac(tope % i_urr))
 
     Gam_t_n = this % Gam_t - this % Gam_n - this % Gam_x &
       & + Gam_n_n + Gam_x_n
 
     theta = HALF * Gam_t_n &
-      & / sqrt(K_BOLTZMANN * 1.0E6_8 * nuc % T * nuc % E / nuc % awr)
+      & / sqrt(K_BOLTZMANN * 1.0E6_8 * tope % T * tope % E / tope % AWR)
 
-    x = (TWO * (nuc % E - E_shift)) / Gam_t_n
+    x = (TWO * (tope % E - E_shift)) / Gam_t_n
 
-    sig_lam = FOUR * PI / (k_lam * k_lam) * nuc % g_J &
+    sig_lam = FOUR * PI / (k_lam * k_lam) * tope % g_J &
           & * this % Gam_n / this % Gam_t
 
 ! TODO: Correct negative scattering xs values to 0 b in the library version of
@@ -1951,10 +2227,10 @@ contains
 
     ! this particular form comes from the NJOY2012 manual
     if (Gam_n_n > ZERO) then
-      this % dsig_n = sig_lam * &
-        & ((cos(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))) &
+      this % dxs_n = sig_lam * &
+        & ((cos(TWO * phase_shift(tope % L, k_n*tope % AP(tope % i_urr))) &
         & - (ONE - Gam_n_n / Gam_t_n)) * psi(theta, x) &
-        & + sin(TWO * phase_shift(nuc % L, k_n*nuc % AP(nuc % i_urr))) &
+        & + sin(TWO * phase_shift(tope % L, k_n*tope % AP(tope % i_urr))) &
         & * chi(theta, x))
     else
       call fatal_error('Encountered a non-positive elastic scattering width &
@@ -1964,27 +2240,27 @@ contains
     sig_lam_Gam_t_n_psi = sig_lam * psi(theta, x) / Gam_t_n
 
     if (this % Gam_gam > ZERO) then
-      this % dsig_gam = sig_lam_Gam_t_n_psi * this % Gam_gam
+      this % dxs_gam = sig_lam_Gam_t_n_psi * this % Gam_gam
     else
-      this % dsig_gam = ZERO
+      this % dxs_gam = ZERO
     end if
 
     if (this % Gam_f > ZERO) then
-      this % dsig_f   = sig_lam_Gam_t_n_psi * this % Gam_f
+      this % dxs_f   = sig_lam_Gam_t_n_psi * this % Gam_f
     else
-      this % dsig_f   = ZERO
+      this % dxs_f   = ZERO
     end if
 
     if (Gam_x_n > ZERO) then
-      this % dsig_x   = sig_lam_Gam_t_n_psi * Gam_x_n
+      this % dxs_x   = sig_lam_Gam_t_n_psi * Gam_x_n
     else
-      this % dsig_x   = ZERO
+      this % dxs_x   = ZERO
     end if
 
-    this % dsig_t = this % dsig_n   &
-                & + this % dsig_gam &
-                & + this % dsig_f   &
-                & + this % dsig_x
+    this % dxs_t = this % dxs_n   &
+                & + this % dxs_gam &
+                & + this % dxs_f   &
+                & + this % dxs_x
 
   end subroutine slbw_xs
 
@@ -2218,17 +2494,13 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine accum_resonance(this, sig)
+  subroutine accum_resonance(this, dxs)
 
     class(CrossSection), intent(inout) :: this ! cross section object
-
-    real(8) :: sig ! contribution to xs from the new resonance
-
-    ! set the current xs value as the last value
-    this % val_last = this % val
+    real(8) :: dxs ! contribution to xs from the new resonance
 
     ! add xs contribution from a new resonance to the xs value at the current E
-    this % val = this % val + sig
+    this % xs = this % xs + dxs
 
   end subroutine accum_resonance
 
@@ -2239,33 +2511,33 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine potential_xs(this, i_nuc)
+  subroutine potential_xs(this, i_sotope)
 
     class(CrossSection), intent(inout) :: this ! cross section object
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-    integer :: i_nuc   ! index in nuclides
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+    integer :: i_sotope   ! index in nuclides
     real(8) :: sig_pot ! potential scattering cross section
     real(8) :: k_n     ! center-of-mass neutron wavenumber
     integer :: i_l     ! orbital quantum # index
 
     ! set nuclide variables
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
     ! compute neutron COM wavenumber
-    k_n = wavenumber(nuc % awr, nuc % E)
+    k_n = wavenumber(tope % AWR, tope % E)
 
     ! compute potential scattering xs by adding contribution from each l-wave
     sig_pot = ZERO
-    do i_l = 0, nuc % NLS(nuc % i_urr) - 1
+    do i_l = 0, tope % NLS(tope % i_urr) - 1
       sig_pot = sig_pot &
         & + FOUR * PI / (k_n * k_n) * (TWO * dble(i_l) + ONE) &
-        & * (sin(phase_shift(i_l, k_n*nuc % AP(nuc % i_urr)))) &
-        & * (sin(phase_shift(i_l, k_n*nuc % AP(nuc % i_urr))))
+        & * (sin(phase_shift(i_l, k_n*tope % AP(tope % i_urr)))) &
+        & * (sin(phase_shift(i_l, k_n*tope % AP(tope % i_urr))))
     end do
 
     ! add the potential scattering xs to this xs
-    this % val = this % val + sig_pot
+    this % xs = this % xs + sig_pot
 
   end subroutine potential_xs
 
@@ -2276,65 +2548,209 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine accum_history(this)
+  subroutine accum_history(this, i_E, i_T)
 
-    class(CrossSection), intent(inout) :: this ! cross section object
+    class(Isotope), intent(inout) :: this ! cross section object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+    integer :: i_b ! total xs band that this realization falls in
 
-    ! accumulate history xs value for this realization
-    this % xs_sum_tmp = this % xs_sum_tmp + this % val
+    ! accumulate infinite-dilute xs values for this realization
+    this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_t % xs
+    this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_n % xs
+    this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_g % xs
+    this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_f % xs
+    this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_x % xs
+
+    ! determine band number
+    i_b = 1
+    do
+      if (this % prob_tables(i_E, i_T) % avg_t % xs < band_values(i_b)) exit
+      i_b = i_b + 1
+      if (i_b == n_bands) exit
+    end do
+
+    ! add partial xs values to the band's single-batch sums
+    this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum + 1
+    this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_t % xs
+    this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_n % xs
+    this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_g % xs
+    this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_f % xs
+    this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
+      & = this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
+      & + this % prob_tables(i_E, i_T) % avg_x % xs
 
   end subroutine accum_history
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! FLUSH_HISTORY flushes the single-history xs realization
+! FLUSH_HISTORIES flushes the single-history probability table cross section
+! values
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine flush_history(this)
+  subroutine flush_histories(this)
 
-    class(CrossSection), intent(inout) :: this ! cross section object
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
 
-    ! clear accumulated xs values for this realization
-    this % val      = ZERO
-    this % val_last = ZERO
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        this % prob_tables(i_E, i_T) % avg_t % xs = ZERO
+        this % prob_tables(i_E, i_T) % avg_n % xs = ZERO
+        this % prob_tables(i_E, i_T) % avg_g % xs = ZERO
+        this % prob_tables(i_E, i_T) % avg_f % xs = ZERO
+        this % prob_tables(i_E, i_T) % avg_x % xs = ZERO
+      end do
+    end do
 
-  end subroutine flush_history
+  end subroutine flush_histories
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ACCUM_BATCH adds the single-batch xs realization to the overall accumulator
+! ACCUM_BATCH adds the single-batch results to the overall accumulators
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine accum_batch(this)
 
-    class(CrossSection), intent(inout) :: this ! cross section object
+    class(Isotope), intent(inout) :: this ! cross section object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+    integer :: i_b ! probability band index
 
-    ! accumulate batch-wise mean
-    this % xs_sum = this % xs_sum + this % xs_sum_tmp / dble(histories_avg_urr)
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        do i_b = 1, n_bands
+          if (this % E /= E_values(i_E)) cycle
+          ! accumulate single-batch band means and squared band means
+          if (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum /= 0) then
+            this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
+              & = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
+              & + this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum
+            this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
+              & = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
+              & + (this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum)
+            this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
+              & = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
+              & + this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum
+            this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
+              & = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
+              & + (this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum)
+            this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
+              & = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
+              & + this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum
+            this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
+              & = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
+              & + (this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum)
+            this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
+              & = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
+              & + this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum
+            this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
+              & = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
+              & + (this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum)
+            this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
+              & = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
+              & + this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum
+            this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
+              & = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
+              & + (this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum)
 
-    ! accumulate squared batch-wise mean
-    this % xs_sum2 = this % xs_sum2 &
-      & + (this % xs_sum_tmp / dble(histories_avg_urr)) &
-      & * (this % xs_sum_tmp / dble(histories_avg_urr))
+            ! accumulate single-batch band counts
+            this % prob_tables(i_E, i_T) % t(i_b) % cnt &
+              & = this % prob_tables(i_E, i_T) % t(i_b) % cnt &
+              & + this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum
+
+            ! accumulate squared single-batch band counts
+            this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
+              & = this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
+              & + (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
+              & *  this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum)
+          end if
+        end do
+
+        ! accumulate single-batch infinite-dilute means
+        this % prob_tables(i_E, i_T) % avg_t % xs_sum &
+          & = this % prob_tables(i_E, i_T) % avg_t % xs_sum &
+          & + this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+          & / dble(histories_avg_urr)
+        this % prob_tables(i_E, i_T) % avg_n % xs_sum &
+          & = this % prob_tables(i_E, i_T) % avg_n % xs_sum &
+          & + this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+          & / dble(histories_avg_urr)
+        this % prob_tables(i_E, i_T) % avg_g % xs_sum &
+          & = this % prob_tables(i_E, i_T) % avg_g % xs_sum &
+          & + this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+          & / dble(histories_avg_urr)
+        this % prob_tables(i_E, i_T) % avg_f % xs_sum &
+          & = this % prob_tables(i_E, i_T) % avg_f % xs_sum &
+          & + this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+          & / dble(histories_avg_urr)
+        this % prob_tables(i_E, i_T) % avg_x % xs_sum &
+          & = this % prob_tables(i_E, i_T) % avg_x % xs_sum &
+          & + this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+          & / dble(histories_avg_urr)
+
+        ! accumulate squared single-batch infinite-dilute means
+        this % prob_tables(i_E, i_T) % avg_t % xs_sum2 &
+          & = this % prob_tables(i_E, i_T) % avg_t % xs_sum2 &
+          & + (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+          & / dble(histories_avg_urr))&
+          & * (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+          & / dble(histories_avg_urr))
+        this % prob_tables(i_E, i_T) % avg_n % xs_sum2 &
+          & = this % prob_tables(i_E, i_T) % avg_n % xs_sum2 &
+          & + (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+          & / dble(histories_avg_urr))&
+          & * (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+          & / dble(histories_avg_urr))
+        this % prob_tables(i_E, i_T) % avg_g % xs_sum2 &
+          & = this % prob_tables(i_E, i_T) % avg_g % xs_sum2 &
+          & + (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+          & / dble(histories_avg_urr))&
+          & * (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+          & / dble(histories_avg_urr))
+        this % prob_tables(i_E, i_T) % avg_f % xs_sum2 &
+          & = this % prob_tables(i_E, i_T) % avg_f % xs_sum2 &
+          & + (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+          & / dble(histories_avg_urr))&
+          & * (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+          & / dble(histories_avg_urr))
+        this % prob_tables(i_E, i_T) % avg_x % xs_sum2 &
+          & = this % prob_tables(i_E, i_T) % avg_x % xs_sum2 &
+          & + (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+          & / dble(histories_avg_urr))&
+          & * (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+          & / dble(histories_avg_urr))
+      end do
+    end do
 
   end subroutine accum_batch
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! FLUSH_BATCH clears the single-batch sum of xs realizations for the batch
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine flush_batch(this)
-
-    class(CrossSection), intent(inout) :: this ! cross section object
-
-    ! clear accumulated xs values for this batch
-    this % xs_sum_tmp = ZERO
-
-  end subroutine flush_batch
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -2344,45 +2760,133 @@ contains
 
   subroutine calc_stats(this, i_bat_int)
 
-    class(CrossSection), intent(inout) :: this ! cross section object
+    class(Isotope), intent(inout), target :: this ! cross section object
+    type(ProbabilityTable), pointer :: ptable => null() ! prob table pointer
+    integer :: i_E       ! tabulated URR energy index
+    integer :: i_T       ! temperature index
+    integer :: i_b       ! probability band index
     integer :: i_bat_int ! current batch index
     real(8) :: i_bat ! current batch index for calcs
 
     i_bat = dble(i_bat_int)
 
-    ! compute mean xs value
-    this % xs_mean  = this % xs_sum / i_bat
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
 
-    if (this % xs_mean /= ZERO .and. i_bat_int > 1) then
-      ! compute standard error of mean xs value
-      this % xs_sem   = sqrt((ONE / (i_bat - ONE)) &
-        & * (this % xs_sum2 / i_bat &
-        & - (this % xs_mean) * (this % xs_mean)))
+        if (this % E /= E_values(i_E)) cycle
+        ptable => this % prob_tables(i_E, i_T)
 
-      ! compute relative uncertainty in xs value
-      this % rel_unc  = this % xs_sem / this % xs_mean
-    end if
+        do i_b = 1, n_bands
+          if (ptable % t(i_b) % cnt > 0) then
+            ptable % t(i_b) % xs_mean &
+              & = ptable % t(i_b) % xs_sum / ptable % t(i_b) % cnt
+            ptable % n(i_b) % xs_mean &
+              & = ptable % n(i_b) % xs_sum / ptable % t(i_b) % cnt
+            ptable % g(i_b) % xs_mean &
+              & = ptable % g(i_b) % xs_sum / ptable % t(i_b) % cnt
+            ptable % f(i_b) % xs_mean &
+              & = ptable % f(i_b) % xs_sum / ptable % t(i_b) % cnt
+            ptable % x(i_b) % xs_mean &
+              & = ptable % x(i_b) % xs_sum / ptable % t(i_b) % cnt
+          end if
+          ptable % t(i_b) % cnt_mean &
+            & = ptable % t(i_b) % cnt / (i_bat * histories_avg_urr)
+          ptable % n(i_b) % cnt_mean &
+            & = ptable % n(i_b) % cnt / (i_bat * histories_avg_urr)
+          ptable % g(i_b) % cnt_mean &
+            & = ptable % g(i_b) % cnt / (i_bat * histories_avg_urr)
+          ptable % f(i_b) % cnt_mean &
+            & = ptable % f(i_b) % cnt / (i_bat * histories_avg_urr)
+          ptable % x(i_b) % cnt_mean &
+            & = ptable % x(i_b) % cnt / (i_bat * histories_avg_urr)
+        end do
+
+        ptable % avg_t % xs_mean &
+          & = ptable % avg_t % xs_sum / i_bat
+        ptable % avg_n % xs_mean &
+          & = ptable % avg_n % xs_sum / i_bat
+        ptable % avg_g % xs_mean &
+          & = ptable % avg_g % xs_sum / i_bat
+        ptable % avg_f % xs_mean &
+          & = ptable % avg_f % xs_sum / i_bat
+        ptable % avg_x % xs_mean &
+          & = ptable % avg_x % xs_sum / i_bat
+
+        if (ptable % avg_t % xs_mean /= ZERO &
+          & .and. i_bat_int > 1) then
+          ! compute standard errors of mean xs values
+          ptable % avg_t % xs_sem &
+            & = sqrt((ONE / (i_bat - ONE)) &
+            & * (ptable % avg_t % xs_sum2 / i_bat &
+            & - (ptable % avg_t % xs_mean) &
+            & * (ptable % avg_t % xs_mean)))
+
+          ! compute relative uncertainties in xs values
+          ptable % avg_t % rel_unc &
+            & = ptable % avg_t % xs_sem &
+            & / ptable % avg_t % xs_mean
+        end if
+        if (ptable % avg_n % xs_mean /= ZERO &
+          & .and. i_bat_int > 1) then
+          ! compute standard errors of mean xs values
+          ptable % avg_n % xs_sem &
+            & = sqrt((ONE / (i_bat - ONE)) &
+            & * (ptable % avg_n % xs_sum2 / i_bat &
+            & - (ptable % avg_n % xs_mean) &
+            & * (ptable % avg_n % xs_mean)))
+
+          ! compute relative uncertainties in xs values
+          ptable % avg_n % rel_unc &
+            & = ptable % avg_n % xs_sem &
+            & / ptable % avg_n % xs_mean
+        end if
+        if (ptable % avg_g % xs_mean /= ZERO &
+          & .and. i_bat_int > 1) then
+          ! compute standard errors of mean xs values
+          ptable % avg_g % xs_sem &
+            & = sqrt((ONE / (i_bat - ONE)) &
+            & * (ptable % avg_g % xs_sum2 / i_bat &
+            & - (ptable % avg_g % xs_mean) &
+            & * (ptable % avg_g % xs_mean)))
+
+          ! compute relative uncertainties in xs values
+          ptable % avg_g % rel_unc &
+            & = ptable % avg_g % xs_sem &
+            & / ptable % avg_g % xs_mean
+        end if
+        if (ptable % avg_f % xs_mean /= ZERO &
+          & .and. i_bat_int > 1) then
+          ! compute standard errors of mean xs values
+          ptable % avg_f % xs_sem &
+            & = sqrt((ONE / (i_bat - ONE)) &
+            & * (ptable % avg_f % xs_sum2 / i_bat &
+            & - (ptable % avg_f % xs_mean) &
+            & * (ptable % avg_f % xs_mean)))
+
+          ! compute relative uncertainties in xs values
+          ptable % avg_f % rel_unc &
+            & = ptable % avg_f % xs_sem &
+            & / ptable % avg_f % xs_mean
+        end if
+        if (ptable % avg_x % xs_mean /= ZERO &
+          & .and. i_bat_int > 1) then
+          ! compute standard errors of mean xs values
+          ptable % avg_x % xs_sem &
+            & = sqrt((ONE / (i_bat - ONE)) &
+            & * (ptable % avg_x % xs_sum2 / i_bat &
+            & - (ptable % avg_x % xs_mean) &
+            & * (ptable % avg_x % xs_mean)))
+
+          ! compute relative uncertainties in xs values
+          ptable % avg_x % rel_unc &
+            & = ptable % avg_x % xs_sem &
+            & / ptable % avg_x % xs_mean
+        end if
+
+      end do
+    end do
 
   end subroutine calc_stats
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! FLUSH_STATS clears the batch statistics and accumulators
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine flush_stats(this)
-
-    class(CrossSection), intent(inout) :: this ! cross section object
-
-    ! clear mean, SEM, and overall accumulators
-    this % xs_mean = ZERO
-    this % xs_sem  = ZERO
-    this % rel_unc = ZERO
-    this % xs_sum  = ZERO
-    this % xs_sum2 = ZERO
-
-  end subroutine flush_stats
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -2455,22 +2959,22 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function E_last_rrr(i_nuc, l_val, J_val) result(E_val)
+  function E_last_rrr(i_sotope, l_val, J_val) result(E_val)
 
-    integer :: i_nuc ! nuclide index
+    integer :: i_sotope ! isotope index
     integer :: i_res ! RRR resonance index for a given l
     integer :: l_val ! orbital quantum number
     real(8) :: J_val ! total angular momentum quantum number
     real(8) :: E_val ! highest-energy RRR resonance energy for (l,J)
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-!$omp threadprivate(nuc)
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
-    do i_res = size(nuc % rm_resonances(l_val + 1) % E_lam), 1, -1
-      if (nuc % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
-        .and. nuc%rm_resonances(l_val+1)%E_lam(i_res) < nuc%EL(nuc%i_urr)) then
-        E_val = nuc % rm_resonances(l_val + 1) % E_lam(i_res)
+    do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
+      if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
+        .and. tope % rm_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
+        E_val = tope % rm_resonances(l_val + 1) % E_lam(i_res)
         exit
       end if
     end do
@@ -2484,24 +2988,24 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function rrr_res(i_nuc, n_rrr_res, l_val, J_val) result(i_res)
+  function rrr_res(i_sotope, n_rrr_res, l_val, J_val) result(i_res)
 
-    integer :: i_nuc     ! nuclide index
+    integer :: i_sotope     ! isotope index
     integer :: n_rrr_res ! how many RRR resonances to go back
     integer :: cnt_res   ! how many RRR resonances have we gone back
     integer :: i_res     ! index of the RRR resonance cnt_res resonances back
     integer :: l_val ! orbital quantum number
     real(8) :: J_val ! total angular momentum quantum number
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-!$omp threadprivate(nuc)
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
     cnt_res   = 0
 
-    do i_res = size(nuc % rm_resonances(l_val + 1) % E_lam), 1, -1
-      if (nuc % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
-        .and. nuc%rm_resonances(l_val+1)%E_lam(i_res) < nuc%EL(nuc%i_urr)) then
+    do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
+      if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
+        .and. tope % rm_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
         cnt_res = cnt_res + 1
       end if
       if (cnt_res == n_rrr_res) exit
@@ -2515,88 +3019,107 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine accum_resonances(res, t, n, g, f, x)
 
     type(Resonance) :: res ! resonance object
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    type(CrossSection) :: t ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
 
-    call sig_t   % accum_resonance(res % dsig_t)
-    call sig_n   % accum_resonance(res % dsig_n)
-    call sig_gam % accum_resonance(res % dsig_gam)
-    call sig_f   % accum_resonance(res % dsig_f)
-    call sig_x   % accum_resonance(res % dsig_x)
+    call t % accum_resonance(res % dxs_t)
+    call n % accum_resonance(res % dxs_n)
+    call g % accum_resonance(res % dxs_gam)
+    call f % accum_resonance(res % dxs_f)
+    call x % accum_resonance(res % dxs_x)
 
   end subroutine accum_resonances
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! FLUSH_STATISTICS zeroes out statistics accumulators
+! RES_CONTRIB add the contribution from an additional resonance
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine flush_statistics(sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine res_contrib(this, res, i_E, i_T)
 
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    class(Isotope), intent(inout) :: this ! isotope object
+    type(Resonance) :: res ! resonance object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
 
-    call sig_t   % flush_stats()
-    call sig_n   % flush_stats()
-    call sig_gam % flush_stats()
-    call sig_f   % flush_stats()
-    call sig_x   % flush_stats()    
+    call this % prob_tables(i_E, i_T) % avg_t % accum_resonance(res % dxs_t)
+    call this % prob_tables(i_E, i_T) % avg_n % accum_resonance(res % dxs_n)
+    call this % prob_tables(i_E, i_T) % avg_g % accum_resonance(res % dxs_gam)
+    call this % prob_tables(i_E, i_T) % avg_f % accum_resonance(res % dxs_f)
+    call this % prob_tables(i_E, i_T) % avg_x % accum_resonance(res % dxs_x)
 
-  end subroutine flush_statistics
+  end subroutine res_contrib
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! FLUSH_BATCHES zeroes out batch accumulators
+! FLUSH_BATCHES zeroes out probability table batch accumulators
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine flush_batches(sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine flush_batches(this)
 
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+    integer :: i_b ! probability band index
 
-    call sig_t   % flush_batch()
-    call sig_n   % flush_batch()
-    call sig_gam % flush_batch()
-    call sig_f   % flush_batch()
-    call sig_x   % flush_batch()    
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        do i_b = 1, n_bands
+          this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum = ZERO
+          this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum = ZERO
+          this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum = ZERO
+          this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum = ZERO
+          this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum = ZERO
+          this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum = 0
+          this % prob_tables(i_E, i_T) % n(i_b) % cnt_tmp_sum = 0
+          this % prob_tables(i_E, i_T) % g(i_b) % cnt_tmp_sum = 0
+          this % prob_tables(i_E, i_T) % f(i_b) % cnt_tmp_sum = 0
+          this % prob_tables(i_E, i_T) % x(i_b) % cnt_tmp_sum = 0
+        end do
+        this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum = ZERO
+        this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum = ZERO
+        this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum = ZERO
+        this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum = ZERO
+        this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum = ZERO
+        this % prob_tables(i_E, i_T) % avg_t % cnt_tmp_sum = 0
+        this % prob_tables(i_E, i_T) % avg_n % cnt_tmp_sum = 0
+        this % prob_tables(i_E, i_T) % avg_g % cnt_tmp_sum = 0
+        this % prob_tables(i_E, i_T) % avg_f % cnt_tmp_sum = 0
+        this % prob_tables(i_E, i_T) % avg_x % cnt_tmp_sum = 0
+      end do
+    end do
 
   end subroutine flush_batches
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! FLUSH_HISTORIES flushes cross section object histories
+! FLUSH_SIGMAS flushes cross section object histories
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine flush_histories(sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine flush_sigmas(t, n, g, f, x)
 
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    type(CrossSection) :: sig_t   ! total xs object
+    type(CrossSection) :: t ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
 
-    call sig_t   % flush_history()
-    call sig_n   % flush_history()
-    call sig_gam % flush_history()
-    call sig_f   % flush_history()
-    call sig_x   % flush_history()
+    t % xs = ZERO
+    n % xs = ZERO
+    g % xs = ZERO
+    f % xs = ZERO
+    x % xs = ZERO
 
-  end subroutine flush_histories
+  end subroutine flush_sigmas
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -2605,25 +3128,25 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_parameters(res, i_nuc, i_ens, i_res, i_l, i_J)
+  subroutine add_parameters(res, i_sotope, i_ens, i_res, i_l, i_J)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
     type(Resonance) :: res ! resonance object
-    integer :: i_nuc ! nuclide index
+    integer :: i_sotope ! isotope index
     integer :: i_ens ! resonance ensemble index
     integer :: i_res ! resonance counter
     integer :: i_l   ! orbital quantum number index
     integer :: i_J   ! total angular momentum quantum #
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
-    nuc % urr_resonances(i_ens, i_res, i_l) % E_lam(i_J) = res % E_lam
-    nuc % urr_resonances(i_ens, i_res, i_l) % GN(i_J)    = res % Gam_n
-    nuc % urr_resonances(i_ens, i_res, i_l) % GG(i_J)    = res % Gam_gam
-    nuc % urr_resonances(i_ens, i_res, i_l) % GF(i_J)    = res % Gam_f
-    nuc % urr_resonances(i_ens, i_res, i_l) % GX(i_J)    = res % Gam_x
-    nuc % urr_resonances(i_ens, i_res, i_l) % GT(i_J)    = res % Gam_t
+    tope % urr_resonances(i_ens, i_res, i_l) % E_lam(i_J) = res % E_lam
+    tope % urr_resonances(i_ens, i_res, i_l) % GN(i_J)    = res % Gam_n
+    tope % urr_resonances(i_ens, i_res, i_l) % GG(i_J)    = res % Gam_gam
+    tope % urr_resonances(i_ens, i_res, i_l) % GF(i_J)    = res % Gam_f
+    tope % urr_resonances(i_ens, i_res, i_l) % GX(i_J)    = res % Gam_x
+    tope % urr_resonances(i_ens, i_res, i_l) % GT(i_J)    = res % Gam_t
 
   end subroutine add_parameters
 
@@ -2633,35 +3156,35 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine set_parameters(res, i_nuc, i_res, i_l, i_J, LRF_val)
+  subroutine set_parameters(res, i_sotope, i_res, i_l, i_J, LRF_val)
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Resonance) :: res ! resonance object
-    integer :: i_nuc   ! nuclide index
+    integer :: i_sotope   ! isotope index
     integer :: i_res   ! resonance counter
     integer :: i_l     ! orbital quantum number index
     integer :: i_J     ! total angular momentum quantum #
     integer :: LRF_val ! ENDF-6 LRF resonance parameter representation flag
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
     select case(LRF_val)
 ! TODO: LRF == 2 indicates MLBW if LRU == 1, but if LRU == 2, always use SLBW
     case (2)
-      res % E_lam   = nuc % urr_resonances(i_real, i_res, i_l) % E_lam(i_J)
-      res % Gam_n   = nuc % urr_resonances(i_real, i_res, i_l) % GN(i_J)
-      res % Gam_gam = nuc % urr_resonances(i_real, i_res, i_l) % GG(i_J)
-      res % Gam_f   = nuc % urr_resonances(i_real, i_res, i_l) % GF(i_J)
-      res % Gam_x   = nuc % urr_resonances(i_real, i_res, i_l) % GX(i_J)
-      res % Gam_t   = nuc % urr_resonances(i_real, i_res, i_l) % GT(i_J)
+      res % E_lam   = tope % urr_resonances(i_real, i_res, i_l) % E_lam(i_J)
+      res % Gam_n   = tope % urr_resonances(i_real, i_res, i_l) % GN(i_J)
+      res % Gam_gam = tope % urr_resonances(i_real, i_res, i_l) % GG(i_J)
+      res % Gam_f   = tope % urr_resonances(i_real, i_res, i_l) % GF(i_J)
+      res % Gam_x   = tope % urr_resonances(i_real, i_res, i_l) % GX(i_J)
+      res % Gam_t   = tope % urr_resonances(i_real, i_res, i_l) % GT(i_J)
     
     case (3)
-      res % E_lam   = nuc % rm_resonances(i_l) % E_lam(i_res)
-      res % Gam_n   = nuc % rm_resonances(i_l) % GN(i_res)
-      res % Gam_gam = nuc % rm_resonances(i_l) % GG(i_res)
-      res % Gam_f   = nuc % rm_resonances(i_l) % GFA(i_res) &
-                  & + nuc % rm_resonances(i_l) % GFB(i_res)
+      res % E_lam   = tope % rm_resonances(i_l) % E_lam(i_res)
+      res % Gam_n   = tope % rm_resonances(i_l) % GN(i_res)
+      res % Gam_gam = tope % rm_resonances(i_l) % GG(i_res)
+      res % Gam_f   = tope % rm_resonances(i_l) % GFA(i_res) &
+                  & + tope % rm_resonances(i_l) % GFB(i_res)
       res % Gam_x   = ZERO
       res % Gam_t   = res % Gam_n &
                   & + res % Gam_gam &
@@ -2681,57 +3204,57 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine set_mean_parameters(i_nuc, E_res, i_l, i_J)
+  subroutine set_mean_parameters(i_sotope, E_res, i_l, i_J)
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
-    integer :: i_nuc ! nuclide index
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
+    integer :: i_sotope ! isotope index
     integer :: i_E   ! tabulated URR parameters energy index
     integer :: i_l   ! orbital quantum number index
     integer :: i_J   ! total angular momentum quantum #
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
     real(8) :: m     ! energy interpolation factor
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
     ! compute interpolation factor
-    if (E_res < nuc % ES(1)) then
+    if (E_res < tope % ES(1)) then
       i_E = 1
-    else if (E_res > nuc % ES(nuc % NE)) then
-      i_E = nuc % NE - 1
+    else if (E_res > tope % ES(tope % NE)) then
+      i_E = tope % NE - 1
     else
-      i_E = binary_search(nuc % ES, nuc % NE, E_res)
+      i_E = binary_search(tope % ES, tope % NE, E_res)
     end if
-    m = interp_factor(E_res, nuc % ES(i_E), nuc % ES(i_E + 1), nuc % INT)
+    m = interp_factor(E_res, tope % ES(i_E), tope % ES(i_E + 1), tope % INT)
 
     ! set current mean unresolved resonance parameters
-    nuc % D   = interpolator(m, &
-      & nuc % D_mean(i_l) % data(i_J) % data(i_E), &
-      & nuc % D_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-    nuc % GN0 = interpolator(m, &
-      & nuc % GN0_mean(i_l) % data(i_J) % data(i_E), &
-      & nuc % GN0_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
-    nuc % GG  = interpolator(m, &
-      & nuc % GG_mean(i_l) % data(i_J) % data(i_E), &
-      & nuc % GG_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+    tope % D   = interpolator(m, &
+      & tope % D_mean(i_l) % data(i_J) % data(i_E), &
+      & tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+    tope % GN0 = interpolator(m, &
+      & tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
+      & tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+    tope % GG  = interpolator(m, &
+      & tope % GG_mean(i_l) % data(i_J) % data(i_E), &
+      & tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
 
     ! TODO: add in catch here for when threshold occurs between tabulated pts
-    if (nuc % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
-      & .and. nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-      nuc % GF  = interpolator(m, &
-        & nuc % GF_mean(i_l) % data(i_J) % data(i_E), &
-        & nuc % GF_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+    if (tope % GF_mean(i_l) % data(i_J) % data(i_E) /= ZERO &
+      & .and. tope % GF_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+      tope % GF  = interpolator(m, &
+        & tope % GF_mean(i_l) % data(i_J) % data(i_E), &
+        & tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
     else
-      nuc % GF = ZERO
+      tope % GF = ZERO
     end if
 
     ! TODO: add in catch here for when threshold occurs between tabulated pts
-    if (nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
-      nuc % GX  = interpolator(m, &
-        & nuc % GX_mean(i_l) % data(i_J) % data(i_E), &
-        & nuc % GX_mean(i_l) % data(i_J) % data(i_E + 1), nuc % INT)
+    if (tope % GX_mean(i_l) % data(i_J) % data(i_E + 1) /= ZERO) then
+      tope % GX  = interpolator(m, &
+        & tope % GX_mean(i_l) % data(i_J) % data(i_E), &
+        & tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
     else
-      nuc % GX = ZERO
+      tope % GX = ZERO
     end if
 
   end subroutine set_mean_parameters
@@ -2742,32 +3265,32 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_resonance(res, i_nuc, i_res, i_l, i_J, &
-                    & LRF_val, sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine add_resonance(res, i_sotope, i_res, i_l, i_J, &
+                    & LRF_val, t, n, g, f, x)
 
     type(Resonance) :: res ! resonance object
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    integer :: i_nuc   ! nuclide index
+    type(CrossSection) :: t ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
+    integer :: i_sotope   ! isotope index
     integer :: i_res   ! resonance index
     integer :: i_l     ! orbital quantum number index
     integer :: i_J     ! total angular momentum quantum #
     integer :: LRF_val ! ENDF-6 LRF resonance parameter representation flag
 
     ! set resonance parameters
-    call set_parameters(res, i_nuc, i_res, i_l, i_J, LRF_val)
+    call set_parameters(res, i_sotope, i_res, i_l, i_J, LRF_val)
 
     ! calculate the contribution to the partial cross sections,
     ! at this energy, from an additional resonance 
-    call res % calc_xs(i_nuc)
+    call res % calc_xs(i_sotope)
 
     ! add this contribution to the accumulated partial cross
     ! section values built up from all resonances
-! TODO: move sig_t outside of loop
-    call accum_resonances(res, sig_t, sig_n, sig_gam, sig_f, sig_x)
+! TODO: move t outside of loop
+    call accum_resonances(res, t, n, g, f, x)
 
   end subroutine add_resonance
 
@@ -2777,36 +3300,36 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine interp_avg_urr_xs(m, i_nuc, i_E, n_xs, f_xs, g_xs, x_xs)
+  subroutine interp_avg_urr_xs(m, i_sotope, i_E, n_xs, f_xs, g_xs, x_xs)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
-    integer :: i_nuc
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
+    integer :: i_sotope
     integer :: i_E
     real(8) :: m
     real(8) :: n_xs
     real(8) :: f_xs
     real(8) :: g_xs
     real(8) :: x_xs
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
 ! TODO: LOG_LOG?
     ! infinite-dilute elastic scattering
     n_xs = interpolator(m, &
-      & nuc % avg_urr_n(i_E), nuc % avg_urr_n(i_E + 1), nuc % INT)
+      & tope % avg_urr_n(i_E), tope % avg_urr_n(i_E + 1), tope % INT)
 
     ! infinite-dilute fission
     f_xs = interpolator(m, &
-      & nuc % avg_urr_f(i_E), nuc % avg_urr_f(i_E + 1), nuc % INT)
+      & tope % avg_urr_f(i_E), tope % avg_urr_f(i_E + 1), tope % INT)
 
     ! infinite-dilute capture
     g_xs = interpolator(m, &
-      & nuc % avg_urr_g(i_E), nuc % avg_urr_g(i_E + 1), nuc % INT)
+      & tope % avg_urr_g(i_E), tope % avg_urr_g(i_E + 1), tope % INT)
 
     ! infinite-dilute competitive reaction xs
     x_xs = interpolator(m, &
-      & nuc % avg_urr_x(i_E), nuc % avg_urr_x(i_E + 1), nuc % INT)
+      & tope % avg_urr_x(i_E), tope % avg_urr_x(i_E + 1), tope % INT)
 
   end subroutine interp_avg_urr_xs
 
@@ -2817,38 +3340,41 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calc_urr_bckgrnd(i_nuc, n_pts, f, i_grid, int_style)
+  subroutine calc_urr_bckgrnd(i_sotope, i_nuc, n_pts, f, i_grid, int_style)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
+    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
+    integer :: i_sotope
     integer :: i_nuc
     integer :: n_pts
     integer :: i_grid
     integer :: int_style ! interpolation scheme
     real(8) :: f
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope, nuc)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
+    nuc  => nuclides(i_nuc)
 
     select case(int_style)
     case(LINEAR_LINEAR)
       ! elastic scattering xs
-      nuc % urr_elastic_tmp(n_pts) = interpolator(f, &
+      tope % urr_elastic_tmp(n_pts) = interpolator(f, &
         & nuc % elastic(i_grid), nuc % elastic(i_grid + 1), &
         & int_style)
 
       ! radiative capture xs
-      nuc % urr_capture_tmp(n_pts) = interpolator(f, &
+      tope % urr_capture_tmp(n_pts) = interpolator(f, &
         & nuc % absorption(i_grid) - nuc % fission(i_grid), &
         & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), &
         & int_style)
 
       ! fission xs
-      nuc % urr_fission_tmp(n_pts) = interpolator(f, &
+      tope % urr_fission_tmp(n_pts) = interpolator(f, &
         & nuc % fission(i_grid), nuc % fission(i_grid + 1), &
         & int_style)
 
       ! competitive first level inelastic scattering xs
-      nuc % urr_inelastic_tmp(n_pts) = interpolator(f, &
+      tope % urr_inelastic_tmp(n_pts) = interpolator(f, &
         &   nuc % total(i_grid) &
         & - nuc % absorption(i_grid) &
         & - nuc % elastic(i_grid), &
@@ -2858,7 +3384,7 @@ contains
         & int_style)
 
       ! total xs
-      nuc % urr_total_tmp(n_pts) = interpolator(f, &
+      tope % urr_total_tmp(n_pts) = interpolator(f, &
         & nuc % total(i_grid), nuc % total(i_grid + 1), &
         & int_style)
 
@@ -2880,86 +3406,87 @@ contains
 !TODO: this is wrong - nedd to add resonance File 2 contribution to Doppler
 ! broadened File 3 evaluator-supplied background
 
-  subroutine add2bckgrnd(i_nuc, n_pts, sig_t, sig_n, sig_gam, sig_f, sig_x)
+  subroutine add2bckgrnd(i_sotope, i_nuc, n_pts, t, n, g, f, x)
 
-    type(Nuclide), pointer, save :: nuc => null() ! nuclide object pointer
-    type(CrossSection) :: sig_t   ! total xs object
-    type(CrossSection) :: sig_n   ! elastic scattering xs object
-    type(CrossSection) :: sig_gam ! radiative capture xs object
-    type(CrossSection) :: sig_f   ! fission xs object
-    type(CrossSection) :: sig_x   ! competitive inelastic scattering xs object
-    integer :: i_nuc ! nuclide index
+    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
+    type(CrossSection) :: t ! total xs object
+    type(CrossSection) :: n ! elastic scattering xs object
+    type(CrossSection) :: g ! radiative capture xs object
+    type(CrossSection) :: f ! fission xs object
+    type(CrossSection) :: x ! competitive inelastic scattering xs object
+    integer :: i_sotope ! isotope index
+    integer :: i_nuc    ! nuclide index
     integer :: n_pts ! URR pointwise xs energy grid index
     integer :: i_e   ! URR background xs energy grid index
     real(8) :: m            ! URR background energy interpolation factor
     real(8) :: capture_xs   ! radiative capture xs
     real(8) :: inelastic_xs ! first level inelastic scattering xs
-!$omp threadprivate(nuc)
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_nuc)
+    tope => isotopes(i_sotope)
 
-    if (nuc % point_urr_xs) then
+    if (tope % point_urr_xs) then
 
       ! elastic scattering xs
-      nuc % urr_elastic_tmp(n_pts) = nuc % urr_elastic_tmp(n_pts) &
-        & + sig_n % val
+      tope % urr_elastic_tmp(n_pts) = tope % urr_elastic_tmp(n_pts) &
+        & + n % xs
 
       ! radiative capture xs
-      nuc % urr_capture_tmp(n_pts) = nuc % urr_capture_tmp(n_pts) &
-        & + sig_gam % val
+      tope % urr_capture_tmp(n_pts) = tope % urr_capture_tmp(n_pts) &
+        & + g % xs
 
       ! fission xs
-      nuc % urr_fission_tmp(n_pts) = nuc % urr_fission_tmp(n_pts) &
-        & + sig_f % val
+      tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts) &
+        & + f % xs
 
       ! competitive first level inelastic scattering xs
-      nuc % urr_inelastic_tmp(n_pts) = nuc % urr_inelastic_tmp(n_pts) &
-        & + sig_x % val
+      tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts) &
+        & + x % xs
 
       ! total xs
-      nuc % urr_total_tmp(n_pts) = nuc % urr_total_tmp(n_pts) &
-        & + sig_t % val
+      tope % urr_total_tmp(n_pts) = tope % urr_total_tmp(n_pts) &
+        & + t % xs
 
     else
 
       ! first level inelastic scattering xs
-      if (nuc % E < nuc % avg_urr_x_e(1)) then
+      if (tope % E < tope % avg_urr_x_e(1)) then
         inelastic_xs = ZERO
       else
-        i_e = binary_search(nuc % avg_urr_x_e, size(nuc % avg_urr_x_e), nuc % E)
-        m = interp_factor(nuc % E, &
-          & nuc % avg_urr_x_e(i_e), nuc % avg_urr_x_e(i_e + 1), nuc % INT)
+        i_e = binary_search(tope % avg_urr_x_e, size(tope % avg_urr_x_e), tope % E)
+        m = interp_factor(tope % E, &
+          & tope % avg_urr_x_e(i_e), tope % avg_urr_x_e(i_e + 1), tope % INT)
         inelastic_xs = interpolator(m, &
-          & nuc % avg_urr_x(i_e), nuc % avg_urr_x(i_e + 1), nuc % INT)
+          & tope % avg_urr_x(i_e), tope % avg_urr_x(i_e + 1), tope % INT)
       end if
-      if (competitive) inelastic_xs = inelastic_xs + sig_x % val
+      if (competitive) inelastic_xs = inelastic_xs + x % xs
 
       ! elastic scattering xs
-      i_e = binary_search(nuc % avg_urr_n_e, size(nuc % avg_urr_n_e), nuc % E)
-      m = interp_factor(nuc % E, &
-        & nuc % avg_urr_n_e(i_e), nuc % avg_urr_n_e(i_e + 1), nuc % INT)
+      i_e = binary_search(tope % avg_urr_n_e, size(tope % avg_urr_n_e), tope % E)
+      m = interp_factor(tope % E, &
+        & tope % avg_urr_n_e(i_e), tope % avg_urr_n_e(i_e + 1), tope % INT)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & nuc % avg_urr_n(i_e), nuc % avg_urr_n(i_e + 1), nuc % INT) &
-        & + sig_n % val
+        & tope % avg_urr_n(i_e), tope % avg_urr_n(i_e + 1), tope % INT) &
+        & + n % xs
 
       ! set negative SLBW elastic xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
 
       ! capture xs
-      i_e = binary_search(nuc % avg_urr_g_e, size(nuc % avg_urr_g_e), nuc % E)
-      m = interp_factor(nuc % E, &
-        & nuc % avg_urr_g_e(i_e), nuc % avg_urr_g_e(i_e + 1), nuc % INT)
+      i_e = binary_search(tope % avg_urr_g_e, size(tope % avg_urr_g_e), tope % E)
+      m = interp_factor(tope % E, &
+        & tope % avg_urr_g_e(i_e), tope % avg_urr_g_e(i_e + 1), tope % INT)
       capture_xs = interpolator(m, &
-        & nuc % avg_urr_g(i_e), nuc % avg_urr_g(i_e + 1), nuc % INT) &
-        & + sig_gam % val
+        & tope % avg_urr_g(i_e), tope % avg_urr_g(i_e + 1), tope % INT) &
+        & + g % xs
 
       ! fission xs
-      i_e = binary_search(nuc % avg_urr_f_e, size(nuc % avg_urr_f_e), nuc % E)
-      m = interp_factor(nuc % E, &
-        & nuc % avg_urr_f_e(i_e), nuc % avg_urr_f_e(i_e + 1), nuc % INT)
+      i_e = binary_search(tope % avg_urr_f_e, size(tope % avg_urr_f_e), tope % E)
+      m = interp_factor(tope % E, &
+        & tope % avg_urr_f_e(i_e), tope % avg_urr_f_e(i_e + 1), tope % INT)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & nuc % avg_urr_f(i_e), nuc % avg_urr_f(i_e + 1), nuc % INT) &
-        & + sig_f % val
+        & tope % avg_urr_f(i_e), tope % avg_urr_f(i_e + 1), tope % INT) &
+        & + f % xs
 
       ! absorption xs
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
@@ -2972,5 +3499,545 @@ contains
     end if
 
   end subroutine add2bckgrnd
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_ENERGY_RANGE allocates variables for the resonance energy ranges                                                                    
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_energy_range(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+
+    allocate(this % NLS(this % NER))
+    allocate(this % LRU(this % NER))
+    allocate(this % LRF(this % NER))
+    allocate(this % NRO(this % NER))
+    allocate(this % NAPS(this % NER))
+    allocate(this % EL(this % NER))
+    allocate(this % EH(this % NER))
+    allocate(this % AP(this % NER))
+    allocate(this % ac(this % NER))
+    allocate(this % SPI(this % NER))
+
+  end subroutine alloc_energy_range
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! !TODO: DEALLOC_ENERGY_RANGE deallocates variables for the resonance energy ranges                                                         
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_energy_range(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+
+    deallocate(this % NLS)
+    deallocate(this % LRU)
+    deallocate(this % LRF)
+    deallocate(this % NRO)
+    deallocate(this % NAPS)
+    deallocate(this % EL)
+    deallocate(this % EH)
+    deallocate(this % AP)
+    deallocate(this % ac)
+    deallocate(this % SPI)
+
+  end subroutine dealloc_energy_range
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_AVG_URR allocates average (infinite-dilute) cross sections                                                                          
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_avg_urr(this, n)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+    integer :: n ! size of averaged, background URR xs grid                                                                                 
+
+    allocate(this % avg_urr_n(n))
+    allocate(this % avg_urr_f(n))
+    allocate(this % avg_urr_g(n))
+    allocate(this % avg_urr_x(n))
+
+  end subroutine alloc_avg_urr
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! !TODO: DEALLOC_AVG_URR deallocates average (infinite-dilute) cross sections                                                               
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_avg_urr(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+
+    deallocate(this % avg_urr_n)
+    deallocate(this % avg_urr_f)
+    deallocate(this % avg_urr_g)
+    deallocate(this % avg_urr_x)
+
+  end subroutine dealloc_avg_urr
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_ENSEMBLE allocates a URR resonance ensemble realization                                                                             
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_ensemble(this, n_reals)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+    integer :: n_reals ! number of realizations                                                                                             
+    integer :: i_real  ! realization index                                                                                                  
+    integer :: i_l     ! orbital angular momentum quantum number index                                                                      
+    integer :: i_lam   ! resonance index                                                                                                    
+
+    ! allocate energies and orbital quantum numbers for resonances                                                                          
+    allocate(this % urr_resonances(n_reals, this % n_urr_resonances, &
+      & this % NLS(this % i_urr)))
+
+    ! loop over realizations                                                                                                                
+    do i_real = 1, n_reals
+
+      ! loop over orbital quantum numbers                                                                                                   
+      do i_l = 1, this % NLS(this % i_urr)
+
+        ! loop over resonances                                                                                                              
+        do i_lam = 1, this % n_urr_resonances
+
+          ! allocate resonance parameters                                                                                                   
+          call this % urr_resonances(i_real, i_lam, i_l) &
+            & % alloc_slbw_resonances(this % NJS(i_l))
+        end do
+      end do
+    end do
+
+  end subroutine alloc_ensemble
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! TODO: ! DEALLOC_ENSEMBLE deallocates a URR resonance ensemble realization                                                                 
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_ensemble(this, n_reals)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+    integer :: n_reals ! number of realizations                                                                                             
+    integer :: i_real  ! realization index                                                                                                  
+    integer :: i_l     ! orbital angular momentum quantum number index                                                                      
+    integer :: i_lam   ! resonance index                                                                                                    
+
+    ! loop over realizations                                                                                                                
+    do i_real = 1, n_reals
+
+      ! loop over orbital quantum numbers                                                                                                   
+      do i_l = 1, this % NLS(this % i_urr)
+
+        ! loop over resonances                                                                                                              
+        do i_lam = 1, this % n_urr_resonances
+
+          ! allocate resonance parameters                                                                                                   
+          call this % urr_resonances(i_real, i_lam, i_l) &
+            & % dealloc_slbw_resonances()
+        end do
+      end do
+    end do
+
+    ! allocate energies and orbital quantum numbers for resonances                                                                          
+    deallocate(this % urr_resonances)
+
+  end subroutine dealloc_ensemble
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_SLBW_RESONANCES allocates a vector of SLBW resonances for a given J, for                                                            
+! a given (i_lam, i_l) in the URR case, and for a given number of resonances,                                                               
+! NRS, in the RRR case                                                                                                                      
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_slbw_resonances(this, N_res)
+
+    class(SLBWResonances), intent(inout) :: this ! resonance vector object                                                                  
+    integer :: N_res
+
+    allocate(this % E_lam(N_res))
+    allocate(this % AJ(N_res))
+    allocate(this % GN(N_res))
+    allocate(this % GG(N_res))
+    allocate(this % GF(N_res))
+    allocate(this % GX(N_res))
+    allocate(this % GT(N_res))
+
+  end subroutine alloc_slbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! !TODO: use this: DEALLOC_SLBW_RESONANCES deallocates a vector of SLBW resonances for a given J,                                           
+! for a given (i_lam, i_l) in the URR case, and for a given number of resonances,                                                           
+! NRS, in the RRR case                                                                                                                      
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_slbw_resonances(this)
+
+    class(SLBWResonances), intent(inout) :: this ! resonance vector object                                                                  
+
+    deallocate(this % E_lam)
+    deallocate(this % AJ)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GF)
+    deallocate(this % GX)
+    deallocate(this % GT)
+
+  end subroutine dealloc_slbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_MLBW_RESONANCES allocates a vector of NRS MLBW resonances                                                                           
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_mlbw_resonances(this, NRS)
+
+    class(MLBWResonances), intent(inout) :: this ! resonance vector object                                                                  
+    integer :: NRS
+
+    allocate(this % E_lam(NRS))
+    allocate(this % AJ(NRS))
+    allocate(this % GN(NRS))
+    allocate(this % GG(NRS))
+    allocate(this % GF(NRS))
+    allocate(this % GX(NRS))
+    allocate(this % GT(NRS))
+
+  end subroutine alloc_mlbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! !TODO: use this: DEALLOC_MLBW_RESONANCES deallocates a vector of NRS MLBW resonances                                                      
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_mlbw_resonances(this)
+
+    class(MLBWResonances), intent(inout) :: this ! resonance vector object                                                                  
+
+    deallocate(this % E_lam)
+    deallocate(this % AJ)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GF)
+    deallocate(this % GX)
+    deallocate(this % GT)
+
+  end subroutine dealloc_mlbw_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_RM_RESONANCES allocates a vector of NRS Reich-Moore resonances                                                                      
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_rm_resonances(this, NRS)
+
+    class(RMResonances), intent(inout) :: this ! resonance vector object                                                                    
+    integer :: NRS
+
+    allocate(this % E_lam(NRS))
+    allocate(this % AJ(NRS))
+    allocate(this % GN(NRS))
+    allocate(this % GG(NRS))
+    allocate(this % GFA(NRS))
+    allocate(this % GFB(NRS))
+
+  end subroutine alloc_rm_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! !TODO: use this: DEALLOC_RM_RESONANCES deallocates a vector of NRS Reich-Moore resonances                                                 
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_rm_resonances(this)
+
+    class(RMResonances), intent(inout) :: this ! resonance vector object                                                                    
+
+    deallocate(this % E_lam)
+    deallocate(this % AJ)
+    deallocate(this % GN)
+    deallocate(this % GG)
+    deallocate(this % GFA)
+    deallocate(this % GFB)
+
+  end subroutine dealloc_rm_resonances
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_POINTWISE_TMP allocates the temporary pointwise URR energy-cross section                                                            
+! grids                                                                                                                                     
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_pointwise_tmp(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+
+    allocate(this % urr_energy_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_elastic_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_capture_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_fission_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_inelastic_tmp(this % n_urr_gridpoints))
+    allocate(this % urr_total_tmp(this % n_urr_gridpoints))
+
+  end subroutine alloc_pointwise_tmp
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! DEALLOC_POINTWISE_TMP deallocates the temporary pointwise URR energy-cross                                                                
+! section grids                                                                                                                             
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_pointwise_tmp(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+
+    deallocate(this % urr_energy_tmp)
+    deallocate(this % urr_elastic_tmp)
+    deallocate(this % urr_capture_tmp)
+    deallocate(this % urr_fission_tmp)
+    deallocate(this % urr_inelastic_tmp)
+    deallocate(this % urr_total_tmp)
+
+  end subroutine dealloc_pointwise_tmp
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! ALLOC_POINTWISE allocates the pointwise URR energy-cross section grids                                                                    
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine alloc_pointwise(this, n_pts)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+    integer :: n_pts ! number of points in grid                                                                                             
+
+    allocate(this % urr_energy(n_pts))
+    allocate(this % urr_elastic(n_pts))
+    allocate(this % urr_capture(n_pts))
+    allocate(this % urr_fission(n_pts))
+    allocate(this % urr_inelastic(n_pts))
+    allocate(this % urr_total(n_pts))
+
+  end subroutine alloc_pointwise
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! TODO: use this : DEALLOC_POINTWISE deallocates the pointwise URR energy-cross section grids                                               
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_pointwise(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+
+    deallocate(this % urr_energy)
+    deallocate(this % urr_elastic)
+    deallocate(this % urr_capture)
+    deallocate(this % urr_fission)
+    deallocate(this % urr_inelastic)
+    deallocate(this % urr_total)
+
+  end subroutine dealloc_pointwise
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ALLOC_PROB_TABLES allocates the probability tables for this isotope
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine alloc_prob_tables(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+
+    if (E_spacing == ENDF6) then
+      n_energies = this % NE
+      allocate(E_values(n_energies))
+      E_values = this % ES
+    end if
+
+    allocate(this % prob_tables(n_energies, n_temps))
+
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        allocate(this % prob_tables(i_E, i_T) % t(n_bands))
+        allocate(this % prob_tables(i_E, i_T) % n(n_bands))
+        allocate(this % prob_tables(i_E, i_T) % g(n_bands))
+        allocate(this % prob_tables(i_E, i_T) % f(n_bands))
+        allocate(this % prob_tables(i_E, i_T) % x(n_bands))
+      end do
+    end do
+
+  end subroutine alloc_prob_tables
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! TODO: use this : DEALLOC_PROB_TABLES deallocates the probability tables for this isotope
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine dealloc_prob_tables(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        deallocate(this % prob_tables(i_E, i_T) % t)
+        deallocate(this % prob_tables(i_E, i_T) % n)
+        deallocate(this % prob_tables(i_E, i_T) % g)
+        deallocate(this % prob_tables(i_E, i_T) % f)
+        deallocate(this % prob_tables(i_E, i_T) % x)
+      end do
+    end do
+
+    deallocate(this % prob_tables)
+
+  end subroutine dealloc_prob_tables
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! FLUSH_PTABLE_STATS zeroes out statistics accumulators for an isotope's
+! probability tables
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine flush_ptable_stats(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_E ! tabulated URR energy index
+    integer :: i_T ! temperature index
+    integer :: i_b ! probability band index
+
+    do i_E = 1, n_energies
+      do i_T = 1, n_temps
+        do i_b = 1, n_bands
+          call this % prob_tables(i_E, i_T) % t(i_b) % flush_xs_stats()
+          call this % prob_tables(i_E, i_T) % n(i_b) % flush_xs_stats()
+          call this % prob_tables(i_E, i_T) % g(i_b) % flush_xs_stats()
+          call this % prob_tables(i_E, i_T) % f(i_b) % flush_xs_stats()
+          call this % prob_tables(i_E, i_T) % x(i_b) % flush_xs_stats()
+        end do
+        call this % prob_tables(i_E, i_T) % avg_t % flush_xs_stats()
+        call this % prob_tables(i_E, i_T) % avg_n % flush_xs_stats()
+        call this % prob_tables(i_E, i_T) % avg_g % flush_xs_stats()
+        call this % prob_tables(i_E, i_T) % avg_f % flush_xs_stats()
+        call this % prob_tables(i_E, i_T) % avg_x % flush_xs_stats()
+      end do
+    end do
+
+  end subroutine flush_ptable_stats
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! FLUSH_XS_STATS clears the batch statistics and accumulators
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine flush_xs_stats(this)
+
+    class(CrossSection), intent(inout) :: this ! cross section object
+
+    ! clear mean, SEM, and overall accumulators
+    this % xs          = ZERO
+    this % xs_tmp_sum  = ZERO
+    this % cnt_tmp_sum = 0
+    this % xs_sum      = ZERO
+    this % xs_sum2     = ZERO
+    this % cnt         = 0
+    this % cnt2        = 0
+    this % xs_mean     = ZERO
+    this % cnt_mean    = ZERO
+    this % xs_sem      = ZERO
+    this % cnt_sem     = ZERO
+    this % rel_unc     = ZERO
+
+  end subroutine flush_xs_stats
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+!                                                                                                                                           
+! CHANNEL_RADIUS computes or sets the channel radius depending on ENDF flags                                                                
+!                                                                                                                                           
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$                                                            
+
+  subroutine channel_radius(this, i_ER)
+
+    class(Isotope), intent(inout) :: this ! isotope object                                                                                  
+    integer :: i_ER ! resonance energy range index                                                                                          
+
+    select case (this % NRO(i_ER))
+
+      ! scattering radius is independent of energy                                                                                            
+    case (0)
+
+      select case (this % NAPS(i_ER))
+
+        ! use channel radius for penetrabilities and shift factors but                                                                      
+        ! scattering radius for phase shifts                                                                                                
+      case (0)
+        this % ac(i_ER) = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+
+        ! use scattering radius for penetrabilities, shift factors and phase                                                                
+        ! shifts                                                                                                                            
+      case (1)
+        this % ac(i_ER) = this % AP(i_ER)
+
+        ! invalid scattering radius treatment flag                                                                                          
+      case default
+        call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO is 0')
+      end select
+
+      ! scattering radius is energy dependent
+    case (1)
+
+      select case (this % NAPS(i_ER))
+
+        ! use channel radius for penetrabilities and shift factors but                                                                      
+        ! scattering radius for phase shifts                                                                                                
+      case (0)
+        this % ac(i_ER) = 0.123_8 * this % awr**(ONE/THREE) + 0.08_8
+
+        ! use scattering radius for penetrabilities, shift factors and phase                                                                
+        ! shifts                                                                                                                            
+      case (1)
+        this % ac(i_ER) = this % AP(i_ER)
+
+! TODO: understand this and implement it correctly                                                                                          
+        ! use energy dependent scattering radius in phase shifts but the energy                                                             
+        ! independent AP scattering radius value for penetrabilities and shift                                                              
+        ! factors                                                                                                                           
+      case (2)
+        this % ac(i_ER) = this % AP(i_ER)
+
+        ! invalid scattering radius treatment flag                                                                                          
+      case default
+        call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1')
+      end select
+
+      ! invalid energy dependence of scattering radius flag                                                                                   
+    case default
+      call fatal_error('ENDF-6 NRO flag must be 0 or 1')
+    end select
+
+  end subroutine channel_radius
 
 end module unresolved

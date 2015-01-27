@@ -22,6 +22,12 @@ module constants
   integer, parameter :: BATCH      = 3
   integer, parameter :: SIMULATION = 4
 
+  ! Probability table cross section band spacing and energy schemes
+  integer, parameter :: LINEAR      = 1
+  integer, parameter :: LOGARITHMIC = 2
+  integer, parameter :: USER        = 3
+  integer, parameter :: ENDF6       = 4
+
   ! ============================================================================
   ! VERSIONING NUMBERS
 

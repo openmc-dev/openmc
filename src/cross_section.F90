@@ -11,8 +11,9 @@ module cross_section
   use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
+  use string,          only: to_str
   use unresolved,      only: calculate_urr_xs_otf, calc_urr_xs_otf, &
-                             real_freq, represent_urr
+                             real_freq, represent_urr, Isotope, isotopes
 
   implicit none
   save
@@ -39,6 +40,7 @@ contains
     character(80) :: filename                ! name of xs grid output file
     type(Material), pointer :: mat => null() ! material pointer
     type(Nuclide),  pointer :: nuc => null() ! nuclide pointer
+    type(Isotope),  pointer :: tope => null() ! isotope pointer
 
     ! loop over all materials
     do i = 1, n_materials
@@ -54,6 +56,11 @@ contains
       do j = 1, mat % n_nuclides
         i_nuc = mat % nuclide(j)
         nuc => nuclides(i_nuc)
+        if (nuc % i_sotope /= 0) then
+          tope => isotopes(nuc % i_sotope)
+        else
+          tope => null()
+        end if
 
         ! loop over all requested energy-xs grid outputs
         do k = 1, mat % xs_gridpoints(j) % size()
@@ -135,57 +142,57 @@ contains
           ! write a nuclide's URR energy-total xs grid values
           case ('urr-total')
 
-            x_size = size(nuc % urr_energy)
+            x_size = size(tope % urr_energy)
             allocate(x_vals(x_size))
-            x_vals = nuc % urr_energy
-            y_size = size(nuc % urr_total)
+            x_vals = tope % urr_energy
+            y_size = size(tope % urr_total)
             allocate(y_vals(y_size))
-            y_vals = nuc % urr_total
-            filename = trim(adjustl(nuc % name)) // "-urr-total.dat"
+            y_vals = tope % urr_total
+            filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-total.dat"
 
           ! write a nuclide's URR energy-elastic xs grid values
           case ('urr-elastic')
 
-            x_size = size(nuc % urr_energy)
+            x_size = size(tope % urr_energy)
             allocate(x_vals(x_size))
-            x_vals = nuc % urr_energy
-            y_size = size(nuc % urr_elastic)
+            x_vals = tope % urr_energy
+            y_size = size(tope % urr_elastic)
             allocate(y_vals(y_size))
-            y_vals = nuc % urr_elastic
-            filename = trim(adjustl(nuc % name)) // "-urr-elastic.dat"
+            y_vals = tope % urr_elastic
+            filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-elastic.dat"
 
           ! write a nuclide's URR energy-fission xs grid values
           case ('urr-fission')
 
-            x_size = size(nuc % urr_energy)
+            x_size = size(tope % urr_energy)
             allocate(x_vals(x_size))
-            x_vals = nuc % urr_energy
-            y_size = size(nuc % urr_fission)
+            x_vals = tope % urr_energy
+            y_size = size(tope % urr_fission)
             allocate(y_vals(y_size))
-            y_vals = nuc % urr_fission
-            filename = trim(adjustl(nuc % name)) // "-urr-fission.dat"
+            y_vals = tope % urr_fission
+            filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-fission.dat"
 
           ! write a nuclide's URR energy-inelastic xs grid values
           case ('urr-inelastic')
 
-            x_size = size(nuc % urr_energy)
+            x_size = size(tope % urr_energy)
             allocate(x_vals(x_size))
-            x_vals = nuc % urr_energy
-            y_size = size(nuc % urr_inelastic)
+            x_vals = tope % urr_energy
+            y_size = size(tope % urr_inelastic)
             allocate(y_vals(y_size))
-            y_vals = nuc % urr_inelastic
-            filename = trim(adjustl(nuc % name)) // "-urr-inelastic.dat"
+            y_vals = tope % urr_inelastic
+            filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-inelastic.dat"
 
           ! write a nuclide's URR energy-capture xs grid values
           case ('urr-capture')
 
-            x_size = size(nuc % urr_energy)
+            x_size = size(tope % urr_energy)
             allocate(x_vals(x_size))
-            x_vals = nuc % urr_energy
-            y_size = size(nuc % urr_capture)
+            x_vals = tope % urr_energy
+            y_size = size(tope % urr_capture)
             allocate(y_vals(y_size))
-            y_vals = nuc % urr_capture
-            filename = trim(adjustl(nuc % name)) // "-urr-capture.dat"
+            y_vals = tope % urr_capture
+            filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-capture.dat"
 
           ! the requested xs is not recognized
           case default
@@ -333,10 +340,16 @@ contains
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
     type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
+    type(Isotope), pointer :: tope => null()
+!$omp threadprivate(nuc, tope)
 
     ! Set pointer to nuclide
     nuc => nuclides(i_nuclide)
+    if (nuc % i_sotope /= 0) then
+      tope => isotopes(nuc % i_sotope)
+    else
+      tope => null()
+    end if
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
@@ -420,21 +433,26 @@ contains
 
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
-    if (nuc % otf_urr_xs) then
-      if (E * 1.0E6_8 >= nuc % EL(nuc % i_urr) &
-        & .and. E * 1.0E6_8 <= nuc % EH(nuc % i_urr)) then
+
+    if (associated(tope)) then
+      if (E * 1.0E6_8 >= tope % EL(tope % i_urr) &
+        & .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
         select case(real_freq)
         case (EVENT)
-          call calculate_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+          micro_xs(i_nuclide) % use_ptable = .true.
+          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
         case (HISTORY)
           call fatal_error('History-based URR realizations not yet supported')
         case (BATCH)
           call fatal_error('Batch-based URR realizations not yet supported')
         case (SIMULATION)
           if (represent_urr == PARAMETERS) then
-            call calc_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+            ! this is used in physics, even though we aren't actually using ptables
+            micro_xs(i_nuclide) % use_ptable = .true.
+            call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
           else if (represent_urr == POINTWISE) then
-            call calculate_urr_xs_otf(i_nuclide, 1.0E6_8 * E)
+            micro_xs(i_nuclide) % use_ptable = .true.
+            call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
           end if
         case default
           call fatal_error('Unrecognized URR realization frequency')

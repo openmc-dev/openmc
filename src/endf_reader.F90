@@ -1,10 +1,10 @@
 module endf_reader
 
-  use ace_header,        only: Nuclide
   use avg_urr_xs_values, only: set_avg_urr_xs
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
+  use unresolved,        only: Isotope, isotopes
 
   implicit none
 
@@ -19,20 +19,20 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_endf6(filename_tmp, i_n)
+  subroutine read_endf6(filename_tmp, i)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: filename_tmp ! temporary filename
     character(80) :: rec          ! ENDF file record
     character(7)  :: readable     ! is ENDF-6 file readable?
-    logical       :: file_exists ! does ENDF-6 file exist?
-    logical       :: MF1_read    ! has MF=1 been read?
-    logical       :: MF2_read    ! has MF=2 been read?
-    logical       :: MF3_read    ! has MF=3 been read?
-    integer       :: i_n ! index in global nuclides array
-    integer       :: MF  ! MF file number
-    integer       :: MT  ! MT type number
-    integer       :: NS  ! record number
+    logical :: file_exists ! does ENDF-6 file exist?
+    logical :: MF1_read    ! has MF=1 been read?
+    logical :: MF2_read    ! has MF=2 been read?
+    logical :: MF3_read    ! has MF=3 been read?
+    integer :: i  ! isotope index
+    integer :: MF ! MF file number
+    integer :: MT ! MT type number
+    integer :: NS ! record number
 
     filename = filename_tmp
 
@@ -51,7 +51,7 @@ contains
     open(unit = in, &
       file = trim(path_endf)//trim(filename))
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     MF1_read = .false.
     MF2_read = .false.
@@ -60,20 +60,20 @@ contains
     do
       read(in, 10) rec
 10    format(A80)
-      read(rec(67:70), '(I4)') nuc % MAT
+      read(rec(67:70), '(I4)') tope % MAT
       read(rec(71:72), '(I2)') MF
       read(rec(73:75), '(I3)') MT
       read(rec(76:80), '(I5)') NS
       if (MF == 1 .and. MT == 451 .and. (.not. MF1_read)) then
-        call read_MF1(i_n, rec)
+        call read_MF1(i, rec)
         MF1_read = .true.
       else if (MF == 2 .and. MT == 151 .and. (.not. MF2_read)) then
-        call read_MF2(i_n, rec)
+        call read_MF2(i, rec)
         MF2_read = .true.
       else if (MF == 3 .and. MT == 1 .and. (.not. MF3_read)) then
-        call read_MF3(i_n, rec)
+        call read_MF3(i, rec)
         MF3_read = .true.
-      else if (nuc % MAT == -1) then
+      else if (tope % MAT == -1) then
         exit
       end if
     end do
@@ -88,28 +88,28 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_MF1(i_n, rec)
+  subroutine read_MF1(i, rec)
 
-    type(Nuclide), pointer :: nuc => null()
-    character(80) :: rec                  ! ENDF-6 file record
-    integer :: i_n ! index in global nuclides array
-    real(8) :: ZA
-    real(8) :: AWR
+    type(Isotope), pointer :: tope => null() ! isotope pointer
+    character(80) :: rec ! ENDF-6 file record
+    integer :: i ! isotope index
+    real(8) :: real_ZAI
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
-    read(rec(1:11),  '(E11.0)') ZA
-    read(rec(12:22), '(E11.0)') AWR
-    read(rec(23:33), '(I11)')   nuc % LRP
+    read(rec(1:11),  '(E11.0)') real_ZAI
+    tope % ZAI = int(real_ZAI)
+    read(rec(12:22), '(E11.0)') tope % AWR
+    read(rec(23:33), '(I11)')   tope % LRP
 
-    ! check ZAID agreement
-    call check_zaid(int(ZA), nuc % zaid)
+! TODO:    ! check ZAID agreement
+    call check_zaid(tope % ZAI, tope % ZAI)
 
-    ! check mass ratios
-    call check_mass(AWR, nuc % awr)
+! TODO:    ! check mass ratios
+    call check_mass(tope % AWR, tope % AWR)
 
     ! check that resonance parameters are given
-    call check_parameters(nuc % LRP)
+    call check_parameters(tope % LRP)
 
   end subroutine read_MF1
 
@@ -119,47 +119,46 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_MF2(i_n, rec)
+  subroutine read_MF2(i, rec)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
-    integer :: i_n  ! index in global nuclides array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! resonance energy range index
     integer :: NIS  ! number of isotopes in material
     integer :: LFW  ! URR average fission widths flag
     real(8) :: ZA
-    real(8) :: ZAI
-    real(8) :: AWR
+    real(8) :: A
     real(8) :: ABN
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     read(rec(1:11),  '(E11.0)') ZA
-    read(rec(12:22), '(E11.0)') AWR
+    read(rec(12:22), '(E11.0)') A
     read(rec(45:55), '(I11)')   NIS
 
     ! check ZAID agreement
-    call check_zaid(int(ZA), nuc % zaid)
+    call check_zaid(int(ZA), tope % ZAI)
 
     ! check that mass is consistent
-    call check_mass(AWR, nuc % awr)
+    call check_mass(A, tope % AWR)
 
-    ! check that this is a single-nuclide ENDF-6 file
-    call check_single_nuclide(NIS)
+    ! check that this is a single-isotope ENDF-6 file
+    call check_single_isotope(NIS)
 
     ! read MF=2, record=2
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') ZAI
+    read(rec(1:11),  '(E11.0)') ZA
     read(rec(12:22), '(E11.0)') ABN
     read(rec(34:44), '(I11)')   LFW
-    read(rec(45:55), '(I11)')   nuc % NER
+    read(rec(45:55), '(I11)')   tope % NER
 
     ! allocate energy range variables
-    call nuc % alloc_energy_range()
+    call tope % alloc_energy_range()
 
     ! check ZAID agreement
-    call check_zaid(int(ZAI), nuc % zaid)
+    call check_zaid(int(ZA), tope % ZAI)
 
     ! check abundance is unity
     call check_abundance(ABN)
@@ -168,26 +167,26 @@ contains
     call check_fission_widths(LFW)
 
     ! loop over energy ranges
-    do i_ER = 1, nuc % NER
+    do i_ER = 1, tope % NER
 
       ! read first record for this energy range
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') nuc % EL(i_ER)
-      read(rec(12:22), '(E11.0)') nuc % EH(i_ER)
-      read(rec(24:33),   '(I10)') nuc % LRU(i_ER)
-      read(rec(35:44),   '(I10)') nuc % LRF(i_ER)
-      read(rec(45:55),   '(I11)') nuc % NRO(i_ER)
-      read(rec(56:66),   '(I11)') nuc % NAPS(i_ER)
+      read(rec(1:11),  '(E11.0)') tope % EL(i_ER)
+      read(rec(12:22), '(E11.0)') tope % EH(i_ER)
+      read(rec(24:33),   '(I10)') tope % LRU(i_ER)
+      read(rec(35:44),   '(I10)') tope % LRF(i_ER)
+      read(rec(45:55),   '(I11)') tope % NRO(i_ER)
+      read(rec(56:66),   '(I11)') tope % NAPS(i_ER)
 
       ! check number of resonance energy ranges and their bounding energies
-      call check_energy_ranges(nuc % NER, nuc % EL(i_ER), nuc % EH(i_ER))
+      call check_energy_ranges(tope % NER, tope % EL(i_ER), tope % EH(i_ER))
 
       ! check channel, scattering radius energy dependence flags
-      call check_radius_flags(nuc % NRO(i_ER), nuc % NAPS(i_ER))
+      call check_radius_flags(tope % NRO(i_ER), tope % NAPS(i_ER))
 
       ! read energy range and formalism-dependent resonance subsection data
-      call read_resonance_subsection(i_n, i_ER, &
-        & nuc % LRU(i_ER), nuc % LRF(i_ER))
+      call read_resonance_subsection(i, i_ER, &
+        & tope % LRU(i_ER), tope % LRF(i_ER))
 
     end do
 
@@ -199,27 +198,27 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_MF3(i_n, rec)
+  subroutine read_MF3(i, rec)
 
-    type(Nuclide), pointer :: nuc => null() ! nuclide pointer
-    integer :: i_n   ! index in global nuclides array
-    integer :: i_rec ! record index
-    integer :: i_e   ! index in energy grid
-    integer :: MF    ! ENDF-6 MF flag
-    integer :: MT    ! ENDF-6 MT flag
+    type(Isotope), pointer :: tope => null() ! isotope pointer
+    integer :: i      ! index in global isotopes array
+    integer :: i_rec  ! record index
+    integer :: i_e    ! index in energy grid
+    integer :: MF     ! ENDF-6 MF flag
+    integer :: MT     ! ENDF-6 MT flag
     integer :: NP     ! number of energy-xs pairs
     integer :: NR     ! number of interpolation regions
     integer :: NBT    ! number of entries separating interp. ranges N and N+1
     integer :: INTERP ! File 3 reaction xs interpolation flag
     character(80) :: rec ! ENDF-6 file record
     real(8) :: ZA
-    real(8) :: AWR
+    real(8) :: A
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
 10  format(A80)
 
-    if (nuc % LSSF == 0) then
+    if (tope % LSSF == 0) then
 
       do
         read(in, 10) rec
@@ -232,13 +231,13 @@ contains
       end do
 
       read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') AWR
+      read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), nuc % zaid)
+      call check_zaid(int(ZA), tope % ZAI)
 
       ! check that mass is consistent
-      call check_mass(AWR, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -251,27 +250,27 @@ contains
       ! read MF=3, record=3
       read(in, 10) rec
       read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') nuc % MF3_INT
+      read(rec(12:22), '(I11)') tope % MF3_INT
 
       ! check number of energy-xs pairs in this interpolation region
       call check_n_pairs(NBT, NP)
 
-      allocate(nuc % avg_urr_n_e(NP))
-      allocate(nuc % avg_urr_n(NP))
+      allocate(tope % avg_urr_n_e(NP))
+      allocate(tope % avg_urr_n(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') nuc % avg_urr_n_e(i_e)
-        read(rec(12:22), '(E11.0)') nuc % avg_urr_n(i_e)
+        read(rec( 1:11), '(E11.0)') tope % avg_urr_n_e(i_e)
+        read(rec(12:22), '(E11.0)') tope % avg_urr_n(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') nuc % avg_urr_n_e(i_e)
-        read(rec(34:44), '(E11.0)') nuc % avg_urr_n(i_e)
+        read(rec(23:33), '(E11.0)') tope % avg_urr_n_e(i_e)
+        read(rec(34:44), '(E11.0)') tope % avg_urr_n(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') nuc % avg_urr_n_e(i_e)
-        read(rec(56:66), '(E11.0)') nuc % avg_urr_n(i_e)
+        read(rec(45:55), '(E11.0)') tope % avg_urr_n_e(i_e)
+        read(rec(56:66), '(E11.0)') tope % avg_urr_n(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -287,13 +286,13 @@ contains
       end do
 
       read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') AWR
+      read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), nuc % zaid)
+      call check_zaid(int(ZA), tope % ZAI)
 
       ! check that mass is consistent
-      call check_mass(AWR, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -311,25 +310,25 @@ contains
       ! check number of energy-xs pairs in this interpolation region
       call check_n_pairs(NBT, NP)
 
-      ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % MF3_INT)
+      ! check interpolation scheme is same as isotope interpolation scheme
+      call check_interp_scheme(INTERP, tope % MF3_INT)
 
-      allocate(nuc % avg_urr_x_e(NP))
-      allocate(nuc % avg_urr_x(NP))
+      allocate(tope % avg_urr_x_e(NP))
+      allocate(tope % avg_urr_x(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') nuc % avg_urr_x_e(i_e)
-        read(rec(12:22), '(E11.0)') nuc % avg_urr_x(i_e)
+        read(rec( 1:11), '(E11.0)') tope % avg_urr_x_e(i_e)
+        read(rec(12:22), '(E11.0)') tope % avg_urr_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') nuc % avg_urr_x_e(i_e)
-        read(rec(34:44), '(E11.0)') nuc % avg_urr_x(i_e)
+        read(rec(23:33), '(E11.0)') tope % avg_urr_x_e(i_e)
+        read(rec(34:44), '(E11.0)') tope % avg_urr_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') nuc % avg_urr_x_e(i_e)
-        read(rec(56:66), '(E11.0)') nuc % avg_urr_x(i_e)
+        read(rec(45:55), '(E11.0)') tope % avg_urr_x_e(i_e)
+        read(rec(56:66), '(E11.0)') tope % avg_urr_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -345,13 +344,13 @@ contains
       end do
 
       read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') AWR
+      read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), nuc % zaid)
+      call check_zaid(int(ZA), tope % ZAI)
 
       ! check that mass is consistent
-      call check_mass(AWR, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -369,25 +368,25 @@ contains
       ! check number of energy-xs pairs in this interpolation region
       call check_n_pairs(NBT, NP)
 
-      ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % MF3_INT)
+      ! check interpolation scheme is same as isotope interpolation scheme
+      call check_interp_scheme(INTERP, tope % MF3_INT)
 
-      allocate(nuc % avg_urr_f_e(NP))
-      allocate(nuc % avg_urr_f(NP))
+      allocate(tope % avg_urr_f_e(NP))
+      allocate(tope % avg_urr_f(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') nuc % avg_urr_f_e(i_e)
-        read(rec(12:22), '(E11.0)') nuc % avg_urr_f(i_e)
+        read(rec( 1:11), '(E11.0)') tope % avg_urr_f_e(i_e)
+        read(rec(12:22), '(E11.0)') tope % avg_urr_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') nuc % avg_urr_f_e(i_e)
-        read(rec(34:44), '(E11.0)') nuc % avg_urr_f(i_e)
+        read(rec(23:33), '(E11.0)') tope % avg_urr_f_e(i_e)
+        read(rec(34:44), '(E11.0)') tope % avg_urr_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') nuc % avg_urr_f_e(i_e)
-        read(rec(56:66), '(E11.0)') nuc % avg_urr_f(i_e)
+        read(rec(45:55), '(E11.0)') tope % avg_urr_f_e(i_e)
+        read(rec(56:66), '(E11.0)') tope % avg_urr_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -403,13 +402,13 @@ contains
       end do
 
       read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') AWR
+      read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), nuc % zaid)
+      call check_zaid(int(ZA), tope % ZAI)
 
       ! check that mass is consistent
-      call check_mass(AWR, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -427,25 +426,25 @@ contains
       ! check number of energy-xs pairs in this interpolation region
       call check_n_pairs(NBT, NP)
 
-      ! check interpolation scheme is same as nuclide interpolation scheme
-      call check_interp_scheme(INTERP, nuc % MF3_INT)
+      ! check interpolation scheme is same as isotope interpolation scheme
+      call check_interp_scheme(INTERP, tope % MF3_INT)
 
-      allocate(nuc % avg_urr_g_e(NP))
-      allocate(nuc % avg_urr_g(NP))
+      allocate(tope % avg_urr_g_e(NP))
+      allocate(tope % avg_urr_g(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') nuc % avg_urr_g_e(i_e)
-        read(rec(12:22), '(E11.0)') nuc % avg_urr_g(i_e)
+        read(rec( 1:11), '(E11.0)') tope % avg_urr_g_e(i_e)
+        read(rec(12:22), '(E11.0)') tope % avg_urr_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') nuc % avg_urr_g_e(i_e)
-        read(rec(34:44), '(E11.0)') nuc % avg_urr_g(i_e)
+        read(rec(23:33), '(E11.0)') tope % avg_urr_g_e(i_e)
+        read(rec(34:44), '(E11.0)') tope % avg_urr_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') nuc % avg_urr_g_e(i_e)
-        read(rec(56:66), '(E11.0)') nuc % avg_urr_g(i_e)
+        read(rec(45:55), '(E11.0)') tope % avg_urr_g_e(i_e)
+        read(rec(56:66), '(E11.0)') tope % avg_urr_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -501,7 +500,7 @@ contains
   subroutine check_interp_scheme(INTERP, MF3_INT)
 
     integer :: INTERP     ! interpolation scheme for current region
-    integer :: MF3_INT ! overall nuclide interpolation scheme
+    integer :: MF3_INT ! overall isotope interpolation scheme
 
     if (INTERP /= MF3_INT) call fatal_error('Different interpolation schemes for&
       & different File 3 regions in '//trim(filename))
@@ -515,9 +514,9 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_resonance_subsection(i_n, i_ER, LRU, LRF)
+  subroutine read_resonance_subsection(i, i_ER, LRU, LRF)
 
-    integer :: i_n ! index in global nuclides array
+    integer :: i ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: LRU
     integer :: LRF
@@ -539,15 +538,15 @@ contains
 
       ! SLBW
       case(1)
-        call read_slbw_parameters(i_n, i_ER)
+        call read_slbw_parameters(i, i_ER)
 
       ! MLBW
       case(2)
-        call read_mlbw_parameters(i_n, i_ER)
+        call read_mlbw_parameters(i, i_ER)
 
       ! Reich-Moore
       case(3)
-        call read_rm_parameters(i_n, i_ER)
+        call read_rm_parameters(i, i_ER)
 
       ! Adler-Adler
       case(4)
@@ -578,7 +577,7 @@ contains
     ! unresolved parameters
     case(2)
 
-      nuclides(i_n) % i_urr = i_ER
+      isotopes(i) % i_urr = i_ER
 
       ! select energy-dependence of parameters
       select case(LRF)
@@ -590,7 +589,7 @@ contains
 
       ! all parameters are energy-dependent
       case(2)
-        call read_urr_slbw_parameters(i_n, i_ER)
+        call read_urr_slbw_parameters(i, i_ER)
 
       ! default case
       case default
@@ -613,47 +612,47 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_slbw_parameters(i_n, i_ER)
+  subroutine read_slbw_parameters(i, i_ER)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
-    integer :: i_n  ! index in global nuclides array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: NRS  ! number of resonances for this orbital quantum number
     integer :: i_R  ! resonance index
     integer :: LRX  ! competitive width flag
-    real(8) :: AWRI ! isotope/neutron mass ratio
+    real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: QX   ! Q-value to be added to COM energy
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
-    call nuc % pre_process(i_ER)
-    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+    call tope % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
 
     ! allocate SLBW resonance vectors for each l
-    allocate(nuc % slbw_resonances(nuc % NLS(i_ER)))
+    allocate(tope % slbw_resonances(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, nuc % NLS(i_ER) - 1
+    do i_l = 0, tope % NLS(i_ER) - 1
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') QX
       read(rec(23:33),   '(I11)') L
       read(rec(34:44),   '(I11)') LRX
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate SLBW resonances
-      call nuc % slbw_resonances(i_l + 1) % alloc_slbw_resonances(NRS)
+      call tope % slbw_resonances(i_l + 1) % alloc_slbw_resonances(NRS)
 
       ! check mass ratios
-      call check_mass(AWRI, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! check that Q-value is 0.0
       call check_q_value(QX)
@@ -665,36 +664,36 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') nuc % slbw_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') nuc % slbw_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GT(i_R)
-        read(rec(34:44), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GN(i_R)
-        read(rec(45:55), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GG(i_R)
-        read(rec(56:66), '(E11.0)') nuc % slbw_resonances(i_l + 1) % GF(i_R)
+        read(rec(1:11),  '(E11.0)') tope % slbw_resonances(i_l + 1) % E_lam(i_R)
+        read(rec(12:22), '(E11.0)') tope % slbw_resonances(i_l + 1) % AJ(i_R)
+        read(rec(23:33), '(E11.0)') tope % slbw_resonances(i_l + 1) % GT(i_R)
+        read(rec(34:44), '(E11.0)') tope % slbw_resonances(i_l + 1) % GN(i_R)
+        read(rec(45:55), '(E11.0)') tope % slbw_resonances(i_l + 1) % GG(i_R)
+        read(rec(56:66), '(E11.0)') tope % slbw_resonances(i_l + 1) % GF(i_R)
 
         if (LRX == 0) then
-          nuc % slbw_resonances(i_l + 1) % GX(i_R) = ZERO
+          tope % slbw_resonances(i_l + 1) % GX(i_R) = ZERO
         else if (LRX == 1) then
-          nuc % slbw_resonances(i_l + 1) % GX(i_R) &
-            & = nuc % slbw_resonances(i_l + 1) % GT(i_R) &
-            & - nuc % slbw_resonances(i_l + 1) % GN(i_R) &
-            & - nuc % slbw_resonances(i_l + 1) % GG(i_R) &
-            & - nuc % slbw_resonances(i_l + 1) % GF(i_R)
+          tope % slbw_resonances(i_l + 1) % GX(i_R) &
+            & = tope % slbw_resonances(i_l + 1) % GT(i_R) &
+            & - tope % slbw_resonances(i_l + 1) % GN(i_R) &
+            & - tope % slbw_resonances(i_l + 1) % GG(i_R) &
+            & - tope % slbw_resonances(i_l + 1) % GF(i_R)
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(nuc % slbw_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % slbw_resonances(i_l + 1) % AJ(i_R))
       end do
 
-      if (i_ER < nuc % NER - 1) then
-        call nuc % slbw_resonances(i_l + 1) % dealloc_slbw_resonances()
+      if (i_ER < tope % NER - 1) then
+        call tope % slbw_resonances(i_l + 1) % dealloc_slbw_resonances()
       end if
 
     end do
 
-    if (i_ER < nuc % NER - 1) deallocate(nuc % slbw_resonances)
+    if (i_ER < tope % NER - 1) deallocate(tope % slbw_resonances)
 
   end subroutine read_slbw_parameters
 
@@ -705,47 +704,47 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_mlbw_parameters(i_n, i_ER)
+  subroutine read_mlbw_parameters(i, i_ER)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
-    integer :: i_n  ! index in global nuclides array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: NRS  ! number of resonances for this orbital quantum number
     integer :: i_R  ! resonance index
     integer :: LRX  ! competitive width flag
-    real(8) :: AWRI ! isotope/neutron mass ratio
+    real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: QX   ! Q-value to be added to COM energy
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
-    call nuc % pre_process(i_ER)
-    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+    call tope % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
 
     ! allocate MLBW resonance vectors for each l
-    allocate(nuc % mlbw_resonances(nuc % NLS(i_ER)))
+    allocate(tope % mlbw_resonances(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, nuc % NLS(i_ER) - 1
+    do i_l = 0, tope % NLS(i_ER) - 1
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') QX
       read(rec(23:33),   '(I11)') L
       read(rec(34:44),   '(I11)') LRX
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate MLBW resonances
-      call nuc % mlbw_resonances(i_l + 1) % alloc_mlbw_resonances(NRS)
+      call tope % mlbw_resonances(i_l + 1) % alloc_mlbw_resonances(NRS)
 
       ! check mass ratios
-      call check_mass(AWRI, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! check that Q-value is 0.0
       call check_q_value(QX)
@@ -757,36 +756,35 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') nuc % mlbw_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GT(i_R)
-        read(rec(34:44), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GN(i_R)
-        read(rec(45:55), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GG(i_R)
-        read(rec(56:66), '(E11.0)') nuc % mlbw_resonances(i_l + 1) % GF(i_R)
+        read(rec(1:11),  '(E11.0)') tope % mlbw_resonances(i_l + 1) % E_lam(i_R)
+        read(rec(12:22), '(E11.0)') tope % mlbw_resonances(i_l + 1) % AJ(i_R)
+        read(rec(23:33), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GT(i_R)
+        read(rec(34:44), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GN(i_R)
+        read(rec(45:55), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GG(i_R)
+        read(rec(56:66), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GF(i_R)
 
         if (LRX == 0) then
-          nuc % mlbw_resonances(i_l + 1) % GX(i_R) = ZERO
+          tope % mlbw_resonances(i_l + 1) % GX(i_R) = ZERO
         else if (LRX == 1) then
-          nuc % mlbw_resonances(i_l + 1) % GX(i_R) &
-            & = nuc % mlbw_resonances(i_l + 1) % GT(i_R) &
-            & - nuc % mlbw_resonances(i_l + 1) % GN(i_R) &
-            & - nuc % mlbw_resonances(i_l + 1) % GG(i_R) &
-            & - nuc % mlbw_resonances(i_l + 1) % GF(i_R)
+          tope % mlbw_resonances(i_l + 1) % GX(i_R) &
+            & = tope % mlbw_resonances(i_l + 1) % GT(i_R) &
+            & - tope % mlbw_resonances(i_l + 1) % GN(i_R) &
+            & - tope % mlbw_resonances(i_l + 1) % GG(i_R) &
+            & - tope % mlbw_resonances(i_l + 1) % GF(i_R)
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(nuc % mlbw_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % mlbw_resonances(i_l + 1) % AJ(i_R))
       end do
 
-      if (i_ER < nuc % NER - 1) then
-        call nuc % mlbw_resonances(i_l + 1) % dealloc_mlbw_resonances()
+      if (i_ER < tope % NER - 1) then
+        call tope % mlbw_resonances(i_l + 1) % dealloc_mlbw_resonances()
       end if
-
     end do
 
-    if (i_ER < nuc % NER - 1) deallocate(nuc % mlbw_resonances)
+    if (i_ER < tope % NER - 1) deallocate(tope % mlbw_resonances)
 
   end subroutine read_mlbw_parameters
 
@@ -797,48 +795,48 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_rm_parameters(i_n, i_ER)
+  subroutine read_rm_parameters(i, i_ER)
 
-    type(Nuclide), pointer :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
-    integer :: i_n  ! index in global nuclides array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: NRS  ! number of resonances for this orbital quantum number
     integer :: i_R  ! resonance index
-    real(8) :: AWRI ! isotope/neutron mass ratio
+    real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: APL  ! l-dependent AP value
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
-    call nuc % pre_process(i_ER)
-    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+    call tope % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
 
     ! allocate Reich-Moore resonance vectors for each l
-    allocate(nuc % rm_resonances(nuc % NLS(i_ER)))
+    allocate(tope % rm_resonances(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, nuc % NLS(i_ER) - 1
+    do i_l = 0, tope % NLS(i_ER) - 1
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') APL
       read(rec(23:33),   '(I11)') L
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate Reich-Moore resonances
-      call nuc % rm_resonances(i_l + 1) % alloc_rm_resonances(NRS)
+      call tope % rm_resonances(i_l + 1) % alloc_rm_resonances(NRS)
 
       ! check mass ratios
-      call check_mass(AWRI, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! check scattering radii
-      call check_scattering_radius(APL, nuc % AP(i_ER))
+      call check_scattering_radius(APL, tope % AP(i_ER))
 
       ! check orbital quantum number
       call check_l_number(L, i_L)
@@ -847,24 +845,24 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') nuc % rm_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') nuc % rm_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') nuc % rm_resonances(i_l + 1) % GN(i_R)
-        read(rec(34:44), '(E11.0)') nuc % rm_resonances(i_l + 1) % GG(i_R)
-        read(rec(45:55), '(E11.0)') nuc % rm_resonances(i_l + 1) % GFA(i_R)
-        read(rec(56:66), '(E11.0)') nuc % rm_resonances(i_l + 1) % GFB(i_R)
+        read(rec(1:11),  '(E11.0)') tope % rm_resonances(i_l + 1) % E_lam(i_R)
+        read(rec(12:22), '(E11.0)') tope % rm_resonances(i_l + 1) % AJ(i_R)
+        read(rec(23:33), '(E11.0)') tope % rm_resonances(i_l + 1) % GN(i_R)
+        read(rec(34:44), '(E11.0)') tope % rm_resonances(i_l + 1) % GG(i_R)
+        read(rec(45:55), '(E11.0)') tope % rm_resonances(i_l + 1) % GFA(i_R)
+        read(rec(56:66), '(E11.0)') tope % rm_resonances(i_l + 1) % GFB(i_R)
 
         ! check sign of total angular momentum, J
-        call check_j_sign(nuc % rm_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % rm_resonances(i_l + 1) % AJ(i_R))
       end do
 
-      if (i_ER < nuc % NER - 1) then
-        call nuc % rm_resonances(i_l + 1) % dealloc_rm_resonances()
+      if (i_ER < tope % NER - 1) then
+        call tope % rm_resonances(i_l + 1) % dealloc_rm_resonances()
       end if
 
     end do
 
-    if (i_ER < nuc % NER - 1) deallocate(nuc % rm_resonances)
+    if (i_ER < tope % NER - 1) deallocate(tope % rm_resonances)
 
   end subroutine read_rm_parameters
 
@@ -874,116 +872,116 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_urr_slbw_parameters(i_n, i_ER)
+  subroutine read_urr_slbw_parameters(i, i_ER)
 
-    type(Nuclide), pointer, save :: nuc => null()
+    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
-    integer :: i_n  ! index in global nuclides array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: i_J  ! total angular momentum quantum number index
     integer :: i_E  ! energy region index
-    real(8) :: AWRI ! isotope/neutron mass ratio
-!$omp threadprivate(nuc)
+    real(8) :: A    ! isotope/neutron mass ratio
+!$omp threadprivate(tope)
 
-    nuc => nuclides(i_n)
+    tope => isotopes(i)
 
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') nuc % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') nuc % AP(i_ER)
+    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
 ! TODO: don't overwrite the resolved value
-    call nuc % pre_process(i_ER)
-    read(rec(23:33), '(I11)')   nuc % LSSF
-    read(rec(45:55), '(I11)')   nuc % NLS(i_ER)
+    call tope % channel_radius(i_ER)
+    read(rec(23:33), '(I11)')   tope % LSSF
+    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
 
     ! allocate number of total angular momenta values for each l
-    allocate(nuc % NJS(nuc % NLS(i_ER)))
+    allocate(tope % NJS(tope % NLS(i_ER)))
 
     ! allocate total angular momentua
-    allocate(nuc % AJ(nuc % NLS(i_ER)))
+    allocate(tope % AJ(tope % NLS(i_ER)))
 
     ! allocate degrees of freedom for partial widths
-    allocate(nuc % DOFX(nuc % NLS(i_ER)))
-    allocate(nuc % DOFN(nuc % NLS(i_ER)))
-    allocate(nuc % DOFG(nuc % NLS(i_ER)))
-    allocate(nuc % DOFF(nuc % NLS(i_ER)))
+    allocate(tope % DOFX(tope % NLS(i_ER)))
+    allocate(tope % DOFN(tope % NLS(i_ER)))
+    allocate(tope % DOFG(tope % NLS(i_ER)))
+    allocate(tope % DOFF(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, nuc % NLS(i_ER) - 1
+    do i_l = 0, tope % NLS(i_ER) - 1
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') AWRI
+      read(rec(1:11),  '(E11.0)') A
       read(rec(23:33),   '(I11)') L
-      read(rec(45:55),   '(I11)') nuc % NJS(i_l + 1)
+      read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
 
       ! check mass ratios
-      call check_mass(AWRI, nuc % awr)
+      call check_mass(A, tope % AWR)
 
       ! check orbital quantum number
       call check_l_number(L, i_L)
 
       ! allocate total angular momenta
-      allocate(nuc % AJ(i_l + 1) % data(nuc % NJS(i_l + 1)))
+      allocate(tope % AJ(i_l + 1) % data(tope % NJS(i_l + 1)))
       
       ! allocate degress of freedom for partial widths
-      allocate(nuc % DOFX(i_l + 1) % data(nuc % NJS(i_l + 1)))
-      allocate(nuc % DOFN(i_l + 1) % data(nuc % NJS(i_l + 1)))
-      allocate(nuc % DOFG(i_l + 1) % data(nuc % NJS(i_l + 1)))
-      allocate(nuc % DOFF(i_l + 1) % data(nuc % NJS(i_l + 1)))
+      allocate(tope % DOFX(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFN(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFG(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFF(i_l + 1) % data(tope % NJS(i_l + 1)))
 
       ! loop over total angular momenta
-      do i_J = 1, nuc % NJS(i_l + 1)
+      do i_J = 1, tope % NJS(i_l + 1)
 
         read(in, 10) rec
-        read(rec(1:11), '(E11.0)') nuc % AJ(i_l + 1) % data(i_J)
-        read(rec(23:33),  '(I11)') nuc % INT
-        read(rec(56:66),  '(I11)') nuc % NE
+        read(rec(1:11), '(E11.0)') tope % AJ(i_l + 1) % data(i_J)
+        read(rec(23:33),  '(I11)') tope % INT
+        read(rec(56:66),  '(I11)') tope % NE
 
         ! allocate energies, mean level spacings, partial widths, 
         ! and avgeraged URR cross section values
-        if (.not. (allocated(nuc % ES))) then
-          allocate(nuc % ES(nuc % NE))
-          allocate(nuc % D_mean  (nuc % NLS(i_ER)))
-          allocate(nuc % GN0_mean(nuc % NLS(i_ER)))
-          allocate(nuc % GG_mean (nuc % NLS(i_ER)))
-          allocate(nuc % GF_mean (nuc % NLS(i_ER)))
-          allocate(nuc % GX_mean (nuc % NLS(i_ER)))
-          if (nuc % LSSF == 1) then
-            call nuc % alloc_avg_urr(nuc % NE)
-            call set_avg_urr_xs(i_n)
+        if (.not. (allocated(tope % ES))) then
+          allocate(tope % ES(tope % NE))
+          allocate(tope % D_mean  (tope % NLS(i_ER)))
+          allocate(tope % GN0_mean(tope % NLS(i_ER)))
+          allocate(tope % GG_mean (tope % NLS(i_ER)))
+          allocate(tope % GF_mean (tope % NLS(i_ER)))
+          allocate(tope % GX_mean (tope % NLS(i_ER)))
+          if (tope % LSSF == 1) then
+            call tope % alloc_avg_urr(tope % NE)
+            call set_avg_urr_xs(i)
           end if
         end if
-        if (.not. (allocated(nuc % D_mean(i_l + 1) % data))) then
-          allocate(nuc % D_mean  (i_l + 1) % data(nuc % NJS(i_l + 1)))
-          allocate(nuc % GN0_mean(i_l + 1) % data(nuc % NJS(i_l + 1)))
-          allocate(nuc % GG_mean (i_l + 1) % data(nuc % NJS(i_l + 1)))
-          allocate(nuc % GF_mean (i_l + 1) % data(nuc % NJS(i_l + 1)))
-          allocate(nuc % GX_mean (i_l + 1) % data(nuc % NJS(i_l + 1)))
+        if (.not. (allocated(tope % D_mean(i_l + 1) % data))) then
+          allocate(tope % D_mean  (i_l + 1) % data(tope % NJS(i_l + 1)))
+          allocate(tope % GN0_mean(i_l + 1) % data(tope % NJS(i_l + 1)))
+          allocate(tope % GG_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+          allocate(tope % GF_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+          allocate(tope % GX_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
         end if
-        allocate(nuc % D_mean  (i_l + 1) % data(i_J) % data(nuc % NE))
-        allocate(nuc % GN0_mean(i_l + 1) % data(i_J) % data(nuc % NE))
-        allocate(nuc % GG_mean (i_l + 1) % data(i_J) % data(nuc % NE))
-        allocate(nuc % GF_mean (i_l + 1) % data(i_J) % data(nuc % NE))
-        allocate(nuc % GX_mean (i_l + 1) % data(i_J) % data(nuc % NE))
+        allocate(tope % D_mean  (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GN0_mean(i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GG_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GF_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GX_mean (i_l + 1) % data(i_J) % data(tope % NE))
 
         ! read in degrees of freedom
         read(in, 10) rec
-        read(rec(23:33), '(E11.0)') nuc % DOFX(i_l + 1) % data(i_J)
-        read(rec(34:44), '(E11.0)') nuc % DOFN(i_l + 1) % data(i_J)
-        read(rec(45:55), '(E11.0)') nuc % DOFG(i_l + 1) % data(i_J)
-        read(rec(56:66), '(E11.0)') nuc % DOFF(i_l + 1) % data(i_J)
+        read(rec(23:33), '(E11.0)') tope % DOFX(i_l + 1) % data(i_J)
+        read(rec(34:44), '(E11.0)') tope % DOFN(i_l + 1) % data(i_J)
+        read(rec(45:55), '(E11.0)') tope % DOFG(i_l + 1) % data(i_J)
+        read(rec(56:66), '(E11.0)') tope % DOFF(i_l + 1) % data(i_J)
 
         ! loop over energies for which data are tabulated
-        do i_E = 1, nuc % NE
+        do i_E = 1, tope % NE
           read(in, 10) rec
-          read(rec(1:11),  '(E11.0)') nuc % ES(i_E)
-          read(rec(12:22), '(E11.0)') nuc % D_mean  (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(23:33), '(E11.0)') nuc % GX_mean (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(34:44), '(E11.0)') nuc % GN0_mean(i_l + 1) % data(i_J) % data(i_E)
-          read(rec(45:55), '(E11.0)') nuc % GG_mean (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(56:66), '(E11.0)') nuc % GF_mean (i_l + 1) % data(i_J) % data(i_E)
+          read(rec(1:11),  '(E11.0)') tope % ES(i_E)
+          read(rec(12:22), '(E11.0)') tope % D_mean  (i_l + 1) % data(i_J) % data(i_E)
+          read(rec(23:33), '(E11.0)') tope % GX_mean (i_l + 1) % data(i_J) % data(i_E)
+          read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l + 1) % data(i_J) % data(i_E)
+          read(rec(45:55), '(E11.0)') tope % GG_mean (i_l + 1) % data(i_J) % data(i_E)
+          read(rec(56:66), '(E11.0)') tope % GF_mean (i_l + 1) % data(i_J) % data(i_E)
         end do
       end do
     end do
@@ -1071,24 +1069,24 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_SINGLE_NUCLIDE checks that the given ENDF-6 file contains data for only
-! a single nuclide
+! CHECK_SINGLE_ISOTOPE checks that the given ENDF-6 file contains data for only
+! a single isotope
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine check_single_nuclide(nis_val)
+  subroutine check_single_isotope(nis_val)
 
     integer :: nis_val
 
     if (nis_val /= 1) then
-      call fatal_error(trim(filename)//' contains data for more than 1 nuclide')
+      call fatal_error(trim(filename)//' contains data for more than 1 isotope')
     end if
 
-  end subroutine check_single_nuclide
+  end subroutine check_single_isotope
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_ABUNDANCE checks that the abundance of the nuclide in the ENDF-6 file is
+! CHECK_ABUNDANCE checks that the abundance of the isotope in the ENDF-6 file is
 ! unity
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1098,7 +1096,7 @@ contains
     real(8) :: abn_val
 
     if (abn_val /= ONE) then
-      call fatal_error('Abundance of nuclide given in '//trim(filename)//' is not&
+      call fatal_error('Abundance of isotope given in '//trim(filename)//' is not&
         & unity')
     end if
 

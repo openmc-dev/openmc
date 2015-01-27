@@ -16,7 +16,7 @@ module input_xml
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use unresolved,       only: competitive, &
-                              inf_dil, &
+                              prob_bands, &
                               otf_urr, &
                               i_real_user, &
                               l_waves, &
@@ -30,11 +30,18 @@ module input_xml
                               real_freq, &
                               run_fasturr, &
                               represent_urr, &
-                              zais, &
                               n_reals, &
                               min_dE_point_urr, &
                               max_dE_point_urr, &
-                              tol_point_urr
+                              tol_point_urr, &
+                              band_spacing, &
+                              E_spacing, &
+                              band_values, &
+                              E_values, &
+                              n_bands, &
+                              n_temps, &
+                              n_energies, &
+                              isotopes
 
   use xml_interface
 
@@ -3176,7 +3183,7 @@ contains
     logical :: file_exists ! does urr.xml file exist?
     type(Node), pointer :: doc => null()
     type(Node), pointer :: otf_xs_node => null()
-    type(Node), pointer :: avg_xs_node => null()
+    type(Node), pointer :: prob_table_node => null()
     type(Node), pointer :: point_xs_node => null()
     type(Node), pointer :: nuc_node => null()
     type(NodeList), pointer :: nuc_list_node => null()
@@ -3201,7 +3208,7 @@ contains
 
     ! Check that an on-the-fly URR treatment and/or average xs calc is specified
     if (check_for_node(doc, "on_the_fly") &
-      & .or. check_for_node(doc, "average_xs")) then
+      & .or. check_for_node(doc, "prob_tables")) then
       continue
     else
       call fatal_error('No on-the-fly or average cross section calculation&
@@ -3320,7 +3327,7 @@ contains
     if (check_for_node(doc, 'nuclide')) then
       call get_node_list(doc, 'nuclide', nuc_list_node)
       n_fasturr = get_list_size(nuc_list_node)
-      allocate(zais(n_fasturr))
+      allocate(isotopes(n_fasturr))
       allocate(endf_files(n_fasturr))
 
       ! Read in ZAID values and ENDF filenames for the nuclide(s)
@@ -3329,7 +3336,7 @@ contains
 
         ! Check that a nuclide ZAID is given
         if (check_for_node(nuc_node, 'zaid')) then
-          call get_node_value(nuc_node, 'zaid', zais(i))
+          call get_node_value(nuc_node, 'zaid', isotopes(i) % ZAI)
         else
           call fatal_error('No nuclide ZAID specified for nuclide ' &
             & // trim(to_str(i)) // ' in urr.xml file')
@@ -3398,64 +3405,134 @@ contains
         end if
       end if
 
-      ! Include resonance structure of competitive URR cross sections?
-      if (check_for_node(otf_xs_node, "competitive")) then
-        call get_node_value(otf_xs_node, "competitive", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false' &
-          & .or. trim(adjustl(temp_str)) == '0') then
-          competitive = .false.
-        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-          & .or. trim(adjustl(temp_str)) == '1') then
-          competitive = .true.
-        else
-          call fatal_error('Modeling of competitive reaction cross section resonance&
-            & structure must be true or false in urr.xml')
-        end if
-      else
-        call fatal_error('Must specify whether or not to model resonance structure&
-          & of competitive reaction cross section in urr.xml')
-      end if
-
     else
       otf_urr = .false.
     end if
 
+    ! Include resonance structure of competitive URR cross sections?
+    if (check_for_node(doc, "competitive")) then
+      call get_node_value(doc, "competitive", temp_str)
+      if (trim(adjustl(to_lower(temp_str))) == 'false' &
+        & .or. trim(adjustl(temp_str)) == '0') then
+        competitive = .false.
+      else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+        & .or. trim(adjustl(temp_str)) == '1') then
+        competitive = .true.
+      else
+        call fatal_error('Modeling of competitive reaction cross section resonance&
+          & structure must be true or false in urr.xml')
+      end if
+    else
+      call fatal_error('Must specify whether or not to model resonance structure&
+        & of competitive reaction cross section in urr.xml')
+    end if
+
     ! Check for average (infinite-dilute) xs calculation parameters
-    if (check_for_node(doc, "average_xs")) then
-      inf_dil = .true.
-      competitive = .true.
-      call get_node_ptr(doc, "average_xs", avg_xs_node)
+    if (check_for_node(doc, "prob_tables")) then
+      prob_bands = .true.
+      call get_node_ptr(doc, "prob_tables", prob_table_node)
 
-      if (check_for_node(avg_xs_node, "min_batches")) then
-        call get_node_value(avg_xs_node, "min_batches", min_batches_avg_urr)
+      if (check_for_node(prob_table_node, "n_bands")) then
+        call get_node_value(prob_table_node, "n_bands", n_bands)
       else
-        call fatal_error('No minimum batches for averaged,&
-          & infinite-dilute cross section calculation given in urr.xml')
+        call fatal_error('No number of probability table cross section bands&
+          & given in urr.xml')
       end if
 
-      if (check_for_node(avg_xs_node, "max_batches")) then
-        call get_node_value(avg_xs_node, "max_batches", max_batches_avg_urr)
+      if (check_for_node(prob_table_node, "n_temperatures")) then
+        call get_node_value(prob_table_node, "n_temperatures", n_temps)
+        if (n_temps /= 1) call fatal_error('Multiple probability table&
+          & temperatures not yet supported')
       else
-        call fatal_error('No maximum batches for averaged,&
-          & infinite-dilute cross section calculation given in urr.xml')
+        call fatal_error('No number of probability table temperatures&
+          & given in urr.xml')
       end if
 
-      if (check_for_node(avg_xs_node, "histories")) then
-        call get_node_value(avg_xs_node, "histories", histories_avg_urr)
+      if (check_for_node(prob_table_node, "min_batches")) then
+        call get_node_value(prob_table_node, "min_batches", min_batches_avg_urr)
       else
-        call fatal_error('No number of realization histories for averaged,&
-          & infinite-dilute cross section calculation given in urr.xml')
+        call fatal_error('No minimum batches for probability table&
+          & calculation given in urr.xml')
       end if
 
-      if (check_for_node(avg_xs_node, "tolerance")) then
-        call get_node_value(avg_xs_node, "tolerance", tol_avg_urr)
+      if (check_for_node(prob_table_node, "max_batches")) then
+        call get_node_value(prob_table_node, "max_batches", max_batches_avg_urr)
       else
-        call fatal_error('No relative uncertainty tolerance for averaged,&
-          & infinite-dilute cross section calculation given in urr.xml')
+        call fatal_error('No maximum batches for probability table&
+          & calculation given in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "histories")) then
+        call get_node_value(prob_table_node, "histories", histories_avg_urr)
+      else
+        call fatal_error('No number of realization histories for probability&
+          & table calculation given in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "tolerance")) then
+        call get_node_value(prob_table_node, "tolerance", tol_avg_urr)
+      else
+        call fatal_error('No relative uncertainty tolerance for probability&
+          & table calculation given in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "band_spacing")) then
+        call get_node_value(prob_table_node, "band_spacing", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'linear') then
+          band_spacing = LINEAR
+        else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
+          band_spacing = LOGARITHMIC
+        else if (trim(adjustl(to_lower(temp_str))) == 'user') then
+          band_spacing = USER
+          if (check_for_node(prob_table_node, "band_values")) then
+            allocate(band_values(n_bands - 1))
+            call get_node_array(prob_table_node, "band_values", band_values)
+          else
+            call fatal_error('No probability table cross section band values&
+              & given in urr.xml')
+          end if
+        else
+          call fatal_error('Unrecognized band spacing scheme for probability&
+            & table calculation given in urr.xml')
+        end if
+      else
+        call fatal_error('No band spacing scheme for probability&
+          & table calculation given in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "energy_spacing")) then
+        call get_node_value(prob_table_node, "energy_spacing", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'linear') then
+          E_spacing = LINEAR
+          call fatal_error('Linear probability table energy spacing not yet&
+            & supported in urr.xml')
+        else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
+          E_spacing = LOGARITHMIC
+          call fatal_error('Logarithmic probability table energy spacing not&
+            & yet supported in urr.xml')
+        else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+          E_spacing = ENDF6
+        else if (trim(adjustl(to_lower(temp_str))) == 'user') then
+          E_spacing = USER
+          if (check_for_node(prob_table_node, "energy_values")) then
+            n_energies = get_arraysize_double(prob_table_node, "energy_values")
+            allocate(E_values(n_energies))
+            call get_node_array(prob_table_node, "energy_values", E_values)
+          else
+            call fatal_error('No probability table energy grid values&
+              & given in urr.xml')
+          end if
+        else
+          call fatal_error('Unrecognized energy spacing scheme for probability&
+            & table calculation given in urr.xml')
+        end if
+      else
+        call fatal_error('No energy spacing scheme for probability&
+          & table calculation given in urr.xml')
       end if
 
     else
-      inf_dil = .false.
+      prob_bands = .false.
     end if
 
     ! Close URR XML file

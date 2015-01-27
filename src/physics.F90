@@ -17,6 +17,7 @@ module physics
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use string,                 only: to_str
+  use unresolved,             only: isotopes
 
   implicit none
 
@@ -319,7 +320,6 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
-
 !$omp threadprivate(nuc, rxn)
 
     ! Get pointer to nuclide and grid index/interpolation factor
@@ -358,9 +358,9 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
-      if (nuc % otf_urr_xs) then
-        if (p % E > nuc % EL(nuc % i_urr) / 1.0E6_8 .and. &
-          & p % E < nuc % EH(nuc % i_urr) / 1.0E6_8) then
+      if (nuc % i_sotope /= 0) then
+        if (p % E > isotopes(nuc % i_sotope) % EL(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8 .and. &
+          & p % E < isotopes(nuc % i_sotope) % EH(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8) then
           i_rxn = 1
           do
             if (nuc % reactions(i_rxn) % MT == 51) exit

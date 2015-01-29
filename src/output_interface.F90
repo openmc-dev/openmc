@@ -138,7 +138,7 @@ contains
   subroutine file_open(self, filename, mode, serial)
 
     character(*),      intent(in) :: filename ! name of file to be opened
-    character(*),      intent(in) :: mode     ! file access mode 
+    character(*),      intent(in) :: mode     ! file access mode
     logical, optional, intent(in) :: serial    ! processor rank to write from
     class(BinaryOutput) :: self
 
@@ -307,7 +307,7 @@ contains
 
   subroutine read_double(self, buffer, name, group, collect)
 
-    real(8),      intent(inout)        :: buffer  ! read data to here 
+    real(8),      intent(inout)        :: buffer  ! read data to here
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -342,7 +342,7 @@ contains
 # ifdef MPI
     if (self % serial) then
       call hdf5_read_double(self % hdf5_grp, name_, buffer)
-    else 
+    else
       call hdf5_read_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
@@ -621,7 +621,7 @@ contains
   subroutine write_double_3Darray(self, buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
+    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -684,7 +684,7 @@ contains
   subroutine read_double_3Darray(self, buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -940,7 +940,7 @@ contains
 
   subroutine read_integer(self, buffer, name, group, collect)
 
-    integer,      intent(inout)        :: buffer  ! read data to here 
+    integer,      intent(inout)        :: buffer  ! read data to here
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1174,7 +1174,7 @@ contains
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
-    if (self % serial) then 
+    if (self % serial) then
       write(self % unit_fh) buffer(1:length(1),1:length(2))
     else
       call mpi_write_integer_2Darray(self % unit_fh, buffer, length, collect_)
@@ -1255,7 +1255,7 @@ contains
   subroutine write_integer_3Darray(self, buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    integer,      intent(in)           :: buffer(length(1),length(2),length(3))        
+    integer,      intent(in)           :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1318,7 +1318,7 @@ contains
   subroutine read_integer_3Darray(self, buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    integer,      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    integer,      intent(inout)        :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1828,7 +1828,7 @@ contains
     end if
 
     ! Set overall size of vector to write
-    dims1(1) = n1*n2 
+    dims1(1) = n1*n2
 
     ! Create up a dataspace for size
     call h5screate_simple_f(1, dims1, dspace, hdf5_err)
@@ -1858,8 +1858,8 @@ contains
       end do
     end do
 
-#endif 
-   
+#endif
+
   end subroutine write_tally_result
 
 !===============================================================================
@@ -1927,8 +1927,8 @@ contains
       end do
     end do
 
-#endif 
-   
+#endif
+
   end subroutine read_tally_result
 
 !===============================================================================
@@ -1944,6 +1944,7 @@ contains
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to write
+    integer                  :: datatype
 # endif
 # ifdef HDF5
     integer(8)               :: offset(1)        ! source data offset
@@ -2018,29 +2019,25 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
 
-# endif 
+# endif
 
 #elif MPI
 
-    ! Get current offset for master 
+    ! Get current offset for master
     if (master) call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
 
     ! Determine offset on master process and broadcast to all processors
-    call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
-    select case (size_offset_kind)
-    case (4)
-      call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    case (8)
-      call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
-    end select
+    call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_INTEGER, MPI_OFFSET_KIND, &
+         datatype, mpi_err)
+    call MPI_BCAST(offset, 1, datatype, 0, MPI_COMM_WORLD, mpi_err)
 
     ! Set the proper offset for source data on this processor
     call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
     offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
-    call MPI_FILE_WRITE_AT(self % unit_fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpiio_err)
+    call MPI_FILE_WRITE_AT(self % unit_fh, offset, source_bank(1), int(work), &
+         MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
@@ -2122,7 +2119,7 @@ contains
     ! Close all ids
     call h5dclose_f(dset, hdf5_err)
 
-# endif 
+# endif
 
 #elif MPI
 
@@ -2131,7 +2128,7 @@ contains
     call MPI_FILE_SEEK(self % unit_fh, offset, MPI_SEEK_END, &
          mpiio_err)
 
-    ! Get current offset (will be at EOF) 
+    ! Get current offset (will be at EOF)
     call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
 
     ! Get the size of the source bank on all procs
@@ -2144,8 +2141,8 @@ contains
     offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
-    call MPI_FILE_READ_AT(self % unit_fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpiio_err)
+    call MPI_FILE_READ_AT(self % unit_fh, offset, source_bank(1), int(work), &
+         MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 

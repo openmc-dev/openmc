@@ -696,7 +696,8 @@ contains
     integer :: LXS       ! location of cross-section locators
     integer :: LOCA      ! location of cross-section for given MT
     integer :: IE        ! reaction's starting index on energy grid
-    integer :: NE        ! number of energies for reaction
+    integer :: NE        ! number of energies
+    integer :: NR        ! number of interpolation regions
     type(Reaction), pointer :: rxn => null()
     type(ListInt) :: MTs
 
@@ -747,18 +748,40 @@ contains
       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
-      ! If multiplicity is energy-dependent (absolute value > 100), set it based
-      ! on the MT value
+      ! Read energy-dependent multiplicities
       if (rxn % multiplicity > 100) then
-        if (any(rxn%MT == [11, 16, 24, 30, 41])) then
-          rxn % multiplicity = 2
-        elseif (any(rxn%MT == [17, 25, 42])) then
-          rxn % multiplicity = 3
-        elseif (rxn%MT == 37) then
-          rxn % multiplicity = 4
-        else
-          rxn % multiplicity = 1
+        ! Set flag and allocate space for Tab1 to store yield
+        rxn % multiplicity_with_E = .true.
+        allocate(rxn % multiplicity_E)
+        
+        XSS_index = JXS(11) + rxn % multiplicity - 101
+        NR = nint(XSS(XSS_index))
+        rxn % multiplicity_E % n_regions = NR
+        
+        ! allocate space for ENDF interpolation parameters
+        if (NR > 0) then
+          allocate(rxn % multiplicity_E % nbt(NR))
+          allocate(rxn % multiplicity_E % int(NR))
         end if
+        
+        ! read ENDF interpolation parameters
+        XSS_index = XSS_index + 1
+        if (NR > 0) then
+          rxn % multiplicity_E % nbt = get_int(NR)
+          rxn % multiplicity_E % int = get_int(NR)
+        end if
+        
+        ! allocate space for yield data
+        XSS_index = XSS_index + 2*NR
+        NE = nint(XSS(XSS_index))
+        rxn % multiplicity_E % n_pairs = NE
+        allocate(rxn % multiplicity_E % x(NE))
+        allocate(rxn % multiplicity_E % y(NE))
+        
+        ! read yield data
+        XSS_index = XSS_index + 1
+        rxn % multiplicity_E % x = get_real(NE)
+        rxn % multiplicity_E % y = get_real(NE)
       end if
 
       ! read starting energy index

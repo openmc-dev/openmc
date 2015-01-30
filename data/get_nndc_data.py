@@ -8,6 +8,12 @@ import sys
 import tarfile
 import glob
 import hashlib
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-b', '--batch', action = 'store_true',
+                    help = 'supresses standard in')
+args = parser.parse_args()
 
 try:
     from urllib.request import urlopen
@@ -118,10 +124,13 @@ shutil.copyfile('cross_sections_nndc.xml', 'nndc/cross_sections.xml')
 # PROMPT USER TO DELETE .TAR.GZ FILES
 
 # Ask user to delete
-if sys.version_info[0] < 3:
-    response = raw_input('Delete *.tar.gz files? ([y]/n) ')
+if not args.batch:
+    if sys.version_info[0] < 3:
+        response = raw_input('Delete *.tar.gz files? ([y]/n) ')
+    else:
+        response = input('Delete *.tar.gz files? ([y]/n) ')
 else:
-    response = input('Delete *.tar.gz files? ([y]/n) ')
+    response = 'y'
 
 # Delete files if requested
 if not response or response.lower().startswith('y'):
@@ -134,10 +143,13 @@ if not response or response.lower().startswith('y'):
 # PROMPT USER TO CONVERT ASCII TO BINARY
 
 # Ask user to convert
-if sys.version_info[0] < 3:
-    response = raw_input('Convert ACE files to binary? ([y]/n) ')
+if not args.batch:
+    if sys.version_info[0] < 3:
+        response = raw_input('Convert ACE files to binary? ([y]/n) ')
+    else:
+        response = input('Convert ACE files to binary? ([y]/n) ')
 else:
-    response = input('Convert ACE files to binary? ([y]/n) ')
+    response = 'y'
 
 # Convert files if requested
 if not response or response.lower().startswith('y'):

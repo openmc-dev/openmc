@@ -30,7 +30,7 @@ module geometry_header
      real(8), allocatable :: lower_left(:)    ! lower-left corner of lattice
      real(8), allocatable :: width(:)         ! width of each lattice cell
      integer, allocatable :: universes(:,:,:) ! specified universes
-     integer              :: outside          ! material to fill area outside
+     integer              :: outer            ! universe to tile outside the lat
   end type Lattice
 
 !===============================================================================

@@ -607,17 +607,17 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          mid = lattices(lid) % outside
+!          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
           c % fill = lid
-          if (mid == MATERIAL_VOID) then
-            c % material = mid
-          else if (material_dict % has_key(mid)) then
-            c % material = material_dict % get_key(mid)
-          else
-            call fatal_error("Could not find material " // trim(to_str(mid)) &
-                 &// " specified on lattice " // trim(to_str(lid)))
-          end if
+!          if (mid == MATERIAL_VOID) then
+!            c % material = mid
+!          else if (material_dict % has_key(mid)) then
+!            c % material = material_dict % get_key(mid)
+!          else
+!            call fatal_error("Could not find material " // trim(to_str(mid)) &
+!                 &// " specified on lattice " // trim(to_str(lid)))
+!          end if
 
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
@@ -653,6 +653,15 @@ contains
           end do
         end do
       end do
+
+      if (lat % outer /= NO_OUTER_UNIV) then
+        if (universe_dict % has_key(id)) then
+          lat % outer = universe_dict % get_key(id)
+        else
+          call fatal_error("Invalid universe number " // trim(to_str(id)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
+        end if
+      end if
 
     end do
 

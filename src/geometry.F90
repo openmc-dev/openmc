@@ -280,17 +280,17 @@ contains
               p % coord % xyz = xyz
 
             else
-
-              ! We're outside the lattice, so treat this as a normal cell with
-              ! the material specified for the outside
-
+!
+!              ! We're outside the lattice, so treat this as a normal cell with
+!              ! the material specified for the outside
+!
               outside_lattice = .true.
-              p % last_material = p % material
-              p % material = c % material
-
-              ! We'll still make a new coordinate for the particle, as
-              ! distance_to_boundary will still need to track through lattice
-              ! widths even though there's nothing in them but this material
+!              p % last_material = p % material
+!              p % material = c % material
+!
+!              ! We'll still make a new coordinate for the particle, as
+!              ! distance_to_boundary will still need to track through lattice
+!              ! widths even though there's nothing in them but this material
 
             end if
 
@@ -322,13 +322,13 @@ contains
             if (.not. outside_lattice) then
               p % coord % next % universe = lat % universes(i_x,i_y,i_z)
             else
-
-              ! Set universe as the same for subsequent calls to find_cell
-              p % coord % next % universe = p % coord % universe
-
-              ! Set coord cell for calls to distance_to_boundary
-              p % coord % next % cell = index_cell
-
+              if (lat % outer == NO_OUTER_UNIV) then
+                call fatal_error("A particle is outside latttice " &
+                     &// trim(to_str(lat % id)) // " but the lattice has no &
+                     &defined outer universe.")
+              else
+                p % coord % next % universe = lat % outer
+              end if
             end if
 
             ! Move particle to next level
@@ -336,10 +336,9 @@ contains
 
           end if
 
-          if (.not. outside_lattice) then
-            call find_cell(p, found)
-            if (.not. found) exit
-          end if
+          ! Find in the next lowest coordinate level.
+          call find_cell(p, found)
+          if (.not. found) exit
 
         end if
 

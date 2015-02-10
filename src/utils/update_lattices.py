@@ -154,7 +154,6 @@ def pop_lat_outside(lattice_element):
     return material
 
 
-
 if __name__ == '__main__':
     args = parse_args()
     for fname in args.input:

@@ -645,10 +645,11 @@ contains
       end do
 
       if (lat % outer /= NO_OUTER_UNIV) then
-        if (universe_dict % has_key(id)) then
-          lat % outer = universe_dict % get_key(id)
+        if (universe_dict % has_key(lat % outer)) then
+          lat % outer = universe_dict % get_key(lat % outer)
         else
-          call fatal_error("Invalid universe number " // trim(to_str(id)) &
+          call fatal_error("Invalid universe number " &
+               &// trim(to_str(lat % outer)) &
                &// " specified on lattice " // trim(to_str(lat % id)))
         end if
       end if

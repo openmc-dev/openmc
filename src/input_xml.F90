@@ -1340,17 +1340,6 @@ contains
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-!      lat % outside = MATERIAL_VOID
-!      if (check_for_node(node_lat, "outside")) then
-!        call get_node_value(node_lat, "outside", mid)
-!        if (mid == 0 .or. mid == MATERIAL_VOID) then
-!          lat % outside = MATERIAL_VOID
-!        else
-!          lat % outside = mid
-!        end if
-!      end if
-
       ! Read outer universe for area outside lattice.
       lat % outer = NO_OUTER_UNIV
       if (check_for_node(node_lat, "outer")) then

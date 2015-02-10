@@ -280,17 +280,7 @@ contains
               p % coord % xyz = xyz
 
             else
-!
-!              ! We're outside the lattice, so treat this as a normal cell with
-!              ! the material specified for the outside
-!
               outside_lattice = .true.
-!              p % last_material = p % material
-!              p % material = c % material
-!
-!              ! We'll still make a new coordinate for the particle, as
-!              ! distance_to_boundary will still need to track through lattice
-!              ! widths even though there's nothing in them but this material
 
             end if
 

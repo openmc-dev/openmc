@@ -607,18 +607,8 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-!          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
           c % fill = lid
-!          if (mid == MATERIAL_VOID) then
-!            c % material = mid
-!          else if (material_dict % has_key(mid)) then
-!            c % material = material_dict % get_key(mid)
-!          else
-!            call fatal_error("Could not find material " // trim(to_str(mid)) &
-!                 &// " specified on lattice " // trim(to_str(lid)))
-!          end if
-
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
                &// trim(to_str(c % id)) // " is neither a universe nor a &

@@ -226,12 +226,7 @@ contains
         call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
              group="tallies/tally" // to_str(i))
 
-      ! Write explicit moment order strings for each score bin
-#ifdef HDF5
-        call sp % open_group("tallies/tally" // trim(to_str(i)) // "/moments")
-        call sp % close_group()
-#endif
-
+        ! Write explicit moment order strings for each score bin
         k = 1
         MOMENT_LOOP: do j = 1, t % n_user_score_bins
           select case(t % score_bins(k))

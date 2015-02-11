@@ -302,7 +302,7 @@ class StatePoint(object):
 
             # Extract the moment order string for each score
             for k in range(t.n_scores):
-                moment = self._get_string(8, path=base+'{0}/order'.format(k+1))
+                moment = self._get_string(8, path=base+'order{0}'.format(k+1))
                 moment = moment.lstrip('[\'')
                 moment = moment.rstrip('\']')
 

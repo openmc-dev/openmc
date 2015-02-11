@@ -237,16 +237,14 @@ contains
           select case(t % score_bins(k))
           case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
             moment_name = 'P' // to_str(t % moment_order(k))
-            call sp % write_data(moment_name, "order", &
-                 group="tallies/tally" // trim(to_str(i)) // &
-                 "/moments/" // trim(to_str(k)))
+            call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
             k = k + 1
           case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
             do n_order = 0, t % moment_order(k)
               moment_name = 'P' // trim(to_str(n_order))
-              call sp % write_data(moment_name, "order", &
-                   group="tallies/tally" // trim(to_str(i)) // &
-                   "/moments/" // trim(to_str(k)))
+              call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally" // trim(to_str(i)) // "/moments")
               k = k + 1
             end do
           case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -255,17 +253,15 @@ contains
               do nm_order = -n_order, n_order
                 moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
                   trim(to_str(nm_order))
-                call sp % write_data(moment_name, "order", &
-                     group="tallies/tally" // trim(to_str(i)) // &
-                     "/moments/" // trim(to_str(k)))
+                call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                     group="tallies/tally" // trim(to_str(i)) // "/moments")
                   k = k + 1
               end do
             end do
           case default
             moment_name = ''
-            call sp % write_data(moment_name, "order", &
-                 group="tallies/tally" // trim(to_str(i)) // &
-                 "/moments/" // trim(to_str(k)))
+            call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
             k = k + 1
           end select
 
@@ -775,31 +771,27 @@ contains
       MOMENT_LOOP: do j = 1, t % n_user_score_bins
         select case(t % score_bins(k))
         case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-          call sp % read_data(moment_name, "order", &
-               group="tallies/tally" // trim(to_str(i)) // &
-               "/moments/" // trim(to_str(k)))
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally" // trim(to_str(i)) // "/moments")
           k = k + 1
         case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
           do n_order = 0, t % moment_order(k)
-            call sp % read_data(moment_name,  "order", &
-                 group="tallies/tally" // trim(to_str(i)) // &
-                 "/moments/" // trim(to_str(k)))
+            call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
             k = k + 1
           end do
         case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
               SCORE_TOTAL_YN)
           do n_order = 0, t % moment_order(k)
             do nm_order = -n_order, n_order
-              call sp % read_data(moment_name, "order", &
-                   group="tallies/tally" // trim(to_str(i)) // &
-                   "/moments/" // trim(to_str(k)))
+              call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally" // trim(to_str(i)) // "/moments")
               k = k + 1
             end do
           end do
         case default
-          call sp % read_data(moment_name, "order", &
-               group="tallies/tally" // trim(to_str(i)) // &
-               "/moments/" // trim(to_str(k)))
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally" // trim(to_str(i)) // "/moments")
           k = k + 1
         end select
 

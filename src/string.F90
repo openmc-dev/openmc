@@ -2,7 +2,7 @@ module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
   use error,     only: fatal_error, warning
-  use global,    only: message
+  use global,    only: master
 
   implicit none
 
@@ -49,9 +49,8 @@ contains
         if (i_end > 0) then
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
-            message = "The word '" // string(i_start:i_end) // &
-                 "' is longer than the space allocated for it."
-            call warning()
+            if (master) call warning("The word '" // string(i_start:i_end) &
+                &// "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -149,7 +148,7 @@ contains
   end function concatenate
 
 !===============================================================================
-! LOWER_CASE converts a string to all lower case characters
+! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
   elemental function to_lower(word) result(word_lower)
@@ -172,7 +171,7 @@ contains
   end function to_lower
 
 !===============================================================================
-! UPPER_CASE converts a string to all upper case characters
+! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
   elemental function to_upper(word) result(word_upper)
@@ -210,8 +209,8 @@ function zero_padded(num, n_digits) result(str)
   ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
   ! largest integer(4).
   if (n_digits > 10) then
-    message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error()
+    call fatal_error('zero_padded called with an unreasonably large &
+         &n_digits (>10)')
   end if
 
   ! Write a format string of the form '(In.m)' where n is the max width and

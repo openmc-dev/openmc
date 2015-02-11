@@ -42,10 +42,10 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 
 # Default compiler paths
 FC='gfortran'
-MPI_DIR='/opt/mpich/3.1-gnu'
-HDF5_DIR='/opt/hdf5/1.8.12-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
-PETSC_DIR='/opt/petsc/3.4.4-gnu'
+MPI_DIR='/opt/mpich/3.1.3-gnu'
+HDF5_DIR='/opt/hdf5/1.8.14-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.14-gnu'
+PETSC_DIR='/opt/petsc/3.5.2-gnu'
 
 # Script mode for extra capability
 script_mode = False

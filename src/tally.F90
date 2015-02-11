@@ -21,8 +21,7 @@ module tally
 
   implicit none
 
-  ! Tally map positioning array
-  integer :: position(N_FILTER_TYPES - 3) = 0
+  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
 !$omp threadprivate(position)
 
 contains
@@ -282,10 +281,9 @@ contains
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
 
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
-!$omp end critical
             end do
             j = j + t % moment_order(j)
             cycle SCORE_LOOP
@@ -348,10 +346,9 @@ contains
               ! get the score and tally it
               score = wgt * calc_pn(n, mu)
 
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
-!$omp end critical
             end do
             j = j + t % moment_order(j)
             cycle SCORE_LOOP
@@ -543,10 +540,9 @@ contains
           end select
 
           ! Add score to tally
-!$omp critical
+!$omp atomic
           t % results(score_index, filter_index) % value = &
                t % results(score_index, filter_index) % value + score
-!$omp end critical
 
         end do SCORE_LOOP
 
@@ -618,10 +614,9 @@ contains
       i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       ! Add score to tally
-!$omp critical
+!$omp atomic
       t % results(i_score, i_filter) % value = &
            t % results(i_score, i_filter) % value + score
-!$omp end critical
     end do
 
     ! reset outgoing energy bin and score index
@@ -871,8 +866,8 @@ contains
                   end do REACTION_LOOP
 
                 else
-                  message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end if
               end select
 
@@ -1009,17 +1004,16 @@ contains
                   end do
 
                 else
-                  message = "Invalid score type on tally " // to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end if
               end select
             end if
 
             ! Add score to tally
-!$omp critical
+!$omp atomic
             t % results(score_index, filter_index) % value = &
                  t % results(score_index, filter_index) % value + score
-!$omp end critical
 
           end do SCORE_LOOP
 
@@ -1209,16 +1203,15 @@ contains
             end do REACTION_LOOP
 
           else
-            message = "Invalid score type on tally " // to_str(t % id) // "."
-            call fatal_error()
+            call fatal_error("Invalid score type on tally " &
+                 &// to_str(t % id) // ".")
           end if
         end select
 
         ! Add score to tally
-!$omp critical
+!$omp atomic
         t % results(score_index, filter_index) % value = &
              t % results(score_index, filter_index) % value + score
-!$omp end critical
 
       end do SCORE_LOOP
 
@@ -1361,16 +1354,15 @@ contains
           end do
 
         else
-          message = "Invalid score type on tally " // to_str(t % id) // "."
-          call fatal_error()
+          call fatal_error("Invalid score type on tally " &
+               &// to_str(t % id) // ".")
         end if
       end select
 
       ! Add score to tally
-!$omp critical
+!$omp atomic
       t % results(score_index, filter_index) % value = &
            t % results(score_index, filter_index) % value + score
-!$omp end critical
 
     end do MATERIAL_SCORE_LOOP
 
@@ -1707,9 +1699,8 @@ contains
                 case (SCORE_EVENTS)
                   score = ONE
                 case default
-                  message = "Invalid score type on tally " // &
-                       to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end select
 
               else
@@ -1783,17 +1774,15 @@ contains
                 case (SCORE_EVENTS)
                   score = ONE
                 case default
-                  message = "Invalid score type on tally " // &
-                       to_str(t % id) // "."
-                  call fatal_error()
+                  call fatal_error("Invalid score type on tally " &
+                       &// to_str(t % id) // ".")
                 end select
               end if
 
               ! Add score to tally
-!$omp critical
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                    t % results(score_index, filter_index) % value + score
-!$omp end critical
 
             end do SCORE_LOOP
 
@@ -1848,8 +1837,10 @@ contains
              p % coord % universe, i_tally)
 
       case (FILTER_MATERIAL)
-        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-             p % material, i_tally)
+        if (p % material /= MATERIAL_VOID) then
+          matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
+               p % material, i_tally)
+        endif
 
       case (FILTER_CELL)
         ! determine next cell bin
@@ -2024,10 +2015,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2038,10 +2028,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2056,10 +2045,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2070,10 +2058,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2088,10 +2075,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         else
@@ -2102,10 +2088,9 @@ contains
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!$omp critical
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
-!$omp end critical
             end if
           end do
         end if
@@ -2223,15 +2208,13 @@ contains
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &
                t % total_filter_bins) then
-            message = "Score index outside range."
-            call fatal_error()
+            call fatal_error("Score index outside range.")
           end if
 
           ! Add to surface current tally
-!$omp critical
+!$omp atomic
           t % results(1, filter_index) % value = &
                t % results(1, filter_index) % value + p % wgt
-!$omp end critical
         end if
 
         ! Calculate new coordinates
@@ -2563,18 +2546,16 @@ contains
 
     ! check to see if any of the active tally lists has been allocated
     if (active_tallies % size() > 0) then
-      message = "Active tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active tallies should not exist before CMFD tallies!")
     else if (active_analog_tallies % size() > 0) then
-      message = 'Active analog tallies should not exist before CMFD tallies!'
-      call fatal_error()
+      call fatal_error('Active analog tallies should not exist before CMFD &
+           &tallies!')
     else if (active_tracklength_tallies % size() > 0) then
-      message = "Active tracklength tallies should not exist before CMFD &
-           &tallies!"
-      call fatal_error()
+      call fatal_error("Active tracklength tallies should not exist before &
+           &CMFD tallies!")
     else if (active_current_tallies % size() > 0) then
-      message = "Active current tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active current tallies should not exist before CMFD &
+           &tallies!")
     end if
 
     do i = 1, n_cmfd_tallies

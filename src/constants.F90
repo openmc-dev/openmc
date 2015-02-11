@@ -8,10 +8,10 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_RELEASE = 2
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 12
+  integer, parameter :: REVISION_STATEPOINT       = 13
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -365,9 +365,8 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE  = 1, & ! non-unionized energy grid
-       GRID_UNION    = 2, & ! union grid with pointers
-       GRID_LETHARGY = 3    ! lethargy mapping
+       GRID_NUCLIDE   = 1, & ! non-unionized energy grid
+       GRID_LOGARITHM = 2    ! logarithmic mapping
 
   ! Running modes
   integer, parameter ::        &

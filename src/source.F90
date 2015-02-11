@@ -34,15 +34,14 @@ contains
     type(Bank), pointer :: src => null() ! source bank site
     type(BinaryOutput) :: sp ! statepoint/source binary file
 
-    message = "Initializing source particles..."
-    call write_message(6)
+    call write_message("Initializing source particles...", 6)
 
     if (path_source /= '') then
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      message = 'Reading source file from ' // trim(path_source) // '...'
-      call write_message(6)
+      call write_message('Reading source file from ' // trim(path_source) &
+           &// '...', 6)
 
       ! Open the binary file
       call sp % file_open(path_source, 'r', serial = .false.)
@@ -52,8 +51,8 @@ contains
 
       ! Check to make sure this is a source file
       if (itmp /= FILETYPE_SOURCE) then
-        message = "Specified starting source file not a source file type."
-        call fatal_error()
+        call fatal_error("Specified starting source file not a source file &
+             &type.")
       end if
 
       ! Read in the source bank
@@ -79,8 +78,7 @@ contains
 
     ! Write out initial source
     if (write_initial_source) then
-      message = 'Writing out initial source guess...'
-      call write_message(1)
+      call write_message('Writing out initial source guess...', 1)
 #ifdef HDF5
       filename = trim(path_output) // 'initial_source.h5'
 #else
@@ -142,9 +140,8 @@ contains
         if (.not. found) then
           num_resamples = num_resamples + 1
           if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            message = "Maximum number of external source spatial resamples &
-                      &reached!"
-            call fatal_error()
+            call fatal_error("Maximum number of external source spatial &
+                 &resamples reached!")
           end if
         end if
       end do
@@ -172,9 +169,8 @@ contains
         if (.not. found) then
           num_resamples = num_resamples + 1
           if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            message = "Maximum number of external source spatial resamples &
-                      &reached!"
-            call fatal_error()
+            call fatal_error("Maximum number of external source spatial &
+                 &resamples reached!")
           end if
           cycle
         end if
@@ -207,8 +203,7 @@ contains
       site % uvw = external_source % params_angle
 
     case default
-      message = "No angle distribution specified for external source!"
-      call fatal_error()
+      call fatal_error("No angle distribution specified for external source!")
     end select
 
     ! Sample energy distribution
@@ -216,6 +211,9 @@ contains
     case (SRC_ENERGY_MONO)
       ! Monoenergtic source
       site % E = external_source % params_energy(1)
+      if (site % E >= 20) then
+        call fatal_error("Source energies above 20 MeV not allowed.")
+      end if
 
     case (SRC_ENERGY_MAXWELL)
       a = external_source % params_energy(1)
@@ -239,8 +237,7 @@ contains
       end do
 
     case default
-      message = "No energy distribution specified for external source!"
-      call fatal_error()
+      call fatal_error("No energy distribution specified for external source!")
     end select
 
     ! Set the random number generator back to the tracking stream.

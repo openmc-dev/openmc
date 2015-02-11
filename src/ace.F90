@@ -15,13 +15,13 @@ module ace
 
   implicit none
 
-  integer :: NXS(16)             ! Descriptors for ACE XSS tables
-  integer :: JXS(32)             ! Pointers into ACE XSS tables
-  real(8), allocatable :: XSS(:) ! Cross section data
-  integer :: XSS_index           ! current index in XSS data
+  integer                   :: JXS(32)   ! Pointers into ACE XSS tables
+  integer                   :: NXS(16)   ! Descriptors for ACE XSS tables
+  real(8), allocatable      :: XSS(:)    ! Cross section data
+  integer                   :: XSS_index ! Current index in XSS data
 
-  private :: NXS
   private :: JXS
+  private :: NXS
   private :: XSS
 
 contains
@@ -94,7 +94,7 @@ contains
                   & scheme)
                 nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
                 nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
-                if (.not. already_read % contains(nuclides(i_nuclide) % & 
+                if (.not. already_read % contains(nuclides(i_nuclide) % &
                   & name_0K)) then
                   i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % &
                     & name_0K)
@@ -151,9 +151,9 @@ contains
 
         ! Check to make sure S(a,b) table matched a nuclide
         if (mat % i_sab_nuclides(k) == NONE) then
-          message = "S(a,b) table " // trim(mat % sab_names(k)) // " did not &
-               &match any nuclide on material " // trim(to_str(mat % id))
-          call fatal_error()
+          call fatal_error("S(a,b) table " // trim(mat % sab_names(k)) &
+               &// " did not match any nuclide on material " &
+               &// trim(to_str(mat % id)))
         end if
       end do ASSIGN_SAB
 
@@ -264,17 +264,14 @@ contains
     ! Check if ACE library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-      message = "ACE library '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error("ACE library '" // trim(filename) // "' does not exist!")
     elseif (readable(1:3) == 'NO') then
-      message = "ACE library '" // trim(filename) // "' is not readable! &
-           &Change file permissions with chmod command."
-      call fatal_error()
+      call fatal_error("ACE library '" // trim(filename) // "' is not readable!&
+           & Change file permissions with chmod command.")
     end if
 
     ! display message
-    message = "Loading ACE cross section table: " // listing % name
-    call write_message(6)
+    call write_message("Loading ACE cross section table: " // listing % name, 6)
 
     if (filetype == ASCII) then
       ! =======================================================================
@@ -293,9 +290,8 @@ contains
       ! Check that correct xs was found -- if cross_sections.xml is broken, the
       ! location of the table may be wrong
       if(adjustl(name) /= adjustl(listing % name)) then
-        message = "XS listing entry " // trim(listing % name) // " did not &
-             &match ACE data, " // trim(name) // " found instead."
-        call fatal_error()
+        call fatal_error("XS listing entry " // trim(listing % name) // " did &
+             &not match ACE data, " // trim(name) // " found instead.")
       end if
 
       ! Read more header and NXS and JXS
@@ -373,14 +369,6 @@ contains
         call read_unr_res(nuc)
       end if
 
-      ! Currently subcritical fixed source calculations are not allowed. Thus,
-      ! if any fissionable material is found in a fixed source calculation,
-      ! abort the run.
-      if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
-        message = "Cannot have fissionable material in a fixed source run."
-        call fatal_error()
-      end if
-
       ! for fissionable nuclides, precalculate microscopic nu-fission cross
       ! sections so that we don't need to call the nu_total function during
       ! cross section lookups (except if we're dealing w/ 0K data for resonant
@@ -448,7 +436,7 @@ contains
 
       ! Skip total and absorption
       XSS_index = XSS_index + 2*NE
-      
+
       ! Continue reading elastic scattering and heating
       nuc % elastic_0K = get_real(NE)
 
@@ -484,13 +472,13 @@ contains
       ! Read data from XSS -- only the energy grid, elastic scattering and heating
       ! cross section values are actually read from here. The total and absorption
       ! cross sections are reconstructed from the partial reaction data.
-      
+
       XSS_index = 1
       nuc % energy = get_real(NE)
-      
+
       ! Skip total and absorption
       XSS_index = XSS_index + 2*NE
-      
+
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 
@@ -708,7 +696,8 @@ contains
     integer :: LXS       ! location of cross-section locators
     integer :: LOCA      ! location of cross-section for given MT
     integer :: IE        ! reaction's starting index on energy grid
-    integer :: NE        ! number of energies for reaction
+    integer :: NE        ! number of energies
+    integer :: NR        ! number of interpolation regions
     type(Reaction), pointer :: rxn => null()
     type(ListInt) :: MTs
 
@@ -759,18 +748,40 @@ contains
       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
-      ! If multiplicity is energy-dependent (absolute value > 100), set it based
-      ! on the MT value
+      ! Read energy-dependent multiplicities
       if (rxn % multiplicity > 100) then
-        if (any(rxn%MT == [11, 16, 24, 30, 41])) then
-          rxn % multiplicity = 2
-        elseif (any(rxn%MT == [17, 25, 42])) then
-          rxn % multiplicity = 3
-        elseif (rxn%MT == 37) then
-          rxn % multiplicity = 4
-        else
-          rxn % multiplicity = 1
+        ! Set flag and allocate space for Tab1 to store yield
+        rxn % multiplicity_with_E = .true.
+        allocate(rxn % multiplicity_E)
+        
+        XSS_index = JXS(11) + rxn % multiplicity - 101
+        NR = nint(XSS(XSS_index))
+        rxn % multiplicity_E % n_regions = NR
+        
+        ! allocate space for ENDF interpolation parameters
+        if (NR > 0) then
+          allocate(rxn % multiplicity_E % nbt(NR))
+          allocate(rxn % multiplicity_E % int(NR))
         end if
+        
+        ! read ENDF interpolation parameters
+        XSS_index = XSS_index + 1
+        if (NR > 0) then
+          rxn % multiplicity_E % nbt = get_int(NR)
+          rxn % multiplicity_E % int = get_int(NR)
+        end if
+        
+        ! allocate space for yield data
+        XSS_index = XSS_index + 2*NR
+        NE = nint(XSS(XSS_index))
+        rxn % multiplicity_E % n_pairs = NE
+        allocate(rxn % multiplicity_E % x(NE))
+        allocate(rxn % multiplicity_E % y(NE))
+        
+        ! read yield data
+        XSS_index = XSS_index + 1
+        rxn % multiplicity_E % x = get_real(NE)
+        rxn % multiplicity_E % y = get_real(NE)
       end if
 
       ! read starting energy index
@@ -1315,9 +1326,8 @@ contains
 
       ! Abort if no corresponding inelastic reaction was found
       if (nuc % urr_inelastic == NONE) then
-        message = "Could not find inelastic reaction specified on " &
-             // "unresolved resonance probability table."
-        call fatal_error()
+        call fatal_error("Could not find inelastic reaction specified on &
+             &unresolved resonance probability table.")
       end if
     end if
 
@@ -1343,9 +1353,8 @@ contains
 
     ! Check for negative values
     if (any(nuc % urr_data % prob < ZERO)) then
-      message = "Negative value(s) found on probability table for nuclide " &
-           // nuc % name
-      call warning()
+      if (master) call warning("Negative value(s) found on probability table &
+           &for nuclide " // nuc % name)
     end if
 
   end subroutine read_unr_res

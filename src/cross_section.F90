@@ -2,6 +2,7 @@ module cross_section
 
   use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
+  use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global
@@ -13,9 +14,6 @@ module cross_section
 
   implicit none
   save
-
-  integer :: union_grid_index
-!$omp threadprivate(union_grid_index)
 
 contains
 
@@ -49,9 +47,6 @@ contains
     if (p % material == MATERIAL_VOID) return
 
     mat => materials(p % material)
-
-    ! Find energy index on unionized grid
-    if (grid_method == GRID_UNION) call find_energy_index(p % E)
 
     ! Determine if this material has S(a,b) tables
     check_sab = (mat % n_sab > 0)
@@ -142,8 +137,10 @@ contains
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f      ! interp factor on nuclide energy grid
+    integer :: i_grid        ! index on nuclide energy grid
+    integer :: i_low, i_high ! bounding indices from logarithmic mapping
+    integer :: u             ! index into logarithmic mapping array
+    real(8) :: f             ! interp factor on nuclide energy grid
     type(Nuclide), pointer, save :: nuc => null()
 !$omp threadprivate(nuc)
 
@@ -152,16 +149,29 @@ contains
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
-    case (GRID_UNION)
-      ! If we're using the unionized grid with pointers, finding the index on
-      ! the nuclide energy grid is as simple as looking up the pointer
+    case (GRID_LOGARITHM)
+      ! Determine the energy grid index using a logarithmic mapping to reduce
+      ! the energy range over which a binary search needs to be performed
 
-      i_grid = nuc % grid_index(union_grid_index)
+      if (E < nuc % energy(1)) then
+        i_grid = 1
+      elseif (E > nuc % energy(nuc % n_grid)) then
+        i_grid = nuc % n_grid - 1
+      else
+        ! Determine bounding indices based on which equal log-spaced interval
+        ! the energy is in
+        u = int(log(E/1.0e-11_8)/log_spacing)
+        i_low  = nuc % grid_index(u)
+        i_high = nuc % grid_index(u + 1) + 1
+
+        ! Perform binary search over reduced range
+        i_grid = binary_search(nuc % energy(i_low:i_high), &
+             i_high - i_low + 1, E) + i_low - 1
+      end if
 
     case (GRID_NUCLIDE)
-      ! If we're not using the unionized grid, we have to do a binary search on
-      ! the nuclide energy grid in order to determine which points to
-      ! interpolate between
+      ! Perform binary search on the nuclide energy grid in order to determine
+      ! which points to interpolate between
 
       if (E < nuc % energy(1)) then
         i_grid = 1
@@ -198,7 +208,7 @@ contains
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
          + f * nuc % total(i_grid+1)
 
-    ! Calculate microscopic nuclide total cross section
+    ! Calculate microscopic nuclide elastic cross section
     micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
          + f * nuc % elastic(i_grid+1)
 
@@ -495,27 +505,6 @@ contains
     end if
 
   end subroutine calculate_urr_xs
-
-!===============================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain
-! energy
-!===============================================================================
-
-  subroutine find_energy_index(E)
-
-    real(8), intent(in) :: E ! energy of particle
-
-    ! if particle's energy is outside of energy grid range, set to first or last
-    ! index. Otherwise, do a binary search through the union energy grid.
-    if (E < e_grid(1)) then
-      union_grid_index = 1
-    elseif (E > e_grid(n_grid)) then
-      union_grid_index = n_grid - 1
-    else
-      union_grid_index = binary_search(e_grid, n_grid, E)
-    end if
-
-  end subroutine find_energy_index
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section

@@ -262,7 +262,7 @@ contains
               end do
             end do
           case default
-            moment_name = '0'
+            moment_name = ''
             call sp % write_data(moment_name, "order", &
                  group="tallies/tally" // trim(to_str(i)) // &
                  "/moments/" // trim(to_str(k)))

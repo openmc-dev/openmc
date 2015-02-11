@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.6.0',
+        VERSION:     '0.6.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -70,12 +70,12 @@ OpenMC from source as is described in <a class="reference internal" href="usersg
 </div>
 <div class="section" id="installing-from-source-on-linux-or-mac-os-x">
 <h2>Installing from Source on Linux or Mac OS X<a class="headerlink" href="#installing-from-source-on-linux-or-mac-os-x" title="Permalink to this headline">¶</a></h2>
-<p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. If you have <a class="reference external" href="http://git-scm.com">git</a> and the <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>
-compiler installed, you can download and install OpenMC be entering the
-following commands in a terminal:</p>
+<p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. If you have <a class="reference external" href="http://git-scm.com">git</a>, the <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>
+compiler, and <a class="reference external" href="http://www.cmake.org">CMake</a> installed, you can download and install OpenMC be entering
+the following commands in a terminal:</p>
 <div class="highlight-sh"><div class="highlight"><pre>git clone git://github.com/mit-crpg/openmc.git
 <span class="nb">cd </span>openmc/src
-git checkout master
+git checkout -b master origin/master
 make
 sudo make install
 </pre></div>

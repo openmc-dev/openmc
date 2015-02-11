@@ -1,0 +1,1254 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Theory and Methodology" href="index.html" />
+    <link rel="next" title="User’s Guide" href="../usersguide/index.html" />
+    <link rel="prev" title="8. Parallelization" href="parallelization.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="parallelization.html">8. Parallelization</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../usersguide/index.html">User&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="nonlinear-diffusion-acceleration-coarse-mesh-finite-difference">
+<span id="methods-cmfd"></span><h1>9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference<a class="headerlink" href="#nonlinear-diffusion-acceleration-coarse-mesh-finite-difference" title="Permalink to this headline">¶</a></h1>
+<p>This page section discusses how nonlinear diffusion acceleration (NDA) using
+coarse mesh finite difference (CMFD) is implemented into OpenMC. Before we get
+into the theory, general notation for this section is discussed.</p>
+<div class="section" id="notation">
+<h2>9.1. Notation<a class="headerlink" href="#notation" title="Permalink to this headline">¶</a></h2>
+<p>Before deriving NDA relationships, notation is explained. If a parameter has a
+<img class="math" src="../_images/math/0995f196171a3981c63fa5f1b4a0e9c1223c7df0.png" alt="\overline{\cdot}"/>, it is surface area-averaged and if it has a
+<img class="math" src="../_images/math/98917865b29c6564f632a83c8810bd5d4818a514.png" alt="\overline{\overline\cdot}"/>, it is volume-averaged. When describing a
+specific cell in the geometry, indices <img class="math" src="../_images/math/7f79ece40507754e4ab15b2ee8c574fb1e6ae20b.png" alt="(i,j,k)"/> are used which correspond
+to directions <img class="math" src="../_images/math/c73ed093cc73a8d9a14185fa525e7067e5c3725d.png" alt="(x,y,z)"/>. In most cases, the same operation is performed in
+all three directions. To compactly write this, an arbitrary direction set
+<img class="math" src="../_images/math/6cae371bfd2071f02ea92c900fa514467e7d9755.png" alt="(u,v,w)"/> that corresponds to cell indices <img class="math" src="../_images/math/cba2eefb349bc25b79b0db42d582c5c6a80bcb49.png" alt="(l,m,n)"/> is used. Note
+that <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> and <img class="math" src="../_images/math/9b25f8e64b484493fda944d25cad453423041fe6.png" alt="l"/> do not have to correspond to <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> and
+<img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>. However, if <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> and <img class="math" src="../_images/math/9b25f8e64b484493fda944d25cad453423041fe6.png" alt="l"/> correspond to <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> and
+<img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>, <img class="math" src="../_images/math/a9f23bf124b6b2b2a993eb313c72e678664ac74a.png" alt="v"/> and <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> correspond to <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> and <img class="math" src="../_images/math/b13f21416d84e13708696f34dea81026cda583c9.png" alt="z"/>
+directions. An example of this is shown in the following expression:</p>
+<div class="math" id="equation-not1">
+<p><span class="eqno">(1)</span><img src="../_images/math/93195fd66774e539b682be7cc92fb91f8a83f84c.png" alt="\sum\limits_{u\in(x,y,z)}\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
+\Delta_m^v\Delta_n^w\right\rangle"/></p>
+</div><p>Here, <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> takes on each direction one at a time. The parameter <img class="math" src="../_images/math/abb5588023cfa1ac14643e9778699f03eecc57a3.png" alt="J"/>
+is surface area-averaged over the transverse indices <img class="math" src="../_images/math/f5047d1e0cbb50ec208923a22cd517c55100fa7b.png" alt="m"/> and <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/>
+located at <img class="math" src="../_images/math/9ce7c103b3cdf505d662656c401e91f57a3d6d12.png" alt="l+1/2"/>.  Usually, spatial indices are listed as subscripts and
+the direction as a superscript. Energy group indices represented by <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>
+and <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> are also listed as superscripts here. The group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/> is the
+group of interest and, if present, <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> is all groups. Finally, any
+parameter surrounded by <img class="math" src="../_images/math/f8f7e26c16b771c2fcce6676c662337eb3f33028.png" alt="\left\langle\cdot\right\rangle"/> represents a
+tally quantity that can be edited from a Monte Carlo (MC) solution.</p>
+</div>
+<div class="section" id="theory">
+<h2>9.2. Theory<a class="headerlink" href="#theory" title="Permalink to this headline">¶</a></h2>
+<p>NDA is a diffusion model that has equivalent physics to a transport model. There
+are many different methods that can be classified as NDA. The CMFD method is a
+type of NDA that represents second order multigroup diffusion equations on a
+coarse spatial mesh.  Whether a transport model or diffusion model is used to
+represent the distribution of neutrons, these models must satisfy the <em>neutron
+balance equation</em>. This balance is represented by the following formula for a
+specific energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/> in cell <img class="math" src="../_images/math/cba2eefb349bc25b79b0db42d582c5c6a80bcb49.png" alt="(l,m,n)"/>:</p>
+<div class="math" id="equation-eq_neut_bal">
+<p><span class="eqno">(2)</span><img src="../_images/math/f0f5a4134ebfd33058961a2d086a23005a578f35.png" alt="\sum\limits_{u\in(x,y,z)}\left(\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
+\Delta_m^v\Delta_n^w\right\rangle -
+\left\langle\overline{J}^{u,g}_{l-1/2,m,n}
+\Delta_m^v\Delta_n^w\right\rangle\right)
++
+\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle
+= \\
+\sum\limits_{h=1}^G\left\langle
+\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
+g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w
+\right\rangle
++
+\frac{1}{k_{eff}}\sum\limits_{h=1}^G
+\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
+g}\overline{\overline\phi}_{l,m,n}^h
+\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle."/></p>
+</div><p>In eq. <a href="#equation-eq_neut_bal">(2)</a> the parameters are defined as:</p>
+<ul class="simple">
+<li><img class="math" src="../_images/math/b8a6569ceee03bb33fa264f1e3e491818d43f05a.png" alt="\left\langle\overline{J}^{u,g}_{l\pm
+1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle"/> &#8212; surface area-integrated net
+current over surface <img class="math" src="../_images/math/b9420869bbf8a2c7bdcb2a8cbd0a9be8e113c26a.png" alt="(l\pm 1/2,m,n)"/> with surface normal in direction
+<img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> in energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>. By dividing this quantity by the transverse
+area, <img class="math" src="../_images/math/7980cceb0e1004aad3ade496cabd19b9802c1185.png" alt="\Delta_m^v\Delta_n^w"/>, the surface area-averaged net current can
+be computed.</li>
+<li><img class="math" src="../_images/math/f1108b2b528e050a0f7bd6d7f1786a1319daa837.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
+&#8212; volume-integrated total reaction rate over energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>.</li>
+<li><img class="math" src="../_images/math/63f6487344af02524bb966579b55ec3a142f9e9a.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
+g}
+\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
+&#8212; volume-integrated scattering production rate of neutrons that begin with
+energy in group <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> and exit reaction in group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>. This reaction
+rate also includes the energy transfer of reactions (except fission) that
+produce multiple neutrons such as (n, 2n); hence, the need for <img class="math" src="../_images/math/9bf4eb62c822f30eb24bcf8e1909ed6376387326.png" alt="\nu_s"/>
+to represent neutron multiplicity.</li>
+<li><img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> &#8212; core multiplication factor.</li>
+<li><img class="math" src="../_images/math/52147427cc94e0ba977519e6d66e13235cc98850.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
+g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
+&#8212; volume-integrated fission production rate of neutrons from fissions in
+group <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> that exit in group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>.</li>
+</ul>
+<p>Each quantity in <img class="math" src="../_images/math/f8f7e26c16b771c2fcce6676c662337eb3f33028.png" alt="\left\langle\cdot\right\rangle"/> represents a scalar value that
+is obtained from an MC tally. A good verification step when using an MC code is
+to make sure that tallies satisfy this balance equation within statistics. No
+NDA acceleration can be performed if the balance equation is not satisfied.</p>
+<p>There are three major steps to consider when performing NDA: (1) calculation of
+macroscopic cross sections and nonlinear parameters, (2) solving an eigenvalue
+problem with a system of linear equations, and (3) modifying MC source
+distribution to align with the NDA solution on a chosen mesh. This process is
+illustrated as a flow chart below. After a batch of neutrons
+is simulated, NDA can take place. Each of the steps described above is described
+in detail in the following sections.</p>
+<div class="figure">
+<p><img src="../_images/tikz-2415a321261cca6307913eacc8e1d6b53ce536bf.png" alt="\begin{tikzpicture}
+	\matrix[every node/.style={draw, thick, minimum width=3cm, minimum height=1cm, align=center}, column sep=2cm, row sep=1cm] (m) {
+\node[draw, fill=red!40] (start) {Batch $i$ \\ tally NDA}; &amp; \\
+ \node[draw, diamond, aspect=2, fill=green!40] (cmfd) {Run NDA?}; &amp; \node[draw, fill=red!40] (end) {Batch $i + 1$ \\ tally NDA};  \\
+\node[draw, fill=blue!40] (xs) {Calculate XS \&amp; DC}; &amp; \node[draw, fill=blue!40] (modify) {Modify MC Source}; \\
+\node[draw, fill=blue!40] (nonlinear) {Calculate Equivalence}; &amp;  \node[draw, fill=blue!40] (eqs) {Solve NDA eqs.};\\
+};
+
+\begin{scope}[every path/.style={-&gt;,very thick,draw}]
+        \draw (start.south) -- (cmfd.north);
+        \draw (cmfd.east)  -- node[above] {no} (end.west);
+        \draw (cmfd.south)  -- node[right] {yes} (xs.north);
+		\draw (xs.south)  --  (nonlinear.north);
+		\draw (nonlinear.east)  --  (eqs.west);
+		\draw (eqs.north)  --  (modify.south);
+		\draw (modify.north)  --  (end.south);
+    \end{scope}
+
+\end{tikzpicture}" /></p>
+<p class="caption">Flow chart of NDA process. Note &quot;XS&quot; is used for cross section and
+       &quot;DC&quot; is used for diffusion coefficient.</p></div><div class="section" id="calculation-of-macroscopic-cross-sections">
+<h3>9.2.1. Calculation of Macroscopic Cross Sections<a class="headerlink" href="#calculation-of-macroscopic-cross-sections" title="Permalink to this headline">¶</a></h3>
+<p>A diffusion model needs macroscopic cross sections and diffusion coefficients to
+solve for multigroup fluxes. Cross sections are derived by conserving reaction
+rates predicted by MC tallies. From Eq. <a href="#equation-eq_neut_bal">(2)</a>, total, scattering
+production and fission production macroscopic cross sections are needed. They are
+defined from MC tallies as follows:</p>
+<div class="math" id="equation-xs1">
+<p><span class="eqno">(3)</span><img src="../_images/math/f141c3609d318b63f8d755fb6e1eab2c9c3469e0.png" alt="\overline{\overline\Sigma}_{t_{l,m,n}}^g \equiv
+\frac{\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
+{\left\langle\overline{\overline\phi}_{l,m,n}^g
+\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle},"/></p>
+</div><div class="math" id="equation-xs2">
+<p><span class="eqno">(4)</span><img src="../_images/math/885539af496b6451b4f30bb69a4fb1786171f31a.png" alt="\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g} \equiv
+\frac{\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
+g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
+{\left\langle\overline{\overline\phi}_{l,m,n}^h
+\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}"/></p>
+</div><p>and</p>
+<div class="math" id="equation-xs3">
+<p><span class="eqno">(5)</span><img src="../_images/math/6e1f8975c076948034a4873fd50029f6fdb20d48.png" alt="\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g} \equiv
+\frac{\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
+g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
+{\left\langle\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}."/></p>
+</div><p>In order to fully conserve neutron balance, leakage rates also need to be
+preserved. In standard diffusion theory, leakage rates are represented by
+diffusion coefficients. Unfortunately, it is not easy in MC to calculate a
+single diffusion coefficient for a cell that describes leakage out of each
+surface. Luckily, it does not matter what definition of diffusion coefficient is
+used because nonlinear equivalence parameters will correct for this
+inconsistency. However, depending on the diffusion coefficient definition
+chosen, different convergence properties of NDA equations are observed.
+Here, we introduce a diffusion coefficient that is derived for a coarse energy
+transport reaction rate. This definition can easily be constructed from
+MC tallies provided that angular moments of scattering reaction rates can
+be obtained. The diffusion coefficient is defined as follows:</p>
+<div class="math" id="equation-eq_transD">
+<p><span class="eqno">(6)</span><img src="../_images/math/a9b29f49a70a0286063bf403d3c3d98bf27e887a.png" alt="\overline{\overline D}_{l,m,n}^g =
+ \frac{\left\langle\overline{\overline\phi}_{l,m,n}^g
+ \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}{3
+ \left\langle\overline{\overline\Sigma}_{tr_{l,m,n}}^g
+ \overline{\overline\phi}_{l,m,n}^g
+ \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle},"/></p>
+</div><p>where</p>
+<div class="math" id="equation-xs4">
+<p><span class="eqno">(7)</span><img src="../_images/math/603ff2a8b1fc8cc789eddbc299d7a1e0cb1c4b53.png" alt="\left\langle\overline{\overline\Sigma}_{tr_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle
+=
+\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle
+\\ -
+\left\langle\overline{\overline{\nu_s\Sigma}}_{s1_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle."/></p>
+</div><p>Note that the transport reaction rate is calculated from the total reaction rate
+reduced by the <img class="math" src="../_images/math/a5b0256a78d58b6d5f7a53400b19e7747d2983fa.png" alt="P_1"/> scattering production reaction rate. Equation <a href="#equation-eq_transD">(6)</a>
+does not represent the best definition of diffusion coefficients from MC;
+however, it is very simple and usually fits into MC tally frameworks
+easily. Different methods to calculate more accurate diffusion coefficients can
+found in <a class="reference internal" href="#herman" id="id1">[Herman]</a>.</p>
+</div>
+<div class="section" id="cmfd-equations">
+<h3>9.2.2. CMFD Equations<a class="headerlink" href="#cmfd-equations" title="Permalink to this headline">¶</a></h3>
+<p>The first part of this section is devoted to discussing second-order finite
+volume discretization of multigroup diffusion equations. This will be followed
+up by the formulation of CMFD equations that are used in this NDA
+scheme. When performing second-order finite volume discretization of the
+diffusion equation, we need information that relates current to flux. In this
+numerical scheme, each cell is coupled only to its direct neighbors. Therefore,
+only two types of coupling exist: (1) cell-to-cell coupling and (2)
+cell-to-boundary coupling. The derivation of this procedure is referred to as
+finite difference diffusion equations and can be found in literature such
+as <a class="reference internal" href="#hebert" id="id2">[Hebert]</a>. These current/flux relationships are as follows:</p>
+<ul class="simple">
+<li>cell-to-cell coupling</li>
+</ul>
+<div class="math" id="equation-eq_cell_cell">
+<p><span class="eqno">(8)</span><img src="../_images/math/538fb2733d989d8b931c64dc453127d5b0b542c9.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\frac{2\overline{\overline
+D}_{l\pm1,m,n}^g\overline{\overline
+D}_{l,m,n}^g}{\overline{\overline D}_{l\pm1,m,n}^g\Delta_l^u +
+\overline{\overline
+D}_{l,m,n}^g\Delta_{l\pm1}^u}
+\left(\pm\overline{\overline{\phi}}_{l\pm1,m,n}^g\mp
+\overline{\overline{\phi}}_{l,m,n}^g\right),"/></p>
+</div><ul class="simple">
+<li>cell-to-boundary coupling</li>
+</ul>
+<div class="math" id="equation-eq_cell_bound">
+<p><span class="eqno">(9)</span><img src="../_images/math/790a11296a1226f6045b88f5cfb33586c2d7554f.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\frac{2\overline{\overline
+D}_{l,m,n}^g\left(1 -
+\beta_{l\pm1/2,m,n}^{u,g}\right)}{4\overline{\overline
+D}_{l,m,n}^g\left(1 + \beta_{l\pm1/2,m,n}^{u,g}\right) + \left(1 -
+\beta_{l\pm1/2,m,n}^{u,g}\right)\Delta_l^u}\overline{\overline{\phi}}_{l,m,n}^{g}."/></p>
+</div><p>In Eqs. <a href="#equation-eq_cell_cell">(8)</a> and <a href="#equation-eq_cell_bound">(9)</a>, the <img class="math" src="../_images/math/91205e81c98c486418902c88d5c396f5355491f1.png" alt="\pm"/> refers to
+left (<img class="math" src="../_images/math/52969fdeeb90f7e24cd2a2f1a6cfe124776fee2a.png" alt="-x"/>) or right (<img class="math" src="../_images/math/09ee9d74659eb6547155a657c853fd5719e97191.png" alt="+x"/>) surface in the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> direction,
+back (<img class="math" src="../_images/math/a55679995cd6abb1efbdd15eff74eb2d3d1d0933.png" alt="-y"/>) or front (<img class="math" src="../_images/math/8ad620c1ffdcae4b31df2947af1e379d99565591.png" alt="+y"/>) surface in the <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> direction and
+bottom (<img class="math" src="../_images/math/5f131a63bd792d941d6f8fd7da6ffb14f86989bf.png" alt="-z"/>) or top (<img class="math" src="../_images/math/d3c2586b96def1f6353cf935c81163f7dbf369de.png" alt="+z"/>) surface in the <img class="math" src="../_images/math/b13f21416d84e13708696f34dea81026cda583c9.png" alt="z"/> direction. For
+cell-to-boundary coupling, a general albedo, <img class="math" src="../_images/math/966e5d9367b057e12a91377512e826196bd92e05.png" alt="\beta_{l\pm1/2,m,n}^{u,g}"/>,
+is used. The albedo is defined as the ratio of incoming (<img class="math" src="../_images/math/add22d9bda21e86390bc74fa4dde17730a442da7.png" alt="-"/> superscript)
+to outgoing (<img class="math" src="../_images/math/77cf26be132ef93923e082ee4153b2cb0ef44a50.png" alt="+"/> superscript) partial current on any surface represented
+as</p>
+<div class="math" id="equation-eq_albedo">
+<p><span class="eqno">(10)</span><img src="../_images/math/356b95424db665a84e39360c3ac8288a09f3db6b.png" alt="\beta_{l\pm1/2,m,n}^{u,g} =
+\frac{\overline{J}^{u,g-}_{l\pm1/2,m,n}}{\overline{J}^{u,g+}_{l\pm1/2,m,n}}."/></p>
+</div><p>Common boundary conditions are: vacuum (<img class="math" src="../_images/math/632a65c82b0d143ac0630269ba8720846fc4c846.png" alt="\beta=0"/>), reflective
+(<img class="math" src="../_images/math/bd0841c3936bc875fefe9192ca5209033f156466.png" alt="\beta=1"/>) and zero flux (<img class="math" src="../_images/math/576795bf76653a78af6c5543ba26a903c6b89aab.png" alt="\beta=-1"/>). Both eq. <a href="#equation-eq_cell_cell">(8)</a>
+and eq. <a href="#equation-eq_cell_bound">(9)</a> can be written in this generic form,</p>
+<div class="math" id="equation-eq_dtilde">
+<p><span class="eqno">(11)</span><img src="../_images/math/3238cebeae589a0330910203d3188c1e673c1c2e.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \widetilde{D}_{l,m,n}^{u,g} \left(\dots\right)."/></p>
+</div><p>The parameter <img class="math" src="../_images/math/62619a8d0bde7a75fd9192d0e1f9153596d9a4df.png" alt="\widetilde{D}_{l,m,n}^{u,g}"/> represents the linear
+coupling term between current and flux. These current relationships can be
+sustituted into eq. <a href="#equation-eq_neut_bal">(2)</a> to produce a linear system of multigroup
+diffusion equations for each spatial cell and energy group. However, a solution
+to these equations is not consistent with a higher order transport solution
+unless equivalence factors are present. This is because both the diffusion
+approximation, governed by Fick&#8217;s Law, and spatial trunction error will produce
+differences. Therefore, a nonlinear parameter,
+<img class="math" src="../_images/math/6a71d7c3e288beaeabb84cd84018a473a7386302.png" alt="\widehat{D}_{l,m,n}^{u,g}"/>, is added to eqs. <a href="#equation-eq_cell_cell">(8)</a> and
+<a href="#equation-eq_cell_bound">(9)</a>. These equations are, respectively,</p>
+<div class="math" id="equation-eq_dhat_cell">
+<p><span class="eqno">(12)</span><img src="../_images/math/48c37b4c380d380d5f8f9f052e60be78175f0838.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\widetilde{D}_{l,m,n}^{u,g}
+\left(\pm\overline{\overline{\phi}}_{l\pm1,m,n}^g\mp
+\overline{\overline{\phi}}_{l,m,n}^g\right) + \widehat{D}_{l,m,n}^{u,g}
+\left(\overline{\overline{\phi}}_{l\pm1,m,n}^g +
+\overline{\overline{\phi}}_{l,m,n}^g\right)"/></p>
+</div><p>and</p>
+<div class="math" id="equation-eq_dhat_bound">
+<p><span class="eqno">(13)</span><img src="../_images/math/a172b53f60958254dfabfb91aeeac679c162fa84.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\widetilde{D}_{l,m,n}^{u,g}
+\overline{\overline{\phi}}_{l,m,n}^{g} + \widehat{D}_{l,m,n}^{u,g}
+\overline{\overline{\phi}}_{l,m,n}^{g}."/></p>
+</div><p>The only unknown in each of these equations is the equivalence parameter. The
+current, linear coupling term and flux can either be obtained or derived from
+MC tallies. Thus, it is called nonlinear because it is dependent on the flux
+which is updated on the next iteration.</p>
+<p>Equations <a href="#equation-eq_dhat_cell">(12)</a> and <a href="#equation-eq_dhat_bound">(13)</a> can be substituted into
+eq. <a href="#equation-eq_neut_bal">(2)</a> to create a linear system of equations that is consistent
+with transport physics.  One example of this equation is written for an
+interior cell,</p>
+<div class="math" id="equation-eq_cmfd_sys">
+<p><span class="eqno">(14)</span><img src="../_images/math/49d4475e4ce6612d284b21992ac713097dce851f.png" alt="\sum_{u\in
+x,y,x}\frac{1}{\Delta_l^u}\left[\left(-\tilde{D}_{l-1/2,m,n}^{u,g} -
+\hat{D}_{l-1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l-1,m,n}^g\right.
++ \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
+\tilde{D}_{l+1/2,m,n}^{u,g} - \hat{D}_{l-1/2,m,n}^{u,g} +
+\hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l,m,n}^g
+\\ +
+\left. \left(-\tilde{D}_{l+1/2,m,n}^{u,g} +
+\hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l+1,m,n}^g
+\right] +
+\overline{\overline\Sigma}_{t_{l,m,n}}^g\overline{\overline{\phi}}_{l,m,n}^g
+- \sum\limits_{h=1}^G\overline{\overline{\nu_s\Sigma}}^{h\rightarrow
+g}_{s_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h =
+\frac{1}{k}\sum\limits_{h=1}^G\overline{\overline{\nu_f\Sigma}}^{h\rightarrow
+g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h."/></p>
+</div><p>It should be noted that before substitution, eq. <a href="#equation-eq_neut_bal">(2)</a> was divided
+by the volume of the cell, <img class="math" src="../_images/math/9f5917f70923cc7878fc1d928d46132cb144be20.png" alt="\Delta_l^u\Delta_m^v\Delta_n^w"/>. Equation
+<a href="#equation-eq_cmfd_sys">(14)</a> can be represented in operator form as</p>
+<div class="math" id="equation-eq_CMFDopers">
+<p><span class="eqno">(15)</span><img src="../_images/math/4268c2de62a7c6b630e1d69a049499f1284e3cb4.png" alt="\mathbb{M}\mathbf{\Phi} = \frac{1}{k}\mathbb{F}\mathbf{\Phi},"/></p>
+</div><p>where <img class="math" src="../_images/math/a86bef475b8bcf8376aab847967c0b507650d684.png" alt="\mathbb{M}"/> is the neutron loss matrix operator,
+<img class="math" src="../_images/math/b222f8108c75325f805377c55ef40a6db49cf897.png" alt="\mathbb{F}"/> is the neutron production matrix operator,
+<img class="math" src="../_images/math/215aede5202851d1abedd7f9ffdfe423025d9a44.png" alt="\mathbf{\Phi}"/> is the multigroup flux vector and <img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> is the
+eigenvalue. This generalized eigenvalue problem is solved to obtain fundamental
+mode multigroup fluxes and eigenvalue. In order to produce consistent results
+with transport theory from these equations, the neutron balance equation must
+have been satisfied by MC tallies. The desire is that CMFD equations will
+produce a more accurate source than MC after each fission source generation.</p>
+</div>
+<div class="section" id="cmfd-feedback">
+<h3>9.2.3. CMFD Feedback<a class="headerlink" href="#cmfd-feedback" title="Permalink to this headline">¶</a></h3>
+<p>Now that a more accurate representation of the expected source distribution is
+estimated from CMFD, it needs to be communicated back to MC. The first step
+in this process is to generate a probability mass function that provides
+information about how probable it is for a neutron to be born in a given cell
+and energy group. This is represented as</p>
+<div class="math" id="equation-eq_cmfd_psrc">
+<p><span class="eqno">(16)</span><img src="../_images/math/1fb06606d4c517ccfa6504d75565c186f4ab91c7.png" alt="p_{l,m,n}^g =
+\frac{\sum_{h=1}^{G}\overline{\overline{\nu_f\Sigma}}^{h\rightarrow
+g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h\Delta_l^u\Delta_m^v
+\Delta_n^w}{\sum_n\sum_m\sum_l\sum_{h=1}^{G}\overline{
+\overline{\nu_f\Sigma}}^{h\rightarrow
+g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h\Delta_l^u\Delta_m^v
+\Delta_n^w}."/></p>
+</div><p>This equation can be multiplied by the number of source neutrons to obtain an
+estimate of the expected number of neutrons to be born in a given cell and
+energy group. This distribution can be compared to the MC source distribution
+to generate weight adjusted factors defined as</p>
+<div class="math" id="equation-eq_waf">
+<p><span class="eqno">(17)</span><img src="../_images/math/02023f437f71130c12bd82bfa5604ec9ca2b0e67.png" alt="f_{l,m,n}^g = \frac{Np_{l,m,n}^g}{\sum\limits_s w_s};\quad s\in
+\left(g,l,m,n\right)."/></p>
+</div><p>The MC source distribution is represented on the same coarse mesh as
+CMFD by summing all neutrons&#8217; weights, <img class="math" src="../_images/math/3d5b84e234ba0345c505dbe2899818c36aa9d23f.png" alt="w_s"/>, in a given cell and
+energy group. MC source weights can then be modified by this weight
+adjustment factor so that it matches the CMFD solution on the coarse
+mesh,</p>
+<div class="math" id="equation-src_mod">
+<p><span class="eqno">(18)</span><img src="../_images/math/ed755c5424f2f40f95f7d99f8fe36edb4e748a92.png" alt="w^\prime_s = w_s\times f_{l,m,n}^g;\quad s\in \left(g,l,m,n\right)."/></p>
+</div><p>It should be noted that heterogeneous information about local coordinates and
+energy remain constant throughout this modification process.</p>
+</div>
+</div>
+<div class="section" id="implementation-in-openmc">
+<h2>9.3. Implementation in OpenMC<a class="headerlink" href="#implementation-in-openmc" title="Permalink to this headline">¶</a></h2>
+<p>The section describes how CMFD was implemented in OpenMC. Before the simulation
+begins, a user sets up a CMFD input file that contains the following basic
+information:</p>
+<ul class="simple">
+<li>CMFD mesh (space and energy),</li>
+<li>boundary conditions at edge of mesh (albedos),</li>
+<li>acceleration region (subset of mesh, optional),</li>
+<li>fission source generation (FSG)/batch that CMFD should begin, and</li>
+<li>whether CMFD feedback should be applied.</li>
+</ul>
+<p>It should be noted that for more difficult simulations (e.g., light water
+reactors), there are other options available to users such as tally resetting
+parameters, effective down-scatter usage, tally estimator, etc. For more
+information please see <a class="reference internal" href="../usersguide/input.html#usersguide-cmfd"><em>CMFD Specification &#8211; cmfd.xml</em></a>.</p>
+<p>Of the options described above, the optional acceleration subset region is an
+uncommon feature. Because OpenMC only has a structured Cartesian mesh, mesh
+cells may overlay regions that don&#8217;t contain fissionable material and may be so
+far from the core that the neutron flux is very low. If these regions were
+included in the CMFD solution, bad estimates of diffusion parameters may result
+and affect CMFD feedback. To deal with this, a user can carve out an active
+acceleration region from their structured Cartesian mesh. This is illustrated
+in diagram below. When placing a CMFD mesh over a geometry, the boundary
+conditions must be known at the global edges of the mesh. If the geometry is
+complex like the one below, one may have to cover the whole geometry including
+the reactor pressure vessel because we know that there is a zero incoming
+current boundary condition at the outer edge of the pressure vessel. This is
+not viable in practice because neutrons in simulations may not reach mesh cells
+that are near the pressure vessel. To circumvent this, one can shrink the mesh
+to cover just the core region as shown in the diagram. However, one must still
+estimate the boundary conditions at the global boundaries, but at these
+locations, they are not readily known. In OpenMC, one can carve out the active
+core region from the entire structured Cartesian mesh. This is shown in the
+diagram below by the darkened region over the core. The albedo boundary
+conditions at the active core/reflector boundary can be tallied indirectly
+during the MC simulation with incoming and outgoing partial currents. This
+allows the user to not have to worry about neutrons producing adequate tallies
+in mesh cells far away from the core.</p>
+<div class="figure">
+<p><img src="../_images/tikz-e6b509a58476b271ffa1e096f52c41de26d3371d.png" alt="% these dimensions are determined in arrow_dimms.ods
+
+    \def\scale{1.0}
+
+    \def\latWidth{0.2808363589*\scale}
+    
+    \def\RPVOR{3*\scale}
+    \def\rectW{0.75*\scale}
+    \def\RPVIR{2.8694005485*\scale}
+    \def\BarrelIR{2.4547472901*\scale}
+    \def\BarrelOR{2.5293848766*\scale}
+    \def\ShieldOR{2.6040224631*\scale}
+
+    \def\bafCIRx{0.9829272561*\scale}
+    \def\bafCIRy{2.1062726917*\scale}
+    \def\bafCORx{1.0119529842*\scale}
+    \def\bafCORy{2.1352984197*\scale}
+    \def\bafMIRx{1.8254363328*\scale}
+    \def\bafMIRy{1.5445999739*\scale}
+    \def\bafMORx{1.8544620609*\scale}
+    \def\bafMORy{1.573625702*\scale}
+    
+    \tikzset{Assembly/.style={
+        inner sep=0pt,
+        text width=\latWidth in,
+        minimum size=\latWidth in,
+        draw=black,
+        align=center
+        }
+    }
+    
+    \def\tkzRPV{(0,0) circle (\RPVIR) (0,0) circle (\RPVOR)}
+    \def\tkzBarrel{(0,0) circle (\BarrelIR) (0,0) circle (\BarrelOR)}
+    \def\tkzShields{(0,0) circle (\BarrelOR) (0,0) circle (\ShieldOR)}
+    
+    \def\tkzBaffCOR{(-\bafCORx, -\bafCORy) rectangle (\bafCORx, \bafCORy)}
+    \def\tkzBaffCIR{(-\bafCIRx, -\bafCIRy) rectangle (\bafCIRx, \bafCIRy)} 
+    \def\tkzBaffMOR{(-\bafMORx, -\bafMORy) rectangle (\bafMORx, \bafMORy)}
+    \def\tkzBaffMIR{(-\bafMIRx, -\bafMIRy) rectangle (\bafMIRx, \bafMIRy) }
+    \def\tkzBaffleC{ \tkzBaffCIR \tkzBaffCOR }
+    \def\tkzBaffleM{ \tkzBaffMIR \tkzBaffMOR }
+
+    \def\tkzBaffCClip{\tkzBaffCIR (-\RPVOR, -\RPVOR) rectangle (\RPVOR, \RPVOR)}
+    \def\tkzBaffMClip{\tkzBaffMIR (-\RPVOR, -\RPVOR) rectangle (\RPVOR, \RPVOR)}
+
+    \def\highenr{blue!50}
+    \def\midenr{yellow!50}
+    \def\lowenr{red!50}
+    \def\lightgray{black!25}
+    \def\darkgray{black!80}
+
+      \begin{tikzpicture}[x=1in,y=1in, xshift=3in]
+\scalebox{0.6}{
+        % draw RPV, barrel, and shield panels
+        
+        \path[fill=black,even odd rule] \tkzRPV;
+        \path[fill=black,even odd rule] \tkzBarrel;
+        \begin{scope}
+          \clip[rotate around={45:(0,0)}] (-\RPVOR, -\rectW) rectangle (\RPVOR, \rectW) (-\rectW, \RPVOR) rectangle (\rectW, -\RPVOR);
+          \path[fill=black,even odd rule] \tkzShields;
+        \end{scope}
+
+        
+        % draw assembly row/column headers
+        
+        \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {R} -- ($(-7*\latWidth,4*\latWidth)$);
+        \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {P} -- ($(-6*\latWidth,6*\latWidth)$);
+        \draw[red, thick] ($(-5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {N} -- ($(-5*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(-4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {M} -- ($(-4*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(-3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {L} -- ($(-3*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {K} -- ($(-2*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {J} -- ($(-1*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-0*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {H} -- ($(-0*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {G} -- ($(1*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {F} -- ($(2*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {E} -- ($(3*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {D} -- ($(4*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {C} -- ($(5*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {B} -- ($(6*\latWidth,6*\latWidth)$);
+        \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {A} -- ($(7*\latWidth,4*\latWidth)$);
+        
+        \begin{scope}[rotate=90]
+          \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {15} -- ($(-7*\latWidth,4*\latWidth)$);
+          \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {14} -- ($(-6*\latWidth,6*\latWidth)$);
+          \draw[red, thick] ($(-5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {13} -- ($(-5*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(-4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {12} -- ($(-4*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(-3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {11} -- ($(-3*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {10} -- ($(-2*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {9} -- ($(-1*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-0*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {8} -- ($(-0*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {7} -- ($(1*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {6} -- ($(2*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {5} -- ($(3*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {4} -- ($(4*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {3} -- ($(5*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {2} -- ($(6*\latWidth,6*\latWidth)$);
+          \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {1} -- ($(7*\latWidth,4*\latWidth)$);
+        \end{scope}
+        
+        % draw fuel assembly nodes
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-3*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-2*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-1*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-0*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 1*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 2*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 3*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,8*\latWidth)$) {};
+        
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,7*\latWidth)$) {}; % L1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-2*\latWidth,7*\latWidth)$) {6}; % K1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,7*\latWidth)$) {}; % J1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-0*\latWidth,7*\latWidth)$) {6}; % H1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,7*\latWidth)$) {}; % G1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 2*\latWidth,7*\latWidth)$) {6}; % F1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,7*\latWidth)$) {}; % E1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,7*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,6*\latWidth)$) {}; % N2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-4*\latWidth,6*\latWidth)$) {}; % M2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,6*\latWidth)$) {16}; % L2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,6*\latWidth)$) {}; % K2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,6*\latWidth)$) {20}; % J2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,6*\latWidth)$) {}; % H2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,6*\latWidth)$) {20}; % G2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,6*\latWidth)$) {}; % F2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,6*\latWidth)$) {16}; % E2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 4*\latWidth,6*\latWidth)$) {}; % D2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,6*\latWidth)$) {}; % C2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,6*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,5*\latWidth)$) {}; % P3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,5*\latWidth)$) {15}; % N3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,5*\latWidth)$) {16}; % M3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,5*\latWidth)$) {}; % L3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,5*\latWidth)$) {16}; % K3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,5*\latWidth)$) {}; % J3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,5*\latWidth)$) {16}; % H3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,5*\latWidth)$) {}; % G3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,5*\latWidth)$) {16}; % F3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,5*\latWidth)$) {}; % E3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,5*\latWidth)$) {16}; % D3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,5*\latWidth)$) {15}; % C3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,5*\latWidth)$) {}; % B3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,5*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,4*\latWidth)$) {}; % P4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,4*\latWidth)$) {16}; % N4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,4*\latWidth)$) {}; % M4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,4*\latWidth)$) {16}; % L4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,4*\latWidth)$) {}; % K4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,4*\latWidth)$) {12}; % J4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,4*\latWidth)$) {}; % H4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,4*\latWidth)$) {12}; % G4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,4*\latWidth)$) {}; % F4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,4*\latWidth)$) {16}; % E4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,4*\latWidth)$) {}; % D4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,4*\latWidth)$) {16}; % C4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,4*\latWidth)$) {}; % B4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,4*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,3*\latWidth)$) {}; % R5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,3*\latWidth)$) {16}; % P5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,3*\latWidth)$) {}; % N5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,3*\latWidth)$) {16}; % M5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,3*\latWidth)$) {}; % L5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,3*\latWidth)$) {12}; % K5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,3*\latWidth)$) {}; % J5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,3*\latWidth)$) {12}; % H5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,3*\latWidth)$) {}; % G5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,3*\latWidth)$) {12}; % F5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,3*\latWidth)$) {}; % E5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,3*\latWidth)$) {16}; % D5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,3*\latWidth)$) {}; % C5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,3*\latWidth)$) {16}; % B5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,3*\latWidth)$) {}; % A5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,3*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,2*\latWidth)$) {6}; % R6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,2*\latWidth)$) {}; % P6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,2*\latWidth)$) {16}; % N6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,2*\latWidth)$) {}; % M6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,2*\latWidth)$) {12}; % L6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,2*\latWidth)$) {}; % K6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,2*\latWidth)$) {12}; % J6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,2*\latWidth)$) {}; % H6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,2*\latWidth)$) {12}; % G6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,2*\latWidth)$) {}; % F6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,2*\latWidth)$) {12}; % E6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,2*\latWidth)$) {}; % D6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,2*\latWidth)$) {16}; % C6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,2*\latWidth)$) {}; % B6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,2*\latWidth)$) {6}; % A6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,2*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,1*\latWidth)$) {}; % R7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,1*\latWidth)$) {20}; % P7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,1*\latWidth)$) {}; % N7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,1*\latWidth)$) {12}; % M7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,1*\latWidth)$) {}; % L7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,1*\latWidth)$) {12}; % K7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,1*\latWidth)$) {}; % J7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,1*\latWidth)$) {16}; % H7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,1*\latWidth)$) {}; % G7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,1*\latWidth)$) {12}; % F7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,1*\latWidth)$) {}; % E7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,1*\latWidth)$) {12}; % D7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,1*\latWidth)$) {}; % C7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,1*\latWidth)$) {20}; % B7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,1*\latWidth)$) {}; % A7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,1*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,0*\latWidth)$) {6}; % R8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,0*\latWidth)$) {}; % P8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,0*\latWidth)$) {16}; % N8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,0*\latWidth)$) {}; % M8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,0*\latWidth)$) {12}; % L8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,0*\latWidth)$) {}; % K8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,0*\latWidth)$) {16}; % J8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,0*\latWidth)$) {}; % H8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,0*\latWidth)$) {16}; % G8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,0*\latWidth)$) {}; % F8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,0*\latWidth)$) {12}; % E8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,0*\latWidth)$) {}; % D8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,0*\latWidth)$) {16}; % C8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,0*\latWidth)$) {}; % B8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,0*\latWidth)$) {6}; % A8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,0*\latWidth)$) {};
+
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-1*\latWidth)$) {}; % R9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-1*\latWidth)$) {20}; % P9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,-1*\latWidth)$) {}; % N9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-1*\latWidth)$) {12}; % M9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-1*\latWidth)$) {}; % L9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-1*\latWidth)$) {12}; % K9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-1*\latWidth)$) {}; % J9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-1*\latWidth)$) {16}; % H9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-1*\latWidth)$) {}; % G9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-1*\latWidth)$) {12}; % F9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-1*\latWidth)$) {}; % E9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-1*\latWidth)$) {12}; % D9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,-1*\latWidth)$) {}; % C9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-1*\latWidth)$) {20}; % B9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-1*\latWidth)$) {}; % A9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-1*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-2*\latWidth)$) {6}; % R10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,-2*\latWidth)$) {}; % P10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,-2*\latWidth)$) {16}; % N10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,-2*\latWidth)$) {}; % M10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,-2*\latWidth)$) {12}; % L10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-2*\latWidth)$) {}; % K10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,-2*\latWidth)$) {12}; % J10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-2*\latWidth)$) {}; % H10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,-2*\latWidth)$) {12}; % G10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-2*\latWidth)$) {}; % F10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,-2*\latWidth)$) {12}; % E10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,-2*\latWidth)$) {}; % D10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,-2*\latWidth)$) {16}; % C10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,-2*\latWidth)$) {}; % B10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-2*\latWidth)$) {6}; % A10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-2*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-3*\latWidth)$) {}; % R11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-3*\latWidth)$) {16}; % P11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,-3*\latWidth)$) {}; % N11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-3*\latWidth)$) {16}; % M11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-3*\latWidth)$) {}; % L11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-3*\latWidth)$) {12}; % K11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-3*\latWidth)$) {}; % J11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-3*\latWidth)$) {12}; % H11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-3*\latWidth)$) {}; % G11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-3*\latWidth)$) {12}; % F11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-3*\latWidth)$) {}; % E11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-3*\latWidth)$) {16}; % D11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,-3*\latWidth)$) {}; % C11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-3*\latWidth)$) {16}; % B11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-3*\latWidth)$) {}; % A11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-3*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-4*\latWidth)$) {}; % P12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,-4*\latWidth)$) {16}; % N12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-4*\latWidth)$) {}; % M12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,-4*\latWidth)$) {16}; % L12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-4*\latWidth)$) {}; % K12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,-4*\latWidth)$) {12}; % J12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-4*\latWidth)$) {}; % H12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,-4*\latWidth)$) {12}; % G12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-4*\latWidth)$) {}; % F12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,-4*\latWidth)$) {16}; % E12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-4*\latWidth)$) {}; % D12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,-4*\latWidth)$) {16}; % C12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-4*\latWidth)$) {}; % B12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-4*\latWidth)$) {};
+
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-5*\latWidth)$) {}; % P13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,-5*\latWidth)$) {15}; % N13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-5*\latWidth)$) {16}; % M13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-5*\latWidth)$) {}; % L13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-5*\latWidth)$) {16}; % K13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-5*\latWidth)$) {}; % J13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-5*\latWidth)$) {16}; % H13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-5*\latWidth)$) {}; % G13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-5*\latWidth)$) {16}; % F13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-5*\latWidth)$) {}; % E13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-5*\latWidth)$) {16}; % D13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,-5*\latWidth)$) {15}; % C13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-5*\latWidth)$) {}; % B13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-5*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,-6*\latWidth)$) {}; % N14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-4*\latWidth,-6*\latWidth)$) {}; % M14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,-6*\latWidth)$) {16}; % L14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-6*\latWidth)$) {}; % K14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,-6*\latWidth)$) {20}; % J14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-6*\latWidth)$) {}; % H14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,-6*\latWidth)$) {20}; % G14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-6*\latWidth)$) {}; % F14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,-6*\latWidth)$) {16}; % E14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 4*\latWidth,-6*\latWidth)$) {}; % D14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,-6*\latWidth)$) {}; % C14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-6*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,-7*\latWidth)$) {}; % L15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-2*\latWidth,-7*\latWidth)$) {6}; % K15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,-7*\latWidth)$) {}; % J15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-0*\latWidth,-7*\latWidth)$) {6}; % H15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,-7*\latWidth)$) {}; % G15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 2*\latWidth,-7*\latWidth)$) {6}; % F15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,-7*\latWidth)$) {}; % E15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-7*\latWidth)$) {};
+        
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-3*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-2*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-1*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-0*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 1*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 2*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 3*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-8*\latWidth)$) {};
+
+        % draw baffle north/south
+        
+        \begin{scope}[even odd rule]
+          \clip[rotate=90] \tkzBaffMClip;
+          \path[fill=black] \tkzBaffleC;
+        \end{scope}
+        \begin{scope}[even odd rule]
+          \clip \tkzBaffCClip;
+          \clip \tkzBaffMClip;
+          \path[fill=black, rotate=90] \tkzBaffleM;
+        \end{scope}
+        
+        % draw baffle east/west
+        
+        \begin{scope}[rotate=90]
+          \begin{scope}[even odd rule]
+            \clip[rotate=90] \tkzBaffMClip;
+            \path[fill=black] \tkzBaffleC;
+          \end{scope}
+          \begin{scope}[even odd rule]
+            \clip \tkzBaffCClip;
+            \clip \tkzBaffMClip;
+            \path[fill=black, rotate=90] \tkzBaffleM;
+          \end{scope}
+        \end{scope}}
+      \end{tikzpicture}" /></p>
+<p class="caption">Diagram of CMFD acceleration mesh</p></div><p>During an MC simulation, CMFD tallies are accumulated. The basic tallies needed
+are listed in Table <a class="reference internal" href="#tab-tally"><em>OpenMC CMFD tally list</em></a>. Each tally is performed on a spatial and
+energy mesh basis. The surface area-integrated net current is tallied on every
+surface of the mesh. OpenMC tally objects are created by the CMFD code
+internally, and cross sections are calculated at each CMFD feedback iteration.
+The first CMFD iteration, controlled by the user, occurs just after tallies are
+communicated to the master processor. Once tallies are collapsed, cross
+sections, diffusion coefficients and equivalence parameters are calculated. This
+is performed only on the acceleration region if that option has been activated
+by the user. Once all diffusion parameters are calculated, CMFD matrices are
+formed where energy groups are the inner most iteration index. In OpenMC,
+compressed row storage sparse matrices are used due to the sparsity of CMFD
+operators. An example of this sparsity is shown for the 3-D BEAVRS model in
+figures <a class="reference internal" href="#fig-loss"><em>Sparsity of Neutron Loss Operator</em></a> and <a class="reference internal" href="#fig-prod"><em>Sparsity of Neutron Production Operator</em></a> <a class="reference internal" href="#beavrs" id="id3">[BEAVRS]</a>. These matrices represent
+an assembly radial mesh, 24 cell mesh in the axial direction and two energy
+groups. The loss matrix is 99.92% sparse and the production matrix is 99.99%
+sparse. Although the loss matrix looks like it is tridiagonal, it is really a
+seven banded matrix with a block diagonal matrix for scattering. The production
+matrix is a <img class="math" src="../_images/math/7901356dd65ec4da1b694937cc4ffc663e90d800.png" alt="2\times 2"/> block diagonal; however, zeros are present because
+no fission neutrons appear with energies in the thermal group.</p>
+<table border="1" class="docutils" id="tab-tally">
+<caption>OpenMC CMFD tally list</caption>
+<colgroup>
+<col width="68%" />
+<col width="12%" />
+<col width="20%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">&nbsp;</th>
+<th class="head">&nbsp;</th>
+</tr>
+<tr class="row-even"><th class="head">tally</th>
+<th class="head">score</th>
+<th class="head">filter</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-odd"><td><img class="math" src="../_images/math/11c2129d6bd786efef4512d3cb9db97e64047bfb.png" alt="\left\langle\overline{\overline\phi}_{l,m,n}^g
+\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>flux</td>
+<td>mesh, energy</td>
+</tr>
+<tr class="row-even"><td><img class="math" src="../_images/math/f1108b2b528e050a0f7bd6d7f1786a1319daa837.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>total</td>
+<td>mesh, energy</td>
+</tr>
+<tr class="row-odd"><td><img class="math" src="../_images/math/de81b94d5c74c65b76ea645aaa8e5d6cde4f6c46.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s1_{l,m,n}}^g
+\overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>nu-scatter-1</td>
+<td>mesh, energy</td>
+</tr>
+<tr class="row-even"><td><img class="math" src="../_images/math/6c9a56eafb56eebe6ae9ad1398c493dba4ec5d2c.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g}
+\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>nu-scatter</td>
+<td>mesh, energy, energyout</td>
+</tr>
+<tr class="row-odd"><td><img class="math" src="../_images/math/683901796addb5b9861fe945421731622b026859.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g}
+\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>nu-fission</td>
+<td>mesh, energy, energyout</td>
+</tr>
+<tr class="row-even"><td><img class="math" src="../_images/math/4c20904f521647bbd23ec6c7ce32b36d119a42ce.png" alt="\left\langle\overline{J}^{u,g}_{l\pm 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<td>current</td>
+<td>mesh, energy</td>
+</tr>
+</tbody>
+</table>
+<div class="figure" id="fig-loss">
+<a class="reference internal image-reference" href="../_images/loss.png"><img alt="../_images/loss.png" src="../_images/loss.png" style="width: 500.0px; height: 500.0px;" /></a>
+<p class="caption">Sparsity of Neutron Loss Operator</p>
+</div>
+<div class="figure" id="fig-prod">
+<a class="reference internal image-reference" href="../_images/prod.png"><img alt="../_images/prod.png" src="../_images/prod.png" style="width: 500.0px; height: 500.0px;" /></a>
+<p class="caption">Sparsity of Neutron Production Operator</p>
+</div>
+<p>To solve the eigenvalue problem with these matrices, different source iteration
+and linear solvers can be used. The most common source iteration solver used is
+standard power iteration as described in <a class="reference internal" href="#gill" id="id4">[Gill]</a>. To accelerate these source
+iterations, a Wielandt shift scheme can be used as discussed in <a class="reference internal" href="#park" id="id5">[Park]</a>.  PETSc
+solvers were first implemented to perform the linear solution in parallel that
+occurs once per source iteration. When using PETSc, different types of parallel
+linear solvers and preconditioners can be used. By default, OpenMC uses an
+incomplete LU preconditioner and a GMRES Krylov solver. After some initial
+studies of parallelization with PETSc, it was observed that because CMFD
+matrices are very sparse, solution times do not scale well. An additional
+Gauss-Seidel linear solver with Chebyshev acceleration was added that is
+similar to the one used for CMFD in CASMO <a class="reference internal" href="#rhodes" id="id6">[Rhodes]</a> and <a class="reference internal" href="#smith" id="id7">[Smith]</a>. This solver
+was implemented with a custom section for two energy groups. Because energy
+group is the inner most index, a block diagonal is formed when using more than
+one group. For two groups, it is easy to invert this diagonal analytically
+inside the Gauss-Seidel iterative solver. For more than two groups, this
+analytic inversion can still be performed, but with more computational effort.
+A standard Gauss-Seidel solver is used for more than two groups.</p>
+<p>Besides a power iteration, a Jacobian-free Newton-Krylov method was also
+implemented to obtain eigenvalue and multigroup fluxes as described in <a class="reference internal" href="#gill" id="id8">[Gill]</a>
+and <a class="reference internal" href="#knoll" id="id9">[Knoll]</a>. This method is not the primary one used, but has gotten recent
+attention due to its coupling advantages to other physics such as thermal
+hydraulics. Once multigroup fluxes are obtained, a normalized fission source is
+calculated in the code using eq. <a href="#equation-eq_cmfd_psrc">(16)</a> directly.</p>
+<p>The next step in the process is to compute weight adjustment factors. These are
+calculated by taking the ratio of the expected number of neutrons from the CMFD
+source distribution to the current number of neutrons in each mesh. It is
+straightforward to compute the CMFD number of neutrons because it is the
+product between the total starting initial weight of neutrons and the CMFD
+normalized fission source distribution. To compute the number of neutrons from
+the current MC source, OpenMC sums the statistical
+weights of neutrons from the source bank on a given spatial and energy mesh.
+Once weight adjustment factors were calculated, each neutron&#8217;s statistical
+weight in the source bank was modified according to its location and energy.
+Examples of CMFD simulations using OpenMC can be found in <a class="reference internal" href="#herman-thesis" id="id10">[Herman_Thesis]</a>.</p>
+</div>
+<div class="section" id="references">
+<h2>9.4. References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils citation" frame="void" id="beavrs" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[BEAVRS]</a></td><td>Nick Horelik, Bryan Herman. <em>Benchmark for Evaluation And Verification of Reactor
+Simulations</em>. Massachusetts Institute of Technology, <a class="reference external" href="http://crpg.mit.edu/pub/beavrs">http://crpg.mit.edu/pub/beavrs</a>
+, 2013.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="gill" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[Gill]</td><td><em>(<a class="fn-backref" href="#id4">1</a>, <a class="fn-backref" href="#id8">2</a>)</em> Daniel F. Gill. <em>Newton-Krylov methods for the solution of the k-eigenvalue problem in
+multigroup neutronics calculations</em>. Ph.D. thesis, Pennsylvania State University, 2010.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="hebert" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[Hebert]</a></td><td>Alain Hebert. <em>Applied reactor physics</em>. Presses Internationales Polytechnique,
+Montreal, 2009.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="herman" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[Herman]</a></td><td>Bryan R. Herman, Benoit Forget, Kord Smith, and Brian N. Aviles. Improved
+diffusion coefficients generated from Monte Carlo codes. In <em>Proceedings of M&amp;C
+2013</em>, Sun Valley, ID, USA, May 5 - 9, 2013.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="herman-thesis" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id10">[Herman_Thesis]</a></td><td>Bryan R. Herman. <em>Monte Carlo and Thermal Hydraulic Coupling using
+Low-Order Nonlinear Diffusion Acceleration</em>. Sc.D. thesis,
+Massachusetts Institute of Technology, 2014.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="knoll" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id9">[Knoll]</a></td><td>D.A. Knoll, H. Park, and C. Newman. <em>Acceleration of k-eigenvalue/criticality
+calculations using the Jacobian-free Newton-Krylov method</em>. Nuclear Science and
+Engineering, 167:133–140, 2011.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="park" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[Park]</a></td><td>H. Park, D.A. Knoll, and C.K. Newman. <em>Nonlinear acceleration of transport
+criticality problems</em>. Nuclear Science and Engineering, 172:52–65, 2012.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="rhodes" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[Rhodes]</a></td><td>Joel Rhodes and Malte Edenius. <em>CASMO-4 &#8212; A Fuel Assembly Burnup Program.
+User’s Manual</em>. Studsvik of America, ssp-09/443-u rev 0, proprietary edition, 2001.</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="smith" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id7">[Smith]</a></td><td>Kord S Smith and Joel D Rhodes III. <em>Full-core, 2-D, LWR core calculations with
+CASMO-4E</em>. In Proceedings of PHYSOR 2002, Seoul, Korea, October 7 - 10, 2002.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="parallelization.html">8. Parallelization</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../usersguide/index.html">User&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

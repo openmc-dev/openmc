@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Release Notes for OpenMC 0.6.2 &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Release Notes" href="index.html" />
+    <link rel="next" title="Release Notes for OpenMC 0.6.1" href="notes_0.6.1.html" />
+    <link rel="prev" title="Release Notes" href="index.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="notes_0.6.1.html">Release Notes for OpenMC 0.6.1</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="release-notes-for-openmc-0-6-2">
+<span id="notes-0-6-2"></span><h1>Release Notes for OpenMC 0.6.2<a class="headerlink" href="#release-notes-for-openmc-0-6-2" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
+<p>There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).</p>
+</div>
+<div class="section" id="new-features">
+<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Meshline plotting capability</li>
+<li>Support for plotting cells/materials on middle universe levels</li>
+<li>Ability to model cells with no surfaces</li>
+<li>Compatibility with PETSc 3.5</li>
+<li>Compatability with OpenMPI 1.7/1.8</li>
+<li>Improved overall performance via logarithmic-mapped energy grid search</li>
+<li>Improved multi-threaded performance with atomic operations</li>
+<li>Support for fixed source problems with fissionable materials</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/26fb93">26fb93</a>: Fix problem with -t, &#8211;track command-line flag</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/2f07c0">2f07c0</a>: Improved evaporation spectrum algorithm</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/e6abb9">e6abb9</a>: Fix segfault when tallying in a void material</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/291b45">291b45</a>: Handle metastable nuclides in NNDC data and multiplicities in MT=5 data</li>
+</ul>
+</div>
+<div class="section" id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this headline">¶</a></h2>
+<p>This release contains new contributions from the following people:</p>
+<ul class="simple">
+<li><a class="reference external" href="mailto:wbinventor&#37;&#52;&#48;gmail&#46;com">Will Boyd</a></li>
+<li><a class="reference external" href="mailto:mellis13&#37;&#52;&#48;mit&#46;edu">Matt Ellis</a></li>
+<li><a class="reference external" href="mailto:smharper&#37;&#52;&#48;mit&#46;edu">Sterling Harper</a></li>
+<li><a class="reference external" href="mailto:bherman&#37;&#52;&#48;mit&#46;edu">Bryan Herman</a></li>
+<li><a class="reference external" href="mailto:nicholas&#46;horelik&#37;&#52;&#48;gmail&#46;com">Nicholas Horelik</a></li>
+<li><a class="reference external" href="mailto:bunder&#37;&#52;&#48;t-25&#46;ru">Anton Leontiev</a></li>
+<li><a class="reference external" href="mailto:nelsonag&#37;&#52;&#48;umich&#46;edu">Adam Nelson</a></li>
+<li><a class="reference external" href="mailto:paul&#46;k&#46;romano&#37;&#52;&#48;gmail&#46;com">Paul Romano</a></li>
+<li><a class="reference external" href="mailto:walshjon&#37;&#52;&#48;mit&#46;edu">Jon Walsh</a></li>
+<li><a class="reference external" href="mailto:john&#46;danger&#46;xia&#37;&#52;&#48;gmail&#46;com">John Xia</a></li>
+</ul>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="notes_0.6.1.html">Release Notes for OpenMC 0.6.1</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

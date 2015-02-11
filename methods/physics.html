@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.0',
+        VERSION:     '0.6.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -514,13 +514,16 @@ nuclear temperature, which is a function of the incoming energy of the
 neutron. The ACE format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
 energies using a specified interpolation law. Once the temperature <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is
-determined, we then calculate a candidate outgoing energy based on rule C45 in
-the <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>:</p>
+determined, we then calculate a candidate outgoing energy based on the algorithm
+given in <a class="reference external" href="http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694">LA-UR-14-27694</a>:</p>
 <div class="math" id="equation-evaporation-E">
-<p><span class="eqno">(43)</span><img src="../_images/math/8ea83fb164ef9bee83ec55c60d2f967cd54c4caa.png" alt="E' = -T \log (\xi_1 \xi_2)"/></p>
-</div><p>where <img class="math" src="../_images/math/f33cea5b957cd9633db339d718c6795b3f2361db.png" alt="\xi_1, \xi_2"/> are random numbers sampled on the unit
-interval. The outgoing energy is only accepted according to a specified
-restriction energy as in equation <a href="#equation-maxwell-restriction">(41)</a>.</p>
+<p><span class="eqno">(43)</span><img src="../_images/math/b38f1f9fa9157145a2e53b67fa191af84ddb7b57.png" alt="E' = -T \log ((1 - g\xi_1)(1 - g\xi_2))"/></p>
+</div><p>where <img class="math" src="../_images/math/c99197f823f3014acec90e80cb67b3a233cca887.png" alt="g = 1 - e^{-w}"/>, <img class="math" src="../_images/math/371663bc00dcccec1116ead641faa2d8bee80750.png" alt="w = (E - U)/T"/>, <img class="math" src="../_images/math/e2bbebb3bd73f1ae5c64098ab0244f739abf7ca4.png" alt="U"/> is the
+restriction energy, and <img class="math" src="../_images/math/f33cea5b957cd9633db339d718c6795b3f2361db.png" alt="\xi_1, \xi_2"/> are random numbers sampled on the
+unit interval. The outgoing energy is only accepted according to the restriction
+energy as in equation <a href="#equation-maxwell-restriction">(41)</a>. This algorithm has a much
+higher rejection efficiency than the standard technique, i.e. rule C45 in the
+<a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>.</p>
 </div>
 <div class="section" id="ace-law-11-energy-dependent-watt-spectrum">
 <h4>5.7.2.6. ACE Law 11 - Energy-Dependent Watt Spectrum<a class="headerlink" href="#ace-law-11-energy-dependent-watt-spectrum" title="Permalink to this headline">¶</a></h4>

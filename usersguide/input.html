@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.0',
+        VERSION:     '0.6.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -175,13 +175,13 @@ immediately.</p>
 <div class="section" id="energy-grid-element">
 <h3>3.2.5. <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> Element<a class="headerlink" href="#energy-grid-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> element determines the treatment of the energy grid during
-a simulation. Setting this element to &#8220;nuclide&#8221; will cause OpenMC to use a
-nuclide&#8217;s energy grid when determining what points to interpolate between for
-determining cross sections (i.e. non-unionized energy grid). To use a unionized
-energy grid, set this element to &#8220;union&#8221;. Note that the unionized energy grid
-treatment is slightly different than that employed in Serpent.</p>
+a simulation. The valid options are &#8220;nuclide&#8221; and &#8220;logarithm&#8221;. Setting this
+element to &#8220;nuclide&#8221; will cause OpenMC to use a nuclide&#8217;s energy grid when
+determining what points to interpolate between for determining cross sections
+(i.e. non-unionized energy grid). Setting this element to &#8220;logarithm&#8221; causes
+OpenMC to use a logarithmic mapping technique described in <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf">LA-UR-14-24530</a>.</p>
 <blockquote>
-<div><em>Default</em>: union</div></blockquote>
+<div><em>Default</em>: logarithm</div></blockquote>
 </div>
 <div class="section" id="entropy-element">
 <h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
@@ -235,8 +235,17 @@ represents a realization of random variables for tallies.</p>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="log-grid-bins-element">
+<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;log_grid_bins&gt;</span></tt> Element<a class="headerlink" href="#log-grid-bins-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;log_grid_bins&gt;</span></tt> element indicates the number of bins to use for the
+logarithmic-mapped energy grid. Using more bins will result in energy grid
+searches over a smaller range at the expense of more memory. The default is
+based on the recommended value in <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf">LA-UR-14-24530</a>.</p>
+<blockquote>
+<div><em>Default</em>: 8000</div></blockquote>
+</div>
 <div class="section" id="natural-elements-element">
-<span id="natural-elements"></span><h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> Element<a class="headerlink" href="#natural-elements-element" title="Permalink to this headline">¶</a></h3>
+<span id="natural-elements"></span><h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> Element<a class="headerlink" href="#natural-elements-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> element indicates to OpenMC what nuclides are
 available in the cross section library when expanding an <tt class="docutils literal"><span class="pre">&lt;element&gt;</span></tt> into
 separate isotopes (see <a class="reference internal" href="#material"><em>&lt;material&gt; Element</em></a>). The accepted values are:</p>
@@ -258,7 +267,7 @@ separate isotopes (see <a class="reference internal" href="#material"><em>&lt;ma
 <div><em>Default</em>: ENDF/B-VII.1</div></blockquote>
 </div>
 <div class="section" id="no-reduce-element">
-<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> element has no attributes and has an accepted value of
 &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, all user-defined tallies and global tallies
 will not be reduced across processors in a parallel calculation. This means that
@@ -269,7 +278,7 @@ tally data, this option can significantly improve the parallel efficiency.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="output-element">
-<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> element determines what output files should be written to disk
 during the run. The sub-elements are described below, where &#8220;true&#8221; will write
 out the file and &#8220;false&#8221; will not.</p>
@@ -300,7 +309,7 @@ were read in.</p>
 </div></blockquote>
 </div>
 <div class="section" id="output-path-element">
-<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> Element<a class="headerlink" href="#output-path-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> Element<a class="headerlink" href="#output-path-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> element specifies an absolute or relative path where all
 output files should be written to. The specified path must exist or else OpenMC
 will abort.</p>
@@ -308,15 +317,79 @@ will abort.</p>
 <div><em>Default</em>: Current working directory</div></blockquote>
 </div>
 <div class="section" id="ptables-element">
-<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: true</div></blockquote>
 </div>
+<div class="section" id="resonance-scattering-element">
+<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;resonance_scattering&gt;</span></tt> Element<a class="headerlink" href="#resonance-scattering-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">resonance_scattering</span></tt> element can contain one or more of the following
+attributes or sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">scatterer:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">nuclide</span></tt>, <tt class="docutils literal"><span class="pre">method</span></tt>,
+<tt class="docutils literal"><span class="pre">xs_label</span></tt>, <tt class="docutils literal"><span class="pre">xs_label_0K</span></tt>, <tt class="docutils literal"><span class="pre">E_min</span></tt>, and <tt class="docutils literal"><span class="pre">E_max</span></tt>. The <tt class="docutils literal"><span class="pre">nuclide</span></tt>
+attribute is the name, as given by the <tt class="docutils literal"><span class="pre">name</span></tt> attribute within the
+<tt class="docutils literal"><span class="pre">nuclide</span></tt> sub-element of the <tt class="docutils literal"><span class="pre">material</span></tt> element in <tt class="docutils literal"><span class="pre">materials.xml</span></tt>,
+of the nuclide to which a resonance scattering treatment is to be applied.
+The <tt class="docutils literal"><span class="pre">method</span></tt> attribute gives the type of resonance scattering treatment
+that is to be applied to the <tt class="docutils literal"><span class="pre">nuclide</span></tt>.  Acceptable inputs - none of
+which are case-sensitive - for the <tt class="docutils literal"><span class="pre">method</span></tt> attribute are <tt class="docutils literal"><span class="pre">ARES</span></tt>,
+<tt class="docutils literal"><span class="pre">CXS</span></tt>, <tt class="docutils literal"><span class="pre">WCM</span></tt>, and <tt class="docutils literal"><span class="pre">DBRC</span></tt>.  Descriptions of each of these methods
+are documented <a class="reference external" href="http://dx.doi.org/10.1016/j.anucene.2014.01.017">here</a>.  The <tt class="docutils literal"><span class="pre">xs_label</span></tt> attribute gives the label for the
+cross section data of the <tt class="docutils literal"><span class="pre">nuclide</span></tt> at a given temperature.  The
+<tt class="docutils literal"><span class="pre">xs_label_0K</span></tt> gives the label for the 0 K cross section data for the
+<tt class="docutils literal"><span class="pre">nuclide</span></tt>.  The <tt class="docutils literal"><span class="pre">E_min</span></tt> attribute gives the minimum energy above
+which the <tt class="docutils literal"><span class="pre">method</span></tt> is applied.  The <tt class="docutils literal"><span class="pre">E_max</span></tt> attribute gives the
+maximum energy below which the <tt class="docutils literal"><span class="pre">method</span></tt> is applied.  One example would
+be as follows:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;resonance_scattering&gt;</span>
+  <span class="nt">&lt;scatterer&gt;</span>
+    <span class="nt">&lt;nuclide&gt;</span>U-238<span class="nt">&lt;/nuclide&gt;</span>
+    <span class="nt">&lt;method&gt;</span>ARES<span class="nt">&lt;/method&gt;</span>
+    <span class="nt">&lt;xs_label&gt;</span>92238.72c<span class="nt">&lt;/xs_label&gt;</span>
+    <span class="nt">&lt;xs_label_0K&gt;</span>92238.00c<span class="nt">&lt;/xs_label_0K&gt;</span>
+    <span class="nt">&lt;E_min&gt;</span>5.0e-6<span class="nt">&lt;/E_min&gt;</span>
+    <span class="nt">&lt;E_max&gt;</span>40.0e-6<span class="nt">&lt;/E_max&gt;</span>
+ <span class="nt">&lt;/scatterer&gt;</span>
+ <span class="nt">&lt;scatterer&gt;</span>
+    <span class="nt">&lt;nuclide&gt;</span>Pu-239<span class="nt">&lt;/nuclide&gt;</span>
+    <span class="nt">&lt;method&gt;</span>dbrc<span class="nt">&lt;/method&gt;</span>
+    <span class="nt">&lt;xs_label&gt;</span>94239.72c<span class="nt">&lt;/xs_label&gt;</span>
+    <span class="nt">&lt;xs_label_0K&gt;</span>94239.00c<span class="nt">&lt;/xs_label_0K&gt;</span>
+    <span class="nt">&lt;E_min&gt;</span>0.01e-6<span class="nt">&lt;/E_min&gt;</span>
+    <span class="nt">&lt;E_max&gt;</span>210.0e-6<span class="nt">&lt;/E_max&gt;</span>
+  <span class="nt">&lt;/scatterer&gt;</span>
+<span class="nt">&lt;/resonance_scattering&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If the <tt class="docutils literal"><span class="pre">resonance_scattering</span></tt> element is not given, the free gas,
+constant cross section (<tt class="docutils literal"><span class="pre">cxs</span></tt>) scattering model, which has
+historically been used by Monte Carlo codes to sample target
+velocities, is used to treat the target motion of all nuclides.  If
+<tt class="docutils literal"><span class="pre">resonance_scattering</span></tt> is present, the <tt class="docutils literal"><span class="pre">cxs</span></tt> method is applied
+below <tt class="docutils literal"><span class="pre">E_min</span></tt> and the target-at-rest (asymptotic) kernel is used
+above <tt class="docutils literal"><span class="pre">E_max</span></tt>.  An arbitrary number of <tt class="docutils literal"><span class="pre">scatterer</span></tt> elements may
+be specified, each corresponding to a single nuclide at a single
+temperature.</p>
+</div>
+<p class="last"><em>Defaults</em>: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
 <div class="section" id="run-cmfd-element">
-<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element<a class="headerlink" href="#run-cmfd-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element<a class="headerlink" href="#run-cmfd-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> element indicates whether or not CMFD acceleration should be
 turned on or off. This element has no attributes or sub-elements and can be set
 to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
@@ -324,14 +397,14 @@ to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
 <div><em>Defualt</em>: false</div></blockquote>
 </div>
 <div class="section" id="seed-element">
-<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="source-element">
-<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an external source distribution to
 be used either as the source for a fixed source calculation or the initial
 source guess for criticality calculations. It takes the following
@@ -362,6 +435,11 @@ by a triplet.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; spatial distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as six
+real numbers, the first three of which specify the lower-left corner of a
+parallelepiped and the last three of which specify the upper-right
+corner. Source sites are sampled uniformly through that parallelepiped.</p>
+<p>To filter a &#8220;box&#8221; spatial distribution by fissionable material, specify
+&#8220;fission&#8221; tag instead of &#8220;box&#8221;. The <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as six
 real numbers, the first three of which specify the lower-left corner of a
 parallelepiped and the last three of which specify the upper-right
 corner. Source sites are sampled uniformly through that parallelepiped.</p>
@@ -403,7 +481,7 @@ to each axis.</p>
 </tr>
 <tr class="field-odd field"><th class="field-name">energy:</th><td class="field-body"><p class="first">An element specifying the energy distribution of source sites. This element
 has the following attributes:</p>
-<table class="last docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
@@ -430,12 +508,20 @@ c E e^{-E/a} dE"/>.</p>
 </table>
 </td>
 </tr>
+<tr class="field-odd field"><th class="field-name">write_initial:</th><td class="field-body"><p class="first">An element specifying whether to write out the initial source bank used at
+the beginning of the first batch. The output file is named
+&#8220;initial_source.binary(h5)&#8221;</p>
+<blockquote class="last">
+<div><p><em>Default</em>: false</p>
+</div></blockquote>
+</td>
+</tr>
 </tbody>
 </table>
 </div></blockquote>
 </div>
 <div class="section" id="state-point-element">
-<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> element indicates at what batches a state point file
 should be written. A state point file can be used to restart a run or to get
 tally results at any batch. The default behavior when using this tag is to
@@ -463,7 +549,7 @@ batches explicitly.</p>
 </div></blockquote>
 </div>
 <div class="section" id="source-point-element">
-<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element<a class="headerlink" href="#source-point-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element<a class="headerlink" href="#source-point-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> element indicates at what batches the source bank
 should be written. The source bank can be either written out within a state
 point file or separately in a source point file. This element has the following
@@ -515,7 +601,7 @@ this element to &#8220;true&#8221; and specify batches to write a permanent sour
 </div></blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
 of &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.</p>
@@ -523,14 +609,14 @@ survival biasing, otherwise known as implicit capture or absorption.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="threads-element">
-<span id="trace"></span><h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.</p>
 <blockquote>
 <div><em>Default</em>: None (Determined by environment variable <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">OMP_NUM_THREADS</span></tt>)</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.22. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
@@ -538,13 +624,13 @@ integers: the batch number, generation number, and particle number.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="track-element">
-<span id="track"></span><h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
+<span id="track"></span><h3>3.2.23. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.</p>
 <blockquote>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.22. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.24. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -573,7 +659,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.23. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.25. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -753,7 +839,12 @@ contain no material, this can also be set to &#8220;void&#8221;.</p>
 <tr class="field-odd field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <tt class="docutils literal"><span class="pre">ids</span></tt> for surfaces that bound this cell, e.g. if the cell
 is on the negative side of surface 3 and the positive side of surface 5, the
 bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
-<p><em>Default</em>: None</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The surface attribute/element can be omitted to make a cell fill
+its entire universe.</p>
+</div>
+<p><em>Default</em>: No surfaces</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">rotation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies the angles in
@@ -1011,7 +1102,16 @@ be:</p>
 <p><em>Default</em>: total</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
+<tr class="field-even field"><th class="field-name">estimator:</th><td class="field-body"><p class="first">The estimator element is used to force the use of either <tt class="docutils literal"><span class="pre">analog</span></tt> or
+<tt class="docutils literal"><span class="pre">tracklength</span></tt> tally estimation.  &#8216;&#8217;analog&#8217;&#8217; is generally less efficient
+though it can be used with every score type.  &#8216;&#8217;tracklength&#8217;&#8217; is generally
+the most efficient, though its usage is restricted to tallies that do not
+score particle information which requires a collision to have occured, such
+as a scattering tally which utilizes outgoing energy filters.</p>
+<p><em>Default</em>: <tt class="docutils literal"><span class="pre">tracklength</span></tt> but will revert to analog if necessary.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
 options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;,
 &#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;, &#8220;scatter-PN&#8221;,
 &#8220;scatter-YN&#8221;, &#8220;nu-scatter-N&#8221;, &#8220;nu-scatter-PN&#8221;, &#8220;nu-scatter-YN&#8221;, &#8220;flux-YN&#8221;,
@@ -1086,10 +1186,10 @@ multiplicity from (n,2n), (n,3n), and (n,4n) reactions.</p>
 all of the harmonic moments of order 0 to N.  N must be between 0 and 10.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">total-YN:</th><td class="field-body"><p class="first">Spherical harmonic expansion of the incoming particle&#8217;s direction of
-motion <img class="math" src="../_images/math/2459afa3f38a5d6cbb96b5f6306ef255b98c427c.png" alt="\left(\Omega\right)"/> of the total flux.  This score will
-tally all of the harmonic moments of order 0 to N.  N must be between 0
-and 10.</p>
+<tr class="field-odd field"><th class="field-name">total-YN:</th><td class="field-body"><p class="first">The total reaction rate expanded via spherical harmonics about the
+direction of motion of the neutron, <img class="math" src="../_images/math/9e2b196e9b7e57d1ec99f6534c581ea9759d2170.png" alt="\Omega"/>.
+This score will tally all of the harmonic moments of order 0 to N.  N must
+be between 0 and 10.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
@@ -1174,7 +1274,7 @@ implemented in openMC:</p>
 </ul>
 <div class="section" id="plot-element">
 <h3>3.6.1. <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> Element<a class="headerlink" href="#plot-element" title="Permalink to this headline">¶</a></h3>
-<p>Each plot must contain a combination of the following attributes or
+<p>Each plot is specified by a combination of the following attributes or
 sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -1196,18 +1296,29 @@ position.</p>
 <p><em>Default</em>: <tt class="docutils literal"><span class="pre">cell</span></tt></p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
+<tr class="field-even field"><th class="field-name">level:</th><td class="field-body"><p class="first">Universe depth to plot at (optional).  This parameter controls how many
+universe levels deep to pull cell and material ids from when setting plot
+colors.  If a given location does not have as many levels as specified,
+colors will be taken from the lowest level at that location. For example, if
+<tt class="docutils literal"><span class="pre">level</span></tt> is set to zero colors will be taken from top-level (universe zero)
+cells only.  However, if <tt class="docutils literal"><span class="pre">level</span></tt> is set to 1 colors will be taken from
+cells in universes that fill top-level fill-cells, and from top-level cells
+that contain materials.</p>
+<p><em>Default</em>: Whatever the deepest universe is in the model</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
 floats separated by spaces.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.  Should
+<tr class="field-even field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.  Should
 be two or three floats separated by spaces for 2D plots and 3D plots,
 respectively.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced. Currently only &#8220;slice&#8221; and
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced. Currently only &#8220;slice&#8221; and
 &#8220;voxel&#8221; plots are implemented. The &#8220;slice&#8221; plot type creates 2D pixel
 maps saved in the PPM file format. PPM files can be displayed in most
 viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The &#8220;voxel&#8221;
@@ -1239,7 +1350,7 @@ attribute or sub-element:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes or voxels to be used along each of the basis
+<tr class="field-odd field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixels or voxels to be used along each of the basis
 directions for &#8220;slice&#8221; and &#8220;voxel&#8221; plots, respectively. Should be two or
 three integers separated by spaces.</p>
 <div class="admonition warning">
@@ -1281,7 +1392,7 @@ one of: &#8220;xy&#8221;, &#8220;xz&#8221;, &#8220;yz&#8221;.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">background:</th><td class="field-body"><p class="first">Specifies the RGB color of the regions where no OpenMC cell can be found.
 Should be three integers separated by spaces.</p>
-<p><em>Default</em>: 0 0 0 (white)</p>
+<p><em>Default</em>: 0 0 0 (black)</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> element,
@@ -1323,6 +1434,39 @@ specifications.</td>
 </tr>
 </tbody>
 </table>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">meshlines:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">meshlines</span></tt> sub-element allows for plotting the boundaries of
+a tally mesh on top of a plot. Only one <tt class="docutils literal"><span class="pre">meshlines</span></tt> element is allowed per
+<tt class="docutils literal"><span class="pre">plot</span></tt> element, and it must contain as attributes or sub-elements a mesh
+type and a linewidth.  Optionally, a color may be specified for the overlay:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">meshtype:</th><td class="field-body"><p class="first">The type of the mesh to be plotted. Valid options are &#8220;tally&#8221;, &#8220;entropy&#8221;,
+&#8220;ufs&#8221;, and &#8220;cmfd&#8221;.  If plotting &#8220;tally&#8221; meshes, the id of the mesh to plot
+must be specified with the <tt class="docutils literal"><span class="pre">id</span></tt> sub-element.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">id:</th><td class="field-body"><p class="first">A single integer id number for the mesh specified on <tt class="docutils literal"><span class="pre">tallies.xml</span></tt> that
+should be plotted. This element is only required for <tt class="docutils literal"><span class="pre">meshtype=&quot;tally&quot;</span></tt>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">linewidth:</th><td class="field-body"><p class="first">A single integer number of pixels of linewidth to specify for the mesh
+boundaries. Specifying this as 0 indicates that lines will be 1 pixel
+thick, specifying 1 indicates 3 pixels thick, specifying 2 indicates
+5 pixels thick, etc.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">color:</th><td class="field-body"><p class="first">Specifies the custom color for the meshlines boundaries. Should be 3
+integers separated by whitespace.  This element is optional.</p>
+<p class="last"><em>Default</em>: 0 0 0 (black)</p>
+</td>
+</tr>
+</tbody>
+</table>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
@@ -1332,27 +1476,19 @@ specifications.</td>
 </div>
 </div>
 <div class="section" id="cmfd-specification-cmfd-xml">
-<h2>3.7. CMFD Specification &#8211; cmfd.xml<a class="headerlink" href="#cmfd-specification-cmfd-xml" title="Permalink to this headline">¶</a></h2>
+<span id="usersguide-cmfd"></span><h2>3.7. CMFD Specification &#8211; cmfd.xml<a class="headerlink" href="#cmfd-specification-cmfd-xml" title="Permalink to this headline">¶</a></h2>
 <p>Coarse mesh finite difference acceleration method has been implemented in OpenMC.
 Currently, it allows users to accelerate fission source convergence during
 inactive neutron batches. To run CMFD, the <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> element in
 <tt class="docutils literal"><span class="pre">settings.xml</span></tt> should be set to &#8220;true&#8221;.</p>
-<div class="section" id="active-flush-element">
-<h3>3.7.1. <tt class="docutils literal"><span class="pre">&lt;active_flush&gt;</span></tt> Element<a class="headerlink" href="#active-flush-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;active_flush&gt;</span></tt> element controls the batch where CMFD tallies should be
-reset. CMFD tallies should be reset before active batches so they are accumulated
-without bias.</p>
-<blockquote>
-<div><em>Default</em>: 0</div></blockquote>
-</div>
 <div class="section" id="begin-element">
-<h3>3.7.2. <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> Element<a class="headerlink" href="#begin-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.1. <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> Element<a class="headerlink" href="#begin-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> element controls what batch CMFD calculations should begin.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="display-element">
-<h3>3.7.3. <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> Element<a class="headerlink" href="#display-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.2. <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> Element<a class="headerlink" href="#display-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> element sets one additional CMFD output column. Options are:</p>
 <ul>
 <li><p class="first">&#8220;balance&#8221; - prints the RMS [%] of the resdiual from the neutron balance equation
@@ -1366,34 +1502,43 @@ on CMFD tallies.</p>
 </li>
 <li><p class="first">&#8220;source&#8221; - prints the RMS [%] between the OpenMC fission source and CMFD
 fission source.</p>
-<p><em>Default</em>: None</p>
+<p><em>Default</em>: balance</p>
 </li>
 </ul>
 </div>
+<div class="section" id="dhat-reset-element">
+<h3>3.7.3. <tt class="docutils literal"><span class="pre">&lt;dhat_reset&gt;</span></tt> Element<a class="headerlink" href="#dhat-reset-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;dhat_reset&gt;</span></tt> element controls whether <img class="math" src="../_images/math/d6c91a84bfe8aed76b10d4aaed0c2ed4ba0b3af0.png" alt="\widehat{D}"/> nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
+It can be turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
+<blockquote>
+<div><em>Default</em>: false</div></blockquote>
+</div>
+<div class="section" id="downscatter-element">
+<h3>3.7.4. <tt class="docutils literal"><span class="pre">&lt;downscatter&gt;</span></tt> Element<a class="headerlink" href="#downscatter-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;downscatter&gt;</span></tt> element controls whether an effective downscatter cross
+section should be used when using 2-group CMFD. It can be turned on with &#8220;true&#8221;
+and off with &#8220;false&#8221;.</p>
+<blockquote>
+<div><em>Default</em>: false</div></blockquote>
+</div>
 <div class="section" id="feedback-element">
-<h3>3.7.4. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element<a class="headerlink" href="#feedback-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.5. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element<a class="headerlink" href="#feedback-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> element controls whether or not the CMFD diffusion result is
 used to adjust the weight of fission source neutrons on the next OpenMC batch.
 It can be turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
-<div class="section" id="inactive-element">
-<h3>3.7.5. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element<a class="headerlink" href="#inactive-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> element controls if cmfd tallies should be accumulated
-during inactive batches. For some applications, CMFD tallies may not be
-needed until the start of active batches. This option can be turned on
-with &#8220;true&#8221; and off with &#8220;false&#8221;</p>
+<div class="section" id="gauss-seidel-tolerance-element">
+<h3>3.7.6. <tt class="docutils literal"><span class="pre">&lt;gauss_seidel_tolerance&gt;</span></tt> Element<a class="headerlink" href="#gauss-seidel-tolerance-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;gauss_seidel_tolerance&gt;</span></tt> element specifies two parameters. The first is
+the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
+and the second is the relative inner tolerance for Gauss-Seidel iterations
+for CMFD calculations. It is only used in the standalone CMFD power iteration
+solver and not when PETSc is active.</p>
 <blockquote>
-<div><em>Default</em>: true</div></blockquote>
-</div>
-<div class="section" id="inactive-flush-element">
-<h3>3.7.6. <tt class="docutils literal"><span class="pre">&lt;inactive_flush&gt;</span></tt> Element<a class="headerlink" href="#inactive-flush-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;inactive_flush&gt;</span></tt> element controls when CMFD tallies are reset during
-inactive batches. The integer set here is the interval at which this reset
-occurs. The amout of resets is controlled with the <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> element.</p>
-<blockquote>
-<div><em>Defualt</em>: 9999</div></blockquote>
+<div><em>Default</em>: 1.e-10 1.e-5</div></blockquote>
 </div>
 <div class="section" id="ksp-monitor-element">
 <h3>3.7.7. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element<a class="headerlink" href="#ksp-monitor-element" title="Permalink to this headline">¶</a></h3>
@@ -1403,8 +1548,15 @@ with &#8220;false&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
+<div class="section" id="ktol-element">
+<h3>3.7.8. <tt class="docutils literal"><span class="pre">&lt;ktol&gt;</span></tt> Element<a class="headerlink" href="#ktol-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;ktol&gt;</span></tt> element specifies the tolerance on the eigenvalue when performing
+CMFD power iteration.</p>
+<blockquote>
+<div><em>Default</em>: 1.e-8</div></blockquote>
+</div>
 <div class="section" id="id2">
-<h3>3.7.8. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.9. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
@@ -1465,7 +1617,7 @@ of two of these will yield the third.</p>
 </div></blockquote>
 </div>
 <div class="section" id="norm-element">
-<h3>3.7.9. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element<a class="headerlink" href="#norm-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.10. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element<a class="headerlink" href="#norm-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> element is used to normalize the CMFD fission source distribution
 to a particular value. For example, if a fission source is calculated for a
 17 x 17 lattice of pins, the fission source may be normalized to the number of
@@ -1474,13 +1626,6 @@ distribution as the average peaking factor will be unity. This parameter will
 not impact the calculation.</p>
 <blockquote>
 <div><em>Default</em>: 1.0</div></blockquote>
-</div>
-<div class="section" id="num-flushes-element">
-<h3>3.7.10. <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> Element<a class="headerlink" href="#num-flushes-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> element controls the number of CMFD tally resets that
-occur during inactive CMFD batches.</p>
-<blockquote>
-<div><em>Default</em>: 9999</div></blockquote>
 </div>
 <div class="section" id="power-monitor-element">
 <h3>3.7.11. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element<a class="headerlink" href="#power-monitor-element" title="Permalink to this headline">¶</a></h3>
@@ -1492,27 +1637,52 @@ This option can be turned on with &#8220;true&#8221; and turned off with &#8220;
 <div class="section" id="run-adjoint-element">
 <h3>3.7.12. <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> Element<a class="headerlink" href="#run-adjoint-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> element can be turned on with &#8220;true&#8221; to have an adjoint
-calculation be performed on the last batch when CMFD is active.</p>
-<blockquote>
-<div><em>Default</em>: false</div></blockquote>
-</div>
-<div class="section" id="snes-monitor-element">
-<h3>3.7.13. <tt class="docutils literal"><span class="pre">&lt;snes_monitor&gt;</span></tt> Element<a class="headerlink" href="#snes-monitor-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;snes_monitor&gt;</span></tt> element is used to view the convergence of the nonlinear SNES
-function in PETSc. This option can be turned on with &#8220;true&#8221; and turned off with &#8220;false&#8221;.</p>
+calculation be performed on the last batch when CMFD is active. OpenMC should be
+compiled with PETSc when using this option.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="solver-element">
-<h3>3.7.14. <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> Element<a class="headerlink" href="#solver-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.13. <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> Element<a class="headerlink" href="#solver-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> element controls whether the CMFD eigenproblem is solved with
 standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
 By setting &#8220;power&#8221;, power iteration is used and by setting &#8220;jfnk&#8221;, JFNK is used.</p>
 <blockquote>
 <div><em>Default</em>: power</div></blockquote>
 </div>
+<div class="section" id="shift-element">
+<h3>3.7.14. <tt class="docutils literal"><span class="pre">&lt;shift&gt;</span></tt> Element<a class="headerlink" href="#shift-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;shfit&gt;</span></tt> element specifies an optional Wielandt shift parameter for
+accelerating power iterations. It can only be used when PETSc is not active.
+It is by default very large so the impact of the shift is effectively zero.</p>
+<blockquote>
+<div><em>Default</em>: 1e6</div></blockquote>
+</div>
+<div class="section" id="spectral-element">
+<h3>3.7.15. <tt class="docutils literal"><span class="pre">&lt;spectral&gt;</span></tt> Element<a class="headerlink" href="#spectral-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;spectral&gt;</span></tt> element specifies an optional spectral radius that can be set to
+accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
+solve. Note this is only used in the standalone CMFD solver and does not affect
+the calculation when PETSc is active.</p>
+<blockquote>
+<div><em>Default</em>: power</div></blockquote>
+</div>
+<div class="section" id="stol-element">
+<h3>3.7.16. <tt class="docutils literal"><span class="pre">&lt;stol&gt;</span></tt> Element<a class="headerlink" href="#stol-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;stol&gt;</span></tt> element specifies the tolerance on the fission source when performing
+CMFD power iteration.</p>
+<blockquote>
+<div><em>Default</em>: 1.e-8</div></blockquote>
+</div>
+<div class="section" id="tally-reset-element">
+<h3>3.7.17. <tt class="docutils literal"><span class="pre">&lt;tally_reset&gt;</span></tt> Element<a class="headerlink" href="#tally-reset-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;tally_reset&gt;</span></tt> element contains a list of batch numbers in which CMFD tallies
+should be reset.</p>
+<blockquote>
+<div><em>Default</em>: None</div></blockquote>
+</div>
 <div class="section" id="write-matrices-element">
-<h3>3.7.15. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element<a class="headerlink" href="#write-matrices-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.18. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element<a class="headerlink" href="#write-matrices-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> element is used to view the PETSc sparse matrices
 created when solving CMFD equations. These binary output files can be imported
 into MATLAB using PETSc-MATLAB utilities. This option can be
@@ -1520,6 +1690,14 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
+</div>
+<div class="section" id="ersn-openmc-graphical-user-interface">
+<h2>3.8. ERSN-OpenMC Graphical User Interface<a class="headerlink" href="#ersn-openmc-graphical-user-interface" title="Permalink to this headline">¶</a></h2>
+<p>A third-party Java-based user-friendly graphical user interface for creating XML
+input files called <a class="reference external" href="https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC">ERSN-OpenMC</a> is developed and maintained by members of the
+Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
+The GUI also allows one to automatically download prerequisites for installing and
+running OpenMC.</p>
 </div>
 </div>
 

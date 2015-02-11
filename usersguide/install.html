@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.0',
+        VERSION:     '0.6.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -104,13 +104,10 @@ command:</p>
 <p>To compile with support for parallel runs on a distributed-memory
 architecture, you will need to have a valid implementation of MPI
 installed on your machine. The code has been tested and is known to work
-with the latest versions of both <a class="reference external" href="http://www.open-mpi.org">OpenMPI</a> and <a class="reference external" href="http://www.mpich.org">MPICH</a>. Note that if using
-OpenMPI, make sure that &#8211;with-mpi-f90-size is not set to medium or large
-since this may prevent MPI calls from completing successfully in
-OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
-with:</p>
-<div class="highlight-python"><pre>sudo apt-get install mpich2 libmpich2-dev
-sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev</pre>
+with the latest versions of both <a class="reference external" href="http://www.open-mpi.org">OpenMPI</a> and <a class="reference external" href="http://www.mpich.org">MPICH</a>. OpenMPI and/or MPICH
+can be installed on Debian derivatives with:</p>
+<div class="highlight-python"><pre>sudo apt-get install mpich libmpich-dev
+sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev</pre>
 </div>
 </li>
 <li><p class="first"><a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> Library for portable binary output format</p>
@@ -240,19 +237,21 @@ compiled with <tt class="docutils literal"><span class="pre">--enable-parallel</
 <h3>2.2.4. Compiling on Linux and Mac OS X<a class="headerlink" href="#compiling-on-linux-and-mac-os-x" title="Permalink to this headline">¶</a></h3>
 <p>To compile OpenMC on Linux or Max OS X, run the following commands from within
 the root directory of the source code:</p>
-<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src
+<div class="highlight-sh"><div class="highlight"><pre>mkdir src/build
+<span class="nb">cd </span>src/build
+cmake ..
 make
-sudo make install
+make install
 </pre></div>
 </div>
 <p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt> and install it (by default in
 /usr/local/bin). If you do not have administrative privileges, you can install
-OpenMC locally by replacing the last command with:</p>
-<div class="highlight-sh"><div class="highlight"><pre>make install -e <span class="nv">prefix</span><span class="o">=</span><span class="nv">$HOME</span>/.local
+OpenMC locally by specifying an install prefix when running cmake:</p>
+<div class="highlight-sh"><div class="highlight"><pre>cmake -DCMAKE_INSTALL_PREFIX<span class="o">=</span><span class="nv">$HOME</span>/.local ..
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">prefix</span></tt> variable can be changed to any path for which you have
-write-access.</p>
+<p>The <tt class="docutils literal"><span class="pre">CMAKE_INSTALL_PREFIX</span></tt> variable can be changed to any path for which you
+have write-access.</p>
 </div>
 <div class="section" id="compiling-on-windows">
 <h3>2.2.5. Compiling on Windows<a class="headerlink" href="#compiling-on-windows" title="Permalink to this headline">¶</a></h3>

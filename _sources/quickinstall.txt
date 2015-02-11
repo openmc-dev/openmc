@@ -35,15 +35,15 @@ OpenMC from source as is described in :ref:`usersguide_install`.
 Installing from Source on Linux or Mac OS X
 -------------------------------------------
 
-All OpenMC source code is hosted on GitHub_. If you have git_ and the gfortran_
-compiler installed, you can download and install OpenMC be entering the
-following commands in a terminal:
+All OpenMC source code is hosted on GitHub_. If you have git_, the gfortran_
+compiler, and CMake_ installed, you can download and install OpenMC be entering
+the following commands in a terminal:
 
 .. code-block:: sh
 
     git clone git://github.com/mit-crpg/openmc.git
     cd openmc/src
-    git checkout master
+    git checkout -b master origin/master
     make
     sudo make install
 
@@ -58,3 +58,4 @@ can be replaced with a local install, e.g.
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
+.. _CMake: http://www.cmake.org

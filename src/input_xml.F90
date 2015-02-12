@@ -1340,7 +1340,7 @@ contains
       deallocate(temp_int_array)
 
       ! Read outer universe for area outside lattice.
-      lat % outer = NO_OUTER_UNIV
+      lat % outer = NO_OUTER_UNIVERSE
       if (check_for_node(node_lat, "outer")) then
         call get_node_value(node_lat, "outer", lat % outer)
       end if
@@ -1349,8 +1349,8 @@ contains
       if (check_for_node(node_lat, "outside")) then
         call fatal_error("The use of 'outside' in lattices is no longer &
              &supported.  Instead, use 'outer' which defines a universe rather &
-             &than a material.  The utility openmc/src/utils/update_lattices.py&
-             & can be used automatically replace 'outside' with 'outer'.")
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary

@@ -644,7 +644,7 @@ contains
         end do
       end do
 
-      if (lat % outer /= NO_OUTER_UNIV) then
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
         if (universe_dict % has_key(lat % outer)) then
           lat % outer = universe_dict % get_key(lat % outer)
         else

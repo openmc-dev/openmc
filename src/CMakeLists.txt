@@ -269,6 +269,9 @@ install(PROGRAMS utils/statepoint_histogram.py
 install(PROGRAMS utils/statepoint_meshplot.py
   DESTINATION bin
   RENAME statepoint_meshplot)
+install(PROGRAMS utils/update_inputs.py
+  DESTINATION bin
+  RENAME update_inputs)
 install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 

@@ -833,11 +833,13 @@ sub-elements:
 
     *Default*: None
 
-  :outside:
-    The unique integer identifier of a material that is to be used to fill all
-    space outside of the lattice. This element is optional.
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
 
-    *Default*: The region outside the defined lattice is treated as void.
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.

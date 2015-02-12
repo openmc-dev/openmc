@@ -549,7 +549,7 @@ contains
     integer :: j             ! index for various purposes
     integer :: k             ! loop index for lattices
     integer :: m             ! loop index for lattices
-    integer :: mid, lid      ! material and lattice IDs
+    integer :: lid           ! lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
     integer :: i_array       ! index in surfaces/materials array
     integer :: id            ! user-specified id
@@ -607,18 +607,8 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
           c % fill = lid
-          if (mid == MATERIAL_VOID) then
-            c % material = mid
-          else if (material_dict % has_key(mid)) then
-            c % material = material_dict % get_key(mid)
-          else
-            call fatal_error("Could not find material " // trim(to_str(mid)) &
-                 &// " specified on lattice " // trim(to_str(lid)))
-          end if
-
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
                &// trim(to_str(c % id)) // " is neither a universe nor a &
@@ -653,6 +643,16 @@ contains
           end do
         end do
       end do
+
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict % has_key(lat % outer)) then
+          lat % outer = universe_dict % get_key(lat % outer)
+        else
+          call fatal_error("Invalid universe number " &
+               &// trim(to_str(lat % outer)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
+        end if
+      end if
 
     end do
 

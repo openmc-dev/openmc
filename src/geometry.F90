@@ -312,7 +312,7 @@ contains
             if (.not. outside_lattice) then
               p % coord % next % universe = lat % universes(i_x,i_y,i_z)
             else
-              if (lat % outer == NO_OUTER_UNIV) then
+              if (lat % outer == NO_OUTER_UNIVERSE) then
                 call fatal_error("A particle is outside latttice " &
                      &// trim(to_str(lat % id)) // " but the lattice has no &
                      &defined outer universe.")

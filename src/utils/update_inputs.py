@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Update lattices in geometry .xml files to the latest format.
+"""Update OpenMC's input XML files to the latest format.
 
-Usage information can be obtained by running 'update_lattices.py --help':
+Usage information can be obtained by running 'update_inputs.py --help':
 
 usage: update_lattices.py [-h] IN [IN ...]
 
@@ -26,14 +26,27 @@ from shutil import move
 import xml.etree.ElementTree as ET
 
 
+description = "Update OpenMC's input XML files to the latest format."
+epilog = """\
+If any of the given files do not match the most up-to-date formatting, then they
+will be automatically rewritten.  The old out-of-date files will not be deleted;
+they will be moved to a new file with '.original' appended to their name.
+
+Formatting changes that will be made:
+
+geometry.xml:  Lattices containing 'outside' attributes/tags will be replaced
+  with lattices containing 'outer' attributes, and the appropriate
+  cells/universes will be added.
+"""
+
+
 def parse_args():
     """Read the input files from the commandline."""
     # Create argument parser.
-    parser = argparse.ArgumentParser(description="Update lattices in "
-         "geometry.xml files to the latest format.  This will remove 'outside' "
-         "attributes/elements and replace them with 'outer' attributes.  Note "
-         "that this script will not delete the given files; it will append "
-         "'.original' to the given files and write new ones.")
+    parser = argparse.ArgumentParser(
+         description=description,
+         epilog=epilog,
+         formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('input', metavar='IN', type=str, nargs='+',
                         help='Input geometry.xml file(s).')
 
@@ -123,10 +136,10 @@ def find_new_id(current_ids, preferred=None):
 def get_lat_id(lattice_element):
     """Return the id integer of the lattice_element."""
     assert isinstance(lattice_element, ET.Element)
-    if 'id' in lat.attrib:
-        return int(lat.attrib['id'].strip())
-    elif any([child.tag == 'id' for child in lat]):
-        elem = lat.find('id')
+    if 'id' in lattice_element.attrib:
+        return int(lattice_element.attrib['id'].strip())
+    elif any([child.tag == 'id' for child in lattice_element]):
+        elem = lattice_element.find('id')
         return int(elem.text.strip())
     else:
         raise RuntimeError('Could not find the id for a lattice.')
@@ -137,15 +150,15 @@ def pop_lat_outside(lattice_element):
     assert isinstance(lattice_element, ET.Element)
 
     # Check attributes.
-    if 'outside' in lat.attrib:
-        material = lat.attrib['outside'].strip()
-        del lat.attrib['outside']
+    if 'outside' in lattice_element.attrib:
+        material = lattice_element.attrib['outside'].strip()
+        del lattice_element.attrib['outside']
 
     # Check subelements.
-    elif any([child.tag == 'outside' for child in lat]):
-        elem = lat.find('outside')
+    elif any([child.tag == 'outside' for child in lattice_element]):
+        elem = lattice_element.find('outside')
         material = elem.text.strip()
-        lat.remove(elem)
+        lattice_element.remove(elem)
 
     # No 'outside' specified.  This means the outside is a void.
     else:
@@ -154,48 +167,66 @@ def pop_lat_outside(lattice_element):
     return material
 
 
+def update_geometry(geometry_root):
+    """Update the given XML geometry tree. Return True if changes were made."""
+    root = geometry_root
+    was_updated = False
+
+    # Ignore files that do not contain lattices.
+    if all([child.tag != 'lattice' for child in root]): return False
+
+    # Get a set of already-used universe and cell ids.
+    uids = get_universe_ids(root)
+    cids = get_cell_ids(root)
+    taken_ids = uids.union(cids)
+
+    # Update the definitions of each lattice
+    for lat in root.iter('lattice'):
+        # Get the lattice's id.
+        lat_id = get_lat_id(lat)
+
+        # Ignore lattices that have 'outer' specified.
+        if any([child.tag == 'outer' for child in lat]): continue
+
+        # Pop the 'outside' material.
+        material = pop_lat_outside(lat)
+
+        # Get an id number for a new outer universe.  Ideally, the id should
+        # be close to the lattice's id.
+        new_uid = find_new_id(taken_ids, preferred=lat_id)
+        assert new_uid not in taken_ids
+
+        # Add the new universe filled with the old 'outside' material to the
+        # geometry.
+        new_cell = ET.Element('cell')
+        new_cell.attrib['id'] = str(new_uid)
+        new_cell.attrib['universe'] = str(new_uid)
+        new_cell.attrib['material'] = material
+        root.append(new_cell)
+        taken_ids.add(new_uid)
+
+        # Add the new universe to the lattice's 'outer' attribute.
+        lat.attrib['outer'] = str(new_uid)
+
+        was_updated = True
+
+    return was_updated
+
+
 if __name__ == '__main__':
     args = parse_args()
     for fname in args.input:
         # Parse the XML data.
         tree = ET.parse(fname)
         root = tree.getroot()
+        was_updated = False
 
-        # Ignore files that do not contain lattices.
-        if all([child.tag != 'lattice' for child in root]): continue
+        if root.tag == 'geometry':
+            was_updated = update_geometry(root)
 
-        # Get a set of already-used universe and cell ids.
-        uids = get_universe_ids(root)
-        cids = get_cell_ids(root)
-        taken_ids = uids.union(cids)
+        if was_updated:
+            # Move the original geometry file to preserve it.
+            move(fname, fname + '.original')
 
-        # Update the definitions of each lattice
-        for lat in root.iter('lattice'):
-            # Get the lattice's id.
-            lat_id = get_lat_id(lat)
-
-            # Pop the 'outside' material.
-            material = pop_lat_outside(lat)
-
-            # Get an id number for a new outer universe.  Ideally, the id should
-            # be close to the lattice's id.
-            new_uid = find_new_id(taken_ids, preferred=lat_id)
-            assert new_uid not in taken_ids
-
-            # Add the new universe filled with the old 'outside' material to the
-            # geometry.
-            new_cell = ET.Element('cell')
-            new_cell.attrib['id'] = str(new_uid)
-            new_cell.attrib['universe'] = str(new_uid)
-            new_cell.attrib['material'] = material
-            root.append(new_cell)
-            taken_ids.add(new_uid)
-
-            # Add the new universe to the lattice's 'outer' attribute.
-            lat.attrib['outer'] = str(new_uid)
-
-        # Move the original geometry file to preserve it.
-        move(fname, ''.join((fname, '.original')))
-
-        # Write a new geometry file.
-        tree.write(fname)
+            # Write a new geometry file.
+            tree.write(fname)

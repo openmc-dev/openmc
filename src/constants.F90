@@ -204,10 +204,11 @@ module constants
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
 
-  ! Cross section filetypes
+  ! Cross section and NDPP filetypes
   integer, parameter :: &
-       ASCII  = 1, & ! ASCII cross section file
-       BINARY = 2    ! Binary cross section file
+       ASCII  = 1, & ! ASCII cross section or NDPP file
+       BINARY = 2, & ! Binary cross section or NDPP file
+       H5     = 3    ! HDF5 NDPP file
 
   ! Probability table parameters
   integer, parameter :: &
@@ -253,45 +254,60 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20
+  integer, parameter :: N_SCORE_TYPES = 29
   integer, parameter :: &
-       SCORE_FLUX          = -1,  & ! flux
-       SCORE_TOTAL         = -2,  & ! total reaction rate
-       SCORE_SCATTER       = -3,  & ! scattering rate
-       SCORE_NU_SCATTER    = -4,  & ! scattering production rate
-       SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
-       SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NU_SCATTER_N  = -7,  & ! arbitrary nu-scattering moment
-       SCORE_NU_SCATTER_PN = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT     = -9,  & ! transport reaction rate
-       SCORE_N_1N          = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION    = -11, & ! absorption rate
-       SCORE_FISSION       = -12, & ! fission rate
-       SCORE_NU_FISSION    = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION = -14, & ! fission energy production rate
-       SCORE_CURRENT       = -15, & ! partial current
-       SCORE_FLUX_YN       = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS        = -20    ! number of events
+       SCORE_FLUX             = -1,  & ! flux
+       SCORE_TOTAL            = -2,  & ! total reaction rate
+       SCORE_SCATTER          = -3,  & ! scattering rate
+       SCORE_NU_SCATTER       = -4,  & ! scattering production rate
+       SCORE_SCATTER_N        = -5,  & ! arbitrary scattering moment
+       SCORE_SCATTER_PN       = -6,  & ! system for scoring 0th through nth moment
+       SCORE_NU_SCATTER_N     = -7,  & ! arbitrary nu-scattering moment
+       SCORE_NU_SCATTER_PN    = -8,  & ! system for scoring 0th through nth nu-scatter moment
+       SCORE_TRANSPORT        = -9,  & ! transport reaction rate
+       SCORE_N_1N             = -10, & ! (n,1n) rate
+       SCORE_ABSORPTION       = -11, & ! absorption rate
+       SCORE_FISSION          = -12, & ! fission rate
+       SCORE_NU_FISSION       = -13, & ! neutron production rate
+       SCORE_KAPPA_FISSION    = -14, & ! fission energy production rate
+       SCORE_CURRENT          = -15, & ! partial current
+       SCORE_FLUX_YN          = -16, & ! angular moment of flux
+       SCORE_TOTAL_YN         = -17, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN       = -18, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN    = -19, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS           = -20, & ! number of events
+       SCORE_NDPP_SCATT_N     = -21, & ! pre-integrated version of score_scatter_n
+       SCORE_NDPP_SCATT_PN    = -22, & ! pre-integrated version of score_scatter_pn
+       SCORE_NDPP_SCATT_YN    = -23, & ! pre-integrated version of score_scatter_yn
+       SCORE_NDPP_NU_SCATT_N  = -24, & ! pre-integrated version of score_nu_scatter_n
+       SCORE_NDPP_NU_SCATT_PN = -25, & ! pre-integrated version of score_nu_scatter_pn
+       SCORE_NDPP_NU_SCATT_YN = -26, & ! pre-integrated version of score_nu_scatter_yn
+       SCORE_NDPP_CHI         = -27, & ! pre-integrated total fission spectra
+       SCORE_NDPP_CHI_P       = -28, & ! pre-integrated prompt fission spectra
+       SCORE_NDPP_CHI_D       = -29    ! pre-integrated delayed fission spectra
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
 
   ! Names of *-PN & *-YN scores (MOMENT_STRS) and *-N moment scores
   character(*), parameter :: &
-       MOMENT_STRS(6)    = (/ "scatter-p   ",   &
-                              "nu-scatter-p",   &
-                              "flux-y      ",   &
-                              "total-y     ",   &
-                              "scatter-y   ",   &
-                              "nu-scatter-y"/), &
-       MOMENT_N_STRS(2)  = (/ "scatter-    ",   &
-                              "nu-scatter- "/)
+       MOMENT_STRS(10)   = (/ "scatter-p        ",   &
+                              "nu-scatter-p     ",   &
+                              "ndpp-scatter-p   ",   &
+                              "ndpp-nu-scatter-p",   &
+                              "flux-y           ",   &
+                              "total-y          ",   &
+                              "scatter-y        ",   &
+                              "nu-scatter-y     ",   &
+                              "ndpp-scatter-y   ",   &
+                              "ndpp-nu-scatter-y"/), &
+       MOMENT_N_STRS(4)  = (/ "scatter-        ", &
+                              "nu-scatter-     ", &
+                              "ndpp-scatter-   ", &
+                              "ndpp-nu-scatter-"/)
 
   ! Location in MOMENT_STRS where the YN data begins
-  integer, parameter :: YN_LOC = 3
+  integer, parameter :: YN_LOC = 5
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
@@ -324,6 +340,12 @@ module constants
        K_ABSORPTION  = 2, &
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
+
+  ! ============================================================================
+  ! NDPP-BASED TALLY-RELATED CONSTANTS
+  integer, parameter :: &
+       SCATT_TYPE_LEGENDRE = 0, & ! Legendre moments
+       SCATT_TYPE_TABULAR  = 1 ! Tabular Representation
 
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS

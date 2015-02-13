@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ndpp_lib>
+  <directory> /home/nelsonag/git/openmc/tests/NDPP_data/  </directory>
+  <filetype> ascii </filetype>
+  <entries> 4  </entries>
+  <nuscatter> true </nuscatter>
+  <chi_present> true </chi_present>
+  <scatt_type> 0 </scatt_type>
+  <scatt_order> 1 </scatt_order>
+  <print_tol> 1.00000E-08 </print_tol>
+  <thin_tol> 1.00000E-06 </thin_tol>
+  <mu_bins> 51 </mu_bins>
+  <energy_bins>
+  0.000000000000E+00  6.250000000000E-07  2.000000000000E+01
+  </energy_bins>
+
+  <ndpp_table alias="H-1.71c" awr="0.999167" location="1" name="1001.71c" path="1001.71c.g2" temperature="2.53000E-08" zaid="1001" freegas_cutoff="1.01204E-05"/>
+  <ndpp_table alias="O-16.71c" awr="15.8575" location="1" name="8016.71c" path="8016.71c.g2" temperature="2.53000E-08" zaid="8016" freegas_cutoff="1.01204E-05"/>                                                                                         
+  <ndpp_table alias="U-235.71c" awr="233.025" location="1" name="92235.71c" path="92235.71c.g2" temperature="2.53000E-08" zaid="92235" freegas_cutoff="1.01204E-05"/>                                                                                     
+  <ndpp_table alias="HH2O.71t" awr="0.999167" location="1" name="HH2O.71t" path="HH2O.71t.g2" temperature="2.53000E-08" zaid="0" freegas_cutoff="-2.00000"/>                                                                                              
+</ndpp_lib>

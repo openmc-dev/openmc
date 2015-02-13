@@ -2502,14 +2502,12 @@ contains
 
           case ('ndpp-scatter-n')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2518,10 +2516,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-n score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-n score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2536,14 +2533,12 @@ contains
 
           case ('ndpp-scatter-pn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2552,10 +2547,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-pn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-pn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2571,14 +2565,12 @@ contains
 
           case ('ndpp-scatter-yn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2587,10 +2579,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-yn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-yn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2606,14 +2597,12 @@ contains
 
           case ('ndpp-nu-scatter-n')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2622,10 +2611,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-n score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-nu-scatter-n score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2640,14 +2628,12 @@ contains
 
           case ('ndpp-nu-scatter-pn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2656,10 +2642,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-pn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // & 
+                   "tally with an ndpp-nu-scatter-pn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2675,14 +2660,12 @@ contains
 
           case ('ndpp-nu-scatter-yn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2691,10 +2674,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-yn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-nu-scatter-yn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2715,9 +2697,8 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator
@@ -2730,17 +2711,15 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI_P
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi-P without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi-P without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
 
           case('ndpp-chi-d')
-            message = "ndpp-chi-d tally score not yet enabled!"
-            call fatal_error()
+            call fatal_error("ndpp-chi-d tally score not yet enabled!")
 
             ! Set flag to read and allocate storage for pre-processed tally data
             use_ndpp_data = .true.
@@ -2748,9 +2727,8 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI_D
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi-D without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi-D without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator

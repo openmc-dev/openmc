@@ -53,7 +53,7 @@ contains
     end if
 
     ! check for very low energy
-    if (p % E < MIN_ENERGY) then
+    if (p % E < 1.0e-100_8) then
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")
     end if

@@ -42,7 +42,8 @@
 
 
   <!-- Lattice 101: Fuel assembly pins -->
-  <hex_lattice id="101" outside="01" n_rings="11" n_axial="3"
+  <cell id="100" universe="100" material="01"/>
+  <hex_lattice id="101" outer="100" n_rings="11" n_axial="3"
       center="0.0 0.0 0.0" pitch="1.265 1.2">
     <universes>
                                     011

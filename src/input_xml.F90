@@ -904,7 +904,6 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: mid
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
@@ -1354,15 +1353,18 @@ contains
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary
@@ -1525,15 +1527,18 @@ contains
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary

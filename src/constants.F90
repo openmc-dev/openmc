@@ -8,7 +8,7 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_RELEASE = 2
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_STATEPOINT       = 13
@@ -126,6 +126,9 @@ module constants
        SURF_CONE_X =  9, & ! Cone parallel to x-axis
        SURF_CONE_Y = 10, & ! Cone parallel to y-axis
        SURF_CONE_Z = 11    ! Cone parallel to z-axis
+
+  ! Flag to say that the outside of a lattice is not defined
+  integer, parameter :: NO_OUTER_UNIVERSE = -22
 
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10

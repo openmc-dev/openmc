@@ -217,7 +217,7 @@ contains
 
       i_start = 0
       do
-        if (length - i_start < line_wrap - 1) then
+        if (length - i_start < line_wrap + 1) then
           ! Remainder of message will fit on line
           write(ou, fmt='(1X,A)') message(i_start+1:length)
           exit

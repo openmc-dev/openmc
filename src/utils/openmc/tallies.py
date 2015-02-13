@@ -699,24 +699,6 @@ class Tally(object):
                   'string'.format(score, self._id)
             raise ValueError(msg)
 
-        elif 'scatter-' in score:
-
-            moment = score.split('-')[-1]
-
-            if 'p' in moment.lower() or 'y' in moment.lower():
-                moment = moment[1:]
-
-            if int(moment) < 0 or int(moment) > 10:
-                msg = 'Unable to add score {0} to Tally ID={1} since OpenMC ' \
-                      'can only tally the scattering moments between 0 and ' \
-                      '10'.format(score, self._id)
-                raise ValueError(msg)
-
-        elif not score in SCORE_TYPES.values():
-            msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
-                  'supported score in OpenMC'.format(score, self._id)
-            raise ValueError(msg)
-
         # If the score is already in the Tally, don't add it again
         if score in self._scores:
             return

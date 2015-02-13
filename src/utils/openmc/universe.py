@@ -570,7 +570,7 @@ class Lattice(object):
         self._dimension = None
         self._lower_left = None
         self._width = None
-        self._outside = None
+        self._outer = None
         self._universes = None
         self._offsets = None
 
@@ -714,14 +714,14 @@ class Lattice(object):
         self._width = width
 
 
-    def set_outside(self, outside):
+    def set_outer(self, outer):
 
-        if not isinstance(outside, (Universe, openmc.Material)):
-            msg = 'Unable to set Lattice ID={0} outside universe to {1} ' \
-                  'since it is not a Universe object'.format(self._id, outside)
+        if not isinstance(outer, Universe):
+            msg = 'Unable to set Lattice ID={0} outer universe to {1} ' \
+                  'since it is not a Universe object'.format(self._id, outer)
             raise ValueError(msg)
 
-        self._outside = outside
+        self._outer = outer
 
 
     def set_universes(self, universes):
@@ -833,12 +833,12 @@ class Lattice(object):
                                             self._lower_left)
         string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
 
-        if self._outside is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOutside', '=\t',
-                                                self._outside._id)
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tOutside', '=\t',
-                                                self._outside)
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
 
         string += '{0: <16}\n'.format('\tUniverses')
 
@@ -916,10 +916,10 @@ class Lattice(object):
             width.text = '{0} {1}'.format(self._width[0], \
                                           self._width[1])
 
-        # Export the Lattice outside Universe (if specified)
-        if self._outside is not None:
-            outside = ET.SubElement(lattice_subelement, "outside")
-            outside.text = '{0}'.format(self._outside._id)
+        # Export the Lattice outer Universe (if specified)
+        if self._outer is not None:
+            outer = ET.SubElement(lattice_subelement, "outer")
+            outer.text = '{0}'.format(self._outer._id)
 
         # Export the Lattice nested Universe IDs - column major for Fortran
         universe_ids = '\n'

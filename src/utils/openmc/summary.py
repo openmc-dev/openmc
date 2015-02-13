@@ -353,7 +353,7 @@ class Summary(object):
             width = self._f['geometry/lattices'][key]['width'][...]
             dimension = self._f['geometry/lattices'][key]['dimension'][...]
             lower_left = self._f['geometry/lattices'][key]['lower_left'][...]
-            outside = self._f['geometry/lattices'][key]['outside'][0]
+            outer = self._f['geometry/lattices'][key]['outer'][0]
 
             universe_ids = self._f['geometry/lattices'][key]['universes'][...]
             universe_ids = np.swapaxes(universe_ids, 0, 1)
@@ -381,9 +381,9 @@ class Summary(object):
             universes = universes[:,::-1,:]
             lattice.set_universes(universes)
 
-            # If the Material specified outside the Lattice is not void (-1)
-            if outside != -1:
-                lattice.set_outside(self.materials[outside])
+            # If the Universe specified outer the Lattice is not void (-22)
+            if outer != -22:
+                lattice.set_outer(self.universes[outer])
 
             # Add the Lattice to the global dictionary of all Lattices
             self.lattices[index] = lattice

@@ -26,35 +26,12 @@ contains
     type(Particle), intent(inout) :: p
     logical                       :: in_cell
 
-    integer :: lat_ind         ! index in lattices array
-    integer :: i_xyz(3)        ! lattice indices
     integer :: i               ! index of surfaces in cell
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
     type(Surface), pointer, save :: s => null()
 !$omp threadprivate(s)
-
-    ! We need to check and make sure the particle is not outside of a lattice
-    ! before checking surfaces. The lowest coordinate level for a particle that
-    ! is outside of a lattice should be an infinite universe.  Unfortunately,
-    ! it's not.  The following code is a bit of a hack to avoid that fact.
-    if (p % coord % cell /= 0) then
-      ! ^ New particles will have p % coord % cell = 0.
-      if (cells(p % coord % cell) % type == CELL_LATTICE) then
-        ! The particle is in a lattice cell.
-        lat_ind = cells(p % coord % cell) % fill
-        i_xyz = (/p % coord % lattice_x, p % coord % lattice_y, &
-             &p % coord % lattice_z/)
-        if (.not. lattices(lat_ind) % obj % are_valid_indices(i_xyz)) then
-          ! The particle is outside of the lattice.  There shouldn't be surfaces
-          ! outside the lattice (on the lowest coordinate level) so we can
-          ! simply check for cell equivalence.
-          in_cell = associated(c, cells(p % coord % cell))
-          return
-        end if
-      end if
-    end if
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface

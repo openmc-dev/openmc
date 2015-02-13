@@ -575,9 +575,9 @@ contains
 
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
-    class(Lattice), pointer, save :: lat => null()
-    type(LocalCoord), pointer :: parent_coord
-!$omp threadprivate(lat)
+    class(Lattice),   pointer, save :: lat => null()
+    type(LocalCoord), pointer, save :: parent_coord => null()
+!$omp threadprivate(lat, parent_coord)
 
     lat => lattices(p % coord % lattice) % obj
 
@@ -655,35 +655,34 @@ contains
     integer,        intent(out)   :: surface_crossed
     integer,        intent(out)   :: lattice_translation(3)
 
-    integer :: i                 ! index for surface in cell
-    integer :: index_surf        ! index in surfaces array (with sign)
-    real(8) :: x,y,z             ! particle coordinates
-    real(8) :: beta, gama        ! skewed particle coordiantes
-    real(8) :: u,v,w             ! particle directions
-    real(8) :: beta_dir          ! skewed particle direction
-    real(8) :: gama_dir          ! skewed particle direction
-    real(8) :: edge              ! distance to oncoming edge
-    real(8) :: d                 ! evaluated distance
-    real(8) :: x0,y0,z0          ! coefficients for surface
-    real(8) :: r                 ! radius for quadratic surfaces
-    real(8) :: tmp               ! dot product of surface normal with direction
-    real(8) :: a,b,c,k           ! quadratic equation coefficients
-    real(8) :: quad              ! discriminant of quadratic equation
-    logical :: on_surface        ! is particle on surface?
+    integer :: i                  ! index for surface in cell
+    integer :: index_surf         ! index in surfaces array (with sign)
+    integer :: i_xyz(3)           ! lattice indices
+    integer :: level_surf_cross   ! surface crossed on current level
+    integer :: level_lat_trans(3) ! lattice translation on current level
+    real(8) :: x,y,z              ! particle coordinates
+    real(8) :: xyz_t(3)           ! local particle coordinates
+    real(8) :: beta, gama         ! skewed particle coordiantes
+    real(8) :: u,v,w              ! particle directions
+    real(8) :: beta_dir           ! skewed particle direction
+    real(8) :: gama_dir           ! skewed particle direction
+    real(8) :: edge               ! distance to oncoming edge
+    real(8) :: d                  ! evaluated distance
+    real(8) :: d_lat              ! distance to lattice boundary
+    real(8) :: d_surf             ! distance to surface
+    real(8) :: x0,y0,z0           ! coefficients for surface
+    real(8) :: r                  ! radius for quadratic surfaces
+    real(8) :: tmp                ! dot product of surface normal with direction
+    real(8) :: a,b,c,k            ! quadratic equation coefficients
+    real(8) :: quad               ! discriminant of quadratic equation
+    logical :: on_surface         ! is particle on surface?
     type(Cell),       pointer, save :: cl => null()
     type(Surface),    pointer, save :: surf => null()
     class(Lattice),   pointer, save :: lat => null()
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
-
-    integer :: i_xyz(3)
-    real(8) :: xyz_t(3)
-    type(LocalCoord), pointer :: parent_coord
-    real(8) :: d_lat
-    real(8) :: d_surf
-    integer :: level_surf_cross
-    integer :: level_lat_trans(3)
-!$omp threadprivate(cl, surf, lat, coord, final_coord)
+    type(LocalCoord), pointer, save :: parent_coord => null()
+!$omp threadprivate(cl, surf, lat, coord, final_coord, parent_coord)
 
     ! inialize distance to infinity (huge)
     dist = INFINITY

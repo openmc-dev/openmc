@@ -148,7 +148,7 @@ contains
   end function concatenate
 
 !===============================================================================
-! LOWER_CASE converts a string to all lower case characters
+! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
   elemental function to_lower(word) result(word_lower)
@@ -171,7 +171,7 @@ contains
   end function to_lower
 
 !===============================================================================
-! UPPER_CASE converts a string to all upper case characters
+! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
   elemental function to_upper(word) result(word_upper)

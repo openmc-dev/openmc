@@ -272,11 +272,11 @@ contains
           outrange(1) = int(frac * real(img % width, 8))
           frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
           outrange(2) = int(frac * real(img % width, 8))
-          
-          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(1) = int(frac * real(img % height, 8))
+
           frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(2) = int(frac * real(img % height, 8))
+          inrange(1) = int((1. - frac) * real(img % height, 8))
+          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
+          inrange(2) = int((1. - frac) * real(img % height, 8))
 
           ! draw lines
           do out_ = outrange(1), outrange(2)

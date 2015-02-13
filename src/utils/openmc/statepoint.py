@@ -374,21 +374,34 @@ class StatePoint(object):
 
             scores = [SCORE_TYPES[j] for j in self._get_int(
                  n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
+            n_user_scores = self._get_int(
+                 path='{0}{1}/n_user_score_bins'.format(base, tally_key))[0]
 
-            # Read the scattering moment order for all scores
-            scatt_order = self._get_int(
-                 n_score_bins, path='{0}{1}/moment_order'.format(base, tally_key))
+            # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+            moments = list()
+            base += '{0}/moments/'.format(tally_key)
+
+            # Extract the moment order string for each score
+            for k in range(len(scores)):
+                moment = self._get_string(8, 
+                     path='{0}order{1}'.format(base, k+1))
+                moment = moment.lstrip('[\'')
+                moment = moment.rstrip('\']')
+
+                # Remove extra whitespace
+                moment.replace(" ", "")
+                moments.append(moment)
 
             # Add the scores to the Tally
             for j, score in enumerate(scores):
 
                 # If this is a scattering moment, insert the scattering order
                 if '-n' in score:
-                    score = score.replace('-n', '-' + str(scatt_order[j]))
+                    score = score.replace('-n', '-' + str(moments[j]))
                 elif '-pn' in score:
-                    score = score.replace('-pn', '-p' + str(scatt_order[j]))
+                    score = score.replace('-pn', '-' + str(moments[j]))
                 elif '-yn' in score:
-                    score = score.replace('-yn', '-y' + str(scatt_order[j]))
+                    score = score.replace('-yn', '-' + str(moments[j]))
 
                 tally.add_score(score)
 

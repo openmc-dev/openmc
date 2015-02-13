@@ -215,16 +215,17 @@ if (run_mode == MODE_EIGENVALUE)
 
             Values of specified scoring bins (e.g. SCORE_FLUX).
             
-    *do j = 1, tallies(i) % n_score_bins*
-
-        **integer(4) tallies(i) % scatt_order(j)**
-
-            Scattering Order specified scoring bins.
-            
     **integer(4) tallies(i) % n_score_bins**
 
         Number of scoring bins without accounting for those added by
         the scatter-pn command.
+
+    *do j = 1, tallies(i) % n_user_score_bins*
+
+        **character(8) tallies(i) % moment_order(j)**
+
+            Tallying moment order for Legendre and spherical 
+            harmonic tally expansions (*e.g.*, 'P2', 'Y1,2', etc.).
 
 **integer(4) source_present**
 

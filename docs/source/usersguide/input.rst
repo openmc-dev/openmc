@@ -826,11 +826,13 @@ the following attributes or sub-elements:
 
     *Default*: None
 
-  :outside:
-    The unique integer identifier of a material that is to be used to fill all
-    space outside of the lattice. This element is optional.
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
 
-    *Default*: The region outside the defined lattice is treated as void.
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
@@ -841,7 +843,7 @@ Here is an example of a properly defined 2d rectangular lattice:
 
 .. code-block:: xml
 
-    <lattice id="10" dimension="3 3" outside="1">
+    <lattice id="10" dimension="3 3" outer="1">
         <lower_left> -1.5 -1.5 </lower_left>
         <pitch> 1.0 1.0 </pitch>
         <universes>
@@ -888,11 +890,13 @@ the following attributes or sub-elements:
 
     *Default*: None
 
-  :outside:
-    The unique integer identifier of a material that is to be used to fill all
-    space outside of the lattice. This element is optional.
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
 
-    *Default*: The region outside the defined lattice is treated as void.
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
@@ -903,7 +907,7 @@ Here is an example of a properly defined 2d hexagonal lattice:
 
 .. code-block:: xml
 
-    <hex_lattice id="10" n_rings="3" outside="1">
+    <hex_lattice id="10" n_rings="3" outer="1">
         <center> 0.0 0.0 </center>
         <pitch> 1.0 </pitch>
         <universes>

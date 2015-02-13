@@ -25,6 +25,7 @@ module geometry_header
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
+    integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
     
     contains

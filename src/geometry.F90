@@ -260,28 +260,27 @@ contains
         p % coord % next% lattice_y = i_xyz(2)
         p % coord % next% lattice_z = i_xyz(3)
 
+        ! Set the next lowest coordinate level.
         if (lat % are_valid_indices(i_xyz)) then
+          ! Particle is inside the lattice.
           p % coord % next % universe = &
                &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
-          ! Move particle to next level and search for the lower cells.
-          p % coord => p % coord % next
-          call find_cell(p, found)
-          if (.not. found) exit
-
         else
-          ! We're outside the lattice which means the next coordinates will
-          ! have the same universe as the current coordinates, but we still
-          ! need the lattice coordinates so distance_to_boundary will
-          ! correctly handle the particle if it reenters the lattice.
-          p % last_material = p % material
-          p % material = c % material
-          p % coord % next % universe = p % coord % universe
-          p % coord % next % cell = index_cell
-
-          ! Move particle to next level.
-          p % coord => p % coord % next
+          ! Particle is outside the lattice.
+          if (lat % outer == NO_OUTER_UNIVERSE) then
+            call fatal_error("A particle is outside latttice " &
+                 &// trim(to_str(lat % id)) // " but the lattice has no &
+                 &defined outer universe.")
+          else
+            p % coord % next % universe = lat % outer
+          end if
         end if
+
+        ! Move particle to next level and search for the lower cells.
+        p % coord => p % coord % next
+        call find_cell(p, found)
+        if (.not. found) exit
 
       end if CELL_TYPE
 

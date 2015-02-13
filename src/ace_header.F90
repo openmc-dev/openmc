@@ -336,8 +336,9 @@ module ace_header
 
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) &
-           deallocate(this % sigma)
+      if (allocated(this % sigma)) deallocate(this % sigma)
+
+      if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
 
       if (associated(this % edist)) then
         call this % edist % clear()

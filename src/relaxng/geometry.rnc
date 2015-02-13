@@ -38,6 +38,6 @@ element geometry {
     (element center { list { xsd:double+ } } | attribute center { list { xsd:double+ } }) &
     (element pitch { list { xsd:double+ } } | attribute pitch { list { xsd:double+ } }) &
     (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
-    (element outside { xsd:int } | attribute outside { xsd:int })?
+    (element outer { xsd:int } | attribute outer { xsd:int })?
   }*
 }

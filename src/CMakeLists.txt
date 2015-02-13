@@ -195,6 +195,20 @@ if(petsc)
     list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_RT_LIB})
   endif()
 
+  # If libssl wasn't found, search /usr/lib64
+  if(PETSC_SSL_LIB STREQUAL "PETSC_SSL_LIB-NOTFOUND")
+    find_library(PETSC_SSL_LIB libssl.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_SSL_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_SSL_LIB})
+  endif()
+
+  # If libcrypto wasn't found, search /usr/lib64
+  if(PETSC_CRYPTO_LIB STREQUAL "PETSC_CRYPTO_LIB-NOTFOUND")
+    find_library(PETSC_CRYPTO_LIB libcrypto.so /usr/lib64)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_CRYPTO_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_CRYPTO_LIB})
+  endif()
+
   message("-- Using PETSC: ${libpetsc}")
   add_definitions(-DPETSC)
   include_directories($ENV{PETSC_DIR}/include)
@@ -255,6 +269,9 @@ install(PROGRAMS utils/statepoint_histogram.py
 install(PROGRAMS utils/statepoint_meshplot.py
   DESTINATION bin
   RENAME statepoint_meshplot)
+install(PROGRAMS utils/update_inputs.py
+  DESTINATION bin
+  RENAME update_inputs)
 install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 

@@ -299,14 +299,27 @@ class StatePoint(object):
             t.n_nuclides = n_nuclides
             t.nuclides = self._get_int(n_nuclides, path=base+'nuclide_bins')
 
-            # Read score bins and scattering order
+            # Read score bins and user score bins
             t.n_scores = self._get_int(path=base+'n_score_bins')[0]
             t.scores = [score_types[j] for j in self._get_int(
                     t.n_scores, path=base+'score_bins')]
-            t.moment_order = self._get_int(t.n_scores, path=base+'moment_order')
-
-            # Read number of user score bins
             t.n_user_scores = self._get_int(path=base+'n_user_score_bins')[0]
+
+            # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+            t.moments = list()
+            base += 'moments/'
+
+            # Extract the moment order string for each score
+            for k in range(t.n_scores):
+                moment = self._get_string(8, path=base+'order{0}'.format(k+1))
+                moment = moment.lstrip('[\'')
+                moment = moment.rstrip('\']')
+
+                # Remove extra whitespace
+                moment.replace(" ", "")
+
+                # Add the moment to the tally's list
+                t.moments.append(moment)
 
             # Set up stride
             stride = 1

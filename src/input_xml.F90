@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -207,18 +208,29 @@ contains
     if (check_for_node(doc, "energy_grid")) then
       call get_node_value(doc, "energy_grid", temp_str)
     else
-      temp_str = 'union'
+      temp_str = 'logarithm'
     end if
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
     case ('union')
-      grid_method = GRID_UNION
-    case ('lethargy')
-      call fatal_error("Lethargy mapped energy grid not yet supported.")
+      call fatal_error("Union energy grid is no longer supported.")
+    case ('logarithm', 'logarithmic', 'log')
+      grid_method = GRID_LOGARITHM
     case default
       call fatal_error("Unknown energy grid method: " // trim(temp_str))
     end select
+
+    ! Number of bins for logarithmic grid
+    if (check_for_node(doc, "log_grid_bins")) then
+      call get_node_value(doc, "log_grid_bins", n_log_bins)
+      if (n_log_bins < 1) then
+        call fatal_error("Number of bins for logarithmic grid must be &
+             &greater than zero.")
+      end if
+    else
+      n_log_bins = 8000
+    end if
 
     ! Verbosity
     if (check_for_node(doc, "verbosity")) then
@@ -524,11 +536,11 @@ contains
 
         ! Copy dimensions
         call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
-        
+
         ! Calculate width
         entropy_mesh % width = (entropy_mesh % upper_right - &
              entropy_mesh % lower_left) / entropy_mesh % dimension
-        
+
       end if
 
       ! Turn on Shannon entropy calculation
@@ -892,7 +904,6 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: mid
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
@@ -1011,17 +1022,18 @@ contains
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
-      ! Check to make sure that surfaces were specified
-      if (.not. check_for_node(node_cell, "surfaces")) then
-        call fatal_error("No surfaces specified for cell " &
-             &// trim(to_str(c % id)))
-      end if
-
       ! Allocate array for surfaces and copy
-      n = get_arraysize_integer(node_cell, "surfaces")
+      if (check_for_node(node_cell, "surfaces")) then
+        n = get_arraysize_integer(node_cell, "surfaces")
+      else
+        n = 0
+      end if
       c % n_surfaces = n
-      allocate(c % surfaces(n))
-      call get_node_array(node_cell, "surfaces", c % surfaces)
+
+      if (n > 0) then
+        allocate(c % surfaces(n))
+        call get_node_array(node_cell, "surfaces", c % surfaces)
+      end if
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then
@@ -1327,15 +1339,18 @@ contains
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary
@@ -2336,7 +2351,7 @@ contains
           j = j + 1
           ! Get the input string in scores(l) but if score is one of the moment
           ! scores then strip off the n and store it as an integer to be used
-          ! later. Then perform the select case on this modified (number 
+          ! later. Then perform the select case on this modified (number
           ! removed) string
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
@@ -2487,14 +2502,12 @@ contains
 
           case ('ndpp-scatter-n')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2503,10 +2516,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-n score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-n score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2521,14 +2533,12 @@ contains
 
           case ('ndpp-scatter-pn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2537,10 +2547,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-pn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-pn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2556,14 +2565,12 @@ contains
 
           case ('ndpp-scatter-yn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2572,10 +2579,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-yn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-scatter-yn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2591,14 +2597,12 @@ contains
 
           case ('ndpp-nu-scatter-n')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2607,10 +2611,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-n score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-nu-scatter-n score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2625,14 +2628,12 @@ contains
 
           case ('ndpp-nu-scatter-pn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2641,10 +2642,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-pn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // & 
+                   "tally with an ndpp-nu-scatter-pn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2660,14 +2660,12 @@ contains
 
           case ('ndpp-nu-scatter-yn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "incoming energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "incoming energy filter.")
             end if
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Nu-Scatter without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Nu-Scatter without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
@@ -2676,10 +2674,9 @@ contains
             ! efficient for ndpp-scatter-pn.
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
-              message = "Energy and Energyout filter types must be the last " // &
-                        "declared (and in that order) in any tally with an " // &
-                        "ndpp-nu-scatter-yn score!"
-              call fatal_error()
+              call fatal_error("Energy and Energyout filter types must " // &
+                   "be the last declared (and in that order) in any " // &
+                   "tally with an ndpp-nu-scatter-yn score!")
             end if
 
             ! Set flag to read and allocate storage for pre-processed tally data
@@ -2700,9 +2697,8 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator
@@ -2715,17 +2711,15 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI_P
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi-P without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi-P without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
 
           case('ndpp-chi-d')
-            message = "ndpp-chi-d tally score not yet enabled!"
-            call fatal_error()
+            call fatal_error("ndpp-chi-d tally score not yet enabled!")
 
             ! Set flag to read and allocate storage for pre-processed tally data
             use_ndpp_data = .true.
@@ -2733,9 +2727,8 @@ contains
             t % score_bins(j) = SCORE_NDPP_CHI_D
 
             if (t % find_filter(FILTER_ENERGYOUT) == 0) then
-              message = "Cannot tally NDPP Chi-D without an " // &
-                        "outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally NDPP Chi-D without an " // &
+                   "outgoing energy filter.")
             end if
 
             ! Allow to use tracklength estimator
@@ -2994,16 +2987,14 @@ contains
       end select
 
       ! Set output file path
-      filename = "plot"
+      filename = trim(to_str(pl % id)) // "_plot"
       if (check_for_node(node_plot, "filename")) &
         call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
-        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(filename) // ".ppm"
+        pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
-        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(filename) // ".voxel"
+        pl % path_plot = trim(path_input) // trim(filename) // ".voxel"
       end select
 
       ! Copy plot pixel size
@@ -3081,6 +3072,18 @@ contains
           call fatal_error("<width> must be length 3 in voxel plot " &
                &// trim(to_str(pl % id)))
         end if
+      end if
+
+      ! Copy plot cell universe level
+      if (check_for_node(node_plot, "level")) then
+        call get_node_value(node_plot, "level", pl % level)
+
+        if (pl % level < 0) then
+          call fatal_error("Bad universe level in plot " &
+               &// trim(to_str(pl % id)))
+        end if
+      else
+        pl % level = PLOT_LEVEL_LOWEST
       end if
 
       ! Copy plot color type and initialize all colors randomly
@@ -3180,7 +3183,7 @@ contains
           call warning("Meshlines ignored in voxel plot " &
                &// trim(to_str(pl % id)))
         end if
-        
+
         select case(n_meshlines)
           case (0)
             ! Skip if no meshlines are specified
@@ -3188,7 +3191,7 @@ contains
 
             ! Get pointer to meshlines
             call get_list_item(node_meshline_list, 1, node_meshlines)
-            
+
             ! Check mesh type
             if (check_for_node(node_meshlines, "meshtype")) then
               call get_node_value(node_meshlines, "meshtype", meshtype)
@@ -3196,7 +3199,7 @@ contains
               call fatal_error("Must specify a meshtype for meshlines &
                    &specification in plot " // trim(to_str(pl % id)))
             end if
-            
+
             ! Ensure that there is a linewidth for this meshlines specification
             if (check_for_node(node_meshlines, "linewidth")) then
               call get_node_value(node_meshlines, "linewidth", &
@@ -3208,19 +3211,19 @@ contains
 
             ! Check for color
             if (check_for_node(node_meshlines, "color")) then
-              
+
               ! Check and make sure 3 values are specified for RGB
               if (get_arraysize_double(node_meshlines, "color") /= 3) then
                 call fatal_error("Bad RGB for meshlines color in plot " &
                      &// trim(to_str(pl % id)))
               end if
-              
+
               call get_node_array(node_meshlines, "color", &
                   pl % meshlines_color % rgb)
             else
-              
+
               pl % meshlines_color % rgb = (/ 0, 0, 0 /)
-            
+
             end if
 
             ! Set mesh based on type
@@ -3231,7 +3234,7 @@ contains
                 call fatal_error("No UFS mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => ufs_mesh
 
             case ('cmfd')
@@ -3247,17 +3250,17 @@ contains
               pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
- 
+
               if (.not. associated(entropy_mesh)) then
                 call fatal_error("No entropy mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               if (.not. allocated(entropy_mesh % dimension)) then
                 call fatal_error("No dimension specified on entropy mesh &
                      &for meshlines on plot " // trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => entropy_mesh
 
             case ('tally')
@@ -3292,9 +3295,9 @@ contains
             call fatal_error("Mutliple meshlines specified in plot " &
                  &// trim(to_str(pl % id)))
         end select
-        
+
       end if
-      
+
       ! Deal with masks
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)

@@ -9,7 +9,7 @@ module ndpp_initialize
   use ndpp_ops,     only: ndpp_read
   use output,       only: write_message
   use search
-  use string,       only: ends_with, lower_case, starts_with, to_str
+  use string,       only: ends_with, to_lower, starts_with, to_str
   use xml_interface
 
   implicit none
@@ -63,16 +63,15 @@ contains
       i_listing = ndpp_listing_dict % get_key(adjustl(trim(nuc % name)))
       if (i_listing == DICT_NULL) then
         ! Could not find ndpp_lib.xml file
-        message = trim(nuc % name) // " does not exist in NDPP XML file: '" // &
-                  trim(ndpp_lib) // "'!"
-        call fatal_error()
+        call fatal_error(trim(nuc % name) // " does not exist in " // & 
+             "NDPP XML file: '" // trim(ndpp_lib) // "'!")
       end if
       ! Read the NDPP data and also check that the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
 
       ! display message
-      message = "Loading NDPP data library: " // ndpp_listing % name
-      call write_message(6)
+      call write_message("Loading NDPP data library: " // &
+           ndpp_listing % name, 6)
 
       call ndpp_read(ndpp_nuc_data(i_nuclide), ndpp_listing, get_scatt, &
                      get_nuscatt, get_chi_t, get_chi_p, get_chi_d,  &
@@ -84,16 +83,15 @@ contains
       i_listing = ndpp_listing_dict % get_key(adjustl(trim(sab % name)))
       if (i_listing == DICT_NULL) then
         ! Could not find ndpp_lib.xml file
-        message = trim(sab % name) // " does not exist in NDPP XML file: '" // &
-                  trim(ndpp_lib) // "'!"
-        call fatal_error()
+        call fatal_error(trim(sab % name) // " does not exist in " // &
+             "NDPP XML file: '" // trim(ndpp_lib) // "'!")
       end if
       ! Read the NDPP data and also check that the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
 
       ! display message
-      message = "Loading NDPP data library: " // ndpp_listing % name
-      call write_message(6)
+      call write_message("Loading NDPP data library: " // &
+           ndpp_listing % name, 6)
 
       call ndpp_read(ndpp_sab_data(i_sab), ndpp_listing, get_scatt, &
                      get_nuscatt, get_chi_t, get_chi_p, get_chi_d, &
@@ -305,13 +303,11 @@ contains
     inquire(FILE=ndpp_lib, EXIST=file_exists)
     if (.not. file_exists) then
        ! Could not find ndpp_lib.xml file
-       message = "NDPP Library XML file '" // trim(ndpp_lib) // &
-                 "' does not exist!"
-       call fatal_error()
+       call fatal_error("NDPP Library XML file '" // trim(ndpp_lib) // &
+            "' does not exist!")
     end if
 
-    message = "Reading NDPP Library XML file..."
-    call write_message(5)
+    call write_message("Reading NDPP Library XML file...", 5)
 
     ! Parse ndpp_lib.xml file
     call open_xmldoc(doc, ndpp_lib)
@@ -337,9 +333,8 @@ contains
     elseif (trim(temp_str) == 'hdf5') then
        filetype = H5
     else
-       message = "Unknown filetype in " // trim(ndpp_lib) // &
-        ": " // trim(temp_str)
-       call fatal_error()
+       call fatal_error("Unknown filetype in " // trim(ndpp_lib) // &
+            ": " // trim(temp_str))
     end if
 
     ! Test metadata to ensure this library matches the problem definition
@@ -350,9 +345,8 @@ contains
     if (check_for_node(doc, "scatt_type")) &
       call get_node_value(doc, "scatt_type", scatt_type)
     if (scatt_type /= SCATT_TYPE_LEGENDRE) then
-      message = "Invalid Scattering Type represented in NDPP data. Rerun " // &
-                "NDPP with the Legendre scattering type set."
-      call fatal_error()
+      call fatal_error("Invalid Scattering Type represented in NDPP " // & 
+           "data. Rerun NDPP with the Legendre scattering type set.")
     end if
 
     ! Test to ensure the scattering order is less than the maximum
@@ -360,9 +354,8 @@ contains
     if (check_for_node(doc, "scatt_order")) &
       call get_node_value(doc, "scatt_order", order)
     if (order > MAX_ANG_ORDER) then
-      message = "Invalid scattering order of " // trim(to_str(order)) // &
-                " requested."
-      call fatal_error()
+      call fatal_error("Invalid scattering order of " // &
+           trim(to_str(order)) // " requested.")
     end if
 
     ! Get the energy bin structure
@@ -415,11 +408,10 @@ contains
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % moment_order(j)) then
-              message = "Invalid scattering order of " // &
-                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
-                        "requested is larger than provided in the library (" // &
-                        trim(to_str(order)) // ")!"
-              call fatal_error()
+              call fatal_error("Invalid scattering order of " // &
+                   trim(to_str(t % moment_order(j))) // &
+                   " requested. Order requested is larger than " // &
+                   "provided in the library (" // trim(to_str(order)) // ")!")
             end if
 
             ! Compare the energyin and energyout filters of this tally to the
@@ -430,37 +422,33 @@ contains
             ! reducing the cases to check. First we check the size, so that we
             ! can use the Fortran intrinsic ALL to check the actual values
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             ! Now we can check the actual group boundaries.
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does not " // &
+                   "match that requested in tally!")
             end if
             ! Repeat the same steps as above, but this time for the energyout filter
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do not " // &
+                   "match that requested in tally!")
             end if
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does not " // & 
+                   "match that requested in tally!")
             end if
           case (SCORE_NDPP_SCATT_PN, SCORE_NDPP_NU_SCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % moment_order(j)) then
-              message = "Invalid scattering order of " // &
-                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
-                        "requested is larger than provided in the library (" // &
-                        trim(to_str(order)) // ")!"
-              call fatal_error()
+              call fatal_error("Invalid scattering order of " // &
+                   trim(to_str(t % moment_order(j))) // &
+                   " requested. Order requested is larger than " // &
+                   "provided in the library (" // &
+                   trim(to_str(order)) // ")!")
             end if
 
             ! Compare the energyin and energyout filters of this tally to the
@@ -471,27 +459,23 @@ contains
             ! reducing the cases to check. First we check the size, so that we
             ! can use the Fortran intrinsic ALL to check the actual values
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             ! Now we can check the actual group boundaries.
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does not " // &
+                   "match that requested in tally!")
             end if
             ! Repeat the same steps as above, but this time for the energyout filter
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does not " // &
+                   "match that requested in tally!")
             end if
 
             j = j + t % moment_order(j)
@@ -501,11 +485,11 @@ contains
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % moment_order(j)) then
-              message = "Invalid scattering order of " // &
-                        trim(to_str(t % moment_order(j))) // " requested. Order " // &
-                        "requested is larger than provided in the library (" // &
-                        trim(to_str(order)) // ")!"
-              call fatal_error()
+              call fatal_error("Invalid scattering order of " // &
+                   trim(to_str(t % moment_order(j))) // &
+                   " requested. Order requested is larger than " // &
+                   "provided in the library (" // &
+                   trim(to_str(order)) // ")!")
             end if
 
             ! Compare the energyin and energyout filters of this tally to the
@@ -516,27 +500,23 @@ contains
             ! reducing the cases to check. First we check the size, so that we
             ! can use the Fortran intrinsic ALL to check the actual values
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             ! Now we can check the actual group boundaries.
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does " // &
+                   "not match that requested in tally!")
             end if
             ! Repeat the same steps as above, but this time for the energyout filter
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does " // &
+                   "not match that requested in tally!")
             end if
 
             j = j + (t % moment_order(j) + 1)**2
@@ -546,14 +526,12 @@ contains
             ! Check that the group structure matches
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then
-              message = "Number of groups in NDPP Library do not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("Number of groups in NDPP Library do " // &
+                   "not match that requested in tally!")
             end if
             if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
-              message = "NDPP Library group structure does not match that " // &
-                        "requested in tally!"
-              call fatal_error()
+              call fatal_error("NDPP Library group structure does not " // &
+                   "match that requested in tally!")
             end if
         end select
       end do SCORE_LOOP
@@ -565,8 +543,7 @@ contains
 
     ! Allocate ndpp_listings array
     if (n_listings == 0) then
-       message = "No NDPP table listings present in ndpp_lib.xml file!"
-       call fatal_error()
+       call fatal_error("No NDPP table listings present in ndpp_lib.xml file!")
     else
        allocate(ndpp_listings(n_listings))
     end if
@@ -617,8 +594,7 @@ contains
        if (check_for_node(node_ndpp, "path")) then
          call get_node_value(node_ndpp, "path", temp_str)
        else
-         message = "Path missing for isotope " // listing % name
-         call fatal_error()
+         call fatal_error("Path missing for isotope " // listing % name)
        end if
 
        if (starts_with(temp_str, '/')) then

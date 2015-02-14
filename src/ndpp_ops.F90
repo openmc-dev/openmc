@@ -9,7 +9,7 @@ module ndpp_ops
   use math,         only: calc_rn
   use ndpp_header,  only: GrpTransfer, Ndpp
   use search
-  use string,       only: ends_with, lower_case, starts_with, to_str
+  use string,       only: ends_with, to_lower, starts_with, to_str
   use tally_header, only: TallyResult
   use xml_interface
 
@@ -66,12 +66,11 @@ module ndpp_ops
     ! Check if ACE library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-      message = "NDPP library '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error("NDPP library '" // trim(filename) // &
+           "' does not exist!")
     elseif (readable(1:3) == 'NO') then
-      message = "NDPP library '" // trim(filename) // "' is not readable! &
-           &Change file permissions with chmod command."
-      call fatal_error()
+      call fatal_error("NDPP library '" // trim(filename) // &
+           "' is not readable! Change file permissions with chmod command.")
     end if
 
     if (listing % filetype == ASCII) then
@@ -89,9 +88,8 @@ module ndpp_ops
       read(UNIT=in, FMT='(A20,1PE20.12,I20,A20)') name, kT, NG
       dkT = abs(kT - listing % kT) / kT
       if ((adjustl(trim(name)) /= listing % name) .or. (dkT > 0.001_8)) then
-        message = "NDPP library '" // trim(filename) // "' does not &
-                  &contain the correct data set where expected!"
-        call fatal_error()
+        call fatal_error("NDPP library '" // trim(filename) // &
+             "' does not contain the correct data set where expected!")
       end if
       ! Get the energy bins (not checking, will assume from here on out we have
       ! the right data set)
@@ -246,9 +244,8 @@ module ndpp_ops
       read(UNIT=in) name, kT, NG
       dkT = abs(kT - listing % kT) / kT
       if ((adjustl(trim(name)) /= listing % name) .or. (dkT > 0.001_8)) then
-        message = "NDPP library '" // trim(filename) // "' does not &
-                  &contain the correct data set where expected!"
-        call fatal_error()
+        call fatal_error("NDPP library '" // trim(filename) // &
+             "' does not contain the correct data set where expected!")
       end if
       ! Get the energy bins (not checking, will assume from here on out we have
       ! the right data set), and the other meta information
@@ -689,8 +686,7 @@ module ndpp_ops
     else if (score_type == SCORE_NDPP_CHI_P) then
       chi => this % chi_p
     else if (score_type == SCORE_NDPP_CHI_D) then
-      message = "OpenMC does not yet support Delayed Chi Tallying!"
-      call fatal_error()
+      call fatal_error("OpenMC does not yet support Delayed Chi Tallying!")
       !chi => this % chi_d
     end if
 

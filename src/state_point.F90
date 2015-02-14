@@ -39,6 +39,10 @@ contains
     character(MAX_FILE_LEN) :: filename
     integer                 :: i
     integer                 :: j
+    integer                 :: k
+    integer                 :: n_order      ! loop index for moment orders
+    integer                 :: nm_order     ! loop index for Ynm moment orders
+    character(8)            :: moment_name  ! name of moment (e.g, P3, Y-1,1)
     integer, allocatable    :: temp_array(:)
     type(TallyObject), pointer :: t => null()
 
@@ -214,17 +218,49 @@ contains
              group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
         deallocate(temp_array)
 
-        ! Write number of score bins, score bins, and moment order
+        ! Write number of score bins, score bins, user score bins
         call sp % write_data(t % n_score_bins, "n_score_bins", &
              group="tallies/tally" // to_str(i))
         call sp % write_data(t % score_bins, "score_bins", &
              group="tallies/tally" // to_str(i), length=t % n_score_bins)
-        call sp % write_data(t % moment_order, "moment_order", &
-             group="tallies/tally" // to_str(i), length=t % n_score_bins)
-
-        ! Write number of user score bins
         call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
              group="tallies/tally" // to_str(i))
+
+        ! Write explicit moment order strings for each score bin
+        k = 1
+        MOMENT_LOOP: do j = 1, t % n_user_score_bins
+          select case(t % score_bins(k))
+          case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+            moment_name = 'P' // to_str(t % moment_order(k))
+            call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
+            k = k + 1
+          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+            do n_order = 0, t % moment_order(k)
+              moment_name = 'P' // trim(to_str(n_order))
+              call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally" // trim(to_str(i)) // "/moments")
+              k = k + 1
+            end do
+          case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                SCORE_TOTAL_YN)
+            do n_order = 0, t % moment_order(k)
+              do nm_order = -n_order, n_order
+                moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
+                  trim(to_str(nm_order))
+                call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                     group="tallies/tally" // trim(to_str(i)) // "/moments")
+                  k = k + 1
+              end do
+            end do
+          case default
+            moment_name = ''
+            call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
+            k = k + 1
+          end select
+
+        end do MOMENT_LOOP
 
       end do TALLY_METADATA
 
@@ -520,11 +556,15 @@ contains
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
+    integer                 :: k
+    integer                 :: n_order      ! loop index for moment orders
+    integer                 :: nm_order     ! loop index for Ynm moment orders
     integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     logical                 :: source_present
     real(8)                 :: real_array(3)
+    character(8)            :: moment_name  ! name of moment (e.g, P3, Y-1,1)
     type(TallyObject), pointer :: t => null()
 
     ! Write message
@@ -713,17 +753,44 @@ contains
       end do NUCLIDE_LOOP
       deallocate(temp_array)
 
-      ! Write number of score bins, score bins, and scatt order
+      ! Write number of score bins, score bins, user score bins
       call sp % read_data(t % n_score_bins, "n_score_bins", &
            group="tallies/tally" // to_str(i))
       call sp % read_data(t % score_bins, "score_bins", &
            group="tallies/tally" // to_str(i), length=t % n_score_bins)
-      call sp % read_data(t % moment_order, "moment_order", &
-           group="tallies/tally" // to_str(i), length=t % n_score_bins)
-
-      ! Write number of user score bins
       call sp % read_data(t % n_user_score_bins, "n_user_score_bins", &
            group="tallies/tally" // to_str(i))
+
+      ! Read explicit moment order strings for each score bin
+      k = 1
+      MOMENT_LOOP: do j = 1, t % n_user_score_bins
+        select case(t % score_bins(k))
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally" // trim(to_str(i)) // "/moments")
+          k = k + 1
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+          do n_order = 0, t % moment_order(k)
+            call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally" // trim(to_str(i)) // "/moments")
+            k = k + 1
+          end do
+        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+              SCORE_TOTAL_YN)
+          do n_order = 0, t % moment_order(k)
+            do nm_order = -n_order, n_order
+              call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally" // trim(to_str(i)) // "/moments")
+              k = k + 1
+            end do
+          end do
+        case default
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally" // trim(to_str(i)) // "/moments")
+          k = k + 1
+        end select
+
+      end do MOMENT_LOOP
 
     end do TALLY_METADATA
 

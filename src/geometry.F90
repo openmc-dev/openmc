@@ -11,7 +11,7 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
- 
+
 contains
 
 !===============================================================================
@@ -59,7 +59,8 @@ contains
       end if
     end do SURFACE_LOOP
 
-    ! If we've reached here, then the sense matched on every surface
+    ! If we've reached here, then the sense matched on every surface or there
+    ! are no surfaces.
     in_cell = .true.
 
   end function simple_cell_contains
@@ -264,13 +265,13 @@ contains
                 lattice_edge = .true.
               end if
             end if
-            
+
             if (lattice_edge) then
-              
+
               ! In this case the neutron is leaving the lattice, so we move it
               ! out, remove all lower coordinate levels and then search from
               ! universe 0.
-            
+
               p % coord => p % coord0
               call deallocate_coord(p % coord % next)
 
@@ -279,17 +280,7 @@ contains
               p % coord % xyz = xyz
 
             else
-
-              ! We're outside the lattice, so treat this as a normal cell with
-              ! the material specified for the outside
-
               outside_lattice = .true.
-              p % last_material = p % material
-              p % material = c % material
-
-              ! We'll still make a new coordinate for the particle, as 
-              ! distance_to_boundary will still need to track through lattice
-              ! widths even though there's nothing in them but this material
 
             end if
 
@@ -321,13 +312,13 @@ contains
             if (.not. outside_lattice) then
               p % coord % next % universe = lat % universes(i_x,i_y,i_z)
             else
-
-              ! Set universe as the same for subsequent calls to find_cell
-              p % coord % next % universe = p % coord % universe
-
-              ! Set coord cell for calls to distance_to_boundary
-              p % coord % next % cell = index_cell
-
+              if (lat % outer == NO_OUTER_UNIVERSE) then
+                call fatal_error("A particle is outside latttice " &
+                     &// trim(to_str(lat % id)) // " but the lattice has no &
+                     &defined outer universe.")
+              else
+                p % coord % next % universe = lat % outer
+              end if
             end if
 
             ! Move particle to next level
@@ -335,10 +326,9 @@ contains
 
           end if
 
-          if (.not. outside_lattice) then
-            call find_cell(p, found)
-            if (.not. found) exit
-          end if
+          ! Find in the next lowest coordinate level.
+          call find_cell(p, found)
+          if (.not. found) exit
 
         end if
 
@@ -406,10 +396,9 @@ contains
 
       ! Score to global leakage tally
       if (tallies_on) then
-!$omp critical
+!$omp atomic
         global_tallies(LEAKAGE) % value = &
            global_tallies(LEAKAGE) % value + p % wgt
-!$omp end critical
       end if
 
       ! Display message
@@ -644,7 +633,7 @@ contains
         return
       end if
     end if
-       
+
   end subroutine cross_surface
 
 !===============================================================================
@@ -906,7 +895,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -955,7 +944,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -1004,7 +993,7 @@ contains
             if (quad < ZERO) then
               ! no intersection with cylinder
 
-              d = INFINITY 
+              d = INFINITY
 
             elseif (on_surface) then
               ! particle is on the cylinder, thus one distance is
@@ -1051,7 +1040,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with sphere
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the sphere, thus one distance is
@@ -1098,7 +1087,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1117,7 +1106,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1147,7 +1136,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1166,7 +1155,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1196,7 +1185,7 @@ contains
           if (quad < ZERO) then
             ! no intersection with cone
 
-            d = INFINITY 
+            d = INFINITY
 
           elseif (on_surface) then
             ! particle is on the cone, thus one distance is positive/negative
@@ -1215,7 +1204,7 @@ contains
             d = (-k - quad)/a
             b = (-k + quad)/a
 
-            ! determine the smallest positive solution 
+            ! determine the smallest positive solution
             if (d < ZERO) then
               if (b > ZERO) then
                 d = b
@@ -1273,7 +1262,7 @@ contains
           ! logic here checks whether the relative difference is within floating
           ! point precision.
 
-          if (d < dist) then 
+          if (d < dist) then
             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
               dist = d
               if (u > 0) then
@@ -1565,9 +1554,8 @@ contains
 
     ! Increment number of lost particles
     p % alive = .false.
-!$omp critical
+!$omp atomic
     n_lost_particles = n_lost_particles + 1
-!$omp end critical
 
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached

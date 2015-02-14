@@ -134,13 +134,15 @@ should be performed. It has the following attributes/sub-elements:
 -------------------------
 
 The ``<energy_grid>`` element determines the treatment of the energy grid during
-a simulation. Setting this element to "nuclide" will cause OpenMC to use a
-nuclide's energy grid when determining what points to interpolate between for
-determining cross sections (i.e. non-unionized energy grid). To use a unionized
-energy grid, set this element to "union". Note that the unionized energy grid
-treatment is slightly different than that employed in Serpent.
+a simulation. The valid options are "nuclide" and "logarithm". Setting this
+element to "nuclide" will cause OpenMC to use a nuclide's energy grid when
+determining what points to interpolate between for determining cross sections
+(i.e. non-unionized energy grid). Setting this element to "logarithm" causes
+OpenMC to use a logarithmic mapping technique described in LA-UR-14-24530_.
 
-  *Default*: union
+  *Default*: logarithm
+
+.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 
 ``<entropy>`` Element
 ---------------------
@@ -181,6 +183,16 @@ performed. It has the following attributes/sub-elements:
     The number of particles to simulate per batch.
 
     *Default*: None
+
+``<log_grid_bins>`` Element
+---------------------------
+
+The ``<log_grid_bins>`` element indicates the number of bins to use for the
+logarithmic-mapped energy grid. Using more bins will result in energy grid
+searches over a smaller range at the expense of more memory. The default is
+based on the recommended value in LA-UR-14-24530_.
+
+  *Default*: 8000
 
 .. _natural_elements:
 
@@ -757,7 +769,10 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     is on the negative side of surface 3 and the positive side of surface 5, the
     bounding surfaces would be given as "-3 5".
 
-    *Default*: None
+    .. note:: The surface attribute/element can be omitted to make a cell fill
+              its entire universe.
+
+    *Default*: No surfaces
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
@@ -818,11 +833,13 @@ sub-elements:
 
     *Default*: None
 
-  :outside:
-    The unique integer identifier of a material that is to be used to fill all
-    space outside of the lattice. This element is optional.
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
 
-    *Default*: The region outside the defined lattice is treated as void.
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
@@ -1018,6 +1035,16 @@ The ``<tally>`` element accepts the following sub-elements:
         <nuclides>U-235 Pu-239 total</nuclides>
 
     *Default*: total
+
+  :estimator:
+    The estimator element is used to force the use of either ``analog`` or
+    ``tracklength`` tally estimation.  ''analog'' is generally less efficient
+    though it can be used with every score type.  ''tracklength'' is generally
+    the most efficient, though its usage is restricted to tallies that do not
+    score particle information which requires a collision to have occured, such
+    as a scattering tally which utilizes outgoing energy filters.
+
+    *Default*: ``tracklength`` but will revert to analog if necessary.
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
@@ -1234,7 +1261,7 @@ implemented in openMC:
 ``<plot>`` Element
 ------------------
 
-Each plot must contain a combination of the following attributes or
+Each plot is specified by a combination of the following attributes or
 sub-elements:
 
   :id:
@@ -1254,6 +1281,18 @@ sub-elements:
     position.
 
     *Default*: ``cell``
+
+  :level:
+    Universe depth to plot at (optional).  This parameter controls how many
+    universe levels deep to pull cell and material ids from when setting plot
+    colors.  If a given location does not have as many levels as specified,
+    colors will be taken from the lowest level at that location. For example, if
+    ``level`` is set to zero colors will be taken from top-level (universe zero)
+    cells only.  However, if ``level`` is set to 1 colors will be taken from
+    cells in universes that fill top-level fill-cells, and from top-level cells
+    that contain materials.
+
+    *Default*: Whatever the deepest universe is in the model
 
   :origin:
     Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
@@ -1621,3 +1660,15 @@ into MATLAB using PETSc-MATLAB utilities. This option can be
 turned on with "true" and off with "false".
 
   *Default*: false
+
+------------------------------------
+ERSN-OpenMC Graphical User Interface
+------------------------------------
+
+A third-party Java-based user-friendly graphical user interface for creating XML
+input files called ERSN-OpenMC_ is developed and maintained by members of the
+Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
+The GUI also allows one to automatically download prerequisites for installing and
+running OpenMC.
+
+.. _ERSN-OpenMC: https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC

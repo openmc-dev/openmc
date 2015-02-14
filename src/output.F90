@@ -50,7 +50,7 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2014 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2015 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '     License:        http://mit-crpg.github.io/openmc/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
@@ -157,7 +157,7 @@ contains
     if (master) then
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I1,".",I1)') &
            "OpenMC version", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2013 &
+      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2015 &
            &Massachusetts Institute of Technology"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
            &<http://mit-crpg.github.io/openmc/license.html>"
@@ -216,7 +216,7 @@ contains
 
       i_start = 0
       do
-        if (length - i_start < line_wrap - 1) then
+        if (length - i_start < line_wrap + 1) then
           ! Remainder of message will fit on line
           write(ou, fmt='(1X,A)') message(i_start+1:length)
           exit
@@ -1216,7 +1216,7 @@ contains
 
     call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
     write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:     2011-2013 Massachusetts Institute of Technology"
+         "Copyright:     2011-2015 Massachusetts Institute of Technology"
     write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
          "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
@@ -1268,12 +1268,6 @@ contains
         call print_tally(t, unit=UNIT_SUMMARY)
       end do
     end if
-
-    ! print summary of unionized energy grid
-    call header("UNIONIZED ENERGY GRID", unit=UNIT_SUMMARY)
-    write(UNIT_SUMMARY,*) "Points on energy grid:  " // trim(to_str(n_grid))
-    write(UNIT_SUMMARY,*) "Extra storage required: " // trim(to_str(&
-         n_grid*n_nuclides_total*4)) // " bytes"
 
     ! print summary of variance reduction
     call header("VARIANCE REDUCTION", unit=UNIT_SUMMARY)
@@ -1471,6 +1465,12 @@ contains
       ! Plot id
       write(ou,100) "Plot ID:", trim(to_str(pl % id))
 
+      ! Plot filename
+      write(ou,100) "Plot file:", trim(pl % path_plot)
+
+      ! Plot level
+      write(ou,100) "Universe depth:", trim(to_str(pl % level))
+
       ! Plot type
       if (pl % type == PLOT_TYPE_SLICE) then
         write(ou,100) "Plot Type:", "Slice"
@@ -1537,7 +1537,6 @@ contains
     ! display time elapsed for various sections
     write(ou,100) "Total time for initialization", time_initialize % elapsed
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
-    write(ou,100) "  Unionizing energy grid", time_unionize % elapsed
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed

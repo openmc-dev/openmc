@@ -19,6 +19,9 @@ contains
 
   subroutine configure_tallies()
 
+    ! Allocate global tallies
+    allocate(global_tallies(N_GLOBAL_TALLIES))
+
     call setup_tally_arrays()
     call setup_tally_maps()
 

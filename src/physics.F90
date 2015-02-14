@@ -53,7 +53,7 @@ contains
     end if
 
     ! check for very low energy
-    if (p % E < MIN_ENERGY) then
+    if (p % E < 1.0e-100_8) then
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")
     end if
@@ -90,7 +90,7 @@ contains
     ! change when sampling fission sites. The following block handles all
     ! absorption (including fission)
 
-    if (nuc % fissionable) then
+    if (nuc % fissionable .and. run_mode == MODE_EIGENVALUE) then
       call sample_fission(i_nuclide, i_reaction)
       call create_fission_sites(p, i_nuclide, i_reaction)
     end if
@@ -231,7 +231,7 @@ contains
       prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-      ! Create fission bank sites if fission occus
+      ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
@@ -256,22 +256,19 @@ contains
       p % last_wgt = p % wgt
 
       ! Score implicit absorption estimate of keff
-!$omp critical
+!$omp atomic
       global_tallies(K_ABSORPTION) % value = &
            global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
            micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-!$omp end critical
-
     else
       ! See if disappearance reaction happens
       if (micro_xs(i_nuclide) % absorption > &
            prn() * micro_xs(i_nuclide) % total) then
         ! Score absorption estimate of keff
-!$omp critical
+!$omp atomic
         global_tallies(K_ABSORPTION) % value = &
              global_tallies(K_ABSORPTION) % value + p % wgt * &
              micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
-!$omp end critical
 
         p % alive = .false.
         p % event = EVENT_ABSORB
@@ -388,7 +385,7 @@ contains
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
       end do
 
-      ! Perform collision physics for inelastics scattering
+      ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
            p % mu, p % wgt)
       p % event_MT = rxn % MT
@@ -797,7 +794,7 @@ contains
         sampling_scheme = 'cxs'
       end if
 
-    ! otherwise, use free gas model  
+    ! otherwise, use free gas model
     else
       if (E >= FREE_GAS_THRESHOLD * kT .and. awr > ONE) then
         v_target = ZERO
@@ -859,7 +856,7 @@ contains
       m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
-      
+
       ! get max 0K xs value over range of practical relative energies
       xs_max = max(xs_low, &
         & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
@@ -972,7 +969,7 @@ contains
     case default
       call fatal_error("Not a recognized resonance scattering treatment!")
     end select
-    
+
   end subroutine sample_target_velocity
 
 !===============================================================================
@@ -1294,6 +1291,7 @@ contains
     real(8) :: E_in        ! incoming energy
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
+    real(8) :: yield       ! neutron yield
 
     ! copy energy of neutron
     E_in = E
@@ -1333,8 +1331,13 @@ contains
     ! change direction of particle
     uvw = rotate_angle(uvw, mu)
 
-    ! change weight of particle based on multiplicity
-    wgt = rxn % multiplicity * wgt
+    ! change weight of particle based on yield
+    if (rxn % multiplicity_with_E) then
+      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+    else
+      yield = rxn % multiplicity
+    end if
+    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 
@@ -1575,6 +1578,7 @@ contains
     real(8) :: E_max       ! parameter for n-body dist
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
+    logical :: histogram_interp ! use histogram interpolation on incoming energy
 
     ! ==========================================================================
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
@@ -1671,12 +1675,13 @@ contains
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
-        if (master) call warning("Assuming linear-linear interpolation when &
-             &sampling continuous tabular distribution")
+        histogram_interp = (edist % data(3) == 1)
       else if (NR > 1) then
         ! call write_particle_restart(p)
         call fatal_error("Multiple interpolation regions not supported while &
              &attempting to sample continuous tabular distribution.")
+      else
+        histogram_interp = .false.
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1696,11 +1701,15 @@ contains
       end if
 
       ! Sample between the ith and (i+1)th bin
-      r2 = prn()
-      if (r > r2) then
-        l = i + 1
-      else
+      if (histogram_interp) then
         l = i
+      else
+        r2 = prn()
+        if (r > r2) then
+          l = i + 1
+        else
+          l = i
+        end if
       end if
 
       ! interpolation for energy E1 and EK
@@ -1779,10 +1788,12 @@ contains
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      if (.not. histogram_interp) then
+        if (l == i) then
+          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+        else
+          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+        end if
       end if
 
     case (5)
@@ -1835,14 +1846,15 @@ contains
       lc = 2 + 2*NR + 2*NE
       U = edist % data(lc + 1)
 
+      y = (E_in - U)/T
+      v = 1 - exp(-y)
+
       ! sample outgoing energy based on evaporation spectrum probability
       ! density function
       n_sample = 0
       do
-        r1 = prn()
-        r2 = prn()
-        E_out = -T * log(r1*r2)
-        if (E_out <= E_in - U) exit
+        x = -log((1 - v*prn())*(1 - v*prn()))
+        if (x <= y) exit
 
         ! check for large number of rejections
         n_sample = n_sample + 1
@@ -1851,6 +1863,8 @@ contains
           call fatal_error("Too many rejections on evaporation spectrum.")
         end if
       end do
+
+      E_out = x*T
 
     case (11)
       ! =======================================================================

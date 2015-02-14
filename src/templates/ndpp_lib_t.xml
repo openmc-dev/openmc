@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<template>
+
+  <!-- 
+  This is the template for reading NDPP output library listings in OpenMC 
+  -->
+
+  <options rootname="ndpp_lib" />
+
+  <typedef name="ndpp_table_xml">
+    <component name="name" type="word" length="15" />
+    <component name="alias" type="word" length="15" />
+    <component name="type" type="word" length="10" default="'neutron'" />
+    <component name="zaid" type="integer" default="0" />
+    <component name="metastable" type="integer" default="0" />
+    <component name="awr" type="double" default="0.0" />
+    <component name="temperature" type="double" default="0.0" />
+    <component name="path" type="word" length="255" />
+<!--
+    This is only needed if we combine multiple isotopes in to one data set.
+-->
+    <component name="location" type="integer" default="0" />
+    
+  </typedef>
+
+  <variable name="ndpp_tables_" tag="ndpp_table" type="ndpp_table_xml" dimension="1" />
+  <variable name="directory_" tag="directory" type="word" length="255" />
+  <variable name="filetype_" tag="filetype" type="word" length="255" />
+  <variable name="record_length_" tag="record_length" type="integer" />
+  <variable name="entries_" tag="entries" type="integer" />
+  <variable name="energy_bins_" tag="energy_bins" type="double-array" />
+  <variable name="chi_present_" tag="chi_present_" type="word" />
+  <variable name="thin_tol_" tag="thin_tol" type="double" />
+  <variable name="scatt_order_" tag="scatt_order" type="integer" />
+  <variable name="scatt_type_" tag="scatt_type" type="integer" />
+
+</template>

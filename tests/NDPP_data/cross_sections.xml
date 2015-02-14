@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<cross_sections>
+  <directory>../../data/nndc/</directory>
+  <filetype>ascii</filetype>
+  <ace_table alias="H-1.71c" awr="0.999167" location="1" name="1001.71c" path="293.6K/H_001_293.6K.ace" temperature="2.53e-08" zaid="1001"/>
+  <ace_table alias="O-16.71c" awr="15.85751" location="1" name="8016.71c" path="293.6K/O_016_293.6K.ace" temperature="2.53e-08" zaid="8016"/>
+  <ace_table alias="U-235.71c" awr="233.0248" location="1" name="92235.71c" path="293.6K/U_235_293.6K.ace" temperature="2.53e-08" zaid="92235"/>
+  <ace_table awr="0.999167" location="1" name="HH2O.71t" path="tsl/hh2o.acer" temperature="2.53e-08" zaid="0"/>
+</cross_sections>

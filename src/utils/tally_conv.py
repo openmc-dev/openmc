@@ -97,7 +97,7 @@ for i_batch in range(len(files)):
     # Increase the dimensionality of our main variables
     mean[i_batch] = [None for x in range(len(sp.tallies))]
     uncert[i_batch] = [None for x in range(len(sp.tallies))]
-    scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
+    scoreType[i_batch] = [None for x in range(len(sp.tallies))]   
     
     # Loop over all tallies
     for i_tally, t in enumerate(sp.tallies):
@@ -126,17 +126,48 @@ for i_batch in range(len(files)):
                     [None for x in range(t.n_scores)]
                 scoreType[i_batch][i_tally][i_filter][i_nuclide] = \
                     [None for x in range(t.n_scores)]
-                for i_score in range(t.n_scores):
-                    scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
-                        t.scores[i_score]                 
-                    s, s2 = sp._get_double(2)
-                    s /= n
-                    mean[i_batch][i_tally][i_filter][i_nuclide][i_score] = s
-                    if s != 0.0:
-                        relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                i_score = 0
+                while i_score < len(t.scores):
+                    if ((t.scores[i_score] == 'scatter-pn') or \
+                        (t.scores[i_score] == 'ndpp-scatter-pn')):
+                        order = t.scatt_order[i_score]
+                        for i_s in xrange(order + 1):  
+                            scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
+                                t.scores[i_score][:-1]+str(i_s)
+                            s, s2 = sp._get_double(2)
+                            s /= n
+                            mean[i_batch][i_tally][i_filter][i_nuclide][i_score] = s
+                            if s != 0.0:
+                                relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                            else:
+                                relative_error = 0.0
+                            uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
+                            i_score = i_score + 1
+                    elif  (t.scores[i_score] == 'scatter-n'):
+                        order = t.scatt_order[i_score]
+                        scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
+                            t.scores[i_score][:-1]+str(order)
+                        s, s2 = sp._get_double(2)
+                        s /= n
+                        mean[i_batch][i_tally][i_filter][i_nuclide][i_score] = s
+                        if s != 0.0:
+                            relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                        else:
+                            relative_error = 0.0
+                        uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
+                        i_score = i_score + 1
                     else:
-                        relative_error = 0.0
-                    uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
+                        scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
+                            t.scores[i_score]
+                        s, s2 = sp._get_double(2)
+                        s /= n
+                        mean[i_batch][i_tally][i_filter][i_nuclide][i_score] = s
+                        if s != 0.0:
+                            relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                        else:
+                            relative_error = 0.0
+                        uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
+                        i_score = i_score + 1
 
 # Reorder the data lists in to a list order more conducive for plotting:
 # The indexing should be: [tally][filter][score][batch]
@@ -276,7 +307,7 @@ for i_tally in range(len(meanPlot)):
                     "_filter_" + str(i_filter+1) + "_nuclide_" + str(i_nuclide+1) \
                     + "." + fileType
                 REfileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
-                    "RE_filter_" + str(i_filter+1) + "_nuclide_" + str(i_nuclide+1) \
+                    "_RE_filter_" + str(i_filter+1) + "_nuclide_" + str(i_nuclide+1) \
                     + "." + fileType
                 
                 # Plot mean with absolute error bars

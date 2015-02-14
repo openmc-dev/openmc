@@ -57,7 +57,12 @@ for xml_file in xml_files:
     print(text + '.'*(30 - len(text)), end="")
 
     # Validate the XML file
-    xml_tree = etree.parse(xml_file)
+    try:
+        xml_tree = etree.parse(xml_file)
+    except etree.XMLSyntaxError as e:
+        print(BOLD + FAIL + '[XML ERROR]' + ENDC)
+        print("    {0}".format(e))
+        continue
 
     # Get xml_filename prefix
     xml_prefix = os.path.basename(xml_file)

@@ -79,10 +79,15 @@ for xml_file in xml_files:
             relaxng = etree.RelaxNG(relaxng_doc)
 
             # validate xml file again RelaxNG
-            if relaxng.validate(xml_tree):
+            try:
+                relaxng.assertValid(xml_tree)
                 print(BOLD + OK + '[VALID]' + ENDC)
-            else:
+            except etree.DocumentInvalid as e:
                 print(BOLD + FAIL + '[NOT VALID]' + ENDC)
+                print("    {0}".format(e))
+
+            # remove rng file
+            os.remove(rng_file)
 
         # trang command failed
         else:

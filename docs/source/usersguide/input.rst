@@ -1050,29 +1050,38 @@ The ``<tally>`` element accepts the following sub-elements:
     A space-separated list of the desired responses to be accumulated. Accepted
     options are "flux", "total", "scatter", "absorption", "fission",
     "nu-fission", "kappa-fission", "nu-scatter", "scatter-N", "scatter-PN",
-    "scatter-YN", "nu-scatter-N", "nu-scatter-PN", "nu-scatter-YN", "flux-YN",
-    "total-YN", "current", and "events". These corresponding to the following
-    physical quantities:
+    "scatter-YN", "nu-scatter-N", "nu-scatter-PN", "nu-scatter-YN",
+    "ndpp-scatter-N", "ndpp-scatter-PN", "ndpp-scatter-YN", "ndpp-nu-scatter-N",
+    "ndpp-nu-scatter-PN", "ndpp-nu-scatter-YN", "flux-YN", "total-YN",
+    "current", and "events".  These corresponding to the following physical
+    quantities:
 
     :flux:
-      Total flux
+      Total flux.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :total:
-      Total reaction rate
+      Total reaction rate.  This score can be used with either an ``analog``
+      or ``tracklength`` estimator.
 
     :scatter:
       Total scattering rate. Can also be identified with the ``scatter-0``
-      response type.
+      response type.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons.
+      produce secondary neutrons.  This score can be used with either an
+      ``analog`` or ``tracklength`` estimator.
 
     :fission:
-      Total fission rate
+      Total fission rate.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :nu-fission:
-      Total production of neutrons due to fission
+      Total production of neutrons due to fission.  This score can always be
+      used with an ``analog`` estimator, but can only be used with a
+      ``tracklength`` estimator if no ``energyout`` filter is specified.
 
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable
@@ -1081,14 +1090,16 @@ The ``<tally>`` element accepts the following sub-elements:
       total energies, and the total energy released by the delayed :math:`\beta`
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally.
+      locally.  The energy units reported from this score are in MeV.  This
+      score can be used with either an ``analog`` or ``tracklength`` estimator.
 
     :scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order of the change in particle angle :math:`\left(\mu\right)`.
       N must be between 0 and 10. As an example, tallying the
       2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-2 </scores>``.
+      ``<scores> scatter-2 </scores>``.  This score can only be used with an
+      ``analog`` estimator.
 
     :scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
@@ -1097,21 +1108,37 @@ The ``<tally>`` element accepts the following sub-elements:
       ``scatter-0`` and ``scatter-1``.  Like for ``scatter-N``,
       N must be between 0 and 10. As an example, tallying up to the
       2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-P2 </scores>``.
+      ``<scores> scatter-P2 </scores>``.  This score can only be used with an
+      ``analog`` estimator.
 
     :scatter-YN:
       ``scatter-YN`` is similar to ``scatter-PN`` except an additional
       expansion is performed for the incoming particle direction
-      :math:`\left(\Omega\right)` using the real spherical harmonics.  This is useful
-      for performing angular flux moment weighting of the scattering moments.
-      Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments from
-      order 0 to N; N again must be between 0 and 10.
+      :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
+      useful for performing angular flux moment weighting of the scattering
+      moments.  Like ``scatter-PN``, ``scatter-YN`` will tally all of the
+      moments from order 0 to N; N again must be between 0 and 10.
+      This score can only be used with an ``analog`` estimator.
 
     :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
       These scores are similar in functionality to their ``scatter*``
       equivalents except the total production of neutrons due to
       scattering is scored vice simply the scattering rate. This accounts for
       multiplicity from (n,2n), (n,3n), and (n,4n) reactions.
+
+    :ndpp-scatter-N, ndpp-scatter-PN, ndpp-scatter-YN, ndpp-nu-scatter-N,
+     ndpp-nu-scatter-PN, ndpp-nu-scatter-YN:
+      These scores are similar in functionality to their analogues with the
+      "ndpp-" prefix, except previously integrated double-differential
+      scattering data is used instead of the analog sampling of the outgoing
+      energy and change in angle.  Using these scores requires that the NDPP_
+      code has been used to generate a library of pre-integrated data, and the
+      data is available as described in the ndpp_library_ element. These
+      scores can be used with either an ``analog`` or ``tracklength`` estimator.
+      All of these scores require energy and energyout filters to be applied,
+      in that order.  These energy and energyout filters must have bins
+      corresponding to the energy group structure used to generate the NDPP
+      data.
 
     :flux-YN:
       Spherical harmonic expansion of the direction of motion
@@ -1124,6 +1151,32 @@ The ``<tally>`` element accepts the following sub-elements:
       This score will tally all of the harmonic moments of order 0 to N.  N must
       be between 0 and 10.
 
+    :ndpp-chi:
+      The total fission neutron energy spectra including both prompt and
+      delayed neutrons. Using this score requires that the NDPP_
+      code has been used to generate a library of pre-integrated data, and the
+      data is available as described in the ndpp_library_ element. This
+      score can be used with either an ``analog`` or ``tracklength`` estimator.
+      This score requires energyout filters to be applied with an energy group
+      structure used to generate the NDPP data.
+
+    :ndpp-chi-p:
+      The fission neutron energy spectra of only prompt neutrons. Using this
+      score requires that the NDPP_ code has been used to generate a library
+      of pre-integrated data, and the data is available as described in the
+      ndpp_library_ element. This score can be used with either an ``analog``
+      or ``tracklength`` estimator.  This score requires energyout filters to
+      be applied with an energy group structure used to generate the NDPP data.
+
+..    NOT YET IMPLEMENTED:
+..    :ndpp-chi-d:
+..      The fission neutron energy spectra of only prompt neutrons. Using this
+..      score requires that the NDPP_ code has been used to generate a library
+..      of pre-integrated data, and the data is available as described in the
+..      ndpp_library_ element. This score can be used with either an ``analog``
+..      or ``tracklength`` estimator.  This score requires energyout filters to
+..      be applied with an energy group structure used to generate the NDPP data.
+
     :current:
       Partial currents on the boundaries of each cell in a mesh.
 
@@ -1133,7 +1186,7 @@ The ``<tally>`` element accepts the following sub-elements:
           other score.
 
     :events:
-      Number of scoring events
+      Number of scoring events.
 
 ``<mesh>`` Element
 ------------------
@@ -1177,6 +1230,17 @@ tallies. This element should be followed by "true" or "false".
     separate can lead to incorrect results.
 
   *Default*: false
+
+.. _ndpp_library:
+``<ndpp_library>`` Element
+--------------------------
+
+In cases where an ``ndpp-*`` score is requested in any tally,
+the user must provide the location of the ``ndpp_lib.xml`` file produced
+by the NDPP program.  This tag stores the relative or absolute location
+of the ``ndpp_lib.xml`` file to use.
+
+.. _NDPP:  http://ndpp.github.io/
 
 .. _usersguide_plotting:
 

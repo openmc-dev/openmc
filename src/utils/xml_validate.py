@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+import os
+import sys
+import glob
+import lxml.etree as etree
+from subprocess import call
+from optparse import OptionParser
+
+# Command line parsing
+parser = OptionParser()
+parser.add_option('-r', '--relaxng-path', dest='relaxng',
+                  help="Path to RelaxNG files.")
+parser.add_option('-i', '--input-path', dest='inputs', default=os.getcwd(),
+                  help="Path to OpenMC input files." )
+(options, args) = parser.parse_args()
+
+# Colored output
+if sys.stdout.isatty():
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    NOT_FOUND = '\033[93m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+else:
+    OK = ''
+    FAIL = ''
+    ENDC = ''
+    BOLD = ''
+    NOT_FOUND = ''
+
+# Get paths
+relaxng_path = os.path.abspath(options.relaxng)
+inputs_path = os.path.abspath(options.inputs)
+
+# Check for RelaxNG path
+if not relaxng_path:
+    raise Exception("Must specify RelaxNG path.")
+
+# Make sure there are .rnc files in RelaxNG path
+rnc_files = glob.glob(os.path.join(relaxng_path, "*.rnc"))
+if len(rnc_files) == 0:
+    raise Exception("No .rnc files found in RelaxNG "
+                    "path: {0}.".format(relaxng_path))
+
+# Get list of xml input files
+xml_files = glob.glob(os.path.join(inputs_path, "*.xml"))
+if len(xml_files) == 0:
+    raise Exception("No .xml files found at input path: {0}.".format(inputs_path))
+
+# Begin loop around input files
+for xml_file in xml_files:
+
+    text = "Validating {0}".format(os.path.basename(xml_file))
+    print(text + '.'*(30 - len(text)), end="")
+
+    # Validate the XML file
+    xml_tree = etree.parse(xml_file)
+
+    # Get xml_filename prefix
+    xml_prefix = os.path.basename(xml_file)
+    xml_prefix = xml_prefix.split(".")[0]
+
+    # Search for rnc file
+    rnc_file = os.path.join(relaxng_path, xml_prefix + ".rnc")
+    rng_file = xml_prefix + ".rng"
+    if rnc_file in rnc_files:
+
+        # convert RNC to RNG file
+        rc = call("trang {0} {1}".format(rnc_file, rng_file), shell=True)
+
+        # check return code
+        if rc == 0:
+
+            # read in RelaxNG
+            relaxng_doc = etree.parse(rng_file)
+            relaxng = etree.RelaxNG(relaxng_doc)
+
+            # validate xml file again RelaxNG
+            if relaxng.validate(xml_tree):
+                print(BOLD + OK + '[VALID]' + ENDC)
+            else:
+                print(BOLD + FAIL + '[NOT VALID]' + ENDC)
+
+        # trang command failed
+        else:
+            print(BOLD + FAIL + '[TRANG RNC-->RNG FAILED]' + ENDC)
+
+    # RNC file does not exist
+    else:
+        print(BOLD + NOT_FOUND + '[NO RELAXNG FOUND]' + ENDC)

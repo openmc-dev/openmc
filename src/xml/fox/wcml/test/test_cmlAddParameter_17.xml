@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cml convention="CMLComp" fileId="test.xml" xmlns="http://www.xml-cml.org/schema" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:fpx="http://www.uszla.me.uk/fpx" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:units="http://www.uszla.me.uk/FoX/units" xmlns:cmlUnits="http://www.xml-cml.org/units/units" xmlns:siUnits="http://www.xml-cml.org/units/siUnits" xmlns:atomicUnits="http://www.xml-cml.org/units/atomic">
+  <parameter name="name">
+    <matrix rows="2" columns="2" dataType="xsd:integer" units="siUnits:m">1 1 2 2</matrix>
+  </parameter>
+</cml>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Compilation</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>Configuration and compilation</h1>
+
+<p>You will have received the FoX source code as a tar.gz file.</p>
+
+<p>Unpack it as normal, and change directory into the top-level directory, FoX-$VERSION.</p>
+
+<h3>Requirements for use</h3>
+
+<p>FoX requires a Fortran 95 compiler - not just Fortran 90. All currently available versions of Fortran compilers claim to support F95. If your favoured compiler is not listed as working, I recommend the use of <a href="www.g95.org">g95</a>, which is free to download and use. And in such a case, please send a bug report to your compiler vendor.</p>
+
+<p>In the event that you need to write a code targetted at multiple compilers, including some which have bugs preventing FoX compilation, please note the possibility of producing a <a href="#dummy_library">dummy library</a>.</p>
+
+<h2>Configuration</h2>
+
+<ul>
+<li><p>In order to generate the Makefile, make sure that you have a Fortran compiler in your <code>PATH</code>, and do:</p>
+
+<p><code>./configure</code></p></li>
+</ul>
+
+<p>This should suffice for most installations. However:</p>
+
+<ol>
+<li><p>You may not be interested in all of the modules that FoX supplies. For example, you may only be interested in output, not input. If so, you can select which modules you want using <code>--enable-MODULENAME</code> where MODULENAME is one of <code>wxml</code>, <code>wcml</code>, <code>wkml</code>, <code>sax</code>, <code>dom</code>. If none are explicitly enabled, then all will be built. (Alternatively, you can exclude modules one at a time with <code>--disable-MODULENAME</code>) Thus, for example, if you only care about CML output, and not anything else: <code>./configure --enable-wcml</code></p></li>
+<li><p>If you have more than one Fortran compiler available, or it is not on your <code>PATH</code>, you can force the choice by doing:</p>
+
+<p><code>./configure FC=/path/to/compiler/of/choice</code></p></li>
+<li><p>It is possible that the configuration fails. In this case</p>
+
+<ul>
+<li>please tell me about it so I can fix it</li>
+<li>all relevant compiler details are placed in the file arch.make; you may be able to edit that file to allow compilation. Again, if so, please let me know what you need to do.</li>
+</ul></li>
+<li><p>By default the resultant files are installed under the objs directory. If you wish them to be installed elsewhere, you may do</p>
+
+<p><code>./configure --prefix=/path/to/installation</code></p></li>
+</ol>
+
+<p>Note that the configure process encodes the current directory location in several
+places.  If you move the FoX directory later on, you will need to re-run configure.</p>
+
+<ul>
+<li><p>You may be interested in <a href="#dummy_library">dummy compilation</a>. This is activated with the <code>--enable-dummy</code> switch (but only works for wxml/wcml currently).</p>
+
+<p><code>./configure --enable-wcml --enable-dummy</code></p></li>
+</ul>
+
+<h2>Compilation</h2>
+
+<p>In order to compile the full library, now simply do:</p>
+
+<pre><code>make
+</code></pre>
+
+<p>This will build all the requested FoX modules, and the relevant examples</p>
+
+<h2>Testing</h2>
+
+<p>In the full version of the FoX library, there are several testsuites included.</p>
+
+<p>To run them all, simply run <code>make check</code> from the top-level directory. This will run the individual testsuites, and collate their results.</p>
+
+<p>If any failures occur (unrelated to known compiler issues, see the <a href="http://github.com/andreww/fox/issues">up-to-date list</a>), please send a message to the mailing list (<a href="&#x6D;&#x61;&#105;&#108;&#116;&#111;:&#x66;&#111;&#120;&#45;&#x64;&#105;&#115;&#99;&#x75;&#115;&#x73;&#64;&#x67;&#111;&#x6F;g&#108;&#101;&#103;&#114;&#x6F;&#x75;&#x70;&#x73;&#46;&#x63;&#x6F;&#109;">&#x66;&#111;&#120;&#45;&#x64;&#105;&#115;&#99;&#x75;&#115;&#x73;&#64;&#x67;&#111;&#x6F;g&#108;&#101;&#103;&#114;&#x6F;&#x75;&#x70;&#x73;&#46;&#x63;&#x6F;&#109;</a>) with details of compiler, hardware platform, and the nature of the failure.</p>
+
+<p>The testsuites for the SAX and DOM libraries are very extensive, and are somewhat fragile, so are not distributed with FoX. Please contact the author for details.</p>
+
+<h2>Linking to an existing program</h2>
+
+<ul>
+<li>The files all having been compiled and installed, you need to link them into your program.</li>
+</ul>
+
+<p>A script is provided which will provide the appropriate compiler and linker flags for you; this will be created after configuration, in the top-level directory, and is called <code>FoX-config</code>. It may be taken from there and placed anywhere.</p>
+
+<p>FoX-config takes the following arguments:</p>
+
+<ul>
+<li><code>--fcflags</code>: return flags for compilation</li>
+<li><code>--libs</code>: return flags for linking</li>
+<li><code>--wxml</code>: return flags for compiling/linking against wxml</li>
+<li><code>--wcml</code>: return flags for compiling/linking against wcml</li>
+<li><code>--sax</code>: return flags for compiling/linking against sax</li>
+</ul>
+
+<p>If it is called with no arguments, it will expand to compile &amp; link flags, thusly:</p>
+
+<pre><code>f95 -o program program.f90 `FoX-config`
+</code></pre>
+
+<p>For compiling only against FoX, do the following:</p>
+
+<pre><code>f95 -c `FoX-config --fcflags` sourcefile.f90
+</code></pre>
+
+<p>For linking only to the FoX library, do:</p>
+
+<pre><code>f95 -o program `FoX-config --libs` *.o
+</code></pre>
+
+<p>or similar, according to your compilation scheme. </p>
+
+<p>Note that by default, <code>FoX-config</code> assumes you are using all modules of the library. If you are only using part, then this can be specified by also passing the name of each module required, like so:</p>
+
+<pre><code>FoX-config --fcflags --wcml
+</code></pre>
+
+<h2>Compiling a dummy library</h2>
+
+<p><a name="dummy_library"/></p>
+
+<p>Because of the shortcomings in some compilers, it is not possible to compile FoX everywhere. Equally, sometimes it is useful to be able to compile a code both with and without support for FoX (perhaps to reduce executable size). Especially where FoX is being used only for additional output, it is useful to be able to run the code and perform computations even without the possibility of XML output.</p>
+
+<p>For this reason, it is possible to compile a dummy version of FoX. This includes all public interfaces, so that your code will compile and link correctly - however none of the subroutines do anything, so you can retain the same version of your code without having to comment out all FoX calls.</p>
+
+<p>Because this dummy version of FoX contains nothing except empty subroutines, it compiles and links with all known Fortran 95 compilers, regardless of compiler bugs.</p>
+
+<p>To compile the dummy code, use the <code>--enable-dummy</code> switch. Note that currently the dummy mode is not yet available for the DOM module.</p>
+
+<h2>Alternative build methods</h2>
+
+<p>The "-full" versions of FoX are also shipped with files
+to help compile the code on using other systems using CMake
+or from within Microsoft Visual Studio. Brief instructions for
+using these files are below.</p>
+
+<h3>CMake</h3>
+
+<p>CMake does not build software itself but generates makefiles or
+projectfiles (depending on the platform), that are then used to 
+compile the software, it should thus be a cross platform 
+method for building FoX (in theory at least).</p>
+
+<p>Files needed for building FoX with CMake are included in the 
+"-full" distribution. These can:</p>
+
+<ul>
+<li><p>do similar checks as current build tools to check for example how
+ABORT and FLUSH work,
+wether or not certain bugs in compilers are present,</p></li>
+<li><p>compile FoX into static libraries.</p></li>
+<li><p>generate Fortran files from m4 sources if m4 is present.</p></li>
+<li><p>do out-of-source build, does not interfere with current build system</p></li>
+<li><p>do a parallel build of fox (make -j)</p></li>
+</ul>
+
+<p>However, CMake cannot, at present, build the run the test suite or
+the packaging scripts used for release. To build FoX with CMake 
+the following is needed:</p>
+
+<ul>
+<li><p>CMake version >= 2.6.0</p></li>
+<li><p>usual build tools: fortran compiler, make, ld, ...</p></li>
+<li><p>m4 to generate fortran files from m4 sources (optional).</p></li>
+</ul>
+
+<p><strong>CMake Build instructions (linux):</strong> 
+Once you installed cmake, go to the main directory of fox
+and create a build directory, and from there, execute cmake thus:</p>
+
+<pre><code>cd fox/
+
+mkdir build/ &amp;&amp; cd build/
+
+cmake ../
+
+make -j
+</code></pre>
+
+<p>Libaries and module files can then be found in the subdirectories of build.</p>
+
+<h3>Windows</h3>
+
+<p>It is also possible to build FoX from within Microsoft Visual Studio
+and the file FoX.vfproj contains a Visual Studio project for Intel Fortran
+to simplify this process. At time of writing, it is compatible with 
+Visual Studio 2011 and Intel Visual Fortran Composer XE 2011.</p>
+
+<p>The project will build FoX in one of the four
+ configurations: Win32/x64 and debug/release.
+When building FoX for a specific configuration, 
+an output library file Fox_debug.lib or Fox.lib 
+and associated modules are created in a folder in 
+a relative path  ../lib or ../libx64 respectively.</p>
+
+<p>For a given configuration in in your application project
+you will then need to:</p>
+
+<ol>
+<li><p>In "Fortran" "General" "Additional Include Directories" add 
+the respective modules folder (generated above)</p></li>
+<li><p>In "Linker" "General" "Additional library directories" add the 
+path to the respective lib or libx64 folder.</p></li>
+<li><p>In "Linker" "Input" "Additional dependencies" add Fox_debug.lib 
+or FoX.lib respectively. </p></li>
+</ol>
+
+<p>Your application should now be able to build and link with FoX.</p>
+</div>
+</body>
+</html>

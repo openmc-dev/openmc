@@ -1,0 +1,129 @@
+ Testing empty URI
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: 
+     segment: 
+ query UNDEFINED
+ fragment UNDEFINED
+                                                                                                     
+
+ All parts defined
+ scheme: http
+ authority: uname:pass@www.example.org:80
+ userinfo: uname:pass
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ http://uname:pass@www.example.org:80/dir1/dir2/test.html?a=b;c=d#frag                               
+
+ No #frag
+ scheme: http
+ authority: uname:pass@www.example.org:80
+ userinfo: uname:pass
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment UNDEFINED
+ http://uname:pass@www.example.org:80/dir1/dir2/test.html?a=b;c=d                                    
+
+ No ?query
+ scheme: http
+ authority: uname:pass@www.example.org:80
+ userinfo: uname:pass
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query UNDEFINED
+ fragment: frag
+ http://uname:pass@www.example.org:80/dir1/dir2/test.html#frag                                       
+
+ No /path
+ scheme: http
+ authority: uname:pass@www.example.org:80
+ userinfo: uname:pass
+ host: www.example.org
+ port: 80
+ path: 
+     segment: 
+ query: a=b;c=d
+ fragment: frag
+ http://uname:pass@www.example.org:80?a=b;c=d#frag                                                   
+
+ No :port
+ scheme: http
+ authority: uname:pass@www.example.org
+ userinfo: uname:pass
+ host: www.example.org
+ port UNDEFINED
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ http://uname:pass@www.example.org/dir1/dir2/test.html?a=b;c=d#frag                                  
+
+ No user@
+ scheme: http
+ authority: www.example.org:80
+ userinfo UNDEFINED
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ http://www.example.org:80/dir1/dir2/test.html?a=b;c=d#frag                                          
+
+ No pass
+ scheme: http
+ authority: uname@www.example.org:80
+ userinfo: uname
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ http://uname@www.example.org:80/dir1/dir2/test.html?a=b;c=d#frag                                    
+
+ No scheme
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: uname@www.example.org:80/dir1/dir2/test.html
+     segment: uname@www.example.org:80/
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ uname@www.example.org:80/dir1/dir2/test.html?a=b;c=d#frag                                           
+

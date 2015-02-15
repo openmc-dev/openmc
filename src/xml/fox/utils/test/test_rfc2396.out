@@ -1,0 +1,42 @@
+ g:h                                                                                                 
+
+ http://a/b/c/g                                                                                      
+
+ http://a/b/c/g                                                                                      
+
+ http://a/b/c/g/                                                                                     
+
+ http://a/g                                                                                          
+
+ //g                                                                                                 
+
+ http://a/b/c/d;p?y                                                                                  
+
+ http://a/b/c/g?y                                                                                    
+
+ http://a/b/c/g#s                                                                                    
+
+ http://a/b/c/g?y#s                                                                                  
+
+ http://a/b/c/;x                                                                                     
+
+ http://a/b/c/g;x                                                                                    
+
+ http://a/b/c/g;x?y#s                                                                                
+
+ http://a/b/c/                                                                                       
+
+ http://a/b/c/                                                                                       
+
+ http://a/b/                                                                                         
+
+ http://a/b/                                                                                         
+
+ http://a/b/g                                                                                        
+
+ http://a/                                                                                           
+
+ http://a/                                                                                           
+
+ http://a/g                                                                                          
+

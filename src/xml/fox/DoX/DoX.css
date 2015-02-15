@@ -1,0 +1,53 @@
+body {
+        background:#3D828D;
+}
+
+.DoX {
+        background:#BDC8D4;
+        clear:both;
+        font-family: "Gill Sans", sans-serif;
+        padding: 1ex;
+}
+
+.DoX h1 {
+        height:1.5em;
+        background:#5EAEAE;
+        padding-left: 0.5ex;
+        border-top:1px solid #BDCCA3;
+        border-bottom:1px solid #386496;
+        font-style: italic;
+        font-size: 200%;
+        font-weight: normal;
+}
+
+.DoX  h2 {
+        height:1.5em;
+        background:#F49761;
+        padding-left: 0.5ex;
+        margin: 1ex;
+        border-top:1px solid #BDCCA3;
+        border-bottom:1px solid #386496;
+        font-style: italic;
+        font-size: 150%;
+        font-weight: normal;
+}
+
+.DoX h3 {
+        height:1.5em;
+        background:#F49761;
+        padding-left: 0.5ex;
+        margin: 3ex;
+        border-top:1px solid #BDCCA3;
+        border-bottom:1px solid #386496;
+        font-size: 100%;
+        font-weight: bold;
+}
+
+.format {
+        font-family: "Courier", monospace;
+        border:solid 1px black;
+        margin-left: 10%
+}
+table.format td {
+        border:solid 1px black;
+}

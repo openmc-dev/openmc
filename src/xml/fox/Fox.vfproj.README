@@ -1,0 +1,16 @@
+FoX.vfproj contains a Visual Studio project for Intel Fortran.
+At time of writing, it is compatible with Visual Studio 2011 and Intel Visual Fortran Composer XE 2011.
+
+The project will build FoX in one of the four configurations - Win32/x64 and debug/release.
+When building FoX for a specific configuration, an output library file Fox_debug.lib or Fox.lib 
+and associated modules are created in a folder in a relative path  ../lib or ../libx64 respectively.
+
+For a given configuration in in your application project you will then need to 
+1) In "Fortran" "General" "Additional Include Directories" add the respective modules folder (generated above)
+2) In "Linker" "General" "Additional library directories" add the path to the respective lib or libx64 folder.
+3) In "Linker" "Input" "Additional dependencies" add Fox_debug.lib or FoX.lib respectively. 
+
+Your application should now be able to build and link with FoX.
+
+Best of Luck !
+Shane Clauson.

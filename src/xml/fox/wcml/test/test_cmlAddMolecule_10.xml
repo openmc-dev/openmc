@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cml convention="CMLComp" fileId="test.xml" xmlns="http://www.xml-cml.org/schema" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:fpx="http://www.uszla.me.uk/fpx" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:units="http://www.uszla.me.uk/FoX/units" xmlns:cmlUnits="http://www.xml-cml.org/units/units" xmlns:siUnits="http://www.xml-cml.org/units/siUnits" xmlns:atomicUnits="http://www.xml-cml.org/units/atomic">
+  <molecule title="Formaldehyde">
+    <atomArray>
+      <atom elementType="C" x3="0.00000e0" y3="0.00000e0" z3="0.00000e0" id="c1"/>
+      <atom elementType="O" x3="0.00000e0" y3="1.20300e0" z3="0.00000e0" id="o1"/>
+      <atom elementType="H" x3="-9.34000e-1" y3="-5.79000e-1" z3="0.00000e0" id="h1"/>
+      <atom elementType="H" x3="9.34000e-1" y3="-5.79000e-1" z3="0.00000e0" id="h2"/>
+    </atomArray>
+    <bondArray>
+      <bond atomRefs2="c1 o1" order="D" id="c1_o1"/>
+      <bond atomRefs2="c1 h1" order="S" id="c1_h1"/>
+      <bond atomRefs2="c1 h2" order="S" id="c1_h2"/>
+    </bondArray>
+  </molecule>
+</cml>

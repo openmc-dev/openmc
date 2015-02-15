@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>FoX_wcml</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>WCML</h1>
+
+<p>WCML is a library for outputting <a href="http://www.xml-cml.org">CML</a> data. It wraps all the necessary XML calls, such that you should never need to touch any <a href="FoX_wxml.html">WXML</a> calls when outputting CML.</p>
+
+<p>The CML output is conformant to version 2.4 of the CML schema. The output
+can also be made conformant to the CompChem convention.</p>
+
+<p>The available functions and their intended use are listed below. Quite deliberately, no reference is made to the actual CML output by each function. </p>
+
+<p>Wcml is <em>not</em> intended to be a generalized Fortran CML output layer. rather it is intended to be a library which allows the output of a limited set of well-defined syntactical fragments.</p>
+
+<p>Further information on these fragments, and on the style of CML generated here, is available at <a href="http://www.uszla.me.uk/specs/subset.html">http://www.uszla.me.uk/specs/subset.html</a>.</p>
+
+<p>This section of the manual will detail the available CML output subroutines.</p>
+
+<h2>Use of WCML</h2>
+
+<p>wcml subroutines can be accessed from within a module or subroutine by inserting</p>
+
+<pre><code> use FoX_wcml
+</code></pre>
+
+<p>at the start. This will import all of the subroutines described below, plus the derived type <code>xmlf_t</code> needed to manipulate a CML file.</p>
+
+<p><em>No</em> other entities will be imported; public/private Fortran namespaces are very carefully  controlled within the library.</p>
+
+<h2>Dictionaries.</h2>
+
+<p>The use of dictionaries with WCML is strongly encouraged. (For those not conversant with dictionaries, a fairly detailed explanation is available at <a href="http://www.xml-cml.org/information/dictionaries">http://www.xml-cml.org/information/dictionaries</a>)</p>
+
+<p>In brief, dictionaries are used in two ways.</p>
+
+<h3>Identification</h3>
+
+<p>Firstly, to identify and disambiguate output data. Every output function below takes an optional argument, <code>dictRef=""</code>. It is intended that every piece of data output is tagged with a dictionary reference, which will look something like <code>nameOfCode:nameOfThing</code>. </p>
+
+<p>So, for example, in SIESTA, all the energies are output with different dictRefs, looking like: <code>siesta:KohnShamEnergy</code>, or <code>siesta:kineticEnergy</code>, etc. By doing this, we can ensure that later on all these numbers can be usefully identified.</p>
+
+<p>We hope that ultimately, dictionaries can be written for codes, which will explain what some of these names might mean. However, it is not in any way necessary that this be done - and using <code>dictRef</code> attributes will help merely by giving the ability to disambiguate otherwise indistinguishable quantities.</p>
+
+<p>We strongly recommend this course of action - if you choose to do follow our recommendation, then you should add a suitable Namespace to your code. That is, immediately <em>after</em> <code>cmlBeginFile</code> and <em>before</em> <code>cmlStartCml</code>, you should add something like:</p>
+
+<pre><code>call cmlAddNamespace(xf=xf, 'nameOfCode', 'WebPageOfCode')
+</code></pre>
+
+<p>Again, for SIESTA, we add:</p>
+
+<pre><code>call cmlAddNamespace(xf, 'siesta, 'http://www.uam.es/siesta')
+</code></pre>
+
+<p>If you don't have a webpage for your code, don't worry; the address is only used as an identifier, so anything that looks like a URL, and which nobody else is using, will suffice.</p>
+
+<h3>Quantification</h3>
+
+<p>Secondly, we use dictionaries for units. This is compulsory (unlike <code>dictRef</code>s above). Any numerical quantity that is output through cmlAddProperty or cmlAddParameter is <em>required</em> to carry units. These are added with the <code>units=""</code> argument to the function. In addition, every other function below which will take numerical arguments also will take optional units, although default will be used if no units are supplied.</p>
+
+<p>Further details are supplied in section <a href="#Units">Units</a> below.</p>
+
+<h3>General naming conventions for functions.</h3>
+
+<p>Functions are named in the following way:</p>
+
+<ul>
+<li><p>All functions begin 
+<code>cml</code></p></li>
+<li><p>To begin and end a section of the CML file,
+a pair of functions will exist:</p>
+
+<ul>
+<li><code>cmlStart</code>something</li>
+<li><code>cmlEnd</code>something</li>
+</ul></li>
+<li><p>To output a given quantity/property/concept etc. a function will exist
+<code>cmlAdd</code>something</p></li>
+</ul>
+
+<h3>Conventions used below.</h3>
+
+<ul>
+<li>Function names are in <code>monospace</code></li>
+<li>argument names are in <strong>bold</strong></li>
+<li>optional argument names are in (<strong>parenthesized bold</strong>)</li>
+<li>argument types are in <em>italic</em> and may consist of:</li>
+<li><em>string</em>: string of arbitrary (unless otherwise specified) length</li>
+<li><em>integer</em>: default integer</li>
+<li><em>real(sp)</em>: single precision real number</li>
+<li><em>real(dp)</em>: double precision real number</li>
+<li><em>logical</em>: default logical </li>
+<li><em>real</em>: either of <em>real(sp)</em> or <em>real(dp)</em></li>
+<li><em>anytype</em>: any of <em>logical</em>, <em>integer</em>, <em>real(sp)</em>, <em>real(dp)</em>, <em>string</em></li>
+</ul>
+
+<p>Note that where <em>strings</em> are passed in, they will be passed through entirely unchanged to the output file - no truncation of whitespace will occur.</p>
+
+<p>Also note that wherever a <em>real</em> number can be passed in (including through <em>anytype</em>) then the formatting can be specified using the conventions described in <a href="StringFormatting.html">StringFormatting</a></p>
+
+<ul>
+<li><em>scalar</em>: single item</li>
+<li><em>array</em>: one-dimensional array of items</li>
+<li><em>matrix</em>: two-dimensional array of items</li>
+<li><em>anydim</em>: any of <em>scalar</em>, <em>array</em>, <em>matrix</em></li>
+</ul>
+
+<p>Where an <em>array</em> is passed in, it may be passed either as an assumed-shape array; that is, as an F90-style array with no necessity for specifying bounds; thusly:</p>
+
+<pre><code>integer :: array(50)
+call cmlAddProperty(xf, 'coords', array)
+</code></pre>
+
+<p>or as an assumed-size array; that is, an F77-style array, in which case the length must be passed as an additional parameter:</p>
+
+<pre><code>integer :: array(*)
+call cmlAddProperty(xf, 'coords', array, nitems=50)
+</code></pre>
+
+<p>Similarly, when a <em>matrix</em> is passed in, it may be passed in both fashions:</p>
+
+<pre><code>integer :: matrix(50, 50)
+call cmlAddProperty(xf, 'coords', matrix)
+</code></pre>
+
+<p>or </p>
+
+<pre><code>integer :: array(3, *)
+call cmlAddProperty(xf, 'coords', matrix, nrows=3, ncols=50)
+</code></pre>
+
+<p>All functions take as their first argument an XML file object, whose keyword is always <code>xf</code>. This file object is initialized by a <code>cmlBeginFile</code> function.</p>
+
+<p>It is <em>highly</em> recommended that subroutines be called with keywords specified rather than relying on the implicit ordering of arguments. This is robust against changes in the library calling convention; and also stepsides a significant cause of errors when using subroutines with large numbers of arguments.</p>
+
+<p><a name="Units"/></p>
+
+<h3>Units</h3>
+
+<p>Note below that the functions <code>cmlAddParameter</code> and <code>cmlAddProperty</code> both <em>require</em> that units be specified for any numerical quantities output.</p>
+
+<p>If you are trying to output a quantity that is genuinely dimensionless, then you should specify <code>units="units:dimensionless"</code>; or if you are trying to output a countable quantity (eg number of CPUs) then you may specify <code>units="units:countable"</code>.</p>
+
+<p>For other properties, all units should be specified as namespaced quantities. If you are using
+a very few common units, it may be easiest to borrow definitions from the provided dictionaries;</p>
+
+<p>(These links do not resolve yet.)</p>
+
+<p><code>cmlUnits: http://www.xml-cml.org/units/units</code> <br />
+<code>siUnits: http://www.xml-cml.org/units/siUnits</code> <br />
+<code>atomicUnits: http://www.xml-cml.org/units/atomic</code>  </p>
+
+<p>A default units dictionary, containing only the very basic units that wcml needs to know about, which has a namespace of: <code>http://www.uszla.me.uk/FoX/units</code>, and wcml assigns it automatically to the prefix <code>units</code>.</p>
+
+<p>This is added <em>automatically</em>, so attempts to add it manually will fail.</p>
+
+<p>The contents of all of these dictionaries, plus the wcml dictionary, may be viewed at:
+<a href="http://www.uszla.me.uk/unitsviz/units.cgi">http://www.uszla.me.uk/unitsviz/units.cgi</a>.</p>
+
+<p>Otherwise, you should feel at liberty to construct your own namespace;
+declare it using <code>cmlAddNamespace</code>, and markup all your units as:</p>
+
+<pre><code> units="myNamespace:myunit"
+</code></pre>
+
+<h2>Functions for manipulating the CML file:</h2>
+
+<ul>
+<li><code>cmlBeginFile</code> <br />
+<strong>filename</strong>: <em>string</em> <em>scalar</em>: Filename to be opened. <br />
+<strong>unit</strong>: <em>integer</em> <em>scalar</em>: what unit number should the file be opened on? If you don't
+care, you may specify <code>-1</code> as the unit number, in which case wcml will make a guess <br />
+(<strong>replace</strong>): <em>logical</em> <em>scalar</em>: should the file be replaced if it already exists? <em>default: yes</em></li>
+</ul>
+
+<p>This takes care of all calls to open a CML output file.</p>
+
+<ul>
+<li><code>cmlFinishFile</code></li>
+</ul>
+
+<p>This takes care of all calls to close an open CML output file, once you have finished with it. It is compulsory to call this - if your program finished without calling this, then your CML file will be invalid.</p>
+
+<ul>
+<li><code>cmlAddNamespace</code> <br />
+<strong>prefix</strong> <em>string</em> <em>scalar</em>: prefix to be used <br />
+<strong>URI</strong> <em>string</em> <em>scalar</em>: namespace URI to be used  </li>
+</ul>
+
+<p>This adds a namespace to a CML file. <br />
+NB This may only ever be called immediately after a <code>cmlBeginFile</code> call, before any
+output has been performed.
+Attempts to do otherwise will result in a runtime error.</p>
+
+<p>This will be needed if you are adding dictionary references to your output. Thus for siesta, we do:</p>
+
+<pre><code>call cmlAddNamespace(xf, 'siesta', 'http://www.uam.es/siesta')
+</code></pre>
+
+<p>and then output all our properties and parameters with <code>dictRef="siesta:something"</code>.</p>
+
+<ul>
+<li><p><code>cmlStartCml</code> <br />
+(<strong>fileId</strong>) <em>string</em> <em>scalar</em>: name of originating file.  (default: current filename) <br />
+(<strong>version</strong>) <em>string</em> <em>scalar</em>: version of CML in use.  (default: 2.4) <br />
+(<strong>compchem</strong>) <em>logical</em> <em>scalar</em>: add extra namespace declarations needed by the recent compchem CML convention. This provides a minimum level of infrastructure needed to create valid compchem documents. (default: false)</p></li>
+<li><p><code>cmlEndCml</code></p></li>
+</ul>
+
+<p>This pair of functions begin and end the CML output to an existing CML file. It takes care of namespaces.</p>
+
+<p>Note that unless specified otherwise, there will be a <code>convention</code> attribute added to the <code>cml</code> tag specifying <code>FoX_wcml-2.0</code> as the convention. (see <a href="http://www.uszla.me.uk/FoX">http://www.uszla.me.uk/FoX</a> for details)</p>
+
+<h2>Start/End sections</h2>
+
+<ul>
+<li><p><code>cmlStartMetadataList</code> <br />
+(<strong>name</strong>) <em>string</em> <em>scalar</em>: name for the metadata list <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em> role which the element plays </p></li>
+<li><p><code>cmlEndMetadataList</code></p></li>
+</ul>
+
+<p>This pair of functions open &amp; close a metadataList, which is a wrapper for metadata items.</p>
+
+<ul>
+<li><p><code>cmlStartParameterList</code> <br />
+(<strong>ref</strong>) <em>string</em> <em>scalar</em>: Reference an <code>id</code> attribute of another element (generally deprecated) <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em> role which the element plays </p></li>
+<li><p><code>cmlEndParameterList</code></p></li>
+</ul>
+
+<p>This pair of functions open &amp; close a parameterList, which is a wrapper for input parameters.</p>
+
+<ul>
+<li><p><code>cmlStartPropertyList</code> <br />
+(<strong>ref</strong>) <em>string</em> <em>scalar</em>: Reference an <code>id</code> attribute of another element (generally deprecated) <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em> role which the element plays </p></li>
+<li><p><code>cmlEndPropertyList</code></p></li>
+</ul>
+
+<p>This pair of functions open &amp; close a propertyList, which is a wrapper for output properties.</p>
+
+<ul>
+<li><code>cmlStartKpointList</code></li>
+<li><code>cmlEndKpointList</code></li>
+</ul>
+
+<p>Start/end a list of k-points (added using <code>cmlAddKpoint</code> below)</p>
+
+<ul>
+<li><code>cmlStartModule</code> <br />
+(<strong>serial</strong>) <em>string</em> <em>scalar</em>: serial id for the module 
+(<strong>title</strong>) <em>string</em> <em>scalar</em>: title for module element
+(<strong>role</strong>) <em>string</em> <em>scalar</em>: role which the element plays </li>
+</ul>
+
+<p>Note that in most cases where you might want to use a serial number, you should probably be using the <code>cmlStartStep</code> subroutine below.</p>
+
+<ul>
+<li><code>cmlEndModule</code></li>
+</ul>
+
+<p>This pair of functions open &amp; close a module of a computation which is unordered, or loosely-ordered. For example, METADISE uses one module for each surface examined.</p>
+
+<ul>
+<li><p><code>cmlStartStep</code> <br />
+(<strong>index</strong>) <em>integer</em> <em>scalar</em>: index number for the step. In the absence of an index, steps will be assumed to be consecutively numbered. Specifying this is useful if you wish to output <em>eg</em> every hundredth step. <br />
+(<strong>type</strong>) <em>string</em> <em>scalar</em>: what sort of step is this? This should be a namespaced string, for example: <code>siesta:CG</code> is a Conjugate Gradient step in siesta.</p></li>
+<li><p><code>cmlEndStep</code></p></li>
+</ul>
+
+<p>This pair of functions open and close a module of a computation which is strongly ordered. For example, DLPOLY uses steps for each step of the simulation.</p>
+
+<h2>Adding items.</h2>
+
+<ul>
+<li><code>cmlAddMetadata</code> <br />
+<strong>name</strong>: <em>string</em> <em>scalar</em>: Identifying string for metadata <br />
+<strong>content</strong>: <em>character</em> <em>scalar</em>: Content of metadata  </li>
+</ul>
+
+<p>This adds a single item of metadata. Metadata vocabulary is completely uncontrolled within WCML. This means that metadata values may <em>only</em> be strings of characters. If you need your values to contain numbers, then you need to define the representation yourself, and construct your own strings.</p>
+
+<ul>
+<li><code>cmlAddParameter</code> <br />
+<strong>name</strong>: <em>string</em> <em>scalar</em>: Identifying title for parameter <br />
+<strong>value</strong>:<em>anytype</em> <em>anydim</em>: value of parameter <br />
+<strong>units</strong>: <em>string</em> <em>scalar</em>: units of parameter value  (optional for logical/character <strong>value</strong>s, compulsory otherwise; see note above) <br />
+(<strong>constraint</strong>) <em>string</em> <em>scalar</em>: Constraint under which the parameter is set (this can be an arbitrary string) <br />
+(<strong>ref</strong>) <em>string</em> <em>scalar</em>: Reference an <code>id</code> attribute of another element (generally deprecated) <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em> role which the element plays </li>
+</ul>
+
+<p>This function adds a tag representing an input parameter</p>
+
+<ul>
+<li><code>cmlAddProperty</code> <br />
+<strong>title</strong>: <em>string</em> <em>scalar</em> <br />
+<strong>value</strong>: <em>any</em> <em>anydim</em> <br />
+<strong>units</strong>: <em>string</em> <em>scalar</em> units of property value  (optional for logical/character <strong>value</strong>s, compulsory otherwise; see note above) <br />
+(<strong>ref</strong>) <em>string</em> <em>scalar</em>: Reference an <code>id</code> attribute of another element (generally deprecated) <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em> role which the element plays </li>
+</ul>
+
+<p>This function adds a tag representing an output property</p>
+
+<h2>Adding geometry information</h2>
+
+<ul>
+<li><code>cmlAddMolecule</code> <br />
+<strong>coords</strong>: <em>real</em>: a 3xn matrix of real numbers representing atomic coordinates (either fractional or Cartesian) . These <em>must</em> be specified in Angstrom or fractional units (see <strong>style</strong> below.) <br />
+<strong>OR</strong> <br />
+<strong>x</strong>, <strong>y</strong>, <strong>z</strong>: <em>real</em>: 3 one-dimensional arrays containing the <em>x</em>, <em>y</em>, and <em>z</em> coordinates of the atoms in the molecule.  These <em>must</em> be specified in Angstrom or fractional units (see <strong>style</strong> below.) <br />
+<strong>elements</strong>: <em>string</em> <em>array</em>: a length-n array of length-2 strings containing IUPAC chemical symbols for the atoms <br />
+(<strong>natoms</strong>) <em>integer</em> <em>scalar</em>: number of atoms in molecule (default: picked up from length of <strong>coords</strong> array) <br />
+(<strong>occupancies</strong>): <em>real</em> <em>array</em> : a length-n array of the occupancies of each atom. <br />
+(<strong>atomRefs</strong>): <em>string</em> <em>array</em>: a length-n array of strings containing references which may point to IDs elsewhere of, for example, pseudopotentials or basis sets defining the element's behaviour. <br />
+(<strong>atomIds</strong>): <em>string</em> <em>array</em>: a length-n array of strings containing IDs for the atoms. <br />
+(<strong>style</strong>): <em>string</em> <em>scalar</em>: <code>cartesian</code> - the coordinates are Cartesian, or <code>fractional</code> - the coordinates are fractional. The default is Cartesian. <br />
+(<strong>ref</strong>) <em>string</em> <em>scalar</em>: Reference an <code>id</code> attribute of another element (generally deprecated) <br />
+(<strong>formula</strong>) <em>string</em> <em>scalar</em>: An IUPAC chemical formula <br />
+(<strong>chirality</strong>) <em>string</em> <em>scalar</em>: The chirality of the molecule. No defined vocabulary. <br />
+(<strong>role</strong>) <em>string</em> <em>scalar</em>: Role of molecule. No defined vocabulary. <br />
+(<strong>bondAtom1Refs</strong>) <em>string</em> <em>array</em>: Length-m array of references to atomIds at one "end" of a list of bonds. <br />
+(<strong>bondAtom2Refs</strong>) <em>string</em> <em>array</em>: Length-m array of references to atomIds at another "end" of a list of bonds. <br />
+(<strong>bondOrders</strong>) <em>string</em> <em>array</em>: Length-m array of bond orders. See below. <br />
+(<strong>bondIds</strong>) <em>string</em> <em>array</em>: Length-m array of strings containing IDs for bonds. <br />
+(<strong>nobondcheck</strong>) <em>logical</em> <em>scalar</em>: Enable (.true., the default) of dissable (.false.) bond validition.   </li>
+</ul>
+
+<p>Outputs an atomic configuration. Bonds may be added using the optional arguments <strong>bondAtom1Refs</strong>, <strong>bondAtom2Refs</strong> and <strong>bondOrders</strong>. All these arrays must be the same lenght and all must be present if bonds are to be added. Optionally, <strong>bondIds</strong> can be used to add Ids to the bond elements. Some valididity constraints are imposed (atomsRefs in the bonds must be defined, bonds cannot be added twice). The meaning of the terms "molecule", "bond" and "bond order" is left loosly defined.</p>
+
+<ul>
+<li><code>cmlAddLattice</code> <br />
+<strong>cell</strong>: <em>real</em> <em>matrix</em> a 3x3 matrix of the unit cell <br />
+(<strong>spaceType</strong>): <em>string</em> <em>scalar</em>: <code>real</code> or <code>reciprocal</code> space. <br />
+(<strong>latticeType</strong>): <em>string</em> <em>scalar</em> Space group of the lattice. No defined vocabulary <br />
+(<strong>units</strong>): <em>string</em> <em>scalar</em> units of (reciprocal) distance that cell vectors is given in;
+<em>default: Angstrom</em></li>
+</ul>
+
+<p>Outputs information about a unit cell, in lattice-vector form</p>
+
+<ul>
+<li><code>cmlAddCrystal</code> <br />
+<strong>a</strong>: <em>real</em> <em>scalar</em> the 'a' parameter (must be in Angstrom) <br />
+<strong>b</strong>: <em>real</em> <em>scalar</em> the 'b' parameter <br />
+<strong>c</strong>: <em>real</em> <em>scalar</em> the 'c' parameter <br />
+<strong>alpha</strong>: <em>real</em> <em>scalar</em> the 'alpha' parameter <br />
+<strong>beta</strong>: <em>real</em> <em>scalar</em> the 'beta' parameter <br />
+<strong>gamma</strong>: <em>real</em> <em>scalar</em> the 'gamma' parameter <br />
+(<strong>z</strong>): <em>integer</em> <em>scalar</em> the 'z' parameter: number of molecules per unit cell. <br />
+(<strong>lenunits</strong>): <em>string</em> <em>scalar</em>: Units of length: default is <code>units:angstrom</code> <br />
+(<strong>angunits</strong>): <em>string</em> <em>scalar</em>: Units of angle: default is <code>units:degrees</code> <br />
+(<strong>lenfmt</strong>): <em>string</em> <em>scalar</em>: format for crystal lengths <br />
+(<strong>angfmt</strong>): <em>string</em> <em>scalar</em>: format for crystal angles <br />
+(<strong>spaceGroup</strong>): <em>string</em> <em>scalar</em> Space group of the crystal. No defined vocabulary.</li>
+</ul>
+
+<p>Outputs information about a unit cell, in crystallographic form</p>
+
+<h2>Adding eigen-information</h2>
+
+<ul>
+<li><code>cmlStartKPoint</code> <br />
+<strong>kpoint</strong>: <em>real</em> <em>array-3</em> the reciprocal-space coordinates of the k-point <br />
+(<strong>weight</strong>): <em>real</em> <em>scalar</em> the weight of the kpoint <br />
+(<strong>kptfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the k-point <br />
+(<strong>wtfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the weight</li>
+</ul>
+
+<p>Start a kpoint section.</p>
+
+<ul>
+<li><code>cmlEndKPoint</code>  </li>
+</ul>
+
+<p>End a kpoint section.</p>
+
+<ul>
+<li><code>cmlAddKPoint</code> <br />
+<strong>kpoint</strong>: <em>real</em> <em>array-3</em> the reciprocal-space coordinates of the k-point <br />
+(<strong>weight</strong>): <em>real</em> <em>scalar</em> the weight of the kpoint <br />
+(<strong>kptfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the k-point <br />
+(<strong>wtfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the weight</li>
+</ul>
+
+<p>Add an empty kpoint section.</p>
+
+<ul>
+<li><code>cmlStartBand</code> <br />
+(<strong>spin</strong>): <em>string</em> <em>scalar</em> the spin of this band. Must be either "up" or "down" <br />
+(<strong>label</strong>): the label of this band.</li>
+</ul>
+
+<p>Start a section describing one band.</p>
+
+<ul>
+<li><code>cmlEndBand</code></li>
+</ul>
+
+<p>End a section describing one band.</p>
+
+<ul>
+<li><code>cmlAddEigenValue</code> <br />
+<strong>value</strong>: <em>real</em> <em>scalar</em> the eigenvalue <br />
+<strong>units</strong>: <em>QName</em> <em>scalar</em> the units of the eigenvalue</li>
+</ul>
+
+<p>Add a single eigenvalue to a band.</p>
+
+<ul>
+<li><code>cmlAddBandList</code> <br />
+<strong>values</strong>: <em>real</em> <em>array</em> the eigenvalues <br />
+<strong>spin</strong>: <em>string</em> <em>scalar</em> the spin orientation ("up" or "down") <br />
+<strong>units</strong>: <em>QName</em> <em>scalar</em> the units of the eigenvalue</li>
+</ul>
+
+<p>Add a list of eigenvalues for a kpoint</p>
+
+<ul>
+<li><code>cmlAddEigenValueVector</code>
+<strong>value</strong>: <em>real</em> <em>scalar</em> the eigenvalue for this band <br />
+<strong>units</strong>: <em>QName</em> <em>scalar</em> the units of the eigenvalue <br />
+<strong>vector</strong>: <em>real/complex</em> <em>3xN matrix</em> the eigenvectors for this band <br />
+(<strong>valfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the eigenvalue <br />
+(<strong>vecfmt</strong>): <em>string</em> <em>scalar</em> numerical formatting for the eigenvector</li>
+</ul>
+
+<p>Add a phononic eigenpoint to the band - which has a single energy, and a 3xN matrix representing the eigenvector.</p>
+
+<h2>Echoing input files</h2>
+
+<p>It is often considered useful to include a direct representation of
+input data within an applications output files. FoX_wcml contains a
+number of procedures to allow this in a CML document based on a specification
+described in a manuscript currently in review (de Jong, Walker and Hanwell 
+"From Data to Analysis: Linking NWChem and Avogadro with the Syntax and 
+Semantics of Chemical Markup Language". 
+The approach is also designed to make data recovery using an 
+XSL transform straightforward. File metadata such as the 
+original filename is also accessible. We assume that only ASCII 
+data must be stored, arbitrary binary files are 
+out of scope as are XML documents and non-ASCII textural data.
+Two methods are provided with the 
+most appropriate being dependent on the design of the application.</p>
+
+<h3>Using file names</h3>
+
+<ul>
+<li><code>cmlDumpDec</code>
+<strong>inputDec</strong>: <em>string</em> <em>scalar</em> or <em>array</em> file name(s) to be used
+<strong>line<em>lengths</strong>: *integer* *scalar* or *array* miximum number of characters per line
+<strong>trim</em>lines</strong>: <em>logical</em> <em>scalar</em> or <em>array</em> should tralining whitespace be removed?
+(<strong>iostat</strong>): <em>nteger</em> <em>scalar</em> output argument indicating errors.</li>
+</ul>
+
+<p>In the this approach the single subroutine, <code>cmlDumpInputDec</code>, is called 
+with an array of file names as input arguments. In turn each file is 
+opened, its contents are written to the CML document in the appropriate 
+form, before the file is closed. </p>
+
+<h3>Line by line</h3>
+
+<ul>
+<li><code>cmlStartDecList</code></li>
+</ul>
+
+<p>Start an outer wrapper for input data.</p>
+
+<ul>
+<li><code>cmlEndDecList</code></li>
+</ul>
+
+<p>End the outer wrapper.</p>
+
+<ul>
+<li><code>cmlStartDec</code>
+<strong>filename</strong>: <em>string</em> <em>scalar</em> file name to be used</li>
+</ul>
+
+<p>Start a wrapper for a single "file" or similar concept.</p>
+
+<ul>
+<li><code>cmlEndDec</code></li>
+</ul>
+
+<p>End the file wrapper.</p>
+
+<ul>
+<li><code>cmlAddDecLine</code>
+<strong>text</strong>: <em>string</em> <em>scalar</em> A line of text from an input file to add</li>
+</ul>
+
+<p>Put a line of text into the file wrapper.</p>
+
+<p>The convoluted nature of file handling 
+in Fortran combined with the way that some applications read their input 
+data means that this approach is not always available (for example, if 
+the input file is held open for the duration of the calculation, or if 
+data is read from standard input) so an alternative interface with five 
+subroutines (<code>cmlStartDecList</code>, <code>cmlStartDec</code>, 
+<code>cmlAddDecLine</code>, <code>cmlEndDec</code> and <code>cmlEndDecList</code>) 
+is provided. These must be called in order (and usually in two loops, 
+one over files, and an inner loop over lines in each file).</p>
+
+<h2>Common arguments</h2>
+
+<p>All <code>cmlAdd</code> and <code>cmlStart</code> routines take the following set of optional arguments:</p>
+
+<ul>
+<li><code>id</code>: Unique identifying string for element. (Uniqueness is not enforced, though duplicated ids on output are usually an error and may cause later problems)  </li>
+<li><code>title</code>: Human-readable title of element for display purposes  </li>
+<li><code>dictRef</code>: reference to disambiguate element. Should be a QName; a namespaced string. An actual dictionary entry may or may not exist. It is not an error for it not to.  </li>
+<li><code>convention</code>: convention by which the element is to be read. <br />
+(The wording of the definitions for <code>convention</code> is deliberately loose.)</li>
+</ul>
+</div>
+</body>
+</html>

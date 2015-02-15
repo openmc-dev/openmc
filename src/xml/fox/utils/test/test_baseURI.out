@@ -1,0 +1,171 @@
+ scheme: http
+ authority: tow:bum@www.example.org:80
+ userinfo: tow:bum
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment: frag
+ http://tow:bum@www.example.org:80/dir1/dir2/test.html?a=b;c=d#frag                                  
+
+ scheme: http
+ authority: tow:bum@www.example.org:80
+ userinfo: tow:bum
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query: a=b;c=d
+ fragment UNDEFINED
+ http://tow:bum@www.example.org:80/dir1/dir2/test.html?a=b;c=d                                       
+
+ scheme: http
+ authority: tow:bum@www.example.org:80
+ userinfo: tow:bum
+ host: www.example.org
+ port: 80
+ path: /dir1/dir2/test.html
+     segment: /
+     segment: dir1/
+     segment: dir2/
+     segment: test.html
+ query UNDEFINED
+ fragment: frag
+ http://tow:bum@www.example.org:80/dir1/dir2/test.html#frag                                          
+
+ scheme: http
+ authority: tow:bum@www.example.org:80
+ userinfo: tow:bum
+ host: www.example.org
+ port: 80
+ path: 
+     segment: 
+ query UNDEFINED
+ fragment: frag
+ http://tow:bum@www.example.org:80#frag                                                              
+
+ scheme: http
+ authority: tow:bum@www.example.org:80
+ userinfo: tow:bum
+ host: www.example.org
+ port: 80
+ path: /~ tow/
+     segment: /
+     segment: ~ tow/
+ query: frag
+ fragment UNDEFINED
+ http://tow:bum@www.example.org:80/~%20tow/?frag                                                     
+
+ scheme: file
+ authority: 
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: /Users/tow/devel/FoX/
+     segment: /
+     segment: Users/
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ file:///Users/tow/devel/FoX/                                                                        
+
+ scheme: file
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: /Users/tow/devel/FoX/
+     segment: /
+     segment: Users/
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ file:/Users/tow/devel/FoX/                                                                          
+
+ scheme UNDEFINED
+ authority: p
+ userinfo UNDEFINED
+ host: p
+ port UNDEFINED
+ path: /Users/tow/devel/FoX/
+     segment: /
+     segment: Users/
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ //p/Users/tow/devel/FoX/                                                                            
+
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: /p/Users/tow/devel/FoX/
+     segment: /
+     segment: p/
+     segment: Users/
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ /p/Users/tow/devel/FoX/                                                                             
+
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: Users/tow/devel/FoX/
+     segment: Users/
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ Users/tow/devel/FoX/                                                                                
+
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: ./Users/../tow/devel/FoX/
+     segment: ./
+     segment: Users/
+     segment: ../
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ ./Users/../tow/devel/FoX/                                                                           
+
+ scheme UNDEFINED
+ authority UNDEFINED
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: ../../tow/devel/FoX/
+     segment: ../
+     segment: ../
+     segment: tow/
+     segment: devel/
+     segment: FoX/
+ query UNDEFINED
+ fragment UNDEFINED
+ ../../tow/devel/FoX/                                                                                
+

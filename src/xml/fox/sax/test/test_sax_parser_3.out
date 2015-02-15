@@ -1,0 +1,15 @@
+ Document begun!!
+>>Begin Element: {}test
+---  3 attributes:
+notcdata [ {}notcdata ]  = ab cd
+att [ {}att ]  =    arse   bum
+default [ {}default ]  = default
+>>Begin Element: {}abc
+---  0 attributes:
+>>End Element: {}abc
+>>Begin Element: {}error
+---  1 attributes:
+xml:space [ {http://www.w3.org/XML/1998/namespace}space ]  = preserve
+>>End Element: {}error
+>>End Element: {}test
+ Document finished!!

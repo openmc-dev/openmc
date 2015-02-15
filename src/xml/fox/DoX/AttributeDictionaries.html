@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>AttributeDictionaries</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>Attributes dictionaries.</h1>
+
+<p>When parsing XML using the FoX SAX module, attributes are returned contained within a dictionary object.</p>
+
+<p>This dictionary object implements all the methods described by the SAX interfaces Attributes and Attributes2. Full documentation is available from the SAX Javadoc, but is reproduced here for ease of reference.</p>
+
+<p>All of the attribute dictionary objects and functions are exported through FoX_sax - you must USE the module to enable them. The dictionary API is described here.</p>
+
+<p>An attribute dictionary consists of a list of entries, one for each attribute. The entries all have the following pieces of data:</p>
+
+<ul>
+<li>qName - the attribute's full name  </li>
+<li>value - the attribute's value</li>
+</ul>
+
+<p>and for namespaced attributes:</p>
+
+<ul>
+<li>uri - the namespace URI (if any) of the attribute  </li>
+<li>localName - the local name of the attribute</li>
+</ul>
+
+<p>In addition, the following pieces of data will be picked up from a DTD if present:</p>
+
+<ul>
+<li>declared - is the attribute declared in the DTD?  </li>
+<li>specified - is this instance of the attribute specified in the XML document, or is it a default from the DTD?  </li>
+<li>type - the type of the attribute (if declared)</li>
+</ul>
+
+<hr />
+
+<h2>Derived types</h2>
+
+<p>There is one derived type of interest, <code>dictionary_t</code>.</p>
+
+<p>It is opaque - that is, it should only be manipulated through the functions described here.</p>
+
+<h2>Functions</h2>
+
+<h3>Inspecting the dictionary</h3>
+
+<ul>
+<li><code>getLength <br />
+type(dictionary_t), intent(in) :: dict</code></li>
+</ul>
+
+<p>Returns an integer with the length of the dictionary, <em>ie</em> the number of dictionary entries.</p>
+
+<ul>
+<li><code>hasKey <br />
+type(dictionary_t), intent(in) :: dict <br />
+character(len=*), intent(in) :: key</code></li>
+</ul>
+
+<p>Returns a logical value according to whether the dictionary contains an attribute named <code>key</code> or not.</p>
+
+<ul>
+<li><code>hasKey <br />
+type(dictionary_t), intent(in) :: dict <br />
+character(len=*), intent(in) :: uri <br />
+character(len=*), intent(in) :: localname</code></li>
+</ul>
+
+<p>Returns a logical value according to whether the dictionary contains an attribute with the correct <code>URI</code> and <code>localname</code>.</p>
+
+<h3>Retrieving data from the dictionary</h3>
+
+<ul>
+<li><code>getQName <br />
+type(dictionary_t), intent(in) :: dict <br />
+integer, intent(in) :: i</code></li>
+</ul>
+
+<p>Return the full name of the <code>i</code>th dictionary entry.</p>
+
+<ul>
+<li><code>getValue <br />
+type(dictionary_t), intent(in) <br />
+integer, intent(in) :: i</code></li>
+</ul>
+
+<p>If an integer is passed in - the value of the <code>i</code>th attribute. </p>
+
+<ul>
+<li><code>getValue <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: qName</code></li>
+</ul>
+
+<p>If a single string is passed in, the value of the attribute with that name.</p>
+
+<ul>
+<li><code>getValue <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: uri, localname</code></li>
+</ul>
+
+<p>If two strings are passed in, the value of the attribute with that uri and localname.</p>
+
+<ul>
+<li><code>getURI <br />
+type(dictionary_t), intent(in) <br />
+integer, intent(in) :: i</code></li>
+</ul>
+
+<p>Returns a string containing the nsURI of the <code>i</code>th attribute.</p>
+
+<ul>
+<li><code>getlocalName <br />
+type(dictionary_t), intent(in) <br />
+integer, intent(in) :: i</code></li>
+</ul>
+
+<p>Returns a string containing the localName of the <code>i</code>th attribute.</p>
+
+<h3>DTD-driven functions</h3>
+
+<p>The following functions are only of interest if you are using DTDs.</p>
+
+<ul>
+<li><code>getType 
+type(dictionary_t), intent(in) <br />
+integer, intent(in), optional :: i</code></li>
+</ul>
+
+<p>If an integer is passed in, returns the type of the <code>i</code>th attribute.</p>
+
+<ul>
+<li><code>getType <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: qName</code></li>
+</ul>
+
+<p>If a single string is passed in, returns the type of the attribute with that QName.</p>
+
+<ul>
+<li><code>getType <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: uri <br />
+character(len=*), intent(in) :: localName</code></li>
+</ul>
+
+<p>If a single string is passed in, returnsthe type of the attribute with that {uri,localName}.</p>
+
+<ul>
+<li><code>isDeclared <br />
+type(dictionary_t), intent(in) <br />
+integer, intent(in), optional :: i</code></li>
+</ul>
+
+<p>If an integer is passed in, returns false unless the <code>i</code>th attribute is declared in the DTD.</p>
+
+<ul>
+<li><code>isDeclared 
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: qName</code></li>
+</ul>
+
+<p>If a single string is passed in, returns false unless the attribute with that QName is declared in the DTD.</p>
+
+<ul>
+<li><code>isDeclared <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: uri <br />
+character(len=*), intent(in) :: localName</code></li>
+</ul>
+
+<p>If a single string is passed in, returns false unless the attribute with that {uri,localName} is declared in the DTD.</p>
+
+<ul>
+<li><code>isSpecified <br />
+type(dictionary_t), intent(in) <br />
+integer, intent(in), optional :: i</code></li>
+</ul>
+
+<p>If an integer is passed in, returns true unless the <code>i</code>th attribute is a default value from the DTD.</p>
+
+<ul>
+<li><code>isSpecified 
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: qName</code></li>
+</ul>
+
+<p>If a single string is passed in, returns true unless the attribute with that QName is a default value from the DTD.</p>
+
+<ul>
+<li><code>isSpecified <br />
+type(dictionary_t), intent(in) <br />
+character(len=*), intent(in) :: uri <br />
+character(len=*), intent(in) :: localName</code></li>
+</ul>
+
+<p>If a single string is passed in, returns true unless the attribute with that {uri,localName} is a default value from the DTD.</p>
+</div>
+</body>
+</html>

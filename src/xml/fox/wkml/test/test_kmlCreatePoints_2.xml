@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>WKML output</name>
+    <Folder>
+      <Placemark>
+        <Point>
+          <coordinates>1.000000,1.000000,500.000000</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+  </Document>
+</kml>

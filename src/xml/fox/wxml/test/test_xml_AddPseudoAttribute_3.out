@@ -1,0 +1,3 @@
+ERROR(wxml) in writing to file 
+test.xml
+duplicate pseudo-attribute name: att

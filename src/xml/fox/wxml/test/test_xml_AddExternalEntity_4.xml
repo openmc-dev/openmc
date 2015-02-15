@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html [
+  <!NOTATION GIF SYSTEM "http://www.uszla.me.uk/notations/GIF">
+  <!ENTITY ENT PUBLIC "//PUBLICID/" "http://www.uszla.me.uk/entities" NDATA GIF>
+]>
+<html/>

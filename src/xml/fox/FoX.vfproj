@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeStaticLibrary" ProjectCreator="Intel Fortran" Keyword="Static Library" Version="11.0" >
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="..\lib\" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.pdb;*.log;*.lib" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" EnableRecursion="true" F2003Semantics="true" DebugParameter="debugParameterUsed" WarnInterfaces="true" IntegerKIND="integerKIND8" RealKIND="realKIND8" ModulePath="$(OutDir)Modules" PdbFile="$(OutDir)\$(TargetName).pdb" SourceListingFile="" BuildDependenciesFile="" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" DisableDefaultLibSearch="true"/>
+				<Tool Name="VFLibrarianTool" OutputFile="$(OutDir)$(ProjectName)_$(ConfigurationName).lib" IgnoreAllDefaultLibraries="true" IgnoreDefaultLibraryNames="libc.lib; libcmt.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine=" " Description=" "/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="..\lib\" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" AdditionalOptions="/assume:nobscc " SuppressStartupBanner="true" Preprocess="preprocessYes" EnableRecursion="true" F2003Semantics="true" LocalSavedScalarsZero="true" ModulePath="$(OutDir)Modules" PdbFile="$(OutDir)\$(TargetName).pdb" Traceback="true" RuntimeChecks="rtChecksNone" DisableDefaultLibSearch="true"/>
+				<Tool Name="VFLibrarianTool" OutputFile="$(OutDir)$(ProjectName).lib" IgnoreAllDefaultLibraries="true" IgnoreDefaultLibraryNames="libc.lib; libcmt.lib"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine=" " Description=" "/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64" OutputDirectory="..\libx64\" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" EnableRecursion="true" F2003Semantics="true" DebugParameter="debugParameterUsed" WarnInterfaces="true" ModulePath="$(OutDir)Modules" PdbFile="$(OutDir)\$(TargetName).pdb" SourceListingFile=" " BuildDependenciesFile=" " Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug" DisableDefaultLibSearch="true"/>
+				<Tool Name="VFLinkerTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFLibrarianTool" OutputFile="$(OutDir)$(ProjectName)_$(ConfigurationName).lib" IgnoreAllDefaultLibraries="true"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine=" " Description=" "/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64" OutputDirectory="..\libx64\" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" AdditionalOptions="/assume:nobscc " SuppressStartupBanner="true" MatrixLibrary="mlYes" Preprocess="preprocessYes" EnableRecursion="true" F2003Semantics="true" LocalSavedScalarsZero="true" ModulePath="$(OutDir)Modules" PdbFile="$(OutDir)\$(TargetName).pdb" SourceListingFile=" " BuildDependenciesFile=" " RuntimeChecks="rtChecksNone" DisableDefaultLibSearch="true"/>
+				<Tool Name="VFLibrarianTool" OutputFile="$(OutDir)$(ProjectName).lib" IgnoreAllDefaultLibraries="true"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool" CommandLine=" " Description=" "/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
+		<File RelativePath=".\DoX\FoX.html"/></Filter>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<Filter Name="common">
+		<File RelativePath=".\common\FoX_common.F90"/>
+		<File RelativePath=".\common\m_common_attrs.F90"/>
+		<File RelativePath=".\common\m_common_buffer.F90"/>
+		<File RelativePath=".\common\m_common_charset.F90"/>
+		<File RelativePath=".\common\m_common_content_model.F90"/>
+		<File RelativePath=".\common\m_common_element.F90"/>
+		<File RelativePath=".\common\m_common_elstack.F90"/>
+		<File RelativePath=".\common\m_common_entities.F90"/>
+		<File RelativePath=".\common\m_common_entity_expand.F90"/>
+		<File RelativePath=".\common\m_common_error.F90"/>
+		<File RelativePath=".\common\m_common_io.F90"/>
+		<File RelativePath=".\common\m_common_namecheck.F90"/>
+		<File RelativePath=".\common\m_common_namespaces.F90"/>
+		<File RelativePath=".\common\m_common_notations.F90"/>
+		<File RelativePath=".\common\m_common_struct.F90"/></Filter>
+		<Filter Name="dom">
+		<File RelativePath=".\dom\FoX_dom.f90"/>
+		<File RelativePath=".\dom\m_dom_dom.F90"/>
+		<File RelativePath=".\dom\m_dom_error.f90"/>
+		<File RelativePath=".\dom\m_dom_extras.F90"/>
+		<File RelativePath=".\dom\m_dom_parse.f90"/>
+		<File RelativePath=".\dom\m_dom_utils.f90"/></Filter>
+		<Filter Name="fsys">
+		<File RelativePath=".\fsys\FoX_m_fsys_abort_flush.F90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_array_str.F90"/>
+		<File RelativePath=".\fsys\fox_m_fsys_count_parse_input.F90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_format.F90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_parse_input.F90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_realtypes.f90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_string.F90"/>
+		<File RelativePath=".\fsys\FoX_m_fsys_string_list.F90"/>
+		<File RelativePath=".\fsys\fox_m_fsys_varstr.F90"/>
+		<File RelativePath=".\fsys\m_ieee.f90"/></Filter>
+		<Filter Name="sax">
+		<File RelativePath=".\sax\FoX_sax.f90"/>
+		<File RelativePath=".\sax\m_sax_operate.F90"/>
+		<File RelativePath=".\sax\m_sax_parser.F90"/>
+		<File RelativePath=".\sax\m_sax_reader.F90"/>
+		<File RelativePath=".\sax\m_sax_tokenizer.F90"/>
+		<File RelativePath=".\sax\m_sax_types.F90"/>
+		<File RelativePath=".\sax\m_sax_xml_source.F90"/></Filter>
+		<Filter Name="utils">
+		<File RelativePath=".\utils\FoX_m_utils_mtprng.F90"/>
+		<File RelativePath=".\utils\fox_m_utils_uri.F90"/>
+		<File RelativePath=".\utils\FoX_m_utils_uuid.F90"/>
+		<File RelativePath=".\utils\FoX_utils.f90"/></Filter>
+		<Filter Name="wcml">
+		<File RelativePath=".\wcml\FoX_wcml.f90"/>
+		<File RelativePath=".\wcml\m_wcml_coma.F90"/>
+		<File RelativePath=".\wcml\m_wcml_core.F90"/>
+		<File RelativePath=".\wcml\m_wcml_geometry.F90"/>
+		<File RelativePath=".\wcml\m_wcml_lattice.F90"/>
+		<File RelativePath=".\wcml\m_wcml_lists.F90"/>
+		<File RelativePath=".\wcml\m_wcml_metadata.F90"/>
+		<File RelativePath=".\wcml\m_wcml_molecule.F90"/>
+		<File RelativePath=".\wcml\m_wcml_parameter.F90"/>
+		<File RelativePath=".\wcml\m_wcml_property.F90"/>
+		<File RelativePath=".\wcml\m_wcml_stml.F90"/></Filter>
+		<Filter Name="wxml">
+		<File RelativePath=".\wxml\FoX_wxml.f90"/>
+		<File RelativePath=".\wxml\m_wxml_core.F90"/>
+		<File RelativePath=".\wxml\m_wxml_escape.F90"/>
+		<File RelativePath=".\wxml\m_wxml_overloads.F90"/></Filter></Filter></Files>
+	<Globals/></VisualStudioProject>

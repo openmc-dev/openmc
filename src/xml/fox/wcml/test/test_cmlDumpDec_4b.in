@@ -1,0 +1,18 @@
+fit conp simul opti
+cell
+   4.914730   4.914730   5.406570  90.000000  90.000000 120.0
+fractional
+Si core  0.468200   0.000000   0.333333    4.000000
+O  core  0.413100   0.266100   0.213100    0.869020
+O  shel  0.431813   0.264902   0.204106   -2.869020
+space
+152
+general 0 6 grad
+Si core O shel 1283.037674      0.320500     10.660000   0.0  8.0 1 0 0
+buck
+O shel O shel 22764.0 0.149 27.88  0.0000  8.0000 0 0 0
+spring
+O 74.92 0
+three
+Si core O shel O shel 2.097240   109.470000  1.8000  1.8000  3.2000 0 0
+dump example2.res 

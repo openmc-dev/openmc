@@ -232,15 +232,6 @@ endif()
 # FoX Fortran XML Library
 #===============================================================================
 
-# Only initialize git submodules if it is not there. User is responsible
-# for future updates of fox xml submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
-  message("-- Initializing/Updating FoX XML submodule...")
-  execute_process(COMMAND git submodule init
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-  execute_process(COMMAND git submodule update
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-endif()
 add_subdirectory(xml/fox)
 
 #===============================================================================

@@ -15,33 +15,35 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: competitive, &
-                              prob_bands, &
-                              otf_urr, &
-                              i_real_user, &
-                              l_waves, &
-                              n_fasturr, &
-                              min_batches_avg_urr, &
-                              max_batches_avg_urr, &
-                              histories_avg_urr, &
-                              tol_avg_urr, &
-                              endf_files, &
-                              formalism, &
-                              real_freq, &
-                              run_fasturr, &
-                              represent_urr, &
-                              n_reals, &
-                              min_dE_point_urr, &
-                              max_dE_point_urr, &
-                              tol_point_urr, &
+  use unresolved,       only: background, &
                               band_spacing, &
+                              competitive, &
+                              E_mesh, &
+                              endf_files, &
                               E_spacing, &
-                              band_values, &
-                              E_values, &
+                              formalism, &
+                              histories_avg_urr, &
+                              i_real_user, &
+                              isotopes, &
+                              l_waves, &
+                              max_batches_avg_urr, &
+                              max_dE_point_urr, &
+                              min_batches_avg_urr, &
+                              min_dE_point_urr, &
                               n_bands, &
-                              n_temps, &
                               n_energies, &
-                              isotopes
+                              n_fasturr, &
+                              n_reals, &
+                              n_temps, &
+                              otf_urr, &
+                              prob_bands, &
+                              real_freq, &
+                              represent_params, &
+                              represent_urr, &
+                              run_fasturr, &
+                              tol_avg_urr, &
+                              tol_point_urr, &
+                              xs_bands
 
   use xml_interface
 
@@ -3291,6 +3293,7 @@ contains
         represent_urr = PARAMETERS
       case ('pointwise')
         represent_urr = POINTWISE
+        n_reals = 1
         if (check_for_node(doc, "pointwise")) then
           call get_node_ptr(doc, "pointwise", point_xs_node)
           if (check_for_node(point_xs_node, 'min_spacing')) then
@@ -3320,6 +3323,21 @@ contains
       end select
     else
       call fatal_error('No cross section representation format given in urr.xml')
+    end if
+
+    ! Check for pointwise cross section calculation
+    if (check_for_node(doc, 'parameters')) then
+      call get_node_value(doc, "parameters", temp_str)
+      select case (trim(adjustl(to_lower(temp_str))))
+      case ('discrete')
+        represent_params = DISCRETE
+      case ('continuous')
+        represent_params = CONTINUOUS
+      case default
+        call fatal_error('Unrecognized resonance parameters representation format in urr.xml')
+      end select
+    else
+      call fatal_error('No resonance parameters representation format given in urr.xml')
     end if
 
     ! Check for list of nuclides to apply the treatment to
@@ -3357,6 +3375,8 @@ contains
 
     ! Check if an on-the-fly treatment is specified
     if (check_for_node(doc, "on_the_fly")) then
+      if (represent_urr == POINTWISE) call fatal_error('Cannot have both a pointwise&
+        & cross section representation and an on-the-fly calculation in urr.xml')
       otf_urr = .true.
       call get_node_ptr(doc, "on_the_fly", otf_xs_node)
 
@@ -3479,14 +3499,18 @@ contains
       if (check_for_node(prob_table_node, "band_spacing")) then
         call get_node_value(prob_table_node, "band_spacing", temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'linear') then
+          call fatal_error('Linear probability table cross section&
+            & bands not yet implemented')
           band_spacing = LINEAR
         else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
+          call fatal_error('Logarithmic probability table cross section&
+            & bands not yet implemented')
           band_spacing = LOGARITHMIC
         else if (trim(adjustl(to_lower(temp_str))) == 'user') then
           band_spacing = USER
-          if (check_for_node(prob_table_node, "band_values")) then
-            allocate(band_values(n_bands - 1))
-            call get_node_array(prob_table_node, "band_values", band_values)
+          if (check_for_node(prob_table_node, "xs_bands")) then
+            allocate(xs_bands(n_bands - 1))
+            call get_node_array(prob_table_node, "xs_bands", xs_bands)
           else
             call fatal_error('No probability table cross section band values&
               & given in urr.xml')
@@ -3516,8 +3540,8 @@ contains
           E_spacing = USER
           if (check_for_node(prob_table_node, "energy_values")) then
             n_energies = get_arraysize_double(prob_table_node, "energy_values")
-            allocate(E_values(n_energies))
-            call get_node_array(prob_table_node, "energy_values", E_values)
+            allocate(E_mesh(n_energies))
+            call get_node_array(prob_table_node, "energy_values", E_mesh)
           else
             call fatal_error('No probability table energy grid values&
               & given in urr.xml')
@@ -3528,6 +3552,23 @@ contains
         end if
       else
         call fatal_error('No energy spacing scheme for probability&
+          & table calculation given in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "background")) then
+        call get_node_value(prob_table_node, "background", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+          background = ENDFFILE
+        else if (trim(adjustl(to_lower(temp_str))) == 'ace') then
+          background = ACEFILE
+        else if (trim(adjustl(to_lower(temp_str))) == 'theoretical') then
+          background = GENERATED
+        else
+          call fatal_error('Unrecognized background cross section source&
+            & in probability table calculation given in urr.xml')
+        end if
+      else
+        call fatal_error('No background cross section source for probability&
           & table calculation given in urr.xml')
       end if
 

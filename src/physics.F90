@@ -358,7 +358,8 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
-      if (nuc % i_sotope /= 0) then
+      if (1==2) then
+!      if (nuc % i_sotope /= 0) then
         if (p % E > isotopes(nuc % i_sotope) % EL(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8 .and. &
           & p % E < isotopes(nuc % i_sotope) % EH(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8) then
           i_rxn = 1

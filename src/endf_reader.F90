@@ -1,6 +1,7 @@
 module endf_reader
 
   use avg_urr_xs_values, only: set_avg_urr_xs
+  use constants
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
@@ -218,240 +219,231 @@ contains
 
 10  format(A80)
 
-    if (tope % LSSF == 0) then
-
-      do
-        read(in, 10) rec
-        read(rec(71:72), '(I2)') MF
-        read(rec(73:75), '(I3)') MT
-        if (MF == 3 .and. MT == 2) exit
-        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
-          & elastic, inelastic, fission, or capture cross section in '&
-          &//trim(filename))
-      end do
-
-      read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') A
-
-      ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
-
-      ! check that mass is consistent
-      call check_mass(A, tope % AWR)
-
-      ! read MF=3, record=2
+    do
       read(in, 10) rec
-      read(rec(45:55), '(I11)') NR
-      read(rec(56:66), '(I11)') NP
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 2) exit
+      if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+        & elastic cross section in '//trim(filename))
+    end do
 
-      ! check number of interpolation regions
-      call check_interp_regions(NR)
+    read(rec(1:11),  '(E11.0)') ZA
+    read(rec(12:22), '(E11.0)') A
 
-      ! read MF=3, record=3
+    ! check ZAID agreement
+    call check_zaid(int(ZA), tope % ZAI)
+
+    ! check that mass is consistent
+    call check_mass(A, tope % AWR)
+
+    ! read MF=3, record=2
+    read(in, 10) rec
+    read(rec(45:55), '(I11)') NR
+    read(rec(56:66), '(I11)') NP
+
+    ! check number of interpolation regions
+    call check_interp_regions(NR)
+
+    ! read MF=3, record=3
+    read(in, 10) rec
+    read(rec( 1:11), '(I11)') NBT
+    read(rec(12:22), '(I11)') tope % MF3_INT
+
+    ! check number of energy-xs pairs in this interpolation region
+    call check_n_pairs(NBT, NP)
+
+    allocate(tope % MF3_n_e(NP))
+    allocate(tope % MF3_n(NP))
+
+    i_e = 1
+    do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
       read(in, 10) rec
-      read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') tope % MF3_INT
+      read(rec( 1:11), '(E11.0)') tope % MF3_n_e(i_e)
+      read(rec(12:22), '(E11.0)') tope % MF3_n(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(23:33), '(E11.0)') tope % MF3_n_e(i_e)
+      read(rec(34:44), '(E11.0)') tope % MF3_n(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(45:55), '(E11.0)') tope % MF3_n_e(i_e)
+      read(rec(56:66), '(E11.0)') tope % MF3_n(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+    end do
 
-      ! check number of energy-xs pairs in this interpolation region
-      call check_n_pairs(NBT, NP)
-
-      allocate(tope % avg_urr_n_e(NP))
-      allocate(tope % avg_urr_n(NP))
-
-      i_e = 1
-      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % avg_urr_n_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % avg_urr_n(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % avg_urr_n_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % avg_urr_n(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % avg_urr_n_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % avg_urr_n(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-      end do
-
-      do
-        read(in, 10) rec
-        read(rec(71:72), '(I2)') MF
-        read(rec(73:75), '(I3)') MT
-        if (MF == 3 .and. MT == 4) exit
-        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
-          & elastic, inelastic, fission, or capture cross section in '&
-          &//trim(filename))
-      end do
-
-      read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') A
-
-      ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
-
-      ! check that mass is consistent
-      call check_mass(A, tope % AWR)
-
-      ! read MF=3, record=2
+    do
       read(in, 10) rec
-      read(rec(45:55), '(I11)') NR
-      read(rec(56:66), '(I11)') NP
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 4) exit
+      if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
+        & inelastic cross section in '//trim(filename))
+    end do
 
-      ! check number of interpolation regions
-      call check_interp_regions(NR)
+    read(rec(1:11),  '(E11.0)') ZA
+    read(rec(12:22), '(E11.0)') A
 
-      ! read MF=3, record=3
+    ! check ZAID agreement
+    call check_zaid(int(ZA), tope % ZAI)
+
+    ! check that mass is consistent
+    call check_mass(A, tope % AWR)
+
+    ! read MF=3, record=2
+    read(in, 10) rec
+    read(rec(45:55), '(I11)') NR
+    read(rec(56:66), '(I11)') NP
+
+    ! check number of interpolation regions
+    call check_interp_regions(NR)
+
+    ! read MF=3, record=3
+    read(in, 10) rec
+    read(rec( 1:11), '(I11)') NBT
+    read(rec(12:22), '(I11)') INTERP
+
+    ! check number of energy-xs pairs in this interpolation region
+    call check_n_pairs(NBT, NP)
+
+    ! check interpolation scheme is same as isotope interpolation scheme
+    call check_interp_scheme(INTERP, tope % MF3_INT)
+
+    allocate(tope % MF3_x_e(NP))
+    allocate(tope % MF3_x(NP))
+
+    i_e = 1
+    do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
       read(in, 10) rec
-      read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') INTERP
+      read(rec( 1:11), '(E11.0)') tope % MF3_x_e(i_e)
+      read(rec(12:22), '(E11.0)') tope % MF3_x(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(23:33), '(E11.0)') tope % MF3_x_e(i_e)
+      read(rec(34:44), '(E11.0)') tope % MF3_x(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(45:55), '(E11.0)') tope % MF3_x_e(i_e)
+      read(rec(56:66), '(E11.0)') tope % MF3_x(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+    end do
 
-      ! check number of energy-xs pairs in this interpolation region
-      call check_n_pairs(NBT, NP)
-
-      ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
-
-      allocate(tope % avg_urr_x_e(NP))
-      allocate(tope % avg_urr_x(NP))
-
-      i_e = 1
-      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % avg_urr_x_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % avg_urr_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % avg_urr_x_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % avg_urr_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % avg_urr_x_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % avg_urr_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-      end do
-
-      do
-        read(in, 10) rec
-        read(rec(71:72), '(I2)') MF
-        read(rec(73:75), '(I3)') MT
-        if (MF == 3 .and. MT == 18) exit
-        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
-          & elastic, inelastic, fission, or capture cross section in '&
-          &//trim(filename))
-      end do
-
-      read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') A
-
-      ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
-
-      ! check that mass is consistent
-      call check_mass(A, tope % AWR)
-
-      ! read MF=3, record=2
+    do
       read(in, 10) rec
-      read(rec(45:55), '(I11)') NR
-      read(rec(56:66), '(I11)') NP
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 18) exit
+      if (MF == 4) call fatal_error('Reached end of MF3 w/o reading a&
+        & fission cross section in '//trim(filename))
+    end do
 
-      ! check number of interpolation regions
-      call check_interp_regions(NR)
+    read(rec(1:11),  '(E11.0)') ZA
+    read(rec(12:22), '(E11.0)') A
 
-      ! read MF=3, record=3
+    ! check ZAID agreement
+    call check_zaid(int(ZA), tope % ZAI)
+
+    ! check that mass is consistent
+    call check_mass(A, tope % AWR)
+
+    ! read MF=3, record=2
+    read(in, 10) rec
+    read(rec(45:55), '(I11)') NR
+    read(rec(56:66), '(I11)') NP
+
+    ! check number of interpolation regions
+    call check_interp_regions(NR)
+
+    ! read MF=3, record=3
+    read(in, 10) rec
+    read(rec( 1:11), '(I11)') NBT
+    read(rec(12:22), '(I11)') INTERP
+
+    ! check number of energy-xs pairs in this interpolation region
+    call check_n_pairs(NBT, NP)
+
+    ! check interpolation scheme is same as isotope interpolation scheme
+    call check_interp_scheme(INTERP, tope % MF3_INT)
+
+    allocate(tope % MF3_f_e(NP))
+    allocate(tope % MF3_f(NP))
+
+    i_e = 1
+    do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
       read(in, 10) rec
-      read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') INTERP
+      read(rec( 1:11), '(E11.0)') tope % MF3_f_e(i_e)
+      read(rec(12:22), '(E11.0)') tope % MF3_f(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(23:33), '(E11.0)') tope % MF3_f_e(i_e)
+      read(rec(34:44), '(E11.0)') tope % MF3_f(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(45:55), '(E11.0)') tope % MF3_f_e(i_e)
+      read(rec(56:66), '(E11.0)') tope % MF3_f(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+    end do
 
-      ! check number of energy-xs pairs in this interpolation region
-      call check_n_pairs(NBT, NP)
-
-      ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
-
-      allocate(tope % avg_urr_f_e(NP))
-      allocate(tope % avg_urr_f(NP))
-
-      i_e = 1
-      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % avg_urr_f_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % avg_urr_f(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % avg_urr_f_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % avg_urr_f(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % avg_urr_f_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % avg_urr_f(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-      end do
-
-      do
-        read(in, 10) rec
-        read(rec(71:72), '(I2)') MF
-        read(rec(73:75), '(I3)') MT
-        if (MF == 3 .and. MT == 102) exit
-        if (MF == 4) call fatal_error('Reached end of MF3 w/o reading an&
-          & elastic, inelastic, fission, or capture cross section in '&
-          &//trim(filename))
-      end do
-
-      read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') A
-
-      ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
-
-      ! check that mass is consistent
-      call check_mass(A, tope % AWR)
-
-      ! read MF=3, record=2
+    do
       read(in, 10) rec
-      read(rec(45:55), '(I11)') NR
-      read(rec(56:66), '(I11)') NP
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 102) exit
+      if (MF == 4) call fatal_error('Reached end of MF3 w/o reading a&
+        & capture cross section in '&
+        &//trim(filename))
+    end do
 
-      ! check number of interpolation regions
-      call check_interp_regions(NR)
+    read(rec(1:11),  '(E11.0)') ZA
+    read(rec(12:22), '(E11.0)') A
 
-      ! read MF=3, record=3
+    ! check ZAID agreement
+    call check_zaid(int(ZA), tope % ZAI)
+
+    ! check that mass is consistent
+    call check_mass(A, tope % AWR)
+
+    ! read MF=3, record=2
+    read(in, 10) rec
+    read(rec(45:55), '(I11)') NR
+    read(rec(56:66), '(I11)') NP
+
+    ! check number of interpolation regions
+    call check_interp_regions(NR)
+
+    ! read MF=3, record=3
+    read(in, 10) rec
+    read(rec( 1:11), '(I11)') NBT
+    read(rec(12:22), '(I11)') INTERP
+
+    ! check number of energy-xs pairs in this interpolation region
+    call check_n_pairs(NBT, NP)
+
+    ! check interpolation scheme is same as isotope interpolation scheme
+    call check_interp_scheme(INTERP, tope % MF3_INT)
+
+    allocate(tope % MF3_g_e(NP))
+    allocate(tope % MF3_g(NP))
+
+    i_e = 1
+    do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
       read(in, 10) rec
-      read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') INTERP
-
-      ! check number of energy-xs pairs in this interpolation region
-      call check_n_pairs(NBT, NP)
-
-      ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
-
-      allocate(tope % avg_urr_g_e(NP))
-      allocate(tope % avg_urr_g(NP))
-
-      i_e = 1
-      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % avg_urr_g_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % avg_urr_g(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % avg_urr_g_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % avg_urr_g(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % avg_urr_g_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % avg_urr_g(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-      end do
-
-    else
-      continue
-    end if
+      read(rec( 1:11), '(E11.0)') tope % MF3_g_e(i_e)
+      read(rec(12:22), '(E11.0)') tope % MF3_g(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(23:33), '(E11.0)') tope % MF3_g_e(i_e)
+      read(rec(34:44), '(E11.0)') tope % MF3_g(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+      read(rec(45:55), '(E11.0)') tope % MF3_g_e(i_e)
+      read(rec(56:66), '(E11.0)') tope % MF3_g(i_e)
+      if (i_e == NP) exit
+      i_e = i_e + 1
+    end do
 
   end subroutine read_MF3
 
@@ -516,10 +508,10 @@ contains
 
   subroutine read_resonance_subsection(i, i_ER, LRU, LRF)
 
-    integer :: i ! index in global isotopes array
+    integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
-    integer :: LRU
-    integer :: LRF
+    integer :: LRU  ! resolved (1) or unresolved (2) parameters
+    integer :: LRF  ! ENDF-6 resonance formalism flag
 
     ! select energy range
     select case(LRU)
@@ -536,35 +528,22 @@ contains
       ! select formalism
       select case(LRF)
 
-      ! SLBW
-      case(1)
+      case(SLBW)
         call read_slbw_parameters(i, i_ER)
-
-      ! MLBW
-      case(2)
+      case(MLBW)
         call read_mlbw_parameters(i, i_ER)
-
-      ! Reich-Moore
-      case(3)
+      case(REICH_MOORE)
         call read_rm_parameters(i, i_ER)
-
-      ! Adler-Adler
-      case(4)
+      case(ADLER_ADLER)
         call fatal_error('Adler-Adler (LRF=4) formalism not supported in '&
           & //trim(filename))
-
-      ! General R-Matrix
-      case(5)
+      case(R_MATRIX)
         call fatal_error('General R-Matrix (LRF=5) formalism not allowed in '&
           & //trim(filename))
-
-      ! Hybrid R-Function
-      case(6)
+      case(R_FUNCTION)
         call fatal_error('Hybrid R-Function (LRF=6) formalism not allowed in '&
           & //trim(filename))
-
-      ! R-Matrix Limited
-      case(7)
+      case(R_MATRIX_LIM)
         call fatal_error('R-Matrix Limited (LRF=7) formalism not supported in '&
           & //trim(filename))
 

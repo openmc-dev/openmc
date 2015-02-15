@@ -1,0 +1,60 @@
+<?xml version='1.0'?>
+
+<?PI pi1?>
+<!-- comment 1 -->
+<!DOCTYPE test PUBLIC "abarse" "bum" [
+<!NOTATION note SYSTEM "bum">
+<!ENTITY qr "  &lkj;  &pqr;">
+<!ENTITY lkj " &yt;">
+<!ENTITY pqr " bum">
+<?PI pi2?>
+<!ENTITY yt "arse">
+<!ENTITY % qr '<!ENTITY a "b" >'>
+<!ENTITY % pc "&#37;qr;">
+<!ENTITY % pc2 "qr;">
+<!ENTITY % twoqr "&#37;qr;">
+<!-- comment 2 -->
+<!ENTITY % qr2 SYSTEM "kjlh">
+<!ENTITY % qr3 PUBLIC "kjlh" "jhg">
+<!ENTITY qr "lkj">
+<!ENTITY qr2 SYSTEM "arse">
+<!ENTITY qr3 SYSTEM "arse" NDATA note>
+<!ENTITY qr4 PUBLIC "arse" "poo">
+<!ENTITY qr5 PUBLIC "arse" "poo" NDATA note>
+<!ENTITY qr6 "<">
+<!ENTITY trouble "<abc/>">
+%pc;
+<!ELEMENT br (#PCDATA) >
+<!ATTLIST termdef
+id      ID      #REQUIRED
+name    CDATA   #IMPLIED>
+<!ATTLIST termdef
+id      ID      #REQUIRED
+name    CDATA   #IMPLIED>
+<!ATTLIST list
+type    (bullets|ordered|glossary)  "ordered">
+<!ATTLIST form
+method  CDATA   #FIXED "POST">
+<!ATTLIST test
+notcdata NMTOKENS #IMPLIED
+default CDATA "default">
+<!ENTITY content "<abc/>">
+]>
+
+<?PI pi3?>
+
+<!-- comment 3 -->
+<test notcdata="  ab 
+ cd " att="&qr;">
+lalala
+&#37;
+&qr;
+&trouble;
+<?PI pi4?>
+<!-- comment 4 -->
+
+<error xml:space="preserve"/>
+
+</test>
+<?PI pi5?>
+<!-- comment 5 -->

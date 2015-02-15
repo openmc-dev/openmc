@@ -1,0 +1,13 @@
+ scheme: file
+ authority: 
+ userinfo UNDEFINED
+ host UNDEFINED
+ port UNDEFINED
+ path: /C:/a ctivity.xml
+     segment: /
+     segment: C:/
+     segment: a ctivity.xml
+ query UNDEFINED
+ fragment UNDEFINED
+ file:///C:/a%20ctivity.xml                                                                          
+

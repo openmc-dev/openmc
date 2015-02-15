@@ -1,0 +1,130 @@
+#!/bin/sh
+
+comp_prefix=@OBJSDIR@
+moddir=`@CYGPATH_W@ $comp_prefix/finclude`
+libdir=`@CYGPATH_W@ $comp_prefix/lib`
+version=@PACKAGE_VERSION@
+
+usage()
+{
+    cat <<EOF
+Usage: FoX-config [OPTION]
+
+Known values for OPTION are:
+
+  --libs		print library linking information
+  --fcflags		print pre-processor and compiler flags
+  --help		display this help and exit
+  --version		display version information
+EOF
+
+    exit $1
+}
+
+FLAGS=both
+MODULES=
+while test $# -gt 0; do
+    case "$1" in
+    -*=*) optarg=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+    *) optarg= ;;
+    esac
+
+    case "$1" in
+    --version)
+	echo ${version}
+	exit 0
+	;;
+
+    --help)
+	usage 0
+	;;
+
+    --fcflags)
+        FLAGS=FC
+       	;;
+
+    --libs)
+        FLAGS=LD
+       	;;
+
+    --common)
+        MODULES="$MODULES common utils fsys"
+        ;;
+    --utils)
+        MODULES="$MODULES utils fsys"
+        ;;
+    --wxml)
+        MODULES="$MODULES wxml common utils fsys"
+        ;;
+    --wcml)
+        MODULES="$MODULES wcml wxml common utils fsys"
+        ;;
+    --sax)
+        MODULES="$MODULES sax common utils fsys"
+        ;;
+    --dom)
+        MODULES="$MODULES dom sax wxml common utils fsys"
+        ;;
+    --wkml)
+        MODULES="$MODULES wkml wxml common utils fsys"
+        ;;
+
+    *)
+	usage
+	exit 1
+	;;
+    esac
+    shift
+done
+
+if [ "x$MODULES" = x ]; then
+#  MODULES="dom sax wcml wxml common utils fsys"
+  MODULES="dom sax wkml wcml wxml common utils fsys"
+fi
+
+case $MODULES in *fsys*)
+  LIBS=$libdir/libFoX_fsys.@LIBEXT@
+  ;;
+esac
+case $MODULES in *utils*)
+  LIBS="$libdir/libFoX_utils.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *common*)
+  LIBS="$libdir/libFoX_common.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *wxml*)
+  LIBS="$libdir/libFoX_wxml.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *wcml*)
+  LIBS="$libdir/libFoX_wcml.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *sax*)
+  LIBS="$libdir/libFoX_sax.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *dom*)
+  LIBS="$libdir/libFoX_dom.@LIBEXT@ $LIBS"
+  ;;
+esac
+case $MODULES in *wkml*)
+  LIBS="$libdir/libFoX_wkml.@LIBEXT@ $LIBS"
+  ;;
+esac
+
+
+case $FLAGS in
+  FC)
+    echo @FC_MOD_FLAG@"$moddir"
+    ;;
+  LD)
+    echo $LIBS
+    ;;
+  both)
+    echo @FC_MOD_FLAG@"$moddir" $LIBS
+esac 
+
+exit 0

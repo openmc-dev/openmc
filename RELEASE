@@ -1,0 +1,18 @@
+Check compilation with & without --enable-dummy
+
+Check version number in:
+config/configure.ac
+common/FoX_common.F90
+DoX/Versioning.md
+wcml/test/test_cmlEndCml_2.xml
+& on the webpage
+
+Regenerate configure script - make in config/
+
+Check dates in license
+
+Update Changelog
+
+Commit state to SCM system
+
+release.sh

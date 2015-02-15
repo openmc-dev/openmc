@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+
+<!DOCTYPE public test>
+
+<!-- this file has over 1024 whitespace characters before the DOCTYPE -->
+<!-- A Comment: Illustration of Allowable Constructs -->
+
+<!-- Test of XML parsing 
+      Alberto Garcia, May-June 2003 -->
+
+<test xmlns="http://www.uszla.me.uk/namespaces/test" xmlns:pqr="http://sjkldhf" version   =  "0.1">
+  <pqr:preamble>A small file exercising all the features
+          in the parser...
+    <blah xmlns="http://www.uszla.me.uk/nsother" pqr:attr="namespaced attribute">
+      <pqr:ppp xmlns:pqr="http://lalala"/>
+    </blah>
+  </pqr:preamble>
+
+<title>Mary had a &lt;little&gt; lamb who liked standard entities</title>
+
+<text>This is some text, with character references (&#x4F; &#87;)
+and some cdata sections inside to make it more interesting. How about this
+<![CDATA[ 
+                   <begin> 
+                    pepe 
+                   </end> ]]>    ?
+</text>
+
+<single what="An 'empty' tag" />
+
+<tag which="has" a="lot" no="really" loads="o" fa="t" t="r" i="b" u="t" e="s" in="it"/>
+
+<pqr:misc pqr:disposition="throw_away" with_entity="&quot;you&quot;"
+         other_att = 'single quotes to enclose "Oh!"...'  >
+In the next pcdata chunk there is an unknown entity
+1.24 &notknown;3.45
+(It was flagged, but the parser continued)
+
+In the following chunk there is a character reference out of range of the
+char() intrinsic... remove it from test.xml if it gives you trouble.
+
+Offending reference: &#3456; 
+
+2.454 9.455
+<![CDATA[ <<<<< some hairy cdata!>>>]]]<<<>!?  ]]>
+</pqr:misc>
+</test>
+
+
+
+
+

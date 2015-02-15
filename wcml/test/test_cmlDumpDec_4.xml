@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cml convention="convention:compchem" fileId="test.xml" xmlns="http://www.xml-cml.org/schema" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:fpx="http://www.uszla.me.uk/fpx" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:units="http://www.uszla.me.uk/FoX/units" xmlns:cmlUnits="http://www.xml-cml.org/units/units" xmlns:siUnits="http://www.xml-cml.org/units/siUnits" xmlns:atomicUnits="http://www.xml-cml.org/units/atomic" xmlns:convention="http://www.xml-cml.org/convention/" xmlns:compchem="http://www.xml-cml.org/dictionary/compchem/">
+  <module dictRef="compchem:inputFileList">
+    <module dictRef="compchem:inputFile">
+      <metadataList>
+        <metadata name="compchem:inputFileName" content="test_cmlDumpDec_4a.in"/>
+      </metadataList>
+      <scalar dataType="xsd:string">opti prop conp                                                                  </scalar>
+      <scalar dataType="xsd:string">title                                                                           </scalar>
+      <scalar dataType="xsd:string">alumina test file                                                               </scalar>
+      <scalar dataType="xsd:string">end                                                                             </scalar>
+      <scalar dataType="xsd:string">cell                                                                            </scalar>
+      <scalar dataType="xsd:string">4.7602   4.7602  12.9933  90.000000  90.000000 120.0                            </scalar>
+      <scalar dataType="xsd:string">frac                                                                            </scalar>
+      <scalar dataType="xsd:string">Al core 0.000000   0.000000   0.352160                                          </scalar>
+      <scalar dataType="xsd:string">Al shel 0.000000   0.000000   0.352160                                          </scalar>
+      <scalar dataType="xsd:string">O  core 0.306240   0.000000   0.250000                                          </scalar>
+      <scalar dataType="xsd:string">O  shel 0.306240   0.000000   0.250000                                          </scalar>
+      <scalar dataType="xsd:string">space                                                                           </scalar>
+      <scalar dataType="xsd:string">167                                                                             </scalar>
+      <scalar dataType="xsd:string">species                                                                         </scalar>
+      <scalar dataType="xsd:string">Al core  0.043                                                                  </scalar>
+      <scalar dataType="xsd:string">Al shel  2.957                                                                  </scalar>
+      <scalar dataType="xsd:string">O  core  0.513                                                                  </scalar>
+      <scalar dataType="xsd:string">O  shel -2.513                                                                  </scalar>
+      <scalar dataType="xsd:string">buckingham                                                                      </scalar>
+      <scalar dataType="xsd:string">Al shel O shel  2409.505 0.2649  0.00 0.0 10.0                                  </scalar>
+      <scalar dataType="xsd:string">O  shel O shel    25.410 0.6937 32.32 0.0 12.0                                  </scalar>
+      <scalar dataType="xsd:string">spring                                                                          </scalar>
+      <scalar dataType="xsd:string">Al 403.98                                                                       </scalar>
+      <scalar dataType="xsd:string">O   20.53                                                                       </scalar>
+      <scalar dataType="xsd:string">output xr example1                                                              </scalar>
+      <scalar dataType="xsd:string">output marvin example1.mvn                                                      </scalar>
+    </module>
+    <module dictRef="compchem:inputFile">
+      <metadataList>
+        <metadata name="compchem:inputFileName" content="test_cmlDumpDec_4b.in"/>
+      </metadataList>
+      <scalar dataType="xsd:string">fit conp simul opti                                                             </scalar>
+      <scalar dataType="xsd:string">cell                                                                            </scalar>
+      <scalar dataType="xsd:string">   4.914730   4.914730   5.406570  90.000000  90.000000 120.0                   </scalar>
+      <scalar dataType="xsd:string">fractional                                                                      </scalar>
+      <scalar dataType="xsd:string">Si core  0.468200   0.000000   0.333333    4.000000                             </scalar>
+      <scalar dataType="xsd:string">O  core  0.413100   0.266100   0.213100    0.869020                             </scalar>
+      <scalar dataType="xsd:string">O  shel  0.431813   0.264902   0.204106   -2.869020                             </scalar>
+      <scalar dataType="xsd:string">space                                                                           </scalar>
+      <scalar dataType="xsd:string">152                                                                             </scalar>
+      <scalar dataType="xsd:string">general 0 6 grad                                                                </scalar>
+      <scalar dataType="xsd:string">Si core O shel 1283.037674      0.320500     10.660000   0.0  8.0 1 0 0         </scalar>
+      <scalar dataType="xsd:string">buck                                                                            </scalar>
+      <scalar dataType="xsd:string">O shel O shel 22764.0 0.149 27.88  0.0000  8.0000 0 0 0                         </scalar>
+      <scalar dataType="xsd:string">spring                                                                          </scalar>
+      <scalar dataType="xsd:string">O 74.92 0                                                                       </scalar>
+      <scalar dataType="xsd:string">three                                                                           </scalar>
+      <scalar dataType="xsd:string">Si core O shel O shel 2.097240   109.470000  1.8000  1.8000  3.2000 0 0         </scalar>
+      <scalar dataType="xsd:string">dump example2.res                                                               </scalar>
+    </module>
+  </module>
+</cml>

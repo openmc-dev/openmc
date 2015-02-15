@@ -1,0 +1,3 @@
+ERROR(wxml) in writing to file 
+test.xml
+Trying to close root2 but root is open. Either you have failed to open root2 or you have failed to close root.

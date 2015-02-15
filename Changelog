@@ -1,0 +1,94 @@
+2012-01-05: version 4.1.2
+        Fix --enable-dummy bug that stopped compilation
+        Reorder generic procedures used in specification-parts
+        to allow strict Fortran 2008 compilers to build FoX
+        Work around minor issue with Cray compiler. FoX will now 
+        build and run with the Cray Fortran compiler.
+        
+2011-12-05: version 4.1.1
+        Add new 'countrts' function to common
+        Add capability for wcml to handle bonds
+        Fix bug to allow 'empty' DOCTYPE names in SAX parser
+        Trap and report file name errors in SAX and DOM
+        Fix procedure name length and use statments in wkml
+        
+2010-02-09: version 4.1.0
+        Add wkml, a KML output module
+        Add invalid-pretty-print dom extension option
+        Add FoX_[set|get]_fatal_[errors|warnings] to common
+        Makefile modified to allow -j flag to work
+        Portability workarounds for the Portland Group compiler (pgf90)
+        Assorted bugfixes
+        
+2009-06-16: version 4.0.4
+        Assorted bugfixes
+        Added CMake files
+        Added URI tests
+
+2008-08-26: version 4.0.3
+        Portability workarounds for the Portland Group compiler (pgf90)
+	Minor bug fixes
+
+2008-07-23: version 4.0.2
+        Fix crashes in the SAX parser
+        Allow extended 8-bit chars where appropriate
+        Support VPATH compilation
+        Minor bug fixes
+
+2008-03-30: version 4.0.1
+        Portability fixes for ifort
+
+2008-03-28: version 4.0
+        Fully validating SAX parser
+        Support for xml:id and xml:base
+        Additional DOM Level 3 functions
+
+2008-03-19: version 3.2.0
+        New eigen- and symmetry output functions for WCML
+        Portability workarounds for Cygwin/ifort, gfortran, XLF, and Pathscale
+
+2008-01-19: version 3.1.2
+        Add iostat argument for DOM parseFile
+        Return correct value for getAttribute on nonexistent attribute
+        Fix misparsing in common_parse_input
+        Permit creation of cut-down libraries
+
+2007-01-04: version 3.1.1
+        Fix to ensure DUMMY library works correctly
+
+2007-12-22: version 3.1
+	Portability improvements
+	DUMMY library for wxml/wcml
+	Extended DOM 3 implementation
+
+2007-10-19: version 3.0
+        Release DOM interface
+        Improved configuration infrastructure
+        Bugfixes
+
+2007-05-23: version 2.1.1
+        UUID generation
+        Developer control over error handling
+        Minor bugfixes
+
+2007-01-07: version 2.1.0
+        Introduce fully-rewritten SAX interface
+        Full WCML testsuite
+        Complex number output for WXML & WCML
+        Assorted minor bugfixes
+
+2006-10-05: version 2.0.2
+        Fix crash on printing matrices
+        Assorted documentation fixes.
+        Several testsuite fixes/improvements
+        Require unit number for cmlBeginFile
+
+2006-08-14: Version 2.0.1
+	Several documentation fixes
+	Workaround for Pathscale bug - also confirmed working on Lahey & gfortran-2.0
+	Remove some unwanted references to SAX/DOM modules.
+	Destroying a resized attribute list caused a crash - now fixed.
+
+2006-08-09: Version 2.0:
+	First public release.
+	Only wxml & wcml included.

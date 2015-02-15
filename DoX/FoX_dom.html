@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>FoX_dom</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>DOM</h1>
+
+<h2>Overview</h2>
+
+<p>The FoX DOM interface exposes an API as specified by the W3C DOM Working group.</p>
+
+<p>FoX implements essentially all of DOM Core Levels 1 and 2, (there are a number of minor exceptions which are listed below) and a substantial portion of DOM Core Level 3.</p>
+
+<ul>
+<li><a href="#DomQuickOverview">Quick overview of how to map the DOM interface to Fortran</a>  </li>
+<li><a href="#DomDetailedInterface">More detailed explanation of Fortran interface</a>  </li>
+<li><a href="#DomUtilityFunctions">Additional (non-DOM) utility functions</a>  </li>
+<li><a href="#DomString">String handling</a>  </li>
+<li><a href="#DomException">Exception handling</a>  </li>
+<li><a href="#DomLiveNodelists">Live nodelists</a>  </li>
+<li><a href="#DomConfiguration">DOM Configuration</a>  </li>
+<li><a href="#DomMiscellanea">Miscellanea</a></li>
+</ul>
+
+<h2>Interface Mapping</h2>
+
+<p><a name="DomQuickOverview"/></p>
+
+<p>FoX implements all objects and methods mandated in DOM Core Level 1 and 2. (A listing of supported DOM Core Level 3 interfaces is given below.)</p>
+
+<p>In all cases, the mapping from DOM interface to Fortran implementation is as follows:</p>
+
+<ol>
+<li>All DOM objects are available as Fortran types, and should be referenced only as pointers (though see 7 and 8 below). Thus, to use a Node, it must be declared first as: <br />
+<code>type(Node), pointer :: aNode</code></li>
+<li>A flat (non-inheriting) object hierarchy is used. All DOM objects which inherit from Node are represented as Node types.   </li>
+<li>All object method calls are modelled as functions or subroutines with the same name, whose first argument is the object. Thus: <br />
+<code>aNodelist = aNode.getElementsByTagName(tagName)</code> <br />
+should be converted to Fortran as: <br />
+<code>aNodelist =&gt; getElementsByTagName(aNode, tagName)</code>  </li>
+<li>All object method calls whose return type is void are modelled as subroutines. Thus: <br />
+<code>aNode.normalize()</code> <br />
+becomes
+<code>call normalize(aNode)</code>   </li>
+<li>All object attributes are modelled as a pair of get/set calls (or only get where the attribute is readonly), with the naming convention being merely to prepend get or set to the attribute name. Thus: <br />
+<code>name = node.nodeName</code> <br />
+<code>node.nodeValue = string</code> <br />
+should be converted to Fortran as <br />
+<code>name = getnodeName(node)</code> <br />
+<code>call setnodeValue(string)</code>  </li>
+<li>Where an object method or attribute getter returns a DOM object, the relevant Fortran function must always be used as a pointer function. Thus: <br />
+<code>aNodelist =&gt; getElementsByTagName(aNode, tagName)</code>  </li>
+<li>No special DOMString object is used - all string operations are done on the standard Fortran character strings, and all functions that return DOMStrings return Fortran character strings.</li>
+<li>Exceptions are modelled by every DOM subroutine/function allowing an optional additional argument, of type DOMException. For further information see (DOM Exceptions.html) below. </li>
+</ol>
+
+<h3>String handling</h3>
+
+<p><a name="DomString"/></p>
+
+<p>The W3C DOM requires that a <code>DOMString</code> object exist, capable of holding Unicode strings; and that all DOM functions accept and emit DOMString objects when string data is to be transferred.</p>
+
+<p>FoX does not follow this model. Since (as mentioned elsewhere) it is impossible to perform Unicode I/O in standard Fortran, it would be obtuse to require users to manipulate additional objects merely to transfer strings. Therefore, wherever the DOM mandates use of a <code>DOMString</code>, FoX merely uses standard Fortran character strings.</p>
+
+<p>All functions or subroutines which expect DOMString input arguments should be used with normal character strings. <br />
+All functions which should return DOMString objects will return Fortran character strings.</p>
+
+<h3>Using the FoX DOM library.</h3>
+
+<p>All functions are exposed through the module <code>FoX_DOM</code>. <code>USE</code> this in your program:</p>
+
+<pre><code>program dom_example
+
+  use FoX_DOM
+  type(Node) :: myDoc
+
+  myDoc =&gt; parseFile("fileIn.xml")
+  call serialize(myDoc, "fileOut.xml")
+end program dom_example
+</code></pre>
+
+<h2>Documenting DOM functions</h2>
+
+<p><a name="DomDetailedInterface"/></p>
+
+<p>This manual will not exhaustively document the functions available through the <code>Fox_DOM</code> interface. Primary documentation may be found in the W3C DOM specifications:`</p>
+
+<ul>
+<li><a href="http://www.w3.org/TR/REC-DOM-Level-1/">DOM Core Level 1</a></li>
+<li><a href="http://www.w3.org/TR/DOM-Level-2-Core/">DOM Core Level 2</a></li>
+<li><a href="http://www.w3.org/TR/DOM-Level-3-Core/">DOM Core Level 3</a></li>
+</ul>
+
+<p>The systematic rules for translating the DOM interfaces to Fortran are given in the previous section. For completeness, though, there is a list here. The W3C specifications should be consulted for the use of each.</p>
+
+<p>DOMImplementation: <br />
+<code>type(DOMImplementation), pointer</code></p>
+
+<ul>
+<li><code>hasFeature(impl, feature, version)</code>  </li>
+<li><code>createDocumentType(impl, qualifiedName, publicId, systemId)</code>  </li>
+<li><code>createDocument(impl, qualifiedName, publicId, systemId)</code>  </li>
+</ul>
+
+<p>Document: 
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getDocType(doc)</code></li>
+<li><code>getImplementation(doc)</code>    </li>
+<li><code>getDocumentElement(doc)</code>    </li>
+<li><code>createElement(doc, tagname)</code>    </li>
+<li><code>createDocumentFragment(doc)</code>    </li>
+<li><code>createTextNode(doc, data)</code>    </li>
+<li><code>createComment(doc, data)</code>    </li>
+<li><code>createCDataSection(doc, data)</code>    </li>
+<li><code>createProcessingInstruction(doc, target, data)</code>    </li>
+<li><code>createAttribute(doc, name)</code>    </li>
+<li><code>createEntityReference(doc, name)</code>    </li>
+<li><code>getElementsByTagName(doc, tagname)</code>    </li>
+<li><code>importNode(doc, importedNode, deep)</code>    </li>
+<li><code>createElementNS(doc, namespaceURI, qualifiedName)</code>    </li>
+<li><code>createAttributeNS(doc, namespaceURI, qualifiedName)</code>    </li>
+<li><code>getElementsByTagNameNS(doc, namespaceURI, qualifiedName)</code>    </li>
+<li><code>getElementById(doc, elementId)</code></li></li>
+</ul>
+
+<p>Node: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getNodeName(arg)</code>    </li>
+<li><code>getNodeValue(arg)</code>    </li>
+<li><code>setNodeValue(arg, value)</code>    </li>
+<li><code>getNodeType(arg)</code>    </li>
+<li><code>getParentNode(arg)</code>    </li>
+<li><code>getChildNodes(arg)</code>    </li>
+<li><code>getFirstChild(arg)</code>    </li>
+<li><code>getLastChild(arg)</code>    </li>
+<li><code>getPreviousSibling(arg)</code>    </li>
+<li><code>getNextSibling(arg)</code>    </li>
+<li><code>getAttributes(arg)</code>    </li>
+<li><code>getOwnerDocument(arg)</code>    </li>
+<li><code>insertBefore(arg, newChild, refChild)</code>    </li>
+<li><code>replaceChild(arg, newChild, refChild)</code>    </li>
+<li><code>removeChild(arg, oldChild)</code>    </li>
+<li><code>appendChild(arg, newChild)</code>    </li>
+<li><code>hasChildNodes(arg)</code>  </li>
+<li><code>cloneNode(arg, deep)</code>  </li>
+<li><code>normalize</code>    </li>
+<li><code>isSupported(arg, feature, version)</code>    </li>
+<li><code>getNamespaceURI(arg)</code>    </li>
+<li><code>getPrefix(arg)</code>    </li>
+<li><code>setPrefix(arg, prefix)</code>  </li>
+<li><code>getLocalName(arg)</code>    </li>
+<li><code>hasAttributes(arg)</code> <br />
+</ul></li>
+</ul>
+
+<p>NodeList: <br />
+<code>type(NodeList), pointer</code></p>
+
+<ul>
+<li><code>item(arg, index)</code>    </li>
+<li><code>getLength(arg)</code>  </li>
+</ul>
+
+<p>NamedNodeMap: <br />
+<code>type(NamedNodeMap), pointer</code></p>
+
+<ul>
+<li><code>getNamedItem(map, name)</code>    </li>
+<li><code>setNamedItem(map, arg)</code>    </li>
+<li><code>removeNamedItem(map, name)</code>    </li>
+<li><code>item(map, index)</code>    </li>
+<li><code>getLength(map)</code>    </li>
+<li><code>getNamedItemNS(map, namespaceURI, qualifiedName)</code>    </li>
+<li><code>setNamedItemNS(map, arg)</code>    </li>
+<li><code>removeNamedItemNS(map, namespaceURI, qualifiedName)</code>    </li>
+</ul>
+
+<p>CharacterData: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getData(np)</code>    </li>
+<li><code>setData(np, data)</code>    </li>
+<li><code>getLength(np)</code>    </li>
+<li><code>substringData(np, offset, count)</code>    </li>
+<li><code>appendData(np, arg)</code>    </li>
+<li><code>deleteData(np, offset, count)</code>    </li>
+<li><code>replaceData(np, offset, count, arg)</code></li>
+</ul>
+
+<p>Attr: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getName(np)</code>    </li>
+<li><code>getSpecified(np)</code>    </li>
+<li><code>getValue(np)</code>    </li>
+<li><code>setValue(np, value)</code>    </li>
+<li><code>getOwnerElement(np)</code></li>
+</ul>
+
+<p>Element: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getTagName(np)</code>    </li>
+<li><code>getAttribute(np, name)</code>    </li>
+<li><code>setAttribute(np, name, value)</code>    </li>
+<li><code>removeAttribute(np, name)</code>    </li>
+<li><code>getAttributeNode(np, name)</code>    </li>
+<li><code>setAttributeNode(np, newAttr)</code>    </li>
+<li><code>removeAttributeNode(np, oldAttr)</code>    </li>
+<li><code>getElementsByTagName(np, name)</code>  </li>
+<li><code>getAttributeNS(np, namespaceURI, qualifiedName)</code>    </li>
+<li><code>setAttributeNS(np, namespaceURI, qualifiedName, value)</code>    </li>
+<li><code>removeAttributeNS(np, namespaceURI, qualifiedName)</code>    </li>
+<li><code>getAttributeNode(np, namespaceURI, qualifiedName)</code>    </li>
+<li><code>setAttributeNode(np, newAttr)</code>    </li>
+<li><code>removeAttributeNode(np, oldAttr)</code>    </li>
+<li><code>getElementsByTagNameNS(np, namespaceURI, qualifiedName)</code>    </li>
+<li><code>hasAttribute(np, name)</code>    </li>
+<li><code>hasAttributeNS(np, namespaceURI, qualifiedName)</code>  </li>
+</ul>
+
+<p>Text: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>splitText(np, offset)</code>    </li>
+</ul>
+
+<p>DocumentType: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getName(np)</code>    </li>
+<li><code>getEntites(np)</code>    </li>
+<li><code>getNotations(np)</code>    </li>
+<li><code>getPublicId(np)</code>    </li>
+<li><code>getSystemId(np)</code>    </li>
+<li><code>getInternalSubset(np)</code>    </li>
+</ul>
+
+<p>Notation: <br />
+<code>type(Node), pointer</code> </p>
+
+<ul>
+<li><code>getPublicId(np)</code>    </li>
+<li><code>getSystemId(np)</code>    </li>
+</ul>
+
+<p>Entity: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getPublicId(np)</code>    </li>
+<li><code>getSystemId(np)</code>  </li>
+<li><code>getNotationName(np)</code>    </li>
+</ul>
+
+<p>ProcessingInstruction: <br />
+<code>type(Node), pointer</code></p>
+
+<ul>
+<li><code>getTarget(np)</code>    </li>
+<li><code>getData(np)</code>    </li>
+<li><code>setData(np, data)</code> </li>
+</ul>
+
+<p>In addition, the following DOM Core Level 3 functions are available:</p>
+
+<p>Document:</p>
+
+<ul>
+<li><code>getDocumentURI(np)</code>  </li>
+<li><code>setDocumentURI(np, documentURI)</code>  </li>
+<li><code>getDomConfig(np)</code>  </li>
+<li><code>getInputEncoding(np)</code>  </li>
+<li><code>getStrictErrorChecking(np)</code>  </li>
+<li><code>setStrictErrorChecking(np, strictErrorChecking)</code>  </li>
+<li><code>getXmlEncoding(np)</code>  </li>
+<li><code>getXmlStandalone(np)</code>  </li>
+<li><code>setXmlStandalone(np, xmlStandalone)</code>  </li>
+<li><code>getXmlVersion(np)</code>  </li>
+<li><code>setXmlVersion(np, xmlVersion)</code>  </li>
+<li><code>adoptNode(np, source)</code>   </li>
+<li><code>normalizeDocument(np)</code>  </li>
+<li><code>renameNode(np, namespaceURI, qualifiedName)</code>  </li>
+</ul>
+
+<p>Node:</p>
+
+<ul>
+<li><code>getBaseURI(np)</code>  </li>
+<li><code>getTextContent(np)</code>  </li>
+<li><code>setTextContent(np, textContent)</code>  </li>
+<li><code>isEqualNode(np, other)</code></li>
+<li><code>isSameNode(np)</code>  </li>
+<li><code>isDefaultNamespace(np, namespaceURI)</code>  </li>
+<li><code>lookupPrefix(np, namespaceURI)</code>  </li>
+<li><code>lookupNamespaceURI(np, prefix)</code>  </li>
+</ul>
+
+<p>Attr:</p>
+
+<ul>
+<li><code>getIsId(np)</code></li>
+</ul>
+
+<p>Entity:  </p>
+
+<ul>
+<li><code>getInputEncoding(np)</code>  </li>
+<li><code>getXmlVersion(np)</code>  </li>
+<li><code>getXmlEncoding(np)</code>  </li>
+</ul>
+
+<p>Text:</p>
+
+<ul>
+<li><code>getIsElementContentWhitespace(np)</code>  </li>
+</ul>
+
+<p>DOMConfiguration: <br />
+<code>type(DOMConfiguration)</code></p>
+
+<ul>
+<li><code>canSetParameter(arg, name, value)</code>  </li>
+<li><code>getParameter(arg, name)</code> </li>
+<li><code>getParameterNames(arg)</code>  </li>
+<li><code>setParameter(arg, name)</code>  </li>
+</ul>
+
+<p><em>NB For details on DOMConfiguration, see <a href="#DomConfiguration">below</a></em></p>
+
+<h3>Object Model</h3>
+
+<p>The DOM is written in terms of an object model involving inheritance, but also permits a flattened model. FoX implements this flattened model - all objects descending from the Node are of the opaque type <code>Node</code>. Nodes carry their own type, and attempts to call functions defined on the wrong nodetype (for example, getting the <code>target</code> of a node which is not a PI) will result in a <code>FoX_INVALID_NODE</code> exception.</p>
+
+<p>The other types available through the FoX DOM are:</p>
+
+<ul>
+<li><code>DOMConfiguration</code>  </li>
+<li><code>DOMException</code>   </li>
+<li><code>DOMImplementation</code>  </li>
+<li><code>NodeList</code>  </li>
+<li><code>NamedNodeMap</code></li>
+</ul>
+
+<h3>FoX DOM and pointers</h3>
+
+<p>All DOM objects exposed to the user may only be manipulated through pointers. Attempts to access them directly will result in compile-time or run-time failures according to your environment.</p>
+
+<p>This should have little effect on the structure of your programs, except that you must always remember, when calling a DOM function, to perform pointer assignment, not direct assignment, thus: <br />
+<code>child =&gt; getFirstChild(parent)</code> <br />
+and <em>not</em> <br />
+<code>child = getFirstChild(parent)</code>  </p>
+
+<h3>Memory handling</h3>
+
+<p>Fortran offers no garbage collection facility, so unfortunately a small degree of memory
+handling is necessarily exposed to the user.</p>
+
+<p>However, this has been kept to a minimum. FoX keeps track of all memory allocated and used when calling DOM routines, and keeps references to all DOM objects created.</p>
+
+<p>The only memory handling that the user needs to take care of is destroying any
+DOM Documents (whether created manually, or by the <code>parse()</code> routine.) All other nodes or node structures created will be destroyed automatically by the relevant <code>destroy()</code> call.</p>
+
+<p>As a consequence of this, all DOM objects which are part of a given document will become inaccessible after the document object is destroyed.</p>
+
+<h2>Additional functions.</h2>
+
+<p><a name="DomUtilityFunctions"/></p>
+
+<p>Several additional utility functions are provided by FoX.</p>
+
+<h3>Input and output of XML data</h3>
+
+<p>Firstly, to construct a DOM tree, from either a file or a string containing XML data.</p>
+
+<ul>
+<li><code>parseFile</code> <br />
+<strong>filename</strong>: <em>string</em> <br />
+(<strong>configuration</strong>): <em>DOMConfiguration</em> <br />
+(<strong>ex</strong>): <em>DOMException</em>  </li>
+</ul>
+
+<p><strong>filename</strong> should be an XML document. It will be opened and parsed into a DOM tree. The parsing is performed by the FoX SAX parser; if the XML document is not well-formed, a <code>PARSE_ERR</code> exception will be raised. <strong>configuration</strong> is an optional argument - see <a href="#DomConfiguration">DOMConfiguration</a> for its meaning.</p>
+
+<ul>
+<li><code>parseString</code> <br />
+<strong>XMLstring</strong>: <em>string</em> <br />
+(<strong>configuration</strong>): <em>DOMConfiguration</em> <br />
+(<strong>ex</strong>): <em>DOMException</em></li>
+</ul>
+
+<p><strong>XMLstring</strong> should be a string containing XML data. It will be parsed into a DOM tree. The parsing is performed by the FoX SAX parser; if the XML document is not well-formed, a <code>PARSE_ERR</code> exception will be raised. <strong>configuration</strong> is an optional argument - see <a href="#DomConfiguration">DOMConfiguration</a> for its meaning.</p>
+
+<p>Both <code>parseFile</code> and <code>parseString</code> return a pointer to a <code>Node</code> object containing the Document Node.`</p>
+
+<p>Secondly, to output an XML document:</p>
+
+<ul>
+<li><code>serialize</code> <br />
+<strong>arg</strong>: <em>Node, pointer</em>
+<strong>fileName</strong>: <em>string</em> </li>
+</ul>
+
+<p>This will open <code>fileName</code> and serialize the DOM tree by writing into the file. If <code>fileName</code> already exists, it will be overwritten. If an problem arises in serializing the document, then a fatal error will result.</p>
+
+<p>(Control over serialization options is done through the configuration of the <strong>arg</strong>'s ownerDocument, see <a href="#DomConfiguration">below</a>.)</p>
+
+<p>Finally, to clean up all memory associated with the DOM, it is necessary to call:</p>
+
+<ul>
+<li><code>destroy</code> <br />
+<strong>np</strong>: <em>Node, pointer</em></li>
+</ul>
+
+<p>This will clear up all memory usage associated with the document (or documentType) node passed in.</p>
+
+<h3>Extraction of data from an XML file.</h3>
+
+<p><a name="dataExtraction"/></p>
+
+<p>The standard DOM functions only deal with string data. When dealing with numerical (or logical) data,
+the following functions may be of use.</p>
+
+<ul>
+<li><code>extractDataContent</code>  </li>
+<li><code>extractDataAttribute</code>  </li>
+<li><code>extractDataAttributeNS</code></li>
+</ul>
+
+<p>These extract data from, respectively, the text content of an element, from one of its attributes, or from one of its namespaced attributes.
+They are used like so:</p>
+
+<p>(where <code>p</code> is an element which has been selected by means of the other DOM functions)</p>
+
+<pre><code>call extractDataContent(p, data)
+</code></pre>
+
+<p>The subroutine will look at the text contents of the element, and interpret according to the type of <code>data</code>. That is, if <code>data</code> has been declared as an <code>integer</code>, then the contents of <code>p</code> will be read as such an placed into <code>data</code>.</p>
+
+<p><code>data</code> may be a <code>string</code>, <code>logical</code>, <code>integer</code>, <code>real</code>, <code>double precision</code>, <code>complex</code> or <code>double complex</code> variable.</p>
+
+<p>In addition, if <code>data</code> is supplied as a rank-1 or rank-2 variable (ie an array or a matrix) then the data will be read in assuming it to be a space- or comma-separated list of such data items.</p>
+
+<p>Thus, the array of integers within the XML document:</p>
+
+<pre><code>&lt;element&gt; 1 2 3 4 5 6 &lt;/element&gt;
+</code></pre>
+
+<p>could be extracted by the following Fortran program:</p>
+
+<pre><code>type(Node), pointer :: doc, p
+integer :: i_array(6)
+
+doc =&gt; parseFile(filename)
+p =&gt; item(getElementsByTagName(doc, "element"), 0)
+call extractDataContent(p, i_array)
+</code></pre>
+
+<h4>Contents and Attributes</h4>
+
+<p>For extracting data from text content, the example above suffices. For data in a non-namespaced attribute (in this case, a 2x2 matrix of real numbers)</p>
+
+<pre><code>&lt;element att="0.1, 2.3 7.56e23, 93"&gt; Some uninteresting text &lt;/element&gt;
+</code></pre>
+
+<p>then use a Fortran program like:</p>
+
+<pre><code>type(Node), pointer :: doc, p
+real :: r_matrix(2,2)
+
+doc =&gt; parseFile(filename)
+p =&gt; item(getElementsByTagName(doc, "element"), 0)
+call extractDataAttribute(p, "att", r_matrix)
+</code></pre>
+
+<p>or for extracting from a namespaced attribute (in this case, a length-2 array of complex numbers):</p>
+
+<pre><code>&lt;myml xmlns:ns="http://www.example.org"&gt;
+  &lt;element ns:att="0.1,2.3  3.4e2,5.34"&gt; Some uninteresting text &lt;/element&gt;
+&lt;/myml&gt;
+</code></pre>
+
+<p>then use a Fortran program like:</p>
+
+<pre><code>type(Node), pointer :: doc, p
+complex :: c_array(2)
+
+doc =&gt; parseFile(filename)
+p =&gt; item(getElementsByTagName(doc, "element"), 0)
+call extractDataAttributeNS(p, &amp;
+     namespaceURI="http://www.example.org", localName="att", &amp;
+     data=c_array)
+</code></pre>
+
+<h4>Error handling</h4>
+
+<p>The extraction may fail of course, if the data is not of the sort specified, or if there are not enough elements to fill the array or matrix. In such a case, this can be detected by the optional arguments <code>num</code> and <code>iostat</code>. </p>
+
+<p><code>num</code> will hold the number of items successfully read. Hopefully this should be equal to the expected number of items; but it may be less if reading failed for some reason, or if there were less items than expected in the element.</p>
+
+<p><code>iostat</code> will hold an integer - this will be <code>0</code> if the extraction went ok; <code>-1</code> if too few elements were found, <code>1</code> if although the read went ok, there were still some elements left over, or <code>2</code> if the extraction failed due to either a badly formatted number, or due to the wrong data type being found.</p>
+
+<h4>String arrays</h4>
+
+<p>For all data types apart from strings, arrays and matrices are specified by space- or comma-separated lists. For strings, some additional options are available. By default, arrays will be extracted assuming that separators are spaces (and multiple spaces are ignored). So:</p>
+
+<pre><code>&lt;element&gt; one two     three &lt;/element&gt;
+</code></pre>
+
+<p>will result in the string array <code>(/"one", "two", "three"/)</code>.</p>
+
+<p>However, you may specify an optional argument <code>separator</code>, which specifies another single-character separator to use (and does not ignore multiple spaces). So:</p>
+
+<pre><code>&lt;element&gt;one, two, three &lt;/element&gt;
+</code></pre>
+
+<p>will result in the string array <code>(/"one", " two", " three "/)</code>. (note the leading and trailing spaces).</p>
+
+<p>Finally, you can also specify an optional logical argument, <code>csv</code>. In this case, the <code>separator</code> is ignored, and the extraction proceeds assuming that the data is a list of comma-separated values. (see: <a href="http://en.wikipedia.org/wiki/Comma-separated_values">CSV</a>)</p>
+
+<h3>Other utility functions</h3>
+
+<ul>
+<li><code>setFoX_checks</code> <br />
+<strong>FoX_checks</strong>: <em>logical</em></li>
+</ul>
+
+<p>This affects whether additional FoX-only checks are made (see <a href="#DomException">DomExceptions</a> below). </p>
+
+<ul>
+<li><code>getFoX_checks</code> <br />
+<strong>arg</strong>: <em>DOMImplementation, pointer</em>  </li>
+</ul>
+
+<p>Retrieves the current setting of FoX_checks.</p>
+
+<p>Note that FoX_checks can only be turned on and off globally, not on a per-document basis.</p>
+
+<ul>
+<li><code>setLiveNodeLists</code> <br />
+<strong>arg</strong>: <em>Node, pointer</em> <br />
+<strong>liveNodeLists</strong>: <em>logical</em></li>
+</ul>
+
+<p><strong>arg</strong> must be a Document Node. Calling this function affects whether any nodelists active on the document are treated as live - ie whether updates to the documents are reflected in the contents of nodelists (see <a href="#DomLiveNodelists">DomLiveNodelists</a> below).</p>
+
+<ul>
+<li><code>getLiveNodeLists</code> <br />
+<strong>arg</strong>: <em>Node, pointer</em></li>
+</ul>
+
+<p>Retrieves the current setting of liveNodeLists.</p>
+
+<p>Note that the live-ness of nodelists is a per-document setting.</p>
+
+<h3>Exception handling</h3>
+
+<p><a name="DomException"/></p>
+
+<p>Exception handling is important to the DOM. The W3C DOM standards provide not only interfaces to the DOM, but also specify the error handling that should take place when invalid calls are made.</p>
+
+<p>The DOM specifies these in terms of a <code>DOMException</code> object, which carries a numeric code whose value reports the kind of error generated. Depending upon the features available in a particular computer language, this DOMException object should be generated and thrown, to be caught by the end-user application.</p>
+
+<p>Fortran of course has no mechanism for throwing and catching exceptions. However, the behaviour of an exception can be modelled using Fortran features.</p>
+
+<p>FoX defines an opaque <code>DOMException</code> object.
+Every DOM subroutine and function implemented by FoX will take an optional argument, 'ex', of type <code>DOMException</code>. </p>
+
+<p>If the optional argument is not supplied, any errors within the DOM will cause an immediate abort, with a suitable error message. However, if the optional argument <em>is</em> supplied, then the error will be captured within the <code>DOMException</code> object, and returned to the caller for inspection. It is then up to the application to decide how to proceed.</p>
+
+<p>Functions for inspecting and manipulating the <code>DOMException</code> object are described below:</p>
+
+<ul>
+<li><code>inException</code>: <br />
+<strong>ex</strong>: <em>DOMException</em></li>
+</ul>
+
+<p>A function returning a logical value, according to whether <code>ex</code> is in exception - that is, whether the last DOM function or subroutine, from which <code>ex</code> returned, caused an error. Note that this will not change the status of the exception.</p>
+
+<ul>
+<li><code>getExceptionCode</code> <br />
+<strong>ex</strong>: <em>DOMException</em></li>
+</ul>
+
+<p>A function returning an integer value, describing the nature of the exception reported in <code>ex</code>. If the integer is 0, then <code>ex</code> does not hold an exception. If the integer is less than 200, then the error encountered was of a type specified by the DOM standard; for a full list, see below, and for explanations, see the various DOM standards. If the integer is 200 or greater, then the code represents a FoX-specific error. See the list below.</p>
+
+<p>Note that calling <code>getExceptionCode</code> will clean up all memory associated with the DOMException object, and reset the object such that it is no longer in exception.</p>
+
+<h4>Exception handling and memory usage.</h4>
+
+<p>Note that when an Exception is thrown, memory is allocated within the DOMException object. Calling <code>getExceptionCode</code> on a DOMEXception will clean up this memory. If you use the exception-handling interfaces of FoX, then you must check every exception, and ensure you check its code, otherwise your program will leak memory.</p>
+
+<h4>FoX exceptions.</h4>
+
+<p>The W3C DOM interface allows the creation of unserializable XML document in various ways. For example, it permits characters to be added to a text node which would be invalid XML. FoX performs multiple additional checks on all DOM calls to prevent the creation of unserializable trees. These are reported through the DOMException mechanisms noted above, using additional exception codes. However, if for some reason, you want to create such trees, then it is possible to switch off all FoX-only checks. (DOM-mandated checks may not be disabled.) To do this, use the <code>setFoX_checks</code> function described in <a href="#DomUtilityFunctions">DomUtilityFunctions</a>.</p>
+
+<p>Note that FoX does not yet currently check for all ways that a tree may be made non-serializable.</p>
+
+<h4>List of exceptions.</h4>
+
+<p>The following is the list of all exception codes (both specified in the W3C DOM and those related to FoX-only checks) that can be generated by FoX:</p>
+
+<ul>
+<li>INDEX_SIZE_ERR = 1</li>
+<li>DOMSTRING_SIZE_ERR = 2</li>
+<li>HIERARCHY_REQUEST_ERR = 3</li>
+<li>WRONG_DOCUMENT_ERR = 4</li>
+<li>INVALID_CHARACTER_ERR = 5</li>
+<li>NO_DATA_ALLOWED_ERR = 6</li>
+<li>NO_MODIFICATION_ALLOWED_ERR = 7</li>
+<li>NOT_FOUND_ERR = 8</li>
+<li>NOT_SUPPORTED_ERR = 9</li>
+<li>INUSE_ATTRIBUTE_ERR = 10</li>
+<li>INVALID_STATE_ERR = 11</li>
+<li>SYNTAX_ERR = 12</li>
+<li>INVALID_MODIFICATION_ERR = 13</li>
+<li>NAMESPACE_ERR = 14</li>
+<li>INVALID_ACCESS_ERR = 15</li>
+<li>VALIDATION_ERR = 16</li>
+<li>TYPE_MISMATCH_ERR = 17</li>
+<li>INVALID_EXPRESSION_ERR = 51</li>
+<li>TYPE_ERR = 52</li>
+<li>PARSE_ERR = 81</li>
+<li>SERIALIZE_ERR = 82</li>
+<li>FoX_INVALID_NODE = 201</li>
+<li>FoX_INVALID_CHARACTER = 202</li>
+<li>FoX_NO_SUCH_ENTITY = 203</li>
+<li>FoX_INVALID_PI_DATA = 204</li>
+<li>FoX_INVALID_CDATA_SECTION = 205</li>
+<li>FoX_HIERARCHY_REQUEST_ERR = 206</li>
+<li>FoX_INVALID_PUBLIC_ID = 207</li>
+<li>FoX_INVALID_SYSTEM_ID = 208</li>
+<li>FoX_INVALID_COMMENT = 209</li>
+<li>FoX_NODE_IS_NULL = 210</li>
+<li>FoX_INVALID_ENTITY = 211</li>
+<li>FoX_INVALID_URI = 212</li>
+<li>FoX_IMPL_IS_NULL = 213</li>
+<li>FoX_MAP_IS_NULL = 214</li>
+<li>FoX_LIST_IS_NULL = 215</li>
+<li>FoX_INTERNAL_ERROR = 999</li>
+</ul>
+
+<h3>Live nodelists</h3>
+
+<p><a name="DomLiveNodelists"/></p>
+
+<p>The DOM specification requires that all NodeList objects are <em>live</em> - that is, that any change in the document structure is immediately reflected in the contents of any nodelists.</p>
+
+<p>For example, any nodelists returned by getElementsByTagName or getElementsByTagNameNS must be updated whenever nodes are added to or removed from the document; and the order of nodes in the nodelists must be changed if the document structure changes.</p>
+
+<p>Though FoX does keep all nodelists live, this can impose a significant performance penalty when manipulating large documents. Therefore, FoX can be instructed to inly use 'dead' nodelists - that is, nodelists which reflect a snapshot of the document structure at the point they were created. To do this, call <code>setLiveNodeLists</code> (see API documentation).</p>
+
+<p>However, note that the nodes within the nodelist remain live - any changes made to the nodes will be reflected in accessing them through the nodelist.</p>
+
+<p>Furthermore, since the nodelists are still associated with the document, they and their contents will be rendered inaccessible when the document is destroyed.</p>
+
+<h2>DOM Configuration</h2>
+
+<p><a name="DomConfiguration"/></p>
+
+<p>Multiple valid DOM trees may be produced from a single document. When parsing input, some of these choices are made available to the user.</p>
+
+<p>By default, the DOM tree presented to the user will be produced according to the following criteria:</p>
+
+<ul>
+<li>there will be no adjacent text nodes  </li>
+<li>Cdata nodes will appear as such in the DOM tree  </li>
+<li>EntityReference nodes will appear in the DOM tree.</li>
+</ul>
+
+<p>However, if another tree is desired, the user may change this. For example, very often you would rather be working with the fully canonicalized tree, with all cdata sections replaced by text nodes and merged, and all entity references replaced with their contents.</p>
+
+<p>The mechanism for doing this is the optional <code>configuration</code> argument to <code>parseFile</code> and <code>parseString</code>. <code>configuration</code> is a <code>DOMConfiguration</code> object, which may be manipulated by <code>setParameter</code> calls.</p>
+
+<p>Note that FoX's implementation of <code>DOMConfiguration</code> does not follow the specification precisely. One <code>DOMConfiguration</code> object controls all of parsing, normalization and serialization. It can be used like so:</p>
+
+<pre><code>use FoX_dom
+implicit none
+type(Node), pointer :: doc
+! Declare a new configuration object
+type(DOMConfiguration), pointer :: config
+! Request full canonicalization
+! ie convert CDATA sections to text sections, remove all entity references etc.
+config =&gt; newDOMConfig()
+call setParameter(config, "canonical-form", .true.)
+! Turn on validation
+call setParameter(config, "validate", .true.)
+! parse the document
+doc =&gt; parseFile("doc.xml", config)
+
+! Do a whole lot of DOM processing ...
+
+! change the configuration to allow cdata-sections to be preserved.
+call setParameter(getDomConfig(doc), "cdata-sections", .true.)
+! normalize the document again 
+call normalizeDocument(doc)
+! change the configuration to influence the output - make sure there is an XML declaration
+call setParameter(getDomConfig(doc), "xml-declaration", .true.)
+! and write the document out.
+call serialize(doc)
+! once everything is done, destroy the doc and config
+call destroy(doc)
+call destroy(config)
+</code></pre>
+
+<p>The available configuration options are fully explained in:</p>
+
+<ul>
+<li><a href="http://www.w3.org/TR/DOM-Level-3-Core/core.html#DOMConfiguration">DOM Core 3</a>  </li>
+<li><a href="http://www.w3.org/TR/2004/REC-DOM-Level-3-LS-20040407/load-save.html#LS-LSParser">DOM Core LSParser</a>  </li>
+<li><a href="http://www.w3.org/TR/2004/REC-DOM-Level-3-LS-20040407/load-save.html#LS-LSSerializer">DOM Core LSSerializer</a>  </li>
+</ul>
+
+<p>and are all implemented, with the exceptions of: <code>error-handler</code>, <code>schema-location</code>, and <code>schema-type</code>. <br />
+In total there are 24 implemented configuration options (<code>schema-location</code> and <code>schema-type</code> are not
+implemented). The options known by FoX are as follows:</p>
+
+<ul>
+<li><code>canonical-form</code> default: false, can be set to true. See note below.</li>
+<li><code>cdata-sections</code> default: true, can be changed.</li>
+<li><code>check-character-normalization</code> default: false, cannot be changed.</li>
+<li><code>comments</code> default: true, can be changed.</li>
+<li><code>datatype-normalization</code> default: false, cannot be changed.</li>
+<li><code>element-content-whitespace</code> default: true, can be changed.</li>
+<li><code>entities</code> default: true, can be changed.</li>
+<li><code>error-handler</code> default: false, cannot be changed. This is a breach of the DOM specification.</li>
+<li><code>namespaces</code> default: true, can be changed.</li>
+<li><code>namespace-declarations</code> default: true, can be changed.</li>
+<li><code>normalize-characters</code> default: false, cannot be changed.</li>
+<li><code>split-cdata-sections</code> default: true, can be changed.</li>
+<li><code>validate</code> default: false, can be changed. See note below.</li>
+<li><code>validate-if-schema</code> default: false, can be changed.</li>
+<li><code>well-formed</code> default true, cannot be changed.</li>
+<li><code>charset-overrides-xml-encoding</code> default false, cannot be changed.</li>
+<li><code>disallow-doctype</code> default false, cannot be changed.</li>
+<li><code>ignore-unknown-character-denormalizations</code> default true, cannot be changed.</li>
+<li><code>resource-resolver</code> default false, cannot be changed.</li>
+<li><code>supported-media-types-only</code> default false, cannot be changed.</li>
+<li><code>discard-default-content</code> default: true, can be changed.</li>
+<li><code>format-pretty-print</code> default: false, cannot be changed.</li>
+<li><code>xml-declaration</code> default: true, can be changed.</li>
+<li><code>invalid-pretty-print</code> default: false, can be changed. This is a FoX specific extension which works like <code>format-pretty-print</code> but does not preseve the validity of the document.</li>
+</ul>
+
+<p>Setting <code>canonical-form</code> changes the value of <code>entities</code>, <code>cdata-sections</code>, <code>discard-default-content</code>, <code>invalid-pretty-print</code>, and <code>xml-declaration</code>to false and changes <code>namespaces</code>, <code>namespace-declarations</code>, and <code>element-content-whitespace</code> to true. Unsetting <code>canonical-form</code> causes these options to revert to the defalt settings. Changing the values of any of these options has the side effect of unsetting <code>canonical-form</code> (but does not cause the other options to be reset). Setting <code>validate</code> unsets <code>validate-if-schema</code> and vica versa.</p>
+
+<h2>DOM Miscellanea</h2>
+
+<p><a name="DomMiscellanea"/></p>
+
+<p>Other issues</p>
+
+<ul>
+<li>As mentioned in the documentation for WXML, it is impossible within Fortran to reliably output lines longer than 1024 characters. While text nodes containing such lines may be created in the DOM, on serialization newlines will be inserted as described in the documentation for WXML.</li>
+<li>All caveats with regard to the FoX SAX processor apply to reading documents through the DOM interface. In particular, note that documents containing characters beyond the US-ASCII set will not be readable.</li>
+</ul>
+
+<p>It was decided to implement W3C DOM interfaces primarily because they are specified in a language-agnostic fashion, and thus made Fortran implementation possible. A number of criticisms have been levelled at the W3C DOM, but many apply only from the perspective of Java developers. However, more importantly, the W3C DOM suffers from a lack of sufficient error checking so it is very easy to create a DOM tree, or manipulate an existing DOM tree into a state, that cannot be serialized into a legal XML document.</p>
+
+<p>(Although the Level 3 DOM specifications finally addressed this issue, they did so in a fashion that was neither very useful, nor easily translatable into a Fortran API.)</p>
+
+<p>Therefore, FoX will by default produce errors about many attempts to manipulate the DOM in such a way as would result in invalid XML. These errors can be switched off if standards-compliant behaviour is wanted. Although extensive, these checks are not complete.
+In particular, the way the W3C DOM mandates namespace handling makes it trivial to produce namespace non-well-formed document trees, and very difficult for the processor to automatically detect the non-well-formedness. Thus a fully well-formed tree is only guaranteed after a suitable <code>normalizeDocument</code> call.</p>
+</div>
+</body>
+</html>

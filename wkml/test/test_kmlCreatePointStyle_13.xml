@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>WKML output</name>
+    <Style id="myid">
+      <IconStyle>
+        <color>F90000FF</color>
+        <colorMode>random</colorMode>
+      </IconStyle>
+    </Style>
+  </Document>
+</kml>

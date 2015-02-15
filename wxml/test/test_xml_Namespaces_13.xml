@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ns1:svg xmlns:ns1="ns1">
+  <ns2:svg xmlns:ns2="ns2">
+    <ns3:svg xmlns:ns3="ns3">
+      <ns4:svg xmlns:ns4="ns4">
+        <ns5:svg xmlns:ns5="ns5">
+          <ns6:svg xmlns:ns6="ns6">
+            <ns7:svg xmlns:ns7="ns7">
+              <ns8:svg xmlns:ns8="ns8">
+                <ns9:svg xmlns:ns9="ns9">
+                  <ns10:svg xmlns:ns10="ns10">
+                    <ns11:svg xmlns:ns11="ns11"/>
+                  </ns10:svg>
+                </ns9:svg>
+              </ns8:svg>
+            </ns7:svg>
+          </ns6:svg>
+        </ns5:svg>
+      </ns4:svg>
+    </ns3:svg>
+  </ns2:svg>
+</ns1:svg>

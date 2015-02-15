@@ -1,0 +1,3 @@
+ERROR(wxml) in writing to file 
+test.xml
+Trying to close Folder but Document is open. Either you have failed to open Folder or you have failed to close Document.

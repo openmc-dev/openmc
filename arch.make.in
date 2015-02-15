@@ -1,0 +1,43 @@
+.SUFFIXES:
+.SUFFIXES: .@OBJEXT@ .a .f90 .F90 .m4 .exe .xml
+
+BUILD_TARGETS=@BUILD_TARGETS@
+
+VPATH=@VPATH@
+compile_prefix=@OBJSDIR@
+install_prefix=@prefix@
+LIB_DIR=$(compile_prefix)/lib
+MOD_DIR=$(compile_prefix)/finclude
+
+FPP=@FPP@
+FC=@FC@
+RANLIB=@RANLIB@
+
+FFLAGS=@FCFLAGS@
+FPPFLAGS=@FPPFLAGS@
+LDFLAGS=@LDFLAGS@
+
+FCFLAGS_free_f90=@FCFLAGS_free_f90@
+FPPFLAGS_free_F90=@FPPFLAGS_free_F90@
+
+INC_PREFIX=-I
+MOD_PREFIX=@FC_MOD_FLAG@
+LIB_PREFIX=-L
+#
+MOD_EXT=@FC_MODEXT@
+MKDIR_P=@MKDIR_P@
+INSTALL=@INSTALL@
+OBJEXT=@OBJEXT@
+EXEEXT=@EXEEXT@
+LIBEXT=@LIBEXT@
+LINK_O_FLAG=@LINK_O_FLAG@
+
+#INCFLAGS must be set by the user makefile
+
+#Dependency rules are created by autoconf according to whether
+#discrete preprocessing is necessary or not.
+.F90.@OBJEXT@:
+	@F90_RULE@
+.f90.@OBJEXT@:
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_free_f90)  $<
+

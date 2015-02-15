@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cml:cml xmlns:cml="http://www.xml-cml.org/schema">
+  <svg:svg xmlns:svg="http://www.w3.org/1999/svg">
+    <cml:toby xmlns:cml="http://www.toby.org"/>
+  </svg:svg>
+</cml:cml>

@@ -1,0 +1,3 @@
+ERROR(wxml) in writing to file 
+test.xml
+Trying to close cml but no tags are open.

@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>FoX_wkml</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>WKML</h1>
+
+<p>WKML is a library for creating <a href="http://www.opengeospatial.org/standards/kml/">KML</a> 
+documents. These documents are intended to be used for "expressing geographic 
+annotation and visualization" for maps and Earth browsers such as 
+<a href="http://earth.google.co.uk/">Google Earth</a> or <a href="http://edu.kde.org/marble/">Marble</a>.
+WKML wraps all the necessary XML calls, such that you should never need to touch any
+<a href="FoX_wxml.html">WXML</a> calls when outputting KML from a Fortran application.</p>
+
+<p>WKML is intended to produce XML documents that conform to version 2.2 of the Open
+Geospatial Consortium's <a href="http://schemas.opengis.net/kml/2.2.0/ogckml22.xsd">schema</a>.
+However, the library offers no guarantee that documents produced will be valid as 
+only a small subset of the constraints are enforced. The API is designed to minimize 
+the possibilty of producing invalid KML in common use cases, and well-formdness is
+maintained by the underlying WXML library.</p>
+
+<p>The available functions and their intended use are listed below. One useful reference to
+the use of KML is Google's <a href="http://code.google.com/apis/kml/documentation/">KML documentation</a>.</p>
+
+<h2>Use of WKML</h2>
+
+<p>wkml subroutines can be accessed from within a module or subroutine by inserting</p>
+
+<pre><code> use FoX_wkml
+</code></pre>
+
+<p>at the start. This will import all of the subroutines described below, plus the derived type <code>xmlf_t</code> needed to manipulate a KML file.</p>
+
+<p><em>No</em> other entities will be imported; public/private Fortran namespaces are very carefully controlled within the library.</p>
+
+<h3>Conventions used below.</h3>
+
+<ul>
+<li>Function names are in <code>monospace</code></li>
+<li>argument names are in <strong>bold</strong></li>
+<li>optional argument names are in (<strong>parenthesized bold</strong>)  </li>
+<li>argument types are in <em>italic</em> and may consist of:  </li>
+<li><em>string</em>: string of arbitrary (unless otherwise specified) length</li>
+<li><em>integer</em>: default integer</li>
+<li><em>real(sp)</em>: single precision real number</li>
+<li><em>real(dp)</em>: double precision real number</li>
+<li><em>logical</em>: default logical</li>
+<li><em>real</em>: either of <em>real(sp)</em> or <em>real(dp)</em></li>
+<li>arguments may be:</li>
+<li><em>scalar</em>: single item</li>
+<li><em>array</em>: one-dimensional array of items</li>
+<li><em>matrix</em>: two-dimensional array of items</li>
+<li><em>anydim</em>: any of <em>scalar</em>, <em>array</em>, <em>matrix</em></li>
+</ul>
+
+<p>All functions take as their first argument an XML file object, whose
+keyword is always <code>xf</code>. This file object is initialized by a <code>kmlBeginFile</code> function.</p>
+
+<p>It is <em>highly</em> recommended that subroutines be called with keywords
+specified rather than relying on the implicit ordering of arguments.
+This is robust against changes in the library calling convention; and 
+also stepsides a significant cause of errors when using subroutines
+with large numbers of arguments.</p>
+
+<h2>Functions for manipulating the KML file:</h2>
+
+<ul>
+<li><code>kmlBeginFile</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<strong>filename</strong>: <em>string</em> <em>scalar</em>: Filename to be opened. <br />
+<strong>unit</strong>: <em>integer</em> <em>scalar</em>: what unit number should the file be opened on? If you don't
+care, you may specify <code>-1</code> as the unit number, in which case wkml will make a guess <br />
+(<strong>replace</strong>): <em>logical</em> <em>scalar</em>: should the file be replaced if it already exists? <em>default: yes</em> <br />
+(<strong>docName</strong>): <em>string</em> <em>scalar</em>: an optional name for the outermost document element. If absent, "WKML output" will be used</li>
+</ul>
+
+<p>This takes care of all calls to open a KML output file.</p>
+
+<ul>
+<li><code>kmlFinishFile</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object </li>
+</ul>
+
+<p>This takes care of all calls to close an open KML output file, once
+you have finished with it. It is compulsory to call this - if your
+program finished without calling this, then your KML file will be
+invalid.</p>
+
+<ul>
+<li><code>kmlOpenFolder</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: an optional name for the new folder. <br />
+(<strong>id</strong>): <em>string</em> <em>scalar</em>: an optional xml id for the new folder. </li>
+</ul>
+
+<p>This starts a new folder. Folders are used in KML to organize other
+objects into groups, the visability of these groups can be changed 
+in one operation within Google Earth. Folders can be nested.</p>
+
+<ul>
+<li><code>kmlCloseFolder</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object </li>
+</ul>
+
+<p>This closes the current folder. </p>
+
+<ul>
+<li><code>kmlOpenDocument</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<strong>name</strong>: <em>string</em> <em>scalar</em>: a name for the new document element. <br />
+(<strong>id</strong>): <em>string</em> <em>scalar</em>: an optional xml id for the new document element. </li>
+</ul>
+
+<p>This starts a new document element at this point in the output. Note that no
+checks are currently performed to ensure that this is permitted, for example
+only one document is permitted to be a child of the kml root element. Most
+users should not need to use this subroutine.</p>
+
+<ul>
+<li><code>kmlCloseDocument</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object </li>
+</ul>
+
+<p>This closes the current document element. Do not close the outermose document 
+element created with <code>kmlBeginFile</code>, this must be closed with <code>kmlFinishFile</code>.
+Most users should not need to use this subroutine.</p>
+
+<h2>Functions for producing geometrical objects:</h2>
+
+<ul>
+<li><code>kmlCreatePoints</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+(<strong>extrude</strong>): <em>logical</em> <em>scalar</em>: If altitude is non-zero, should the point be connected to the ground? <br />
+(<strong>altitudeMode</strong>): <em>logical</em> <em>scalar</em>: If altitude is specified, is it relativeToGround or absolute? <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: A name for the collection of points <br />
+(<strong>color</strong>): <em>color_t</em>: Line colour as a kml color type (See Colours) <br />
+(<strong>colorname</strong>): <em>string</em> <em>scalar</em>: Line colour as a name (See Colours) <br />
+(<strong>colorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Line colour in hex (See Colours) <br />
+(<strong>scale</strong>): <em>real</em> <em>scalar</em>: Scaling size for the point icon. <br />
+(<strong>description</strong>): <em>string</em> <em>array</em>: A description for each point. <br />
+(<strong>description_numbers</strong>): <em>real</em> <em>array</em>: Numeric description for each point. <br />
+(<strong>styleURL</strong>): <em>string</em> <em>scalar</em>: Location of style specification (see Style Handling) <br />
+<em>and:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: longitude of each point in degrees <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: latitude of each point in degrees <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 2xN array with the longitude of each point in the first row, and the latitude in the second row. In degrees. <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 3xN array with the longitude of each point in the first row, the latitude in the second row, and the altitude in the third row. Longitude and latitude in degrees and altitude in metres.  </li>
+</ul>
+
+<p>A single function, kmlCreatePoints accepts various combinations of arguments, and will generate a series of individual points to be visualized in Google Earth. In fact, the KML produced will consist of a Folder, containing Placemarks, one for each point. The list of points may be provided in any of the three ways specified above.</p>
+
+<ul>
+<li><code>kmlCreateLine</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+(<strong>closed</strong>): <em>logicl</em> <em>scalar</em>: Should the last point be joined to the first point? <br />
+(<strong>extrude</strong>): <em>logical</em> <em>scalar</em>: If altitude is non-zero, should the point be connected to the ground? <br />
+(<strong>tessellate</strong>): <em>logical</em> <em>scalar</em>: If altitude is not specified, should the line produced follow the altitude of the ground below it? <br />
+(<strong>altitudeMode</strong>): <em>logical</em> <em>scalar</em>: If altitude is specified, is it relativeToGround or absolute? <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: A name for the collection of points <br />
+(<strong>color</strong>): <em>color_t</em>: Line colour as a kml color type (See Colours) <br />
+(<strong>colorname</strong>): <em>string</em> <em>scalar</em>: Line colour as a name (See Colours) <br />
+(<strong>colorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Line colour in hex (See Colours) <br />
+(<strong>width</strong>): <em>integer</em> <em>scalar</em>: Width of the lines. <br />
+(<strong>scale</strong>): <em>real</em> <em>scalar</em>: Scaling size for the point icon. <br />
+(<strong>description</strong>): <em>string</em> <em>array</em>: A description for each point. <br />
+(<strong>styleURL</strong>): <em>string</em> <em>scalar</em>: Location of style specification (see Style Handling) <br />
+<em>and:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: longitude of each point in degrees <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: latitude of each point in degrees <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 2xN array with the longitude of each point in the first row, and the latitude in the second row. In degrees. <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 3xN array with the longitude of each point in the first row, the latitude in the second row, and the altitude in the third row. Longitude and latitude in degrees and altitude in metres.  </li>
+</ul>
+
+<p>A single function, kmlCreateLine accepts various combinations of arguments, and will generate a series of individual points to be visualized as a (closed or open) path in Google Earth. In fact, the KML produced will consist of a LineString, or LinearRing, containing a list of coordinates. The list of points may be provided in any of the three ways specified above.</p>
+
+<ul>
+<li><code>kmlStartRegion</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+(<strong>extrude</strong>): <em>logical</em> <em>scalar</em>: If altitude is non-zero, should the point be connected to the ground? <br />
+(<strong>tessellate</strong>): <em>logical</em> <em>scalar</em>: If altitude is not specified, should the line produced follow the altitude of the ground below it? <br />
+(<strong>altitudeMode</strong>): <em>logical</em> <em>scalar</em>: If altitude is specified, is it relativeToGround or absolute? <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: A name for the region <br />
+(<strong>fillcolor</strong>): <em>color_t</em>: Region colour as a kml color type (See Colours) <br />
+(<strong>fillcolorname</strong>): <em>string</em> <em>scalar</em>: Region  colour as a name (See Colours) <br />
+(<strong>fillcolorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Region colour in hex (See Colours) <br />
+(<strong>linecolor</strong>): <em>color_t</em>: Line colour as a kml color type (See Colours) <br />
+(<strong>linecolorname</strong>): <em>string</em> <em>scalar</em>: Line colour as a name (See Colours) <br />
+(<strong>linecolorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Line colour in hex (See Colours) <br />
+(<strong>linewidth</strong>): <em>integer</em> <em>scalar</em>: Width of the line. <br />
+(<strong>description</strong>): <em>string</em> <em>scalar</em>: A description for the region. <br />
+(<strong>styleURL</strong>): <em>string</em> <em>scalar</em>: Location of style specification (see Style Handling) <br />
+<em>and:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: longitude of each point in degrees <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: latitude of each point in degrees <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 2xN array with the longitude of each point in the first row, and the latitude in the second row. In degrees. <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 3xN array with the longitude of each point in the first row, the latitude in the second row, and the altitude in the third row. Longitude and latitude in degrees and altitude in metres.  </li>
+</ul>
+
+<p>Creates a filled region with the outer boundary described by the list of points. May be followed by one or more calls to <code>kmlAddInnerBoundary</code> and these must be followed by a call to <code>kmlAddInnerBoundary</code>.</p>
+
+<ul>
+<li><code>kmlEndRegion</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object  </li>
+</ul>
+
+<p>Ends the specification of a region with or without inner boundaries.</p>
+
+<ul>
+<li><code>kmlAddInnerBoundary</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<em>and:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: longitude of each point in degrees <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: latitude of each point in degrees <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 2xN array with the longitude of each point in the first row, and the latitude in the second row. In degrees. <br />
+(<strong>altitude</strong>): <em>real</em> <em>array</em>: altitude of each point in metres <br />
+<em>or:</em> <br />
+<strong>location</strong>: <em>real</em> <em>matrix</em>: rank-two 3xN array with the longitude of each point in the first row, the latitude in the second row, and the altitude in the third row. Longitude and latitude in degrees and altitude in metres.  </li>
+</ul>
+
+<p>Introduces an internal area that is to be excluded from the enclosing region.</p>
+
+<h2>2D fields</h2>
+
+<p>WKML also contains two subroutines to allow scalar fields to be plotted over a geographical 
+region. Data is presented to WKML as a collection of values and coordinates and this data 
+can be displayed as a set of coloured cells, or as isocontours.</p>
+
+<h3>Data input</h3>
+
+<p>For all 2-D field subroutines both position and value of the data must be specified. The data values
+must always be specified as a rank-2 array, <em>values(:,:)</em>. The grid can be specified in three ways 
+depending on grid type.</p>
+
+<ul>
+<li>Regular rectangular grid: Specify north, south, east, west. These specify the four corners of the grid (which must be aligned with lines of longitude and latitude).  </li>
+<li>Irregularly spaced rectangular grid. Specify two rank-one arrays, longitude(:) and latitude(:). The grid must be aligned with lines of longitude and latitude so that: <code>Grid-point (i, j) = (longitude(i), latitude(j))</code>  </li>
+<li>Entirely irregular (topologically rectangular) grid. Specify two rank-two arrays, <code>longitude(:,:)</code> and <code>latitude(:,:)</code>. The grid may be of any form, aligned with no other projection: <code>Grid-point (i, j)</code> is taken as <code>(longitude(i, j), latitude(i, j))</code>  </li>
+</ul>
+
+<p>In all cases, single or double precision data may be used so long as all data is consistent in precision within one call. </p>
+
+<h3>Control over the third dimension</h3>
+
+<p>The third dimension of the data can be visualized in two (not mutually-exclusive) ways; 
+firstly by assigning colours according to the value of the tird dimension, and secondly 
+by using the altitude of the points as a (suitable scaled) proxy for the third dimension. 
+The following optional arguments control this aspect of the visualization (both for cells and for contours)</p>
+
+<ul>
+<li>type(color) :: colormap(:): an array of colours (see Colours) which will be used for painting the various layers  </li>
+<li>real, contour_values(:): an array of values which will be used to divide each layer of the third dimension. Single/double precision according to context.  </li>
+<li>integer :: num<em>values: where contour</em>values is not specified, this provides that the range of the values by divided into equal sized layers such that there are this many divisors.  </li>
+<li>real :: height: where this is specified, the generated visualization will vary in height as well as colour. The value of this variable will be used to as a multiplicative prefactor to scale the data before visualization.  </li>
+</ul>
+
+<p>Where no colormap is provided, one will be autogenerated with the appropriate number of levels
+as calculated from the provided contour<em>values. Where no contour</em>values are provided, they are 
+calculated based on the size of the colormap provided. Where neither colormap nor contour_values 
+are provided, a default of 5 levels with an autogenerated colormap will be used. </p>
+
+<h3>Subroutines</h3>
+
+<ul>
+<li><code>kmlCreateCells</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<em>and:</em> <br />
+<strong>east</strong>: <em>real</em> <em>scalar</em>: east edge of data set. <br />
+<strong>west</strong>: <em>real</em> <em>scalar</em>: west edge of data set. <br />
+<strong>south</strong>: <em>real</em> <em>scalar</em>: south edge of data set. <br />
+<strong>north</strong>: <em>real</em> <em>scalar</em>: north edge of data set. <br />
+<em>or:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: points in north-south direction where grid lines cross lines of longitude. <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: points in east-west direction where grid lines cross lines of latitude. <br />
+<em>or:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>matrix</em>: longitude of each point in values matrix. <br />
+<strong>latitude</strong>: <em>real</em> <em>matrix</em>: latitude of each point in values matrix. <br />
+<em>and:</em> <br />
+<strong>values</strong>: <em>real</em> <em>matrix</em>: data values. <br />
+(<strong>colormap</strong>): <em>color_t</em> <em>array</em>: colours used to describe values. <br />
+(<strong>height</strong>): <em>real(sp)</em> <em>scalar</em>: where this is specified, the generated visualization will vary in height as well as colour. The value of this variable will be used to as a multiplicative prefactor to scale the data before visualization. <br />
+(<strong>contour<em>values</strong>): *real(sp)* *array*: values used to contour data. <br />
+(<strong>num</em>levels</strong>): <em>integer</em> <em>scalar</em>: number of data values to show. <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: name describing the cells.  </li>
+</ul>
+
+<p>This subroutine generates a set of filled pixels over a region of the earth. </p>
+
+<ul>
+<li><code>kmlCreateContours</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<em>and:</em> <br />
+<strong>east</strong>: <em>real</em> <em>scalar</em>: east edge of data set. <br />
+<strong>west</strong>: <em>real</em> <em>scalar</em>: west edge of data set. <br />
+<strong>south</strong>: <em>real</em> <em>scalar</em>: south edge of data set. <br />
+<strong>north</strong>: <em>real</em> <em>scalar</em>: north edge of data set. <br />
+<em>or:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>array</em>: points in north-south direction where grid lines cross lines of longitude. <br />
+<strong>latitude</strong>: <em>real</em> <em>array</em>: points in east-west direction where grid lines cross lines of latitude. <br />
+<em>or:</em> <br />
+<strong>longitude</strong>: <em>real</em> <em>matrix</em>: longitude of each point in values matrix. <br />
+<strong>latitude</strong>: <em>real</em> <em>matrix</em>: latitude of each point in values matrix. <br />
+<em>and:</em> <br />
+<strong>values</strong>: <em>real</em> <em>matrix</em>: data values. <br />
+(<strong>colormap</strong>): <em>color_t</em> <em>array</em>: colours used to describe values. <br />
+(<strong>height</strong>): <em>real(sp)</em> <em>scalar</em>: where this is specified, the generated visualization will vary in height as well as colour. The value of this variable will be used to as a multiplicative prefactor to scale the data before visualization. <br />
+(<strong>contour<em>values</strong>): *real(sp)* *array*: values used to contour data. <br />
+(<strong>num</em>levels</strong>): <em>integer</em> <em>scalar</em>: number of data values to show. <br />
+(<strong>name</strong>): <em>string</em> <em>scalar</em>: name describing the cells. <br />
+(<strong>lines</strong>): <em>logical</em> <em>scalar</em>: should contour lines be shown. <br />
+(<strong>regions</strong>): <em>logical</em> <em>scalar</em>: should contour regions be shown.  </li>
+</ul>
+
+<p>This subroutine creates a set of contour lines.</p>
+
+<h2>Colours</h2>
+
+<p>KML natively handles all colours as 32-bit values, expressed as 8-digit 
+hexadecimal numbers in ABGR (alpha-blue-green-red) channel order. However, 
+this is not very friendly. WKML provides a nicer interface to this, and all 
+WKML functions which accept colour arguments will accept them in three ways:</p>
+
+<ul>
+<li>(<strong>*color</strong>) <em>color_t</em>: the colour is passed as a wkml color_t derived type. This type is opaque and is created as described below.   </li>
+<li>(<strong>*colorname</strong>) <em>string</em>: a free-text string describing a colour. WKML understands any of the approximately <a href="http://www.mcfedries.com/books/cightml/x11color.htm">700 colour names used by X11</a>.   </li>
+<li>(<strong>*colorhex</strong>) <em>string(len=8)</em>: an 8-digit ABGR hexadecimal number <a href="http://code.google.com/apis/kml/documentation/kmlreference.html#color">as understood by Google Earth</a>.   </li>
+</ul>
+
+<p>A function and a subroutine are provided to maniputate the <em>color_t</em> derived type:</p>
+
+<ul>
+<li><code>kmlGetCustomColor</code>  </li>
+</ul>
+
+<p>This function takes a single argument of type <em>integer</em> or <em>string</em> and returns a <em>color_t</em> derived type. If the argument is a string the
+colour is taken from the set of X11 colours, if it is an integer, i, the ith colour is selected from the X11 list.</p>
+
+<ul>
+<li><code>kmlSetCustomColor</code> <br />
+<strong>myCI</strong> <em>color_t</em>: This intent(out) variable is set to the chosen colour. <br />
+<strong>colorhex</strong> *string(len=8): an 8-digit ABGR hexadecimal number.  </li>
+</ul>
+
+<p>This functon takes a single argument of type <em>string(len=8)</em> representing an 8-digit AVGR hexadecimal number and returns a <em>color_t</em> derived type representing that colour.</p>
+
+<p>Several features of wkml make use of "colour maps", arrays of the <em>color_t</em> derived type, which are used to relate numerical values to colours when showing fields of data. These are 
+created and used thus:</p>
+
+<pre><code>program colours
+  use FoX_wkml
+  type(color_t) :: colourmap(10)
+
+  ! Use X11 colours from 101 to 110:
+  colourmap(1:10) = kmlGetCustomColor(101:110)
+  ! Except for number 5 which should be red:
+  colourmap(5) = kmlGetCustomColor("indian red")
+  ! And for number 6 which should be black
+  call kmlSetCustomColor(colourmp(6), "00000000")
+
+end program colours
+</code></pre>
+
+<h2>Styles</h2>
+
+<p>Controling styling in KML can be quite complex. Most of the 
+subroutines in WKML allow some control of the generated style
+but they do not ptovide access to the full KML vocabulary which
+allows more complex styling. In order to access the more complex
+styles in KML it is necessary to create KML style maps - objects
+that are defined, named with a styleURL. The styleURL is then used
+to reference to the style defined by the map.</p>
+
+<p>Styles can be created using the following three subroutines. In each 
+case one argument is necessary: <em>id</em>, which must be a string (starting 
+with an alphabetic letter, and containing no spaces or punctuation 
+marks) which is used later on to reference the style. All other 
+arguments are optional.</p>
+
+<ul>
+<li><code>kmlCreatePointStyle</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<strong>id</strong>: <em>string</em> <em>scalar</em>: A URL for the style <br />
+(<strong>scale</strong>): <em>real</em> or <em>integer</em> <em>scalar</em>: A scale factor to set the size of the image displayed at the point (note, if both are present, <strong>scale</strong> and <strong>heading</strong> must be of the same type). <br />
+(<strong>color</strong>): <em>color_t</em>: Point colour as a kml color type (See Colours) <br />
+(<strong>colorname</strong>): <em>string</em> <em>scalar</em>: Point colour as a name (See Colours) <br />
+(<strong>colorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Point colour in hex (See Colours) <br />
+(<strong>colormode</strong>): <em>string(len=6)</em> <em>scalar</em>: A string, either normal or random - if random, the colour will be randomly changed. See the <a href="http://code.google.com/apis/kml/documentation/kmlreference.html#color">KML documentation</a> <br />
+(<strong>heading</strong>): <em>real</em> or <em>integer</em> <em>scalar</em>: direction to "point" the point icon in (between 0 and 360 degreesnote, if both are present, <strong>scale</strong> and <strong>heading</strong> must be of the same type). <br />
+(<strong>iconhref</strong>): <em>string</em> <em>scalar</em>: URL of an icon used to draw the point (e.g. from an http server).  </li>
+</ul>
+
+<p>Creates a style that can be used for points.</p>
+
+<ul>
+<li><code>kmlCreateLineStyle</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<strong>id</strong>: <em>string</em> <em>scalar</em>: A URL for the style <br />
+(<strong>width</strong>): <em>integer</em> <em>scalar</em>: width of the line in pixels. <br />
+(<strong>color</strong>): <em>color_t</em>: Point colour as a kml color type (See Colours) <br />
+(<strong>colorname</strong>): <em>string</em> <em>scalar</em>: Line colour as a name (See Colours) <br />
+(<strong>colorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Line colour in hex (See Colours) <br />
+(<strong>colormode</strong>): <em>string(len=6)</em> <em>scalar</em>: A string, either normal or random - if random, the colour will be randomly changed. See the <a href="http://code.google.com/apis/kml/documentation/kmlreference.html#color">KML documentation</a>  </li>
+</ul>
+
+<p>Creates a style that can be used for lines.</p>
+
+<ul>
+<li><code>kmlCreatePolygonStyle</code> <br />
+<strong>fx</strong>: <em>xmlf_t</em>: An XML file object <br />
+<strong>id</strong>: <em>string</em> <em>scalar</em>: A URL for the style <br />
+(<strong>fill</strong>): <em>logical</em> <em>scalar</em>: Should the polygon be filled? <br />
+(<strong>outline</strong>): <em>logical</em> <em>scalar</em>: Should the polygon have an outline? <br />
+(<strong>color</strong>): <em>color_t</em>: Point colour as a kml color type (See Colours) <br />
+(<strong>colorname</strong>): <em>string</em> <em>scalar</em>: Line colour as a name (See Colours) <br />
+(<strong>colorhex</strong>): <em>string(len=8)</em> <em>scalar</em>: Line colour in hex (See Colours) <br />
+(<strong>colormode</strong>): <em>string(len=6)</em> <em>scalar</em>: A string, either normal or random - if random, the colour will be randomly changed. See the <a href="http://code.google.com/apis/kml/documentation/kmlreference.html#color">KML documentation</a>  </li>
+</ul>
+
+<p>Creates a style that can be used for a polygon.</p>
+
+<h3> </h3>
+</div>
+</body>
+</html>

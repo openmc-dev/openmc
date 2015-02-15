@@ -1,0 +1,19 @@
+ Document begun!!
+START NAMESPACE MAPPING
+PREFIX:pqr
+URI:http://www.example.com
+>>Begin Element: {http://www.example.com}aaa
+---  2 attributes:
+att [ {}att ]  = value
+att2 [ {}att2 ]  = valuejhg
+PCDATA:
+ PCDATA:
+<>PCDATA:
+ >>Begin Element: {}b
+---  0 attributes:
+>>End Element: {}b
+PCDATA:
+ jhg >>End Element: {http://www.example.com}aaa
+END NAMESPACE MAPPING
+PREFIX:pqr
+ Document finished!!

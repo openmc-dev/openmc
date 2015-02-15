@@ -1,0 +1,161 @@
+Rough listing of SAX changes
+	
+2005-08-05 09:05:57 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-22
+
+    Summary:
+      Some changes for F (g95-F) compliance
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-22
+
+    Mainly the wxml and sax subsystems.
+    
+
+    modified files:
+            m_dictionary.f90
+
+2005-05-01 23:59:29 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-17
+
+    Summary:
+      Remove char generic from m_buffer
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-17
+
+    * Changes:
+    
+    'char' was a synonym of 'str' in m_buffer. Some compilers
+    have trouble with it, as it is also the name of an intrinsic
+    routine. So it has been removed, and 'str' is now the only
+    idiom. ('char' was actually only used in m_xml_parse.f90)
+    
+
+    modified files:
+     sax/m_buffer.f90 sax/m_xml_parser.f90
+
+
+2005-05-01 23:53:10 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-16
+
+    Summary:
+      Add "recursive" attribute to xml_parse
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-16
+
+    * xml_parse could not be called recursively (for example, to
+      process another XML file in response to a parsing event).
+      Adding "recursive" fixes it.
+    
+      (Bug reported by Anthony.Floyd@convergent.ca, Apr 29, 2005)
+    
+    
+
+    modified files:
+     sax/m_xml_parser.f90
+
+
+2004-12-08 17:16:13 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-5
+
+    Summary:
+      New checks on dictionary access + strings optimization
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-5
+
+    * Check that character variable is long enough to contain the
+      value of the dictionary entry.
+    
+    * Avoid temporary creation by compiler in strings module.
+    
+
+    modified files:
+     sax/m_dictionary.f90 strings/m_strings.f90
+
+
+2004-12-08 16:27:58 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-4
+
+    Summary:
+      Merge of Jon Wakelin's changes as of Oct 20, 2004
+
+    Changes:
+    
+     * Modifications by Jon Wakelin to parser project.
+    
+       Added new dictionary access method
+
+
+2004-12-08 16:08:28 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-3
+
+    Summary:
+      SAX test example exercises entity replacement in atts
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-3
+
+    Examples/sax/features/test.xml contains a segment to test the
+    new feature.
+
+    modified files:
+     Examples/sax/features/test.xml
+
+
+2004-12-08 15:58:23 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-2
+
+    Summary:
+      Entities replaced in pcdata and attribute values
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-2
+
+    * New logic to detect and replace entities in pcdata and
+      attribute values (in the latter the replacement takes place before
+      inserting the value in the dictionary).
+    
+      m_xml_parser.f90 does not use m_entities directly.
+
+    modified files:
+     sax/m_entities.f90 sax/m_fsm.f90 sax/m_xml_parser.f90
+     sax/makefile
+
+
+2004-12-08 15:53:01 GMT	Alberto Garcia <wdpgaara@lg.ehu.es>	patch-1
+
+    Summary:
+      New error routine, new reading-buffer size default
+    Revision:
+      xmlf90-devel--agarcia--1.2--patch-1
+
+    * Added routine general_error to m_xml_error.f90
+    * Changed default buffer size to 80 in m_reader.f90
+
+    new files:
+     .arch-ids/version.info.id version.info
+
+    modified files:
+     sax/m_reader.f90 sax/m_xml_error.f90
+
+
+ ------------ xmlf90-1.2g released 
+
+April 28, 2004  (Changes from xmlf90-1.2 to xmlf90-1.2g)
+
+* New optional argument "record_size" in open_xmlfile. The default record 
+length is 65536, but for overly long lines it might be necessary to specify
+a larger size.
+
+* Wrote "init_" routines to avoid undefined status for the components
+of the buffer, dictionary, and elstack derived types (Fortran90 restriction). 
+They are called just once at the beginning of execution.
+
+The "reset_" routines just zero out the counters in the derived
+types. This leads to substantial savings in overhead.
+
+* Avoided when possible the allocation of temporaries (mostly strings) by
+the compilers. This was particularly acute in the "action" records. The
+typical idiom:
+
+	action =trim("Reading character in name: " // c)
+
+forced the allocation of a temporary.  The number of compiler allocations
+(at least with NAG) has dropped down to just those needed in the processing
+of entities.
+
+* Put the explicit module dependencies in the makefile.
+
+* Increased the standard size of the buffers and dictionaries.
+***** The program now stops when those sizes are not enough.
+

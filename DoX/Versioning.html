@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Versioning</title>
+  <link rel="stylesheet" type="text/css" href="DoX.css"/>
+</head>
+<body>
+  <div class="DoX">
+<h1>FoX versioning</h1>
+
+<p>This documentation describes version 4.1 of the FoX library.</p>
+
+<p>This version includes output modules for general XML, and for CML; and a fully validating XML parser, exposed through a Fortran version of the SAX2 input parser and a Fortran mapping of the W3C DOM interface.</p>
+
+<p>This is a stable branch, which will be maintained with important bugfixes.</p>
+
+<p><a name="Changes"/></p>
+
+<h2>FoX Changes</h2>
+
+<p>As of FoX-3.0, there is one user-visible change that should be noted.</p>
+
+<h3>Configuration/compilation</h3>
+
+<p>In previous versions of FoX, the configure script was accessible as <code>config/configure</code>. Version 3.0 now follows common practice by placing the script in the main directory, so it is now called as <code>./configure</code>.</p>
+
+<p>Previous versions of FoX made it quite hard to compile only portions of the library (eg only the CML output portion; or just the SAX input). This is now possible by specifying arguments to the configuration script. For example,</p>
+
+<p><code>./configure --enable-wcml</code></p>
+
+<p>will cause the generated Makefile to only compile the CML writing module and its dependencies.</p>
+
+<p>See <a href="Compilation.html">Compilation</a> for further details.</p>
+</div>
+</body>
+</html>

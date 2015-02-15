@@ -126,7 +126,7 @@ contains
             do i_nuc = 1, n_nuclides_total
               if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
                 micro_xs(i_nuc) % use_ptable = .true.
-                call prob_tables(i_sotope, nuclides(i_nuc) % kT / K_BOLTZMANN)
+                call prob_tables(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
                 exit
 ! TODO: handle the same isotope at multiple temperatures
               end if

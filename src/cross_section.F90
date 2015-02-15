@@ -440,7 +440,8 @@ contains
         select case(real_freq)
         case (EVENT)
           micro_xs(i_nuclide) % use_ptable = .true.
-          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
+            & nuc % kT / K_BOLTZMANN)
         case (HISTORY)
           call fatal_error('History-based URR realizations not yet supported')
         case (BATCH)

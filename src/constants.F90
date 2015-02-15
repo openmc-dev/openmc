@@ -7,14 +7,22 @@ module constants
   integer, parameter :: QUICK_W = 2
 
   ! Resonance formalisms
-  integer, parameter :: SLBW        = 1
-  integer, parameter :: MLBW        = 2
-  integer, parameter :: MNBW        = 3
-  integer, parameter :: REICH_MOORE = 4
+  integer, parameter :: SLBW         = 1
+  integer, parameter :: MLBW         = 2
+  integer, parameter :: REICH_MOORE  = 3
+  integer, parameter :: ADLER_ADLER  = 4
+  integer, parameter :: R_MATRIX     = 5
+  integer, parameter :: R_FUNCTION   = 6
+  integer, parameter :: R_MATRIX_LIM = 7
+  integer, parameter :: MNBW         = 8
 
   ! Cross section representation formats
   integer, parameter :: PARAMETERS = 1
   integer, parameter :: POINTWISE  = 2
+
+  ! Resonance parameters' energy-dependence representation
+  integer, parameter :: DISCRETE   = 1
+  integer, parameter :: CONTINUOUS = 2
 
   ! URR realization frequencies
   integer, parameter :: EVENT      = 1
@@ -27,6 +35,11 @@ module constants
   integer, parameter :: LOGARITHMIC = 2
   integer, parameter :: USER        = 3
   integer, parameter :: ENDF6       = 4
+
+  ! Source of background cross sections
+  integer, parameter :: ENDFFILE  = 1
+  integer, parameter :: ACEFILE   = 2
+  integer, parameter :: GENERATED = 3
 
   ! ============================================================================
   ! VERSIONING NUMBERS

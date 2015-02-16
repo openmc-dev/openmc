@@ -400,7 +400,7 @@ Rectilinear Lattice Indexing
 
 Indices are assigned to tiles in a rectilinear lattice based on the tile's
 position along the :math:`x`, :math:`y`, and :math:`z` axes.  The figure below
-maps the indecies for a 2d lattice.  The indices, (1, 1), map to the
+maps the indices for a 2D lattice.  The indices, (1, 1), map to the
 lower-left tile.  (5, 1) and (5, 5) map to the lower-right and upper-right
 tiles, respectively.
 
@@ -418,11 +418,11 @@ In general, a lattice tile is specified by the three indices,
 .. math::
     :label: rect_indexing
 
-    i_x = \Bigg \lceil \frac{x - x_0}{p_0} \Bigg \rceil
+    i_x = \left \lceil \frac{x - x_0}{p_0} \right \rceil
 
-    i_y = \Bigg \lceil \frac{y - y_0}{p_1} \Bigg \rceil
+    i_y = \left \lceil \frac{y - y_0}{p_1} \right \rceil
 
-    i_z = \Bigg \lceil \frac{z - z_0}{p_2} \Bigg \rceil
+    i_z = \left \lceil \frac{z - z_0}{p_2} \right \rceil
 
 where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
 corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
@@ -434,7 +434,7 @@ Hexagonal Lattice Indexing
 A skewed coordinate system is used for indexing hexagonal lattice tiles.  Rather
 than a :math:`y`-axis, another axis is used that is rotated 30 degrees
 counter-clockwise from the :math:`y`-axis.  This axis is referred to as the
-:math:`\alpha`-axis.  The figure below shows how 2d hexagonal tiles are mapped
+:math:`\alpha`-axis.  The figure below shows how 2D hexagonal tiles are mapped
 with the :math:`(x, \alpha)` basis.  In this system, (0, 0) maps to the center
 tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the right side.
 
@@ -447,8 +447,8 @@ tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the right side.
 
 Unfortunately, the indices cannot be determined with one simple formula as
 before.  Indexing requires a two-step process, a coarse step which determines a
-set of 4 tiles that contains the particle and a fine step that determines which
-of those 4 tiles actually contains the particle.
+set of four tiles that contains the particle and a fine step that determines
+which of those four tiles actually contains the particle.
 
 In the first step, indices are found using these formulas:
 
@@ -457,9 +457,9 @@ In the first step, indices are found using these formulas:
 
     \alpha = -\frac{x}{\sqrt{3}} + y
 
-    i_x^* = \Bigg \lfloor \frac{x}{p_0 \sqrt{3} / 2} \Bigg \rfloor
+    i_x^* = \left \lfloor \frac{x}{p_0 \sqrt{3} / 2} \right \rfloor
 
-    i_\alpha^* = \Bigg \lfloor \frac{\alpha}{p_0} \Bigg \rfloor
+    i_\alpha^* = \left \lfloor \frac{\alpha}{p_0} \right \rfloor
 
 where :math:`p_0` is the lattice pitch (in the :math:`x`-:math:`y` plane).  The
 true index of the particle could be :math:`(i_x^*, i_\alpha^*)`,
@@ -478,7 +478,7 @@ lattices, i.e.
 .. math::
     :label: hex_indexing_z
 
-    i_z = \Bigg \lceil \frac{z - z_0}{p_2} \Bigg \rceil
+    i_z = \left \lceil \frac{z - z_0}{p_2} \right \rceil
 
 ----------------------------------------
 Determining if a Coordinate is in a Cell

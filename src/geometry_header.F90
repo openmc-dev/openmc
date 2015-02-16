@@ -157,7 +157,7 @@ contains
     integer,            intent(in) :: i_xyz(3)
     logical                        :: is_valid
 
-    is_valid = (all(i_xyz > 0 .and. i_xyz <= this % n_cells))
+    is_valid = all(i_xyz > 0 .and. i_xyz <= this % n_cells)
   end function valid_inds_rect
 
 !===============================================================================

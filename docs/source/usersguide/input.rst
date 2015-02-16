@@ -822,7 +822,9 @@ the following attributes or sub-elements:
     *Default*: None
 
   :pitch:
-    The pitch between lattice cells in the x- and y- (and z-) directions.
+    If the lattice is 3D, then three real numbers that express the distance
+    between the centers of lattice cells in the x-, y-, and z- directions.  If
+    the lattice is 2D, then omit the third value.
 
     *Default*: None
 
@@ -886,7 +888,9 @@ the following attributes or sub-elements:
     *Default*: None
 
   :pitch:
-    The pitch between lattice cells in the x- and y- (and z-) directions.
+    If the lattice is 3D, then two real numbers that express the distance
+    between the centers of lattice cells in the xy-plane and along the z-axis,
+    respectively.  If the lattice is 2D, then omit the second value.
 
     *Default*: None
 

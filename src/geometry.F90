@@ -688,7 +688,7 @@ contains
     dist = INFINITY
     d_lat = INFINITY
     d_surf = INFINITY
-    lattice_translation = (/0, 0, 0/)
+    lattice_translation = [0, 0, 0]
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -1160,9 +1160,9 @@ contains
 
           d_lat = d
           if (u > 0) then
-            level_lat_trans = (/1, 0, 0/)
+            level_lat_trans = [1, 0, 0]
           else
-            level_lat_trans = (/-1, 0, 0/)
+            level_lat_trans = [-1, 0, 0]
           end if
 
           ! front and back sides
@@ -1177,9 +1177,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              level_lat_trans = (/0, 1, 0/)
+              level_lat_trans = [0, 1, 0]
             else
-              level_lat_trans = (/0, -1, 0/)
+              level_lat_trans = [0, -1, 0]
             end if
           end if
 
@@ -1198,9 +1198,9 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                level_lat_trans = (/0, 0, 1/)
+                level_lat_trans = [0, 0, 1]
               else
-                level_lat_trans = (/0, 0, -1/)
+                level_lat_trans = [0, 0, -1]
               end if
             end if
           end if
@@ -1230,9 +1230,9 @@ contains
           ! Upper right and lower left sides.
           edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
           if (beta_dir > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/1, 0, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, 0, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/-1, 0, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 0, 0])
           end if
           beta = xyz_t(1)*sqrt(3.0_8)/2.0_8 + xyz_t(2)/2.0_8
           if (abs(beta - edge) < FP_PRECISION) then
@@ -1245,17 +1245,17 @@ contains
 
           d_lat = d
           if (beta_dir > 0) then
-            level_lat_trans = (/1, 0, 0/)
+            level_lat_trans = [1, 0, 0]
           else
-            level_lat_trans = (/-1, 0, 0/)
+            level_lat_trans = [-1, 0, 0]
           end if
 
           ! Lower right and upper left sides.
           edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
           if (gama_dir > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/1, -1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, -1, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/-1, 1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 1, 0])
           end if
           gama = xyz_t(1)*sqrt(3.0_8)/2.0_8 - xyz_t(2)/2.0_8
           if (abs(gama - edge) < FP_PRECISION) then
@@ -1269,18 +1269,18 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (gama_dir > 0) then
-              level_lat_trans = (/1, -1, 0/)
+              level_lat_trans = [1, -1, 0]
             else
-              level_lat_trans = (/-1, 1, 0/)
+              level_lat_trans = [-1, 1, 0]
             end if
           end if
 
           ! Upper and lower sides.
           edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
           if (v > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/0, 1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, 1, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+(/0, -1, 0/))
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, -1, 0])
           end if
           if (abs(xyz_t(2) - edge) < FP_PRECISION) then
             d = INFINITY
@@ -1293,9 +1293,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              level_lat_trans = (/0, 1, 0/)
+              level_lat_trans = [0, 1, 0]
             else
-              level_lat_trans = (/0, -1, 0/)
+              level_lat_trans = [0, -1, 0]
             end if
           end if
 
@@ -1314,9 +1314,9 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                level_lat_trans = (/ 0, 0, 1 /)
+                level_lat_trans = [0, 0, 1]
               else
-                level_lat_trans = (/ 0, 0, -1 /)
+                level_lat_trans = [0, 0, -1]
               end if
             end if
           end if
@@ -1337,7 +1337,7 @@ contains
         if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
           dist = d_surf
           surface_crossed = level_surf_cross
-          lattice_translation = (/0, 0, 0/)
+          lattice_translation = [0, 0, 0]
           final_coord => coord
         end if
       else

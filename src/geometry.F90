@@ -688,7 +688,7 @@ contains
     dist = INFINITY
     d_lat = INFINITY
     d_surf = INFINITY
-    lattice_translation = [0, 0, 0]
+    lattice_translation(:) = [0, 0, 0]
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -1160,9 +1160,9 @@ contains
 
           d_lat = d
           if (u > 0) then
-            level_lat_trans = [1, 0, 0]
+            level_lat_trans(:) = [1, 0, 0]
           else
-            level_lat_trans = [-1, 0, 0]
+            level_lat_trans(:) = [-1, 0, 0]
           end if
 
           ! front and back sides
@@ -1177,9 +1177,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              level_lat_trans = [0, 1, 0]
+              level_lat_trans(:) = [0, 1, 0]
             else
-              level_lat_trans = [0, -1, 0]
+              level_lat_trans(:) = [0, -1, 0]
             end if
           end if
 
@@ -1198,9 +1198,9 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                level_lat_trans = [0, 0, 1]
+                level_lat_trans(:) = [0, 0, 1]
               else
-                level_lat_trans = [0, 0, -1]
+                level_lat_trans(:) = [0, 0, -1]
               end if
             end if
           end if
@@ -1245,9 +1245,9 @@ contains
 
           d_lat = d
           if (beta_dir > 0) then
-            level_lat_trans = [1, 0, 0]
+            level_lat_trans(:) = [1, 0, 0]
           else
-            level_lat_trans = [-1, 0, 0]
+            level_lat_trans(:) = [-1, 0, 0]
           end if
 
           ! Lower right and upper left sides.
@@ -1269,9 +1269,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (gama_dir > 0) then
-              level_lat_trans = [1, -1, 0]
+              level_lat_trans(:) = [1, -1, 0]
             else
-              level_lat_trans = [-1, 1, 0]
+              level_lat_trans(:) = [-1, 1, 0]
             end if
           end if
 
@@ -1293,9 +1293,9 @@ contains
           if (d < d_lat) then
             d_lat = d
             if (v > 0) then
-              level_lat_trans = [0, 1, 0]
+              level_lat_trans(:) = [0, 1, 0]
             else
-              level_lat_trans = [0, -1, 0]
+              level_lat_trans(:) = [0, -1, 0]
             end if
           end if
 
@@ -1314,9 +1314,9 @@ contains
             if (d < d_lat) then
               d_lat = d
               if (w > 0) then
-                level_lat_trans = [0, 0, 1]
+                level_lat_trans(:) = [0, 0, 1]
               else
-                level_lat_trans = [0, 0, -1]
+                level_lat_trans(:) = [0, 0, -1]
               end if
             end if
           end if
@@ -1337,14 +1337,14 @@ contains
         if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
           dist = d_surf
           surface_crossed = level_surf_cross
-          lattice_translation = [0, 0, 0]
+          lattice_translation(:) = [0, 0, 0]
           final_coord => coord
         end if
       else
         if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
           dist = d_lat
           surface_crossed = None
-          lattice_translation = level_lat_trans
+          lattice_translation(:) = level_lat_trans
           final_coord => coord
         end if
       end if

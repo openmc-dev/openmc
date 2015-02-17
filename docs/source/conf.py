@@ -39,7 +39,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
-copyright = u'2011-2014, Massachusetts Institute of Technology'
+copyright = u'2011-2015, Massachusetts Institute of Technology'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -191,6 +191,7 @@ latex_documents = [
 latex_elements = {
 'preamble': '''
 \usepackage{enumitem}
+\usepackage{amsfonts}
 \setlistdepth{9}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}

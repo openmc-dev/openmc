@@ -509,6 +509,8 @@ else:
     ENDC = ''
     BOLD = ''
 
+return_code = 0
+
 for test in tests:
     print(test + '.'*(50 - len(test)), end='')
     if tests[test].success:
@@ -516,3 +518,6 @@ for test in tests:
     else:
         print(BOLD + FAIL + '[FAILED]' + ENDC)
         print(' '*len(test)+tests[test].msg)
+        return_code = 1
+
+sys.exit(return_code)

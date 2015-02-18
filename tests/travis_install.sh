@@ -42,9 +42,9 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
   ./configure --prefix=$PWD/../petsc_install -q --download-fblaslapack \
               --with-mpi-dir=$PWD/../mpich_install --with-share-libraries \
               --with-fortran-datatypes
-  make PETSC_DIR=/home/travis/build/bhermanmit/openmc/petsc-3.5.3 \
+  make PETSC_DIR=$PWD \
        PETSC_ARCH=arch-linux2-c-debug all >/dev/null 2>&1
-  make PETSC_DIR=/home/travis/build/bhermanmit/openmc/petsc-3.5.3 \
+  make PETSC_DIR=$PWD \
        PETSC_ARCH=arch-linux2-c-debug install >/dev/null 2>&1
   make install >/dev/null 2>&1
   cd ..

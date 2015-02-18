@@ -1300,7 +1300,7 @@ contains
         call warning("The use of 'width' is deprecated and will be disallowed &
              &in a future release.  Use 'pitch' instead.  The utility openmc/&
              &src/utils/update_inputs.py can be used to automatically update &
-             &geometry.xml files.", deprecation=.true.)
+             &geometry.xml files.")
         if (get_arraysize_double(node_lat, "width") /= n) then
           call fatal_error("Number of entries on <pitch> must be the same as &
                &the number of entries on <dimension>.")
@@ -1323,7 +1323,7 @@ contains
       if (check_for_node(node_lat, "type")) then
         call warning("The use of 'type' is no longer needed.  The utility &
              &openmc/src/utils/update_inputs.py can be used to automatically &
-             &update geometry.xml files.", deprecation=.true.)
+             &update geometry.xml files.")
       end if
 
       ! Copy number of dimensions

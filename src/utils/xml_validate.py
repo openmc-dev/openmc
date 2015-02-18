@@ -31,13 +31,24 @@ else:
     BOLD = ''
     NOT_FOUND = ''
 
-# Get paths
-relaxng_path = os.path.abspath(options.relaxng)
-inputs_path = os.path.abspath(options.inputs)
+# Get absolute paths
+if options.relaxng is not None:
+    relaxng_path = os.path.abspath(options.relaxng)
+if options.inputs is not None:
+    inputs_path = os.path.abspath(options.inputs)
 
-# Check for RelaxNG path
-if not relaxng_path:
-    raise Exception("Must specify RelaxNG path.")
+# Search for relaxng path if not set
+if options.relaxng is None:
+    xml_validate_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+    if "bin" in xml_validate_path:
+        relaxng_path = os.path.join(xml_validate_path, "..", "share", "relaxng")
+    elif os.path.join("src", "utils") in xml_validate_path:
+        relaxng_path = os.path.join(xml_validate_path, "..", "relaxng")
+    else:
+        raise Exception("Set RelaxNG path with -r command line option.")
+if not os.path.exists(relaxng_path):
+    raise Exception("RelaxNG path: {0} does not exist, set with -r "
+                    "command line option.".format(relaxng_path))
 
 # Make sure there are .rnc files in RelaxNG path
 rnc_files = glob.glob(os.path.join(relaxng_path, "*.rnc"))
@@ -48,7 +59,8 @@ if len(rnc_files) == 0:
 # Get list of xml input files
 xml_files = glob.glob(os.path.join(inputs_path, "*.xml"))
 if len(xml_files) == 0:
-    raise Exception("No .xml files found at input path: {0}.".format(inputs_path))
+    raise Exception("No .xml files found at input path: {0}"
+                    ".".format(inputs_path))
 
 # Begin loop around input files
 for xml_file in xml_files:

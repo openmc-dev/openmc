@@ -18,36 +18,24 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(message_in, deprecation)
+  subroutine warning(message)
 
-    character(*)                  :: message_in  ! printed with the warning
-    logical, optional, intent(in) :: deprecation ! is a depreciation warning
+    character(*) :: message
 
-    integer                   :: i_start      ! starting position
-    integer                   :: i_end        ! ending position
-    integer                   :: line_wrap    ! length of line
-    integer                   :: length       ! length of message
-    integer                   :: indent       ! length of indentation
-    character(:), allocatable :: message      ! input message with a prefix
+    integer :: i_start   ! starting position
+    integer :: i_end     ! ending position
+    integer :: line_wrap ! length of line
+    integer :: length    ! length of message
+    integer :: indent    ! length of indentation
+
+    ! Write warning at beginning
+    write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
 
     ! Set line wrapping and indentation
     line_wrap = 80
     indent = 10
 
     ! Determine length of message
-    length = len_trim(message_in)
-
-    ! Prefix the message
-    if (.not. present(deprecation)) then
-      allocate(character(length+9) :: message)
-      message = 'WARNING: ' // message_in
-    else if (deprecation) then
-      allocate(character(length+23) :: message)
-      message = 'DEPRECATION WARNING: ' // message_in
-    else
-      allocate(character(length+9) :: message)
-      message = 'WARNING: ' // message_in
-    end if
     length = len_trim(message)
 
     i_start = 0
@@ -79,8 +67,6 @@ contains
         if (i_start > length) exit
       end if
     end do
-
-    deallocate(message)
 
   end subroutine warning
 

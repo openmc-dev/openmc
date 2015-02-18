@@ -88,11 +88,11 @@ Prerequisites
 
     * PETSc_ for CMFD acceleration
 
-      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
-      installed on your computer. The installed version will need to have been
-      compiled with the same compiler you intend to compile OpenMC with. OpenMC
-      requires PETSc_ to be configured with Fortran datatypes. An example of
-      configuring PETSc_ is listed below::
+      To enable some features of CMFD acceleration, you will need to have
+      PETSc_ (3.4.2 or higher) installed on your computer. The installed version
+      will need to have been compiled with the same compiler you intend to
+      compile OpenMC with. OpenMC requires PETSc_ to be configured with Fortran
+      datatypes. An example of configuring PETSc_ is listed below::
 
            ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
                        --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \

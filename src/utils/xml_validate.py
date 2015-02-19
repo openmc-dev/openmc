@@ -99,7 +99,7 @@ for xml_file in xml_files:
             try:
                 relaxng.assertValid(xml_tree)
                 print(BOLD + OK + '[VALID]' + ENDC)
-            except etree.DocumentInvalid as e:
+            except (etree.DocumentInvalid, TypeError) as e:
                 print(BOLD + FAIL + '[NOT VALID]' + ENDC)
                 print("    {0}".format(e))
 

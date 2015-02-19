@@ -26,8 +26,8 @@ element tallies {
         "surface" | "mesh" | "energy" | "energyout" ) } |
        attribute type { ( "cell" | "cellborn" | "material" | "universe" |
         "surface" | "mesh" | "energy" | "energyout" ) }) &
-      (element bins { list { xsd:string { maxLength = "20" }+ } } |
-        attribute bins { list { xsd:string { maxLength = "20" }+ } })
+      (element bins { list { xsd:double+ } } |
+        attribute bins { list { xsd:double+ } })
     }* &
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }

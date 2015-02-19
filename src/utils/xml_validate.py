@@ -108,7 +108,7 @@ for xml_file in xml_files:
 
         # trang command failed
         else:
-            print(BOLD + FAIL + '[TRANG RNC-->RNG FAILED]' + ENDC)
+            print(BOLD + FAIL + '[TRANG FAILED]' + ENDC)
 
     # RNC file does not exist
     else:

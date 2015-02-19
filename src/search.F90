@@ -57,6 +57,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
+      write(*,'(ES16.9,ES16.9,ES16.9)') val, array(L), array(R)
       call fatal_error("Value outside of array during binary search")
     end if
 
@@ -109,6 +110,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
+      write(*,'(ES16.9,ES16.9,ES16.9)') val, array(L), array(R)
       call fatal_error("Value outside of array during binary search")
     end if
 
@@ -161,6 +163,7 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
+      write(*,'(ES16.9,ES16.9,ES16.9)') val, array(L), array(R)
       call fatal_error("Value outside of array during binary search")
     end if
 

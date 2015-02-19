@@ -12,8 +12,13 @@ module cross_section
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
-  use unresolved,      only: calculate_urr_xs_otf, calc_urr_xs_otf, &
-                             real_freq, represent_urr, Isotope, isotopes
+  use unresolved,      only: calculate_prob_band_xs, &
+                             calculate_urr_xs_otf, &
+                             calc_urr_xs_otf, &
+                             Isotope, &
+                             isotopes, &
+                             real_freq, &
+                             represent_urr
 
   implicit none
   save
@@ -437,27 +442,31 @@ contains
     if (associated(tope)) then
       if (E * 1.0E6_8 >= tope % EL(tope % i_urr) &
         & .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
-        select case(real_freq)
-        case (EVENT)
-          micro_xs(i_nuclide) % use_ptable = .true.
-          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
-            & nuc % kT / K_BOLTZMANN)
-        case (HISTORY)
-          call fatal_error('History-based URR realizations not yet supported')
-        case (BATCH)
-          call fatal_error('Batch-based URR realizations not yet supported')
-        case (SIMULATION)
-          if (represent_urr == PARAMETERS) then
-            ! this is used in physics, even though we aren't actually using ptables
+        if (tope % prob_bands) then
+          call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E)
+        else
+          select case(real_freq)
+          case (EVENT)
             micro_xs(i_nuclide) % use_ptable = .true.
-            call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
-          else if (represent_urr == POINTWISE) then
-            micro_xs(i_nuclide) % use_ptable = .true.
-            call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
-          end if
-        case default
-          call fatal_error('Unrecognized URR realization frequency')
-        end select
+            call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
+              & nuc % kT / K_BOLTZMANN)
+          case (HISTORY)
+            call fatal_error('History-based URR realizations not yet supported')
+          case (BATCH)
+            call fatal_error('Batch-based URR realizations not yet supported')
+          case (SIMULATION)
+            if (represent_urr == PARAMETERS) then
+              ! this is used in physics, even though we aren't actually using ptables
+              micro_xs(i_nuclide) % use_ptable = .true.
+              call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+            else if (represent_urr == POINTWISE) then
+              micro_xs(i_nuclide) % use_ptable = .true.
+              call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+            end if
+          case default
+            call fatal_error('Unrecognized URR realization frequency')
+          end select
+        end if
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then
       if (E > nuc % urr_data % energy(1) &

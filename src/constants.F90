@@ -39,7 +39,6 @@ module constants
   ! Source of background cross sections
   integer, parameter :: ENDFFILE  = 1
   integer, parameter :: ACEFILE   = 2
-  integer, parameter :: GENERATED = 3
 
   ! ============================================================================
   ! VERSIONING NUMBERS

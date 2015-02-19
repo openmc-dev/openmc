@@ -5,7 +5,7 @@ module endf_reader
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
-  use unresolved,        only: Isotope, isotopes
+  use unresolved,        only: E_spacing, Isotope, isotopes
 
   implicit none
 
@@ -928,7 +928,6 @@ contains
           allocate(tope % GF_mean (tope % NLS(i_ER)))
           allocate(tope % GX_mean (tope % NLS(i_ER)))
           if (tope % LSSF == 1) then
-            call tope % alloc_avg_urr(tope % NE)
             call set_avg_urr_xs(i)
           end if
         end if

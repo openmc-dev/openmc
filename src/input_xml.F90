@@ -18,23 +18,25 @@ module input_xml
   use unresolved,       only: background, &
                               band_spacing, &
                               competitive, &
-                              E_mesh, &
                               endf_files, &
                               E_spacing, &
+                              Etables, &
+                              first_bound, &
                               formalism, &
                               histories_avg_urr, &
                               i_real_user, &
                               isotopes, &
                               l_waves, &
+                              last_bound, &
                               max_batches_avg_urr, &
                               max_dE_point_urr, &
                               min_batches_avg_urr, &
                               min_dE_point_urr, &
                               n_bands, &
-                              n_energies, &
                               n_fasturr, &
                               n_reals, &
                               n_temps, &
+                              ntables, &
                               otf_urr, &
                               prob_bands, &
                               real_freq, &
@@ -3179,7 +3181,8 @@ contains
 
   subroutine read_urr_xml()
 
-    integer :: i ! URR nuclides loop index
+    integer :: i    ! URR nuclides loop index
+    integer :: i_xs ! probability band index
     character(80) :: temp_str
     character(80) :: filename
     logical :: file_exists ! does urr.xml file exist?
@@ -3499,13 +3502,37 @@ contains
       if (check_for_node(prob_table_node, "band_spacing")) then
         call get_node_value(prob_table_node, "band_spacing", temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'linear') then
-          call fatal_error('Linear probability table cross section&
-            & bands not yet implemented')
           band_spacing = LINEAR
+          if (check_for_node(prob_table_node, "first_bound")) then
+            call get_node_value(prob_table_node, "first_bound", first_bound)
+          else
+            call fatal_error('No first cross section band boundary given')
+          end if
+          if (check_for_node(prob_table_node, "last_bound")) then
+            call get_node_value(prob_table_node, "last_bound", last_bound)
+          else
+            call fatal_error('No last cross section band boundary given')
+          end if
+          allocate(xs_bands(n_bands - 1))
+          xs_bands(:) = (/(first_bound &
+            & + i_xs * (last_bound - first_bound) / dble(n_bands - 2), &
+            & i_xs = 0, n_bands - 2)/)
         else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
-          call fatal_error('Logarithmic probability table cross section&
-            & bands not yet implemented')
           band_spacing = LOGARITHMIC
+          if (check_for_node(prob_table_node, "first_bound")) then
+            call get_node_value(prob_table_node, "first_bound", first_bound)
+          else
+            call fatal_error('No first cross section band boundary given')
+          end if
+          if (check_for_node(prob_table_node, "last_bound")) then
+            call get_node_value(prob_table_node, "last_bound", last_bound)
+          else
+            call fatal_error('No last cross section band boundary given')
+          end if
+          allocate(xs_bands(n_bands - 1))
+          xs_bands(:) = (/(first_bound &
+            & * exp(i_xs * log(last_bound / first_bound) / (n_bands - 2)), &
+            & i_xs = 0, n_bands - 2)/)
         else if (trim(adjustl(to_lower(temp_str))) == 'user') then
           band_spacing = USER
           if (check_for_node(prob_table_node, "xs_bands")) then
@@ -3532,16 +3559,20 @@ contains
             & supported in urr.xml')
         else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
           E_spacing = LOGARITHMIC
-          call fatal_error('Logarithmic probability table energy spacing not&
-            & yet supported in urr.xml')
+          if (check_for_node(prob_table_node, "n_energies")) then
+            call get_node_value(prob_table_node, "n_energies", ntables)
+          else
+            call fatal_error('Must specify number of logarithmic probability&
+              & table energies')
+          end if
         else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
           E_spacing = ENDF6
         else if (trim(adjustl(to_lower(temp_str))) == 'user') then
           E_spacing = USER
           if (check_for_node(prob_table_node, "energy_values")) then
-            n_energies = get_arraysize_double(prob_table_node, "energy_values")
-            allocate(E_mesh(n_energies))
-            call get_node_array(prob_table_node, "energy_values", E_mesh)
+            ntables = get_arraysize_double(prob_table_node, "energy_values")
+            allocate(Etables(ntables))
+            call get_node_array(prob_table_node, "energy_values", Etables)
           else
             call fatal_error('No probability table energy grid values&
               & given in urr.xml')
@@ -3561,8 +3592,6 @@ contains
           background = ENDFFILE
         else if (trim(adjustl(to_lower(temp_str))) == 'ace') then
           background = ACEFILE
-        else if (trim(adjustl(to_lower(temp_str))) == 'theoretical') then
-          background = GENERATED
         else
           call fatal_error('Unrecognized background cross section source&
             & in probability table calculation given in urr.xml')

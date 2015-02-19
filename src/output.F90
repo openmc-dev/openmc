@@ -233,8 +233,6 @@ contains
             write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
           end if
 
-          ! Write up to last space
-
           ! Advance starting position
           i_start = i_end
           if (i_start > length) exit

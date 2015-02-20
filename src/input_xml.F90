@@ -904,7 +904,7 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: temp_int_array3(3)
+    integer :: temp_double_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
@@ -1052,10 +1052,10 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_int_array3)
-        phi   = -temp_int_array3(1) * PI/180.0_8
-        theta = -temp_int_array3(2) * PI/180.0_8
-        psi   = -temp_int_array3(3) * PI/180.0_8
+        call get_node_array(node_cell, "rotation", temp_double_array3)
+        phi   = -temp_double_array3(1) * PI/180.0_8
+        theta = -temp_double_array3(2) * PI/180.0_8
+        psi   = -temp_double_array3(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
         allocate(c % rotation(3,3))

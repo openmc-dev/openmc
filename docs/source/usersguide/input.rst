@@ -51,6 +51,55 @@ files are called:
 * ``plots.xml``
 * ``cmfd.xml``
 
+--------------------
+Validating XML Files
+--------------------
+
+Input files can be checked before executing OpenMC using the ``xml_validate``
+script. It is located in ``src/utils/xml_validate.py`` in the source code or in
+``bin/xml_validate`` in the install directory. Before use, the third party
+package TRANG_ must be installed and in your ``PATH`` to convert the compact
+RelaxNG schema to standard RelaxNG format. For Ubuntu, you can install with:
+
+.. code-block:: bash
+ 
+   sudo apt-get install trang
+
+Two command line arguments can be set when running ``xml_validate``:
+
+* ``-i``, ``--input-path`` - Location of OpenMC input files.
+  *Default*: current working directory
+* ``-r``, ``--relaxng-path`` - Location of OpenMC RelaxNG files.
+  *Default*: None
+
+If the RelaxNG path is not set, ``xml_validate`` will search for these files
+because it expects that the user is either running the script located in the
+install directory ``bin`` folder or in ``src/utils``. Once executed, it will
+match OpenMC XML files with their RelaxNG schema and check if they are valid.
+Below is a table of the messages that will be printed after each file is
+checked.
+
+========================  ===================================
+Message                   Description
+========================  ===================================
+[XML ERROR]               Cannot parse XML file.
+[NO RELAXNG FOUND]        No RelaxNG file found for XML file.
+[TRANG FAILED]            TRANG not installed properly.
+[NOT VALID]               XML file does not match RelaxNG.
+[VALID]                   XML file matches RelaxNG.
+========================  ===================================
+
+As an example, if OpenMC is installed in the directory
+``/opt/openmc/0.6.2`` and the current working directory is where
+OpenMC XML input files are located, they can be validated using
+the following command:
+
+.. code-block:: bash
+
+   /opt/openmc/0.6.2/bin/xml_validate
+
+.. _TRANG: http://www.thaiopensource.com/relaxng/trang.html
+
 --------------------------------------
 Settings Specification -- settings.xml
 --------------------------------------

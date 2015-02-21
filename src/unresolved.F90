@@ -1500,8 +1500,11 @@ contains
     real(8) :: E    ! neutron lab energy [eV]
     real(8) :: T    ! isotope temperature [K]
     real(8) :: fact ! File 3 energy grid interpolation factor
-    real(8) :: xs_t_min = 1.0e6_8 ! realized total xs
-    real(8) :: xs_t_max = ZERO    ! max realized total xs
+    real(8) :: xs_t_min ! realized total xs
+    real(8) :: xs_t_max ! max realized total xs
+
+    xs_t_min = 1.0e6_8
+    xs_t_max = ZERO
 
     tope => isotopes(iso)
     nuc  => nuclides(i_nuc)
@@ -3168,11 +3171,11 @@ contains
 
   function interp_factor(val, val_low, val_up, scheme) result(factor)
 
+    integer :: scheme ! interpolation scheme
     real(8) :: val     ! value we're interpolating to
     real(8) :: val_low ! lower bounding value
     real(8) :: val_up  ! upper bounding value
     real(8) :: factor  ! interpolation factor
-    integer :: scheme ! interpolation scheme
 
     select case(scheme)
     case(LINEAR_LINEAR)
@@ -3200,11 +3203,11 @@ contains
 
   function interpolator(factor, val_low, val_up, scheme) result(val)
 
+    integer :: scheme ! interpolation scheme
     real(8) :: factor  ! interpolation factor
     real(8) :: val_low ! lower bounding value
     real(8) :: val_up  ! upper bounding value
     real(8) :: val     ! interpolated value
-    integer :: scheme ! interpolation scheme
 
     select case(scheme)
     case (LINEAR_LINEAR)
@@ -3233,12 +3236,12 @@ contains
 
   function E_last_rrr(iso, l_val, J_val) result(E_val)
 
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
     integer :: iso   ! isotope index
     integer :: i_res ! RRR resonance index for a given l
     integer :: l_val ! orbital quantum number
     real(8) :: J_val ! total angular momentum quantum number
     real(8) :: E_val ! highest-energy RRR resonance energy for (l,J)
-    type(Isotope), pointer :: tope => null() ! nuclide pointer
 !$omp threadprivate(tope)
 
     tope => isotopes(iso)

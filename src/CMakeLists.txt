@@ -272,6 +272,10 @@ install(PROGRAMS utils/statepoint_meshplot.py
 install(PROGRAMS utils/update_inputs.py
   DESTINATION bin
   RENAME update_inputs)
+install(PROGRAMS utils/xml_validate.py
+  DESTINATION bin
+  RENAME xml_validate)
+install(DIRECTORY relaxng DESTINATION share)
 install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
 

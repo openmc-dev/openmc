@@ -2,8 +2,8 @@
 OpenMC Monte Carlo Particle Transport Code
 ==========================================
 
-.. image:: https://travis-ci.org/bhermanmit/openmc.svg?branch=develop
-    :target: https://travis-ci.org/bhermanmit/openmc
+.. image:: https://travis-ci.org/mit-crpg/openmc.svg?branch=develop
+    :target: https://travis-ci.org/mit-crpg/openmc
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,

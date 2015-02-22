@@ -87,17 +87,23 @@ set(ENV{{COVERAGE}} ${{COVERAGE}})
 {subproject}
 
 ctest_start("{dashboard}")
-ctest_configure()
+ctest_configure(RETURN_VALUE res)
 {update}
-ctest_build()
-ctest_test({tests} PARALLEL_LEVEL {n_procs})
+ctest_build(RETURN_VALUE res)
+ctest_test({tests} PARALLEL_LEVEL {n_procs}, RETURN_VALUE res)
 if(MEM_CHECK)
-ctest_memcheck({tests})
+ctest_memcheck({tests}, RETURN_VALUE res)
 endif(MEM_CHECK)
 if(COVERAGE)
-ctest_coverage()
+ctest_coverage(RETURN_VALUE res)
 endif(COVERAGE)
-{submit}"""
+{submit}
+
+if (res EQUAL 0)
+else()
+message(FATAL_ERROR "")
+endif()
+"""
 
 # Define test data structure
 tests = OrderedDict()

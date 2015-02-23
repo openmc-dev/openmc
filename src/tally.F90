@@ -1837,8 +1837,10 @@ contains
              p % coord % universe, i_tally)
 
       case (FILTER_MATERIAL)
-        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-             p % material, i_tally)
+        if (p % material /= MATERIAL_VOID) then
+          matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
+               p % material, i_tally)
+        endif
 
       case (FILTER_CELL)
         ! determine next cell bin

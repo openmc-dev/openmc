@@ -67,7 +67,7 @@ contains
     end if
 
     ! Terminate access to the file.
-    call su % file_close() 
+    call su % file_close()
 
   end subroutine hdf5_write_summary
 
@@ -80,7 +80,7 @@ contains
     ! Write version information
     call su % write_data(VERSION_MAJOR, "version_major")
     call su % write_data(VERSION_MINOR, "version_minor")
-    call su % write_data(VERSION_RELEASE, "version_release") 
+    call su % write_data(VERSION_RELEASE, "version_release")
 
     ! Write current date and time
     call su % write_data(time_stamp(), "date_and_time")
@@ -88,7 +88,7 @@ contains
     ! Write MPI information
     call su % write_data(n_procs, "n_procs")
     call su % write_attribute_string("n_procs", "description", &
-         "Number of MPI processes") 
+         "Number of MPI processes")
 
   end subroutine hdf5_write_header
 
@@ -144,12 +144,12 @@ contains
         call su % write_data("universe", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
         call su % write_data(universes(c % fill) % id, "material", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
+             group="geometry/cells/cell " // trim(to_str(c % id)))
       case (CELL_LATTICE)
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
         call su % write_data(lattices(c % fill) % id, "lattice", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
+             group="geometry/cells/cell " // trim(to_str(c % id)))
       end select
 
       ! Write list of bounding surfaces
@@ -303,7 +303,7 @@ contains
       else
         n_z = 1
       end if
-        
+
       ! Write lattice universes
       allocate(lattice_universes(n_x, n_y, n_z))
       do j = 1, n_x
@@ -371,7 +371,7 @@ contains
              group="materials/material " // trim(to_str(m % id)))
         call su % write_data(m % i_sab_tables, "i_sab_tables", &
              length=m % n_sab, &
-             group="materials/material " // trim(to_str(m % id))) 
+             group="materials/material " // trim(to_str(m % id)))
       end if
 
     end do
@@ -659,8 +659,6 @@ contains
          group="timing")
     call su % write_data(time_read_xs % elapsed, "time_read_xs", &
          group="timing")
-    call su % write_data(time_unionize % elapsed, "time_unionize", &
-         group="timing")
     call su % write_data(time_transport % elapsed, "time_transport", &
          group="timing")
     call su % write_data(time_bank % elapsed, "time_bank", &
@@ -685,8 +683,6 @@ contains
          "Total time elapsed for initialization (s)", group="timing")
     call su % write_attribute_string("time_read_xs", "description", &
          "Time reading cross-section libraries (s)", group="timing")
-    call su % write_attribute_string("time_unionize", "description", &
-         "Time unionizing energy grid (s)", group="timing")
     call su % write_attribute_string("time_transport", "description", &
          "Time in transport only (s)", group="timing")
     call su % write_attribute_string("time_bank", "description", &

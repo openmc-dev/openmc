@@ -66,14 +66,11 @@ Prerequisites
       To compile with support for parallel runs on a distributed-memory
       architecture, you will need to have a valid implementation of MPI
       installed on your machine. The code has been tested and is known to work
-      with the latest versions of both OpenMPI_ and MPICH_. Note that if using
-      OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
-      since this may prevent MPI calls from completing successfully in
-      OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
-      with::
+      with the latest versions of both OpenMPI_ and MPICH_. OpenMPI and/or MPICH
+      can be installed on Debian derivatives with::
 
-          sudo apt-get install mpich2 libmpich2-dev
-          sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev
+          sudo apt-get install mpich libmpich-dev
+          sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
 
     * HDF5_ Library for portable binary output format
 
@@ -91,11 +88,11 @@ Prerequisites
 
     * PETSc_ for CMFD acceleration
 
-      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
-      installed on your computer. The installed version will need to have been
-      compiled with the same compiler you intend to compile OpenMC with. OpenMC
-      requires PETSc_ to be configured with Fortran datatypes. An example of
-      configuring PETSc_ is listed below::
+      To enable some features of CMFD acceleration, you will need to have
+      PETSc_ (3.4.2 or higher) installed on your computer. The installed version
+      will need to have been compiled with the same compiler you intend to
+      compile OpenMC with. OpenMC requires PETSc_ to be configured with Fortran
+      datatypes. An example of configuring PETSc_ is listed below::
 
            ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
                        --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \

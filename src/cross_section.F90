@@ -2,6 +2,7 @@ module cross_section
 
   use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
+  use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
   use fission,         only: nu_total
   use global
@@ -13,9 +14,6 @@ module cross_section
 
   implicit none
   save
-
-  integer :: union_grid_index
-!$omp threadprivate(union_grid_index)
 
 contains
 
@@ -51,7 +49,7 @@ contains
     mat => materials(p % material)
 
     ! Find energy index on global or material unionized grid
-    if (grid_method == GRID_GLOB_UNION .or. grid_method == GRID_MAT_UNION) &
+    if (grid_method == GRID_MAT_UNION) &
       & call find_energy_index(p % E, p % material)
 
     ! Determine if this material has S(a,b) tables
@@ -143,10 +141,12 @@ contains
     integer, intent(in) :: i_sab     ! index into sab_tables array
     integer, intent(in) :: i_mat     ! index into materials array
     integer, intent(in) :: i_nuc_mat ! index into nuclides array for a material
-    real(8), intent(in) :: E         ! energy
-
     integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f      ! interp factor on nuclide energy grid
+    integer :: i_low  ! lower logarithmic mapping index
+    integer :: i_high ! upper logarithmic mapping index
+    integer :: u      ! index into logarithmic mapping array
+    real(8), intent(in) :: E ! energy
+    real(8) :: f             ! interp factor on nuclide energy grid
     type(Nuclide),  pointer, save :: nuc => null()
     type(Material), pointer, save :: mat => null()
 !$omp threadprivate(nuc, mat)
@@ -157,20 +157,33 @@ contains
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
-    ! If we're using a unionized grid with pointers, finding the index on
-    ! the nuclide energy grid is as simple as looking up the pointer
-    case (GRID_GLOB_UNION)
-
-      i_grid = nuc % glob_grid_index(union_grid_index)
-
     case (GRID_MAT_UNION)
 
       i_grid = mat % nuclide_grid_index(i_nuc_mat, union_grid_index)
 
+    case (GRID_LOGARITHM)
+      ! Determine the energy grid index using a logarithmic mapping to reduce
+      ! the energy range over which a binary search needs to be performed
+
+      if (E < nuc % energy(1)) then
+        i_grid = 1
+      elseif (E > nuc % energy(nuc % n_grid)) then
+        i_grid = nuc % n_grid - 1
+      else
+        ! Determine bounding indices based on which equal log-spaced interval
+        ! the energy is in
+        u = int(log(E/1.0e-11_8)/log_spacing)
+        i_low  = nuc % grid_index(u)
+        i_high = nuc % grid_index(u + 1) + 1
+
+        ! Perform binary search over reduced range
+        i_grid = binary_search(nuc % energy(i_low:i_high), &
+             i_high - i_low + 1, E) + i_low - 1
+      end if
+
     case (GRID_NUCLIDE)
-      ! If we're not using the unionized grid, we have to do a binary search on
-      ! the nuclide energy grid in order to determine which points to
-      ! interpolate between
+      ! Perform binary search on the nuclide energy grid in order to determine
+      ! which points to interpolate between
 
       if (E <= nuc % energy(1)) then
         i_grid = 1
@@ -207,7 +220,7 @@ contains
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
          + f * nuc % total(i_grid+1)
 
-    ! Calculate microscopic nuclide total cross section
+    ! Calculate microscopic nuclide elastic cross section
     micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
          + f * nuc % elastic(i_grid+1)
 
@@ -517,32 +530,17 @@ contains
     type(Material), pointer, save :: mat => null() ! pointer to current material
 !$omp threadprivate(mat)
 
-    select case(grid_method)
-    case(GRID_GLOB_UNION)
-      ! if the energy is outside of energy grid range, set to first or last
-      ! index. Otherwise, do a binary search through the union energy grid.
-      if (E < e_grid(1)) then
-        union_grid_index = 1
-      elseif (E > e_grid(n_grid)) then
-        union_grid_index = n_grid - 1
-      else
-        union_grid_index = binary_search(e_grid, n_grid, E)
-      end if
-      
-    case(GRID_MAT_UNION)
-      mat => materials(i_mat)      
+    mat => materials(i_mat)      
 
-      ! if the energy is outside of energy grid range, set to first or last
-      ! index. Otherwise, do a binary search through the union energy grid.
-      if (E <= mat % e_grid(1)) then
-        union_grid_index = 1
-      elseif (E > mat % e_grid(mat % n_grid)) then
-        union_grid_index = mat % n_grid - 1
-      else
-        union_grid_index = binary_search(mat % e_grid, mat % n_grid, E)
-      end if
-
-    end select
+    ! if the energy is outside of energy grid range, set to first or last
+    ! index. Otherwise, do a binary search through the union energy grid.
+    if (E <= mat % e_grid(1)) then
+      union_grid_index = 1
+    elseif (E > mat % e_grid(mat % n_grid)) then
+      union_grid_index = mat % n_grid - 1
+    else
+      union_grid_index = binary_search(mat % e_grid, mat % n_grid, E)
+    end if
 
   end subroutine find_energy_index
 

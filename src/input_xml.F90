@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -207,20 +208,29 @@ contains
     if (check_for_node(doc, "energy_grid")) then
       call get_node_value(doc, "energy_grid", temp_str)
     else
-      temp_str = 'global-union'
+      temp_str = 'logarithm'
     end if
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('global-union')
-      grid_method = GRID_GLOB_UNION
     case ('material-union')
       grid_method = GRID_MAT_UNION
-    case ('lethargy')
-      call fatal_error("Lethargy mapped energy grid not yet supported.")
+    case ('logarithm', 'logarithmic', 'log')
+      grid_method = GRID_LOGARITHM
     case default
       call fatal_error("Unknown energy grid method: " // trim(temp_str))
     end select
+
+    ! Number of bins for logarithmic grid
+    if (check_for_node(doc, "log_grid_bins")) then
+      call get_node_value(doc, "log_grid_bins", n_log_bins)
+      if (n_log_bins < 1) then
+        call fatal_error("Number of bins for logarithmic grid must be &
+             &greater than zero.")
+      end if
+    else
+      n_log_bins = 8000
+    end if
 
     ! Verbosity
     if (check_for_node(doc, "verbosity")) then
@@ -526,11 +536,11 @@ contains
 
         ! Copy dimensions
         call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
-        
+
         ! Calculate width
         entropy_mesh % width = (entropy_mesh % upper_right - &
              entropy_mesh % lower_left) / entropy_mesh % dimension
-        
+
       end if
 
       ! Turn on Shannon entropy calculation
@@ -894,8 +904,7 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: mid
-    integer :: temp_int_array3(3)
+    integer :: temp_double_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
@@ -1043,10 +1052,10 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_int_array3)
-        phi   = -temp_int_array3(1) * PI/180.0_8
-        theta = -temp_int_array3(2) * PI/180.0_8
-        psi   = -temp_int_array3(3) * PI/180.0_8
+        call get_node_array(node_cell, "rotation", temp_double_array3)
+        phi   = -temp_double_array3(1) * PI/180.0_8
+        theta = -temp_double_array3(2) * PI/180.0_8
+        psi   = -temp_double_array3(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
         allocate(c % rotation(3,3))
@@ -1330,15 +1339,18 @@ contains
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary
@@ -2332,7 +2344,7 @@ contains
           j = j + 1
           ! Get the input string in scores(l) but if score is one of the moment
           ! scores then strip off the n and store it as an integer to be used
-          ! later. Then perform the select case on this modified (number 
+          ! later. Then perform the select case on this modified (number
           ! removed) string
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
@@ -2823,7 +2835,7 @@ contains
       ! Copy plot cell universe level
       if (check_for_node(node_plot, "level")) then
         call get_node_value(node_plot, "level", pl % level)
-        
+
         if (pl % level < 0) then
           call fatal_error("Bad universe level in plot " &
                &// trim(to_str(pl % id)))
@@ -2929,7 +2941,7 @@ contains
           call warning("Meshlines ignored in voxel plot " &
                &// trim(to_str(pl % id)))
         end if
-        
+
         select case(n_meshlines)
           case (0)
             ! Skip if no meshlines are specified
@@ -2937,7 +2949,7 @@ contains
 
             ! Get pointer to meshlines
             call get_list_item(node_meshline_list, 1, node_meshlines)
-            
+
             ! Check mesh type
             if (check_for_node(node_meshlines, "meshtype")) then
               call get_node_value(node_meshlines, "meshtype", meshtype)
@@ -2945,7 +2957,7 @@ contains
               call fatal_error("Must specify a meshtype for meshlines &
                    &specification in plot " // trim(to_str(pl % id)))
             end if
-            
+
             ! Ensure that there is a linewidth for this meshlines specification
             if (check_for_node(node_meshlines, "linewidth")) then
               call get_node_value(node_meshlines, "linewidth", &
@@ -2957,19 +2969,19 @@ contains
 
             ! Check for color
             if (check_for_node(node_meshlines, "color")) then
-              
+
               ! Check and make sure 3 values are specified for RGB
               if (get_arraysize_double(node_meshlines, "color") /= 3) then
                 call fatal_error("Bad RGB for meshlines color in plot " &
                      &// trim(to_str(pl % id)))
               end if
-              
+
               call get_node_array(node_meshlines, "color", &
                   pl % meshlines_color % rgb)
             else
-              
+
               pl % meshlines_color % rgb = (/ 0, 0, 0 /)
-            
+
             end if
 
             ! Set mesh based on type
@@ -2980,7 +2992,7 @@ contains
                 call fatal_error("No UFS mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => ufs_mesh
 
             case ('cmfd')
@@ -2996,17 +3008,17 @@ contains
               pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
- 
+
               if (.not. associated(entropy_mesh)) then
                 call fatal_error("No entropy mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               if (.not. allocated(entropy_mesh % dimension)) then
                 call fatal_error("No dimension specified on entropy mesh &
                      &for meshlines on plot " // trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => entropy_mesh
 
             case ('tally')
@@ -3041,9 +3053,9 @@ contains
             call fatal_error("Mutliple meshlines specified in plot " &
                  &// trim(to_str(pl % id)))
         end select
-        
+
       end if
-      
+
       ! Deal with masks
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)

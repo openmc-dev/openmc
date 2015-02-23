@@ -42,10 +42,10 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 
 # Default compiler paths
 FC='gfortran'
-MPI_DIR='/opt/mpich/3.1-gnu'
-HDF5_DIR='/opt/hdf5/1.8.12-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
-PETSC_DIR='/opt/petsc/3.4.4-gnu'
+MPI_DIR='/opt/mpich/3.1.3-gnu'
+HDF5_DIR='/opt/hdf5/1.8.14-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.14-gnu'
+PETSC_DIR='/opt/petsc/3.5.2-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -87,17 +87,23 @@ set(ENV{{COVERAGE}} ${{COVERAGE}})
 {subproject}
 
 ctest_start("{dashboard}")
-ctest_configure()
+ctest_configure(RETURN_VALUE res)
 {update}
-ctest_build()
-ctest_test({tests} PARALLEL_LEVEL {n_procs})
+ctest_build(RETURN_VALUE res)
+ctest_test({tests} PARALLEL_LEVEL {n_procs}, RETURN_VALUE res)
 if(MEM_CHECK)
-ctest_memcheck({tests})
+ctest_memcheck({tests}, RETURN_VALUE res)
 endif(MEM_CHECK)
 if(COVERAGE)
-ctest_coverage()
+ctest_coverage(RETURN_VALUE res)
 endif(COVERAGE)
-{submit}"""
+{submit}
+
+if (res EQUAL 0)
+else()
+message(FATAL_ERROR "")
+endif()
+"""
 
 # Define test data structure
 tests = OrderedDict()
@@ -509,6 +515,8 @@ else:
     ENDC = ''
     BOLD = ''
 
+return_code = 0
+
 for test in tests:
     print(test + '.'*(50 - len(test)), end='')
     if tests[test].success:
@@ -516,3 +524,6 @@ for test in tests:
     else:
         print(BOLD + FAIL + '[FAILED]' + ENDC)
         print(' '*len(test)+tests[test].msg)
+        return_code = 1
+
+sys.exit(return_code)

@@ -30,6 +30,6 @@ element geometry {
     (element lower_left { list { xsd:double+ } } | attribute lower_left { list { xsd:double+ } }) &
     (element width { list { xsd:double+ } } | attribute width { list { xsd:double+ } }) &
     (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
-    (element outside { xsd:int } | attribute outside { xsd:int })?
+    (element outer { xsd:int } | attribute outer { xsd:int })?
   }*
 }

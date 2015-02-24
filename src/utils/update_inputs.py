@@ -21,6 +21,7 @@ optional arguments:
 from __future__ import print_function
 
 import argparse
+from itertools import chain
 from random import randint
 from shutil import move
 import xml.etree.ElementTree as ET
@@ -180,13 +181,14 @@ def update_geometry(geometry_root):
     cids = get_cell_ids(root)
     taken_ids = uids.union(cids)
 
-    # Update the definitions of each lattice
-    for lat in root.iter('lattice'):
+    # Replace 'outside' with 'outer' in lattices.
+    for lat in chain(root.iter('lattice'), root.iter('hex_lattice')):
         # Get the lattice's id.
         lat_id = get_lat_id(lat)
 
         # Ignore lattices that have 'outer' specified.
         if any([child.tag == 'outer' for child in lat]): continue
+        if 'outer' in lat.attrib: continue
 
         # Pop the 'outside' material.
         material = pop_lat_outside(lat)
@@ -209,6 +211,27 @@ def update_geometry(geometry_root):
         lat.attrib['outer'] = str(new_uid)
 
         was_updated = True
+
+    # Remove 'type' from lattice definitions.
+    for lat in root.iter('lattice'):
+        elem = lat.find('type')
+        if elem is not None:
+            lat.remove(elem)
+            was_updated = True
+        if 'type' in lat.attrib:
+            del lat.attrib['type']
+            was_updated = True
+
+    # Change 'width' to 'pitch' in lattice definitions.
+    for lat in root.iter('lattice'):
+        elem = lat.find('width')
+        if elem is not None:
+            elem.tag = 'pitch'
+            was_updated = True
+        if 'width' in lat.attrib:
+            lat.attrib['pitch'] = lat.attrib['width']
+            del lat.attrib['width']
+            was_updated = True
 
     return was_updated
 

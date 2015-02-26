@@ -2,7 +2,8 @@ module geometry
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Surface, Universe, Lattice
+  use geometry_header,        only: Cell, Surface, Universe, Lattice, &
+                                    &RectLattice, HexLattice
   use global
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, deallocate_coord, Particle
@@ -131,18 +132,13 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
 
-    integer :: i                    ! index over cells
-    integer :: i_x, i_y, i_z        ! indices in lattice
-    integer :: n_x, n_y, n_z        ! size of lattice
-    integer :: n                    ! number of cells to search
-    integer :: index_cell           ! index in cells array
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
-    logical :: use_search_cells     ! use cells provided as argument
-    logical :: outside_lattice      ! if particle is not inside lattice bounds
-    logical :: lattice_edge         ! if particle is on a lattice edge
+    integer :: i                       ! index over cells
+    integer :: i_xyz(3)                ! indices in lattice
+    integer :: n                       ! number of cells to search
+    integer :: index_cell              ! index in cells array
+    logical :: use_search_cells        ! use cells provided as argument
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    class(Lattice), pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
 !$omp threadprivate(c, lat, univ)
 
@@ -159,7 +155,7 @@ contains
       n = univ % n_cells
     end if
 
-    do i = 1, n
+    CELL_LOOP: do i = 1, n
       ! select cells based on whether we are searching a universe or a provided
       ! list of cells (this would be for lists of neighbor cells)
       if (use_search_cells) then
@@ -173,170 +169,102 @@ contains
       ! get pointer to cell
       c => cells(index_cell)
 
-      if (simple_cell_contains(c, p)) then
-        ! Set cell on this level
-        p % coord % cell = index_cell
+      ! Move on to the next cell if the particle is not inside this cell
+      if (.not. simple_cell_contains(c, p)) cycle
 
-        ! Show cell information on trace
-        if (verbosity >= 10 .or. trace) then
-          call write_message("    Entering cell " // trim(to_str(c % id)))
-        end if
+      ! Set cell on this level
+      p % coord % cell = index_cell
 
-        if (c % type == CELL_NORMAL) then
-          ! ====================================================================
-          ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-
-          ! set material
-          p % last_material = p % material
-          p % material = c % material
-
-        elseif (c % type == CELL_FILL) then
-          ! ====================================================================
-          ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-
-          ! Create new level of coordinates
-          allocate(p % coord % next)
-          p % coord % next % xyz = p % coord % xyz
-          p % coord % next % uvw = p % coord % uvw
-
-          ! Move particle to next level and set universe
-          p % coord => p % coord % next
-          p % coord % universe = c % fill
-
-          ! Apply translation
-          if (allocated(c % translation)) then
-            p % coord % xyz = p % coord % xyz - c % translation
-          end if
-
-          ! Apply rotation
-          if (allocated(c % rotation_matrix)) then
-            p % coord % xyz = matmul(c % rotation_matrix, p % coord % xyz)
-            p % coord % uvw = matmul(c % rotation_matrix, p % coord % uvw)
-            p % coord % rotated = .true.
-          end if
-
-          call find_cell(p, found)
-          if (.not. found) exit
-
-        elseif (c % type == CELL_LATTICE) then
-          ! ====================================================================
-          ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-
-          ! Set current lattice
-          lat => lattices(c % fill)
-
-          outside_lattice = .false.
-          lattice_edge = .false.
-
-          ! determine lattice index based on position
-          xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-          i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
-          i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
-          n_x = lat % dimension(1)
-          n_y = lat % dimension(2)
-          if (lat % n_dimension == 3) then
-            i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
-            n_z = lat % dimension(3)
-          else
-            i_z = 1
-            n_z = 1
-          end if
-
-          ! Check if lattice coordinates are within bounds
-          if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-               i_z < 1 .or. i_z > n_z) then
-
-            ! Check for when particle is on lattice edge
-            upper_right(1) = lat % lower_left(1) + &
-                             lat % width(1) * dble(lat % dimension(1))
-            upper_right(2) = lat % lower_left(2) + &
-                             lat % width(2) * dble(lat % dimension(2))
-            if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
-                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
-                 abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
-                 abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
-              lattice_edge = .true.
-            end if
-            if (lat % n_dimension == 3) then
-              upper_right(3) = lat % lower_left(3) + &
-                               lat % width(3) * dble(lat % dimension(3))
-              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
-                  abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
-                lattice_edge = .true.
-              end if
-            end if
-
-            if (lattice_edge) then
-
-              ! In this case the neutron is leaving the lattice, so we move it
-              ! out, remove all lower coordinate levels and then search from
-              ! universe 0.
-
-              p % coord => p % coord0
-              call deallocate_coord(p % coord % next)
-
-              ! Reset surface and advance particle a tiny bit
-              p % surface = NONE
-              p % coord % xyz = xyz
-
-            else
-              outside_lattice = .true.
-
-            end if
-
-          end if
-
-          if (.not. lattice_edge) then
-
-            ! Create new level of coordinates
-            allocate(p % coord % next)
-
-            ! adjust local position of particle
-            p % coord % next % xyz(1) = p % coord % xyz(1) - &
-                 (lat % lower_left(1) + (i_x - 0.5_8)*lat % width(1))
-            p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                 (lat % lower_left(2) + (i_y - 0.5_8)*lat % width(2))
-            if (lat % n_dimension == 3) then
-              p % coord % next % xyz(3) = p % coord % xyz(3) - &
-                 (lat % lower_left(3) + (i_z - 0.5_8)*lat % width(3))
-            else
-              p % coord % next % xyz(3) = p % coord % xyz(3)
-            end if
-            p % coord % next % uvw = p % coord % uvw
-
-            ! set particle lattice indices
-            p % coord % next% lattice   = c % fill
-            p % coord % next% lattice_x = i_x
-            p % coord % next% lattice_y = i_y
-            p % coord % next% lattice_z = i_z
-            if (.not. outside_lattice) then
-              p % coord % next % universe = lat % universes(i_x,i_y,i_z)
-            else
-              if (lat % outer == NO_OUTER_UNIVERSE) then
-                call fatal_error("A particle is outside latttice " &
-                     &// trim(to_str(lat % id)) // " but the lattice has no &
-                     &defined outer universe.")
-              else
-                p % coord % next % universe = lat % outer
-              end if
-            end if
-
-            ! Move particle to next level
-            p % coord => p % coord % next
-
-          end if
-
-          ! Find in the next lowest coordinate level.
-          call find_cell(p, found)
-          if (.not. found) exit
-
-        end if
-
-        ! Found cell so we can return
-        found = .true.
-        return
+      ! Show cell information on trace
+      if (verbosity >= 10 .or. trace) then
+        call write_message("    Entering cell " // trim(to_str(c % id)))
       end if
-    end do
+
+      CELL_TYPE: if (c % type == CELL_NORMAL) then
+        ! ======================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+        ! set material
+        p % last_material = p % material
+        p % material = c % material
+
+      elseif (c % type == CELL_FILL) then CELL_TYPE
+        ! ======================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        ! Create new level of coordinates
+        allocate(p % coord % next)
+        p % coord % next % xyz = p % coord % xyz
+        p % coord % next % uvw = p % coord % uvw
+
+        ! Move particle to next level and set universe
+        p % coord => p % coord % next
+        p % coord % universe = c % fill
+
+        ! Apply translation
+        if (allocated(c % translation)) then
+          p % coord % xyz = p % coord % xyz - c % translation
+        end if
+
+        ! Apply rotation
+        if (allocated(c % rotation_matrix)) then
+          p % coord % xyz = matmul(c % rotation_matrix, p % coord % xyz)
+          p % coord % uvw = matmul(c % rotation_matrix, p % coord % uvw)
+          p % coord % rotated = .true.
+        end if
+
+        call find_cell(p, found)
+        if (.not. found) exit
+
+      elseif (c % type == CELL_LATTICE) then CELL_TYPE
+        ! ======================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill) % obj
+
+        ! Determine lattice indices
+        i_xyz = lat % get_indices(p % coord % xyz + TINY_BIT * p % coord % uvw)
+
+        ! Create new level of coordinates
+        allocate(p % coord % next)
+        p % coord % next % xyz = lat % get_local_xyz(p % coord % xyz, i_xyz)
+        p % coord % next % uvw = p % coord % uvw
+
+        ! set particle lattice indices
+        p % coord % next% lattice   = c % fill
+        p % coord % next% lattice_x = i_xyz(1)
+        p % coord % next% lattice_y = i_xyz(2)
+        p % coord % next% lattice_z = i_xyz(3)
+
+        ! Set the next lowest coordinate level.
+        if (lat % are_valid_indices(i_xyz)) then
+          ! Particle is inside the lattice.
+          p % coord % next % universe = &
+               &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+
+        else
+          ! Particle is outside the lattice.
+          if (lat % outer == NO_OUTER_UNIVERSE) then
+            call fatal_error("A particle is outside latttice " &
+                 &// trim(to_str(lat % id)) // " but the lattice has no &
+                 &defined outer universe.")
+          else
+            p % coord % next % universe = lat % outer
+          end if
+        end if
+
+        ! Move particle to next level and search for the lower cells.
+        p % coord => p % coord % next
+        call find_cell(p, found)
+        if (.not. found) exit
+
+      end if CELL_TYPE
+
+      ! Found cell so we can return
+      found = .true.
+      return
+    end do CELL_LOOP
 
     found = .false.
 
@@ -640,19 +568,18 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(p, lattice_crossed)
+  subroutine cross_lattice(p, lattice_translation)
 
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: lattice_crossed
+    integer,        intent(in)    :: lattice_translation(3)
 
-    integer :: i_x, i_y, i_z ! indices in lattice
-    integer :: n_x, n_y, n_z ! size of lattice
-    real(8) :: x0, y0, z0    ! half width of lattice element
-    logical :: found         ! particle found in cell?
-    type(Lattice), pointer, save :: lat => null()
-!$omp threadprivate(lat)
+    integer :: i_xyz(3)       ! indices in lattice
+    logical :: found          ! particle found in cell?
+    class(Lattice),   pointer, save :: lat => null()
+    type(LocalCoord), pointer, save :: parent_coord => null()
+!$omp threadprivate(lat, parent_coord)
 
-    lat => lattices(p % coord % lattice)
+    lat => lattices(p % coord % lattice) % obj
 
     if (verbosity >= 10 .or. trace) then
       call write_message("    Crossing lattice " // trim(to_str(lat % id)) &
@@ -661,80 +588,42 @@ contains
            &// trim(to_str(p % coord % lattice_z)) // ")")
     end if
 
-    if (lat % type == LATTICE_RECT) then
-      x0 = lat % width(1) * 0.5_8
-      y0 = lat % width(2) * 0.5_8
-      if (lat % n_dimension == 3) z0 = lat % width(3) * 0.5_8
+    ! Find the coordiante level just above the current one.
+    parent_coord => p % coord0
+    do while(.not. associated(parent_coord % next, p % coord))
+      parent_coord => parent_coord % next
+    end do
 
-      select case (lattice_crossed)
-      case (LATTICE_LEFT)
-        ! Move particle to left element
-        p % coord % lattice_x = p % coord % lattice_x - 1
-        p % coord % xyz(1) = x0
+    ! Set the lattice indices.
+    p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
+    p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
+    p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
+    i_xyz(1) = p % coord % lattice_x 
+    i_xyz(2) = p % coord % lattice_y 
+    i_xyz(3) = p % coord % lattice_z 
 
-      case (LATTICE_RIGHT)
-        ! Move particle to right element
-        p % coord % lattice_x = p % coord % lattice_x + 1
-        p % coord % xyz(1) = -x0
+    ! Set the new coordinate position.
+    p % coord % xyz = lat % get_local_xyz(parent_coord % xyz, i_xyz)
 
-      case (LATTICE_BACK)
-        ! Move particle to bottom element
-        p % coord % lattice_y = p % coord % lattice_y - 1
-        p % coord % xyz(2) = y0
-
-      case (LATTICE_FRONT)
-        ! Move particle to top element
-        p % coord % lattice_y = p % coord % lattice_y + 1
-        p % coord % xyz(2) = -y0
-
-      case (LATTICE_BOTTOM)
-        ! Move particle to bottom element
-        p % coord % lattice_z = p % coord % lattice_z - 1
-        p % coord % xyz(3) = z0
-
-      case (LATTICE_TOP)
-        ! Move particle to top element
-        p % coord % lattice_z = p % coord % lattice_z + 1
-        p % coord % xyz(3) = -z0
-
-      end select
-    elseif (lat % type == LATTICE_HEX) then
-      ! TODO: Add hex lattice support
-    end if
-
-    ! Check to make sure still in lattice
-    i_x = p % coord % lattice_x
-    i_y = p % coord % lattice_y
-    i_z = p % coord % lattice_z
-    n_x = lat % dimension(1)
-    n_y = lat % dimension(2)
-    if (lat % n_dimension == 3) then
-      n_z = lat % dimension(3)
-    else
-      n_z = 1
-    end if
-    if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-         i_z < 1 .or. i_z > n_z) then
+    OUTSIDE_LAT: if (.not. lat % are_valid_indices(i_xyz)) then
+      ! The particle is outside the lattice.  Search for it from coord0.
       call deallocate_coord(p % coord0 % next)
       p % coord => p % coord0
-
-      ! Search for particle
       call find_cell(p, found)
       if (.not. found) then
         call handle_lost_particle(p, "Could not locate particle " &
              &// trim(to_str(p % id)) // " after crossing a lattice boundary.")
         return
       end if
-    else
-      ! Find universe for next lattice element
-      p % coord % universe = lat % universes(i_x, i_y, i_z)
 
+    else OUTSIDE_LAT
       ! Find cell in next lattice element
+      p % coord % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
       call find_cell(p, found)
       if (.not. found) then
-        ! In some circumstances, a particle crossing the corner of a cell may not
-        ! be able to be found in the next universe. In this scenario we cut off
-        ! all lower-level coordinates and search from universe zero
+        ! In some circumstances, a particle crossing the corner of a cell may
+        ! not be able to be found in the next universe. In this scenario we cut
+        ! off all lower-level coordinates and search from universe zero
 
         ! Remove lower coordinates
         call deallocate_coord(p % coord0 % next)
@@ -749,7 +638,7 @@ contains
           return
         end if
       end if
-    end if
+    end if OUTSIDE_LAT
 
   end subroutine cross_lattice
 
@@ -759,34 +648,47 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_crossed)
+  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation)
 
     type(Particle), intent(inout) :: p
     real(8),        intent(out)   :: dist
     integer,        intent(out)   :: surface_crossed
-    integer,        intent(out)   :: lattice_crossed
+    integer,        intent(out)   :: lattice_translation(3)
 
-    integer :: i            ! index for surface in cell
-    integer :: index_surf   ! index in surfaces array (with sign)
-    real(8) :: x,y,z        ! particle coordinates
-    real(8) :: u,v,w        ! particle directions
-    real(8) :: d            ! evaluated distance
-    real(8) :: x0,y0,z0     ! coefficients for surface
-    real(8) :: r            ! radius for quadratic surfaces
-    real(8) :: tmp          ! dot product of surface normal with direction
-    real(8) :: a,b,c,k      ! quadratic equation coefficients
-    real(8) :: quad         ! discriminant of quadratic equation
-    logical :: on_surface   ! is particle on surface?
+    integer :: i                  ! index for surface in cell
+    integer :: index_surf         ! index in surfaces array (with sign)
+    integer :: i_xyz(3)           ! lattice indices
+    integer :: level_surf_cross   ! surface crossed on current level
+    integer :: level_lat_trans(3) ! lattice translation on current level
+    real(8) :: x,y,z              ! particle coordinates
+    real(8) :: xyz_t(3)           ! local particle coordinates
+    real(8) :: beta, gama         ! skewed particle coordiantes
+    real(8) :: u,v,w              ! particle directions
+    real(8) :: beta_dir           ! skewed particle direction
+    real(8) :: gama_dir           ! skewed particle direction
+    real(8) :: edge               ! distance to oncoming edge
+    real(8) :: d                  ! evaluated distance
+    real(8) :: d_lat              ! distance to lattice boundary
+    real(8) :: d_surf             ! distance to surface
+    real(8) :: x0,y0,z0           ! coefficients for surface
+    real(8) :: r                  ! radius for quadratic surfaces
+    real(8) :: tmp                ! dot product of surface normal with direction
+    real(8) :: a,b,c,k            ! quadratic equation coefficients
+    real(8) :: quad               ! discriminant of quadratic equation
+    logical :: on_surface         ! is particle on surface?
     type(Cell),       pointer, save :: cl => null()
     type(Surface),    pointer, save :: surf => null()
-    type(Lattice),    pointer, save :: lat => null()
+    class(Lattice),   pointer, save :: lat => null()
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
-!$omp threadprivate(cl, surf, lat, coord, final_coord)
+    type(LocalCoord), pointer, save :: parent_coord => null()
+!$omp threadprivate(cl, surf, lat, coord, final_coord, parent_coord)
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
-    lattice_crossed = NONE
+    d_lat = INFINITY
+    d_surf = INFINITY
+    lattice_translation(:) = [0, 0, 0]
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -1220,12 +1122,10 @@ contains
         end select
 
         ! Check is calculated distance is new minimum
-        if (d < dist) then
-          if (abs(d - dist)/dist >= FP_PRECISION) then
-            dist = d
-            surface_crossed = -cl % surfaces(i)
-            lattice_crossed = NONE
-            final_coord => coord
+        if (d < d_surf) then
+          if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
+            d_surf = d
+            level_surf_cross = -cl % surfaces(i)
           end if
         end if
 
@@ -1234,17 +1134,20 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
 
-      if (coord % lattice /= NONE) then
-        lat => lattices(coord % lattice)
-        if (lat % type == LATTICE_RECT) then
+      LAT_COORD: if (coord % lattice /= NONE) then
+        lat => lattices(coord % lattice) % obj
+
+        LAT_TYPE: select type(lat)
+
+        type is (RectLattice)
           ! copy local coordinates
           x = coord % xyz(1)
           y = coord % xyz(2)
           z = coord % xyz(3)
 
           ! determine oncoming edge
-          x0 = sign(lat % width(1) * 0.5_8, u)
-          y0 = sign(lat % width(2) * 0.5_8, v)
+          x0 = sign(lat % pitch(1) * 0.5_8, u)
+          y0 = sign(lat % pitch(2) * 0.5_8, v)
 
           ! left and right sides
           if (abs(x - x0) < FP_PRECISION) then
@@ -1255,23 +1158,11 @@ contains
             d = (x0 - x)/u
           end if
 
-          ! If the lattice boundary is coincident with the parent cell boundary,
-          ! we need to make sure that the lattice is not selected. This is
-          ! complicated by the fact that floating point may determine that one
-          ! is closer than the other (can't check direct equality). Thus, the
-          ! logic here checks whether the relative difference is within floating
-          ! point precision.
-
-          if (d < dist) then
-            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-              dist = d
-              if (u > 0) then
-                lattice_crossed = LATTICE_RIGHT
-              else
-                lattice_crossed = LATTICE_LEFT
-              end if
-              final_coord => coord
-            end if
+          d_lat = d
+          if (u > 0) then
+            level_lat_trans(:) = [1, 0, 0]
+          else
+            level_lat_trans(:) = [-1, 0, 0]
           end if
 
           ! front and back sides
@@ -1283,20 +1174,17 @@ contains
             d = (y0 - y)/v
           end if
 
-          if (d < dist) then
-            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-              dist = d
-              if (v > 0) then
-                lattice_crossed = LATTICE_FRONT
-              else
-                lattice_crossed = LATTICE_BACK
-              end if
-              final_coord => coord
+          if (d < d_lat) then
+            d_lat = d
+            if (v > 0) then
+              level_lat_trans(:) = [0, 1, 0]
+            else
+              level_lat_trans(:) = [0, -1, 0]
             end if
           end if
 
-          if (lat % n_dimension == 3) then
-            z0 = sign(lat % width(3) * 0.5_8, w)
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(3) * 0.5_8, w)
 
             ! top and bottom sides
             if (abs(z - z0) < FP_PRECISION) then
@@ -1307,21 +1195,157 @@ contains
               d = (z0 - z)/w
             end if
 
-            if (d < dist) then
-              if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-                dist = d
-                if (w > 0) then
-                  lattice_crossed = LATTICE_TOP
-                else
-                  lattice_crossed = LATTICE_BOTTOM
-                end if
-                final_coord => coord
+            if (d < d_lat) then
+              d_lat = d
+              if (w > 0) then
+                level_lat_trans(:) = [0, 0, 1]
+              else
+                level_lat_trans(:) = [0, 0, -1]
               end if
             end if
           end if
 
-        elseif (lat % type == LATTICE_HEX) then
-          ! TODO: Add hex lattice support
+        type is (HexLattice) LAT_TYPE
+          ! Copy local coordinates.
+          z = coord % xyz(3)
+          i_xyz(1) = coord % lattice_x
+          i_xyz(2) = coord % lattice_y
+          i_xyz(3) = coord % lattice_z
+          parent_coord => p % coord0
+          do while(.not. associated(parent_coord % next, coord))
+            parent_coord => parent_coord % next
+          end do
+
+          ! Compute velocities along the hexagonal axes.
+          beta_dir = u*sqrt(3.0_8)/2.0_8 + v/2.0_8
+          gama_dir = u*sqrt(3.0_8)/2.0_8 - v/2.0_8
+
+          ! Note that hexagonal lattice distance calculations are performed
+          ! using the particle's coordinates relative to the neighbor lattice
+          ! cells, not relative to the particle's current cell.  This is done
+          ! because there is significant disagreement between neighboring cells
+          ! on where the lattice boundary is due to the worse finite precision
+          ! of hex lattices.
+
+          ! Upper right and lower left sides.
+          edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
+          if (beta_dir > 0.0) then
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, 0, 0])
+          else
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 0, 0])
+          end if
+          beta = xyz_t(1)*sqrt(3.0_8)/2.0_8 + xyz_t(2)/2.0_8
+          if (abs(beta - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (beta_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - beta)/beta_dir
+          end if
+
+          d_lat = d
+          if (beta_dir > 0) then
+            level_lat_trans(:) = [1, 0, 0]
+          else
+            level_lat_trans(:) = [-1, 0, 0]
+          end if
+
+          ! Lower right and upper left sides.
+          edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
+          if (gama_dir > 0.0) then
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, -1, 0])
+          else
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 1, 0])
+          end if
+          gama = xyz_t(1)*sqrt(3.0_8)/2.0_8 - xyz_t(2)/2.0_8
+          if (abs(gama - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (gama_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - gama)/gama_dir
+          end if
+
+          if (d < d_lat) then
+            d_lat = d
+            if (gama_dir > 0) then
+              level_lat_trans(:) = [1, -1, 0]
+            else
+              level_lat_trans(:) = [-1, 1, 0]
+            end if
+          end if
+
+          ! Upper and lower sides.
+          edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
+          if (v > 0.0) then
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, 1, 0])
+          else
+            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, -1, 0])
+          end if
+          if (abs(xyz_t(2) - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (v == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - xyz_t(2))/v
+          end if
+
+          if (d < d_lat) then
+            d_lat = d
+            if (v > 0) then
+              level_lat_trans(:) = [0, 1, 0]
+            else
+              level_lat_trans(:) = [0, -1, 0]
+            end if
+          end if
+
+          ! Top and bottom sides.
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(2) * 0.5_8, w)
+
+            if (abs(z - z0) < FP_PRECISION) then
+              d = INFINITY
+            elseif (w == ZERO) then
+              d = INFINITY
+            else
+              d = (z0 - z)/w
+            end if
+
+            if (d < d_lat) then
+              d_lat = d
+              if (w > 0) then
+                level_lat_trans(:) = [0, 0, 1]
+              else
+                level_lat_trans(:) = [0, 0, -1]
+              end if
+            end if
+          end if
+        end select LAT_TYPE
+
+        if (d_lat < 0.0) then
+          call handle_lost_particle(p, "Particle " // trim(to_str(p % id)) &
+               &//" had a negative distance to a lattice boundary. d = " &
+               &//trim(to_str(d_lat)))
+        end if
+      end if LAT_COORD
+
+      ! If the boundary on this lattice level is coincident with a boundary on
+      ! a higher level then we need to make sure that the higher level boundary
+      ! is selected.  This logic must include consideration of floating point
+      ! precision.
+      if (d_surf < d_lat) then
+        if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
+          dist = d_surf
+          surface_crossed = level_surf_cross
+          lattice_translation(:) = [0, 0, 0]
+          final_coord => coord
+        end if
+      else
+        if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
+          dist = d_lat
+          surface_crossed = None
+          lattice_translation(:) = level_lat_trans
+          final_coord => coord
         end if
       end if
 

@@ -37,7 +37,7 @@
       <!-- Central Fuel Assembly -->      
       <lattice id="11" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
@@ -61,7 +61,7 @@
       <!-- North Fuel Assembly -->      
       <lattice id="22" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
@@ -88,7 +88,7 @@
       <!-- Northeast Fuel Assembly -->      
       <lattice id="33" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
@@ -117,7 +117,7 @@
       <!-- Full Driver Assembly -->
       <lattice id="24" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
           2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
@@ -141,7 +141,7 @@
       <!-- North Edge -->
       <lattice id="14" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
@@ -168,7 +168,7 @@
       <!-- Northeast Edge Corner -->
       <lattice id="15" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
@@ -195,7 +195,7 @@
       <!-- Northeast Top Steps -->
       <lattice id="25" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 1 1 1 1 1 1 1 1 1 1 1 1
           2 2 2 1 1 1 1 1 1 1 1 1 1 1 1
@@ -223,7 +223,7 @@
       <!-- Northeast Middle Corner -->
       <lattice id="26" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
           1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
@@ -250,7 +250,7 @@
       <!-- Northeast Bottom Steps -->
       <lattice id="36" type="rectangular" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
-        <width>    1.63576 1.63576 </width>
+        <pitch>    1.63576 1.63576 </pitch>
         <universes>
           2 2 2 2 2 2 2 2 1 1 1 1 1 1 1
           2 2 2 2 2 2 2 2 1 1 1 1 1 1 1
@@ -286,7 +286,7 @@
     <!-- Core lattice -->
     <lattice id="99" type="rectangular" dimension="7 7">
       <lower_left> -85.8774 -85.8774 </lower_left>
-      <width>   24.5364  24.5364 </width>
+      <pitch>   24.5364  24.5364 </pitch>
       <universes>
           999 999 130 140 150 999 999
           999 220 230 240 250 260 999

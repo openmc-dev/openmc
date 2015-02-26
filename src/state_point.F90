@@ -768,18 +768,20 @@ contains
       k = 1
       MOMENT_LOOP: do j = 1, t % n_user_score_bins
         select case(t % score_bins(k))
-        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N, SCORE_NDPP_SCATT_N, &
+              SCORE_NDPP_NU_SCATT_N)
           call sp % read_data(moment_name, "order" // trim(to_str(k)), &
                group="tallies/tally" // trim(to_str(i)) // "/moments")
           k = k + 1
-        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN, SCORE_NDPP_SCATT_PN, &
+              SCORE_NDPP_NU_SCATT_PN)
           do n_order = 0, t % moment_order(k)
             call sp % read_data(moment_name, "order" // trim(to_str(k)), &
                  group="tallies/tally" // trim(to_str(i)) // "/moments")
             k = k + 1
           end do
         case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-              SCORE_TOTAL_YN)
+              SCORE_TOTAL_YN, SCORE_NDPP_SCATT_YN, SCORE_NDPP_NU_SCATT_YN)
           do n_order = 0, t % moment_order(k)
             do nm_order = -n_order, n_order
               call sp % read_data(moment_name, "order" // trim(to_str(k)), &

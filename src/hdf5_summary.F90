@@ -312,40 +312,34 @@ contains
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
-      select case(lat % type)
-      case (LATTICE_RECT)
       select type (lat)
       type is (RectLattice)
         ! Write lattice type.
         call su % write_data("rectangular", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
-        ! Write number of lattice cells.
-        call su % write_data(lat % n_cells, "n_cells", length=3, &
+        ! Write lattice dimensions, lower left corner, and pitch
+        call su % write_data(lat % n_cells, "dimension", length=3, &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
-        ! Write lattice dimensions, lower left corner, and pitch
-        call su % write_data(lat % dimension, "dimension", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % lower_left, "lower_left", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % pitch, "pitch", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (lat % is_3d) then
+          call su % write_data(lat % lower_left, "lower_left", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % lower_left, "lower_left", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
         call su % write_data(lat % outer, "outer", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-
-        ! Determine dimensions of lattice
-        n_x = lat % dimension(1)
-        n_y = lat % dimension(2)
-        if (lat % n_dimension == 3) then
-          n_z = lat % dimension(3)
-        else
-          n_z = 1
-        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
@@ -374,12 +368,22 @@ contains
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
         ! Write lattice center, pitch and outer universe.
-        call su % write_data(lat % center, "center", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % pitch, "pitch", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (lat % is_3d) then
+          call su % write_data(lat % center, "center", length=3, & 
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % center, "center", length=2, & 
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+ 
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
         call su % write_data(lat % outer, "outer", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 

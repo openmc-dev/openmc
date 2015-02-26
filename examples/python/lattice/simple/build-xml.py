@@ -98,10 +98,10 @@ univ3.add_cells([cell6, cell7])
 root.add_cell(cell1)
 
 # Instantiate a Lattice
-lattice = openmc.Lattice(lattice_id=5)
+lattice = openmc.RectLattice(lattice_id=5)
 lattice.set_dimension([4, 4])
 lattice.set_lower_left([-2., -2.])
-lattice.set_width([1., 1.])
+lattice.set_pitch([1., 1.])
 lattice.set_universes([[univ1, univ2, univ1, univ2],
                       [univ2, univ3, univ2, univ3],
                       [univ1, univ2, univ1, univ2],

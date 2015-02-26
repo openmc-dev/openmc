@@ -10,6 +10,7 @@ module unresolved
 
   implicit none
 
+! TODO: check absolute value of energies
   logical :: run_fasturr ! use special treatment for Fast/URR data?
   logical :: competitive ! model competitve reaction xs resonance structure?
   logical :: prob_bands  ! calculate averaged, infinite-dilute cross sections?
@@ -361,7 +362,7 @@ module unresolved
     real(8), allocatable :: urr_total(:)         ! total xs
 
     ! pointwise URR cross section parameters
-    integer :: n_urr_resonances = 20000     ! max resonances for a given (l,J)
+    integer :: n_urr_resonances = 40000     ! max resonances for a given (l,J)
     integer :: n_urr_gridpoints = 100000000 ! max URR energy-xs gridpoints
 
   ! Type-Bound procedures
@@ -490,6 +491,7 @@ contains
     ! allocate a realization of a URR resonance ensemble
     call tope % alloc_ensemble(n_reals)
 
+    if (allocated(n_resonances)) deallocate(n_resonances)
     allocate(n_resonances(tope % NLS(tope % i_urr)))
 
     ! loop over independent realizations
@@ -2387,7 +2389,7 @@ contains
     ! use the sampled tabulated chi-squared values to calculate sample widths
     ! neutron width
     if (tope % AMUN > 0) then
-      this % Gam_n = tope % GN0 * sqrt(this % E_lam) * nu &
+      this % Gam_n = tope % GN0 * sqrt(abs(this % E_lam)) * nu &
         & * chi2(i_tabn, tope % AMUN)
     else
       call fatal_error('Non-positive neutron width sampled')
@@ -2763,8 +2765,8 @@ contains
     real(8) :: k_val ! computed wavenumber
 
     ! compute center-of-mass neutron wavenumber evaluated at some energy
-    if (E < ZERO) call fatal_error('Negative energy in wavenumber calculation')
-    k_val = C_1 * A / (A + ONE) * sqrt(E)
+!    if (E < ZERO) call fatal_error('Negative energy in wavenumber calculation')
+    k_val = C_1 * A / (A + ONE) * sqrt(abs(E))
 
   end function wavenumber
 
@@ -3837,16 +3839,20 @@ contains
       end if
 
       ! fission xs
-      if (tope % E < tope % MF3_f_e(1)) then
+      if (.not. (allocated(tope % MF3_f_e))) then
         micro_xs(i_nuc) % fission = ZERO
-      else if (tope % E > tope % MF3_f_e(size(tope % MF3_f_e))) then
-        call fatal_error('Energy is above File 3 fission energy grid')
       else
-        i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope % E)
-        fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
-          & tope % MF3_f_e(i_grid + 1), tope % INT)
-        micro_xs(i_nuc) % fission = interpolator(fact, tope % MF3_f(i_grid), &
-          & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
+        if (tope % E < tope % MF3_f_e(1)) then
+          micro_xs(i_nuc) % fission = ZERO
+        else if (tope % E > tope % MF3_f_e(size(tope % MF3_f_e))) then
+          call fatal_error('Energy is above File 3 fission energy grid')
+        else
+          i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope % E)
+          fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
+            & tope % MF3_f_e(i_grid + 1), tope % INT)
+          micro_xs(i_nuc) % fission = interpolator(fact, tope % MF3_f(i_grid), &
+            & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
+        end if
       end if
 
       ! absorption xs

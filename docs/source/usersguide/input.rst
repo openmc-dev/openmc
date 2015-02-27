@@ -57,13 +57,7 @@ Validating XML Files
 
 Input files can be checked before executing OpenMC using the ``xml_validate``
 script. It is located in ``src/utils/xml_validate.py`` in the source code or in
-``bin/xml_validate`` in the install directory. Before use, the third party
-package TRANG_ must be installed and in your ``PATH`` to convert the compact
-RelaxNG schema to standard RelaxNG format. For Ubuntu, you can install with:
-
-.. code-block:: bash
- 
-   sudo apt-get install trang
+``bin/xml_validate`` in the install directory.
 
 Two command line arguments can be set when running ``xml_validate``:
 
@@ -84,7 +78,6 @@ Message                   Description
 ========================  ===================================
 [XML ERROR]               Cannot parse XML file.
 [NO RELAXNG FOUND]        No RelaxNG file found for XML file.
-[TRANG FAILED]            TRANG not installed properly.
 [NOT VALID]               XML file does not match RelaxNG.
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
@@ -97,8 +90,6 @@ the following command:
 .. code-block:: bash
 
    /opt/openmc/0.6.2/bin/xml_validate
-
-.. _TRANG: http://www.thaiopensource.com/relaxng/trang.html
 
 --------------------------------------
 Settings Specification -- settings.xml

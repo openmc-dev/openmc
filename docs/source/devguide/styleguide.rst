@@ -159,8 +159,8 @@ Use of third-party Python packages should be limited to numpy_, scipy_, and
 h5py_. Use of other third-party packages must be implemented as optional
 dependencies rather than required dependencies.
 
-.. _PEP8:
-.. _numpydoc:
-.. _numpy:
-.. _scipy:
-.. _h5py:
+.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
+.. _numpy: http://www.numpy.org/
+.. _scipy: http://www.scipy.org/
+.. _h5py: http://www.h5py.org/

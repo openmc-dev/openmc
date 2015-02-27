@@ -151,7 +151,7 @@ Python
 
 Style for Python code should follow PEP8_.
 
-Docstrings for functions and methods should follow nummpydoc_ style.
+Docstrings for functions and methods should follow numpydoc_ style.
 
 Python code should work with both Python 2.7+ and Python 3.0+.
 

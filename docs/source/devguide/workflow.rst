@@ -143,19 +143,19 @@ variables should be set if the default paths are incorrect:
 
     * **MPI_DIR** - The path to the MPI directory.
 
-        * Default - */opt/mpich/3.1-gnu*
+        * Default - */opt/mpich/3.1.3-gnu*
 
     * **HDF5_DIR** - The path to the HDF5 directory.
 
-        * Default - */opt/hdf5/1.8.12-gnu*
+        * Default - */opt/hdf5/1.8.14-gnu*
 
     * **PHDF5_DIR** - The path to the parallel HDF5 directory.
 
-        * Default - */opt/phdf5/1.8.12-gnu*
+        * Default - */opt/phdf5/1.8.14-gnu*
 
     * **PETSC_DIR** - The path to the PETSc directory.
 
-        * Default - */opt/petsc/3.4.4-gnu*
+        * Default - */opt/petsc/3.5.2-gnu*
 
 To run the full test suite, the following command can be executed in the
 tests directory:

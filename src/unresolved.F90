@@ -34,8 +34,6 @@ module unresolved
   integer :: n_reals             ! number of independent URR realizations
   integer :: i_real              ! index of URR realization used for calc
   integer :: i_real_user         ! user-specified realization index
-  integer, allocatable :: n_resonances(:) ! # URR resonances for each l-wave
-! TODO: use n_resonances
   real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
   real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
   real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
@@ -256,7 +254,7 @@ module unresolved
 
     ! ENDF-6 nuclear data
     integer, allocatable :: NLS(:)  ! number of l values in each energy region
-    integer, allocatable :: NJS(:)  ! number of J values for each l
+    integer, allocatable :: NJS(:)  ! number of J values for each URR l
     integer, allocatable :: LRU(:)  ! resolved (1) or unresolved (2) parameters
     integer, allocatable :: LRF(:)  ! ENDF-6 resonance formalism number
     integer, allocatable :: NRO(:)  ! AP energy-dependence flag
@@ -335,8 +333,13 @@ module unresolved
     real(8), allocatable :: Etabs(:) ! probability table energies
     type(ProbabilityTable), allocatable :: prob_tables(:,:)
 
-    ! vector of URR resonances for a given J, for a given (i_real, i_lam, L)
+    ! vectors of URR resonances for a given (realization, L, J)
+    type(SLBWResonances), allocatable :: urr_resonances_tmp(:,:,:)
     type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
+
+    ! max resonances for a given (l,J)
+    integer :: n_lam_tmp = 40000
+    integer, allocatable :: n_lam(:,:,:)
 
     ! vector of Reich-Moore resonances for each l
     type(RMResonances), allocatable :: rm_resonances(:)
@@ -362,8 +365,7 @@ module unresolved
     real(8), allocatable :: urr_total(:)         ! total xs
 
     ! pointwise URR cross section parameters
-    integer :: n_urr_resonances = 40000     ! max resonances for a given (l,J)
-    integer :: n_urr_gridpoints = 100000000 ! max URR energy-xs gridpoints
+    integer :: n_urr_gridpoints  = 100000000 ! max URR energy-xs gridpoints
 
   ! Type-Bound procedures
   contains
@@ -376,6 +378,12 @@ module unresolved
 
     ! deallocate File 3 average (infinite-dilute) cross sections
     procedure :: dealloc_MF3 => dealloc_MF3
+
+    ! allocate temporary URR resonance ensemble realization
+    procedure :: alloc_ensemble_tmp => alloc_ensemble_tmp
+
+    ! deallocate temporary URR resonance ensemble realization
+    procedure :: dealloc_ensemble_tmp => dealloc_ensemble_tmp
 
     ! allocate URR resonance ensemble realization
     procedure :: alloc_ensemble => alloc_ensemble
@@ -479,7 +487,7 @@ contains
     integer :: i_J         ! total angular momentum quantum number
     integer :: i_E         ! tabulated URR parameters energy index
     integer :: i_ens       ! ensemble index
-    integer :: i_res       ! resonance counter
+    integer :: i_res       ! (l, J) resonance counter
     integer :: n_res       ! number of l-wave resonances to include
     integer :: n_above_urr ! number of resonances abover upper URR energy
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
@@ -488,11 +496,11 @@ contains
 
     tope => isotopes(iso)
 
-    ! allocate a realization of a URR resonance ensemble
-    call tope % alloc_ensemble(n_reals)
+    ! allocate temporary URR resonance ensemble realizations
+    call tope % alloc_ensemble_tmp(n_reals)
 
-    if (allocated(n_resonances)) deallocate(n_resonances)
-    allocate(n_resonances(tope % NLS(tope % i_urr)))
+    allocate(tope % n_lam(n_reals, tope % NLS(tope % i_urr),&
+      & maxval(tope % NJS(:))))
 
     ! loop over independent realizations
     ENSEMBLE_LOOP: do i_ens = 1, n_reals
@@ -531,9 +539,11 @@ contains
             E_res = E_last_rrr(iso, tope % L, tope % J) + wigner_dist(tope % D)
           end if
 
-          i_res = 1
+          i_res = 0
           n_above_urr = 0
           RESONANCE_LOOP: do while(n_above_urr < n_res/2)
+
+            i_res = i_res + 1
 
             ! compute interpolation factor
             if (E_res < tope % ES(1)) then
@@ -579,18 +589,45 @@ contains
             call add_parameters(res, iso, i_ens, i_res, i_l, i_J)
 
             ! add an additional resonance
-            i_res = i_res + 1
             E_res = E_res + wigner_dist(tope % D)
 
             if (E_res > tope % EH(tope % i_urr)) n_above_urr = n_above_urr + 1
 
           end do RESONANCE_LOOP
+
+          tope % n_lam(i_ens, i_l, i_J) = i_res
+
         end do TOTAL_ANG_MOM_LOOP
-
-        n_resonances(i_l) = i_res - 1
-
       end do ORBITAL_ANG_MOM_LOOP
     end do ENSEMBLE_LOOP
+
+    ! allocate URR resonance ensemble realizations
+    call tope % alloc_ensemble(n_reals)
+
+    ! transfer temporary URR ensembles to reduced-memory ensemble
+    do i_ens = 1, n_reals
+      do i_l = 1, tope % NLS(tope % i_urr)
+        do i_J = 1, tope % NJS(i_l)
+          do i_res = 1, tope % n_lam(i_ens, i_l, i_J)
+            tope % urr_resonances(i_ens, i_l, i_J) % E_lam(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % E_lam(i_res)
+            tope % urr_resonances(i_ens, i_l, i_J) % GN(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GN(i_res)
+            tope % urr_resonances(i_ens, i_l, i_J) % GG(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GG(i_res)
+            tope % urr_resonances(i_ens, i_l, i_J) % GF(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GF(i_res)
+            tope % urr_resonances(i_ens, i_l, i_J) % GX(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GX(i_res)
+            tope % urr_resonances(i_ens, i_l, i_J) % GT(i_res) &
+              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GT(i_res)
+          end do
+        end do
+      end do
+    end do
+
+    ! deallocate temporary URR resonance ensemble realizations
+    call tope % dealloc_ensemble_tmp(n_reals)
 
   end subroutine resonance_ensemble
 
@@ -604,7 +641,6 @@ contains
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
-    type(Vector), allocatable :: i_last(:) ! last i_low for (l,J)
     type(Resonance) :: res ! resonance object
     type(CrossSection) :: n ! elastic scattering xs object
     type(CrossSection) :: g ! radiative capture xs object
@@ -670,12 +706,6 @@ contains
 
     tope % E = 1.0e6_8 * nuc % energy(i_grid + 1)
 
-    allocate(i_last(tope % NLS(tope % i_urr)))
-    do i_l = 1, tope % NLS(tope % i_urr)
-      allocate(i_last(i_l) % data(tope % NJS(i_l)))
-      i_last(i_l) % data = ONE
-    end do
-
     i_ES = 1
     ENERGY_LOOP: do
 
@@ -720,14 +750,14 @@ contains
             res % i_res = 0
 
             ! find the nearest lower resonance
-            i_low = int(i_last(i_l) % data(i_J))
-            do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
-              & < tope % E)
-              i_low = i_low + 1
-            end do
-            i_low = i_low - 1
-            if (i_low == 0) i_low = 1
-            i_last(i_l) % data(i_J) = dble(i_low)
+            if (tope % E &
+              & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
+              i_low = 1
+            else
+              i_low = binary_search(&
+                & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
+                & tope % n_lam(i_real, i_l, i_J), tope % E)
+            end if
 
             ! loop over the addition of resonances to this ladder
             if (i_low - n_res/2 < 1) then
@@ -899,14 +929,14 @@ contains
             res % i_res = 0
 
             ! find the nearest lower resonance
-            i_low = int(i_last(i_l) % data(i_J))
-            do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
-              & < tope % E)
-              i_low = i_low + 1
-            end do
-            i_low = i_low - 1
-            if (i_low == 0) i_low = 1
-            i_last(i_l) % data(i_J) = dble(i_low)
+            if (tope % E &
+              & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
+              i_low = 1
+            else
+              i_low = binary_search(&
+                & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
+                & tope % n_lam(i_real, i_l, i_J), tope % E)
+            end if
 
             ! loop over the addition of resonances to this ladder
             if (i_low - n_res/2 < 1) then
@@ -1085,14 +1115,14 @@ contains
           res % i_res = 0
 
           ! find the nearest lower resonance
-          i_low = int(i_last(i_l) % data(i_J))
-          do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) &
-            & < tope % E)
-            i_low = i_low + 1
-          end do
-          i_low = i_low - 1
-          if (i_low == 0) i_low = 1
-          i_last(i_l) % data(i_J) = dble(i_low)
+          if (tope % E &
+            & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
+            i_low = 1
+          else
+            i_low = binary_search(&
+              & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
+              & tope % n_lam(i_real, i_l, i_J), tope % E)
+          end if
 
           ! loop over the addition of resonances to this ladder
           if (i_low - n_res/2 < 1) then
@@ -1329,12 +1359,15 @@ contains
         ! zero the resonance counter
         res % i_res = 0
 
-        i_low = 1
-        do while(tope % urr_resonances(i_real, i_low, i_l) % E_lam(i_J) < tope % E)
-          i_low = i_low + 1
-        end do
-        i_low = i_low - 1
-        if (i_low == 0) i_low = 1
+        ! find nearest lower resonance
+        if (tope % E &
+          & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
+          i_low = 1
+        else
+          i_low = binary_search(&
+            & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
+            & tope % n_lam(i_real, i_l, i_J), tope % E)
+        end if
 
         ! loop over the addition of resonances to this ladder
         if (i_low - n_res/2 < 1) then
@@ -3449,7 +3482,7 @@ contains
 
   subroutine add_parameters(res, iso, i_ens, i_res, i_l, i_J)
 
-    type(Isotope), pointer, save :: tope => null() ! isotope object pointer
+    type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Resonance) :: res ! resonance object
     integer :: iso   ! isotope index
     integer :: i_ens ! resonance ensemble index
@@ -3460,12 +3493,12 @@ contains
 
     tope => isotopes(iso)
 
-    tope % urr_resonances(i_ens, i_res, i_l) % E_lam(i_J) = res % E_lam
-    tope % urr_resonances(i_ens, i_res, i_l) % GN(i_J)    = res % Gam_n
-    tope % urr_resonances(i_ens, i_res, i_l) % GG(i_J)    = res % Gam_g
-    tope % urr_resonances(i_ens, i_res, i_l) % GF(i_J)    = res % Gam_f
-    tope % urr_resonances(i_ens, i_res, i_l) % GX(i_J)    = res % Gam_x
-    tope % urr_resonances(i_ens, i_res, i_l) % GT(i_J)    = res % Gam_t
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % E_lam(i_res) = res % E_lam
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % GN(i_res)    = res % Gam_n
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % GG(i_res)    = res % Gam_g
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % GF(i_res)    = res % Gam_f
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % GX(i_res)    = res % Gam_x
+    tope % urr_resonances_tmp(i_ens, i_l, i_J) % GT(i_res)    = res % Gam_t
 
   end subroutine add_parameters
 
@@ -3532,12 +3565,12 @@ contains
 
     ! unresolved parameters
     case (2)
-      res % E_lam   = tope % urr_resonances(i_real, i_res, i_l) % E_lam(i_J)
-      res % Gam_n   = tope % urr_resonances(i_real, i_res, i_l) % GN(i_J)
-      res % Gam_g   = tope % urr_resonances(i_real, i_res, i_l) % GG(i_J)
-      res % Gam_f   = tope % urr_resonances(i_real, i_res, i_l) % GF(i_J)
-      res % Gam_x   = tope % urr_resonances(i_real, i_res, i_l) % GX(i_J)
-      res % Gam_t   = tope % urr_resonances(i_real, i_res, i_l) % GT(i_J)
+      res % E_lam   = tope % urr_resonances(i_real, i_l, i_J) % E_lam(i_res)
+      res % Gam_n   = tope % urr_resonances(i_real, i_l, i_J) % GN(i_res)
+      res % Gam_g   = tope % urr_resonances(i_real, i_l, i_J) % GG(i_res)
+      res % Gam_f   = tope % urr_resonances(i_real, i_l, i_J) % GF(i_res)
+      res % Gam_x   = tope % urr_resonances(i_real, i_l, i_J) % GX(i_res)
+      res % Gam_t   = tope % urr_resonances(i_real, i_l, i_J) % GT(i_res)
 
     case default
       call fatal_error('Only 1 and 2 are supported ENDF-6 LRU values')
@@ -3619,7 +3652,7 @@ contains
     integer :: i_ER  ! resonance energy region index
     integer :: i_res ! resonance index
     integer :: i_l   ! orbital quantum number index
-    integer :: i_J   ! total angular momentum quantum number
+    integer :: i_J   ! total angular momentum quantum number index
 
     ! set resonance parameters
     call set_parameters(res, iso, i_res, i_l, i_J, i_ER)
@@ -3936,7 +3969,78 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_ENSEMBLE allocates a URR resonance ensemble realization
+! ALLOC_ENSEMBLE_TMP allocates temporary URR resonance ensemble realizations
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine alloc_ensemble_tmp(this, n_reals)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: n_reals ! number of realizations
+    integer :: i_ens   ! realization/ensemble index
+    integer :: i_l     ! orbital angular momentum quantum number index
+    integer :: i_J     ! total angular momentum quantum number index
+
+    ! allocate temporary URR resonances
+    allocate(this % urr_resonances_tmp(n_reals, this % NLS(this % i_urr),&
+      & maxval(this % NJS(:))))
+
+    ! loop over realizations
+    do i_ens = 1, n_reals
+
+      ! loop over orbital quantum numbers
+      do i_l = 1, this % NLS(this % i_urr)
+
+        ! loop over total angular momenta
+        do i_J = 1, this % NJS(i_l)
+
+          ! allocate resonance parameters
+          call this % urr_resonances_tmp(i_ens, i_l, i_J) &
+            & % alloc_slbw_resonances(this % n_lam_tmp)
+        end do
+      end do
+    end do
+
+  end subroutine alloc_ensemble_tmp
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! TODO: ! DEALLOC_ENSEMBLE_TMP deallocates temporary URR resonance ensemble realizations
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine dealloc_ensemble_tmp(this, n_reals)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: n_reals ! number of realizations
+    integer :: i_ens   ! realization/ensemble index
+    integer :: i_l     ! orbital angular momentum quantum number index
+    integer :: i_J     ! total angular momentum quantum number index
+
+    ! loop over realizations
+    do i_ens = 1, n_reals
+
+      ! loop over orbital quantum numbers
+      do i_l = 1, this % NLS(this % i_urr)
+
+        ! loop over total angular momenta
+        do i_J = 1, this % NJS(i_l)
+
+          ! allocate resonance parameters
+          call this % urr_resonances_tmp(i_ens, i_l, i_J) &
+            & % dealloc_slbw_resonances()
+        end do
+      end do
+    end do
+
+    ! deallocate temporary URR resonances
+    deallocate(this % urr_resonances_tmp)
+
+  end subroutine dealloc_ensemble_tmp
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ALLOC_ENSEMBLE allocates URR resonance ensemble realizations
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -3944,26 +4048,26 @@ contains
 
     class(Isotope), intent(inout) :: this ! isotope object
     integer :: n_reals ! number of realizations
-    integer :: i_real  ! realization index
+    integer :: i_ens   ! realization/ensemble index
     integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_lam   ! resonance index
+    integer :: i_J     ! total angular momentum quantum number index
 
-    ! allocate energies and orbital quantum numbers for resonances
-    allocate(this % urr_resonances(n_reals, this % n_urr_resonances, &
-      & this % NLS(this % i_urr)))
+    ! allocate URR resonance realizations
+    allocate(this % urr_resonances(n_reals, this % NLS(this % i_urr),&
+      & maxval(this % NJS(:))))
 
     ! loop over realizations
-    do i_real = 1, n_reals
+    do i_ens = 1, n_reals
 
       ! loop over orbital quantum numbers
       do i_l = 1, this % NLS(this % i_urr)
 
-        ! loop over resonances
-        do i_lam = 1, this % n_urr_resonances
+        ! loop over total angular momenta
+        do i_J = 1, this % NJS(i_l)
 
-          ! allocate resonance parameters
-          call this % urr_resonances(i_real, i_lam, i_l) &
-            & % alloc_slbw_resonances(this % NJS(i_l))
+          ! allocate URR resonances
+          call this % urr_resonances(i_ens, i_l, i_J) &
+            & % alloc_slbw_resonances(this % n_lam(i_ens, i_l, i_J))
         end do
       end do
     end do
@@ -3980,27 +4084,27 @@ contains
 
     class(Isotope), intent(inout) :: this ! isotope object
     integer :: n_reals ! number of realizations
-    integer :: i_real  ! realization index
+    integer :: i_ens   ! realization/ensemble index
     integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_lam   ! resonance index
+    integer :: i_J     ! total angular momentum quantum number index
 
     ! loop over realizations
-    do i_real = 1, n_reals
+    do i_ens = 1, n_reals
 
       ! loop over orbital quantum numbers
       do i_l = 1, this % NLS(this % i_urr)
 
-        ! loop over resonances
-        do i_lam = 1, this % n_urr_resonances
+        ! loop over total angular momenta
+        do i_J = 1, this % NJS(i_l)
 
-          ! allocate resonance parameters
-          call this % urr_resonances(i_real, i_lam, i_l) &
+          ! deallocate resonance parameters
+          call this % urr_resonances(i_ens, i_l, i_J) &
             & % dealloc_slbw_resonances()
         end do
       end do
     end do
 
-    ! allocate energies and orbital quantum numbers for resonances
+    ! deallocate URR resonance realizations
     deallocate(this % urr_resonances)
 
   end subroutine dealloc_ensemble

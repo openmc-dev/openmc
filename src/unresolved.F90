@@ -374,7 +374,7 @@ module unresolved
     procedure :: alloc_energy_range => alloc_energy_range
 
     ! deallocate resonance energy range variables
-    procedure :: dealloc_energy_range => dealloc_energy_range
+    procedure :: dealloc_energy_ranges => dealloc_energy_ranges
 
     ! deallocate File 3 average (infinite-dilute) cross sections
     procedure :: dealloc_MF3 => dealloc_MF3
@@ -432,6 +432,9 @@ module unresolved
 
     ! set channel radius
     procedure :: channel_radius => channel_radius
+
+    ! deallocate isotope
+    procedure :: dealloc_isotope => dealloc_isotope
 
   end type Isotope
 
@@ -3924,11 +3927,11 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: DEALLOC_ENERGY_RANGE deallocates variables for the resonance energy ranges
+! DEALLOC_ENERGY_RANGES deallocates variables for the resonance energy ranges
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine dealloc_energy_range(this)
+  subroutine dealloc_energy_ranges(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
 
@@ -3943,11 +3946,11 @@ contains
     deallocate(this % ac)
     deallocate(this % SPI)
 
-  end subroutine dealloc_energy_range
+  end subroutine dealloc_energy_ranges
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: DEALLOC_MF3_URR deallocates ENDF-6 File 3 evaluator-supplied background
+! DEALLOC_MF3_URR deallocates ENDF-6 File 3 evaluator-supplied background
 ! cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -4005,7 +4008,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: ! DEALLOC_ENSEMBLE_TMP deallocates temporary URR resonance ensemble realizations
+! DEALLOC_ENSEMBLE_TMP deallocates temporary URR resonance ensemble realizations
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4026,6 +4029,7 @@ contains
         ! loop over total angular momenta
         do i_J = 1, this % NJS(i_l)
 
+! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
           ! allocate resonance parameters
           call this % urr_resonances_tmp(i_ens, i_l, i_J) &
             & % dealloc_slbw_resonances()
@@ -4076,7 +4080,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: ! DEALLOC_ENSEMBLE deallocates a URR resonance ensemble realization
+! DEALLOC_ENSEMBLE deallocates a URR resonance ensemble realization
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4097,6 +4101,7 @@ contains
         ! loop over total angular momenta
         do i_J = 1, this % NJS(i_l)
 
+! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
           ! deallocate resonance parameters
           call this % urr_resonances(i_ens, i_l, i_J) &
             & % dealloc_slbw_resonances()
@@ -4111,9 +4116,8 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_SLBW_RESONANCES allocates a vector of SLBW resonances for a given J, for
-! a given (i_lam, i_l) in the URR case, and for a given number of resonances,
-! NRS, in the RRR case
+! ALLOC_SLBW_RESONANCES allocates a vector of SLBW resonances for a given (l,J)
+! in the URR case, and for a given number of resonances, NRS, in the RRR case
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4134,9 +4138,9 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_SLBW_RESONANCES deallocates a vector of SLBW resonances for a given J,
-! for a given (i_lam, i_l) in the URR case, and for a given number of resonances,
-! NRS, in the RRR case
+! DEALLOC_SLBW_RESONANCES deallocates a vector of SLBW resonances for a given
+! (l,J) in the URR case, and for a given number of resonances, NRS, in the RRR
+! case
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4296,7 +4300,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: use this : DEALLOC_POINTWISE deallocates the pointwise URR energy-cross section grids
+! DEALLOC_POINTWISE deallocates the pointwise URR energy-cross section grids
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4357,7 +4361,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TODO: use this : DEALLOC_PROB_TABLES deallocates the probability tables for this isotope
+! DEALLOC_PROB_TABLES deallocates the probability tables for this isotope
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4377,6 +4381,7 @@ contains
       end do
     end do
 
+    deallocate(this % Etabs)
     deallocate(this % prob_tables)
 
   end subroutine dealloc_prob_tables
@@ -4502,5 +4507,95 @@ contains
     end select
 
   end subroutine channel_radius
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! DEALLOC_ISOTOPE deallocates a URR isotope object
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine dealloc_isotope(this)
+
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_l  ! orbital angular momentum index
+    integer :: i_J  ! total angular momentum index
+
+    ! deallocate mean parameters
+    do i_l = 1, this % NLS(this % i_urr)
+      do i_J = 1, this % NJS(i_l)
+        deallocate(this % D_mean(i_l) % data(i_J) % data)
+        deallocate(this % GN0_mean(i_l) % data(i_J) % data)
+        deallocate(this % GG_mean(i_l) % data(i_J) % data)
+        deallocate(this % GF_mean(i_l) % data(i_J) % data)
+        deallocate(this % GX_mean(i_l) % data(i_J) % data)
+      end do
+      deallocate(this % D_mean(i_l) % data)
+      deallocate(this % GN0_mean(i_l) % data)
+      deallocate(this % GG_mean(i_l) % data)
+      deallocate(this % GF_mean(i_l) % data)
+      deallocate(this % GX_mean(i_l) % data)
+      deallocate(this % AJ(i_l) % data)
+      deallocate(this % DOFX(i_l) % data)
+      deallocate(this % DOFN(i_l) % data)
+      deallocate(this % DOFG(i_l) % data)
+      deallocate(this % DOFF(i_l) % data)
+    end do
+    deallocate(this % D_mean)
+    deallocate(this % GN0_mean)
+    deallocate(this % GG_mean)
+    deallocate(this % GF_mean)
+    deallocate(this % GX_mean)
+    deallocate(this % AJ)
+    deallocate(this % DOFX)
+    deallocate(this % DOFN)
+    deallocate(this % DOFG)
+    deallocate(this % DOFF)
+    deallocate(this % ES)
+
+    ! deallocate probability tables
+    if (allocated(this % prob_tables)) call this % dealloc_prob_tables()
+
+    ! deallocate URR resonances
+    if (allocated(this % n_lam)) deallocate(this % n_lam)
+    if (allocated(this % urr_resonances)) call this % dealloc_ensemble(n_reals)
+
+    ! deallocate RRR resonances
+    if (allocated(this % slbw_resonances)) then
+      do i_l = 1, this % NLS(this % i_urr - 1)
+        call this % slbw_resonances(i_l) % dealloc_slbw_resonances()
+      end do
+      deallocate(this % slbw_resonances)
+    end if
+    if (allocated(this % mlbw_resonances)) then
+      do i_l = 1, this % NLS(this % i_urr - 1)
+        call this % mlbw_resonances(i_l) % dealloc_mlbw_resonances()
+      end do
+      deallocate(this % mlbw_resonances)
+    end if
+    if (allocated(this % rm_resonances)) then
+      do i_l = 1, this % NLS(this % i_urr - 1)
+        call this % rm_resonances(i_l) % dealloc_rm_resonances()
+      end do
+      deallocate(this % rm_resonances)
+    end if
+
+    ! deallocate pointwise data
+    if (allocated(this % urr_energy)) call this % dealloc_pointwise()
+
+    ! deallocate averaged, infinite-dilute URR cross sections
+    deallocate(this % Eavg)
+    deallocate(this % avg_urr_n)
+    deallocate(this % avg_urr_f)
+    deallocate(this % avg_urr_g)
+    deallocate(this % avg_urr_x)
+
+    ! deallocate ENDF-6 File 3 cross sections
+    call this % dealloc_MF3()
+
+    ! deallocate energy range variables and total angular momenta counts
+    call this % dealloc_energy_ranges()
+    deallocate(this % NJS)
+
+  end subroutine dealloc_isotope
 
 end module unresolved

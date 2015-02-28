@@ -4,6 +4,7 @@ module finalize
   use output,         only: print_runtime, print_results, &
                             print_overlap_check, write_tallies
   use tally,          only: tally_statistics
+  use unresolved,     only: isotopes, n_fasturr
 
 #ifdef MPI
   use mpi
@@ -23,6 +24,8 @@ contains
 !===============================================================================
 
   subroutine finalize_run()
+
+    integer :: i ! isotope index
 
     ! Start finalization timer
     call time_finalize % start()
@@ -58,6 +61,11 @@ contains
 
     ! Deallocate arrays
     call free_memory()
+
+    ! deallocate URR isotopes
+    do i = 1, n_fasturr
+      call isotopes(i) % dealloc_isotope()
+    end do
 
 #ifdef HDF5
     ! Release compound datatypes

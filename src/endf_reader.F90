@@ -212,8 +212,9 @@ contains
     integer :: NBT    ! number of entries separating interp. ranges N and N+1
     integer :: INTERP ! File 3 reaction xs interpolation flag
     character(80) :: rec ! ENDF-6 file record
-    real(8) :: ZA
-    real(8) :: A
+    real(8) :: ZA ! ZAID
+    real(8) :: A  ! mass in neutron masses
+    real(8) :: QI ! reaction Q-value
     logical :: read_MT ! read this MT reaction?
 
     tope => isotopes(i)
@@ -273,73 +274,6 @@ contains
       if (i_e == NP) exit
       i_e = i_e + 1
     end do
-
-    read_MT = .false.
-    do
-      read(in, 10) rec
-      read(rec(71:72), '(I2)') MF
-      read(rec(73:75), '(I3)') MT
-      if (MF == 3 .and. MT == 4) then
-        read_MT = .true.
-        exit
-      end if
-      if (MT > 4) then
-        backspace(in)
-        call warning('Reached end of MF3 w/o reading an&
-          & inelastic cross section in '//trim(filename))
-        exit
-      end if
-    end do
-
-    if (read_MT) then
-      read(rec(1:11),  '(E11.0)') ZA
-      read(rec(12:22), '(E11.0)') A
-
-      ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
-
-      ! check that mass is consistent
-      call check_mass(A, tope % AWR)
-
-      ! read MF=3, record=2
-      read(in, 10) rec
-      read(rec(45:55), '(I11)') NR
-      read(rec(56:66), '(I11)') NP
-
-      ! check number of interpolation regions
-      call check_interp_regions(NR)
-
-      ! read MF=3, record=3
-      read(in, 10) rec
-      read(rec( 1:11), '(I11)') NBT
-      read(rec(12:22), '(I11)') INTERP
-
-      ! check number of energy-xs pairs in this interpolation region
-      call check_n_pairs(NBT, NP)
-
-      ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
-
-      allocate(tope % MF3_x_e(NP))
-      allocate(tope % MF3_x(NP))
-
-      i_e = 1
-      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % MF3_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % MF3_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % MF3_x(i_e)
-        if (i_e == NP) exit
-        i_e = i_e + 1
-      end do
-    end if
 
     read_MT = .false.
     do
@@ -406,6 +340,108 @@ contains
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
+    end if
+
+    read_MT = .false.
+    do
+      read(in, 10) rec
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 51) then
+        read_MT = .true.
+        exit
+      end if
+      if (MT > 51) then
+        backspace(in)
+        call fatal_error('Reached end of MF3 w/o reading an&
+          & (n,n1) cross section in '//trim(filename))
+        exit
+      end if
+    end do
+
+    if (read_MT) then
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') A
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), tope % ZAI)
+
+      ! check that mass is consistent
+      call check_mass(A, tope % AWR)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(12:22), '(E11.0)') QI
+      tope % E_ex1 = (A + ONE) / A * (-QI)
+      read(rec(45:55), '(I11)') NR
+      read(rec(56:66), '(I11)') NP
+
+      ! check number of interpolation regions
+      call check_interp_regions(NR)
+
+      ! read MF=3, record=3
+      read(in, 10) rec
+      read(rec( 1:11), '(I11)') NBT
+      read(rec(12:22), '(I11)') INTERP
+
+      ! check number of energy-xs pairs in this interpolation region
+      call check_n_pairs(NBT, NP)
+
+      ! check interpolation scheme is same as isotope interpolation scheme
+      call check_interp_scheme(INTERP, tope % MF3_INT)
+
+      allocate(tope % MF3_x_e(NP))
+      allocate(tope % MF3_x(NP))
+
+      i_e = 1
+      do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') tope % MF3_x_e(i_e)
+        read(rec(12:22), '(E11.0)') tope % MF3_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(23:33), '(E11.0)') tope % MF3_x_e(i_e)
+        read(rec(34:44), '(E11.0)') tope % MF3_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+        read(rec(45:55), '(E11.0)') tope % MF3_x_e(i_e)
+        read(rec(56:66), '(E11.0)') tope % MF3_x(i_e)
+        if (i_e == NP) exit
+        i_e = i_e + 1
+      end do
+    end if
+
+    read_MT = .false.
+    do
+      read(in, 10) rec
+      read(rec(71:72), '(I2)') MF
+      read(rec(73:75), '(I3)') MT
+      if (MF == 3 .and. MT == 52) then
+        read_MT = .true.
+        exit
+      end if
+      if (MT > 52) then
+        backspace(in)
+        call fatal_error('Reached end of MF3 w/o reading an&
+          & (n,n2) Q-value in '//trim(filename))
+        exit
+      end if
+    end do
+
+    if (read_MT) then
+      read(rec(1:11),  '(E11.0)') ZA
+      read(rec(12:22), '(E11.0)') A
+
+      ! check ZAID agreement
+      call check_zaid(int(ZA), tope % ZAI)
+
+      ! check that mass is consistent
+      call check_mass(A, tope % AWR)
+
+      ! read MF=3, record=2
+      read(in, 10) rec
+      read(rec(12:22), '(E11.0)') QI
+      tope % E_ex2 = (A + ONE) / A * (-QI)
     end if
 
     read_MT = .false.

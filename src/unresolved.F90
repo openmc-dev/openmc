@@ -10,7 +10,6 @@ module unresolved
 
   implicit none
 
-! TODO: check absolute value of energies
   logical :: run_fasturr ! use special treatment for Fast/URR data?
   logical :: competitive ! model competitve reaction xs resonance structure?
   logical :: prob_bands  ! calculate averaged, infinite-dilute cross sections?
@@ -270,6 +269,8 @@ module unresolved
 ! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
     integer :: LRX     ! competitive inelastic width flag
     integer :: NE      ! number of URR tabulated data energies
+    real(8) :: E_ex1   ! first level inelastic scattering excitation energy
+    real(8) :: E_ex2   ! second level inelastic scattering excitation energy
     real(8), allocatable :: EL(:)  ! lower energy bound of energy region
     real(8), allocatable :: EH(:)  ! upper energy bound of energy region
     real(8), allocatable :: AP(:)  ! scattering radius
@@ -2419,7 +2420,9 @@ contains
 
     ! compute factors needed to go from the mean reduced width amplitude that is
     ! provided by ENDF for scattering to what we want - a partial width
-    rho = wavenumber(tope % AWR, this % E_lam) * tope % ac(tope % i_urr)
+    ! (use absolute value of energy in order to handle bound levels which have
+    ! negative resonance energies)
+    rho = wavenumber(tope % AWR, abs(this % E_lam)) * tope % ac(tope % i_urr)
     nu  = penetration(tope % L, rho) / rho
 
     ! use the sampled tabulated chi-squared values to calculate sample widths
@@ -2499,9 +2502,9 @@ contains
     type(Isotope), pointer :: tope => null() ! nuclide pointer
     integer :: iso ! isotope index
     real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
-    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QX
+    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
     real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
-    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QX|
+    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
     real(8) :: E_shift ! shifted resonance energy in the lab system
     real(8) :: theta   ! total width / Doppler width
     real(8) :: x       ! derived variable
@@ -2513,25 +2516,35 @@ contains
 
     tope => isotopes(iso)
 
-    ! set variables
     k_n = wavenumber(tope % AWR, tope % E)
-    k_n_x = k_n!wavenumber(tope % AWR, abs(tope % E - tope % QI(4)))
-    k_lam = wavenumber(tope % AWR, this % E_lam)
-    k_lam_x = k_lam!wavenumber(tope % AWR, abs(this % E_lam - tope % QI(4)))
-! TODO: handle reaction channel energies correctly
+
+    ! (use absolute value of energy in order to handle bound levels which have
+    ! negative resonance energies)
+    k_lam = wavenumber(tope % AWR, abs(this % E_lam))
 
     E_shift = this % E_lam &
-      & + (this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
-      & - shift(tope % L, k_n * tope % ac(tope % i_urr)))) &
+      & + this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
+      & - shift(tope % L, k_n * tope % ac(tope % i_urr))) &
       & / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
 
     Gam_n_n = this % Gam_n &
       & * penetration(tope % L, k_n   * tope % ac(tope % i_urr)) &
       & / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
 
-    Gam_x_n = this % Gam_x &
-      & * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr)) &
-      & / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr))
+    if (tope % E >= tope % E_ex2) then
+      ! two competitive reactions possible, can't calculate an energy-dependent
+      ! width because it depends on the two (unprovided) reaction partial widths
+      Gam_x_n = this % Gam_x
+    else if (tope % E >= tope % E_ex1) then
+      ! can compute an energy-dependent width for the one competitive reaction
+      k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
+      k_lam_x = wavenumber(tope % AWR, abs(this % E_lam - tope % E_ex1))
+      Gam_x_n = this % Gam_x &
+        & * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr)) &
+        & / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr))
+    else
+      Gam_x_n = ZERO
+    end if
 
     Gam_t_n = this % Gam_t - this % Gam_n - this % Gam_x &
       & + Gam_n_n + Gam_x_n
@@ -2544,19 +2557,12 @@ contains
     sig_lam = FOUR * PI / (k_lam * k_lam) * tope % g_J &
           & * this % Gam_n / this % Gam_t
 
-! TODO: Compute competitive xs contribution correctly
-
     ! this particular form comes from the NJOY2012 manual
-    if (Gam_n_n > ZERO) then
-      this % dxs_n = sig_lam * &
-        & ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-        & - (ONE - Gam_n_n / Gam_t_n)) * psi(theta, x) &
-        & + sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-        & * chi(theta, x))
-    else
-      call fatal_error('Encountered a non-positive elastic scattering width &
-        &in the URR')
-    end if
+    this % dxs_n = sig_lam * &
+      & ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
+      & - (ONE - Gam_n_n / Gam_t_n)) * psi(theta, x) &
+      & + sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
+      & * chi(theta, x))
 
     sig_lam_Gam_t_n_psi = sig_lam * psi(theta, x) / Gam_t_n
 
@@ -2567,15 +2573,16 @@ contains
     end if
 
     if (this % Gam_f > ZERO) then
-      this % dxs_f   = sig_lam_Gam_t_n_psi * this % Gam_f
+      this % dxs_f = sig_lam_Gam_t_n_psi * this % Gam_f
     else
-      this % dxs_f   = ZERO
+      this % dxs_f = ZERO
     end if
 
-    if (Gam_x_n > ZERO) then
-      this % dxs_x   = sig_lam_Gam_t_n_psi * Gam_x_n
+    ! can only have a competitive resonance component w/ a single open channel
+    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+      this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
-      this % dxs_x   = ZERO
+      this % dxs_x = ZERO
     end if
 
     this % dxs_t = this % dxs_n &
@@ -2801,8 +2808,8 @@ contains
     real(8) :: k_val ! computed wavenumber
 
     ! compute center-of-mass neutron wavenumber evaluated at some energy
-!    if (E < ZERO) call fatal_error('Negative energy in wavenumber calculation')
-    k_val = C_1 * A / (A + ONE) * sqrt(abs(E))
+    if (E < ZERO) call fatal_error('Negative energy in wavenumber calculation')
+    k_val = C_1 * A / (A + ONE) * sqrt(E)
 
   end function wavenumber
 
@@ -4181,7 +4188,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_MLBW_RESONANCES deallocates a vector of NRS MLBW resonances
+! DEALLOC_MLBW_RESONANCES deallocates a vector of NRS MLBW resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -4221,7 +4228,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! !TODO: use this: DEALLOC_RM_RESONANCES deallocates a vector of NRS Reich-Moore resonances
+! DEALLOC_RM_RESONANCES deallocates a vector of NRS Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 

@@ -128,7 +128,6 @@ contains
                 micro_xs(i_nuc) % use_ptable = .true.
                 call prob_tables(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
                 exit
-! TODO: handle the same isotope at multiple temperatures
               end if
             end do
           end do

@@ -68,9 +68,6 @@ contains
     real(8) :: c = 0.051765358792987823963876628425793170829107067780337219430904_8
     real(8) :: d = 2.724744871391589049098642037352945695982973740328335064216346_8
 
-! TODO: what is this?
-    !c = 0.188063194515918762316026483853590861948016876442999618948029
-
     integer :: l           ! interpolation index for real axis
     integer :: m           ! interpolation index for imaginary axis
 

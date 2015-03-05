@@ -303,13 +303,13 @@ interior cell,
    \sum_{u\in
    x,y,x}\frac{1}{\Delta_l^u}\left[\left(-\tilde{D}_{l-1/2,m,n}^{u,g} -
    \hat{D}_{l-1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l-1,m,n}^g\right.
-   + \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
+   \\ + \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
    \tilde{D}_{l+1/2,m,n}^{u,g} - \hat{D}_{l-1/2,m,n}^{u,g} +
    \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l,m,n}^g
    \\ +
    \left. \left(-\tilde{D}_{l+1/2,m,n}^{u,g} +
    \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l+1,m,n}^g
-   \right] +
+   \right] \\ +
    \overline{\overline\Sigma}_{t_{l,m,n}}^g\overline{\overline{\phi}}_{l,m,n}^g
    - \sum\limits_{h=1}^G\overline{\overline{\nu_s\Sigma}}^{h\rightarrow
    g}_{s_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h =

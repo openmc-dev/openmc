@@ -195,6 +195,7 @@ latex_elements = {
 \setlistdepth{9}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\hypersetup{bookmarksdepth=3}
 '''
 }
 

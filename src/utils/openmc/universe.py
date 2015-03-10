@@ -735,10 +735,14 @@ class Lattice(object):
             pitch.text = '{0} {1} {2}'.format(self._pitch[0], \
                                               self._pitch[1], \
                                               self._pitch[2])
-        else:
+        elif len(self._pitch) == 2:
             pitch = ET.SubElement(lattice_subelement, "pitch")
             pitch.text = '{0} {1}'.format(self._pitch[0], \
                                           self._pitch[1])
+
+        else:
+            pitch = ET.SubElement(lattice_subelement, "pitch")
+            pitch.text = '{0}'.format(self._pitch[0])
 
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
@@ -1050,6 +1054,38 @@ class HexLattice(Lattice):
         self._center = center
 
 
+    # NOTE to wboyd: this method needs to be hex/rect specific because only
+    # one pitch is needed to describe a 2D hex lattice.
+    def set_pitch(self, pitch):
+
+        if not isinstance(pitch, (tuple, list, np.ndarray)):
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, pitch)
+            raise ValueError(msg)
+
+
+        elif len(pitch) != 1 and len(pitch) != 2:
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
+                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
+            raise ValueError(msg)
+
+        for dim in pitch:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                      'it is not an an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+            elif dim < 0:
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
+                      'is a negative value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._pitch = pitch
+
+
     def set_universes(self, universes):
         super(HexLattice, self).set_universes(universes)
 
@@ -1058,7 +1094,8 @@ class HexLattice(Lattice):
         # The sub-lists are ordered from outermost ring to innermost ring.
         # The Universes within each sub-list are ordered from the "top" in a
         # clockwise fashion.
-        self.set_num_rings(universes.shape[0])
+        #self.set_num_rings(universes.shape[0])
+        self.set_num_rings(len(universes))
 
 
     def __repr__(self):
@@ -1127,43 +1164,123 @@ class HexLattice(Lattice):
         universe_ids = '\n'
 
         # 3D Lattices
-        if len(self._dimension) == 3:
-            for z in range(self._dimension[2]):
-                for y in range(self._dimension[1]):
-                    for x in range(self._dimension[0]):
-
-                        universe = self._universes[x][y][z]
-
-                        # Append Universe ID to the Lattice XML subelement
-                        universe_ids += '{0} '.format(universe._id)
-
-                        # Create XML subelement for this Universe
-                        universe.create_xml_subelement(xml_element)
-
-                    # Add newline character when we reach end of row of cells
-                    universe_ids += '\n'
-
-                # Add newline character when we reach end of row of cells
-                universe_ids += '\n'
+        #if len(self._dimension) == 3:
+        if self._num_axial is not None:
+            pass
+#            for z in range(self._dimension[2]):
+#                for y in range(self._dimension[1]):
+#                    for x in range(self._dimension[0]):
+#
+#                        universe = self._universes[x][y][z]
+#
+#                        # Append Universe ID to the Lattice XML subelement
+#                        universe_ids += '{0} '.format(universe._id)
+#
+#                        # Create XML subelement for this Universe
+#                        universe.create_xml_subelement(xml_element)
+#
+#                    # Add newline character when we reach end of row of cells
+#                    universe_ids += '\n'
+#
+#                # Add newline character when we reach end of row of cells
+#                universe_ids += '\n'
 
         # 2D Lattices
         else:
-            for y in range(self._dimension[1]):
-                for x in range(self._dimension[0]):
+            # Initialize the list for each row.
+            rows = [ [] for i in range(1 + 4 * (self._num_rings-1)) ]
+            middle = self._num_rings - 1
+            middle = 2 * (self._num_rings - 1)
 
-                    universe = self._universes[x][y]
+            # Start with the degenerate first ring.
+            universe = self._universes[-1][0]
+            rows[middle] = [str(universe._id)]
+            universe.create_xml_subelement(xml_element)
 
-                    # Append Universe ID to Lattice XML subelement
-                    universe_ids += '{0} '.format(universe._id)
+            # Add universes one ring at a time.
+            for r in range(1, self._num_rings):
+                # r_prime increments down while r increments up.
+                r_prime = self._num_rings - 1 - r
+                theta = 0
+                y = middle + 2*r
 
-                    # Create XML subelement for this Universe
+                # Climb down the top-right.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].append(str(universe._id))
                     universe.create_xml_subelement(xml_element)
 
-                # Add newline character when we reach end of row of cells
-                universe_ids += '\n'
+                    # Translate the indecies.
+                    y -= 1
+                    theta += 1
 
-        # Remove trailing newline character from Universe IDs string
-        universe_ids = universe_ids.rstrip('\n')
+                # Climb down the right.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].append(str(universe._id))
+                    universe.create_xml_subelement(xml_element)
+
+                    # Translate the indecies.
+                    y -= 2
+                    theta += 1
+
+                # Climb down the bottom-right.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].append(str(universe._id))
+                    universe.create_xml_subelement(xml_element)
+
+                    # Translate the indecies.
+                    y -= 1
+                    theta += 1
+
+                # Make sure we reached the bottom.
+                assert y == middle - 2*r
+
+                # Climb up the bottom-left.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].insert(0, str(universe._id))
+                    universe.create_xml_subelement(xml_element)
+
+                    # Translate the indecies.
+                    y += 1
+                    theta += 1
+
+                # Climb up the left.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].insert(0, str(universe._id))
+                    universe.create_xml_subelement(xml_element)
+
+                    # Translate the indecies.
+                    y += 2
+                    theta += 1
+
+                # Climb up the top-left.
+                for i in range(r):
+                    # Add the universe.
+                    universe = self._universes[r_prime][theta]
+                    rows[y].insert(0, str(universe._id))
+                    universe.create_xml_subelement(xml_element)
+
+                    # Translate the indecies.
+                    y += 1
+                    theta += 1
+
+                # Make sure we reached the top and used all the universes.
+                assert y == middle + 2*r
+                assert theta == len(self._universes[r_prime])
+
+        # Collapse the list of lists of IDs into one string.
+        print(rows)
+        rows = [' '.join(x) for x in rows]
+        universe_ids = '\n'.join(rows)
 
         universes = ET.SubElement(lattice_subelement, "universes")
         universes.text = universe_ids

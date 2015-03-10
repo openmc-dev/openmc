@@ -50,10 +50,10 @@ if not os.path.exists(relaxng_path):
     raise Exception("RelaxNG path: {0} does not exist, set with -r "
                     "command line option.".format(relaxng_path))
 
-# Make sure there are .rnc files in RelaxNG path
-rnc_files = glob.glob(os.path.join(relaxng_path, "*.rnc"))
-if len(rnc_files) == 0:
-    raise Exception("No .rnc files found in RelaxNG "
+# Make sure there are .rng files in RelaxNG path
+rng_files = glob.glob(os.path.join(relaxng_path, "*.rng"))
+if len(rng_files) == 0:
+    raise Exception("No .rng files found in RelaxNG "
                     "path: {0}.".format(relaxng_path))
 
 # Get list of xml input files
@@ -80,36 +80,22 @@ for xml_file in xml_files:
     xml_prefix = os.path.basename(xml_file)
     xml_prefix = xml_prefix.split(".")[0]
 
-    # Search for rnc file
-    rnc_file = os.path.join(relaxng_path, xml_prefix + ".rnc")
-    rng_file = xml_prefix + ".rng"
-    if rnc_file in rnc_files:
+    # Search for rng file
+    rng_file = os.path.join(relaxng_path, xml_prefix + ".rng")
+    if rng_file in rng_files:
 
-        # convert RNC to RNG file
-        rc = call("trang {0} {1}".format(rnc_file, rng_file), shell=True)
+        # read in RelaxNG
+        relaxng_doc = etree.parse(rng_file)
+        relaxng = etree.RelaxNG(relaxng_doc)
 
-        # check return code
-        if rc == 0:
+        # validate xml file again RelaxNG
+        try:
+            relaxng.assertValid(xml_tree)
+            print(BOLD + OK + '[VALID]' + ENDC)
+        except (etree.DocumentInvalid, TypeError) as e:
+            print(BOLD + FAIL + '[NOT VALID]' + ENDC)
+            print("    {0}".format(e))
 
-            # read in RelaxNG
-            relaxng_doc = etree.parse(rng_file)
-            relaxng = etree.RelaxNG(relaxng_doc)
-
-            # validate xml file again RelaxNG
-            try:
-                relaxng.assertValid(xml_tree)
-                print(BOLD + OK + '[VALID]' + ENDC)
-            except (etree.DocumentInvalid, TypeError) as e:
-                print(BOLD + FAIL + '[NOT VALID]' + ENDC)
-                print("    {0}".format(e))
-
-            # remove rng file
-            os.remove(rng_file)
-
-        # trang command failed
-        else:
-            print(BOLD + FAIL + '[TRANG FAILED]' + ENDC)
-
-    # RNC file does not exist
+    # RNG file does not exist
     else:
         print(BOLD + NOT_FOUND + '[NO RELAXNG FOUND]' + ENDC)

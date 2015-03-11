@@ -904,8 +904,8 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: temp_double_array3(3)
     integer, allocatable :: temp_int_array(:)
+    real(8) :: temp_double_array3(3)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists

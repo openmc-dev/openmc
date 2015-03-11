@@ -1073,13 +1073,70 @@ class HexLattice(Lattice):
         # The sub-lists are ordered from outermost ring to innermost ring.
         # The Universes within each sub-list are ordered from the "top" in a
         # clockwise fashion.
-        # TODO: Does this need some work to handle numpy arrays?  I'm not sure
-        # we can use numpy arrays at all because they will assume a constant
-        # number of columns, but the columns will depend on the row in this
-        # ragged format.
-        #self.set_num_rings(universes.shape[0])
-        #self.set_num_rings(len(universes))
 
+        # Check to see if the given universes look like a 2D or a 3D array.
+        if isinstance(self._universes[0][0], Universe):
+            n_dims = 2
+
+        elif isinstance(self._universes[0][0][0], Universe):
+            n_dims = 3
+
+        else:
+            msg = 'HexLattice ID={0:d} does not appear to be either 2D or ' \
+                  '3D.  Make sure set_universes was given a two-deep or ' \
+                  'three-deep iterable of universes.'.format(self._id)
+            raise RuntimeError(msg)
+
+        # Set the number of axial positions.
+        if n_dims == 3:
+            self.set_num_axial(self._universes.shape[0])
+
+        else:
+            self._num_axial = None
+
+        # Set the number of rings and make sure this number is consistent for
+        # all axial positions.
+        if n_dims == 3:
+            self.set_num_rings(len(self._universes[0]))
+            for rings in self._universes:
+                if len(rings) != self._num_rings:
+                    msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
+                          'rings per axial positon'.format(self._id)
+                    raise ValueError(msg)
+
+        else:
+            self.set_num_rings(self._universes.shape[0])
+
+        # Make sure there are the correct number of elements in each ring.
+        z = 0
+        while True:
+            if n_dims == 3:
+                axial_slice = self._universes[z]
+            else:
+                axial_slice = self._universes
+
+            # Check the center ring.
+            if len(axial_slice[-1]) != 1:
+                msg = 'HexLattice ID={0:d} has the wrong number of elements ' \
+                      'in the innermost ring.  Only 1 element is allowed in ' \
+                      'the innermost ring.'.format(self._id)
+                raise ValueError(msg)
+
+            # Check the outer rings.
+            for r in range(self._num_rings-1):
+                if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
+                    msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                          'elements in ring number {1:d} (counting from the ' \
+                          'outermost ring).  This ring should have {2:d} ' \
+                          'elements.'.format(self._id, r,
+                          6*(self._num_rings - 1 - r))
+                    raise ValueError(msg)
+
+            if n_dims == 3:
+                z += 1
+                if z == self._num_axial: break
+            else:
+                break
 
 
     def __repr__(self):
@@ -1171,7 +1228,7 @@ class HexLattice(Lattice):
 
                 # Initialize the remaining universes.
                 for r in range(self._num_rings-1):
-                    for theta in range(2*(self._num_rings - r)):
+                    for theta in range(6*(self._num_rings - 1 - r)):
                         universe = self._universes[z][r][theta]
                         universe.create_xml_subelement(xml_element)
 

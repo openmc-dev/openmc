@@ -1273,14 +1273,21 @@ class HexLattice(Lattice):
 
         assert len(universes) == self._num_rings
 
+        # Find the largest universe ID and count the number of digits so we can
+        # properly pad the output string later.
+        largest_id = max([max([univ._id for univ in ring])
+                          for ring in universes])
+        n_digits = len(str(largest_id))
+        pad = ' '*n_digits
+        id_form = '{: ^' + str(n_digits) + 'd}'
+
         # Initialize the list for each row.
         rows = [ [] for i in range(1 + 4 * (self._num_rings-1)) ]
-        middle = self._num_rings - 1
         middle = 2 * (self._num_rings - 1)
 
         # Start with the degenerate first ring.
         universe = universes[-1][0]
-        rows[middle] = [str(universe._id)]
+        rows[middle] = [id_form.format(universe._id)]
 
         # Add universes one ring at a time.
         for r in range(1, self._num_rings):
@@ -1293,7 +1300,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].append(str(universe._id))
+                rows[y].append(id_form.format(universe._id))
 
                 # Translate the indecies.
                 y -= 1
@@ -1303,7 +1310,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].append(str(universe._id))
+                rows[y].append(id_form.format(universe._id))
 
                 # Translate the indecies.
                 y -= 2
@@ -1313,7 +1320,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].append(str(universe._id))
+                rows[y].append(id_form.format(universe._id))
 
                 # Translate the indecies.
                 y -= 1
@@ -1326,7 +1333,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].insert(0, str(universe._id))
+                rows[y].insert(0, id_form.format(universe._id))
 
                 # Translate the indecies.
                 y += 1
@@ -1336,7 +1343,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].insert(0, str(universe._id))
+                rows[y].insert(0, id_form.format(universe._id))
 
                 # Translate the indecies.
                 y += 2
@@ -1346,7 +1353,7 @@ class HexLattice(Lattice):
             for i in range(r):
                 # Add the universe.
                 universe = universes[r_prime][theta]
-                rows[y].insert(0, str(universe._id))
+                rows[y].insert(0, id_form.format(universe._id))
 
                 # Translate the indecies.
                 y += 1
@@ -1356,8 +1363,18 @@ class HexLattice(Lattice):
             assert y == middle + 2*r
             assert theta == len(universes[r_prime])
 
-        # Collapse the list of lists of IDs into one string.
-        rows = [' '.join(x) for x in rows]
-        universe_ids = '\n'.join(rows)
+        # Join each row into a single string.
+        rows = [pad.join(x) for x in rows]
 
+        # Pad the beginning of the rows so they line up properly.
+        for y in range(self._num_rings - 1):
+            rows[y] = (self._num_rings - 1 - y)*pad + rows[y]
+            rows[-1 - y] = (self._num_rings - 1 - y)*pad + rows[-1 - y]
+
+        for y in range(self._num_rings % 2, self._num_rings, 2):
+            rows[middle + y] = pad + rows[middle + y]
+            if y != 0: rows[middle - y] = pad + rows[middle - y]
+
+        # Join the rows together and return the string.
+        universe_ids = '\n'.join(rows)
         return universe_ids

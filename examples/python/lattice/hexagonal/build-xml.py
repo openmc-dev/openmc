@@ -99,12 +99,29 @@ root.add_cell(cell1)
 
 # Instantiate a Lattice
 lattice = openmc.HexLattice(lattice_id=5)
-lattice.set_num_rings(2)
-lattice.set_center([0., 0.])
-lattice.set_pitch([1.])
+lattice.set_num_rings(3)
+#lattice.set_center([0., 0.])
+#lattice.set_pitch([1.])
+#lattice.set_universes([
+#     [univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2],
+#     [univ2, univ2, univ2, univ2, univ2, univ2],
+#     [univ1]])
+lattice.set_center([0., 0., 0.])
+lattice.set_pitch([1., 1.])
+lattice.set_num_axial(2)
 lattice.set_universes([
-     [univ2, univ2, univ2, univ2, univ2, univ2],
-     [univ1]])
+     [
+      [univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2],
+      [univ2, univ2, univ2, univ2, univ2, univ2],
+      [univ1]
+     ],
+     [
+      [univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2, univ2],
+      [univ2, univ2, univ2, univ2, univ2, univ2],
+      [univ1]
+     ]
+     ])
+lattice.set_outer(univ1)
 
 # Fill Cell with the Lattice
 cell1.set_fill(lattice)

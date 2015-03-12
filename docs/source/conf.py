@@ -189,14 +189,18 @@ latex_documents = [
 ]
 
 latex_elements = {
-'preamble': '''
+'preamble': r"""
 \usepackage{enumitem}
 \usepackage{amsfonts}
+\usepackage{amsmath}
 \setlistdepth{9}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
 \hypersetup{bookmarksdepth=3}
-'''
+%\renewcommand{\thechapter}{\Roman{chapter}}
+\setcounter{tocdepth}{2}
+\numberwithin{equation}{section}
+"""
 }
 
 # The name of an image file (relative to this directory) to place at the top of

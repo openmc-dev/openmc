@@ -17,7 +17,7 @@ module physics
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use string,                 only: to_str
-  use unresolved,             only: isotopes
+  use unresolved,             only: Isotope, isotopes
 
   implicit none
 
@@ -320,7 +320,9 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Isotope),  pointer, save :: tope => null()
+    logical :: find_rxn
+!$omp threadprivate(nuc, rxn, tope)
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -356,55 +358,32 @@ contains
 
     else
       ! =======================================================================
-      ! INELASTIC SCATTERING
+      ! COMPETITIVE REACTIONS
 
-      if (1==2) then
-!      if (nuc % i_sotope /= 0) then
-        if (p % E > isotopes(nuc % i_sotope) % EL(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8 .and. &
-          & p % E < isotopes(nuc % i_sotope) % EH(isotopes(nuc % i_sotope) % i_urr) / 1.0E6_8) then
+      tope => null()
+      if (nuc % i_sotope /= 0) tope => isotopes(nuc % i_sotope)
+
+      find_rxn = .true.
+      if (associated(tope)) then
+        if (p % E >= tope % EL(tope % i_urr) / 1.0E6_8 &
+          & .and. p % E <= tope % EH(tope % i_urr) / 1.0E6_8 &
+          & .and. p % E < tope % E_ex2) then
           i_rxn = 1
           do
+!            if (i > nuc % n_reaction) then
+!              call write_particle_restart(p)
+!              call fatal_error("Did not sample any reaction for nuclide " // &
+!                trim(nuc % name))
+!            end if
             if (nuc % reactions(i_rxn) % MT == 51) exit
             i_rxn = i_rxn + 1
           end do
-          rxn => nuc % reactions(i_rxn)!nuc % urr_inelastic_index)
-        else
-! TODO: get rid of this repeating code
-          ! note that indexing starts from 2 since nuc % reactions(1) is elastic
-          ! scattering
-          i = 1
-          do while (prob < cutoff)
-
-            i = i + 1
-
-            ! Check to make sure inelastic scattering reaction sampled
-            if (i > nuc % n_reaction) then
-              call write_particle_restart(p)
-              call fatal_error("Did not sample any reaction for nuclide " // &
-                trim(nuc % name))
-            end if
-
-            rxn => nuc % reactions(i)
-
-            ! Skip fission reactions
-            if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-              .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
-
-            ! some materials have gas production cross sections with MT > 200 that
-            ! are duplicates. Also MT=4 is total level inelastic scattering which
-            ! should be skipped
-            if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
-
-            ! if energy is below threshold for this reaction, skip it
-            if (i_grid < rxn % threshold) cycle
-
-            ! add to cumulative probability
-            prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-
-          end do
+          rxn => nuc % reactions(i_rxn)
+          find_rxn = .false.
         end if
-      else
+      end if
+
+      if (find_rxn) then
         ! note that indexing starts from 2 since nuc % reactions(1) is elastic
         ! scattering
         i = 1

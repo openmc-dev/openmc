@@ -10,10 +10,11 @@ module unresolved
 
   implicit none
 
-  logical :: run_fasturr ! use special treatment for Fast/URR data?
-  logical :: competitive ! model competitve reaction xs resonance structure?
-  logical :: prob_bands  ! calculate averaged, infinite-dilute cross sections?
-  logical :: otf_urr     ! calculate cross sections on-the-fly?
+  logical :: run_fasturr  ! use special treatment for Fast/URR data?
+  logical :: competitive  ! model competitve reaction xs resonance structure?
+  logical :: otf_urr_xs   ! calculate cross sections on-the-fly?
+  logical :: prob_bands   ! calculate averaged, infinite-dilute cross sections?
+  logical :: point_urr_xs ! calculate pointwise URR cross sections
   integer :: n_fasturr           ! number of URR isotopes being processed
   integer :: represent_urr       ! representation of URR xs
   integer :: represent_params    ! representation of URR parameters
@@ -352,18 +353,18 @@ module unresolved
     type(MLBWResonances), allocatable :: mlbw_resonances(:)
 
     ! pointwise URR cross section data
-    real(8), allocatable :: urr_energy_tmp(:)    ! scratch energy grid values
-    real(8), allocatable :: urr_elastic_tmp(:)   ! scratch elastic xs
-    real(8), allocatable :: urr_capture_tmp(:)   ! scratch capture xs
-    real(8), allocatable :: urr_fission_tmp(:)   ! scratch fission xs
-    real(8), allocatable :: urr_inelastic_tmp(:) ! scratch competitive xs
-    real(8), allocatable :: urr_total_tmp(:)     ! scratch total xs
-    real(8), allocatable :: urr_energy(:)        ! energy grid values
-    real(8), allocatable :: urr_elastic(:)       ! elastic xs
-    real(8), allocatable :: urr_capture(:)       ! capture xs
-    real(8), allocatable :: urr_fission(:)       ! fission xs
-    real(8), allocatable :: urr_inelastic(:)     ! first level inelastic xs
-    real(8), allocatable :: urr_total(:)         ! total xs
+    real(8), allocatable :: E_tmp(:)    ! Scratch energy grid values
+    real(8), allocatable :: n_tmp(:)   ! scratch elastic xs
+    real(8), allocatable :: g_tmp(:)   ! scratch capture xs
+    real(8), allocatable :: f_tmp(:)   ! scratch fission xs
+    real(8), allocatable :: x_tmp(:) ! scratch competitive xs
+    real(8), allocatable :: t_tmp(:)     ! scratch total xs
+    real(8), allocatable :: urr_E(:)        ! energy grid values
+    real(8), allocatable :: urr_n(:)       ! elastic xs
+    real(8), allocatable :: urr_g(:)       ! capture xs
+    real(8), allocatable :: urr_f(:)       ! fission xs
+    real(8), allocatable :: urr_x(:)     ! first level inelastic xs
+    real(8), allocatable :: urr_t(:)         ! total xs
 
     ! pointwise URR cross section parameters
     integer :: n_urr_gridpoints  = 100000000 ! max URR energy-xs gridpoints
@@ -545,7 +546,7 @@ contains
 
           i_res = 0
           n_above_urr = 0
-          RESONANCE_LOOP: do while(n_above_urr < n_res/2)
+          RESONANCE_LOOP: do while(n_above_urr < n_res/2 + 1)
 
             i_res = i_res + 1
 
@@ -571,14 +572,16 @@ contains
             tope % GG = interpolator(m, &
               & tope % GG_mean(i_l) % data(i_J) % data(i_E), &
               & tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
-            if (tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+            if (tope % INT == LINEAR_LINEAR &
+              & .or. tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
               tope % GF = interpolator(m, &
                 & tope % GF_mean(i_l) % data(i_J) % data(i_E), &
                 & tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             else
               tope % GF = ZERO
             end if
-            if (tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+            if (tope % INT == LINEAR_LINEAR &
+              .or. tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
               tope % GX = interpolator(m, &
                 & tope % GX_mean(i_l) % data(i_J) % data(i_E), &
                 & tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
@@ -608,7 +611,7 @@ contains
     ! allocate URR resonance ensemble realizations
     call tope % alloc_ensemble(n_reals)
 
-    ! transfer temporary URR ensembles to reduced-memory ensemble
+    ! transfer scratch URR ensembles to permanent array
     do i_ens = 1, n_reals
       do i_l = 1, tope % NLS(tope % i_urr)
         do i_J = 1, tope % NJS(i_l)
@@ -694,19 +697,19 @@ contains
     ! enforce xs continuity at RRR-URR energy crossover
     n_pts = 1
     i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
-    tope % urr_energy_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
-    tope % urr_elastic_tmp(n_pts) = nuc % elastic(i_grid)
-    tope % urr_capture_tmp(n_pts) = nuc % absorption(i_grid) &
+    tope % E_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
+    tope % n_tmp(n_pts) = nuc % elastic(i_grid)
+    tope % g_tmp(n_pts) = nuc % absorption(i_grid) &
       & - nuc % fission(i_grid)
-    tope % urr_fission_tmp(n_pts) = nuc % fission(i_grid)
-    tope % urr_total_tmp(n_pts)   = nuc % total(i_grid)
-
-    if (tope % urr_elastic_tmp(n_pts) &
-      & + tope % urr_capture_tmp(n_pts) &
-      & + tope % urr_fission_tmp(n_pts) /= tope % urr_total_tmp(n_pts)) &
-      & call fatal_error('Total cross section does not equal sum of elastic,&
-      & capture, and fission at RRR-URR energy crossover&
-      & in URR cross section reconstruction')
+    tope % f_tmp(n_pts) = nuc % fission(i_grid)
+    tope % t_tmp(n_pts) = nuc % total(i_grid)
+    tope % x_tmp(n_pts) = tope % t_tmp(n_pts) &
+      & - tope % n_tmp(n_pts) &
+      & - tope % g_tmp(n_pts) &
+      & - tope % f_tmp(n_pts)
+    tope % t_tmp(n_pts) = tope % n_tmp(n_pts) &
+      & + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
+      & + tope % x_tmp(n_pts)
 
     tope % E = 1.0e6_8 * nuc % energy(i_grid + 1)
 
@@ -832,19 +835,25 @@ contains
           & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call calc_urr_bckgrnd(iso, i_nuc, n_pts, fact, i_grid)
+        call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
+          call fatal_error('LSSF=0 pointwise not yet supported - check whether&
+            & need to add ACE or ENDF-6 background')
           ! add resonance xs component to background
-          call add2bckgrnd(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
         ! multipy the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
 
-          iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+          if (tope % E > tope % Eavg(tope % nEavg)) then
+            iavg = tope % nEavg - 1
+          else
+            iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+          end if
 
           favg = interp_factor(tope % E, &
             & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
@@ -854,56 +863,49 @@ contains
 
           ! competitive xs
           if (avg_urr_x_xs > ZERO) then
-            if (competitive) then
+            if (tope % E < tope % E_ex2 .and. competitive) then
               ! self-shielded treatment of competitive inelastic xs
-              tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
-                & * tope % urr_inelastic_tmp(n_pts)
+              tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
+                & * tope % x_tmp(n_pts)
             else
               ! infinite-dilute treatment of competitive inelastic xs
-              tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+              tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
             end if
           else
             ! use background competitive inelastic cross section, as is
-            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
           end if
 
           ! elastic scattering xs
-          tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
-            & * tope % urr_elastic_tmp(n_pts)
+          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
           ! set negative SLBW elastic xs to zero
-          if (tope % urr_elastic_tmp(n_pts) < ZERO) &
-            & tope % urr_elastic_tmp(n_pts) = ZERO
+          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO) then
-            tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
-              & * tope % urr_capture_tmp(n_pts)
+            tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
           else
             ! use background capture cross section, as is
-            tope % urr_capture_tmp(n_pts) = tope % urr_capture_tmp(n_pts)
+            tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
           end if
 
           ! fission xs
           if (avg_urr_f_xs > ZERO) then
-            tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
-              & * tope % urr_fission_tmp(n_pts)
+            tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
           else
-            tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
+            tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
           end if
 
-          tope % urr_total_tmp(n_pts) &
-            & = tope % urr_elastic_tmp(n_pts)&
-            & + tope % urr_capture_tmp(n_pts)&
-            & + tope % urr_fission_tmp(n_pts)&
-            & + tope % urr_inelastic_tmp(n_pts)
+          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
+            & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
         end if
 
         xs_trial = HALF &
-          & * (tope % urr_total_tmp(n_pts) + tope % urr_total_tmp(n_pts - 1))
+          & * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
         dE_trial = HALF * dE_trial
         tope % E  = tope % E - dE_trial
 
@@ -1013,19 +1015,23 @@ contains
           & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call calc_urr_bckgrnd(iso, i_nuc, n_pts, fact, i_grid)
+        call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add2bckgrnd(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
         elseif (tope % LSSF == 1) then
           ! multipy the self-shielding factors by the infinite-dilute xs
 
-          iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+          if (tope % E > tope % Eavg(tope % nEavg)) then
+            iavg = tope % nEavg - 1
+          else
+            iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+          end if
 
           favg = interp_factor(tope % E, &
             & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
@@ -1035,55 +1041,49 @@ contains
 
           ! competitive xs
           if (avg_urr_x_xs > ZERO) then
-            if (competitive) then
+            if (tope % E < tope % E_ex2 .and. competitive) then
               ! self-shielded treatment of competitive inelastic xs
-              tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
-                & * tope % urr_inelastic_tmp(n_pts)
+              tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
+                & * tope % x_tmp(n_pts)
             else
               ! infinite-dilute treatment of competitive inelastic xs
-              tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+              tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
             end if
           else
             ! use background competitive inelastic cross section, as is
-            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
           end if
 
           ! elastic scattering xs
-          tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
-            & * tope % urr_elastic_tmp(n_pts)
+          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
           ! set negative SLBW elastic xs to zero
-          if (tope % urr_elastic_tmp(n_pts) < ZERO) &
-            & tope % urr_elastic_tmp(n_pts) = ZERO
+          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO) then
-            tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
-              & * tope % urr_capture_tmp(n_pts)
+            tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
           else
             ! use background capture cross section, as is
-            tope % urr_capture_tmp(n_pts) = tope % urr_capture_tmp(n_pts)
+            tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
           end if
 
           ! fission xs
           if (avg_urr_f_xs > ZERO) then
-            tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
-              & * tope % urr_fission_tmp(n_pts)
+            tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
           else
-            tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
+            tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
           end if
 
-          tope % urr_total_tmp(n_pts) = tope % urr_elastic_tmp(n_pts)&
-            &                         + tope % urr_capture_tmp(n_pts)&
-            &                         + tope % urr_fission_tmp(n_pts)&
-            &                         + tope % urr_inelastic_tmp(n_pts)
+          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
+            & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
         end if
 
-        rel_err = abs(xs_trial - tope % urr_total_tmp(n_pts)) &
-          & / tope % urr_total_tmp(n_pts)
+        rel_err = abs(xs_trial - tope % t_tmp(n_pts)) &
+          & / tope % t_tmp(n_pts)
         if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr) then
           enhance = .false.
         end if
@@ -1091,7 +1091,7 @@ contains
 
       ! add energy point to grid
       tope % E = tope % E + dE_trial
-      tope % urr_energy_tmp(n_pts) = tope % E
+      tope % E_tmp(n_pts) = tope % E
 
       ! reset xs accumulators
       call flush_sigmas(t, n, g, f, x)
@@ -1195,20 +1195,24 @@ contains
         & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
       ! calculate evaluator-supplied backgrounds at the current energy
-      call calc_urr_bckgrnd(iso, i_nuc, n_pts, fact, i_grid)
+      call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
 
       ! interpret MF3 data according to ENDF-6 LSSF flag:
       ! MF3 contains background xs values, add to MF2 resonance contributions
       if (tope % LSSF == 0) then
 
         ! add resonance xs component to background
-        call add2bckgrnd(iso, i_nuc, n_pts, t, n, g, f, x)
+        call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
       elseif (tope % LSSF == 1) then
         ! multipy the self-shielding factors by the average (infinite-dilute)
         ! cross sections
 
-        iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+        if (tope % E > tope % Eavg(tope % nEavg)) then
+          iavg = tope % nEavg - 1
+        else
+          iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+        end if
 
         favg = interp_factor(tope % E, &
           & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
@@ -1218,48 +1222,42 @@ contains
 
         ! competitive xs
         if (avg_urr_x_xs > ZERO) then
-          if (competitive) then
-            ! self-shielded treatment of competitive inelastic cross section
-            tope % urr_inelastic_tmp(n_pts) = x % xs / avg_urr_x_xs &
-              & * tope % urr_inelastic_tmp(n_pts)
+          if (tope % E < tope % E_ex2 .and. competitive) then
+            ! self-shielded treatment of competitive inelastic xs
+            tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
+              & * tope % x_tmp(n_pts)
           else
-            ! infinite-dilute treatment of competitive inelastic cross section
-            tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+            ! infinite-dilute treatment of competitive inelastic xs
+            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
           end if
         else
           ! use background competitive inelastic cross section, as is
-          tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts)
+          tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
         end if
 
         ! elastic scattering xs
-        tope % urr_elastic_tmp(n_pts) = n % xs / avg_urr_n_xs &
-          & * tope % urr_elastic_tmp(n_pts)
+        tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
         ! set negative SLBW elastic xs to zero
-        if (tope % urr_elastic_tmp(n_pts) < ZERO) &
-          & tope % urr_elastic_tmp(n_pts) = ZERO
+        if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
 
         ! radiative capture xs
         if (avg_urr_g_xs > ZERO) then
-          tope % urr_capture_tmp(n_pts) = g % xs / avg_urr_g_xs &
-            & * tope % urr_capture_tmp(n_pts)
+          tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
         else
           ! use background capture cross section, as is
-          tope % urr_capture_tmp(n_pts) = tope % urr_capture_tmp(n_pts)
+          tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
         end if
 
         ! fission xs
         if (avg_urr_f_xs > ZERO) then
-          tope % urr_fission_tmp(n_pts) = f % xs / avg_urr_f_xs &
-            & * tope % urr_fission_tmp(n_pts)
+          tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
         else
-          tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts)
+          tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
         end if
 
-        tope % urr_total_tmp(n_pts) = tope % urr_elastic_tmp(n_pts)&
-          &                         + tope % urr_capture_tmp(n_pts)&
-          &                         + tope % urr_fission_tmp(n_pts)&
-          &                         + tope % urr_inelastic_tmp(n_pts)
+        tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
+          & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
       else
         call fatal_error('Self-shielding flag (LSSF) not allowed -&
@@ -1271,12 +1269,12 @@ contains
     ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
     ! the proper length
     call tope % alloc_pointwise(n_pts)
-    tope % urr_energy    = tope % urr_energy_tmp(1:n_pts)
-    tope % urr_elastic   = tope % urr_elastic_tmp(1:n_pts)
-    tope % urr_capture   = tope % urr_capture_tmp(1:n_pts)
-    tope % urr_fission   = tope % urr_fission_tmp(1:n_pts)
-    tope % urr_inelastic = tope % urr_inelastic_tmp(1:n_pts)
-    tope % urr_total     = tope % urr_total_tmp(1:n_pts)
+    tope % urr_E = tope % E_tmp(1:n_pts)
+    tope % urr_n = tope % n_tmp(1:n_pts)
+    tope % urr_g = tope % g_tmp(1:n_pts)
+    tope % urr_f = tope % f_tmp(1:n_pts)
+    tope % urr_x = tope % x_tmp(1:n_pts)
+    tope % urr_t = tope % t_tmp(1:n_pts)
     call tope % dealloc_pointwise_tmp()
 
   end subroutine pointwise_urr
@@ -1427,7 +1425,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add2bckgrnd(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_ace_background(iso, i_nuc, NONE, t, n, g, f, x)
 
     else if (tope % LSSF == 1) then
       ! multipy the self-shielding factors by the infinite-dilute xs
@@ -1444,7 +1442,7 @@ contains
 
       ! competitive xs
       if (avg_urr_x_xs > ZERO) then
-        if (competitive) then
+        if (tope % E < tope % E_ex2 .and. competitive) then
           ! self-shielded treatment of competitive inelastic xs
           inelastic_xs = x % xs / avg_urr_x_xs &
             & * (micro_xs(i_nuc) % total &
@@ -1492,10 +1490,8 @@ contains
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
 
       ! total xs
-      micro_xs(i_nuc) % total &
-        & = micro_xs(i_nuc) % elastic &
-        & + micro_xs(i_nuc) % absorption &
-        & + inelastic_xs
+      micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
+        & + micro_xs(i_nuc) % absorption + inelastic_xs
 
     else
       call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
@@ -1539,7 +1535,7 @@ contains
     real(8) :: E    ! neutron lab energy [eV]
     real(8) :: T    ! isotope temperature [K]
     real(8) :: fact ! File 3 energy grid interpolation factor
-    real(8) :: xs_t_min ! realized total xs
+    real(8) :: xs_t_min ! min realized total xs
     real(8) :: xs_t_max ! max realized total xs
 
     xs_t_min = 1.0e6_8
@@ -1665,10 +1661,10 @@ contains
                 else
                   i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e),&
                     & E)
-                  fact = interp_factor(E, tope % MF3_f_e(i_grid), &
-                    & tope % MF3_f_e(i_grid + 1), tope % INT)
-                  if (tope % MF3_f(i_grid) > ZERO &
-                    & .and. tope % MF3_f(i_grid + 1) > ZERO) then
+                  if (tope % INT == LINEAR_LINEAR &
+                    & .or. tope % MF3_f(i_grid) > ZERO) then
+                    fact = interp_factor(E, tope % MF3_f_e(i_grid), &
+                      & tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
                       & = interpolator(fact, tope % MF3_f(i_grid), &
                       & tope % MF3_f(i_grid + 1), tope % INT)
@@ -1685,10 +1681,10 @@ contains
                 else
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
                     & size(nuc % energy), E)
-                  fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                    & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
-                  if (nuc % fission(i_grid) > ZERO &
-                    & .and. nuc % fission(i_grid + 1) > ZERO) then
+                  if (tope % INT == LINEAR_LINEAR &
+                    & .or. nuc % fission(i_grid) > ZERO) then
+                    fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
+                      & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
                       & = interpolator(fact, nuc % fission(i_grid), &
                       & nuc % fission(i_grid + 1), tope % INT)
@@ -1703,7 +1699,7 @@ contains
             end if
 
             ! add File 3 infinite-dilute competitive reaction contribution
-            if (competitive) then
+            if (tope % E < tope % E_ex2 .and. competitive) then
               continue
             else
               if (background == ENDFFILE) then
@@ -1712,10 +1708,10 @@ contains
                 else
                   i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e),&
                     & E)
-                  fact = interp_factor(E, tope % MF3_x_e(i_grid), &
-                    & tope % MF3_x_e(i_grid + 1), tope % INT)
-                  if (tope % MF3_x(i_grid) > ZERO &
-                    & .and. tope % MF3_x(i_grid + 1) > ZERO) then
+                  if (tope % INT == LINEAR_LINEAR &
+                    & .or. tope % MF3_x(i_grid) > ZERO) then
+                    fact = interp_factor(E, tope % MF3_x_e(i_grid), &
+                      & tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & = tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & - tope % prob_tables(i_E, i_T) % avg_x % xs
@@ -1728,7 +1724,7 @@ contains
                   else
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs                    
+                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
                   end if
                 end if
               else if (background == ACEFILE) then
@@ -1737,12 +1733,11 @@ contains
                 else
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
                     & size(nuc % energy), E)
-                  fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                    & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
-                  if (nuc % total(i_grid) - nuc % elastic(i_grid) &
-                    & - nuc % absorption(i_grid) > ZERO &
-                    & .and. nuc % total(i_grid + 1) - nuc % elastic(i_grid + 1) &
-                      & - nuc % absorption(i_grid + 1) > ZERO) then
+                  if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
+                    & - nuc % elastic(i_grid) &
+                    & - nuc % absorption(i_grid) > ZERO) then
+                    fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
+                      & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & = tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & - tope % prob_tables(i_E, i_T) % avg_x % xs
@@ -1757,7 +1752,7 @@ contains
                   else
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                       & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs                    
+                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
                   end if
                 end if
               end if
@@ -1945,18 +1940,18 @@ contains
     nuc  => nuclides(i_nuc)
 
     if (tope % point_urr_xs) then
-      i_E = binary_search(tope % urr_energy, size(tope % urr_energy), E)
-      m = interp_factor(E, tope % urr_energy(i_E), tope % urr_energy(i_E + 1), &
+      i_E = binary_search(tope % urr_E, size(tope % urr_E), E)
+      m = interp_factor(E, tope % urr_E(i_E), tope % urr_E(i_E + 1), &
         & LINEAR_LINEAR)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & tope % urr_elastic(i_E), tope % urr_elastic(i_E + 1), LINEAR_LINEAR)
+        & tope % urr_n(i_E), tope % urr_n(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & tope % urr_fission(i_E), tope % urr_fission(i_E + 1), LINEAR_LINEAR)
+        & tope % urr_f(i_E), tope % urr_f(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % absorption = interpolator(m, &
-        & tope % urr_capture(i_E) + tope % urr_fission(i_E), &
-        & tope % urr_capture(i_E + 1) + tope % urr_fission(i_E + 1), LINEAR_LINEAR)
+        & tope % urr_g(i_E) + tope % urr_f(i_E), &
+        & tope % urr_g(i_E + 1) + tope % urr_f(i_E + 1), LINEAR_LINEAR)
       inelastic_xs = interpolator(m, &
-        & tope % urr_inelastic(i_E), tope % urr_inelastic(i_E + 1), LINEAR_LINEAR)
+        & tope % urr_x(i_E), tope % urr_x(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
                             & + micro_xs(i_nuc) % absorption &
                             & + inelastic_xs
@@ -2045,7 +2040,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add2bckgrnd(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_ace_background(iso, i_nuc, NONE, t, n, g, f, x)
 
     ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
@@ -2063,7 +2058,7 @@ contains
         avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       if (avg_urr_x_xs > ZERO) then
-        if (competitive) then
+        if (tope % E < tope % E_ex2 .and. competitive) then
           ! self-shielded treatment of competitive inelastic cross section
           inelastic_xs = x % xs / avg_urr_x_xs &
             & * (micro_xs(i_nuc) % total &
@@ -2210,8 +2205,7 @@ contains
 
     ! fission xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, n_temps) % f(i_low) % xs_mean &
-      & > ZERO) then
+      & tope % prob_tables(i_E, n_temps) % f(i_low) % xs_mean > ZERO) then
       xs_f = interpolator(f, &
         & tope % prob_tables(i_E, n_temps) % f(i_low) % xs_mean, &
         & tope % prob_tables(i_E + 1, n_temps) % f(i_up) % xs_mean, tope % INT)
@@ -2221,8 +2215,7 @@ contains
 
     ! capture xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, n_temps) % g(i_low) % xs_mean &
-      & > ZERO) then
+      & tope % prob_tables(i_E, n_temps) % g(i_low) % xs_mean > ZERO) then
       xs_g = interpolator(f, &
         & tope % prob_tables(i_E, n_temps) % g(i_low) % xs_mean, &
         & tope % prob_tables(i_E + 1, n_temps) % g(i_up) % xs_mean, tope % INT)
@@ -2232,8 +2225,7 @@ contains
 
     ! competitive xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, n_temps) % x(i_low) % xs_mean &
-      & > ZERO) then
+      & tope % prob_tables(i_E, n_temps) % x(i_low) % xs_mean > ZERO) then
       xs_x = interpolator(f, &
         & tope % prob_tables(i_E, n_temps) % x(i_low) % xs_mean, &
         & tope % prob_tables(i_E + 1, n_temps) % x(i_up) % xs_mean, tope % INT)
@@ -2241,14 +2233,24 @@ contains
       xs_x = ZERO
     end if
 
-    inelast = micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic &
-      & - micro_xs(i_nuc) % absorption
     if (tope % LSSF == 0) then
 ! TODO: move adding to ACE File 3 background to prob band calculation
+      call fatal_error('LSSF=0 probability tables not yet supported for transport')
       micro_xs(i_nuc) % elastic = xs_n
       capture = xs_g
       micro_xs(i_nuc) % fission = xs_f
-    elseif (tope % LSSF == 1) then
+      inelast = xs_x
+    else if (tope % LSSF == 1) then
+! TODO: use stored background ACE cross sections for URR reactions
+      if (xs_x > ZERO .and. competitive) then
+        inelast = xs_x / interpolator(f, &
+          & tope % prob_tables(i_E, n_temps) % avg_x % xs_mean, &
+          & tope % prob_tables(i_E + 1, n_temps) % avg_x % xs_mean, tope % INT)&
+          & * (micro_xs(i_nuc) % total - micro_xs(i_nuc) % absorption &
+          & - micro_xs(i_nuc) % elastic)
+      else
+        inelast = xs_x
+      end if
 ! TODO: move this division to prob table calculation
       micro_xs(i_nuc) % elastic = xs_n / interpolator(f, &
         & tope % prob_tables(i_E, n_temps) % avg_n % xs_mean, &
@@ -2270,16 +2272,8 @@ contains
       else
         micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
       end if
-! TODO: use stored background ACE cross sections for URR reactions
-      if (xs_x > ZERO) then
-        inelast = xs_x / interpolator(f, &
-          & tope % prob_tables(i_E, n_temps) % avg_x % xs_mean, &
-          & tope % prob_tables(i_E + 1, n_temps) % avg_x % xs_mean, tope % INT)&
-          & * inelast
-      else
-        inelast = inelast
-      end if
     end if
+
     micro_xs(i_nuc) % absorption = capture + micro_xs(i_nuc) % fission
     micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
       & + micro_xs(i_nuc) % absorption + inelast
@@ -2775,7 +2769,7 @@ contains
     ! evaluate the W (Faddeeva) function
     select case (w_eval)
 
-    ! call S.G. Johnson's Faddeeva evaluation
+    ! S.G. Johnson's Faddeeva evaluation
     case (MIT_W)
 
       relerr = 1.0e-6
@@ -3229,6 +3223,8 @@ contains
 
     case(LOG_LOG)
 
+      if (min(val, val_low, val_up) <= ZERO) &
+        & call fatal_error('Argument of log() non-positive')
       factor = log(val / val_low) / log(val_up / val_low)
 
     case default
@@ -3536,38 +3532,29 @@ contains
     case (1)
       select case (tope % LRF(i_ER))
       case (SLBW)
-        res % E_lam   = tope % slbw_resonances(i_l) % E_lam(i_res)
-        res % Gam_n   = tope % slbw_resonances(i_l) % GN(i_res)
-        res % Gam_g   = tope % slbw_resonances(i_l) % GG(i_res)
-        res % Gam_f   = tope % slbw_resonances(i_l) % GF(i_res)
-        res % Gam_t   = tope % slbw_resonances(i_l) % GT(i_res)
-        res % Gam_x   = res % Gam_t &
-          & - res % Gam_n &
-          & - res % Gam_g &
-          & - res % Gam_f
+        res % E_lam = tope % slbw_resonances(i_l) % E_lam(i_res)
+        res % Gam_n = tope % slbw_resonances(i_l) % GN(i_res)
+        res % Gam_g = tope % slbw_resonances(i_l) % GG(i_res)
+        res % Gam_f = tope % slbw_resonances(i_l) % GF(i_res)
+        res % Gam_t = tope % slbw_resonances(i_l) % GT(i_res)
+        res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (MLBW)
-        res % E_lam   = tope % mlbw_resonances(i_l) % E_lam(i_res)
-        res % Gam_n   = tope % mlbw_resonances(i_l) % GN(i_res)
-        res % Gam_g   = tope % mlbw_resonances(i_l) % GG(i_res)
-        res % Gam_f   = tope % mlbw_resonances(i_l) % GF(i_res)
-        res % Gam_t   = tope % mlbw_resonances(i_l) % GT(i_res)
-        res % Gam_x   = res % Gam_t &
-          & - res % Gam_n &
-          & - res % Gam_g &
-          & - res % Gam_f
+        res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+        res % Gam_n = tope % mlbw_resonances(i_l) % GN(i_res)
+        res % Gam_g = tope % mlbw_resonances(i_l) % GG(i_res)
+        res % Gam_f = tope % mlbw_resonances(i_l) % GF(i_res)
+        res % Gam_t = tope % mlbw_resonances(i_l) % GT(i_res)
+        res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (REICH_MOORE)
-        res % E_lam   = tope % rm_resonances(i_l) % E_lam(i_res)
-        res % Gam_n   = tope % rm_resonances(i_l) % GN(i_res)
-        res % Gam_g   = tope % rm_resonances(i_l) % GG(i_res)
-        res % Gam_f   = tope % rm_resonances(i_l) % GFA(i_res) &
+        res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+        res % Gam_n = tope % rm_resonances(i_l) % GN(i_res)
+        res % Gam_g = tope % rm_resonances(i_l) % GG(i_res)
+        res % Gam_f = tope % rm_resonances(i_l) % GFA(i_res) &
           & + tope % rm_resonances(i_l) % GFB(i_res)
-        res % Gam_x   = ZERO
-        res % Gam_t   = res % Gam_n &
-          & + res % Gam_g &
-          & + res % Gam_f &
-          & + res % Gam_x
+        res % Gam_x = ZERO
+        res % Gam_t = res % Gam_n + res % Gam_g + res % Gam_f + res % Gam_x
 
       case default
         call fatal_error('Unrecognized resolved resonance region formalism')
@@ -3575,12 +3562,12 @@ contains
 
     ! unresolved parameters
     case (2)
-      res % E_lam   = tope % urr_resonances(i_real, i_l, i_J) % E_lam(i_res)
-      res % Gam_n   = tope % urr_resonances(i_real, i_l, i_J) % GN(i_res)
-      res % Gam_g   = tope % urr_resonances(i_real, i_l, i_J) % GG(i_res)
-      res % Gam_f   = tope % urr_resonances(i_real, i_l, i_J) % GF(i_res)
-      res % Gam_x   = tope % urr_resonances(i_real, i_l, i_J) % GX(i_res)
-      res % Gam_t   = tope % urr_resonances(i_real, i_l, i_J) % GT(i_res)
+      res % E_lam = tope % urr_resonances(i_real, i_l, i_J) % E_lam(i_res)
+      res % Gam_n = tope % urr_resonances(i_real, i_l, i_J) % GN(i_res)
+      res % Gam_g = tope % urr_resonances(i_real, i_l, i_J) % GG(i_res)
+      res % Gam_f = tope % urr_resonances(i_real, i_l, i_J) % GF(i_res)
+      res % Gam_x = tope % urr_resonances(i_real, i_l, i_J) % GX(i_res)
+      res % Gam_t = tope % urr_resonances(i_real, i_l, i_J) % GT(i_res)
 
     case default
       call fatal_error('Only 1 and 2 are supported ENDF-6 LRU values')
@@ -3627,14 +3614,16 @@ contains
     tope % GG  = interpolator(fendf, &
       & tope % GG_mean(i_l) % data(i_J) % data(i_E), &
       & tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
-    if (tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR .or. &
+      & tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
       tope % GF  = interpolator(fendf, &
         & tope % GF_mean(i_l) % data(i_J) % data(i_E), &
         & tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
     else
       tope % GF = ZERO
     end if
-    if (tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR .or. &
+      & tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
       tope % GX  = interpolator(fendf, &
         & tope % GX_mean(i_l) % data(i_J) % data(i_E), &
         & tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
@@ -3705,11 +3694,11 @@ contains
       n_xs = interpolator(f, &
         & tope % avg_urr_n(iavg), tope % avg_urr_n(iavg + 1), tope % INT)
     else
-      n_xs = ZERO
+      call fatal_error('Non-positive (n,n) infinite-dilute cross section')
     end if
 
     ! infinite-dilute fission
-    if (tope % avg_urr_f(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_f(iavg) > ZERO) then
       f_xs = interpolator(f, &
         & tope % avg_urr_f(iavg), tope % avg_urr_f(iavg + 1), tope % INT)
     else
@@ -3717,7 +3706,7 @@ contains
     end if
 
     ! infinite-dilute capture
-    if (tope % avg_urr_g(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_g(iavg) > ZERO) then
       g_xs = interpolator(f, &
         & tope % avg_urr_g(iavg), tope % avg_urr_g(iavg + 1), tope % INT)
     else
@@ -3725,7 +3714,7 @@ contains
     end if
 
     ! infinite-dilute competitive reaction xs
-    if (tope % avg_urr_x(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_x(iavg) > ZERO) then
       x_xs = interpolator(f, &
         & tope % avg_urr_x(iavg), tope % avg_urr_x(iavg + 1), tope % INT)
     else
@@ -3736,11 +3725,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CALC_URR_BCKGRND interpolates the processed File 3 background cross sections
+! INTERP_ACE_BACKGROUND interpolates the processed ENDF-6 File 3 background
+! cross sections
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calc_urr_bckgrnd(iso, i_nuc, n_pts, f, i_grid)
+  subroutine interp_ace_background(iso, i_nuc, n_pts, f, i_grid)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
@@ -3755,49 +3745,49 @@ contains
     nuc  => nuclides(i_nuc)
 
     ! elastic scattering xs
-    tope % urr_elastic_tmp(n_pts) = interpolator(f, &
+    tope % n_tmp(n_pts) = interpolator(f, &
       & nuc % elastic(i_grid), nuc % elastic(i_grid + 1), tope % INT)
 
     ! radiative capture xs
-    tope % urr_capture_tmp(n_pts) = interpolator(f, &
+    tope % g_tmp(n_pts) = interpolator(f, &
       & nuc % absorption(i_grid) - nuc % fission(i_grid), &
       & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), tope % INT)
 
     ! fission xs
-    tope % urr_fission_tmp(n_pts) = interpolator(f, &
-      & nuc % fission(i_grid), nuc % fission(i_grid + 1), tope % INT)
-
-    ! competitive first level inelastic scattering xs
-    tope % urr_inelastic_tmp(n_pts) = interpolator(f, &
-      &   nuc % total(i_grid) &
-      & - nuc % absorption(i_grid) &
-      & - nuc % elastic(i_grid), &
-      &   nuc % total(i_grid + 1) &
-      & - nuc % absorption(i_grid + 1) &
-      & - nuc % elastic(i_grid + 1), &
-      & tope % INT)
-
-    ! total xs
-    tope % urr_total_tmp(n_pts) = interpolator(f, &
-      & nuc % total(i_grid), nuc % total(i_grid + 1), tope % INT)
-
-    if (tope % urr_total_tmp(n_pts) /= tope % urr_elastic_tmp(n_pts)&
-      & + tope % urr_capture_tmp(n_pts) + tope % urr_fission_tmp(n_pts)&
-      & + tope % urr_inelastic_tmp(n_pts)) then
-      call fatal_error('Sum of processed File 3 background partial cross &
-        &sections  does not equal total')
+    if (tope % INT == LINEAR_LINEAR .or. nuc % fission(i_grid) > ZERO) then
+      tope % f_tmp(n_pts) = interpolator(f, nuc % fission(i_grid), &
+        & nuc % fission(i_grid + 1), tope % INT)
+    else
+      tope % f_tmp(n_pts) = ZERO
     end if
 
-  end subroutine calc_urr_bckgrnd
+    ! competitive first level inelastic scattering xs
+    if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
+      & - nuc % absorption(i_grid) - nuc % elastic(i_grid) > ZERO) then
+      tope % x_tmp(n_pts) = interpolator(f, &
+        &   nuc % total(i_grid) - nuc % absorption(i_grid) &
+        & - nuc % elastic(i_grid), &
+        &   nuc % total(i_grid + 1) - nuc % absorption(i_grid + 1) &
+        & - nuc % elastic(i_grid + 1), tope % INT)
+    else
+      tope % x_tmp(n_pts) = ZERO
+    end if
+
+    ! total xs
+    tope % t_tmp(n_pts) = tope % n_tmp(n_pts) &
+      & + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
+      & + tope % x_tmp(n_pts)
+
+  end subroutine interp_ace_background
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ADD2BCKGRND adds the resonance xs component to the evaluator-supplied
+! ADD_ACE_BACKGROUND adds the resonance xs component to the evaluator-supplied
 ! background
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add2bckgrnd(iso, i_nuc, n_pts, t, n, g, f, x)
+  subroutine add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(CrossSection) :: t ! total xs object
@@ -3819,23 +3809,23 @@ contains
     if (tope % point_urr_xs) then
 
       ! elastic scattering xs
-      tope % urr_elastic_tmp(n_pts) = tope % urr_elastic_tmp(n_pts) &
+      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) &
         & + n % xs
 
       ! radiative capture xs
-      tope % urr_capture_tmp(n_pts) = tope % urr_capture_tmp(n_pts) &
+      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) &
         & + g % xs
 
       ! fission xs
-      tope % urr_fission_tmp(n_pts) = tope % urr_fission_tmp(n_pts) &
+      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) &
         & + f % xs
 
       ! competitive first level inelastic scattering xs
-      tope % urr_inelastic_tmp(n_pts) = tope % urr_inelastic_tmp(n_pts) &
+      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) &
         & + x % xs
 
       ! total xs
-      tope % urr_total_tmp(n_pts) = tope % urr_total_tmp(n_pts) &
+      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) &
         & + t % xs
 
     else
@@ -3861,10 +3851,15 @@ contains
         call fatal_error('Energy is above File 3 inelastic energy grid')
       else
         i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e), tope % E)
-        fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
-          & tope % MF3_x_e(i_grid + 1), tope % INT)
-        inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
-          & tope % MF3_x(i_grid + 1), tope % INT)
+        if (tope % INT == LINEAR_LINEAR .or. &
+          & tope % MF3_x_e(i_grid) > ZERO) then
+          fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
+            & tope % MF3_x_e(i_grid + 1), tope % INT)
+          inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
+            & tope % MF3_x(i_grid + 1), tope % INT)
+        else
+          inelastic_xs = ZERO
+        end if
         if (competitive) inelastic_xs = inelastic_xs + x % xs
       end if
 
@@ -3875,10 +3870,15 @@ contains
         call fatal_error('Energy is above File 3 capture energy grid')
       else
         i_grid = binary_search(tope % MF3_g_e, size(tope % MF3_g_e), tope % E)
-        fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
-          & tope % MF3_g_e(i_grid + 1), tope % INT)
-        capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
-          & tope % MF3_g(i_grid + 1), tope % INT) + g % xs
+        if (tope % INT == LINEAR_LINEAR .or. &
+          & tope % MF3_g_e(i_grid) > ZERO) then
+          fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
+            & tope % MF3_g_e(i_grid + 1), tope % INT)
+          capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
+            & tope % MF3_g(i_grid + 1), tope % INT) + g % xs
+        else
+          capture_xs = g % xs
+        end if
       end if
 
       ! fission xs
@@ -3891,10 +3891,15 @@ contains
           call fatal_error('Energy is above File 3 fission energy grid')
         else
           i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope % E)
-          fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
-            & tope % MF3_f_e(i_grid + 1), tope % INT)
-          micro_xs(i_nuc) % fission = interpolator(fact, tope % MF3_f(i_grid), &
-            & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
+          if (tope % INT == LINEAR_LINEAR .or. &
+            & tope % MF3_f_e(i_grid) > ZERO) then
+            fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
+              & tope % MF3_f_e(i_grid + 1), tope % INT)
+            micro_xs(i_nuc) % fission = interpolator(fact, tope % MF3_f(i_grid), &
+              & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
+          else
+            micro_xs(i_nuc) % fission = f % xs
+          end if
         end if
       end if
 
@@ -3907,7 +3912,7 @@ contains
         &                     + inelastic_xs
     end if
 
-  end subroutine add2bckgrnd
+  end subroutine add_ace_background
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -4256,12 +4261,12 @@ contains
 
     class(Isotope), intent(inout) :: this ! isotope object
 
-    allocate(this % urr_energy_tmp(this % n_urr_gridpoints))
-    allocate(this % urr_elastic_tmp(this % n_urr_gridpoints))
-    allocate(this % urr_capture_tmp(this % n_urr_gridpoints))
-    allocate(this % urr_fission_tmp(this % n_urr_gridpoints))
-    allocate(this % urr_inelastic_tmp(this % n_urr_gridpoints))
-    allocate(this % urr_total_tmp(this % n_urr_gridpoints))
+    allocate(this % E_tmp(this % n_urr_gridpoints))
+    allocate(this % n_tmp(this % n_urr_gridpoints))
+    allocate(this % g_tmp(this % n_urr_gridpoints))
+    allocate(this % f_tmp(this % n_urr_gridpoints))
+    allocate(this % x_tmp(this % n_urr_gridpoints))
+    allocate(this % t_tmp(this % n_urr_gridpoints))
 
   end subroutine alloc_pointwise_tmp
 
@@ -4276,12 +4281,12 @@ contains
 
     class(Isotope), intent(inout) :: this ! isotope object
 
-    deallocate(this % urr_energy_tmp)
-    deallocate(this % urr_elastic_tmp)
-    deallocate(this % urr_capture_tmp)
-    deallocate(this % urr_fission_tmp)
-    deallocate(this % urr_inelastic_tmp)
-    deallocate(this % urr_total_tmp)
+    deallocate(this % E_tmp)
+    deallocate(this % n_tmp)
+    deallocate(this % g_tmp)
+    deallocate(this % f_tmp)
+    deallocate(this % x_tmp)
+    deallocate(this % t_tmp)
 
   end subroutine dealloc_pointwise_tmp
 
@@ -4296,12 +4301,12 @@ contains
     class(Isotope), intent(inout) :: this ! isotope object
     integer :: n_pts ! number of points in grid
 
-    allocate(this % urr_energy(n_pts))
-    allocate(this % urr_elastic(n_pts))
-    allocate(this % urr_capture(n_pts))
-    allocate(this % urr_fission(n_pts))
-    allocate(this % urr_inelastic(n_pts))
-    allocate(this % urr_total(n_pts))
+    allocate(this % urr_E(n_pts))
+    allocate(this % urr_n(n_pts))
+    allocate(this % urr_g(n_pts))
+    allocate(this % urr_f(n_pts))
+    allocate(this % urr_x(n_pts))
+    allocate(this % urr_t(n_pts))
 
   end subroutine alloc_pointwise
 
@@ -4315,12 +4320,12 @@ contains
 
     class(Isotope), intent(inout) :: this ! isotope object
 
-    deallocate(this % urr_energy)
-    deallocate(this % urr_elastic)
-    deallocate(this % urr_capture)
-    deallocate(this % urr_fission)
-    deallocate(this % urr_inelastic)
-    deallocate(this % urr_total)
+    deallocate(this % urr_E)
+    deallocate(this % urr_n)
+    deallocate(this % urr_g)
+    deallocate(this % urr_f)
+    deallocate(this % urr_x)
+    deallocate(this % urr_t)
 
   end subroutine dealloc_pointwise
 
@@ -4587,7 +4592,7 @@ contains
     end if
 
     ! deallocate pointwise data
-    if (allocated(this % urr_energy)) call this % dealloc_pointwise()
+    if (allocated(this % urr_E)) call this % dealloc_pointwise()
 
     ! deallocate averaged, infinite-dilute URR cross sections
     deallocate(this % Eavg)

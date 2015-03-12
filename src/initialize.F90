@@ -25,10 +25,18 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: run_fasturr, n_fasturr, endf_files, &
-                              prob_bands, otf_urr, isotopes,&
-                              prob_tables, resonance_ensemble,&
-                              real_freq, pointwise_urr, represent_urr
+  use unresolved,       only: endf_files, &
+                              isotopes, &
+                              n_fasturr, &
+                              otf_urr_xs, &
+                              point_urr_xs, &
+                              pointwise_urr, &
+                              prob_bands, &
+                              prob_tables, &
+                              real_freq, &
+                              represent_urr, &
+                              resonance_ensemble, &
+                              run_fasturr
 
 #ifdef MPI
   use mpi
@@ -161,6 +169,7 @@ contains
           do i_sotope = 1, n_fasturr
             do i_nuc = 1, n_nuclides_total
               if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                call resonance_ensemble(i_sotope)
                 call pointwise_urr(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if
             end do
@@ -261,12 +270,12 @@ contains
           else
             isotopes(i) % prob_bands = .false.
           end if
-          if (otf_urr) then
+          if (otf_urr_xs) then
             isotopes(i) % otf_urr_xs = .true.
           else
             isotopes(i) % otf_urr_xs = .false.
           end if
-          if (represent_urr == POINTWISE) then
+          if (point_urr_xs) then
             isotopes(i) % point_urr_xs = .true.
           else
             isotopes(i) % point_urr_xs = .false.

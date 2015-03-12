@@ -37,7 +37,8 @@ module input_xml
                               n_reals, &
                               n_temps, &
                               ntables, &
-                              otf_urr, &
+                              otf_urr_xs, &
+                              point_urr_xs, &
                               prob_bands, &
                               real_freq, &
                               represent_params, &
@@ -3213,10 +3214,10 @@ contains
 
     ! Check that an on-the-fly URR treatment and/or average xs calc is specified
     if (check_for_node(doc, "on_the_fly") &
-      & .or. check_for_node(doc, "prob_tables")) then
+      & .or. check_for_node(doc, "prob_tables") .or. check_for_node(doc, "pointwise")) then
       continue
     else
-      call fatal_error('No on-the-fly or average cross section calculation&
+      call fatal_error('No on-the-fly, pointwise, or probability table calculation&
         & parameters given in urr.xml')
     end if
 
@@ -3289,6 +3290,7 @@ contains
     end if
 
     ! Check for pointwise cross section calculation
+    point_urr_xs = .false.
     if (check_for_node(doc, 'representation')) then
       call get_node_value(doc, "representation", temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
@@ -3298,6 +3300,7 @@ contains
         represent_urr = POINTWISE
         n_reals = 1
         if (check_for_node(doc, "pointwise")) then
+          point_urr_xs = .true.
           call get_node_ptr(doc, "pointwise", point_xs_node)
           if (check_for_node(point_xs_node, 'min_spacing')) then
             call get_node_value(point_xs_node, 'min_spacing', min_dE_point_urr)
@@ -3380,7 +3383,7 @@ contains
     if (check_for_node(doc, "on_the_fly")) then
       if (represent_urr == POINTWISE) call fatal_error('Cannot have both a pointwise&
         & cross section representation and an on-the-fly calculation in urr.xml')
-      otf_urr = .true.
+      otf_urr_xs = .true.
       call get_node_ptr(doc, "on_the_fly", otf_xs_node)
 
       ! Check if a xs calculation frequency is specified
@@ -3429,7 +3432,7 @@ contains
       end if
 
     else
-      otf_urr = .false.
+      otf_urr_xs = .false.
     end if
 
     ! Include resonance structure of competitive URR cross sections?

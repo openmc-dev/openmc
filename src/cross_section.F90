@@ -147,56 +147,56 @@ contains
           ! write a nuclide's URR energy-total xs grid values
           case ('urr-total')
 
-            x_size = size(tope % urr_energy)
+            x_size = size(tope % urr_E)
             allocate(x_vals(x_size))
-            x_vals = tope % urr_energy
-            y_size = size(tope % urr_total)
+            x_vals = tope % urr_E
+            y_size = size(tope % urr_t)
             allocate(y_vals(y_size))
-            y_vals = tope % urr_total
+            y_vals = tope % urr_t
             filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-total.dat"
 
           ! write a nuclide's URR energy-elastic xs grid values
           case ('urr-elastic')
 
-            x_size = size(tope % urr_energy)
+            x_size = size(tope % urr_E)
             allocate(x_vals(x_size))
-            x_vals = tope % urr_energy
-            y_size = size(tope % urr_elastic)
+            x_vals = tope % urr_E
+            y_size = size(tope % urr_n)
             allocate(y_vals(y_size))
-            y_vals = tope % urr_elastic
+            y_vals = tope % urr_n
             filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-elastic.dat"
 
           ! write a nuclide's URR energy-fission xs grid values
           case ('urr-fission')
 
-            x_size = size(tope % urr_energy)
+            x_size = size(tope % urr_E)
             allocate(x_vals(x_size))
-            x_vals = tope % urr_energy
-            y_size = size(tope % urr_fission)
+            x_vals = tope % urr_E
+            y_size = size(tope % urr_f)
             allocate(y_vals(y_size))
-            y_vals = tope % urr_fission
+            y_vals = tope % urr_f
             filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-fission.dat"
 
           ! write a nuclide's URR energy-inelastic xs grid values
           case ('urr-inelastic')
 
-            x_size = size(tope % urr_energy)
+            x_size = size(tope % urr_E)
             allocate(x_vals(x_size))
-            x_vals = tope % urr_energy
-            y_size = size(tope % urr_inelastic)
+            x_vals = tope % urr_E
+            y_size = size(tope % urr_x)
             allocate(y_vals(y_size))
-            y_vals = tope % urr_inelastic
+            y_vals = tope % urr_x
             filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-inelastic.dat"
 
           ! write a nuclide's URR energy-capture xs grid values
           case ('urr-capture')
 
-            x_size = size(tope % urr_energy)
+            x_size = size(tope % urr_E)
             allocate(x_vals(x_size))
-            x_vals = tope % urr_energy
-            y_size = size(tope % urr_capture)
+            x_vals = tope % urr_E
+            y_size = size(tope % urr_g)
             allocate(y_vals(y_size))
-            y_vals = tope % urr_capture
+            y_vals = tope % urr_g
             filename = trim(adjustl(to_str(tope % ZAI))) // "-urr-capture.dat"
 
           ! the requested xs is not recognized
@@ -444,7 +444,7 @@ contains
         & .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
         if (tope % prob_bands) then
           call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E)
-        else
+        else if (tope % otf_urr_xs) then
           select case(real_freq)
           case (EVENT)
             micro_xs(i_nuclide) % use_ptable = .true.
@@ -459,13 +459,21 @@ contains
               ! this is used in physics, even though we aren't actually using ptables
               micro_xs(i_nuclide) % use_ptable = .true.
               call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
-            else if (represent_urr == POINTWISE) then
-              micro_xs(i_nuclide) % use_ptable = .true.
-              call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+            else 
+              call fatal_error('Must specify on-the-fly cross sections &
+                &in terms of resonance parameters')
             end if
           case default
             call fatal_error('Unrecognized URR realization frequency')
           end select
+        else if (tope % point_urr_xs) then
+          if (represent_urr == POINTWISE) then
+            micro_xs(i_nuclide) % use_ptable = .true.
+            call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+          else
+            call fatal_error('Must represent pointwise cross sections as&
+              & pointwise data')
+          end if
         end if
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then

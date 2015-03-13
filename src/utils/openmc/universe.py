@@ -1157,18 +1157,22 @@ class HexLattice(Lattice):
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
-        string += '{0: <16}\n'.format('\tUniverses')
+        string += '{0: <16}'.format('\tUniverses')
 
-        # FIXME: This loop must be revised for hexagonal lattice ordering
-        # Lattice nested Universe IDs - column major for Fortran
-        for i, universe in enumerate(np.ravel(self._universes)):
-            string += '{0} '.format(universe._id)
+        z = 0
+        while True:
+            if self._num_axial is not None:
+                axial_slice = self._universes[z]
+            else:
+                axial_slice = self._universes
 
-            # Add a newline character every time we reach end of row of cells
-            if (i+1) % self._dimension[-1] == 0:
-                string += '\n'
+            string += '\n' + self._repr_axial_slice(axial_slice)
 
-        string = string.rstrip('\n')
+            if self._num_axial is not None:
+                z += 1
+                if z == self._num_axial: break
+            else:
+                break
 
         return string
 
@@ -1363,8 +1367,8 @@ class HexLattice(Lattice):
             assert y == middle + 2*r
             assert theta == len(universes[r_prime])
 
-        # Join each row into a single string.
-        rows = [pad.join(x) for x in rows]
+        # Flip the rows and join each row into a single string.
+        rows = [pad.join(x) for x in rows[::-1]]
 
         # Pad the beginning of the rows so they line up properly.
         for y in range(self._num_rings - 1):

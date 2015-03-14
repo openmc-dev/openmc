@@ -439,7 +439,7 @@ by the user. Once all diffusion parameters are calculated, CMFD matrices are
 formed where energy groups are the inner most iteration index. In OpenMC,
 compressed row storage sparse matrices are used due to the sparsity of CMFD
 operators. An example of this sparsity is shown for the 3-D BEAVRS model in
-figures :ref:`fig_loss` and :ref:`fig_prod` [BEAVRS]_. These matrices represent
+figures :num:`fig-loss` and :num:`fig-prod` [BEAVRS]_. These matrices represent
 an assembly radial mesh, 24 cell mesh in the axial direction and two energy
 groups. The loss matrix is 99.92% sparse and the production matrix is 99.99%
 sparse. Although the loss matrix looks like it is tridiagonal, it is really a
@@ -473,14 +473,14 @@ no fission neutrons appear with energies in the thermal group.
    | \ :math:`\left\langle\overline{J}^{u,g}_{l\pm 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle`   | current        | mesh, energy              |
    +--------------------------------------------------------------------------------------------+----------------+---------------------------+
 
-.. _fig_loss:
+.. _fig-loss:
 
 .. figure:: ../_images/loss.png
    :scale: 50
 
    Sparsity of Neutron Loss Operator
 
-.. _fig_prod:
+.. _fig-prod:
 
 .. figure:: ../_images/prod.png
    :scale: 50

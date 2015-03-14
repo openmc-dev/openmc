@@ -35,7 +35,10 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8'
 
 # The master toctree document.
-master_doc = 'index'
+if tags.has('latex'):
+    master_doc = 'index_tex'
+else:
+    master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
@@ -184,7 +187,7 @@ htmlhelp_basename = 'openmcdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'openmc.tex', u'OpenMC Documentation',
+  ('index_tex', 'openmc.tex', u'OpenMC Documentation',
    u'Massachusetts Institute of Technology', 'manual'),
 ]
 
@@ -196,8 +199,8 @@ latex_elements = {
 \setlistdepth{9}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\usepackage{fixltx2e}
 \hypersetup{bookmarksdepth=3}
-%\renewcommand{\thechapter}{\Roman{chapter}}
 \setcounter{tocdepth}{2}
 \numberwithin{equation}{section}
 """

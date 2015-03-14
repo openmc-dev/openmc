@@ -35,12 +35,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8'
 
 # The master toctree document.
-if tags.has('latex'):
-    master_doc = 'index_tex'
-    exclude_patterns = ['index.rst']
-else:
-    master_doc = 'index'
-    exclude_patterns = ['index_tex.rst']
+master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
@@ -189,7 +184,7 @@ htmlhelp_basename = 'openmcdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index_tex', 'openmc.tex', u'OpenMC Documentation',
+  ('index', 'openmc.tex', u'OpenMC Documentation',
    u'Massachusetts Institute of Technology', 'manual'),
 ]
 

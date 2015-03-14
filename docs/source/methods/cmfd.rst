@@ -525,9 +525,9 @@ Once weight adjustment factors were calculated, each neutron's statistical
 weight in the source bank was modified according to its location and energy.
 Examples of CMFD simulations using OpenMC can be found in [HermanThesis]_.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [BEAVRS] Nick Horelik, Bryan Herman. *Benchmark for Evaluation And Verification of Reactor
             Simulations*. Massachusetts Institute of Technology, http://crpg.mit.edu/pub/beavrs

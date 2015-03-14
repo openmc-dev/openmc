@@ -200,7 +200,8 @@ latex_elements = {
 \hypersetup{bookmarksdepth=3}
 \setcounter{tocdepth}{2}
 \numberwithin{equation}{section}
-"""
+""",
+'printindex': r""
 }
 
 # The name of an image file (relative to this directory) to place at the top of

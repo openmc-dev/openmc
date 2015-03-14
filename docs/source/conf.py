@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath('../sphinxext'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.pngmath', 'sphinxcontrib.tikz']
+extensions = ['sphinx.ext.pngmath', 'sphinxcontrib.tikz', 'sphinx.ext.numfig']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -37,8 +37,10 @@ source_suffix = '.rst'
 # The master toctree document.
 if tags.has('latex'):
     master_doc = 'index_tex'
+    exclude_patterns = ['index.rst']
 else:
     master_doc = 'index'
+    exclude_patterns = ['index_tex.rst']
 
 # General information about the project.
 project = u'OpenMC'

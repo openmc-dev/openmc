@@ -1108,35 +1108,43 @@ class HexLattice(Lattice):
             self.set_num_rings(self._universes.shape[0])
 
         # Make sure there are the correct number of elements in each ring.
-        z = 0
-        while True:
-            if n_dims == 3:
-                axial_slice = self._universes[z]
-            else:
-                axial_slice = self._universes
+        if n_dims == 3:
+            for axial_slice in self._universes:
+              # Check the center ring.
+              if len(axial_slice[-1]) != 1:
+                  msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                        'elements in the innermost ring.  Only 1 element is ' \
+                        'allowed in the innermost ring.'.format(self._id)
+                  raise ValueError(msg)
 
-            # Check the center ring.
-            if len(axial_slice[-1]) != 1:
-                msg = 'HexLattice ID={0:d} has the wrong number of elements ' \
-                      'in the innermost ring.  Only 1 element is allowed in ' \
-                      'the innermost ring.'.format(self._id)
-                raise ValueError(msg)
+              # Check the outer rings.
+              for r in range(self._num_rings-1):
+                  if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
+                      msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                            'elements in ring number {1:d} (counting from the '\
+                            'outermost ring).  This ring should have {2:d} ' \
+                            'elements.'.format(self._id, r,
+                            6*(self._num_rings - 1 - r))
+                      raise ValueError(msg)
 
-            # Check the outer rings.
-            for r in range(self._num_rings-1):
-                if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
-                    msg = 'HexLattice ID={0:d} has the wrong number of ' \
-                          'elements in ring number {1:d} (counting from the ' \
-                          'outermost ring).  This ring should have {2:d} ' \
-                          'elements.'.format(self._id, r,
-                          6*(self._num_rings - 1 - r))
-                    raise ValueError(msg)
+        else:
+          axial_slice = self._universes
+          # Check the center ring.
+          if len(axial_slice[-1]) != 1:
+              msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                    'elements in the innermost ring.  Only 1 element is ' \
+                    'allowed in the innermost ring.'.format(self._id)
+              raise ValueError(msg)
 
-            if n_dims == 3:
-                z += 1
-                if z == self._num_axial: break
-            else:
-                break
+          # Check the outer rings.
+          for r in range(self._num_rings-1):
+              if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
+                  msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                        'elements in ring number {1:d} (counting from the '\
+                        'outermost ring).  This ring should have {2:d} ' \
+                        'elements.'.format(self._id, r,
+                        6*(self._num_rings - 1 - r))
+                  raise ValueError(msg)
 
 
     def __repr__(self):
@@ -1157,22 +1165,14 @@ class HexLattice(Lattice):
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
-        string += '{0: <16}'.format('\tUniverses')
+        string += '{0: <16}\n'.format('\tUniverses')
 
-        z = 0
-        while True:
-            if self._num_axial is not None:
-                axial_slice = self._universes[z]
-            else:
-                axial_slice = self._universes
+        if self._num_axial is not None:
+            slices = [self._repr_axial_slice(x) for x in self._universes]
+            string += '\n'.join(slices)
 
-            string += '\n' + self._repr_axial_slice(axial_slice)
-
-            if self._num_axial is not None:
-                z += 1
-                if z == self._num_axial: break
-            else:
-                break
+        else:
+            string += self._repr_axial_slice(self._universes)
 
         return string
 
@@ -1306,7 +1306,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].append(id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y -= 1
                 theta += 1
 
@@ -1316,7 +1316,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].append(id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y -= 2
                 theta += 1
 
@@ -1326,7 +1326,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].append(id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y -= 1
                 theta += 1
 
@@ -1339,7 +1339,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].insert(0, id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y += 1
                 theta += 1
 
@@ -1349,7 +1349,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].insert(0, id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y += 2
                 theta += 1
 
@@ -1359,7 +1359,7 @@ class HexLattice(Lattice):
                 universe = universes[r_prime][theta]
                 rows[y].insert(0, id_form.format(universe._id))
 
-                # Translate the indecies.
+                # Translate the indices.
                 y += 1
                 theta += 1
 

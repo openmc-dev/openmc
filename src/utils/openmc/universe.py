@@ -1275,8 +1275,6 @@ class HexLattice(Lattice):
         outer ring.
         """
 
-        assert len(universes) == self._num_rings
-
         # Find the largest universe ID and count the number of digits so we can
         # properly pad the output string later.
         largest_id = max([max([univ._id for univ in ring])
@@ -1330,9 +1328,6 @@ class HexLattice(Lattice):
                 y -= 1
                 theta += 1
 
-            # Make sure we reached the bottom.
-            assert y == middle - 2*r
-
             # Climb up the bottom-left.
             for i in range(r):
                 # Add the universe.
@@ -1362,10 +1357,6 @@ class HexLattice(Lattice):
                 # Translate the indices.
                 y += 1
                 theta += 1
-
-            # Make sure we reached the top and used all the universes.
-            assert y == middle + 2*r
-            assert theta == len(universes[r_prime])
 
         # Flip the rows and join each row into a single string.
         rows = [pad.join(x) for x in rows[::-1]]

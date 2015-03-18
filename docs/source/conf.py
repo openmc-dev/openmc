@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath('../sphinxext'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.pngmath', 'sphinxcontrib.tikz']
+extensions = ['sphinx.ext.pngmath', 'sphinxcontrib.tikz', 'sphinx.ext.numfig']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -196,11 +196,12 @@ latex_elements = {
 \setlistdepth{9}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\usepackage{fixltx2e}
 \hypersetup{bookmarksdepth=3}
-%\renewcommand{\thechapter}{\Roman{chapter}}
 \setcounter{tocdepth}{2}
 \numberwithin{equation}{section}
-"""
+""",
+'printindex': r""
 }
 
 # The name of an image file (relative to this directory) to place at the top of

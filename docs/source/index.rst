@@ -18,9 +18,11 @@ free to send a message to the User's Group `mailing list`_.
 .. _Massachusetts Institute of Technology: http://web.mit.edu
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users
 
---------
-Contents
---------
+.. only:: html
+
+    --------
+    Contents
+    --------
 
 .. toctree::
     :maxdepth: 1

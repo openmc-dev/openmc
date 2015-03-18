@@ -599,9 +599,9 @@ is actually independent of the number of nodes:
     E \left [ \Lambda_{j_{\text{max}}} \right ] = \sqrt{ \frac{N\sigma^2}{2\pi
     k^2}}.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [Troubetzkoy] E. Troubetzkoy, H. Steinberg, and M. Kalos, "Monte Carlo
    Radiation Penetration Calculations on a Parallel Computer,"

@@ -62,9 +62,9 @@ Note that :eq:`lcg-skipahead` has the same general form as \eqref{eq:lcg}, so
 the idea is to determine the new multiplicative and additive constants in
 :math:`O(\log_2 N)` operations.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [LEcuyer] P. L’Ecuyer, "Tables of Linear Congruential Generators of
    Different Sizes and Good Lattice Structures," *Math. Comput.*, **68**, 249

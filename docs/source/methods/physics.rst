@@ -1552,9 +1552,9 @@ default, the cutoff weight in OpenMC is :math:`w_c = 0.25` and the survival
 weight is :math:`w_s = 1.0`. These parameters vary from one Monte Carlo code to
 another.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [Doyas] Richard J. Doyas and Sterrett T. Perkins, "Interpolation of Tabular
    Secondary Neutron and Photon Energy Distributions," *Nucl. Sci. Eng.*,

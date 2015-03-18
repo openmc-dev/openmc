@@ -22,7 +22,7 @@ Most of these are easily obtainable in Ubuntu through the package manager, or
 are easily installed with distutils.
 
 .. [1] Required for tally data extraction from statepoints with statepoint.py
-.. [2] Required only if reading HDF5 statepoint files. 
+.. [2] Required only if reading HDF5 statepoint files.
 .. [3] Optional for plotting utilities
 
 ----------------------
@@ -265,18 +265,18 @@ two heatmaps in the previous figure.
 .. code-block:: python
 
     #!/usr/bin/env python
-    
+
     import os
-    
+
     import statepoint
-    
+
     # load and parse the statepoint file
     sp = statepoint.StatePoint('statepoint.300.binary')
     sp.read_results()
-    
+
     tallyid = 0 # This is tally 1
     score = 0   # This corresponds to flux (see tally.scores)
-    
+
     # get mesh dimensions
     meshid = sp.tallies[tallyid].filters['mesh'].bins[0]
     for i,m in enumerate(sp.meshes):
@@ -299,7 +299,7 @@ two heatmaps in the previous figure.
                                        [('mesh',(x,y,z)),('energyin',1)],
                                        score)
                 fast[(x,y,z)] = val
-    
+
     # sum up the axial values and write datafile for gnuplot
     with open('meshdata.dat','w') as fh:
         for x in range(1,nx+1):
@@ -336,7 +336,7 @@ Plotting in 3D
 As with 3D plots of the geometry, meshtally data needs to be put into a standard
 format for viewing. The utility statepoint_3d.py is provided to accomplish this
 for both VTK and SILO. By default statepoint_3d.py processes a statepoint into a
-3D file with all mesh tallies and filter/score combinations, 
+3D file with all mesh tallies and filter/score combinations,
 
 .. code-block:: sh
 
@@ -348,8 +348,8 @@ certain data arrays in order to keep file sizes down.
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
+    statepoint_3d.py <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
+    statepoint_3d.py <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
 
 All available options for specifying a subset of tallies, scores, and filters
 can be listed with the ``--list`` or ``-l`` command line options.
@@ -358,7 +358,7 @@ can be listed with the ``--list`` or ``-l`` command line options.
           VTK needs to use a multi-block dataset, which stores each mesh piece
           in a different file in a subfolder.  All meshes can be loaded at once
           with the main VTM file, or each VTI file in the subfolder can be
-          loaded individually. 
+          loaded individually.
 
 Alternatively, the user can write their own Python script to manipulate the data
 appropriately before insertion into a SILO or VTK file.  For instance, if the
@@ -396,7 +396,7 @@ and the equivalent VTK file with:
     grid.SetOrigin(*mesh.lower_left)
     grid.SetSpacing(*mesh.width)
 
-    # vtk cell arrays have x on the inners, so we need to reorder the data    
+    # vtk cell arrays have x on the inners, so we need to reorder the data
     idata = {}
     for x in range(nx):
       for y in range(ny):
@@ -416,7 +416,7 @@ and the equivalent VTK file with:
 
     grid.GetCellData().AddArray(vtkfastdata)
     grid.GetCellData().AddArray(vtkthermaldata)
-    
+
     writer = vtk.vtkXMLImageDataWriter()
     writer.SetInput(grid)
     writer.SetFileName('tally.vti')
@@ -486,16 +486,16 @@ example of an interactive ipython session using the statepoint.py Python module:
 .. code-block:: python
 
     In [1]: import statepoint
-    
+
     In [2]: sp = statepoint.StatePoint('statepoint.100.h5')
-    
+
     In [3]: sp.read_source()
-    
+
     In [4]: len(sp.source)
     Out[4]: 1000
-    
+
     In [5]: sp.source[0:10]
-    Out[5]: 
+    Out[5]:
     [<SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.932923263566>,
      <SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.349240220512>,
      <SourceSite: xyz=[-31.21542213 -30.26762771  72.10845757] at E=3.75843584486>,
@@ -506,17 +506,17 @@ example of an interactive ipython session using the statepoint.py Python module:
      <SourceSite: xyz=[ -32.80427668  -15.49316628  125.26301151] at E=1.61907104162>,
      <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=3.33962024907>,
      <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=1.90185680329>]
-    
+
     In [6]: site = sp.source[0]
-    
+
     In [7]: site.weight
     Out[7]: 1.0
-    
+
     In [8]: site.xyz
     Out[8]: array([  2.21980946,  -8.92686048,  87.93720485])
-    
+
     In [9]: site.uvw
     Out[9]: array([ 0.06740523,  0.50612814,  0.85982024])
-    
+
     In [10]: site.E
     Out[10]: 0.93292326356564159

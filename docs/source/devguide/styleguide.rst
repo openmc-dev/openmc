@@ -8,7 +8,10 @@ In order to keep the OpenMC code base consistent in style, this guide specifies
 a number of rules which should be adhered to when modified existing code or
 adding new code in OpenMC.
 
--------------
+-------
+Fortran
+-------
+
 General Rules
 -------------
 
@@ -35,7 +38,6 @@ Don't use ``print *`` or ``write(*,*)``. If writing to a file, use a specific
 unit. Writing to standard output or standard error should be handled by the
 ``write_message`` subroutine or functionality in the error module.
 
-----------
 Procedures
 ----------
 
@@ -47,7 +49,6 @@ intent(in), intent(out), or intent(inout).
 
 Include a comment describing what each argument to a procedure is.
 
----------
 Variables
 ---------
 
@@ -91,7 +92,7 @@ allocation instead. Use allocatable variables instead of pointer variables when
 possible.
 
 Shared/Module Variables
------------------------
++++++++++++++++++++++++
 
 Always put shared variables in modules. Access module variables through a
 ``use`` statement. Always use the ``only`` specifier on the ``use`` statement
@@ -99,14 +100,12 @@ except for variables from the global, constants, and various header modules.
 
 Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
 
--------------------------
 Derived Types and Classes
 -------------------------
 
 Derived types and classes should have CamelCase names with words not separated
 by underscores or hyphens.
 
------------
 Indentation
 -----------
 
@@ -129,11 +128,10 @@ f90-type-indent, f90-associate-indent, and f90-program indent to 2.
 Continuation lines should be indented by an extra 5 spaces. This is the default
 value of f90-continuation-indent in Emacs.
 
--------------------------
 Whitespace in Expressions
 -------------------------
 
-Use a single space between arguments to procedures. 
+Use a single space between arguments to procedures.
 
 Avoid extraneous whitespace in the following situations:
 
@@ -146,3 +144,23 @@ Avoid extraneous whitespace in the following situations:
 
     Yes: if (variable == 2) then
     No:  if ( variable==2 ) then
+
+------
+Python
+------
+
+Style for Python code should follow PEP8_.
+
+Docstrings for functions and methods should follow numpydoc_ style.
+
+Python code should work with both Python 2.7+ and Python 3.0+.
+
+Use of third-party Python packages should be limited to numpy_, scipy_, and
+h5py_. Use of other third-party packages must be implemented as optional
+dependencies rather than required dependencies.
+
+.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
+.. _numpy: http://www.numpy.org/
+.. _scipy: http://www.scipy.org/
+.. _h5py: http://www.h5py.org/

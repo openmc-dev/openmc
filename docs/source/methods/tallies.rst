@@ -475,9 +475,9 @@ normal distribution, we use an `unpublished rational approximation`_. After
 using the rational approximation, one iteration of Newton's method is applied to
 improve the estimate of the percentile.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [George] E. E. Olusegun George and Meenakshi Sivaram, "A modification of the
    Fisher-Cornish approximation for the student t percentiles," Communication

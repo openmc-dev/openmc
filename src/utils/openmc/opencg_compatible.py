@@ -681,7 +681,7 @@ def get_opencg_lattice(openmc_lattice):
     # Create an OpenCG Lattice to represent this OpenMC Lattice
     name = openmc_lattice._name
     dimension = openmc_lattice._dimension
-    width = openmc_lattice._width
+    pitch = openmc_lattice._pitch
     lower_left = openmc_lattice._lower_left
     universes = openmc_lattice._universes
 
@@ -704,11 +704,11 @@ def get_opencg_lattice(openmc_lattice):
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
     opencg_lattice.setDimension(dimension)
-    opencg_lattice.setWidth(width)
+    opencg_lattice.setWidth(pitch)
     opencg_lattice.setUniverses(universe_array)
 
     offset = np.array(lower_left, dtype=np.float64) - \
-                     ((np.array(width, dtype=np.float64) * \
+                     ((np.array(pitch, dtype=np.float64) * \
                        np.array(dimension, dtype=np.float64))) / -2.0
     opencg_lattice.setOffset(offset)
 

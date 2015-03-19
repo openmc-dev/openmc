@@ -764,9 +764,9 @@ def get_openmc_lattice(opencg_lattice):
                              ((np.array(width, dtype=np.float64) * \
                                np.array(dimension, dtype=np.float64))) / -2.0
 
-    openmc_lattice = openmc.Lattice(lattice_id=lattice_id)
+    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
     openmc_lattice.set_dimension(dimension)
-    openmc_lattice.set_width(width)
+    openmc_lattice.set_pitch(width)
     openmc_lattice.set_universes(universe_array)
     openmc_lattice.set_lower_left(lower_left)
 

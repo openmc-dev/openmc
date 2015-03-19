@@ -297,7 +297,7 @@ contains
                group="tallies/tally " // trim(to_str(tally % id)), &
                length=tally % n_score_bins)
           call sp % write_data(tally % n_user_score_bins, "n_user_score_bins", &
-               group="tallies/tally " // to_str(i))
+               group="tallies/tally " // to_str(tally % id))
 
           ! Write explicit moment order strings for each score bin
           k = 1
@@ -306,13 +306,15 @@ contains
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
               moment_name = 'P' // to_str(tally % moment_order(k))
               call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(i)) // "/moments")
+                   group="tallies/tally " // trim(to_str(tally % id)) // & 
+                         "/moments")
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally % moment_order(k)
                 moment_name = 'P' // trim(to_str(n_order))
                 call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(i)) // "/moments")
+                   group="tallies/tally " // trim(to_str(tally % id)) // & 
+                         "/moments")
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -321,15 +323,18 @@ contains
                 do nm_order = -n_order, n_order
                   moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
                     trim(to_str(nm_order))
-                  call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                       group="tallies/tally " // trim(to_str(i)) // "/moments")
+                  call sp % write_data(moment_name, "order" // &
+                       trim(to_str(k)), &
+                       group="tallies/tally " // trim(to_str(tally % id)) // & 
+                             "/moments")
                     k = k + 1
                 end do
               end do
             case default
               moment_name = ''
               call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(i)) // "/moments")
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
+                         "/moments")
               k = k + 1
             end select
 
@@ -885,11 +890,12 @@ contains
 
       ! Write number of score bins, score bins, user score bins
       call sp % read_data(tally % n_score_bins, "n_score_bins", &
-           group="tallies/tally " // to_str(i))
+           group="tallies/tally " // trim(to_str(curr_key)))
       call sp % read_data(tally % score_bins, "score_bins", &
-           group="tallies/tally " // to_str(i), length=tally % n_score_bins)
+           group="tallies/tally " // trim(to_str(curr_key)), &
+           length=tally % n_score_bins)
       call sp % read_data(tally % n_user_score_bins, "n_user_score_bins", &
-           group="tallies/tally " // to_str(i))
+           group="tallies/tally " // trim(to_str(curr_key)))
 
       ! Read explicit moment order strings for each score bin
       k = 1
@@ -897,12 +903,12 @@ contains
         select case(tally % score_bins(k))
         case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
           call sp % read_data(moment_name, "order" // trim(to_str(k)), &
-               group="tallies/tally " // trim(to_str(i)) // "/moments")
+               group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
           k = k + 1
         case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
           do n_order = 0, tally % moment_order(k)
             call sp % read_data(moment_name, "order" // trim(to_str(k)), &
-                 group="tallies/tally " // trim(to_str(i)) // "/moments")
+                 group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
             k = k + 1
           end do
         case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -910,13 +916,14 @@ contains
           do n_order = 0, tally % moment_order(k)
             do nm_order = -n_order, n_order
               call sp % read_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(i)) // "/moments")
+                   group="tallies/tally " // trim(to_str(curr_key)) // &
+                         "/moments")
               k = k + 1
             end do
           end do
         case default
           call sp % read_data(moment_name, "order" // trim(to_str(k)), &
-               group="tallies/tally " // trim(to_str(i)) // "/moments")
+               group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
           k = k + 1
         end select
 

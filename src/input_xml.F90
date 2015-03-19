@@ -7,7 +7,7 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
   use global
-  use list_header,      only: ListChar, ListReal
+  use list_header,      only: ListChar, ListLog, ListReal
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
   use plot_header
@@ -1577,6 +1577,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
+    type(ListLog)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -1731,6 +1732,20 @@ contains
           end if
         end if
 
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_nuc, "lab")) then
+          call get_node_value(node_nuc, "lab", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == "true") then
+            call list_iso_lab % append(.true.)
+          else if (trim(adjustl(to_lower(temp_str))) == "false") then
+            call list_iso_lab % append(.false.)
+          else
+            call fatal_error("Isotropic lab scattering must be true or false")
+          end if
+        else
+          call list_iso_lab % append(.false.)
+        end if
+
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -1822,6 +1837,7 @@ contains
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
       allocate(mat % atom_density(n))
+      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -1858,6 +1874,10 @@ contains
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)
+
+        ! Copy isotropic lab scattering flag
+        mat % p0(j) = list_iso_lab % get_item(j)
+
       end do ALL_NUCLIDES
 
       ! Check to make sure either all atom percents or all weight percents are
@@ -1874,6 +1894,7 @@ contains
       ! Clear lists
       call list_names % clear()
       call list_density % clear()
+      call list_iso_lab % clear()
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA

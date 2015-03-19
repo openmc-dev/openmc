@@ -82,12 +82,12 @@ class Summary(object):
             # Read the Nuclide's cross-section identifier (e.g., '70c')
             xs = alias.split('.')[1]
 
-            # Initialize this Nuclide and add it to the global dictionary of Nuclides
+            # Initialize this Nuclide and add to global dictionary of Nuclides
             if 'nat' in name:
-                self.nuclides[index] = openmc.Element(name=name, xs=xs)
+                self.nuclides[zaid] = openmc.Element(name=name, xs=xs)
             else:
-                self.nuclides[index] = openmc.Nuclide(name=name, xs=xs)
-                self.nuclides[index].set_zaid(zaid)
+                self.nuclides[zaid] = openmc.Nuclide(name=name, xs=xs)
+                self.nuclides[zaid].set_zaid(zaid)
 
 
     def _read_materials(self):

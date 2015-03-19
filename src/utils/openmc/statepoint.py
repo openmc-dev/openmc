@@ -654,14 +654,14 @@ class StatePoint(object):
 
         for tally_id, tally in self._tallies.items():
 
-            nuclides = copy.deepcopy(tally._nuclides)
+            nuclide_zaids = copy.deepcopy(tally._nuclides)
 
-            for nuclide_index in nuclides:
-                tally.remove_nuclide(nuclide_index)
-                if nuclide_index == -1:
+            for nuclide_zaid in nuclide_zaids:
+                tally.remove_nuclide(nuclide_zaid)
+                if nuclide_zaid == -1:
                     tally.add_nuclide(openmc.Nuclide('total'))
                 else:
-                    tally.add_nuclide(summary.nuclides[nuclide_index])
+                    tally.add_nuclide(summary.nuclides[nuclide_zaid])
 
             for filter in tally._filters:
 

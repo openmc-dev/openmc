@@ -1,6 +1,9 @@
 module energy_grid
 
   use global
+  use list_header, only: ListReal
+  use output,      only: write_message
+
 
   implicit none
 
@@ -56,7 +59,6 @@ contains
     call grid_pointers()
 
   end subroutine unionized_grid
->>>>>>> mit-crpg/openmc/develop
 
 !===============================================================================
 ! LOGARITHMIC_GRID determines a logarithmic mapping for energies to bounding
@@ -106,6 +108,73 @@ contains
     deallocate(umesh)
 
   end subroutine logarithmic_grid
+
+!===============================================================================
+! ADD_GRID_POINTS adds energy points from the 'energy' array into a linked list
+! of points already stored from previous arrays.
+!===============================================================================
+
+  subroutine add_grid_points(list, energy)
+
+    type(ListReal), pointer :: list
+    real(8), intent(in) :: energy(:)
+
+    integer :: i       ! index in energy array
+    integer :: n       ! size of energy array
+    integer :: current ! current index
+    real(8) :: E       ! actual energy value
+
+    i = 1
+    n = size(energy)
+
+    ! If the original list is empty, we need to allocate the first element and
+    ! store first energy point
+    if (.not. associated(list)) then
+      allocate(list)
+      do i = 1, n
+        call list % append(energy(i))
+      end do
+      return
+    end if
+
+    ! Set current index to beginning of the list
+    current = 1
+
+    do while (i <= n)
+      E = energy(i)
+
+      ! If we've reached the end of the grid energy list, add the remaining
+      ! energy points to the end
+      if (current > list % size()) then
+        ! Finish remaining energies
+        do while (i <= n)
+          call list % append(energy(i))
+          i = i + 1
+        end do
+        exit
+      end if
+
+      if (E < list % get_item(current)) then
+
+        ! Insert new energy in this position
+        call list % insert(current, E)
+
+        ! Advance index in linked list and in new energy grid
+        i = i + 1
+        current = current + 1
+
+      elseif (E == list % get_item(current)) then
+        ! Found the exact same energy, no need to store duplicates so just
+        ! skip and move to next index
+        i = i + 1
+        current = current + 1
+      else
+        current = current + 1
+      end if
+
+    end do
+
+  end subroutine add_grid_points
 
 !===============================================================================
 ! GRID_POINTERS creates an array of pointers (ints) for each nuclide to link

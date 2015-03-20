@@ -4,7 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: logarithmic_grid, grid_method
+  use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
@@ -121,7 +121,7 @@ contains
         call time_unionize % stop()
       case (GRID_LOGARITHM)
         call logarithmic_grid()
-      end if
+      end select
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

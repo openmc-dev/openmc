@@ -372,9 +372,6 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % glob_grid_index)) &
-           deallocate(this % glob_grid_index)
-
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &
            & this % fission, this % nu_fission, this % absorption)

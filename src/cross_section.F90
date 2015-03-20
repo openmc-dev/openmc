@@ -15,6 +15,9 @@ module cross_section
   implicit none
   save
 
+  integer :: union_grid_index
+!$omp threadprivate(union_grid_index)
+
 contains
 
 !===============================================================================

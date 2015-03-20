@@ -68,10 +68,9 @@
 
   <!-- Fuel Assembly (Lower Half) -->
   <lattice id="100">
-    <type>rectangular</type>
     <dimension>17 17</dimension>
     <lower_left>-10.71 -10.71</lower_left>
-    <width>1.26 1.26</width>
+    <pitch>1.26 1.26</pitch>
     <universes>
       1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
       1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
@@ -95,10 +94,9 @@
 
   <!-- Fuel Assembly (Upper Half) -->
   <lattice id="101">
-    <type>rectangular</type>
     <dimension>17 17</dimension>
     <lower_left>-10.71 -10.71</lower_left>
-    <width>1.26 1.26</width>
+    <pitch>1.26 1.26</pitch>
     <universes>
       3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
       3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
@@ -122,10 +120,9 @@
 
   <!-- Core Lattice (Lower Half) -->
   <lattice id="200">
-    <type>rectangular</type>
     <dimension>21 21</dimension>
     <lower_left>-224.91 -224.91</lower_left>
-    <width>21.42 21.42</width>
+    <pitch>21.42 21.42</pitch>
     <universes>
       5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
       5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
@@ -153,10 +150,9 @@
 
   <!-- Core Lattice (Upper Half) -->
   <lattice id="201">
-    <type>rectangular</type>
     <dimension>21 21</dimension>
     <lower_left>-224.91 -224.91</lower_left>
-    <width>21.42 21.42</width>
+    <pitch>21.42 21.42</pitch>
     <universes>
       7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
       7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7

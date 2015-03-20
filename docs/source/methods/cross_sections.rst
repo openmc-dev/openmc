@@ -63,9 +63,9 @@ Other Methods
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
            Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).

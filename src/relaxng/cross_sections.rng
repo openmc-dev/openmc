@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="cross_sections" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <zeroOrMore>
+      <element name="ace_table">
+        <interleave>
+          <choice>
+            <element name="name">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </element>
+            <attribute name="name">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="alias">
+                <data type="string">
+                  <param name="maxLength">15</param>
+                </data>
+              </element>
+              <attribute name="alias">
+                <data type="string">
+                  <param name="maxLength">15</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="zaid">
+              <data type="int"/>
+            </element>
+            <attribute name="zaid">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="metastable">
+                <data type="int"/>
+              </element>
+              <attribute name="metastable">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="awr">
+              <data type="double"/>
+            </element>
+            <attribute name="awr">
+              <data type="double"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="temperature">
+              <data type="double"/>
+            </element>
+            <attribute name="temperature">
+              <data type="double"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="path">
+              <data type="string">
+                <param name="maxLength">255</param>
+              </data>
+            </element>
+            <attribute name="path">
+              <data type="string">
+                <param name="maxLength">255</param>
+              </data>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="location">
+                <data type="int"/>
+              </element>
+              <attribute name="location">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="filetype">
+                <choice>
+                  <value>ascii</value>
+                  <value>binary</value>
+                </choice>
+              </element>
+              <attribute name="filetype">
+                <choice>
+                  <value>ascii</value>
+                  <value>binary</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <optional>
+      <element name="directory">
+        <data type="string">
+          <param name="maxLength">255</param>
+        </data>
+      </element>
+    </optional>
+    <element name="filetype">
+      <choice>
+        <value>ascii</value>
+        <value>binary</value>
+      </choice>
+    </element>
+    <optional>
+      <element name="record_length">
+        <data type="int"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="entries">
+        <data type="int"/>
+      </element>
+    </optional>
+  </interleave>
+</element>

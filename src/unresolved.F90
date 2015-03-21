@@ -1655,7 +1655,8 @@ contains
             if (tope % prob_tables(i_E, i_T) % avg_f % xs > ZERO) then
               continue
             else
-              if (background == ENDFFILE) then
+              tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
+              if (background == ENDFFILE .and. allocated(tope % MF3_f_e)) then
                 if (E < tope % MF3_f_e(1)) then
                   tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
                 else
@@ -1702,7 +1703,8 @@ contains
             if (tope % E < tope % E_ex2 .and. competitive) then
               continue
             else
-              if (background == ENDFFILE) then
+              tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
+              if (background == ENDFFILE .and. allocated(tope % MF3_x_e)) then
                 if (E < tope % MF3_x_e(1)) then
                   tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
                 else

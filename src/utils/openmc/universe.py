@@ -536,7 +536,7 @@ class Universe(object):
 
         # Iterate over all Cells
         n = len(self._cells.items())
-        for i,(cell_id, cell) in enumerate(self._cells.items()):
+        for cell_id, cell in self._cells.items():
 
             # If the cell was not already written, write it
             if not cell_id in WRITTEN_IDS:

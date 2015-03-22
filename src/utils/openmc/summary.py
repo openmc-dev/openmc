@@ -82,12 +82,12 @@ class Summary(object):
             # Read the Nuclide's cross-section identifier (e.g., '70c')
             xs = alias.split('.')[1]
 
-            # Initialize this Nuclide and add it to the global dictionary of Nuclides
+            # Initialize this Nuclide and add to global dictionary of Nuclides
             if 'nat' in name:
-                self.nuclides[index] = openmc.Element(name=name, xs=xs)
+                self.nuclides[zaid] = openmc.Element(name=name, xs=xs)
             else:
-                self.nuclides[index] = openmc.Nuclide(name=name, xs=xs)
-                self.nuclides[index].set_zaid(zaid)
+                self.nuclides[zaid] = openmc.Nuclide(name=name, xs=xs)
+                self.nuclides[zaid].set_zaid(zaid)
 
 
     def _read_materials(self):
@@ -349,44 +349,84 @@ class Summary(object):
 
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'][0]
-            type = self._f['geometry/lattices'][key]['type'][...][0]
-            width = self._f['geometry/lattices'][key]['width'][...]
-            dimension = self._f['geometry/lattices'][key]['dimension'][...]
-            lower_left = self._f['geometry/lattices'][key]['lower_left'][...]
-            outside = self._f['geometry/lattices'][key]['outside'][0]
+            lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
 
-            universe_ids = self._f['geometry/lattices'][key]['universes'][...]
-            universe_ids = np.swapaxes(universe_ids, 0, 1)
-            universe_ids = np.swapaxes(universe_ids, 1, 2)
+            if lattice_type == 'rectangular':
+                dimension = self._f['geometry/lattices'][key]['n_cells'][...]
+                lower_left = \
+                     self._f['geometry/lattices'][key]['lower_left'][...]  
+                pitch = self._f['geometry/lattices'][key]['pitch'][...]
+                outer = self._f['geometry/lattices'][key]['outer'][0]
 
-            # Create the Lattice
-            lattice = openmc.Lattice(lattice_id=lattice_id, type=type)
-            lattice.set_dimension(tuple(dimension))
-            lattice.set_lower_left(lower_left)
-            lattice.set_width(width)
+                universe_ids = \
+                     self._f['geometry/lattices'][key]['universes'][...]
+                universe_ids = np.swapaxes(universe_ids, 0, 1)
+                universe_ids = np.swapaxes(universe_ids, 1, 2)
 
-            # Build array of Universe pointers for the Lattice
-            universes = np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
+                # Create the Lattice
+                lattice = openmc.RectLattice(lattice_id=lattice_id)
+                lattice.set_dimension(tuple(dimension))
+                lattice.set_lower_left(lower_left)
+                lattice.set_pitch(pitch)
 
-            for x in range(universe_ids.shape[0]):
-                for y in range(universe_ids.shape[1]):
-                    for z in range(universe_ids.shape[2]):
-                        universes[x,y,z] = \
-                          self.get_universe_by_id(universe_ids[x,y,z])
+                # If the Universe specified outer the Lattice is not void (-22)
+                if outer != -22:
+                    lattice.set_outer(self.universes[outer])
 
-            # Transpose, reverse y-dimension in array for appropriate ordering
-            shape = universes.shape
-            universes = np.transpose(universes, (1,0,2))
-            universes.shape = shape
-            universes = universes[:,::-1,:]
-            lattice.set_universes(universes)
+                # Build array of Universe pointers for the Lattice
+                universes = \
+                    np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
 
-            # If the Material specified outside the Lattice is not void (-1)
-            if outside != -1:
-                lattice.set_outside(self.materials[outside])
+                for x in range(universe_ids.shape[0]):
+                    for y in range(universe_ids.shape[1]):
+                        for z in range(universe_ids.shape[2]):
+                            universes[x,y,z] = \
+                                 self.get_universe_by_id(universe_ids[x,y,z])
 
-            # Add the Lattice to the global dictionary of all Lattices
-            self.lattices[index] = lattice
+                # Transpose, reverse y-dimension for appropriate ordering
+                shape = universes.shape
+                universes = np.transpose(universes, (1,0,2))
+                universes.shape = shape
+                universes = universes[:,::-1,:]
+                lattice.set_universes(universes)
+
+                # Add the Lattice to the global dictionary of all Lattices
+                self.lattices[index] = lattice
+
+            if lattice_type == 'hexagonal':
+                n_rings = self._f['geometry/latties'][key]['n_rings'][0]
+                n_axial = self._f['geometry/latties'][key]['n_axial'][0]
+                center = self._f['geometry/lattices'][key]['center'][...]
+                pitch = self._f['geometry/lattices'][key]['pitch'][...]
+                outer = self._f['geometry/lattices'][key]['outer'][0]
+
+                universe_ids = \
+                     self._f['geometry/lattices'][key]['universes'][...]
+
+                # Create the Lattice
+                lattice = openmc.HexLattice(lattice_id=lattice_id)
+                lattice.set_num_rings(n_rings)
+                lattice.set_num_axial(n_axial)
+                lattice.set_center(center)
+                lattice.set_pitch(pitch)
+
+                # If the Universe specified outer the Lattice is not void (-22)
+                if outer != -22:
+                    lattice.set_outer(self.universes[outer])
+
+                # Build array of Universe pointers for the Lattice
+                universes = \
+                    np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
+
+                for i in range(universe_ids.shape[0]):
+                    for j in range(universe_ids.shape[1]):
+                        for k in range(universe_ids.shape[2]):
+                            if universe_ids[i,j,k] != -1:
+                              universes[i,j,k] = \
+                                   self.get_universe_by_id(universe_ids[i,j,k])
+
+                # Add the Lattice to the global dictionary of all Lattices
+                self.lattices[index] = lattice
 
 
     def _finalize_geometry(self):
@@ -397,7 +437,7 @@ class Summary(object):
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_key in self._cell_fills.keys():
 
-            # Determine the fill type ('normal', 'universe', or 'lattice') and ID
+            # Determine fill type ('normal', 'universe', or 'lattice') and ID
             fill_type = self._cell_fills[cell_key][0]
             fill_id = self._cell_fills[cell_key][1]
 

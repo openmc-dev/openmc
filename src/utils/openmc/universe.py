@@ -5,6 +5,7 @@ from openmc.checkvalue import *
 from xml.etree import ElementTree as ET
 from collections import OrderedDict
 import numpy as np
+import abc
 
 
 ################################################################################
@@ -567,23 +568,20 @@ class Universe(object):
 
 class Lattice(object):
 
-    def __init__(self, lattice_id=None, name='', type='rectangular'):
+    # This is an abstract class which cannot be instantiated
+    metaclass__ = abc.ABCMeta
+
+    def __init__(self, lattice_id=None, name=''):
 
         # Initialize Lattice class attributes
         self._id = None
         self._name = None
-        self._type = ''
-        self._dimension = None
-        self._lower_left = None
-        self._width = None
-        self._outside = None
+        self._pitch = None
+        self._outer = None
         self._universes = None
-        self._offsets = None
-
 
         self.set_id(lattice_id)
         self.set_name(name)
-        self.set_type(type)
 
 
     def set_id(self, lattice_id=None):
@@ -618,116 +616,14 @@ class Lattice(object):
             self._name = name
 
 
-    def set_type(self, type):
+    def set_outer(self, outer):
 
-        if not is_string(type):
-            msg = 'Unable to set type for Lattice ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, type)
+        if not isinstance(outer, Universe):
+            msg = 'Unable to set Lattice ID={0} outer universe to {1} ' \
+                  'since it is not a Universe object'.format(self._id, outer)
             raise ValueError(msg)
 
-        elif not type in ['rectangular', 'hexagonal']:
-            msg = 'Unable to set type for Lattice ID={0} as {1} since ' \
-                  'it is not rectangular or hexagonal'.format(self._id, type)
-            raise ValueError(msg)
-
-        self._type = type
-
-
-    def set_dimension(self, dimension):
-
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} dimension to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set Lattice ID={0} dimension to {1} since ' \
-                  'it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, dimension)
-            raise ValueError(msg)
-
-        for dim in dimension:
-
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Lattice ID={0} dimension to {1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-
-            elif dim < 0:
-                msg = 'Unable to set Lattice ID={0} dimension to {1} ' \
-                      'since it is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
-
-        self._dimension = dimension
-
-
-    def set_lower_left(self, lower_left):
-
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} lower_left to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set Lattice ID={0} lower_left to {1} ' \
-                  'since it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-
-        for dim in lower_left:
-
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Lattice ID={0} lower_left to {1} since ' \
-                      'it is is not an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-        self._lower_left = lower_left
-
-
-    def set_width(self, width):
-
-        if not isinstance(width, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} width to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, width)
-            raise ValueError(msg)
-
-
-        elif len(width) != 2 and len(width) != 3:
-            msg = 'Unable to set Lattice ID={0} width to {1} since it does ' \
-                  'not contain 2 or 3 coordinates'.format(self._id, width)
-            raise ValueError(msg)
-
-        for dim in width:
-
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Lattice ID={0} width to {1} since ' \
-                      'it is not an an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
-                msg = 'Unable to set Lattice ID={0} width to {1} since it ' \
-                      'is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
-
-        self._width = width
-
-
-    def set_outside(self, outside):
-
-        if not isinstance(outside, (Universe, openmc.Material)):
-            msg = 'Unable to set Lattice ID={0} outside universe to {1} ' \
-                  'since it is not a Universe object'.format(self._id, outside)
-            raise ValueError(msg)
-
-        self._outside = outside
+        self._outer = outer
 
 
     def set_universes(self, universes):
@@ -739,37 +635,6 @@ class Lattice(object):
             raise ValueError(msg)
 
         self._universes = np.asarray(universes, dtype=Universe)
-
-
-    def set_offsets(self, offsets):
-
-        if not isinstance(offsets, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, offsets)
-            raise ValueError(msg)
-
-        self._offsets = offsets
-
-
-    def get_offset(self, path, filter_offset):
-
-        # Get the current element and remove it from the list
-        i = path[0]
-        path = path[1:]
-
-        # For 2D Lattices
-        if len(self._dimension) == 2:
-            offset = self._offsets[i[1]-1, i[2]-1, 0, filter_offset-1]
-            offset += self._universes[i[1]][i[2]].get_offset(path, filter_offset)
-
-        # For 3D Lattices
-        else:
-            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, filter_offset-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_offset(path,
-                                                                 filter_offset)
-
-        return offset
 
 
     def get_unique_universes(self):
@@ -827,24 +692,160 @@ class Lattice(object):
         return all_universes
 
 
+
+
+################################################################################
+#################################  RectLattice  ################################
+################################################################################
+
+
+class RectLattice(Lattice):
+
+    def __init__(self, lattice_id=None, name=''):
+
+        super(RectLattice, self).__init__(lattice_id, name)
+
+        # Initialize Lattice class attributes
+        self._dimension = None
+        self._lower_left = None
+        self._offsets = None
+
+
+    def set_dimension(self, dimension):
+
+        if not isinstance(dimension, (tuple, list, np.ndarray)):
+            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, dimension)
+            raise ValueError(msg)
+
+        elif len(dimension) != 2 and len(dimension) != 3:
+            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
+                  'it does not contain 2 or 3 ' \
+                  'coordinates'.format(self._id, dimension)
+            raise ValueError(msg)
+
+        for dim in dimension:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
+                      'it is not an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+
+            elif dim < 0:
+                msg = 'Unable to set RectLattice ID={0} dimension to {1} ' \
+                      'since it is a negative value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._dimension = dimension
+
+
+    def set_lower_left(self, lower_left):
+
+        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+            msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, lower_left)
+            raise ValueError(msg)
+
+        elif len(lower_left) != 2 and len(lower_left) != 3:
+            msg = 'Unable to set RectLattice ID={0} lower_left to {1} ' \
+                  'since it does not contain 2 or 3 ' \
+                  'coordinates'.format(self._id, lower_left)
+            raise ValueError(msg)
+
+
+        for dim in lower_left:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
+                      'it is is not an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._lower_left = lower_left
+
+
+    def set_offsets(self, offsets):
+
+        if not isinstance(offsets, (tuple, list, np.ndarray)):
+            msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, offsets)
+            raise ValueError(msg)
+
+        self._offsets = offsets
+
+
+    def set_pitch(self, pitch):
+
+        if not isinstance(pitch, (tuple, list, np.ndarray)):
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, pitch)
+            raise ValueError(msg)
+
+
+        elif len(pitch) != 2 and len(pitch) != 3:
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
+                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
+            raise ValueError(msg)
+
+        for dim in pitch:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                      'it is not an an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+            elif dim < 0:
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
+                      'is a negative value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._pitch = pitch
+
+
+    def get_offset(self, path, filter_offset):
+
+        # Get the current element and remove it from the list
+        i = path[0]
+        path = path[1:]
+
+        # For 2D Lattices
+        if len(self._dimension) == 2:
+            offset = self._offsets[i[1]-1, i[2]-1, 0, filter_offset-1]
+            offset += self._universes[i[1]][i[2]].get_offset(path, filter_offset)
+
+        # For 3D Lattices
+        else:
+            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, filter_offset-1]
+            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_offset(path,
+                                                                 filter_offset)
+
+        return offset
+
+
     def __repr__(self):
 
-        string = 'Lattice\n'
+        string = 'RectLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
         string += '{0: <16}{1}{2}\n'.format('\tDimension', '=\t',
                                             self._dimension)
         string += '{0: <16}{1}{2}\n'.format('\tLower Left', '=\t',
                                             self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
 
-        if self._outside is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOutside', '=\t',
-                                                self._outside._id)
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tOutside', '=\t',
-                                                self._outside)
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
 
         string += '{0: <16}\n'.format('\tUniverses')
 
@@ -887,7 +888,22 @@ class Lattice(object):
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
-        lattice_subelement.set("type", self._type)
+
+        # Export the Lattice cell pitch
+        if len(self._pitch) == 3:
+            pitch = ET.SubElement(lattice_subelement, "pitch")
+            pitch.text = '{0} {1} {2}'.format(self._pitch[0], \
+                                              self._pitch[1], \
+                                              self._pitch[2])
+        else:
+            pitch = ET.SubElement(lattice_subelement, "pitch")
+            pitch.text = '{0} {1}'.format(self._pitch[0], \
+                                          self._pitch[1])
+
+        # Export the Lattice outer Universe (if specified)
+        if self._outer is not None:
+            outer = ET.SubElement(lattice_subelement, "outer")
+            outer.text = '{0}'.format(self._outer._id)
 
         # Export Lattice cell dimensions
         if len(self._dimension) == 3:
@@ -910,22 +926,6 @@ class Lattice(object):
             lower_left = ET.SubElement(lattice_subelement, "lower_left")
             lower_left.text = '{0} {1}'.format(self._lower_left[0], \
                                                self._lower_left[1])
-
-        # Export the Lattice cell width/height
-        if len(self._width) == 3:
-            width = ET.SubElement(lattice_subelement, "width")
-            width.text = '{0} {1} {2}'.format(self._width[0], \
-                                              self._width[1], \
-                                              self._width[2])
-        else:
-            width = ET.SubElement(lattice_subelement, "width")
-            width.text = '{0} {1}'.format(self._width[0], \
-                                          self._width[1])
-
-        # Export the Lattice outside Universe (if specified)
-        if self._outside is not None:
-            outside = ET.SubElement(lattice_subelement, "outside")
-            outside.text = '{0}'.format(self._outside._id)
 
         # Export the Lattice nested Universe IDs - column major for Fortran
         universe_ids = '\n'
@@ -977,3 +977,405 @@ class Lattice(object):
 
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)
+
+
+################################################################################
+##################################  HexLattice  ################################
+################################################################################
+
+
+class HexLattice(Lattice):
+
+    def __init__(self, lattice_id=None, name=''):
+
+        super(HexLattice, self).__init__(lattice_id, name)
+
+        # Initialize Lattice class attributes
+        self._num_rings = None
+        self._num_axial = None
+        self._center = None
+
+
+    def set_num_rings(self, num_rings):
+
+        if not is_integer(num_rings) and num_rings < 1:
+            msg = 'Unable to set HexLattice ID={0} number of rings to {1} ' \
+                  'since it is not a positive integer'.format(self._id, num_rings)
+            raise ValueError(msg)
+
+        self._num_rings = num_rings
+
+
+    def set_num_axial(self, num_axial):
+
+        if not is_integer(num_axial) and num_axial < 1:
+            msg = 'Unable to set HexLattice ID={0} number of axial to {1} ' \
+                  'since it is not a positive integer'.format(self._id, num_axial)
+            raise ValueError(msg)
+
+        self._num_axial = num_axial
+
+
+    def set_center(self, center):
+
+        if not isinstance(center, (tuple, list, np.ndarray)):
+            msg = 'Unable to set HexLattice ID={0} dimension to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, center)
+            raise ValueError(msg)
+
+        elif len(center) != 2 and len(center) != 3:
+            msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
+                  'it does not contain 2 or 3 ' \
+                  'coordinates'.format(self._id, center)
+            raise ValueError(msg)
+
+        for dim in center:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
+                      'it is not an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._center = center
+
+
+    def set_pitch(self, pitch):
+
+        if not isinstance(pitch, (tuple, list, np.ndarray)):
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(self._id, pitch)
+            raise ValueError(msg)
+
+
+        elif len(pitch) != 1 and len(pitch) != 2:
+            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
+                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
+            raise ValueError(msg)
+
+        for dim in pitch:
+
+            if not is_integer(dim) and not is_float(dim):
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
+                      'it is not an an integer or floating point ' \
+                      'value'.format(self._id, dim)
+                raise ValueError(msg)
+
+            elif dim < 0:
+                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
+                      'is a negative value'.format(self._id, dim)
+                raise ValueError(msg)
+
+        self._pitch = pitch
+
+
+    def set_universes(self, universes):
+        super(HexLattice, self).set_universes(universes)
+
+        # NOTE: This routine assumes that the user creates a "ragged" list of
+        # lists, where each sub-list corresponds to one ring of Universes.
+        # The sub-lists are ordered from outermost ring to innermost ring.
+        # The Universes within each sub-list are ordered from the "top" in a
+        # clockwise fashion.
+
+        # Check to see if the given universes look like a 2D or a 3D array.
+        if isinstance(self._universes[0][0], Universe):
+            n_dims = 2
+
+        elif isinstance(self._universes[0][0][0], Universe):
+            n_dims = 3
+
+        else:
+            msg = 'HexLattice ID={0:d} does not appear to be either 2D or ' \
+                  '3D.  Make sure set_universes was given a two-deep or ' \
+                  'three-deep iterable of universes.'.format(self._id)
+            raise RuntimeError(msg)
+
+        # Set the number of axial positions.
+        if n_dims == 3:
+            self.set_num_axial(self._universes.shape[0])
+
+        else:
+            self._num_axial = None
+
+        # Set the number of rings and make sure this number is consistent for
+        # all axial positions.
+        if n_dims == 3:
+            self.set_num_rings(len(self._universes[0]))
+            for rings in self._universes:
+                if len(rings) != self._num_rings:
+                    msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
+                          'rings per axial positon'.format(self._id)
+                    raise ValueError(msg)
+
+        else:
+            self.set_num_rings(self._universes.shape[0])
+
+        # Make sure there are the correct number of elements in each ring.
+        if n_dims == 3:
+            for axial_slice in self._universes:
+              # Check the center ring.
+              if len(axial_slice[-1]) != 1:
+                  msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                        'elements in the innermost ring.  Only 1 element is ' \
+                        'allowed in the innermost ring.'.format(self._id)
+                  raise ValueError(msg)
+
+              # Check the outer rings.
+              for r in range(self._num_rings-1):
+                  if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
+                      msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                            'elements in ring number {1:d} (counting from the '\
+                            'outermost ring).  This ring should have {2:d} ' \
+                            'elements.'.format(self._id, r,
+                            6*(self._num_rings - 1 - r))
+                      raise ValueError(msg)
+
+        else:
+          axial_slice = self._universes
+          # Check the center ring.
+          if len(axial_slice[-1]) != 1:
+              msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                    'elements in the innermost ring.  Only 1 element is ' \
+                    'allowed in the innermost ring.'.format(self._id)
+              raise ValueError(msg)
+
+          # Check the outer rings.
+          for r in range(self._num_rings-1):
+              if len(axial_slice[r]) != 6*(self._num_rings - 1 - r):
+                  msg = 'HexLattice ID={0:d} has the wrong number of ' \
+                        'elements in ring number {1:d} (counting from the '\
+                        'outermost ring).  This ring should have {2:d} ' \
+                        'elements.'.format(self._id, r,
+                        6*(self._num_rings - 1 - r))
+                  raise ValueError(msg)
+
+
+    def __repr__(self):
+
+        string = 'HexLattice\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
+        string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
+        string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
+                                            self._center)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
+        else:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
+
+        string += '{0: <16}\n'.format('\tUniverses')
+
+        if self._num_axial is not None:
+            slices = [self._repr_axial_slice(x) for x in self._universes]
+            string += '\n'.join(slices)
+
+        else:
+            string += self._repr_axial_slice(self._universes)
+
+        return string
+
+
+    def create_xml_subelement(self, xml_element):
+
+        # Determine if XML element already contains subelement for this Lattice
+        path = './hex_lattice[@id=\'{0}\']'.format(self._id)
+        test = xml_element.find(path)
+
+        # If the element does contain the Lattice subelement, then return
+        if not test is None:
+            return
+
+        lattice_subelement = ET.Element("hex_lattice")
+        lattice_subelement.set("id", str(self._id))
+
+        # Export the Lattice cell pitch
+        if len(self._pitch) == 2:
+            pitch = ET.SubElement(lattice_subelement, "pitch")
+            pitch.text = '{0} {1}'.format(self._pitch[0], \
+                                          self._pitch[1])
+        else:
+            pitch = ET.SubElement(lattice_subelement, "pitch")
+            pitch.text = '{0}'.format(self._pitch[0])
+
+        # Export the Lattice outer Universe (if specified)
+        if self._outer is not None:
+            outer = ET.SubElement(lattice_subelement, "outer")
+            outer.text = '{0}'.format(self._outer._id)
+
+        lattice_subelement.set("n_rings", str(self._num_rings))
+
+        if self._num_axial is not None:
+            lattice_subelement.set("n_axial", str(self._num_axial))
+
+        # Export Lattice cell center
+        if len(self._center) == 3:
+            dimension = ET.SubElement(lattice_subelement, "center")
+            dimension.text = '{0} {1} {2}'.format(self._center[0], \
+                                                  self._center[1], \
+                                                  self._center[2])
+        else:
+            dimension = ET.SubElement(lattice_subelement, "center")
+            dimension.text = '{0} {1}'.format(self._center[0], \
+                                              self._center[1])
+
+        # Export the Lattice nested Universe IDs.
+
+        # 3D Lattices
+        if self._num_axial is not None:
+            slices = []
+            for z in range(self._num_axial):
+                # Initialize the center universe.
+                universe = self._universes[z][-1][0]
+                universe.create_xml_subelement(xml_element)
+
+                # Initialize the remaining universes.
+                for r in range(self._num_rings-1):
+                    for theta in range(6*(self._num_rings - 1 - r)):
+                        universe = self._universes[z][r][theta]
+                        universe.create_xml_subelement(xml_element)
+
+                # Get a string representation of the universe IDs.
+                slices.append(self._repr_axial_slice(self._universes[z]))
+
+            # Collapse the list of axial slices into a single string.
+            universe_ids = '\n'.join(slices)
+
+        # 2D Lattices
+        else:
+            # Initialize the center universe.
+            universe = self._universes[-1][0]
+            universe.create_xml_subelement(xml_element)
+
+            # Initialize the remaining universes.
+            for r in range(self._num_rings-1):
+                for theta in range(2*(self._num_rings - r)):
+                    universe = self._universes[r][theta]
+                    universe.create_xml_subelement(xml_element)
+
+            # Get a string representation of the universe IDs.
+            universe_ids = self._repr_axial_slice(self._universes)
+
+        universes = ET.SubElement(lattice_subelement, "universes")
+        universes.text = '\n' + universe_ids
+
+        if len(self._name) > 0:
+            xml_element.append(ET.Comment(self._name))
+
+        # Append the XML subelement for this Lattice to the XML element
+        xml_element.append(lattice_subelement)
+
+
+    def _repr_axial_slice(self, universes):
+        """Return string representation for the given 2D group of universes.
+
+        The 'universes' argument should be a list of lists of universes where
+        each sub-list represents a single ring.  The first list should be the
+        outer ring.
+        """
+
+        # Find the largest universe ID and count the number of digits so we can
+        # properly pad the output string later.
+        largest_id = max([max([univ._id for univ in ring])
+                          for ring in universes])
+        n_digits = len(str(largest_id))
+        pad = ' '*n_digits
+        id_form = '{: ^' + str(n_digits) + 'd}'
+
+        # Initialize the list for each row.
+        rows = [ [] for i in range(1 + 4 * (self._num_rings-1)) ]
+        middle = 2 * (self._num_rings - 1)
+
+        # Start with the degenerate first ring.
+        universe = universes[-1][0]
+        rows[middle] = [id_form.format(universe._id)]
+
+        # Add universes one ring at a time.
+        for r in range(1, self._num_rings):
+            # r_prime increments down while r increments up.
+            r_prime = self._num_rings - 1 - r
+            theta = 0
+            y = middle + 2*r
+
+            # Climb down the top-right.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].append(id_form.format(universe._id))
+
+                # Translate the indices.
+                y -= 1
+                theta += 1
+
+            # Climb down the right.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].append(id_form.format(universe._id))
+
+                # Translate the indices.
+                y -= 2
+                theta += 1
+
+            # Climb down the bottom-right.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].append(id_form.format(universe._id))
+
+                # Translate the indices.
+                y -= 1
+                theta += 1
+
+            # Climb up the bottom-left.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].insert(0, id_form.format(universe._id))
+
+                # Translate the indices.
+                y += 1
+                theta += 1
+
+            # Climb up the left.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].insert(0, id_form.format(universe._id))
+
+                # Translate the indices.
+                y += 2
+                theta += 1
+
+            # Climb up the top-left.
+            for i in range(r):
+                # Add the universe.
+                universe = universes[r_prime][theta]
+                rows[y].insert(0, id_form.format(universe._id))
+
+                # Translate the indices.
+                y += 1
+                theta += 1
+
+        # Flip the rows and join each row into a single string.
+        rows = [pad.join(x) for x in rows[::-1]]
+
+        # Pad the beginning of the rows so they line up properly.
+        for y in range(self._num_rings - 1):
+            rows[y] = (self._num_rings - 1 - y)*pad + rows[y]
+            rows[-1 - y] = (self._num_rings - 1 - y)*pad + rows[-1 - y]
+
+        for y in range(self._num_rings % 2, self._num_rings, 2):
+            rows[middle + y] = pad + rows[middle + y]
+            if y != 0: rows[middle - y] = pad + rows[middle - y]
+
+        # Join the rows together and return the string.
+        universe_ids = '\n'.join(rows)
+        return universe_ids

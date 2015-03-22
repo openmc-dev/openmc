@@ -12,10 +12,9 @@
 
   <!-- 4 x 4 assembly -->
   <lattice id="4">
-    <type>rectangular</type>
     <dimension>2 2</dimension>
     <lower_left>-1.0 -1.0</lower_left>
-    <width>1.0 1.0</width>
+    <pitch>1.0 1.0</pitch>
     <universes>
       1 2
       2 3
@@ -24,10 +23,9 @@
 
   <!-- 4 x 4 core -->
   <lattice id="6">
-    <type>rectangular</type>
     <dimension>2 2</dimension>
     <lower_left>-2.0 -2.0</lower_left>
-    <width>2.0 2.0</width>
+    <pitch>2.0 2.0</pitch>
     <universes>
       5 5
       5 5

@@ -5,7 +5,8 @@ module hdf5_summary
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: Cell, Surface, Universe, Lattice
+  use geometry_header, only: Cell, Surface, Universe, Lattice, RectLattice, &
+                             &HexLattice
   use global
   use material_header, only: Material
   use mesh_header,     only: StructuredMesh
@@ -67,7 +68,7 @@ contains
     end if
 
     ! Terminate access to the file.
-    call su % file_close() 
+    call su % file_close()
 
   end subroutine hdf5_write_summary
 
@@ -80,7 +81,7 @@ contains
     ! Write version information
     call su % write_data(VERSION_MAJOR, "version_major")
     call su % write_data(VERSION_MINOR, "version_minor")
-    call su % write_data(VERSION_RELEASE, "version_release") 
+    call su % write_data(VERSION_RELEASE, "version_release")
 
     ! Write current date and time
     call su % write_data(time_stamp(), "date_and_time")
@@ -88,7 +89,7 @@ contains
     ! Write MPI information
     call su % write_data(n_procs, "n_procs")
     call su % write_attribute_string("n_procs", "description", &
-         "Number of MPI processes") 
+         "Number of MPI processes")
 
   end subroutine hdf5_write_header
 
@@ -99,13 +100,11 @@ contains
   subroutine hdf5_write_geometry()
 
     integer          :: i, j, k, m
-    integer          :: n_x, n_y, n_z
-    integer          :: length(3)
     integer, allocatable :: lattice_universes(:,:,:)
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
-    type(Lattice),  pointer :: lat => null()
+    class(Lattice), pointer :: lat => null()
 
     ! Use H5LT interface to write number of geometry objects
     call su % write_data(n_cells, "n_cells", group="geometry")
@@ -174,7 +173,7 @@ contains
       case (CELL_LATTICE)
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(lattices(c % fill) % id, "lattice", &
+        call su % write_data(lattices(c % fill) % obj % id, "lattice", &
              group="geometry/cells/cell " // trim(to_str(c % id))) 
       end select
 
@@ -306,59 +305,112 @@ contains
 
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
-      lat => lattices(i)
+      lat => lattices(i) % obj
 
       ! Write internal OpenMC index for this lattice
       call su % write_data(i, "index", &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
-      select case(lat % type)
-      case (LATTICE_RECT)
+      select type (lat)
+      type is (RectLattice)
+        ! Write lattice type.
         call su % write_data("rectangular", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      case (LATTICE_HEX)
-        call su % write_data("hexagonal", "type", &
+
+        ! Write lattice dimensions, lower left corner, and pitch
+        call su % write_data(lat % n_cells, "dimension", length=3, &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      end select
 
-      ! Write lattice dimensions, lower left corner, and width of element
-      call su % write_data(lat % dimension, "dimension", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      call su % write_data(lat % lower_left, "lower_left", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      call su % write_data(lat % width, "width", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (lat % is_3d) then
+          call su % write_data(lat % lower_left, "lower_left", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % lower_left, "lower_left", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
-      call su % write_data(lat % outside, "outside", &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
-      ! Determine dimensions of lattice
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+        call su % write_data(lat % outer, "outer", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
-      ! Write lattice universes
-      allocate(lattice_universes(n_x, n_y, n_z))
-      do j = 1, n_x
-        do k = 1, n_y
-          do m = 1, n_z
-            lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+        ! Write lattice universes.
+        allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
+            &lat % n_cells(3)))
+        do j = 1, lat % n_cells(1)
+          do k = 1, lat % n_cells(2)
+            do m = 1, lat % n_cells(3)
+              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+            end do
           end do
         end do
-      end do
-      length = [n_x, n_y, n_z]
-      call su % write_data(lattice_universes, "universes", length=length, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      deallocate(lattice_universes)
+        call su % write_data(lattice_universes, "universes", &
+             length=lat % n_cells, &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        deallocate(lattice_universes)
 
+      type is (HexLattice)
+        ! Write lattice type.
+        call su % write_data("hexagonal", "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Write number of lattice cells.
+        call su % write_data(lat % n_rings, "n_rings", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(lat % n_rings, "n_axial", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Write lattice center, pitch and outer universe.
+        if (lat % is_3d) then
+          call su % write_data(lat % center, "center", length=3, & 
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % center, "center", length=2, & 
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+ 
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        call su % write_data(lat % outer, "outer", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Write lattice universes.
+        allocate(lattice_universes(2*lat % n_rings - 1, 2*lat % n_rings - 1, &
+            &lat % n_axial))
+        do j = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do m = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
+                ! This array position is never used; put a -1 to indicate this
+                lattice_universes(j,k,m) = -1
+                cycle
+              else if (j + k > 3*lat % n_rings - 1) then
+                ! This array position is never used; put a -1 to indicate this
+                lattice_universes(j,k,m) = -1
+                cycle
+              end if
+              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+            end do
+          end do
+        end do
+        call su % write_data(lattice_universes, "universes", &
+             &length=(/lat % n_axial, 2*lat % n_rings-1, 2*lat % n_rings-1/), &
+             &group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        deallocate(lattice_universes)
+      end select
     end do LATTICE_LOOP
 
   end subroutine hdf5_write_geometry
@@ -718,8 +770,6 @@ contains
          group="timing")
     call su % write_data(time_read_xs % elapsed, "time_read_xs", &
          group="timing")
-    call su % write_data(time_unionize % elapsed, "time_unionize", &
-         group="timing")
     call su % write_data(time_transport % elapsed, "time_transport", &
          group="timing")
     call su % write_data(time_bank % elapsed, "time_bank", &
@@ -744,8 +794,6 @@ contains
          "Total time elapsed for initialization (s)", group="timing")
     call su % write_attribute_string("time_read_xs", "description", &
          "Time reading cross-section libraries (s)", group="timing")
-    call su % write_attribute_string("time_unionize", "description", &
-         "Time unionizing energy grid (s)", group="timing")
     call su % write_attribute_string("time_transport", "description", &
          "Time in transport only (s)", group="timing")
     call su % write_attribute_string("time_bank", "description", &

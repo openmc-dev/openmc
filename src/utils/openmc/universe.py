@@ -541,7 +541,6 @@ class Universe(object):
             # If the cell was not already written, write it
             if not cell_id in WRITTEN_IDS:
                 WRITTEN_IDS[cell_id] = None
-                print '%s of %s' %(i,n), cell_id, cell._name
 
                 # Create XML subelement for this Cell
                 cell_subelement = cell.create_xml_subelement(xml_element)

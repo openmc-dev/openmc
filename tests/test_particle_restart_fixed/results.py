@@ -2,8 +2,9 @@
 
 import sys
 
-# import particle restart 
 sys.path.insert(0, '../../src/utils')
+
+# import particle restart 
 import particle_restart as pr
 
 # read in particle restart file

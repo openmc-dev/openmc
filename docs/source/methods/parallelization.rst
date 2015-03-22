@@ -61,7 +61,7 @@ one master process that controls the scheduling of work and the remaining
 processes wait to receive work from the master, process the work, and then send
 their results to the master at the end of the simulation (or a source iteration
 in the case of an eigenvalue calculation). This idea is illustrated in
-:ref:`Figure 1 <figure-master-slave>`.
+:ref:`figure-master-slave`.
 
 .. _figure-master-slave:
 
@@ -69,7 +69,7 @@ in the case of an eigenvalue calculation). This idea is illustrated in
     :align: center
     :figclass: align-center
 
-    **Figure 1**: Communication pattern in master-slave algorithm.
+    Communication pattern in master-slave algorithm.
 
 Eigenvalue calculations are slightly more difficult to parallelize than fixed
 source calculations since it is necessary to converge on the fission source
@@ -117,8 +117,7 @@ Nearest Neighbors Algorithm
 To reduce the amount of communication required in a fission bank synchronization
 algorithm, it is desirable to move away from the typical master-slave algorithm
 to an algorithm whereby the compute nodes communicate with one another only as
-needed. This concept is illustrated in :ref:`Figure 2
-<figure-nearest-neighbor>`.
+needed. This concept is illustrated in :ref:`figure-nearest-neighbor`.
 
 .. _figure-nearest-neighbor:
 
@@ -126,7 +125,7 @@ needed. This concept is illustrated in :ref:`Figure 2
     :align: center
     :figclass: align-center
 
-    **Figure 2**: Communication pattern in nearest neighbor algorithm.
+    Communication pattern in nearest neighbor algorithm.
 
 Since the source sites for each cycle are sampled from the fission sites banked
 from the previous cycle, it is a common occurrence for a fission site to be
@@ -196,8 +195,8 @@ and :math:`p_3` has 245. Note that the total number of sampled sites is 1000 as
 needed. For each node to have the same number of source sites, :math:`p_0` needs
 to send its right-most 10 sites to :math:`p_1`, and :math:`p_2` needs to send
 its left-most 25 sites to :math:`p_1` and its right-most 5 sites to
-:math:`p_3`. A schematic of this example is shown in :ref:`Figure 3
-<figure-neighbor-example>`. The data local to each node is given a different
+:math:`p_3`. A schematic of this example is shown in
+:ref:`figure-neighbor-example`. The data local to each node is given a different
 hatching, and the cross-hatched regions represent source sites that are
 communicated between adjacent nodes.
 
@@ -207,7 +206,7 @@ communicated between adjacent nodes.
     :align: center
     :figclass: align-center
 
-    **Figure 3**: Example of nearest neighbor algorithm.
+    Example of nearest neighbor algorithm.
 
 .. _master-slave-cost:
 
@@ -600,9 +599,9 @@ is actually independent of the number of nodes:
     E \left [ \Lambda_{j_{\text{max}}} \right ] = \sqrt{ \frac{N\sigma^2}{2\pi
     k^2}}.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [Troubetzkoy] E. Troubetzkoy, H. Steinberg, and M. Kalos, "Monte Carlo
    Radiation Penetration Calculations on a Parallel Computer,"

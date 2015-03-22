@@ -681,7 +681,7 @@ def get_opencg_lattice(openmc_lattice):
     # Create an OpenCG Lattice to represent this OpenMC Lattice
     name = openmc_lattice._name
     dimension = openmc_lattice._dimension
-    width = openmc_lattice._width
+    pitch = openmc_lattice._pitch
     lower_left = openmc_lattice._lower_left
     universes = openmc_lattice._universes
 
@@ -699,16 +699,16 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[x][y][z]._id
+                universe_id = universes[x][dimension[1]-y-1][z]._id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
     opencg_lattice.setDimension(dimension)
-    opencg_lattice.setWidth(width)
+    opencg_lattice.setWidth(pitch)
     opencg_lattice.setUniverses(universe_array)
 
     offset = np.array(lower_left, dtype=np.float64) - \
-                     ((np.array(width, dtype=np.float64) * \
+                     ((np.array(pitch, dtype=np.float64) * \
                        np.array(dimension, dtype=np.float64))) / -2.0
     opencg_lattice.setOffset(offset)
 
@@ -764,9 +764,9 @@ def get_openmc_lattice(opencg_lattice):
                              ((np.array(width, dtype=np.float64) * \
                                np.array(dimension, dtype=np.float64))) / -2.0
 
-    openmc_lattice = openmc.Lattice(lattice_id=lattice_id)
+    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
     openmc_lattice.set_dimension(dimension)
-    openmc_lattice.set_width(width)
+    openmc_lattice.set_pitch(width)
     openmc_lattice.set_universes(universe_array)
     openmc_lattice.set_lower_left(lower_left)
 
@@ -829,6 +829,14 @@ def get_openmc_geometry(opencg_geometry):
     OPENCG_UNIVERSES.clear()
     OPENMC_LATTICES.clear()
     OPENCG_LATTICES.clear()
+
+    # Make the entire geometry "compatible" before assigning auto IDs
+    universes = opencg_geometry.getAllUniverses()
+    for universe_id, universe in universes.items():
+      if not isinstance(universe, opencg.Lattice):
+        make_opencg_cells_compatible(universe)
+
+    opencg_geometry.assignAutoIds()
 
     opencg_root_universe = opencg_geometry._root_universe
     openmc_root_universe = get_openmc_universe(opencg_root_universe)

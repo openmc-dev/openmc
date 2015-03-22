@@ -51,6 +51,46 @@ files are called:
 * ``plots.xml``
 * ``cmfd.xml``
 
+--------------------
+Validating XML Files
+--------------------
+
+Input files can be checked before executing OpenMC using the ``xml_validate``
+script. It is located in ``src/utils/xml_validate.py`` in the source code or in
+``bin/xml_validate`` in the install directory.
+
+Two command line arguments can be set when running ``xml_validate``:
+
+* ``-i``, ``--input-path`` - Location of OpenMC input files.
+  *Default*: current working directory
+* ``-r``, ``--relaxng-path`` - Location of OpenMC RelaxNG files.
+  *Default*: None
+
+If the RelaxNG path is not set, ``xml_validate`` will search for these files
+because it expects that the user is either running the script located in the
+install directory ``bin`` folder or in ``src/utils``. Once executed, it will
+match OpenMC XML files with their RelaxNG schema and check if they are valid.
+Below is a table of the messages that will be printed after each file is
+checked.
+
+========================  ===================================
+Message                   Description
+========================  ===================================
+[XML ERROR]               Cannot parse XML file.
+[NO RELAXNG FOUND]        No RelaxNG file found for XML file.
+[NOT VALID]               XML file does not match RelaxNG.
+[VALID]                   XML file matches RelaxNG.
+========================  ===================================
+
+As an example, if OpenMC is installed in the directory
+``/opt/openmc/0.6.2`` and the current working directory is where
+OpenMC XML input files are located, they can be validated using
+the following command:
+
+.. code-block:: bash
+
+   /opt/openmc/0.6.2/bin/xml_validate
+
 --------------------------------------
 Settings Specification -- settings.xml
 --------------------------------------
@@ -134,13 +174,15 @@ should be performed. It has the following attributes/sub-elements:
 -------------------------
 
 The ``<energy_grid>`` element determines the treatment of the energy grid during
-a simulation. Setting this element to "nuclide" will cause OpenMC to use a
-nuclide's energy grid when determining what points to interpolate between for
-determining cross sections (i.e. non-unionized energy grid). To use a unionized
-energy grid, set this element to "union". Note that the unionized energy grid
-treatment is slightly different than that employed in Serpent.
+a simulation. The valid options are "nuclide" and "logarithm". Setting this
+element to "nuclide" will cause OpenMC to use a nuclide's energy grid when
+determining what points to interpolate between for determining cross sections
+(i.e. non-unionized energy grid). Setting this element to "logarithm" causes
+OpenMC to use a logarithmic mapping technique described in LA-UR-14-24530_.
 
-  *Default*: union
+  *Default*: logarithm
+
+.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 
 ``<entropy>`` Element
 ---------------------
@@ -181,6 +223,16 @@ performed. It has the following attributes/sub-elements:
     The number of particles to simulate per batch.
 
     *Default*: None
+
+``<log_grid_bins>`` Element
+---------------------------
+
+The ``<log_grid_bins>`` element indicates the number of bins to use for the
+logarithmic-mapped energy grid. Using more bins will result in energy grid
+searches over a smaller range at the expense of more memory. The default is
+based on the recommended value in LA-UR-14-24530_.
+
+  *Default*: 8000
 
 .. _natural_elements:
 
@@ -728,7 +780,7 @@ The following quadratic surfaces can be modeled:
 Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :id:
-    A unique integer that can be used to identify the surface.
+    A unique integer that can be used to identify the cell.
 
     *Default*: None
 
@@ -790,19 +842,12 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 ---------------------
 
 The ``<lattice>`` can be used to represent repeating structures (e.g. fuel pins
-in an assembly) or other geometry which naturally fits into a two- or
-three-dimensional structured mesh. Each cell within the lattice is filled with a
-specified universe. A ``<lattice>`` accepts the following attributes or
-sub-elements:
+in an assembly) or other geometry which fits onto a rectilinear grid. Each cell
+within the lattice is filled with a specified universe. A ``<lattice>`` accepts
+the following attributes or sub-elements:
 
   :id:
-    A unique integer that can be used to identify the surface.
-
-  :type:
-    A string indicating the arrangement of lattice cells. Currently, the only
-    accepted option is "rectangular".
-
-    *Default*: rectangular
+    A unique integer that can be used to identify the lattice.
 
   :dimension:
     Two or three integers representing the number of lattice cells in the x- and
@@ -816,21 +861,111 @@ sub-elements:
 
     *Default*: None
 
-  :width:
-    The width of the lattice cell in the x- and y- (and z-) directions.
+  :pitch:
+    If the lattice is 3D, then three real numbers that express the distance
+    between the centers of lattice cells in the x-, y-, and z- directions.  If
+    the lattice is 2D, then omit the third value.
 
     *Default*: None
 
-  :outside:
-    The unique integer identifier of a material that is to be used to fill all
-    space outside of the lattice. This element is optional.
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
 
-    *Default*: The region outside the defined lattice is treated as void.
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
 
     *Default*: None
+
+Here is an example of a properly defined 2d rectangular lattice:
+
+.. code-block:: xml
+
+    <lattice id="10" dimension="3 3" outer="1">
+        <lower_left> -1.5 -1.5 </lower_left>
+        <pitch> 1.0 1.0 </pitch>
+        <universes>
+          2 2 2
+          2 1 2
+          2 2 2
+        </universes>
+    </lattice>
+
+``<hex_lattice>`` Element
+-------------------------
+
+The ``<hex_lattice>`` can be used to represent repeating structures (e.g. fuel
+pins in an assembly) or other geometry which naturally fits onto a hexagonal
+grid or hexagonal prism grid. Each cell within the lattice is filled with a
+specified universe. This lattice uses the "flat-topped hexagon" scheme where two
+of the six edges are perpendicular to the y-axis.  A ``<hex_lattice>`` accepts
+the following attributes or sub-elements:
+
+  :id:
+    A unique integer that can be used to identify the lattice.
+
+  :n_rings:
+    An integer representing the number of radial ring positions in the xy-plane.
+    Note that this number includes the degenerate center ring which only has one
+    element.
+
+    *Default*: None
+
+  :n_axial:
+    An integer representing the number of positions along the z-axis.  This
+    element is optional.
+
+    *Default*: None
+
+  :center:
+    The coordinates of the center of the lattice. If the lattice does not have
+    axial sections then only the x- and y-coordinates are specified.
+
+    *Default*: None
+
+  :pitch:
+    If the lattice is 3D, then two real numbers that express the distance
+    between the centers of lattice cells in the xy-plane and along the z-axis,
+    respectively.  If the lattice is 2D, then omit the second value.
+
+    *Default*: None
+
+  :outer:
+    The unique integer identifier of a universe that will be used to fill all
+    space outside of the lattice.  The universe will be tiled repeatedly as if
+    it were placed in a lattice of infinite size.  This element is optional.
+
+    *Default*: An error will be raised if a particle leaves a lattice with no
+    outer universe.
+
+  :universes:
+    A list of the universe numbers that fill each cell of the lattice.
+
+    *Default*: None
+
+Here is an example of a properly defined 2d hexagonal lattice:
+
+.. code-block:: xml
+
+    <hex_lattice id="10" n_rings="3" outer="1">
+        <center> 0.0 0.0 </center>
+        <pitch> 1.0 </pitch>
+        <universes>
+                  202
+               202   202 
+            202   202   202
+               202   202
+            202   101   202
+               202   202
+            202   202   202
+               202   202
+                  202
+        </universes>
+    </hex_lattice>
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 
@@ -1021,6 +1156,16 @@ The ``<tally>`` element accepts the following sub-elements:
         <nuclides>U-235 Pu-239 total</nuclides>
 
     *Default*: total
+
+  :estimator:
+    The estimator element is used to force the use of either ``analog`` or
+    ``tracklength`` tally estimation.  ''analog'' is generally less efficient
+    though it can be used with every score type.  ''tracklength'' is generally
+    the most efficient, though its usage is restricted to tallies that do not
+    score particle information which requires a collision to have occured, such
+    as a scattering tally which utilizes outgoing energy filters.
+
+    *Default*: ``tracklength`` but will revert to analog if necessary.
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
@@ -1572,3 +1717,15 @@ into MATLAB using PETSc-MATLAB utilities. This option can be
 turned on with "true" and off with "false".
 
   *Default*: false
+
+------------------------------------
+ERSN-OpenMC Graphical User Interface
+------------------------------------
+
+A third-party Java-based user-friendly graphical user interface for creating XML
+input files called ERSN-OpenMC_ is developed and maintained by members of the
+Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
+The GUI also allows one to automatically download prerequisites for installing and
+running OpenMC.
+
+.. _ERSN-OpenMC: https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC

@@ -6,7 +6,7 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use plot_header,      only: ObjectPlot
@@ -26,12 +26,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),      allocatable, target :: cells(:)
-  type(Universe),  allocatable, target :: universes(:)
-  type(Lattice),   allocatable, target :: lattices(:)
-  type(Surface),   allocatable, target :: surfaces(:)
-  type(Material),  allocatable, target :: materials(:)
-  type(ObjectPlot),allocatable, target :: plots(:)
+  type(Cell),              allocatable, target :: cells(:)
+  type(Universe),          allocatable, target :: universes(:)
+  type(LatticeContainer),  allocatable, target :: lattices(:)
+  type(Surface),           allocatable, target :: surfaces(:)
+  type(Material),          allocatable, target :: materials(:)
+  type(ObjectPlot),        allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -76,11 +76,6 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
-
-  ! Unionized energy grid
-  integer :: grid_method ! how to treat the energy grid
-  integer :: n_grid      ! number of points on unionized grid
-  real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
@@ -223,7 +218,6 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for unionizing energy grid
   type(Timer) :: time_bank          ! timer for fission bank synchronization
   type(Timer) :: time_bank_sample   ! timer for fission bank sampling
   type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
@@ -461,9 +455,6 @@ contains
     end if
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
-
-    ! Deallocate energy grid
-    if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

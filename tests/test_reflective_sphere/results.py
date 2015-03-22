@@ -2,6 +2,8 @@
 
 import sys
 
+sys.path.insert(0, '../../src/utils')
+
 # import statepoint
 import openmc.statepoint as statepoint
 

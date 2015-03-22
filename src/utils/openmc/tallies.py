@@ -51,8 +51,12 @@ class Filter(object):
         if self._type != filter2._type:
             return False
 
+        # Check number of bins
+        elif len(self._bins) != len(filter2._bins):
+            return False
+
         # Check bin edges
-        elif list(self._bins) != list(filter2._bins):
+        elif not np.allclose(self._bins, filter2._bins):
             return False
 
         else:

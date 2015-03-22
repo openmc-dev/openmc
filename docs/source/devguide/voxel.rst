@@ -4,9 +4,7 @@
 Voxel Plot Binary File Specifications
 =====================================
 
-----------
-Revision 1
-----------
+The current revision of the voxel plot binary file is 1.
 
 **integer(4) n_voxels_x**
 

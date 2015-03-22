@@ -17,7 +17,7 @@ element cmfd {
     (element energy { list { xsd:double+ } } |
       attribute energy { list { xsd:double+ } })?
   } &
-  
+
   element norm { xsd:double }? &
 
   element feedback { xsd:boolean }? &
@@ -50,9 +50,9 @@ element cmfd {
 
   element shift { xsd:double }? &
 
-  element ktol { xsd: double }? &
+  element ktol { xsd:double }? &
 
-  element stol { xsd: double }? &
+  element stol { xsd:double }? &
 
   element gauss_seidel_tolerance { list { xsd:double+ } }?
 

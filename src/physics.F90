@@ -394,7 +394,7 @@ contains
 
       ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
-           p % mu, p % wgt)
+           p % mu, p % wgt, materials(p % material) % p0(i_nuc_mat))
       p % event_MT = rxn % MT
 
     end if
@@ -416,16 +416,17 @@ contains
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(inout)  :: wgt
+    real(8), intent(out)    :: mu_lab ! cosine of polar angle in lab system
     logical, intent(in)     :: iso_lab
 
     real(8) :: awr       ! atomic weight ratio of target
     real(8) :: mu_cm     ! cosine of polar angle in center-of-mass
-    real(8), intent(out) :: mu_lab ! cosine of polar angle in lab system
     real(8) :: phi       ! azimuthal angle
     real(8) :: vel       ! magnitude of velocity
     real(8) :: v_n(3)    ! velocity of neutron
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
+    real(8) :: uvw_in(3) ! incoming direction
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
     type(Nuclide), pointer, save :: nuc => null()
 !$omp threadprivate(nuc)
@@ -438,6 +439,9 @@ contains
 
     ! Neutron velocity in LAB
     v_n = vel * uvw
+
+    ! incoming direction
+    uvw_in(:) = uvw(:)
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
@@ -474,18 +478,17 @@ contains
     vel = sqrt(E)
 
     ! compute cosine of scattering angle in LAB frame by taking dot product of
-    ! neutron's pre- and post-collision angle
+    ! neutron's pre- and post-collision unit vectors
     if (iso_lab) then
-      mu_lab = TWO * prn() - ONE
+      uvw(1) = TWO * prn() - ONE
       phi = TWO * PI * prn()
-      uvw = [mu_lab, cos(phi)*sqrt(ONE - mu_lab*mu_lab), &
-        & sin(phi)*sqrt(ONE - mu_lab*mu_lab)]
+      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
     else
-      ! Set energy and direction of particle in LAB frame
       uvw = v_n / vel
     end if
 
-    mu_lab = dot_product(uvw, v_n) / vel
+    mu_lab = dot_product(uvw_in, uvw)
 
   end subroutine elastic_scatter
 
@@ -1293,7 +1296,7 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt)
+  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt, iso_lab)
 
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
@@ -1301,6 +1304,7 @@ contains
     real(8), intent(inout)  :: uvw(3) ! directional cosines
     real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
     real(8), intent(inout)  :: wgt    ! particle weight
+    logical, intent(in)     :: iso_lab
 
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
@@ -1308,9 +1312,12 @@ contains
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
     real(8) :: yield       ! neutron yield
+    real(8) :: uvw_in(3)   ! incoming direction
+    real(8) :: phi         ! azimuthal angle
 
-    ! copy energy of neutron
+    ! copy energy, direction of neutron
     E_in = E
+    uvw_in(:) = uvw(:)
 
     ! determine A and Q
     A = nuc % awr
@@ -1344,8 +1351,17 @@ contains
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
-    ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+    ! compute cosine of scattering angle in LAB frame by taking dot product of
+    ! neutron's pre- and post-collision unit vectors
+    if (iso_lab) then
+      uvw(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      mu = dot_product(uvw_in, uvw)
+    else
+      uvw = rotate_angle(uvw_in, mu)      
+    end if
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then

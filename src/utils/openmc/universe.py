@@ -538,12 +538,7 @@ class Universe(object):
         n = len(self._cells.items())
         for i,(cell_id, cell) in enumerate(self._cells.items()):
 
-            # Determine if XML element already contains subelement for this Cell
-            #path = './cell[@id=\'{0}\']'.format(cell_id)
-            #test = xml_element.find(path)
-
-            # If the element does not contain the Cell subelement, then add it
-            #if test is None:
+            # If the cell was not already written, write it
             if not cell_id in WRITTEN_IDS:
                 WRITTEN_IDS[cell_id] = None
                 print '%s of %s' %(i,n), cell_id, cell._name

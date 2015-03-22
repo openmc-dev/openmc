@@ -92,10 +92,10 @@ class Material(object):
                   'ID {0}'.format(material_id)
             raise ValueError(msg)
 
-        #elif material_id in MATERIAL_IDS:
-        #    msg = 'Unable to set Material ID to {0} since a Material with ' \
-        #          'this ID was already initialized'.format(material_id)
-        #    raise ValueError(msg)
+        elif material_id in MATERIAL_IDS:
+            msg = 'Unable to set Material ID to {0} since a Material with ' \
+                  'this ID was already initialized'.format(material_id)
+            raise ValueError(msg)
 
         elif material_id < 0:
             msg = 'Unable to set Material ID to {0} since it must be a ' \

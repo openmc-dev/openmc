@@ -535,7 +535,6 @@ class Universe(object):
     def create_xml_subelement(self, xml_element):
 
         # Iterate over all Cells
-        n = len(self._cells.items())
         for cell_id, cell in self._cells.items():
 
             # If the cell was not already written, write it

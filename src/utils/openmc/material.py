@@ -76,9 +76,7 @@ class Material(object):
 
         # If the Material already has an ID, remove it from global list
         if not self._id is None:
-            try:
-                MATERIAL_IDS.remove(self._id)
-            except: pass
+            MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
             global AUTO_MATERIAL_ID

@@ -77,6 +77,7 @@ class SettingsFile(object):
         self._dd_mesh_upper_right = None
         self._dd_nodemap = None
         self._dd_allow_leakage = False
+        self._dd_count_interactions = False
 
         self._settings_file = ET.Element("settings")
         self._eigenvalue_element = None
@@ -798,7 +799,8 @@ class SettingsFile(object):
                   'mesh'.format(len(nodemap))
             raise ValueError(msg)
 
-        self._dd_mesh_dimension = dimension
+        self._dd_nodemap = nodemap
+
 
     def set_dd_allow_leakage(self, allow):
 
@@ -812,6 +814,21 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         self._dd_allow_leakage = allow
+
+
+    def set_dd_count_interactions(self, interactions):
+
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        if not type(interactions) == bool:
+            msg = 'Unable to set DD count_interactions {0} which is ' \
+                  'not a Python bool'.format(dimension)
+            raise ValueError(msg)
+
+        self._dd_count_interactions = interactions
+
 
     def create_eigenvalue_subelement(self):
 
@@ -1182,7 +1199,7 @@ class SettingsFile(object):
 
             if not self._dd_nodemap is None:
                 subelement = ET.SubElement(element, "nodemap")
-                subsubelement.text = ' '.join([str(n) for n in self._dd_nodemap])
+                subelement.text = ' '.join([str(n) for n in self._dd_nodemap])
 
             subelement = ET.SubElement(element, "allow_leakage")
             if self._dd_allow_leakage:
@@ -1190,6 +1207,12 @@ class SettingsFile(object):
             else:
                 subelement.text = 'false'
                 
+            subelement = ET.SubElement(element, "count_interactions")
+            if self._dd_count_interactions:
+                subelement.text = 'true'
+            else:
+                subelement.text = 'false'
+
 
     def export_to_xml(self):
 

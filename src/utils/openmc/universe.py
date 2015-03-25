@@ -15,6 +15,8 @@ import abc
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
+# A dictionary for storing IDs of cell elements that have already been written,
+# used to optimize the writing process
 WRITTEN_IDS = {}
 
 def reset_auto_cell_id():

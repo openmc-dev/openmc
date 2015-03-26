@@ -2556,11 +2556,11 @@ contains
     ! this particular form comes from the NJOY2012 manual
     this % dxs_n = sig_lam * &
       & ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-      & - (ONE - Gam_n_n / Gam_t_n)) * psi(theta, x) &
+      & - (ONE - Gam_n_n / Gam_t_n)) * psi(tope%T, theta, x) &
       & + sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-      & * chi(theta, x))
+      & * chi(tope%T, theta, x))
 
-    sig_lam_Gam_t_n_psi = sig_lam * psi(theta, x) / Gam_t_n
+    sig_lam_Gam_t_n_psi = sig_lam * psi(tope%T, theta, x) / Gam_t_n
 
     if (this % Gam_g > ZERO) then
       this % dxs_g = sig_lam_Gam_t_n_psi * this % Gam_g
@@ -2725,32 +2725,41 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function psi(theta, x) result(psi_val)
+  function psi(T, theta, x) result(psi_val)
 
+    real(8)    :: T       ! temperature [K]
     real(8)    :: theta   ! psi argument
     real(8)    :: x       ! psi argument
     real(8)    :: psi_val ! calculated value of psi
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
 
-    ! evaluate the W (Faddeeva) function
-    select case (w_eval)
+    if (T > ZERO) then
 
-    ! call S.G. Johnson's Faddeeva evaluation
-    case (MIT_W)
-      relerr = 1.0e-6
-      w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
-      psi_val = SQRT_PI * HALF * theta &
-        & * real(real(w_val, 8), 8)
+      ! evaluate the W (Faddeeva) function
+      select case (w_eval)
 
-    ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-    case (QUICK_W)
-      psi_val = SQRT_PI * HALF * theta &
-        & * real(real(quickw(cmplx(theta * x * HALF, theta * HALF, 8)), 8), 8)
+        ! call S.G. Johnson's Faddeeva evaluation
+      case (MIT_W)
+        relerr = 1.0e-6
+        w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
+        psi_val = SQRT_PI * HALF * theta &
+          & * real(real(w_val, 8), 8)
 
-    case default
-      call fatal_error('Unrecognized W function evaluation method')
-    end select
+        ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
+      case (QUICK_W)
+        psi_val = SQRT_PI * HALF * theta &
+          & * real(real(quickw(cmplx(theta * x * HALF, theta * HALF, 8)), 8), 8)
+
+      case default
+        call fatal_error('Unrecognized W function evaluation method')
+      end select
+
+    else
+
+      psi_val = ONE / (ONE + x*x)
+
+    end if
 
   end function psi
 
@@ -2760,34 +2769,43 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function chi(theta, x) result(chi_val)
+  function chi(T, theta, x) result(chi_val)
 
+    real(8)    :: T       ! temperature [K]
     real(8)    :: theta   !
     real(8)    :: x       !
     real(8)    :: chi_val ! calculated value of chi
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
-    ! evaluate the W (Faddeeva) function
-    select case (w_eval)
+    if (T > ZERO) then
 
-    ! S.G. Johnson's Faddeeva evaluation
-    case (MIT_W)
+      ! evaluate the W (Faddeeva) function
+      select case (w_eval)
 
-      relerr = 1.0e-6
-      w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
-      chi_val = SQRT_PI * HALF * theta &
-        & * real(aimag(w_val), 8)
+        ! S.G. Johnson's Faddeeva evaluation
+      case (MIT_W)
 
-    ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
-    case (QUICK_W)
+        relerr = 1.0e-6
+        w_val = faddeeva_w(cmplx(theta * x * HALF, theta * HALF, 8), relerr)
+        chi_val = SQRT_PI * HALF * theta &
+          & * real(aimag(w_val), 8)
 
-      chi_val = SQRT_PI * HALF * theta &
-        & * real(aimag(quickw(cmplx(theta * x * HALF, theta * HALF, 8))), 8)
+        ! QUICKW Faddeeva evaluation from Argonne (also used in NJOY - NJOY manual)
+      case (QUICK_W)
 
-    case default
-      call fatal_error('Unrecognized W function evaluation method')
-    end select
+        chi_val = SQRT_PI * HALF * theta &
+          & * real(aimag(quickw(cmplx(theta * x * HALF, theta * HALF, 8))), 8)
+
+      case default
+        call fatal_error('Unrecognized W function evaluation method')
+      end select
+
+    else
+
+      chi_val = x / (ONE + x*x)
+
+    end if
 
   end function chi
 

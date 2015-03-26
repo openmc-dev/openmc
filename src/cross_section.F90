@@ -53,7 +53,7 @@ contains
 
     ! Find energy index on global or material unionized grid
     if (grid_method == GRID_MAT_UNION) &
-      & call find_energy_index(p % E, p % material)
+         call find_energy_index(p % E, p % material)
 
     ! Determine if this material has S(a,b) tables
     check_sab = (mat % n_sab > 0)

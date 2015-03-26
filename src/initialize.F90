@@ -115,9 +115,7 @@ contains
         continue
       case (GRID_MAT_UNION)
         call time_unionize % start()
-!$omp critical
         call unionized_grid()
-!$omp end critical
         call time_unionize % stop()
       case (GRID_LOGARITHM)
         call logarithmic_grid()

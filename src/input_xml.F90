@@ -213,8 +213,11 @@ contains
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('material-union')
+    case ('material-union', 'union')
       grid_method = GRID_MAT_UNION
+      if (trim(temp_str) == 'union') &
+           call warning('Energy grids will be unionized by material.  Global&
+           & energy grid unionization is no longer an allowed option.')
     case ('logarithm', 'logarithmic', 'log')
       grid_method = GRID_LOGARITHM
     case default

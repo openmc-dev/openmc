@@ -680,6 +680,9 @@ contains
     read(rec(12:22), '(E11.0)') tope % AP(i_ER)
     call tope % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   tope % NLS(i_ER)
+    if (tope % NLS(i_ER) > 3) &
+         call fatal_error('SLBW parameters given for a resonance higher than&
+         & d-wave')
 
     ! allocate SLBW resonance vectors for each l
     allocate(tope % slbw_resonances(tope % NLS(i_ER)))
@@ -772,6 +775,9 @@ contains
     read(rec(12:22), '(E11.0)') tope % AP(i_ER)
     call tope % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   tope % NLS(i_ER)
+    if (tope % NLS(i_ER) > 3) &
+         call fatal_error('MLBW parameters given for a resonance higher than&
+         & d-wave')
 
     ! allocate MLBW resonance vectors for each l
     allocate(tope % mlbw_resonances(tope % NLS(i_ER)))
@@ -862,6 +868,9 @@ contains
     read(rec(12:22), '(E11.0)') tope % AP(i_ER)
     call tope % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   tope % NLS(i_ER)
+    if (tope % NLS(i_ER) > 3) &
+         call fatal_error('R-M parameters given for a resonance higher than&
+         & d-wave')
 
     ! allocate Reich-Moore resonance vectors for each l
     allocate(tope % rm_resonances(tope % NLS(i_ER)))
@@ -941,6 +950,9 @@ contains
     call tope % channel_radius(i_ER)
     read(rec(23:33), '(I11)')   tope % LSSF
     read(rec(45:55), '(I11)')   tope % NLS(i_ER)
+    if (tope % NLS(i_ER) > 3) &
+         call fatal_error('URR parameters given for a spin sequence higher than&
+         & d-wave')
 
     ! allocate number of total angular momenta values for each l
     allocate(tope % NJS(tope % NLS(i_ER)))

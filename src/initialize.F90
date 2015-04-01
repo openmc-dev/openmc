@@ -173,9 +173,9 @@ contains
 
   subroutine initialize_mpi()
 
-    integer                   :: bank_blocks(4)  ! Count for each datatype
-    integer                   :: bank_types(4)   ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer                   :: bank_blocks(5)  ! Count for each datatype
+    integer                   :: bank_types(5)   ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(5)    ! Displacements
     integer                   :: temp_type       ! temporary derived type
     integer                   :: result_blocks(1) ! Count for each datatype
     integer                   :: result_types(1)  ! Datatypes
@@ -207,18 +207,19 @@ contains
     ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt,           bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz,           bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw,           bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,             bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % delayed_group, bank_disp(5), mpi_err)
 
     ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 3, 3, 1 /)
-    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
+    bank_blocks = (/ 1, 3, 3, 1, 1 /)
+    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -291,6 +292,8 @@ contains
          c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Determine type for integer(8)
     hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)

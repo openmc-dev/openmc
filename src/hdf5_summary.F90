@@ -546,6 +546,10 @@ contains
           call su % write_data("energyout", "type_name", &
           group="tallies/tally " // trim(to_str(t % id)) &
                 // "/filter " // trim(to_str(j)))
+        case(FILTER_DELAYGROUP)
+          call su % write_data("delaygroup", "type_name", &
+          group="tallies/tally " // trim(to_str(t % id)) &
+                // "/filter " // trim(to_str(j)))
         end select
 
       end do FILTER_LOOP

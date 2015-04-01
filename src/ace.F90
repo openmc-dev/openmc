@@ -5,7 +5,7 @@ module ace
   use constants
   use endf,             only: reaction_name, is_fission, is_disappearance
   use error,            only: fatal_error, warning
-  use fission,          only: nu_total
+  use fission,          only: nu_total, nu_delayed
   use global
   use list_header,      only: ListInt
   use material_header,  only: Material
@@ -378,6 +378,10 @@ contains
         call generate_nu_fission(nuc)
       end if
 
+      if (nuc % fissionable .and. .not. data_0K) then
+        call generate_delay_nu_fission(nuc)
+      end if
+
     case (ACE_THERMAL)
       sab => sab_tables(i_table)
       sab % name = name
@@ -461,6 +465,7 @@ contains
       allocate(nuc % fission(NE))
       allocate(nuc % nu_fission(NE))
       allocate(nuc % absorption(NE))
+      allocate(nuc % delay_nu_fission(NE))
 
       ! initialize cross sections
       nuc % total      = ZERO
@@ -468,6 +473,7 @@ contains
       nuc % fission    = ZERO
       nuc % nu_fission = ZERO
       nuc % absorption = ZERO
+      nuc % delay_nu_fission = ZERO
 
       ! Read data from XSS -- only the energy grid, elastic scattering and heating
       ! cross section values are actually read from here. The total and absorption
@@ -635,6 +641,23 @@ contains
 
       ! Allocate space for secondary energy distribution
       NPCR = NXS(8)
+
+      ! Check to make sure nuclide does not have more than the maximum number
+      ! of delayed groups
+      if (NPCR > MAX_DELAYED_GROUPS) then
+        call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
+          &// " delayed groups while the maximum number of delayed groups" &
+          &// " set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+      end if
+
+      if (n_delayed_groups == 0) then
+        n_delayed_groups = NPCR
+      else if (n_delayed_groups /= NPCR) then
+        call fatal_error("Encountered nuclides with different numbers of " &
+          &// " delayed groups. Nuclides with " // trim(to_str(n_delayed_groups)) &
+          &// " and " // trim(to_str(NPCR)) // " delayed groups encountered.")
+      end if
+
       nuc % n_precursor = NPCR
       allocate(nuc % nu_d_edist(NPCR))
 
@@ -1385,6 +1408,33 @@ contains
     end do
 
   end subroutine generate_nu_fission
+
+!===============================================================================
+! GENERATE_DELAYED_NU_FISSION precalculates the microscopic nu-fission cross section for
+! a given nuclide. This is done so that the nu_total function does not need to
+! be called during cross section lookups.
+!===============================================================================
+
+  subroutine generate_delay_nu_fission(nuc)
+
+    type(Nuclide), pointer :: nuc
+
+    integer :: i        ! index on nuclide energy grid
+    real(8) :: E        ! energy
+    real(8) :: nu_delay ! # of neutrons per fission
+
+    do i = 1, nuc % n_grid
+      ! determine energy
+      E = nuc % energy(i)
+
+      ! determine total nu at given energy
+      nu_delay = nu_delayed(nuc, E)
+
+      ! determine delay-nu-fission microscopic cross section
+      nuc % delay_nu_fission(i) = nu_delay * nuc % fission(i)
+    end do
+
+  end subroutine generate_delay_nu_fission
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

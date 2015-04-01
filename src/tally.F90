@@ -14,6 +14,9 @@ module tally
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use fission,          only: nu_total, nu_delayed
+  use output,           only: write_message
+  use interpolation,    only: interpolate_tab1
 
 #ifdef MPI
   use mpi
@@ -42,12 +45,18 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: n                    ! loop index for legendre order
     integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: l                    ! scoring bin loop index, allowing for changing
-                                    ! position during the loop
+    integer :: l                    ! scoring bin loop index, allowing for
+                                    ! changing position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_index          ! scoring bin index
+    integer :: lc                   ! pointer for interpolating in precursor
+                                    ! yield table
+    integer :: NR                   ! number of interpolation regions
+    integer :: NE                   ! number of interpolation energies
+    integer :: d                    ! delayed neutron index
+    real(8) :: yield                ! delayed neutron yield
     real(8) :: score                ! analog tally score
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
@@ -526,6 +535,107 @@ contains
                 micro_xs(p % event_nuclide) % kappa_fission / &
                 micro_xs(p % event_nuclide) % absorption
             end if
+          case (SCORE_DELAY_NU_FISSION)
+
+            if (survival_biasing) then
+              ! No fission events occur if survival biasing is on -- need to
+              ! calculate fraction of absorptions that would have resulted in
+              ! delayed-nu-fission
+
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_delayed_eout(p, t, score_index)
+
+              else
+
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple delayed
+                ! neutron groups will produce a fractional amount of neutrons on
+                ! each collision, multiple delayed group bins need to be scored to.
+
+                if (micro_xs(p % event_nuclide) % fission > ZERO) then
+
+                  if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+
+                    lc = 1
+                    do d = 1, n_delayed_groups
+
+                      ! determine number of interpolation regions and energies
+                      NR = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 1))
+                      NE = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+
+                      ! determine delayed neutron precursor yield for group d
+                      yield = interpolate_tab1(nuclides(p % event_nuclide) % nu_d_precursor_data( &
+                           lc+1:lc+2+2*NR+2*NE), p % E)
+
+                      ! advance pointer
+                      lc = lc + 2 + 2*NR + 2*NE + 1
+
+                      score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) % &
+                           delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+
+                      t % results(score_index, d) % value = &
+                           t % results(score_index, d) % value + score
+                    end do
+                  else
+                    score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                         delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+
+                    t % results(score_index, 1) % value = &
+                         t % results(score_index, 1) % value + score
+                  end if
+                end if
+              end if
+
+              cycle SCORE_LOOP
+
+            else
+
+              ! Skip any non-fission events or fission events that don't produce
+              ! delayed neutrons
+              if (.not. p % fission) cycle SCORE_LOOP
+
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_delayed_eout(p, t, score_index)
+                cycle SCORE_LOOP
+
+              else
+                ! If there is no outgoing energy filter, than we only need to
+                ! score to one bin. For the score to be 'analog', we need to
+                ! score the number of delayed particles that were banked in the
+                ! fission bank. Since this was weighted by 1/keff, we multiply
+                ! by keff to get the proper score.
+
+                score = ZERO
+
+                ! Loop over the neutrons produce from fission and check which
+                ! ones are delayed. If a delayed neutron is encountered, add
+                ! its contribution to the fission bank to the score.
+                do d = 1, n_delayed_groups
+                  score = keff * p % wgt_bank / p % n_bank * p % n_delay_bank(d)
+
+                  if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+                    t % results(score_index, d) % value = &
+                      t % results(score_index, d) % value + score
+                  else
+                    t % results(score_index, 1) % value = &
+                      t % results(score_index, 1) % value + score
+                  end if
+                end do
+                cycle SCORE_LOOP
+              end if
+            end if
           case (SCORE_EVENTS)
             ! Simply count number of scoring events
             score = ONE
@@ -624,6 +734,77 @@ contains
 
   end subroutine score_fission_eout
 
+  !===============================================================================
+  ! SCORE_FISSION_DELAYED_EOUT handles a special case where we need to store
+  ! delayed neutron production rate with an outgoing energy filter (think of a
+  ! fission matrix). In this case, we may need to score to multiple bins if there
+  ! were multiple neutrons produced with different energies.
+  !===============================================================================
+
+  subroutine score_fission_delayed_eout(p, t, i_score)
+
+    type(Particle), intent(in) :: p
+    type(TallyObject), pointer :: t
+    integer, intent(in)        :: i_score ! index for score
+
+    integer :: j             ! delayed group
+    integer :: i             ! index of outgoing energy filter
+    integer :: n             ! number of energies on filter
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: score         ! actual score
+    real(8) :: E_out         ! energy of fission bank site
+
+    ! save original outgoing energy bin and score index
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = matching_bins(i)
+
+    ! Get number of energies on filter
+    n = size(t % filters(i) % real_bins)
+
+    ! Since the creation of fission sites is weighted such that it is
+    ! expected to create n_particles sites, we need to multiply the
+    ! score by keff to get the true nu-fission rate. Otherwise, the sum
+    ! of all nu-fission rates would be ~1.0.
+
+    ! loop over number of particles banked
+    do k = 1, p % n_bank
+
+      ! get the delayed group
+      j = fission_bank(n_bank - p % n_bank + k) % delayed_group
+
+      ! check if the particle was born delayed
+      if (j /= 0) then
+
+        ! determine score based on bank site weight and keff
+        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
+        ! determine outgoing energy from fission bank
+        E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+        ! check if outgoing energy is within specified range on filter
+        if (E_out < t % filters(i) % real_bins(1) .or. &
+          E_out > t % filters(i) % real_bins(n)) cycle
+
+        ! change outgoing energy bin
+        matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
+
+        ! determine scoring index
+        i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+        ! Add score to tally
+        !$omp atomic
+        t % results(i_score, i_filter) % value = &
+          t % results(i_score, i_filter) % value + score
+      end if
+    end do
+
+    ! reset outgoing energy bin and score index
+    matching_bins(i) = bin_energyout
+
+  end subroutine score_fission_delayed_eout
+
 !===============================================================================
 ! SCORE_TRACKLENGTH_TALLY calculates fluxes and reaction rates based on the
 ! track-length estimate of the flux. This is triggered at every event (surface
@@ -651,6 +832,13 @@ contains
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
+    integer :: lc                   ! pointer for interpolating in precursor
+                                    ! yield table
+    integer :: NR                   ! number of interpolation regions
+    integer :: NE                   ! number of interpolation energies
+    integer :: d                    ! delayed neutron index
+    integer :: d_nuclide            ! delayed neutron index for specific nuclide
+    real(8) :: yield                ! delayed neutron yield
     real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -830,6 +1018,47 @@ contains
                 ! For number of events, just score unity
                 score = ONE
 
+              case (SCORE_DELAY_NU_FISSION)
+
+                if (micro_xs(i_nuclide) % fission > ZERO) then
+                  if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+
+                    lc = 1
+                    do d = 1, n_delayed_groups
+
+                      ! determine number of interpolation regions and energies
+                      NR = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 1))
+                      NE = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+
+                      ! determine delayed neutron precursor yield for group d
+                      yield = interpolate_tab1(nuclides(i_nuclide) % nu_d_precursor_data( &
+                        lc+1:lc+2+2*NR+2*NE), p % E)
+
+                      ! advance pointer
+                      lc = lc + 2 + 2*NR + 2*NE + 1
+
+                      ! Delay-nu-fission cross section is pre-calculated
+                      score = micro_xs(i_nuclide) % delay_nu_fission * yield * &
+                        atom_density * flux
+
+                      !$omp critical
+                      t % results(score_index, d) % value = &
+                        t % results(score_index, d) % value + score
+                      !$omp critical end
+                    end do
+                  else
+                    score = micro_xs(i_nuclide) % delay_nu_fission * &
+                      atom_density * flux
+
+                    !$omp critical
+                    t % results(score_index, 1) % value = &
+                      t % results(score_index, 1) % value + score
+                    !$omp critical end
+                  end if
+                end if
+
+                cycle SCORE_LOOP
+
               case default
                 ! Any other cross section has to be calculated on-the-fly. For
                 ! cross sections that are used often (e.g. n2n, ngamma, etc. for
@@ -957,6 +1186,51 @@ contains
                 ! For number of events, just score unity
                 score = ONE
 
+              case (SCORE_DELAY_NU_FISSION)
+
+                if (p % material /= MATERIAL_VOID) then
+                  if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+                    do d_nuclide = 1, materials(p % material) % n_nuclides
+                      if (micro_xs(d_nuclide) % fission > ZERO) then
+
+                        lc = 1
+                        do d = 1, n_delayed_groups
+
+                          ! determine number of interpolation regions and energies
+                          NR = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 1))
+                          NE = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+
+                          ! determine delayed neutron precursor yield for group d
+                          yield = interpolate_tab1(nuclides(d_nuclide) % nu_d_precursor_data( &
+                            lc+1:lc+2+2*NR+2*NE), p % E)
+
+                          ! advance pointer
+                          lc = lc + 2 + 2*NR + 2*NE + 1
+
+                          ! Delay-nu-fission cross section is pre-calculated
+                          score = micro_xs(d_nuclide) % delay_nu_fission * yield * &
+                            materials(p % material) % atom_density(d_nuclide) * flux
+
+                          !$omp critical
+                          t % results(score_index, d) % value = &
+                            t % results(score_index, d) % value + score
+                          !$omp critical end
+                        end do
+                      end if
+                    end do
+                  else
+                    ! Delay-nu-fission cross section is pre-calculated
+                    score = material_xs % delay_nu_fission * flux
+
+                    !$omp critical
+                    t % results(score_index, 1) % value = &
+                      t % results(score_index, 1) % value + score
+                    !$omp critical end
+                  end if
+                end if
+
+                cycle SCORE_LOOP
+
               case default
                 ! Any other cross section has to be calculated on-the-fly. This
                 ! is somewhat costly since it requires a loop over each nuclide
@@ -1056,6 +1330,13 @@ contains
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
     integer :: score_index   ! scoring bin index
     integer :: i_energy      ! index in nuclide energy grid
+    integer :: lc            ! pointer for interpolating in precursor
+                             ! yield table
+    integer :: NR            ! number of interpolation regions
+    integer :: NE            ! number of interpolation energies
+    integer :: d             ! delayed neutron index
+    integer :: d_nuclide     ! delayed neutron index for specific nuclide
+    real(8) :: yield         ! delayed neutron yield
     real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
@@ -1167,6 +1448,47 @@ contains
 
         case (SCORE_EVENTS)
           score = ONE
+
+        case (SCORE_DELAY_NU_FISSION)
+
+          if (micro_xs(i_nuclide) % fission > ZERO) then
+            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+
+              lc = 1
+              do d = 1, n_delayed_groups
+
+                ! determine number of interpolation regions and energies
+                NR = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 1))
+                NE = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+
+                ! determine delayed neutron precursor yield for group d
+                yield = interpolate_tab1(nuclides(i_nuclide) % nu_d_precursor_data( &
+                  lc+1:lc+2+2*NR+2*NE), p % E)
+
+                ! advance pointer
+                lc = lc + 2 + 2*NR + 2*NE + 1
+
+                ! Delay-nu-fission cross section is pre-calculated
+                score = micro_xs(i_nuclide) % delay_nu_fission * yield * &
+                  atom_density * flux
+
+                !$omp critical
+                t % results(score_index, d) % value = &
+                  t % results(score_index, d) % value + score
+                !$omp critical end
+              end do
+            else
+              score = micro_xs(i_nuclide) % delay_nu_fission * &
+                atom_density * flux
+
+              !$omp critical
+              t % results(score_index, 1) % value = &
+                t % results(score_index, 1) % value + score
+              !$omp critical end
+            end if
+          end if
+
+          cycle SCORE_LOOP
 
         case default
           ! Any other cross section has to be calculated on-the-fly. For cross
@@ -1306,6 +1628,51 @@ contains
 
       case (SCORE_EVENTS)
         score = ONE
+
+      case (SCORE_DELAY_NU_FISSION)
+
+        if (p % material /= MATERIAL_VOID) then
+          if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            do d_nuclide = 1, materials(p % material) % n_nuclides
+              if (micro_xs(d_nuclide) % fission > ZERO) then
+
+                lc = 1
+                do d = 1, n_delayed_groups
+
+                  ! determine number of interpolation regions and energies
+                  NR = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 1))
+                  NE = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+
+                  ! determine delayed neutron precursor yield for group d
+                  yield = interpolate_tab1(nuclides(d_nuclide) % nu_d_precursor_data( &
+                    lc+1:lc+2+2*NR+2*NE), p % E)
+
+                  ! advance pointer
+                  lc = lc + 2 + 2*NR + 2*NE + 1
+
+                  ! Delay-nu-fission cross section is pre-calculated
+                  score = micro_xs(d_nuclide) % delay_nu_fission * yield * &
+                    materials(p % material) % atom_density(d_nuclide) * flux
+
+                  !$omp critical
+                  t % results(score_index, d) % value = &
+                    t % results(score_index, d) % value + score
+                  !$omp critical end
+                end do
+              end if
+            end do
+          else
+            ! Delay-nu-fission cross section is pre-calculated
+            score = material_xs % delay_nu_fission * flux
+
+            !$omp critical
+            t % results(score_index, 1) % value = &
+              t % results(score_index, 1) % value + score
+            !$omp critical end
+          end if
+        end if
+
+        cycle MATERIAL_SCORE_LOOP
 
       case default
         ! Any other cross section has to be calculated on-the-fly. This is
@@ -1698,6 +2065,9 @@ contains
                   score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
                 case (SCORE_EVENTS)
                   score = ONE
+                case (SCORE_DELAY_NU_FISSION)
+                  score = micro_xs(i_nuclide) % delay_nu_fission * &
+                    atom_density * flux
                 case default
                   call fatal_error("Invalid score type on tally " &
                        &// to_str(t % id) // ".")
@@ -1773,6 +2143,8 @@ contains
                   score = material_xs % kappa_fission * flux
                 case (SCORE_EVENTS)
                   score = ONE
+                case (SCORE_DELAY_NU_FISSION)
+                  score = material_xs % delay_nu_fission * flux
                 case default
                   call fatal_error("Invalid score type on tally " &
                        &// to_str(t % id) // ".")
@@ -1899,6 +2271,19 @@ contains
                n + 1, p % E)
         end if
 
+      case (FILTER_DELAYGROUP)
+
+        if (survival_biasing .and. t % find_filter(FILTER_ENERGYOUT) <= 0) then
+          matching_bins(i) = 1
+        elseif (active_tracklength_tallies % size() > 0) then
+          matching_bins(i) = 1
+        else
+          if (p % delayed_group == 0) then
+            matching_bins = NO_BIN_FOUND
+          else
+            matching_bins(i) = p % delayed_group
+          end if
+        end if
       end select
 
       ! If the current filter didn't match, exit this subroutine

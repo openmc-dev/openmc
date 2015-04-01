@@ -972,6 +972,13 @@ contains
       else
         call fatal_error("Must specify id of cell in geometry XML file.")
       end if
+
+      ! Copy cell label
+      c % label = ''
+      if (check_for_node(node_cell, "label")) then
+        call get_node_value(node_cell, "label", c % label)
+      end if
+
       if (check_for_node(node_cell, "universe")) then
         call get_node_value(node_cell, "universe", c % universe)
       else
@@ -1151,6 +1158,12 @@ contains
              &// to_str(s % id))
       end if
 
+      ! Copy surface label
+      s % label = ''
+      if (check_for_node(node_surf, "label")) then
+        call get_node_value(node_surf, "label", s % label)
+      end if
+
       ! Copy and interpret surface type
       word = ''
       if (check_for_node(node_surf, "type")) &
@@ -1271,6 +1284,12 @@ contains
       if (lattice_dict % has_key(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
              &// to_str(lat % id))
+      end if
+
+      ! Copy lattice label
+      lat % label = ''
+      if (check_for_node(node_lat, "label")) then
+        call get_node_value(node_lat, "label", lat % label)
       end if
 
       ! Read number of lattice cells in each dimension
@@ -1394,6 +1413,12 @@ contains
       if (lattice_dict % has_key(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
              &// to_str(lat % id))
+      end if
+
+      ! Copy lattice label
+      lat % label = ''
+      if (check_for_node(node_lat, "label")) then
+        call get_node_value(node_lat, "label", lat % label)
       end if
 
       ! Read number of lattice cells in each dimension
@@ -1639,6 +1664,12 @@ contains
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
              &// to_str(mat % id))
+      end if
+
+      ! Copy material label
+      mat % label = ''
+      if (check_for_node(node_mat, "label")) then
+        call get_node_value(node_mat, "label", mat % label)
       end if
 
       if (run_mode == MODE_PLOTTING) then

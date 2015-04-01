@@ -106,6 +106,7 @@ class Summary(object):
 
             material_id = int(key.lstrip('material '))
             index = self._f['materials'][key]['index'][0]
+            name = self._f['materials'][key]['label'][0]
             density = self._f['materials'][key]['atom_density'][0]
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'][...]
@@ -124,7 +125,7 @@ class Summary(object):
                 sab_xs.append(sab_table.split('.')[1])
 
             # Create the Material
-            material = openmc.Material(material_id=material_id)
+            material = openmc.Material(material_id=material_id, name=name)
 
             # Set the Material's density to g/cm3 - this is what is used in OpenMC
             material.set_density(density=density, units='g/cm3')
@@ -165,6 +166,7 @@ class Summary(object):
 
             surface_id = int(key.lstrip('surface '))
             index = self._f['geometry/surfaces'][key]['index'][0]
+            name = self._f['geometry/surfaces'][key]['label'][0]
             surf_type = self._f['geometry/surfaces'][key]['type'][...][0]
             bc = self._f['geometry/surfaces'][key]['boundary_condition'][...][0]
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
@@ -173,47 +175,47 @@ class Summary(object):
 
             if surf_type == 'X Plane':
                 x0 = coeffs[0]
-                surface = openmc.XPlane(surface_id, bc, x0)
+                surface = openmc.XPlane(surface_id, bc, x0, name)
 
             elif surf_type == 'Y Plane':
                 y0 = coeffs[0]
-                surface = openmc.YPlane(surface_id, bc, y0)
+                surface = openmc.YPlane(surface_id, bc, y0, name)
 
             elif surf_type == 'Z Plane':
                 z0 = coeffs[0]
-                surface = openmc.ZPlane(surface_id, bc, z0)
+                surface = openmc.ZPlane(surface_id, bc, z0, name)
 
             elif surf_type == 'Plane':
                 A = coeffs[0]
                 B = coeffs[1]
                 C = coeffs[2]
                 D = coeffs[3]
-                surface = openmc.Plane(surface_id, bc, A, B, C, D)
+                surface = openmc.Plane(surface_id, bc, A, B, C, D, name)
 
             elif surf_type == 'X Cylinder':
                 y0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.XCylinder(surface_id, bc, y0, z0, R)
+                surface = openmc.XCylinder(surface_id, bc, y0, z0, R, name)
 
             elif surf_type == 'Y Cylinder':
                 x0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.YCylinder(surface_id, bc, x0, z0, R)
+                surface = openmc.YCylinder(surface_id, bc, x0, z0, R, name)
 
             elif surf_type == 'Z Cylinder':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.ZCylinder(surface_id, bc, x0, y0, R)
+                surface = openmc.ZCylinder(surface_id, bc, x0, y0, R, name)
 
             elif surf_type == 'Sphere':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 z0 = coeffs[2]
                 R = coeffs[3]
-                surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R)
+                surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R, name)
 
             elif surf_type in ['X Cone', 'Y Cone', 'Z Cone']:
                 x0 = coeffs[0]
@@ -222,11 +224,11 @@ class Summary(object):
                 R2 = coeffs[3]
 
                 if surf_type == 'X Cone':
-                    surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2, name)
                 if surf_type == 'Y Cone':
-                    surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2, name)
                 if surf_type == 'Z Cone':
-                    surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
 
             # Add Surface to global dictionary of all Surfaces
             self.surfaces[index] = surface
@@ -256,6 +258,7 @@ class Summary(object):
 
             cell_id = int(key.lstrip('cell '))
             index = self._f['geometry/cells'][key]['index'][0]
+            name = self._f['geometry/cells'][key]['label'][0]
             fill_type = self._f['geometry/cells'][key]['fill_type'][...][0]
 
             if fill_type == 'normal':
@@ -271,7 +274,7 @@ class Summary(object):
                 surfaces = list()
 
             # Create this Cell
-            cell = openmc.Cell(cell_id=cell_id)
+            cell = openmc.Cell(cell_id=cell_id, name)
 
             if fill_type == 'universe':
                 translated = self._f['geometry/cells'][key]['translated'][0]
@@ -349,6 +352,7 @@ class Summary(object):
 
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'][0]
+            name = self._f['geometry/lattices'][key]['label'][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
 
             if lattice_type == 'rectangular':
@@ -364,7 +368,7 @@ class Summary(object):
                 universe_ids = np.swapaxes(universe_ids, 1, 2)
 
                 # Create the Lattice
-                lattice = openmc.RectLattice(lattice_id=lattice_id)
+                lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
                 lattice.set_dimension(tuple(dimension))
                 lattice.set_lower_left(lower_left)
                 lattice.set_pitch(pitch)
@@ -404,7 +408,7 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
-                lattice = openmc.HexLattice(lattice_id=lattice_id)
+                lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
                 lattice.set_num_rings(n_rings)
                 lattice.set_num_axial(n_axial)
                 lattice.set_center(center)

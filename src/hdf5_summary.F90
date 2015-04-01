@@ -127,6 +127,10 @@ contains
       call su % write_data(i, "index", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
 
+      ! Write label for this cell
+      call su % write_data(c % label, "label", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
+
       ! Write universe for this cell
       call su % write_data(universes(c % universe) % id, "universe", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -198,6 +202,10 @@ contains
 
       ! Write internal OpenMC index for this surface
       call su % write_data(i, "index", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      ! Write label for this surface
+      call su % write_data(s % label, "label", &
            group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write surface type
@@ -309,6 +317,10 @@ contains
 
       ! Write internal OpenMC index for this lattice
       call su % write_data(i, "index", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+      ! Write label for this lattice
+      call su % write_data(lat % label, "label", &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
@@ -435,6 +447,10 @@ contains
 
       ! Write internal OpenMC index for this material
       call su % write_data(i, "index", &
+           group="materials/material " // trim(to_str(m % id)))
+
+      ! Write label for this material
+      call su % write_data(m % label, "label", &
            group="materials/material " // trim(to_str(m % id)))
 
       ! Write atom density with units

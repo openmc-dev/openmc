@@ -1410,9 +1410,9 @@ contains
   end subroutine generate_nu_fission
 
 !===============================================================================
-! GENERATE_DELAYED_NU_FISSION precalculates the microscopic nu-fission cross section for
-! a given nuclide. This is done so that the nu_total function does not need to
-! be called during cross section lookups.
+! GENERATE_DELAYED_NU_FISSION precalculates the microscopic delay-nu-fission
+! cross section for a given nuclide. This is done so that the nu_delayed
+! function does not need to be called during cross section lookups.
 !===============================================================================
 
   subroutine generate_delay_nu_fission(nuc)

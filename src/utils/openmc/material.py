@@ -344,6 +344,9 @@ class Material(object):
         element = ET.Element("material")
         element.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            element.set("label", str(self._name))
+
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")
         if self._density_units is not 'sum':
@@ -470,10 +473,6 @@ class MaterialsFile(object):
 
         for material in self._materials:
             xml_element = material.get_material_xml()
-
-            if len(material._name) > 0:
-                self._materials_file.append(ET.Comment(material._name))
-
             self._materials_file.append(xml_element)
 
 

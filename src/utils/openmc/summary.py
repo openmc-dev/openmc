@@ -274,7 +274,7 @@ class Summary(object):
                 surfaces = list()
 
             # Create this Cell
-            cell = openmc.Cell(cell_id=cell_id, name)
+            cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
                 translated = self._f['geometry/cells'][key]['translated'][0]

@@ -292,6 +292,9 @@ class Cell(object):
         element = ET.Element("cell")
         element.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            element.set("label", str(self._name))
+
         if isinstance(self._fill, openmc.Material):
             element.set("material", str(self._fill._id))
 
@@ -320,10 +323,6 @@ class Cell(object):
                     # Create the XML subelement for this Surface
                     surface = self._surfaces[surface_id][0]
                     surface_subelement = surface.create_xml_subelement()
-
-                    if len(surface._name) > 0:
-                        xml_element.append(ET.Comment(surface._name))
-
                     xml_element.append(surface_subelement)
 
                 # Append the halfspace and Surface ID
@@ -547,10 +546,6 @@ class Universe(object):
 
                 # Append the Universe ID to the subelement and add to Element
                 cell_subelement.set("universe", str(self._id))
-
-                if len(cell._name) > 0:
-                    xml_element.append(ET.Comment(cell._name))
-
                 xml_element.append(cell_subelement)
 
 
@@ -883,6 +878,9 @@ class RectLattice(Lattice):
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            lattice_subelement.set("label", str(self._name))
+
         # Export the Lattice cell pitch
         if len(self._pitch) == 3:
             pitch = ET.SubElement(lattice_subelement, "pitch")
@@ -965,9 +963,6 @@ class RectLattice(Lattice):
 
         universes = ET.SubElement(lattice_subelement, "universes")
         universes.text = universe_ids
-
-        if len(self._name) > 0:
-            xml_element.append(ET.Comment(self._name))
 
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)
@@ -1190,6 +1185,9 @@ class HexLattice(Lattice):
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            lattice_subelement.set("label", str(self._name))
+
         # Export the Lattice cell pitch
         if len(self._pitch) == 2:
             pitch = ET.SubElement(lattice_subelement, "pitch")
@@ -1259,9 +1257,6 @@ class HexLattice(Lattice):
 
         universes = ET.SubElement(lattice_subelement, "universes")
         universes.text = '\n' + universe_ids
-
-        if len(self._name) > 0:
-            xml_element.append(ET.Comment(self._name))
 
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)

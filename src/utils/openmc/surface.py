@@ -110,6 +110,10 @@ class Surface(object):
 
         element = ET.Element("surface")
         element.set("id", str(self._id))
+
+        if len(self._name) > 0:
+            element.set("label", str(self._name))
+
         element.set("type", self._type)
         element.set("boundary", self._bc_type)
 

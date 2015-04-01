@@ -28,6 +28,7 @@ contains
 
     type(Particle), intent(inout) :: p
 
+    integer :: d                      ! delayed group index
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
     integer :: last_cell              ! most recent cell particle was in
@@ -164,6 +165,10 @@ contains
         ! Reset banked weight during collision
         p % n_bank   = 0
         p % wgt_bank = ZERO
+
+        do d = 1, n_delayed_groups
+          p % n_delay_bank = 0
+        end do
 
         ! Reset fission logical
         p % fission = .false.

@@ -1,6 +1,6 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_DELAYED_GROUPS
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -63,10 +63,13 @@ module particle_header
     integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
+    integer    :: delayed_group ! delayed group
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
+    integer    :: n_delay_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
+                                                   ! sites banked
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -115,6 +118,7 @@ contains
   subroutine initialize_particle(this)
 
     class(Particle) :: this
+    integer         :: d
 
     ! Clear coordinate lists
     call this % clear()
@@ -135,6 +139,11 @@ contains
     this % wgt_bank      = ZERO
     this % n_collision   = 0
     this % fission       = .false.
+    this % delayed_group = 0
+
+    do d = 1, MAX_DELAYED_GROUPS
+      this % n_delay_bank(d) = 0
+    end do
 
     ! Set up base level coordinates
     allocate(this % coord0)

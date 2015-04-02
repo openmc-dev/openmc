@@ -562,6 +562,7 @@ contains
 
                   if (t % find_filter(FILTER_DELAYGROUP) > 0) then
 
+!$omp critical
                     lc = 1
                     do d = 1, n_delayed_groups
 
@@ -582,6 +583,7 @@ contains
                       t % results(score_index, d) % value = &
                            t % results(score_index, d) % value + score
                     end do
+!$omp end critical
                   else
                     score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
                          delay_nu_fission / micro_xs(p % event_nuclide) % absorption
@@ -622,6 +624,7 @@ contains
                 ! Loop over the neutrons produce from fission and check which
                 ! ones are delayed. If a delayed neutron is encountered, add
                 ! its contribution to the fission bank to the score.
+!$omp critical
                 do d = 1, n_delayed_groups
                   score = keff * p % wgt_bank / p % n_bank * p % n_delay_bank(d)
 
@@ -633,6 +636,7 @@ contains
                       t % results(score_index, 1) % value + score
                   end if
                 end do
+!$omp end critical
                 cycle SCORE_LOOP
               end if
             end if
@@ -1023,6 +1027,7 @@ contains
                 if (micro_xs(i_nuclide) % fission > ZERO) then
                   if (t % find_filter(FILTER_DELAYGROUP) > 0) then
 
+!$omp critical
                     lc = 1
                     do d = 1, n_delayed_groups
 
@@ -1041,19 +1046,16 @@ contains
                       score = micro_xs(i_nuclide) % delay_nu_fission * yield * &
                         atom_density * flux
 
-                      !$omp critical
                       t % results(score_index, d) % value = &
                         t % results(score_index, d) % value + score
-                      !$omp critical end
                     end do
+!$omp end critical
                   else
                     score = micro_xs(i_nuclide) % delay_nu_fission * &
                       atom_density * flux
 
-                    !$omp critical
                     t % results(score_index, 1) % value = &
                       t % results(score_index, 1) % value + score
-                    !$omp critical end
                   end if
                 end if
 
@@ -1190,6 +1192,8 @@ contains
 
                 if (p % material /= MATERIAL_VOID) then
                   if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+
+!$omp critical
                     do d_nuclide = 1, materials(p % material) % n_nuclides
                       if (micro_xs(d_nuclide) % fission > ZERO) then
 
@@ -1211,21 +1215,18 @@ contains
                           score = micro_xs(d_nuclide) % delay_nu_fission * yield * &
                             materials(p % material) % atom_density(d_nuclide) * flux
 
-                          !$omp critical
                           t % results(score_index, d) % value = &
                             t % results(score_index, d) % value + score
-                          !$omp critical end
                         end do
                       end if
                     end do
+!$omp end critical
                   else
                     ! Delay-nu-fission cross section is pre-calculated
                     score = material_xs % delay_nu_fission * flux
 
-                    !$omp critical
                     t % results(score_index, 1) % value = &
                       t % results(score_index, 1) % value + score
-                    !$omp critical end
                   end if
                 end if
 
@@ -1454,6 +1455,7 @@ contains
           if (micro_xs(i_nuclide) % fission > ZERO) then
             if (t % find_filter(FILTER_DELAYGROUP) > 0) then
 
+!$omp critical
               lc = 1
               do d = 1, n_delayed_groups
 
@@ -1472,19 +1474,16 @@ contains
                 score = micro_xs(i_nuclide) % delay_nu_fission * yield * &
                   atom_density * flux
 
-                !$omp critical
                 t % results(score_index, d) % value = &
                   t % results(score_index, d) % value + score
-                !$omp critical end
               end do
+!$omp end critical
             else
               score = micro_xs(i_nuclide) % delay_nu_fission * &
                 atom_density * flux
 
-              !$omp critical
               t % results(score_index, 1) % value = &
                 t % results(score_index, 1) % value + score
-              !$omp critical end
             end if
           end if
 
@@ -1633,6 +1632,7 @@ contains
 
         if (p % material /= MATERIAL_VOID) then
           if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+!$omp critical
             do d_nuclide = 1, materials(p % material) % n_nuclides
               if (micro_xs(d_nuclide) % fission > ZERO) then
 
@@ -1654,21 +1654,18 @@ contains
                   score = micro_xs(d_nuclide) % delay_nu_fission * yield * &
                     materials(p % material) % atom_density(d_nuclide) * flux
 
-                  !$omp critical
                   t % results(score_index, d) % value = &
                     t % results(score_index, d) % value + score
-                  !$omp critical end
                 end do
               end if
             end do
+!$omp end critical
           else
             ! Delay-nu-fission cross section is pre-calculated
             score = material_xs % delay_nu_fission * flux
 
-            !$omp critical
             t % results(score_index, 1) % value = &
               t % results(score_index, 1) % value + score
-            !$omp critical end
           end if
         end if
 

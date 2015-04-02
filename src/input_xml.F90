@@ -2778,7 +2778,7 @@ contains
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('diffusion')
-             call fatal_error("Diffusion score no longer supported for tallies, &
+            call fatal_error("Diffusion score no longer supported for tallies, &
                  &please remove")
           case ('n1n')
 

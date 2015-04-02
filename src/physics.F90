@@ -1060,7 +1060,7 @@ contains
     integer,        intent(in)    :: i_reaction
 
     integer :: d                            ! delayed group index
-    integer :: nu_delay(n_delayed_groups)   ! number of delayed neutrons born
+    integer :: nu_delay(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                            ! loop index
     integer :: nu                           ! actual number of neutrons produced
     integer :: ijk(3)                       ! indices in ufs mesh
@@ -1122,7 +1122,7 @@ contains
 
     ! Initialize counter of delayed neutrons encountered for each delayed group
     ! to zero.
-    do d = 1, n_delayed_groups
+    do d = 1, MAX_DELAYED_GROUPS
       nu_delay(d) = 0
     end do
 
@@ -1165,7 +1165,7 @@ contains
     ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
     p % wgt_bank = nu/weight
-    do d = 1, n_delayed_groups
+    do d = 1, MAX_DELAYED_GROUPS
       p % n_delay_bank(d) = nu_delay(d)
     end do
 

@@ -71,7 +71,6 @@ module global
   integer :: n_nuclides_total     ! Number of nuclide cross section tables
   integer :: n_sab_tables         ! Number of S(a,b) thermal scattering tables
   integer :: n_listings           ! Number of listings in cross_sections.xml
-  integer :: n_delayed_groups = 0 ! Number of delayed groups in cross section library
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict

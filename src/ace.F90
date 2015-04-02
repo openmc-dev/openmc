@@ -650,14 +650,6 @@ contains
           &// " set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
       end if
 
-      if (n_delayed_groups == 0) then
-        n_delayed_groups = NPCR
-      else if (n_delayed_groups /= NPCR) then
-        call fatal_error("Encountered nuclides with different numbers of " &
-          &// " delayed groups. Nuclides with " // trim(to_str(n_delayed_groups)) &
-          &// " and " // trim(to_str(NPCR)) // " delayed groups encountered.")
-      end if
-
       nuc % n_precursor = NPCR
       allocate(nuc % nu_d_edist(NPCR))
 

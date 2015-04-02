@@ -15,7 +15,8 @@ module tracking
                              score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              finalize_particle_track
-
+  use constants,       only: MAX_DELAYED_GROUPS
+  
   implicit none
 
 contains
@@ -166,7 +167,7 @@ contains
         p % n_bank   = 0
         p % wgt_bank = ZERO
 
-        do d = 1, n_delayed_groups
+        do d = 1, MAX_DELAYED_GROUPS
           p % n_delay_bank = 0
         end do
 

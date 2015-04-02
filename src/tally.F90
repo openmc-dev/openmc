@@ -564,7 +564,7 @@ contains
 
 !$omp critical
                     lc = 1
-                    do d = 1, n_delayed_groups
+                    do d = 1, nuclides(p % event_nuclide) % n_precursor
 
                       ! determine number of interpolation regions and energies
                       NR = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 1))
@@ -625,7 +625,7 @@ contains
                 ! ones are delayed. If a delayed neutron is encountered, add
                 ! its contribution to the fission bank to the score.
 !$omp critical
-                do d = 1, n_delayed_groups
+                do d = 1, nuclides(p % event_nuclide) % n_precursor
                   score = keff * p % wgt_bank / p % n_bank * p % n_delay_bank(d)
 
                   if (t % find_filter(FILTER_DELAYGROUP) > 0) then
@@ -1029,7 +1029,7 @@ contains
 
 !$omp critical
                     lc = 1
-                    do d = 1, n_delayed_groups
+                    do d = 1, nuclides(i_nuclide) % n_precursor
 
                       ! determine number of interpolation regions and energies
                       NR = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 1))
@@ -1198,7 +1198,7 @@ contains
                       if (micro_xs(d_nuclide) % fission > ZERO) then
 
                         lc = 1
-                        do d = 1, n_delayed_groups
+                        do d = 1, nuclides(d_nuclide) % n_precursor
 
                           ! determine number of interpolation regions and energies
                           NR = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 1))
@@ -1457,7 +1457,7 @@ contains
 
 !$omp critical
               lc = 1
-              do d = 1, n_delayed_groups
+              do d = 1, nuclides(i_nuclide) % n_precursor
 
                 ! determine number of interpolation regions and energies
                 NR = int(nuclides(i_nuclide) % nu_d_precursor_data(lc + 1))
@@ -1637,7 +1637,7 @@ contains
               if (micro_xs(d_nuclide) % fission > ZERO) then
 
                 lc = 1
-                do d = 1, n_delayed_groups
+                do d = 1, nuclides(d_nuclide) % n_precursor
 
                   ! determine number of interpolation regions and energies
                   NR = int(nuclides(d_nuclide) % nu_d_precursor_data(lc + 1))

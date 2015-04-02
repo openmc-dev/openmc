@@ -15,7 +15,6 @@ module tally
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
   use fission,          only: nu_total, nu_delayed
-  use output,           only: write_message
   use interpolation,    only: interpolate_tab1
 
 #ifdef MPI

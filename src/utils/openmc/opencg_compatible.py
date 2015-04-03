@@ -815,6 +815,7 @@ def get_openmc_geometry(opencg_geometry):
 
     # Deep copy the goemetry since it may be modified to make all Surfaces
     # compatible with OpenMC's specifications
+    opencg_geometry.assignAutoIds()
     opencg_geometry = copy.deepcopy(opencg_geometry)
 
     # Update Cell bounding boxes in Geometry

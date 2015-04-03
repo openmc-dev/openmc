@@ -17,8 +17,9 @@ module constants
   integer, parameter :: MNBW         = 8
 
   ! Cross section representation formats
-  integer, parameter :: PARAMETERS = 1
+  integer, parameter :: PROB_BANDS = 1
   integer, parameter :: POINTWISE  = 2
+  integer, parameter :: ON_THE_FLY = 3
 
   ! Resonance parameters' energy-dependence representation
   integer, parameter :: DISCRETE   = 1

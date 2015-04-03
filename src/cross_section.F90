@@ -17,8 +17,7 @@ module cross_section
                              calc_urr_xs_otf, &
                              Isotope, &
                              isotopes, &
-                             real_freq, &
-                             represent_urr
+                             real_freq
 
   implicit none
   save
@@ -455,25 +454,15 @@ contains
           case (BATCH)
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
-            if (represent_urr == PARAMETERS) then
               ! this is used in physics, even though we aren't actually using ptables
               micro_xs(i_nuclide) % use_ptable = .true.
               call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
-            else 
-              call fatal_error('Must specify on-the-fly cross sections &
-                &in terms of resonance parameters')
-            end if
           case default
             call fatal_error('Unrecognized URR realization frequency')
           end select
         else if (tope % point_urr_xs) then
-          if (represent_urr == POINTWISE) then
-            micro_xs(i_nuclide) % use_ptable = .true.
-            call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
-          else
-            call fatal_error('Must represent pointwise cross sections as&
-              & pointwise data')
-          end if
+          micro_xs(i_nuclide) % use_ptable = .true.
+          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
         end if
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then

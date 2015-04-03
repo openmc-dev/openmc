@@ -37,9 +37,6 @@ module input_xml
                               n_reals, &
                               n_temps, &
                               ntables, &
-                              otf_urr_xs, &
-                              point_urr_xs, &
-                              prob_bands, &
                               real_freq, &
                               represent_params, &
                               represent_urr, &
@@ -3290,45 +3287,31 @@ contains
     end if
 
     ! Check for pointwise cross section calculation
-    point_urr_xs = .false.
-    if (check_for_node(doc, 'representation')) then
-      call get_node_value(doc, "representation", temp_str)
-      select case (trim(adjustl(to_lower(temp_str))))
-      case ('parameters')
-        represent_urr = PARAMETERS
-      case ('pointwise')
-        represent_urr = POINTWISE
-        n_reals = 1
-        if (check_for_node(doc, "pointwise")) then
-          point_urr_xs = .true.
-          call get_node_ptr(doc, "pointwise", point_xs_node)
-          if (check_for_node(point_xs_node, 'min_spacing')) then
-            call get_node_value(point_xs_node, 'min_spacing', min_dE_point_urr)
-          else
-            call fatal_error('No min energy spacing [eV] for cross section reconstruction&
-              & is given in urr.xml')
-          end if
-          if (check_for_node(point_xs_node, 'max_spacing')) then
-            call get_node_value(point_xs_node, 'max_spacing', max_dE_point_urr)
-          else
-            call fatal_error('No max energy spacing [eV] for cross section reconstruction&
-              & is given in urr.xml')
-          end if
-          if (check_for_node(point_xs_node, 'tolerance')) then
-            call get_node_value(point_xs_node, 'tolerance', tol_point_urr)
-          else
-            call fatal_error('No maximum fractional error tolerance for cross section&
-              & reconstruction is given in urr.xml')
-          end if
-        else
-          call fatal_error('No pointwise cross section reconstruction parameters&
-            & are given in urr.xml')
-        end if
-      case default
-        call fatal_error('Unrecognized cross section representation format in urr.xml')
-      end select
-    else
-      call fatal_error('No cross section representation format given in urr.xml')
+    if (check_for_node(doc, "pointwise")) then
+      if (represent_urr == ON_THE_FLY .or. represent_urr == PROB_BANDS) &
+        call fatal_error('Cannot represent URR cross sections as pointwise and&
+        & on-the-fly and/or as probability bands')
+      represent_urr = POINTWISE
+      n_reals = 1
+      call get_node_ptr(doc, "pointwise", point_xs_node)
+      if (check_for_node(point_xs_node, 'min_spacing')) then
+        call get_node_value(point_xs_node, 'min_spacing', min_dE_point_urr)
+      else
+        call fatal_error('No min energy spacing [eV] for cross section reconstruction&
+          & is given in urr.xml')
+      end if
+      if (check_for_node(point_xs_node, 'max_spacing')) then
+        call get_node_value(point_xs_node, 'max_spacing', max_dE_point_urr)
+      else
+        call fatal_error('No max energy spacing [eV] for cross section reconstruction&
+          & is given in urr.xml')
+      end if
+      if (check_for_node(point_xs_node, 'tolerance')) then
+        call get_node_value(point_xs_node, 'tolerance', tol_point_urr)
+      else
+        call fatal_error('No maximum fractional error tolerance for cross section&
+          & reconstruction is given in urr.xml')
+      end if
     end if
 
     ! Check for pointwise cross section calculation
@@ -3381,9 +3364,10 @@ contains
 
     ! Check if an on-the-fly treatment is specified
     if (check_for_node(doc, "on_the_fly")) then
-      if (represent_urr == POINTWISE) call fatal_error('Cannot have both a pointwise&
-        & cross section representation and an on-the-fly calculation in urr.xml')
-      otf_urr_xs = .true.
+      if (represent_urr == POINTWISE .or. represent_urr == PROB_BANDS) &
+        call fatal_error('Cannot represent URR cross sections on-the-fly and&
+        & as pointwise and/or as probability bands')
+      represent_urr = ON_THE_FLY
       call get_node_ptr(doc, "on_the_fly", otf_xs_node)
 
       ! Check if a xs calculation frequency is specified
@@ -3430,9 +3414,6 @@ contains
           call fatal_error('No URR realization index given in urr.xml')
         end if
       end if
-
-    else
-      otf_urr_xs = .false.
     end if
 
     ! Include resonance structure of competitive URR cross sections?
@@ -3453,9 +3434,12 @@ contains
         & of competitive reaction cross section in urr.xml')
     end if
 
-    ! Check for average (infinite-dilute) xs calculation parameters
+    ! Check for probability band calculations parameters
     if (check_for_node(doc, "prob_tables")) then
-      prob_bands = .true.
+      if (represent_urr == POINTWISE .or. represent_urr == ON_THE_FLY) &
+        call fatal_error('Cannot represent URR cross sections as probability&
+        & bands and as pointwise and/or on-the-fly')
+      represent_urr = PROB_BANDS
       call get_node_ptr(doc, "prob_tables", prob_table_node)
 
       if (check_for_node(prob_table_node, "n_bands")) then
@@ -3603,9 +3587,6 @@ contains
         call fatal_error('No background cross section source for probability&
           & table calculation given in urr.xml')
       end if
-
-    else
-      prob_bands = .false.
     end if
 
     ! Close URR XML file

@@ -12,11 +12,11 @@ module initialize
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
+  use input_xml,        only: read_input_xml, read_cross_sections_xml, &
                               cells_in_univ_dict, read_plots_xml, n_fasturr
   use material_header,  only: Material
-  use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, write_xs_summary, print_plot,       &
+  use output,           only: title, header, write_summary, print_version, &
+                              print_usage, write_xs_summary, print_plot, &
                               write_message
   use output_interface
   use random_lcg,       only: initialize_prng
@@ -28,10 +28,7 @@ module initialize
   use unresolved,       only: endf_files, &
                               isotopes, &
                               n_fasturr, &
-                              otf_urr_xs, &
-                              point_urr_xs, &
                               pointwise_urr, &
-                              prob_bands, &
                               prob_tables, &
                               real_freq, &
                               represent_urr, &
@@ -127,8 +124,9 @@ contains
       if (run_fasturr) then
         call initialize_endf()
         call tabulate_w()
- 
-        if (prob_bands) then
+
+        select case (represent_urr)
+        case (PROB_BANDS)
           do i_sotope = 1, n_fasturr
             call isotopes(i_sotope) % alloc_prob_tables()
             do i_nuc = 1, n_nuclides_total
@@ -139,32 +137,31 @@ contains
               end if
             end do
           end do
-        end if
 
-        select case (real_freq)
-        case (EVENT)
-          continue
-        case (HISTORY)
-          continue
-          call fatal_error('History-based URR realizations not yet supported')
-        case (BATCH)
-          continue
-          call fatal_error('Batch-based URR realizations not yet supported')
-        case (SIMULATION)
-          do i_sotope = 1, n_fasturr
-            do i_nuc = 1, n_nuclides_total
-              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
-                call resonance_ensemble(i_sotope)
-              end if
+        case (ON_THE_FLY)
+          select case (real_freq)
+          case (EVENT)
+            do i_sotope = 1, n_fasturr
+              call isotopes(i_sotope) % alloc_local_realization()
             end do
-          end do
-        case default
-          continue
-        end select
+          case (HISTORY)
+            continue
+            call fatal_error('History-based URR realizations not yet supported')
+          case (BATCH)
+            continue
+            call fatal_error('Batch-based URR realizations not yet supported')
+          case (SIMULATION)
+            do i_sotope = 1, n_fasturr
+              do i_nuc = 1, n_nuclides_total
+                if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                  call resonance_ensemble(i_sotope)
+                end if
+              end do
+            end do
+          case default
+            call fatal_error('Not a recognized URR realization frequency')
+          end select
 
-        select case (represent_urr)
-        case (PARAMETERS)
-          continue
         case (POINTWISE)
           do i_sotope = 1, n_fasturr
             do i_nuc = 1, n_nuclides_total
@@ -174,10 +171,11 @@ contains
               end if
             end do
           end do
-        case default
-          call fatal_error('Unrecognized URR representation format')
-        end select
 
+        case default
+          call fatal_error('Must specify a URR treatment: probability bands,&
+            & on-the-fly, or pointwise')
+        end select
       end if
 
       ! Create linked lists for multiple instances of the same nuclide
@@ -265,22 +263,26 @@ contains
           else
             isotopes(i) % fissionable = .false.
           end if
-          if (prob_bands) then
+
+          isotopes(i) % prob_bands   = .false.
+          isotopes(i) % otf_urr_xs   = .false.
+          isotopes(i) % point_urr_xs = .false.
+          select case (represent_urr)
+          case (PROB_BANDS)
             isotopes(i) % prob_bands = .true.
-          else
-            isotopes(i) % prob_bands = .false.
-          end if
-          if (otf_urr_xs) then
+          case (ON_THE_FLY)
             isotopes(i) % otf_urr_xs = .true.
-          else
-            isotopes(i) % otf_urr_xs = .false.
-          end if
-          if (point_urr_xs) then
+          case (POINTWISE)
             isotopes(i) % point_urr_xs = .true.
-          else
-            isotopes(i) % point_urr_xs = .false.
+          case default
+            call fatal_error('Not a recognized URR representation')
+          end select
+
+          ! read ENDF-6 file unless it's already been read for this isotope
+          if (.not. isotopes(i) % been_read) then
+            call read_endf6(endf_files(i), i)
+            isotopes(i) % been_read = .true.
           end if
-          call read_endf6(endf_files(i), i)
         end if
       end do
     end do

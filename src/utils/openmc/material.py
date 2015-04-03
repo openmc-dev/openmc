@@ -224,7 +224,7 @@ class Material(object):
         warnings.warn('This feature is not yet implemented in a release ' \
                       'version of openmc')
 
-        if not is_string(name):
+        if not is_string(name) and not name is None:
             msg = 'Unable to add OTF material file to Material ID={0} with a ' \
                         'non-string name {1}'.format(self._id, name)
             raise ValueError(msg)

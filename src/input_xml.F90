@@ -35,7 +35,6 @@ module input_xml
                               n_bands, &
                               n_fasturr, &
                               n_reals, &
-                              n_temps, &
                               ntables, &
                               real_freq, &
                               represent_params, &
@@ -3446,15 +3445,6 @@ contains
         call get_node_value(prob_table_node, "n_bands", n_bands)
       else
         call fatal_error('No number of probability table cross section bands&
-          & given in urr.xml')
-      end if
-
-      if (check_for_node(prob_table_node, "n_temperatures")) then
-        call get_node_value(prob_table_node, "n_temperatures", n_temps)
-        if (n_temps /= 1) call fatal_error('Multiple probability table&
-          & temperatures not yet supported')
-      else
-        call fatal_error('No number of probability table temperatures&
           & given in urr.xml')
       end if
 

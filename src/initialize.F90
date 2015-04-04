@@ -128,14 +128,17 @@ contains
         select case (represent_urr)
         case (PROB_BANDS)
           do i_sotope = 1, n_fasturr
-            call isotopes(i_sotope) % alloc_prob_tables()
             do i_nuc = 1, n_nuclides_total
               if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
+                call isotopes(i_sotope) % Tlist &
+                  % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
+                call isotopes(i_sotope) % inuclist % append(i_nuc)
                 micro_xs(i_nuc) % use_ptable = .true.
-                call prob_tables(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
-                exit
               end if
             end do
+            isotopes(i_sotope) % nT = isotopes(i_sotope) % Tlist % size()
+            call isotopes(i_sotope) % alloc_prob_tables()
+            call prob_tables(i_sotope)
           end do
 
         case (ON_THE_FLY)

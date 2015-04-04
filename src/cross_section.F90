@@ -605,10 +605,6 @@ contains
       i_energy = i_energy + 1
     end do
 
-    ! determine interpolation factor on table
-    f = (E - urr % energy(i_energy)) / &
-         (urr % energy(i_energy + 1) - urr % energy(i_energy))
-
     ! if we're dealing with a nuclide that we've previously encountered at
     ! this energy but a different temperature, use the original random number to
     ! preserve correlation of temperature in probability tables
@@ -642,6 +638,8 @@ contains
     ! determine elastic, fission, and capture cross sections from probability
     ! table
     if (urr % interp == LINEAR_LINEAR) then
+      f = (E - urr % energy(i_energy)) / &
+        (urr % energy(i_energy + 1) - urr % energy(i_energy))
       elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_low) + &
            f * urr % prob(i_energy + 1, URR_ELASTIC, i_up)
       fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_low) + &

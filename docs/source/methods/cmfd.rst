@@ -28,7 +28,7 @@ directions. An example of this is shown in the following expression:
     :label: not1
 
     \sum\limits_{u\in(x,y,z)}\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
-    \Delta_m^v\Delta_n^w\right\rangle 
+    \Delta_m^v\Delta_n^w\right\rangle
 
 Here, :math:`u` takes on each direction one at a time. The parameter :math:`J`
 is surface area-averaged over the transverse indices :math:`m` and :math:`n`
@@ -142,7 +142,7 @@ defined from MC tallies as follows:
    {\left\langle\overline{\overline\phi}_{l,m,n}^h
    \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
 
-and 
+and
 
 .. math::
    :label: xs3
@@ -303,13 +303,13 @@ interior cell,
    \sum_{u\in
    x,y,x}\frac{1}{\Delta_l^u}\left[\left(-\tilde{D}_{l-1/2,m,n}^{u,g} -
    \hat{D}_{l-1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l-1,m,n}^g\right.
-   + \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
+   \\ + \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
    \tilde{D}_{l+1/2,m,n}^{u,g} - \hat{D}_{l-1/2,m,n}^{u,g} +
    \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l,m,n}^g
-   \\ + 
+   \\ +
    \left. \left(-\tilde{D}_{l+1/2,m,n}^{u,g} +
    \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l+1,m,n}^g
-   \right] +
+   \right] \\ +
    \overline{\overline\Sigma}_{t_{l,m,n}}^g\overline{\overline{\phi}}_{l,m,n}^g
    - \sum\limits_{h=1}^G\overline{\overline{\nu_s\Sigma}}^{h\rightarrow
    g}_{s_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h =
@@ -318,7 +318,7 @@ interior cell,
 
 It should be noted that before substitution, eq. :eq:`eq_neut_bal` was divided
 by the volume of the cell, :math:`\Delta_l^u\Delta_m^v\Delta_n^w`. Equation
-:eq:`eq_cmfd_sys` can be represented in operator form as 
+:eq:`eq_cmfd_sys` can be represented in operator form as
 
 .. math::
    :label: eq_CMFDopers
@@ -349,7 +349,7 @@ and energy group. This is represented as
    p_{l,m,n}^g =
    \frac{\sum_{h=1}^{G}\overline{\overline{\nu_f\Sigma}}^{h\rightarrow
    g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h\Delta_l^u\Delta_m^v
-   \Delta_n^w}{\sum_n\sum_m\sum_l\sum_{h=1}^{G}\overline{ 
+   \Delta_n^w}{\sum_n\sum_m\sum_l\sum_{h=1}^{G}\overline{
    \overline{\nu_f\Sigma}}^{h\rightarrow
    g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h\Delta_l^u\Delta_m^v
    \Delta_n^w}.
@@ -439,7 +439,7 @@ by the user. Once all diffusion parameters are calculated, CMFD matrices are
 formed where energy groups are the inner most iteration index. In OpenMC,
 compressed row storage sparse matrices are used due to the sparsity of CMFD
 operators. An example of this sparsity is shown for the 3-D BEAVRS model in
-figures :ref:`fig_loss` and :ref:`fig_prod` [BEAVRS]_. These matrices represent
+figures :num:`fig-loss` and :num:`fig-prod` [BEAVRS]_. These matrices represent
 an assembly radial mesh, 24 cell mesh in the axial direction and two energy
 groups. The loss matrix is 99.92% sparse and the production matrix is 99.99%
 sparse. Although the loss matrix looks like it is tridiagonal, it is really a
@@ -473,19 +473,19 @@ no fission neutrons appear with energies in the thermal group.
    | \ :math:`\left\langle\overline{J}^{u,g}_{l\pm 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle`   | current        | mesh, energy              |
    +--------------------------------------------------------------------------------------------+----------------+---------------------------+
 
-.. _fig_loss:
+.. _fig-loss:
 
 .. figure:: ../_images/loss.png
    :scale: 50
 
-   Sparsity of Neutron Loss Operator 
+   Sparsity of Neutron Loss Operator
 
-.. _fig_prod:
+.. _fig-prod:
 
 .. figure:: ../_images/prod.png
    :scale: 50
 
-   Sparsity of Neutron Production Operator 
+   Sparsity of Neutron Production Operator
 
 To solve the eigenvalue problem with these matrices, different source iteration
 and linear solvers can be used. The most common source iteration solver used is
@@ -511,7 +511,7 @@ implemented to obtain eigenvalue and multigroup fluxes as described in [Gill]_
 and [Knoll]_. This method is not the primary one used, but has gotten recent
 attention due to its coupling advantages to other physics such as thermal
 hydraulics. Once multigroup fluxes are obtained, a normalized fission source is
-calculated in the code using eq. :eq:`eq_cmfd_psrc` directly. 
+calculated in the code using eq. :eq:`eq_cmfd_psrc` directly.
 
 The next step in the process is to compute weight adjustment factors. These are
 calculated by taking the ratio of the expected number of neutrons from the CMFD
@@ -523,11 +523,11 @@ the current MC source, OpenMC sums the statistical
 weights of neutrons from the source bank on a given spatial and energy mesh.
 Once weight adjustment factors were calculated, each neutron's statistical
 weight in the source bank was modified according to its location and energy.
-Examples of CMFD simulations using OpenMC can be found in [Herman_Thesis]_.
+Examples of CMFD simulations using OpenMC can be found in [HermanThesis]_.
 
-----------
-References
-----------
+.. only:: html
+
+   .. rubric:: References
 
 .. [BEAVRS] Nick Horelik, Bryan Herman. *Benchmark for Evaluation And Verification of Reactor
             Simulations*. Massachusetts Institute of Technology, http://crpg.mit.edu/pub/beavrs
@@ -536,23 +536,23 @@ References
 .. [Gill] Daniel F. Gill. *Newton-Krylov methods for the solution of the k-eigenvalue problem in
           multigroup neutronics calculations*. Ph.D. thesis, Pennsylvania State University, 2010.
 
-.. [Hebert] Alain Hebert. *Applied reactor physics*. Presses Internationales Polytechnique, 
+.. [Hebert] Alain Hebert. *Applied reactor physics*. Presses Internationales Polytechnique,
             Montreal, 2009.
 
 .. [Herman] Bryan R. Herman, Benoit Forget, Kord Smith, and Brian N. Aviles. Improved
             diffusion coefficients generated from Monte Carlo codes. In *Proceedings of M&C
             2013*, Sun Valley, ID, USA, May 5 - 9, 2013.
 
-.. [Herman_Thesis] Bryan R. Herman. *Monte Carlo and Thermal Hydraulic Coupling using
-                   Low-Order Nonlinear Diffusion Acceleration*. Sc.D. thesis,
-                   Massachusetts Institute of Technology, 2014.
+.. [HermanThesis] Bryan R. Herman. *Monte Carlo and Thermal Hydraulic Coupling using
+                  Low-Order Nonlinear Diffusion Acceleration*. Sc.D. thesis,
+                  Massachusetts Institute of Technology, 2014.
 
 .. [Knoll] D.A. Knoll, H. Park, and C. Newman. *Acceleration of k-eigenvalue/criticality
            calculations using the Jacobian-free Newton-Krylov method*. Nuclear Science and
            Engineering, 167:133–140, 2011.
 
 .. [Park] H. Park, D.A. Knoll, and C.K. Newman. *Nonlinear acceleration of transport
-          criticality problems*. Nuclear Science and Engineering, 172:52–65, 2012. 
+          criticality problems*. Nuclear Science and Engineering, 172:52–65, 2012.
 
 .. [Rhodes] Joel Rhodes and Malte Edenius. *CASMO-4 --- A Fuel Assembly Burnup Program.
             User’s Manual*. Studsvik of America, ssp-09/443-u rev 0, proprietary edition, 2001.

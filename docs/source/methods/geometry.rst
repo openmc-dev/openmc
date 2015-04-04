@@ -42,8 +42,10 @@ One can confirm that any point inside this sphere will correspond to
 In OpenMC, every surface defined by the user is assigned an integer to uniquely
 identify it. We can then refer to either of the two half-spaces created by a
 surface by a combination of the unique ID of the surface and a positive/negative
-sign. The following illustration shows an example of an ellipse with unique ID 1
+sign.  Figure :num:`fig-halfspace` shows an example of an ellipse with unique ID 1
 dividing space into two half-spaces.
+
+.. _fig-halfspace:
 
 .. figure:: ../_images/halfspace.*
    :align: center
@@ -57,9 +59,11 @@ to be defined by intersections, unions, and differences or half-spaces, OpenMC
 is currently limited to cells defined only as intersections of
 half-spaces. Thus, the specification of the cell must include a list of
 half-space references whose intersection defines the region. The region is then
-assigned a material defined elsewhere. The following illustration shows an
+assigned a material defined elsewhere. Figure :num:`fig-union` shows an
 example of a cell defined as the intersection of an ellipse and two planes.
-   
+
+.. _fig-union:
+
 .. figure:: ../_images/union.*
    :align: center
    :figclass: align-center
@@ -399,10 +403,12 @@ Rectilinear Lattice Indexing
 ----------------------------
 
 Indices are assigned to tiles in a rectilinear lattice based on the tile's
-position along the :math:`x`, :math:`y`, and :math:`z` axes.  The figure below
-maps the indices for a 2D lattice.  The indices, (1, 1), map to the
-lower-left tile.  (5, 1) and (5, 5) map to the lower-right and upper-right
-tiles, respectively.
+position along the :math:`x`, :math:`y`, and :math:`z` axes.  Figure
+:num:`fig-rect-lat` maps the indices for a 2D lattice.  The indices, (1, 1),
+map to the lower-left tile.  (5, 1) and (5, 5) map to the lower-right and
+upper-right tiles, respectively.
+
+.. _fig-rect-lat:
 
 .. figure:: ../_images/rect_lat.*
    :align: center
@@ -431,12 +437,15 @@ corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
 Hexagonal Lattice Indexing
 --------------------------
 
-A skewed coordinate system is used for indexing hexagonal lattice tiles.  Rather
-than a :math:`y`-axis, another axis is used that is rotated 30 degrees
+A skewed coordinate system is used for indexing hexagonal lattice tiles.
+Rather than a :math:`y`-axis, another axis is used that is rotated 30 degrees
 counter-clockwise from the :math:`y`-axis.  This axis is referred to as the
-:math:`\alpha`-axis.  The figure below shows how 2D hexagonal tiles are mapped
-with the :math:`(x, \alpha)` basis.  In this system, (0, 0) maps to the center
-tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the right side.
+:math:`\alpha`-axis.  Figure :num:`fig-hex-lat` shows how 2D hexagonal tiles
+are mapped with the :math:`(x, \alpha)` basis.  In this system, (0, 0) maps to
+the center tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the
+right side.
+
+.. _fig-hex-lat:
 
 .. figure:: ../_images/hex_lat.*
    :align: center

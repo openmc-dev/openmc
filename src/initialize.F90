@@ -31,6 +31,7 @@ module initialize
                               pointwise_urr, &
                               prob_tables, &
                               real_freq, &
+                              represent_params, &
                               represent_urr, &
                               resonance_ensemble, &
                               run_fasturr
@@ -154,6 +155,8 @@ contains
             continue
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
+            if (represent_params /= E_RESONANCE) call fatal_error('Generating&
+              & a resonance ensemble with neutron energy-dependent parameters')
             do i_sotope = 1, n_fasturr
               do i_nuc = 1, n_nuclides_total
                 if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
@@ -166,6 +169,8 @@ contains
           end select
 
         case (POINTWISE)
+          if (represent_params /= E_RESONANCE) call fatal_error('Generating&
+            & a resonance ensemble with neutron energy-dependent parameters')
           do i_sotope = 1, n_fasturr
             do i_nuc = 1, n_nuclides_total
               if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then

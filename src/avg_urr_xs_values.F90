@@ -15,7 +15,7 @@ contains
 
     tope => isotopes(i)
 
-    if (represent_params == CONTINUOUS) then
+    if (represent_params == E_RESONANCE) then
       select case(tope % MAT)
       case default
         if (tope % LSSF == 1) then
@@ -26,7 +26,7 @@ contains
         end if
       end select
 
-    else if (represent_params == DISCRETE) then
+    else if (represent_params == E_NEUTRON) then
       select case(tope % MAT)
       case(9228)
         ! 0.1% rel tol

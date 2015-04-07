@@ -1645,7 +1645,7 @@ contains
               ! loop over the addition of resonances to this ladder
               RESONANCES_LOOP: do i_r = 1, n_res
 
-                if (represent_params == CONTINUOUS) then
+                if (represent_params == E_RESONANCE) then
                   ! interpolate mean URR parameters to current resonance energy
                   call set_mean_parameters(iso, res % E_lam, i_l, i_J)
                 end if
@@ -2054,7 +2054,7 @@ contains
         ! loop over the addition of resonances to this ladder
         RESONANCES_LOOP: do i_r = 1, n_res
 
-          if (represent_params == CONTINUOUS) then
+          if (represent_params == E_RESONANCE) then
             ! interpolate mean URR parameters to current resonance energy
             call set_mean_parameters(iso, res % E_lam, i_l, i_J)
           end if
@@ -2501,18 +2501,24 @@ contains
       i_tabg = ceiling(prn() * 20.0_8)
       i_tabx = ceiling(prn() * 20.0_8)
 
-      ! compute factors needed to go from the mean reduced width that is
-      ! provided by ENDF for elastic scattering to what we want - a partial width
-      ! (use absolute value of energy in order to handle bound levels which have
-      ! negative resonance energies - this is an ENDF-6 convention, not theory)
-      rho = wavenumber(tope % AWR, abs(tope % E)) * tope % ac(tope % i_urr)
-      nu  = penetration(tope % L, rho) / rho
-
       ! use the sampled tabulated chi-squared values to calculate sample widths
       ! neutron width
       if (tope % AMUN > 0) then
-        this % Gam_n = tope % GN0 * sqrt(abs(tope % E)) * nu &
-          & * chi2(i_tabn, tope % AMUN)
+        ! compute factors needed to go from the mean reduced width that is
+        ! provided by ENDF for elastic scattering to what we want - a partial width
+        ! (use absolute value of energy in order to handle bound levels which have
+        ! negative resonance energies - this is an ENDF-6 convention, not theory)
+        if (represent_params == E_NEUTRON) then
+          rho = wavenumber(tope % AWR, abs(tope % E)) * tope % ac(tope % i_urr)
+          nu  = penetration(tope % L, rho) / rho
+          this % Gam_n = tope % GN0 * sqrt(abs(tope % E)) * nu &
+            & * chi2(i_tabn, tope % AMUN)
+        else if (represent_params == E_RESONANCE) then
+          rho = wavenumber(tope % AWR, abs(this % E_lam)) * tope % ac(tope % i_urr)
+          nu  = penetration(tope % L, rho) / rho
+          this % Gam_n = tope % GN0 * sqrt(abs(this % E_lam)) * nu &
+            & * chi2(i_tabn, tope % AMUN)          
+        end if
       else
         call fatal_error('Non-positive neutron width sampled')
       end if
@@ -2613,8 +2619,8 @@ contains
     ! negative resonance energies)
     k_lam = wavenumber(tope % AWR, abs(this % E_lam))
 
-    ! if URR parameters are valid at true resonance energies instead of E_n
-    if (1 == 2) then
+    ! if URR parameters have resonance energy dependence
+    if (represent_params == E_RESONANCE) then
 
       E_shift = this % E_lam &
         & + this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
@@ -2641,7 +2647,7 @@ contains
       end if
 
     else
-      ! assume all URR parameters already have energy dependence accounted for
+      ! assume all URR parameters already have neutron energy dependence
 
       E_shift = this % E_lam
       Gam_n_n = this % Gam_n
@@ -3385,10 +3391,7 @@ contains
       val = val_low + factor * (val_up - val_low)
 
     case (LOG_LOG)
-!!!
-      if (val_low <= ZERO .or. val_up <= ZERO) then
-        print*,val_low,val_up
-      end if
+
       val = exp((ONE - factor) * log(val_low) + factor * log(val_up))
 
     case default
@@ -3734,7 +3737,8 @@ contains
     else
       i_E = binary_search(tope % ES, tope % NE, E_res)
     end if
-    fendf = interp_factor(E_res, tope % ES(i_E), tope % ES(i_E + 1), tope % INT)
+    fendf = interp_factor(E_res, tope % ES(i_E), tope % ES(i_E + 1),&
+      tope % INT)
 
     ! set current mean unresolved resonance parameters
     tope % D   = interpolator(fendf, &

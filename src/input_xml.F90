@@ -3314,18 +3314,20 @@ contains
     end if
 
     ! Check for pointwise cross section calculation
-    if (check_for_node(doc, 'parameters')) then
-      call get_node_value(doc, "parameters", temp_str)
+    if (check_for_node(doc, 'parameter_energy_dependence')) then
+      call get_node_value(doc, "parameter_energy_dependence", temp_str)
       select case (trim(adjustl(to_lower(temp_str))))
-      case ('discrete')
-        represent_params = DISCRETE
-      case ('continuous')
-        represent_params = CONTINUOUS
+      case ('neutron')
+        represent_params = E_NEUTRON
+      case ('resonance')
+        represent_params = E_RESONANCE
       case default
-        call fatal_error('Unrecognized resonance parameters representation format in urr.xml')
+        call fatal_error('Unrecognized resonance parameter energy dependence&
+          & in urr.xml')
       end select
     else
-      call fatal_error('No resonance parameters representation format given in urr.xml')
+      call fatal_error('No resonance parameter energy dependence given in&
+        & urr.xml')
     end if
 
     ! Check for list of nuclides to apply the treatment to

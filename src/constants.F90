@@ -25,8 +25,8 @@ module constants
   integer, parameter :: ON_THE_FLY = 3
 
   ! Resonance parameters' energy-dependence representation
-  integer, parameter :: DISCRETE   = 1
-  integer, parameter :: CONTINUOUS = 2
+  integer, parameter :: E_NEUTRON   = 1 ! E_n-dependent
+  integer, parameter :: E_RESONANCE = 2 ! E_lambda-dependent
 
   ! URR realization frequencies
   integer, parameter :: EVENT      = 1

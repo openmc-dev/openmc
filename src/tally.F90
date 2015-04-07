@@ -782,6 +782,9 @@ contains
               case (SCORE_TOTAL_YN)
                 score_index = score_index - 1
 
+                ! Total cross section is pre-calculated
+                score = micro_xs(i_nuclide) % total * atom_density * flux
+
                 num_nm = 1
                 ! Find the order for a collection of requested moments
                 ! and store the moment contribution of each

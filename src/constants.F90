@@ -2,6 +2,9 @@ module constants
 
   implicit none
 
+  ! Lower cross section cutoff threshold value [b]
+  real(8), parameter :: XS_CUTOFF = 1.0e-14_8
+
   ! Faddeeva (W) function evaluation methods
   integer, parameter :: MIT_W   = 1
   integer, parameter :: QUICK_W = 2

@@ -1702,7 +1702,7 @@ contains
                   i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_f(i_grid) > ZERO) then
+                    & .or. tope % MF3_f(i_grid) > XS_CUTOFF) then
                     fact = interp_factor(E, tope % MF3_f_e(i_grid), &
                       & tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1722,7 +1722,7 @@ contains
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
                     & size(nuc % energy), E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. nuc % fission(i_grid) > ZERO) then
+                    & .or. nuc % fission(i_grid) > XS_CUTOFF) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
                       & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1750,7 +1750,7 @@ contains
                   i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_x(i_grid) > ZERO) then
+                    & .or. tope % MF3_x(i_grid) > XS_CUTOFF) then
                     fact = interp_factor(E, tope % MF3_x_e(i_grid), &
                       & tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
@@ -1776,7 +1776,7 @@ contains
                     & size(nuc % energy), E)
                   if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
                     & - nuc % elastic(i_grid) &
-                    & - nuc % absorption(i_grid) > ZERO) then
+                    & - nuc % absorption(i_grid) > XS_CUTOFF) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
                       & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
@@ -3385,7 +3385,10 @@ contains
       val = val_low + factor * (val_up - val_low)
 
     case (LOG_LOG)
-
+!!!
+      if (val_low <= ZERO .or. val_up <= ZERO) then
+        print*,val_low,val_up
+      end if
       val = exp((ONE - factor) * log(val_low) + factor * log(val_up))
 
     case default

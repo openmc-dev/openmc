@@ -38,11 +38,11 @@ contains
     type(TallyObject), pointer, intent(inout) :: t
     integer,                    intent(in)    :: start_index
     integer,                    intent(in)    :: i_nuclide
-    integer,                    intent(in)    :: filter_index
-    real(8),                    intent(in)    :: flux
+    integer,                    intent(in)    :: filter_index   ! for % results
+    real(8),                    intent(in)    :: flux           ! flux estimate
     real(8),                    intent(in)    :: atom_density   ! atom/b-cm
 
-    integer :: j                    ! loop index for scoring bins
+    integer :: i                    ! loop index for scoring bins
     integer :: l                    ! loop index for nuclides in material
     integer :: m                    ! loop index for reactions
     integer :: n                    ! loop index for legendre order
@@ -63,15 +63,18 @@ contains
     type(Reaction),    pointer, save :: rxn => null()
 !$omp threadprivate(t, mat, rxn)
 
-    j = 0
+    i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
-      j = j + 1
+      i = i + 1
+
       ! determine what type of score bin
-      score_bin = t % score_bins(j)
+      score_bin = t % score_bins(i)
 
       ! determine scoring bin index
-      score_index = start_index + j
+      score_index = start_index + i
 
+      !#########################################################################
+      ! Determine appropirate scoring value.
 
       select case(score_bin)
 
@@ -142,7 +145,7 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
-          j = j + t % moment_order(j)
+          i = i + t % moment_order(i)
           cycle SCORE_LOOP
         end if
         ! Since only scattering events make it here, again we can use
@@ -165,7 +168,7 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
-          j = j + t % moment_order(j)
+          i = i + t % moment_order(i)
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the post-collision
@@ -185,7 +188,7 @@ contains
         ! adjusted since tallying is only occuring when a scatter has
         ! happened. Effectively this means multiplying the estimator by
         ! total/scatter macro
-        score = (macro_total - p % mu*macro_scatt)*(ONE/macro_scatt)
+        score = (macro_total - p % mu * macro_scatt) * (ONE / macro_scatt)
 
 
       case (SCORE_N_1N)
@@ -411,18 +414,19 @@ contains
 
       end select
 
+      !#########################################################################
+      ! Expand score if necessary and add to tally results.
 
-      ! Add score to tally.
       select case(score_bin)
 
 
       case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
         ! Find the scattering order for a singly requested moment, and
         ! store its moment contribution.
-        if (t % moment_order(j) == 1) then
+        if (t % moment_order(i) == 1) then
           score = score * p % mu ! avoid function call overhead
         else
-          score = score * calc_pn(t % moment_order(j), p % mu)
+          score = score * calc_pn(t % moment_order(i), p % mu)
         endif
 !$omp atomic
         t % results(score_index, filter_index) % value = &
@@ -434,7 +438,7 @@ contains
         num_nm = 1
         ! Find the order for a collection of requested moments
         ! and store the moment contribution of each
-        do n = 0, t % moment_order(j)
+        do n = 0, t % moment_order(i)
           ! determine scoring bin index
           score_index = score_index + num_nm
           ! Update number of total n,m bins for this n (m = [-n: n])
@@ -442,12 +446,14 @@ contains
 
           ! multiply score by the angular flux moments and store
 !$omp critical
-          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
+          t % results(score_index: score_index + num_nm - 1, filter_index) &
+               & % value = t &
+               & % results(score_index: score_index + num_nm - 1, filter_index)&
+               & % value &
+               & + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
 !$omp end critical
         end do
-        j = j + (t % moment_order(j) + 1)**2 - 1
+        i = i + (t % moment_order(i) + 1)**2 - 1
 
 
       case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
@@ -460,7 +466,7 @@ contains
         end if
         ! Find the order for a collection of requested moments
         ! and store the moment contribution of each
-        do n = 0, t % moment_order(j)
+        do n = 0, t % moment_order(i)
           ! determine scoring bin index
           score_index = score_index + num_nm
           ! Update number of total n,m bins for this n (m = [-n: n])
@@ -468,29 +474,31 @@ contains
 
           ! multiply score by the angular flux moments and store
 !$omp critical
-          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_rn(n, uvw)
+          t % results(score_index: score_index + num_nm - 1, filter_index) &
+               & % value = t &
+               & % results(score_index: score_index + num_nm - 1, filter_index)&
+               & % value &
+               & + score * calc_rn(n, uvw)
 !$omp end critical
         end do
-        j = j + (t % moment_order(j) + 1)**2 - 1
+        i = i + (t % moment_order(i) + 1)**2 - 1
 
 
       case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
         score_index = score_index - 1
         ! Find the scattering order for a collection of requested moments
         ! and store the moment contribution of each
-        do n = 0, t % moment_order(j)
+        do n = 0, t % moment_order(i)
           ! determine scoring bin index
           score_index = score_index + 1
-          ! get the score and tally it
-          score_ = score * calc_pn(n, p % mu)
 
+          ! get the score and tally it
 !$omp atomic
           t % results(score_index, filter_index) % value = &
-               &t % results(score_index, filter_index) % value + score_
+               & t % results(score_index, filter_index) % value &
+               & + score * calc_pn(n, p % mu)
         end do
-        j = j + t % moment_order(j)
+        i = i + t % moment_order(i)
 
 
       case default

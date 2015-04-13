@@ -55,13 +55,12 @@ contains
     real(8) :: atom_density_        ! atom/b-cm
     real(8) :: f                    ! interpolation factor
     real(8) :: score                ! analog tally score
-    real(8) :: score_               ! analog tally score
     real(8) :: macro_total          ! material macro total xs
     real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer, save :: mat => null()
     type(Reaction),    pointer, save :: rxn => null()
-!$omp threadprivate(t, mat, rxn)
+!$omp threadprivate(mat, rxn)
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins

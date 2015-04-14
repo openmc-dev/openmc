@@ -74,8 +74,7 @@ contains
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
+    type(Nuclide), pointer :: nuc
 
     i_nuclide = sample_nuclide(p, 'total  ')
 
@@ -133,8 +132,7 @@ contains
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     real(8) :: sigma        ! microscopic total xs for nuclide
-    type(Material), pointer, save :: mat => null()
-!$omp threadprivate(mat)
+    type(Material), pointer :: mat
 
     ! Get pointer to current material
     mat => materials(p % material)
@@ -195,9 +193,8 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -313,9 +310,8 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -418,8 +414,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
+    type(Nuclide), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -497,7 +492,7 @@ contains
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    type(SAlphaBeta), pointer, save :: sab => null()
+    type(SAlphaBeta), pointer :: sab
     ! Following are needed only for SAB_SECONDARY_CONT scattering
     integer :: l              ! sampled incoming E bin (is i or i + 1)
     real(8) :: E_i_1, E_i_J   ! endpoints on outgoing grid i
@@ -508,8 +503,6 @@ contains
     real(8) :: c_j, c_j1      ! cumulative probability
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
-
-!$omp threadprivate(sab)
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -1067,9 +1060,8 @@ contains
     real(8) :: phi          ! fission neutron azimuthal angle
     real(8) :: weight       ! weight adjustment for ufs method
     logical :: in_mesh      ! source site in ufs mesh?
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -1175,8 +1167,7 @@ contains
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
-    type(DistEnergy), pointer, save :: edist => null()
-!$omp threadprivate(edist)
+    type(DistEnergy), pointer :: edist
 
     ! Determine total nu
     nu_t = nu_total(nuc, E)

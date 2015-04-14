@@ -30,8 +30,7 @@ contains
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
-    type(Surface), pointer, save :: s => null()
-!$omp threadprivate(s)
+    type(Surface), pointer :: s
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface
@@ -79,10 +78,9 @@ contains
     integer :: i                       ! cell loop index on a level
     integer :: n                       ! number of cells to search on a level
     integer :: index_cell              ! index in cells array
-    type(Cell),       pointer, save :: c => null()     ! pointer to cell
-    type(Universe),   pointer, save :: univ => null()  ! universe to search in
-    type(LocalCoord), pointer, save :: coord => null() ! particle coordinate to search on
-!$omp threadprivate(c, univ, coord)
+    type(Cell),       pointer :: c     ! pointer to cell
+    type(Universe),   pointer :: univ  ! universe to search in
+    type(LocalCoord), pointer :: coord ! particle coordinate to search on
 
     coord => p % coord0
 
@@ -132,15 +130,14 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
 
-    integer :: i                       ! index over cells
-    integer :: i_xyz(3)                ! indices in lattice
-    integer :: n                       ! number of cells to search
-    integer :: index_cell              ! index in cells array
-    logical :: use_search_cells        ! use cells provided as argument
-    type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    class(Lattice), pointer, save :: lat => null()  ! pointer to lattice
-    type(Universe), pointer, save :: univ => null() ! universe to search in
-!$omp threadprivate(c, lat, univ)
+    integer :: i                    ! index over cells
+    integer :: i_xyz(3)             ! indices in lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    logical :: use_search_cells     ! use cells provided as argument
+    type(Cell),     pointer :: c    ! pointer to cell
+    class(Lattice), pointer :: lat  ! pointer to lattice
+    type(Universe), pointer :: univ ! universe to search in
 
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
@@ -294,8 +291,7 @@ contains
     real(8) :: norm      ! "norm" of surface normal
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
-    type(Surface), pointer, save :: surf => null()
-!$omp threadprivate(surf)
+    type(Surface), pointer :: surf
 
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
@@ -575,9 +571,8 @@ contains
 
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
-    class(Lattice),   pointer, save :: lat => null()
-    type(LocalCoord), pointer, save :: parent_coord => null()
-!$omp threadprivate(lat, parent_coord)
+    class(Lattice),   pointer :: lat
+    type(LocalCoord), pointer :: parent_coord
 
     lat => lattices(p % coord % lattice) % obj
 
@@ -598,9 +593,9 @@ contains
     p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
     p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
     p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
-    i_xyz(1) = p % coord % lattice_x 
-    i_xyz(2) = p % coord % lattice_y 
-    i_xyz(3) = p % coord % lattice_z 
+    i_xyz(1) = p % coord % lattice_x
+    i_xyz(2) = p % coord % lattice_y
+    i_xyz(3) = p % coord % lattice_z
 
     ! Set the new coordinate position.
     p % coord % xyz = lat % get_local_xyz(parent_coord % xyz, i_xyz)
@@ -676,13 +671,12 @@ contains
     real(8) :: a,b,c,k            ! quadratic equation coefficients
     real(8) :: quad               ! discriminant of quadratic equation
     logical :: on_surface         ! is particle on surface?
-    type(Cell),       pointer, save :: cl => null()
-    type(Surface),    pointer, save :: surf => null()
-    class(Lattice),   pointer, save :: lat => null()
-    type(LocalCoord), pointer, save :: coord => null()
-    type(LocalCoord), pointer, save :: final_coord => null()
-    type(LocalCoord), pointer, save :: parent_coord => null()
-!$omp threadprivate(cl, surf, lat, coord, final_coord, parent_coord)
+    type(Cell),       pointer :: cl
+    type(Surface),    pointer :: surf
+    class(Lattice),   pointer :: lat
+    type(LocalCoord), pointer :: coord
+    type(LocalCoord), pointer :: final_coord
+    type(LocalCoord), pointer :: parent_coord
 
     ! inialize distance to infinity (huge)
     dist = INFINITY

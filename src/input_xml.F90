@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use endf_reader,      only: path_endf
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -35,13 +36,16 @@ module input_xml
                               n_bands, &
                               n_fasturr, &
                               n_reals, &
-                              ntables, &
+                              n_tables, &
+                              path_avg_urr_xs, &
                               real_freq, &
                               represent_params, &
                               represent_urr, &
                               run_fasturr, &
                               tol_avg_urr, &
                               tol_point_urr, &
+                              write_avg_urr_xs, &
+                              write_urr_tables, &
                               xs_bands
 
   use xml_interface
@@ -3218,11 +3222,19 @@ contains
     end if
 
     ! Check that a path to ENDF data is specified
-    if (check_for_node(doc, "endf_datapath")) then
-      call get_node_value(doc, "endf_datapath", path_endf)
+    if (check_for_node(doc, "ENDF-6_filepath")) then
+      call get_node_value(doc, "ENDF-6_filepath", path_endf)
     else
       call fatal_error('No path to ENDF-6 data files for URR treatment&
         & given in urr.xml')
+    end if
+
+    ! Check that a path to averaged URR cross section values is specified
+    if (check_for_node(doc, "avg_xs_filepath")) then
+      call get_node_value(doc, "avg_xs_filepath", path_avg_urr_xs)
+    else
+      call fatal_error('Specify path to averaged URR cross section data files&
+        & via avg_xs_filepath in urr.xml')
     end if
 
     ! Check which formalism for the on-the-fly URR treatment is specified
@@ -3539,7 +3551,7 @@ contains
         else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
           E_spacing = LOGARITHMIC
           if (check_for_node(prob_table_node, "n_energies")) then
-            call get_node_value(prob_table_node, "n_energies", ntables)
+            call get_node_value(prob_table_node, "n_energies", n_tables)
           else
             call fatal_error('Must specify number of logarithmic probability&
               & table energies')
@@ -3549,8 +3561,8 @@ contains
         else if (trim(adjustl(to_lower(temp_str))) == 'user') then
           E_spacing = USER
           if (check_for_node(prob_table_node, "energy_values")) then
-            ntables = get_arraysize_double(prob_table_node, "energy_values")
-            allocate(Etables(ntables))
+            n_tables = get_arraysize_double(prob_table_node, "energy_values")
+            allocate(Etables(n_tables))
             call get_node_array(prob_table_node, "energy_values", Etables)
           else
             call fatal_error('No probability table energy grid values&
@@ -3579,6 +3591,56 @@ contains
         call fatal_error('No background cross section source for probability&
           & table calculation given in urr.xml')
       end if
+
+      if (check_for_node(doc, "competitive")) then
+        call get_node_value(doc, "competitive", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'false' &
+          & .or. trim(adjustl(temp_str)) == '0') then
+          competitive = .false.
+        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+          & .or. trim(adjustl(temp_str)) == '1') then
+          competitive = .true.
+        else
+          call fatal_error('Modeling of competitive reaction cross section resonance&
+            & structure must be true or false in urr.xml')
+        end if
+      else
+        call fatal_error('Must specify whether or not to model resonance structure&
+          & of competitive reaction cross section in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "write_tables")) then
+        call get_node_value(prob_table_node, "write_tables", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'false' &
+          & .or. trim(adjustl(temp_str)) == '0') then
+          write_urr_tables = .false.
+        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+          & .or. trim(adjustl(temp_str)) == '1') then
+          write_urr_tables = .true.
+        else
+          call fatal_error('write_tables must be true or false in urr.xml')
+        end if
+      else
+        call fatal_error('Specify whether or not to write out URR probability&
+          & tables to a file via write_tables in urr.xml')
+      end if
+
+      if (check_for_node(prob_table_node, "write_avg_xs")) then
+        call get_node_value(prob_table_node, "write_avg_xs", temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'false' &
+          & .or. trim(adjustl(temp_str)) == '0') then
+          write_avg_urr_xs = .false.
+        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+          & .or. trim(adjustl(temp_str)) == '1') then
+          write_avg_urr_xs = .true.
+        else
+          call fatal_error('write_avg_xs must be true or false in urr.xml')
+        end if
+      else
+        call fatal_error('Specify whether or not to write out averaged URR&
+          & cross section values to a file via write_avg_xs in urr.xml')
+      end if
+
     end if
 
     ! Close URR XML file

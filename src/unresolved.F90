@@ -11,33 +11,36 @@ module unresolved
 
   implicit none
 
-  logical :: run_fasturr  ! use special treatment for Fast/URR data?
-  logical :: competitive  ! model competitve reaction xs resonance structure?
-  integer :: n_fasturr           ! number of URR isotopes being processed
-  integer :: represent_urr       ! representation of URR xs
-  integer :: represent_params    ! representation of URR parameters
-  integer :: formalism           ! URR resonance formalism
-  integer :: real_freq           ! frequency of URR realizations
-  integer :: ntables             ! number of probability tables (energies)
+  logical :: competitive      ! use competitve reaction xs resonance structure?
+  logical :: run_fasturr      ! use special treatment for Fast/URR data?
+  logical :: write_avg_urr_xs ! write averaged xs values to a file?
+  logical :: write_urr_tables ! write probability tables to a file?
+  integer :: background          ! where to get background cross sections
   integer :: band_spacing        ! cross section band spacing scheme
   integer :: E_spacing           ! probability table energy spacing scheme
-  integer :: background          ! where to get background cross sections
-  integer :: n_bands             ! number of probability table xs bands
-  integer :: l_waves(4)          ! number of contributing l-wave
-  integer :: min_batches_avg_urr ! min batches for averaged cross section calc
-  integer :: max_batches_avg_urr ! max batches for averaged cross section calc
+  integer :: formalism           ! URR resonance formalism
   integer :: histories_avg_urr   ! histories for averaged cross section calc
-  integer :: n_reals             ! number of independent URR realizations
   integer :: i_real              ! index of URR realization used for calc
   integer :: i_real_user         ! user-specified realization index
-  real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
-  real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
-  real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
-  real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
+  integer :: l_waves(4)          ! number of contributing l-wave
+  integer :: max_batches_avg_urr ! max batches for averaged cross section calc
+  integer :: min_batches_avg_urr ! min batches for averaged cross section calc
+  integer :: n_bands             ! number of probability table xs bands
+  integer :: n_fasturr           ! number of URR isotopes being processed
+  integer :: n_tables            ! number of probability tables (energies)
+  integer :: n_reals             ! number of independent URR realizations
+  integer :: real_freq           ! frequency of URR realizations
+  integer :: represent_params    ! representation of URR parameters
+  integer :: represent_urr       ! representation of URR xs
   real(8) :: first_bound         ! xs boundary between first two bands
   real(8) :: last_bound          ! xs boundary between last two bands
+  real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
+  real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
+  real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
+  real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
   real(8), allocatable :: Etables(:)  ! probability table energies
   real(8), allocatable :: xs_bands(:) ! probability table xs band boundaries
+  character(MAX_FILE_LEN) :: path_avg_urr_xs ! path to averaged URR xs files
   character(80), allocatable :: endf_files(:) ! list of ENDF-6 filenames
 !$omp threadprivate(i_real)
 
@@ -336,6 +339,7 @@ module unresolved
     ! computed averaged, infinite-dilute URR cross section values and energies
     integer :: nEavg
     real(8), allocatable :: Eavg(:)
+    real(8), allocatable :: avg_urr_t(:)
     real(8), allocatable :: avg_urr_n(:)
     real(8), allocatable :: avg_urr_f(:)
     real(8), allocatable :: avg_urr_g(:)
@@ -1555,22 +1559,23 @@ contains
     type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
     type(Resonance) :: res ! resonance object
     character(6) :: zaid_str ! ENDF-6 MAT number as a string
-    integer :: tab_unit = 99 ! probability tables output file unit
-    integer :: iso    ! isotope index
-    integer :: i_nuc  ! nuclide index
+    integer :: i_b    ! batch index
+    integer :: i_band ! probability band index
     integer :: i_E    ! energy grid index
     integer :: i_grid ! File 3 energy grid index
-    integer :: i_b    ! batch index
     integer :: i_h    ! history index
-    integer :: i_l    ! orbital quantum number index
     integer :: i_J    ! total angular momentum quantum number index
+    integer :: i_l    ! orbital quantum number index
+    integer :: i_nuc  ! nuclide index
     integer :: i_r    ! resonance index
     integer :: i_T    ! temperature index
-    integer :: n_res  ! number of resonances to include for a given l-wave
-    integer :: i_band ! probability band index
     integer :: i_temp ! temperature index
-    real(8) :: E    ! neutron lab energy [eV]
-    real(8) :: fact ! File 3 energy grid interpolation factor
+    integer :: iso    ! isotope index
+    integer :: n_res  ! number of resonances to include for a given l-wave
+    integer :: avg_unit = 98 ! avg xs output file unit
+    integer :: tab_unit = 99 ! tables output file unit
+    real(8) :: E        ! neutron lab energy [eV]
+    real(8) :: fact     ! File 3 energy grid interpolation factor
     real(8) :: xs_t_min ! min realized total xs
     real(8) :: xs_t_max ! max realized total xs
 
@@ -1580,7 +1585,19 @@ contains
     tope => isotopes(iso)
 
     write(zaid_str, '(I6)') tope % ZAI
-    open(unit = tab_unit, file = trim(adjustl(zaid_str)) // '-prob-tables.out')
+    if (master)&
+      write(*, '(A80)') 'Generating probability tables for ZAID = '//&
+      trim(adjustl(zaid_str))
+    if (write_urr_tables)&
+      open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-urr-tables.dat')
+    if (write_avg_urr_xs) then
+      open(unit = avg_unit, file = trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
+      write(avg_unit, '(I6)') tope % ZAI
+      write(avg_unit, '(I1)') represent_params
+      write(avg_unit, '(ES13.6)') tol_avg_urr
+      write(avg_unit, '(A13,A13,A13,A13,A13,A13)') &
+        & 'energy [eV]', 'total', 'elastic', 'capture', 'fission', 'competitive'
+    end if
 
     ! loop over energy mesh
     ENERGY_LOOP: do i_E = 1, tope % ntabs
@@ -1665,7 +1682,7 @@ contains
 
                   ! add this contribution to the accumulated partial cross
                   ! section values built up from all resonances
-! TODO: move t outside of loop
+                  ! TODO: move t outside of loop
                   call tope % res_contrib(res, i_E, i_T)
 
                 end do TEMPERATURES_LOOP
@@ -1816,7 +1833,7 @@ contains
         ! calculate statistics for this batch
         call tope % calc_stats(i_b)
 
-! TODO: pick the temperature used for cutoff criterion more thoughtfully
+        ! TODO: pick the temperature used for cutoff criterion more thoughtfully
         if ((i_b > min_batches_avg_urr &
           & .and. max(tope % prob_tables(i_E, 1) % avg_t % rel_unc, &
           &           tope % prob_tables(i_E, 1) % avg_n % rel_unc, &
@@ -1827,115 +1844,81 @@ contains
           & .or. i_b == max_batches_avg_urr) exit
       end do BATCH_LOOP
 
-      do i_temp = 1, tope % nT
+      ! write probability tables out to a file
+      if (write_urr_tables) then
+        do i_temp = 1, tope % nT
+          tope % T = tope % Tlist % get_item(i_temp)
+          write(tab_unit, '(A13,ES13.6)') 'E [eV]', tope % Etabs(i_E)
+          write(tab_unit, '(A13,ES13.6)') 'T [K]', tope % T
+          write(tab_unit, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
+            & 'lower [b]', 'upper [b]', &
+            & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
 
-        tope % T = tope % Tlist % get_item(i_temp)
-        
-        write(tab_unit, '(A13,ES13.6)') 'E [eV]', tope % Etabs(i_E)
-        write(tab_unit, '(A13,ES13.6)') 'T [K]', tope % T
-        write(tab_unit, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
-          & 'lower [b]', 'upper [b]', &
-          & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
-
-        if (master) then
-          write(*, '(A32,ES13.6,A3)') 'Generated probability tables at ', &
-            & tope % Etabs(i_E), ' eV'
-        end if
-        if (1==2) then
-        write(*, '(A13,ES13.6)') 'T [K]', tope % T
-        write(*, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
-          & 'lower [b]', 'upper [b]', &
-          & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
-        end if
-        ptable => tope % prob_tables(i_E, i_temp)
-        do i_band = 1, n_bands
-          if (i_band == 1) then
-            write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_t_min, xs_bands(1), &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            if (1==2) then
-            write(*, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_t_min, xs_bands(1), &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            end if
-          else if (i_band == n_bands) then
-            write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_bands(i_band - 1), xs_t_max, &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            if (1==2) then
-            write(*, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_bands(i_band - 1), xs_t_max, &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            end if
-          else
-            write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_bands(i_band - 1), xs_bands(i_band), &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            if (1==2) then
-            write(*, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-              & xs_bands(i_band - 1), xs_bands(i_band), &
-              & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-              & ptable % n(i_band) % xs_mean, &
-              & ptable % g(i_band) % xs_mean, &
-              & ptable % f(i_band) % xs_mean, &
-              & ptable % x(i_band) % xs_mean
-            end if
+          if (master) then
+            write(*, '(A32,ES10.3,A3)') 'Generated probability tables at ', &
+              & tope % Etabs(i_E), ' eV'
           end if
+          ptable => tope % prob_tables(i_E, i_temp)
+          do i_band = 1, n_bands
+            if (i_band == 1) then
+              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                & xs_t_min, xs_bands(1), &
+                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+                & ptable % n(i_band) % xs_mean, &
+                & ptable % g(i_band) % xs_mean, &
+                & ptable % f(i_band) % xs_mean, &
+                & ptable % x(i_band) % xs_mean
+            else if (i_band == n_bands) then
+              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                & xs_bands(i_band - 1), xs_t_max, &
+                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+                & ptable % n(i_band) % xs_mean, &
+                & ptable % g(i_band) % xs_mean, &
+                & ptable % f(i_band) % xs_mean, &
+                & ptable % x(i_band) % xs_mean
+            else
+              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                & xs_bands(i_band - 1), xs_bands(i_band), &
+                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
+                & ptable % n(i_band) % xs_mean, &
+                & ptable % g(i_band) % xs_mean, &
+                & ptable % f(i_band) % xs_mean, &
+                & ptable % x(i_band) % xs_mean
+            end if
+          end do
+          write(tab_unit, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+            & 'batch', 'averaged xs', &
+            & ONE, ptable % avg_t % xs_mean, &
+            & ptable % avg_n % xs_mean, &
+            & ptable % avg_g % xs_mean, &
+            & ptable % avg_f % xs_mean, &
+            & ptable % avg_x % xs_mean
+          write(tab_unit, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+            & i_b, '1sigma', &
+            & ZERO, ptable % avg_t % xs_sem, &
+            & ptable % avg_n % xs_sem, &
+            & ptable % avg_g % xs_sem, &
+            & ptable % avg_f % xs_sem, &
+            & ptable % avg_x % xs_sem
         end do
-        write(tab_unit, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-          & 'batch', 'averaged xs', &
-          & ONE, ptable % avg_t % xs_mean, &
+      end if
+
+      ! write averaged URR cross sections out to a file
+      if (write_avg_urr_xs) then
+        ptable => tope % prob_tables(i_E, 1)
+        write(avg_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
+          & tope % Etabs(i_E), &
+          & ptable % avg_t % xs_mean, &
           & ptable % avg_n % xs_mean, &
           & ptable % avg_g % xs_mean, &
           & ptable % avg_f % xs_mean, &
           & ptable % avg_x % xs_mean
-        write(tab_unit, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-          & i_b, '1sigma', &
-          & ZERO, ptable % avg_t % xs_sem, &
-          & ptable % avg_n % xs_sem, &
-          & ptable % avg_g % xs_sem, &
-          & ptable % avg_f % xs_sem, &
-          & ptable % avg_x % xs_sem
-        if (1==2) then
-        write(*, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-          & 'batch', 'averaged xs', &
-          & ONE, ptable % avg_t % xs_mean, &
-          & ptable % avg_n % xs_mean, &
-          & ptable % avg_g % xs_mean, &
-          & ptable % avg_f % xs_mean, &
-          & ptable % avg_x % xs_mean
-        write(*, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-          & i_b, '1sigma', &
-          & ZERO, ptable % avg_t % xs_sem, &
-          & ptable % avg_n % xs_sem, &
-          & ptable % avg_g % xs_sem, &
-          & ptable % avg_f % xs_sem, &
-          & ptable % avg_x % xs_sem
-        end if
-      end do
+      end if
+
     end do ENERGY_LOOP
 
-    close(tab_unit)
+    if (write_urr_tables) close(tab_unit)
+    if (write_avg_urr_xs) close(avg_unit)
 
   end subroutine prob_tables
 
@@ -4584,13 +4567,13 @@ contains
       allocate(this % Etabs(this % ntabs))
       this % Etabs(:) = this % ES
     else if (E_spacing == LOGARITHMIC) then
-      this % ntabs = ntables
+      this % ntabs = n_tables
       allocate(this % Etabs(this % ntabs))
       this % Etabs(:) = (/(this % EL(this % i_urr) &
         & * exp(i_E * log(this % EH(this % i_urr) / this % EL(this % i_urr)) &
         & / (this % ntabs - 1)), i_E = 0, this % ntabs - 1)/)
     else if (E_spacing == USER) then
-      this % ntabs = ntables
+      this % ntabs = n_tables
       allocate(this % Etabs(this % ntabs))
       this % Etabs(:) = Etables
     end if
@@ -4836,6 +4819,7 @@ contains
 
     ! deallocate averaged, infinite-dilute URR cross sections
     deallocate(this % Eavg)
+    deallocate(this % avg_urr_t)
     deallocate(this % avg_urr_n)
     deallocate(this % avg_urr_f)
     deallocate(this % avg_urr_g)

@@ -803,7 +803,10 @@ class Tally(object):
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
         for nuclide in self._nuclides:
-            string += '{0} '.format(nuclide._name)
+            if isinstance(nuclide, Nuclide):
+                string += '{0} '.format(nuclide._name)
+            else:
+                string += '{0} '.format(nuclide)
 
         string += '\n'
 

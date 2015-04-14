@@ -879,7 +879,10 @@ class Tally(object):
 
             nuclides = ''
             for nuclide in self._nuclides:
-                nuclides += '{0} '.format(nuclide._name)
+                if isinstance(nuclide, Nuclide):
+                    nuclides += '{0} '.format(nuclide._name)
+                else:
+                    nuclides += '{0} '.format(nuclide)
 
             subelement = ET.SubElement(element, "nuclides")
             subelement.text = nuclides.rstrip(' ')

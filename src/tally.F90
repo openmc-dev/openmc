@@ -33,7 +33,7 @@ contains
 !===============================================================================
 
   subroutine score_general(p, t, start_index, filter_index, i_nuclide, &
-       &atom_density, flux)
+       atom_density, flux)
     type(Particle),             intent(in)    :: p
     type(TallyObject), pointer, intent(inout) :: t
     integer,                    intent(in)    :: start_index
@@ -133,7 +133,7 @@ contains
           ! Note SCORE_SCATTER_N not available for tracklength.
           if (i_nuclide > 0) then
             score = (micro_xs(i_nuclide) % total &
-                 &- micro_xs(i_nuclide) % absorption) * atom_density * flux
+                 - micro_xs(i_nuclide) % absorption) * atom_density * flux
           else
             score = (material_xs % total - material_xs % absorption) * flux
           end if
@@ -231,7 +231,7 @@ contains
             ! fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
-                   &/ micro_xs(p % event_nuclide) % absorption
+                   / micro_xs(p % event_nuclide) % absorption
             else
               score = ZERO
             end if
@@ -242,7 +242,7 @@ contains
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
             score = p % last_wgt * micro_xs(p % event_nuclide) % fission &
-                 &/ micro_xs(p % event_nuclide) % absorption
+                 / micro_xs(p % event_nuclide) % absorption
           end if
 
         else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -273,7 +273,7 @@ contains
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                   &nu_fission / micro_xs(p % event_nuclide) % absorption
+                   nu_fission / micro_xs(p % event_nuclide) % absorption
             else
               score = ZERO
             end if
@@ -305,8 +305,8 @@ contains
             ! fission scale by kappa-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * &
-                   &micro_xs(p % event_nuclide) % kappa_fission / &
-                   &micro_xs(p % event_nuclide) % absorption
+                   micro_xs(p % event_nuclide) % kappa_fission / &
+                   micro_xs(p % event_nuclide) % absorption
             else
               score = ZERO
             end if
@@ -317,8 +317,8 @@ contains
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
             score = p % last_wgt * &
-                 &micro_xs(p % event_nuclide) % kappa_fission / &
-                 &micro_xs(p % event_nuclide) % absorption
+                 micro_xs(p % event_nuclide) % kappa_fission / &
+                 micro_xs(p % event_nuclide) % absorption
           end if
 
         else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -406,7 +406,7 @@ contains
 
           else
             call fatal_error("Invalid score type on tally " &
-                 &// to_str(t % id) // ".")
+                 // to_str(t % id) // ".")
           end if
         end if
 
@@ -429,7 +429,7 @@ contains
         endif
 !$omp atomic
         t % results(score_index, filter_index) % value = &
-             &t % results(score_index, filter_index) % value + score
+             t % results(score_index, filter_index) % value + score
 
 
       case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
@@ -446,10 +446,10 @@ contains
           ! multiply score by the angular flux moments and store
 !$omp critical
           t % results(score_index: score_index + num_nm - 1, filter_index) &
-               & % value = t &
-               & % results(score_index: score_index + num_nm - 1, filter_index)&
-               & % value &
-               & + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
+               % value = t &
+               % results(score_index: score_index + num_nm - 1, filter_index)&
+               % value &
+               + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
 !$omp end critical
         end do
         i = i + (t % moment_order(i) + 1)**2 - 1
@@ -474,10 +474,10 @@ contains
           ! multiply score by the angular flux moments and store
 !$omp critical
           t % results(score_index: score_index + num_nm - 1, filter_index) &
-               & % value = t &
-               & % results(score_index: score_index + num_nm - 1, filter_index)&
-               & % value &
-               & + score * calc_rn(n, uvw)
+               % value = t &
+               % results(score_index: score_index + num_nm - 1, filter_index)&
+               % value &
+               + score * calc_rn(n, uvw)
 !$omp end critical
         end do
         i = i + (t % moment_order(i) + 1)**2 - 1
@@ -494,8 +494,8 @@ contains
           ! get the score and tally it
 !$omp atomic
           t % results(score_index, filter_index) % value = &
-               & t % results(score_index, filter_index) % value &
-               & + score * calc_pn(n, p % mu)
+               t % results(score_index, filter_index) % value &
+               + score * calc_pn(n, p % mu)
         end do
         i = i + t % moment_order(i)
 
@@ -503,7 +503,7 @@ contains
       case default
 !$omp atomic
         t % results(score_index, filter_index) % value = &
-             &t % results(score_index, filter_index) % value + score
+             t % results(score_index, filter_index) % value + score
 
 
       end select
@@ -600,7 +600,7 @@ contains
 
         ! Determine score for each bin
         call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-             &i_nuclide, ZERO, ZERO)
+             i_nuclide, ZERO, ZERO)
 
       end do NUCLIDE_LOOP
 
@@ -776,7 +776,7 @@ contains
 
           ! Determine score for each bin
           call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               &i_nuclide, atom_density, flux)
+               i_nuclide, atom_density, flux)
 
         end do NUCLIDE_BIN_LOOP
       end if
@@ -833,7 +833,7 @@ contains
 
       ! Determine score for each bin
       call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
-           &i_nuclide, atom_density, flux)
+           i_nuclide, atom_density, flux)
 
     end do NUCLIDE_LOOP
 
@@ -845,7 +845,7 @@ contains
 
     ! Determine score for each bin
     call score_general(p, t, n_nuclides_total*t % n_score_bins, filter_index, &
-         &i_nuclide, atom_density, flux)
+         i_nuclide, atom_density, flux)
 
   end subroutine score_all_nuclides
 
@@ -1088,7 +1088,7 @@ contains
 
             ! Determine score for each bin
             call score_general(p, t, (b-1)*t % n_score_bins, filter_index, &
-                 &i_nuclide, atom_density, flux)
+                 i_nuclide, atom_density, flux)
 
           end do NUCLIDE_BIN_LOOP
         end if

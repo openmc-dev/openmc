@@ -27,6 +27,490 @@ module tally
 contains
 
 !===============================================================================
+! SCORE_GENERAL adds scores to the tally array for the given filter and nuclide.
+! This will work for either analog or tracklength tallies.  Note that
+! atom_density and flux are not used for analog tallies.
+!===============================================================================
+
+  subroutine score_general(p, t, start_index, filter_index, i_nuclide, &
+       atom_density, flux)
+    type(Particle),             intent(in)    :: p
+    type(TallyObject), pointer, intent(inout) :: t
+    integer,                    intent(in)    :: start_index
+    integer,                    intent(in)    :: i_nuclide
+    integer,                    intent(in)    :: filter_index   ! for % results
+    real(8),                    intent(in)    :: flux           ! flux estimate
+    real(8),                    intent(in)    :: atom_density   ! atom/b-cm
+
+    integer :: i                    ! loop index for scoring bins
+    integer :: l                    ! loop index for nuclides in material
+    integer :: m                    ! loop index for reactions
+    integer :: n                    ! loop index for legendre order
+    integer :: num_nm               ! Number of N,M orders in harmonic
+    integer :: q                    ! loop index for scoring bins
+    integer :: i_nuc                ! index in nuclides array (from material)
+    integer :: i_energy             ! index in nuclide energy grid
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: score_index          ! scoring bin index
+    real(8) :: atom_density_        ! atom/b-cm
+    real(8) :: f                    ! interpolation factor
+    real(8) :: score                ! analog tally score
+    real(8) :: macro_total          ! material macro total xs
+    real(8) :: macro_scatt          ! material macro scatt xs
+    real(8) :: uvw(3)               ! particle direction
+    type(Material),    pointer, save :: mat => null()
+    type(Reaction),    pointer, save :: rxn => null()
+!$omp threadprivate(mat, rxn)
+
+    i = 0
+    SCORE_LOOP: do q = 1, t % n_user_score_bins
+      i = i + 1
+
+      ! determine what type of score bin
+      score_bin = t % score_bins(i)
+
+      ! determine scoring bin index
+      score_index = start_index + i
+
+      !#########################################################################
+      ! Determine appropirate scoring value.
+
+      select case(score_bin)
+
+
+      case (SCORE_FLUX, SCORE_FLUX_YN)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! All events score to a flux bin. We actually use a collision
+          ! estimator since there is no way to count 'events' exactly for
+          ! the flux
+          if (survival_biasing) then
+            ! We need to account for the fact that some weight was already
+            ! absorbed
+            score = p % last_wgt + p % absorb_wgt
+          else
+            score = p % last_wgt
+          end if
+          score = score / material_xs % total
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          ! For flux, we need no cross section
+          score = flux
+        end if
+
+
+      case (SCORE_TOTAL, SCORE_TOTAL_YN)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! All events will score to the total reaction rate. We can just
+          ! use the weight of the particle entering the collision as the
+          ! score
+          if (survival_biasing) then
+            ! We need to account for the fact that some weight was already
+            ! absorbed
+            score = p % last_wgt + p % absorb_wgt
+          else
+            score = p % last_wgt
+          end if
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % total * atom_density * flux
+          else
+            score = material_xs % total * flux
+          end if
+        end if
+
+
+      case (SCORE_SCATTER, SCORE_SCATTER_N)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Skip any event where the particle didn't scatter
+          if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+          ! Since only scattering events make it here, again we can use
+          ! the weight entering the collision as the estimator for the
+          ! reaction rate
+          score = p % last_wgt
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          ! Note SCORE_SCATTER_N not available for tracklength.
+          if (i_nuclide > 0) then
+            score = (micro_xs(i_nuclide) % total &
+                 - micro_xs(i_nuclide) % absorption) * atom_density * flux
+          else
+            score = (material_xs % total - material_xs % absorption) * flux
+          end if
+        end if
+
+
+      case (SCORE_SCATTER_PN, SCORE_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! Since only scattering events make it here, again we can use
+        ! the weight entering the collision as the estimator for the
+        ! reaction rate
+        score = p % last_wgt
+
+
+      case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+        ! For scattering production, we need to use the post-collision
+        ! weight as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
+        score = p % wgt
+
+
+      case (SCORE_NU_SCATTER_PN, SCORE_NU_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! For scattering production, we need to use the post-collision
+        ! weight as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
+        score = p % wgt
+
+
+      case (SCORE_TRANSPORT)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+        ! get material macros
+        macro_total = material_xs % total
+        macro_scatt = material_xs % total - material_xs % absorption
+        ! Score total rate - p1 scatter rate Note estimator needs to be
+        ! adjusted since tallying is only occuring when a scatter has
+        ! happened. Effectively this means multiplying the estimator by
+        ! total/scatter macro
+        score = (macro_total - p % mu * macro_scatt) * (ONE / macro_scatt)
+
+
+      case (SCORE_N_1N)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+        ! Skip any events where weight of particle changed
+        if (p % wgt /= p % last_wgt) cycle SCORE_LOOP
+        ! All events that reach this point are (n,1n) reactions
+        score = p % last_wgt
+
+
+      case (SCORE_ABSORPTION)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No absorption events actually occur if survival biasing is on --
+            ! just use weight absorbed in survival biasing
+            score = p % absorb_wgt
+          else
+            ! Skip any event where the particle wasn't absorbed
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission and absorption events will contribute here, so we
+            ! can just use the particle's weight entering the collision
+            score = p % last_wgt
+          end if
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % absorption * atom_density * flux
+          else
+            score = material_xs % absorption * flux
+          end if
+        end if
+
+
+      case (SCORE_FISSION)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission
+            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
+                   / micro_xs(p % event_nuclide) % absorption
+            else
+              score = ZERO
+            end if
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for the
+            ! fission reaction rate
+            score = p % last_wgt * micro_xs(p % event_nuclide) % fission &
+                 / micro_xs(p % event_nuclide) % absorption
+          end if
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % fission * atom_density * flux
+          else
+            score = material_xs % fission * flux
+          end if
+        end if
+
+
+      case (SCORE_NU_FISSION)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing .or. p % fission) then
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Normally, we only need to make contributions to one scoring
+              ! bin. However, in the case of fission, since multiple fission
+              ! neutrons were emitted with different energies, multiple
+              ! outgoing energy bins may have been scored to. The following
+              ! logic treats this special case and results to multiple bins
+              call score_fission_eout(p, t, score_index)
+              cycle SCORE_LOOP
+            end if
+          end if
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! nu-fission
+            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                   nu_fission / micro_xs(p % event_nuclide) % absorption
+            else
+              score = ZERO
+            end if
+          else
+            ! Skip any non-fission events
+            if (.not. p % fission) cycle SCORE_LOOP
+            ! If there is no outgoing energy filter, than we only need to
+            ! score to one bin. For the score to be 'analog', we need to
+            ! score the number of particles that were banked in the fission
+            ! bank. Since this was weighted by 1/keff, we multiply by keff
+            ! to get the proper score.
+            score = keff * p % wgt_bank
+          end if
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
+          else
+            score = material_xs % nu_fission * flux
+          end if
+        end if
+
+
+      case (SCORE_KAPPA_FISSION)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scale by kappa-fission
+            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+              score = p % absorb_wgt * &
+                   micro_xs(p % event_nuclide) % kappa_fission / &
+                   micro_xs(p % event_nuclide) % absorption
+            else
+              score = ZERO
+            end if
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            score = p % last_wgt * &
+                 micro_xs(p % event_nuclide) % kappa_fission / &
+                 micro_xs(p % event_nuclide) % absorption
+          end if
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
+          else
+            score = material_xs % kappa_fission * flux
+          end if
+        end if
+
+
+      case (SCORE_EVENTS)
+        ! Simply count number of scoring events
+        score = ONE
+
+
+      case default
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Any other score is assumed to be a MT number. Thus, we just need
+          ! to check if it matches the MT number of the event
+          if (p % event_MT /= score_bin) cycle SCORE_LOOP
+          score = p % last_wgt
+
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          ! Any other cross section has to be calculated on-the-fly. For
+          ! cross sections that are used often (e.g. n2n, ngamma, etc. for
+          ! depletion), it might make sense to optimize this section or
+          ! pre-calculate cross sections
+          if (score_bin > 1) then
+            ! Set default score
+            score = ZERO
+
+            if (i_nuclide > 0) then
+              ! TODO: The following search for the matching reaction could
+              ! be replaced by adding a dictionary on each Nuclide instance
+              ! of the form {MT: i_reaction, ...}
+              REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
+                ! Get pointer to reaction
+                rxn => nuclides(i_nuclide) % reactions(m)
+                ! Check if this is the desired MT
+                if (score_bin == rxn % MT) then
+                  ! Retrieve index on nuclide energy grid and interpolation
+                  ! factor
+                  i_energy = micro_xs(i_nuclide) % index_grid
+                  f = micro_xs(i_nuclide) % interp_factor
+                  if (i_energy >= rxn % threshold) then
+                    score = ((ONE - f) * rxn % sigma(i_energy - &
+                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                         rxn%threshold + 2)) * atom_density * flux
+                  end if
+                  exit REACTION_LOOP
+                end if
+              end do REACTION_LOOP
+
+            else
+              ! Get pointer to current material
+              mat => materials(p % material)
+              do l = 1, mat % n_nuclides
+                ! Get atom density
+                atom_density_ = mat % atom_density(l)
+                ! Get index in nuclides array
+                i_nuc = mat % nuclide(l)
+                ! TODO: The following search for the matching reaction could
+                ! be replaced by adding a dictionary on each Nuclide
+                ! instance of the form {MT: i_reaction, ...}
+                do m = 1, nuclides(i_nuc) % n_reaction
+                  ! Get pointer to reaction
+                  rxn => nuclides(i_nuc) % reactions(m)
+                  ! Check if this is the desired MT
+                  if (score_bin == rxn % MT) then
+                    ! Retrieve index on nuclide energy grid and interpolation
+                    ! factor
+                    i_energy = micro_xs(i_nuc) % index_grid
+                    f = micro_xs(i_nuc) % interp_factor
+                    if (i_energy >= rxn % threshold) then
+                      score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                           rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                           rxn%threshold + 2)) * atom_density_ * flux
+                    end if
+                    exit
+                  end if
+                end do
+              end do
+            end if
+
+          else
+            call fatal_error("Invalid score type on tally " &
+                 // to_str(t % id) // ".")
+          end if
+        end if
+
+
+      end select
+
+      !#########################################################################
+      ! Expand score if necessary and add to tally results.
+
+      select case(score_bin)
+
+
+      case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+        ! Find the scattering order for a singly requested moment, and
+        ! store its moment contribution.
+        if (t % moment_order(i) == 1) then
+          score = score * p % mu ! avoid function call overhead
+        else
+          score = score * calc_pn(t % moment_order(i), p % mu)
+        endif
+!$omp atomic
+        t % results(score_index, filter_index) % value = &
+             t % results(score_index, filter_index) % value + score
+
+
+      case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
+        score_index = score_index - 1
+        num_nm = 1
+        ! Find the order for a collection of requested moments
+        ! and store the moment contribution of each
+        do n = 0, t % moment_order(i)
+          ! determine scoring bin index
+          score_index = score_index + num_nm
+          ! Update number of total n,m bins for this n (m = [-n: n])
+          num_nm = 2 * n + 1
+
+          ! multiply score by the angular flux moments and store
+!$omp critical
+          t % results(score_index: score_index + num_nm - 1, filter_index) &
+               % value = t &
+               % results(score_index: score_index + num_nm - 1, filter_index)&
+               % value &
+               + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
+!$omp end critical
+        end do
+        i = i + (t % moment_order(i) + 1)**2 - 1
+
+
+      case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
+        score_index = score_index - 1
+        num_nm = 1
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          uvw = p % last_uvw
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          uvw = p % coord0 % uvw
+        end if
+        ! Find the order for a collection of requested moments
+        ! and store the moment contribution of each
+        do n = 0, t % moment_order(i)
+          ! determine scoring bin index
+          score_index = score_index + num_nm
+          ! Update number of total n,m bins for this n (m = [-n: n])
+          num_nm = 2 * n + 1
+
+          ! multiply score by the angular flux moments and store
+!$omp critical
+          t % results(score_index: score_index + num_nm - 1, filter_index) &
+               % value = t &
+               % results(score_index: score_index + num_nm - 1, filter_index)&
+               % value &
+               + score * calc_rn(n, uvw)
+!$omp end critical
+        end do
+        i = i + (t % moment_order(i) + 1)**2 - 1
+
+
+      case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+        score_index = score_index - 1
+        ! Find the scattering order for a collection of requested moments
+        ! and store the moment contribution of each
+        do n = 0, t % moment_order(i)
+          ! determine scoring bin index
+          score_index = score_index + 1
+
+          ! get the score and tally it
+!$omp atomic
+          t % results(score_index, filter_index) % value = &
+               t % results(score_index, filter_index) % value &
+               + score * calc_pn(n, p % mu)
+        end do
+        i = i + t % moment_order(i)
+
+
+      case default
+!$omp atomic
+        t % results(score_index, filter_index) % value = &
+             t % results(score_index, filter_index) % value + score
+
+
+      end select
+    end do SCORE_LOOP
+  end subroutine score_general
+
+!===============================================================================
 ! SCORE_ANALOG_TALLY keeps track of how many events occur in a specified cell,
 ! energy range, etc. Note that since these are "analog" tallies, they are only
 ! triggered at every collision, not every event
@@ -38,22 +522,13 @@ contains
 
     integer :: i
     integer :: i_tally
-    integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
-    integer :: n                    ! loop index for legendre order
-    integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: l                    ! scoring bin loop index, allowing for changing
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
-    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
-    integer :: score_index          ! scoring bin index
-    real(8) :: score                ! analog tally score
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
     real(8) :: mu                   ! cosine of angle of collision
-    real(8) :: macro_total          ! material macro total xs
-    real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer, save :: t => null()
 !$omp threadprivate(t)
@@ -124,427 +599,8 @@ contains
         end if
 
         ! Determine score for each bin
-        j = 0
-        SCORE_LOOP: do l = 1, t % n_user_score_bins
-          j = j + 1
-          ! determine what type of score bin
-          score_bin = t % score_bins(j)
-
-          ! determine scoring bin index
-          score_index = (k - 1)*t % n_score_bins + j
-
-          select case (score_bin)
-          case (SCORE_FLUX)
-            ! All events score to a flux bin. We actually use a collision
-            ! estimator since there is no way to count 'events' exactly for
-            ! the flux
-
-            if (survival_biasing) then
-              ! We need to account for the fact that some weight was already
-              ! absorbed
-              score = last_wgt + p % absorb_wgt
-            else
-              score = last_wgt
-            end if
-
-            score = score / material_xs % total
-          case (SCORE_FLUX_YN)
-            ! All events score to a flux bin. We actually use a collision
-            ! estimator since there is no way to count 'events' exactly for
-            ! the flux
-
-            score_index = score_index - 1
-
-            ! get the score
-            if (survival_biasing) then
-              ! We need to account for the fact that some weight was already
-              ! absorbed
-              score = last_wgt + p % absorb_wgt
-            else
-              score = last_wgt
-            end if
-
-            score = score / material_xs % total
-
-            num_nm = 1
-            ! Find the order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + num_nm
-              ! Update number of total n,m bins for this n (m = [-n: n])
-              num_nm = 2 * n + 1
-
-              ! multiply score by the angular flux moments and store
-!$omp critical
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                score * calc_rn(n, p % last_uvw)
-!$omp end critical
-            end do
-            j = j + (t % moment_order(j) + 1)**2 - 1
-            cycle SCORE_LOOP
-
-          case (SCORE_TOTAL)
-            ! All events will score to the total reaction rate. We can just
-            ! use the weight of the particle entering the collision as the
-            ! score
-
-            if (survival_biasing) then
-              ! We need to account for the fact that some weight was already
-              ! absorbed
-              score = last_wgt + p % absorb_wgt
-            else
-              score = last_wgt
-            end if
-
-          case (SCORE_TOTAL_YN)
-            ! All events will score to the total reaction rate. We can just
-            ! use the weight of the particle entering the collision as the
-            ! score
-
-            score_index = score_index - 1
-
-            ! get the score
-            if (survival_biasing) then
-              ! We need to account for the fact that some weight was already
-              ! absorbed
-              score = last_wgt + p % absorb_wgt
-            else
-              score = last_wgt
-            end if
-
-            num_nm = 1
-            ! Find the order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + num_nm
-              ! Update number of total n,m bins for this n (m = [-n: n])
-              num_nm = 2 * n + 1
-
-              ! multiply score by the angular flux moments and store
-!$omp critical
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                score * calc_rn(n, p % last_uvw)
-!$omp end critical
-            end do
-            j = j + (t % moment_order(j) + 1)**2 - 1
-            cycle SCORE_LOOP
-
-          case (SCORE_SCATTER)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Since only scattering events make it here, again we can use
-            ! the weight entering the collision as the estimator for the
-            ! reaction rate
-
-            score = last_wgt
-
-          case (SCORE_NU_SCATTER)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! For scattering production, we need to use the post-collision
-            ! weight as the estimate for the number of neutrons exiting a
-            ! reaction with neutrons in the exit channel
-
-            score = wgt
-
-          case (SCORE_SCATTER_N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Find the scattering order for a singly requested moment, and
-            ! store its moment contribution.
-
-            if (t % moment_order(j) == 1) then
-              score = last_wgt * mu ! avoid function call overhead
-            else
-              score = last_wgt * calc_pn(t % moment_order(j), mu)
-            endif
-
-          case (SCORE_SCATTER_PN)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) then
-              j = j + t % moment_order(j)
-              cycle SCORE_LOOP
-            end if
-            score_index = score_index - 1
-            ! Find the scattering order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + 1
-              ! get the score and tally it
-              score = last_wgt * calc_pn(n, mu)
-
-!$omp atomic
-              t % results(score_index, filter_index) % value = &
-                t % results(score_index, filter_index) % value + score
-            end do
-            j = j + t % moment_order(j)
-            cycle SCORE_LOOP
-
-          case (SCORE_SCATTER_YN)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) then
-              j = j + t % moment_order(j)
-              cycle SCORE_LOOP
-            end if
-            score_index = score_index - 1
-
-            ! Calculate the number of moments from t % moment_order
-            num_nm = 1
-            ! Find the order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + num_nm
-              ! Update number of total n,m bins for this n (m = [-n: n])
-              num_nm = 2 * n + 1
-              ! get the score of the scattering moment
-              score = last_wgt * calc_pn(n, mu)
-
-              ! multiply score by the angular flux moments and store
-!$omp critical
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                score * calc_rn(n, p % last_uvw)
-!$omp end critical
-            end do
-            j = j + (t % moment_order(j) + 1)**2 - 1
-            cycle SCORE_LOOP
-
-          case (SCORE_NU_SCATTER_N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Find the scattering order for a singly requested moment, and
-            ! store its moment contribution.
-
-            if (t % moment_order(j) == 1) then
-              score = wgt * mu ! avoid function call overhead
-            else
-              score = wgt * calc_pn(t % moment_order(j), mu)
-            endif
-
-          case (SCORE_NU_SCATTER_PN)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) then
-              j = j + t % moment_order(j)
-              cycle SCORE_LOOP
-            end if
-            score_index = score_index - 1
-            ! Find the scattering order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + 1
-              ! get the score and tally it
-              score = wgt * calc_pn(n, mu)
-
-!$omp atomic
-              t % results(score_index, filter_index) % value = &
-                t % results(score_index, filter_index) % value + score
-            end do
-            j = j + t % moment_order(j)
-            cycle SCORE_LOOP
-
-          case (SCORE_NU_SCATTER_YN)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) then
-              j = j + t % moment_order(j)
-              cycle SCORE_LOOP
-            end if
-            score_index = score_index - 1
-
-            ! Calculate the number of moments from t % moment_order
-            num_nm = 1
-            ! Find the order for a collection of requested moments
-            ! and store the moment contribution of each
-            do n = 0, t % moment_order(j)
-              ! determine scoring bin index
-              score_index = score_index + num_nm
-              ! Update number of total n,m bins for this n (m = [-n: n])
-              num_nm = 2 * n + 1
-              ! get the score of the scattering moment
-              score = wgt * calc_pn(n, mu)
-
-              ! multiply score by the angular flux moments and store
-!$omp critical
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                score * calc_rn(n, p % last_uvw)
-!$omp end critical
-            end do
-            j = j + (t % moment_order(j) + 1)**2 - 1
-            cycle SCORE_LOOP
-
-          case (SCORE_TRANSPORT)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! get material macros
-            macro_total = material_xs % total
-            macro_scatt = material_xs % total - material_xs % absorption
-
-            ! Score total rate - p1 scatter rate Note estimator needs to be
-            ! adjusted since tallying is only occuring when a scatter has
-            ! happened. Effectively this means multiplying the estimator by
-            ! total/scatter macro
-            score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
-
-          case (SCORE_N_1N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any events where weight of particle changed
-            if (wgt /= last_wgt) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,1n) reactions
-            score = last_wgt
-
-          case (SCORE_ABSORPTION)
-            if (survival_biasing) then
-              ! No absorption events actually occur if survival biasing is on --
-              ! just use weight absorbed in survival biasing
-
-              score = p % absorb_wgt
-
-            else
-              ! Skip any event where the particle wasn't absorbed
-              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
-
-              ! All fission and absorption events will contribute here, so we
-              ! can just use the particle's weight entering the collision
-
-              score = last_wgt
-            end if
-
-          case (SCORE_FISSION)
-            if (survival_biasing) then
-              ! No fission events occur if survival biasing is on -- need to
-              ! calculate fraction of absorptions that would have resulted in
-              ! fission
-
-              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-                score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
-                  micro_xs(p % event_nuclide) % absorption
-              else
-                score = ZERO
-              end if
-
-            else
-              ! Skip any non-absorption events
-              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
-
-              ! All fission events will contribute, so again we can use
-              ! particle's weight entering the collision as the estimate for the
-              ! fission reaction rate
-
-              score = last_wgt * micro_xs(p % event_nuclide) % fission / &
-                micro_xs(p % event_nuclide) % absorption
-            end if
-
-          case (SCORE_NU_FISSION)
-            if (survival_biasing) then
-              ! No fission events occur if survival biasing is on -- need to
-              ! calculate fraction of absorptions that would have resulted in
-              ! nu-fission
-
-              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-                ! Normally, we only need to make contributions to one scoring
-                ! bin. However, in the case of fission, since multiple fission
-                ! neutrons were emitted with different energies, multiple
-                ! outgoing energy bins may have been scored to. The following
-                ! logic treats this special case and results to multiple bins
-
-                call score_fission_eout(p, t, score_index)
-                cycle SCORE_LOOP
-
-              else
-
-                if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-                  score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                       nu_fission / micro_xs(p % event_nuclide) % absorption
-                else
-                  score = ZERO
-                end if
-              end if
-
-            else
-              ! Skip any non-fission events
-              if (.not. p % fission) cycle SCORE_LOOP
-
-              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-                ! Normally, we only need to make contributions to one scoring
-                ! bin. However, in the case of fission, since multiple fission
-                ! neutrons were emitted with different energies, multiple
-                ! outgoing energy bins may have been scored to. The following
-                ! logic treats this special case and results to multiple bins
-
-                call score_fission_eout(p, t, score_index)
-                cycle SCORE_LOOP
-
-              else
-                ! If there is no outgoing energy filter, than we only need to
-                ! score to one bin. For the score to be 'analog', we need to
-                ! score the number of particles that were banked in the fission
-                ! bank. Since this was weighted by 1/keff, we multiply by keff
-                ! to get the proper score.
-
-                score = keff * p % wgt_bank
-
-              end if
-            end if
-
-          case (SCORE_KAPPA_FISSION)
-            if (survival_biasing) then
-              ! No fission events occur if survival biasing is on -- need to
-              ! calculate fraction of absorptions that would have resulted in
-              ! fission scale by kappa-fission
-
-              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-                score = p % absorb_wgt * &
-                  micro_xs(p % event_nuclide) % kappa_fission / &
-                  micro_xs(p % event_nuclide) % absorption
-              else
-                score = ZERO
-              end if
-
-            else
-              ! Skip any non-absorption events
-              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
-
-              ! All fission events will contribute, so again we can use
-              ! particle's weight entering the collision as the estimate for
-              ! the fission energy production rate
-              score = last_wgt * &
-                micro_xs(p % event_nuclide) % kappa_fission / &
-                micro_xs(p % event_nuclide) % absorption
-            end if
-          case (SCORE_EVENTS)
-            ! Simply count number of scoring events
-            score = ONE
-
-          case default
-            ! Any other score is assumed to be a MT number. Thus, we just need
-            ! to check if it matches the MT number of the event
-            if (p % event_MT /= score_bin) cycle SCORE_LOOP
-
-            score = last_wgt
-
-          end select
-
-          ! Add score to tally
-!$omp atomic
-          t % results(score_index, filter_index) % value = &
-               t % results(score_index, filter_index) % value + score
-
-        end do SCORE_LOOP
+        call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+             i_nuclide, ZERO, ZERO)
 
       end do NUCLIDE_LOOP
 
@@ -640,26 +696,14 @@ contains
     integer :: i_tally
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
-    integer :: l                    ! loop index for nuclides in material
-    integer :: m                    ! loop index for reactions
-    integer :: n                    ! loop index for legendre order
-    integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: q                    ! loop index for scoring bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
-    integer :: i_nuc                ! index in nuclides array (from material)
-    integer :: i_energy             ! index in nuclide energy grid
-    integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
-    integer :: score_index          ! scoring bin index
-    real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
-    real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
-    type(Reaction),    pointer, save :: rxn => null()
-!$omp threadprivate(t, mat, rxn)
+!$omp threadprivate(t, mat)
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -731,294 +775,8 @@ contains
           end if
 
           ! Determine score for each bin
-          j = 0
-          SCORE_LOOP: do q = 1, t % n_user_score_bins
-            j = j + 1
-            ! determine what type of score bin
-            score_bin = t % score_bins(j)
-
-            ! determine scoring bin index
-            score_index = (k - 1)*t % n_score_bins + j
-
-            if (i_nuclide > 0) then
-              ! ================================================================
-              ! DETERMINE NUCLIDE CROSS SECTION
-
-              select case(score_bin)
-              case (SCORE_FLUX)
-                ! For flux, we need no cross section
-                score = flux
-
-              case (SCORE_FLUX_YN)
-                score_index = score_index - 1
-
-                ! For flux, we need no cross section
-                score = flux
-
-                num_nm = 1
-                ! Find the order for a collection of requested moments
-                ! and store the moment contribution of each
-                do n = 0, t % moment_order(j)
-                  ! determine scoring bin index
-                  score_index = score_index + num_nm
-                  ! Update number of total n,m bins for this n (m = [-n: n])
-                  num_nm = 2 * n + 1
-
-                  ! multiply score by the angular flux moments and store
-!$omp critical
-                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                end do
-                j = j + (t % moment_order(j) + 1)**2 - 1
-                cycle SCORE_LOOP
-
-              case (SCORE_TOTAL)
-                ! Total cross section is pre-calculated
-                score = micro_xs(i_nuclide) % total * &
-                     atom_density * flux
-
-              case (SCORE_TOTAL_YN)
-                score_index = score_index - 1
-
-                ! Total cross section is pre-calculated
-                score = micro_xs(i_nuclide) % total * atom_density * flux
-
-                num_nm = 1
-                ! Find the order for a collection of requested moments
-                ! and store the moment contribution of each
-                do n = 0, t % moment_order(j)
-                  ! determine scoring bin index
-                  score_index = score_index + num_nm
-                  ! Update number of total n,m bins for this n (m = [-n: n])
-                  num_nm = 2 * n + 1
-
-                  ! multiply score by the angular flux moments and store
-!$omp critical
-                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                end do
-                j = j + (t % moment_order(j) + 1)**2 - 1
-                cycle SCORE_LOOP
-
-              case (SCORE_SCATTER)
-                ! Scattering cross section is pre-calculated
-                score = (micro_xs(i_nuclide) % total - &
-                     micro_xs(i_nuclide) % absorption) * &
-                     atom_density * flux
-
-              case (SCORE_ABSORPTION)
-                ! Absorption cross section is pre-calculated
-                score = micro_xs(i_nuclide) % absorption * &
-                     atom_density * flux
-
-              case (SCORE_FISSION)
-                ! Fission cross section is pre-calculated
-                score = micro_xs(i_nuclide) % fission * &
-                     atom_density * flux
-
-              case (SCORE_NU_FISSION)
-                ! Nu-fission cross section is pre-calculated
-                score = micro_xs(i_nuclide) % nu_fission * &
-                     atom_density * flux
-
-              case (SCORE_KAPPA_FISSION)
-                score = micro_xs(i_nuclide) % kappa_fission * &
-                     atom_density * flux
-
-              case (SCORE_EVENTS)
-                ! For number of events, just score unity
-                score = ONE
-
-              case default
-                ! Any other cross section has to be calculated on-the-fly. For
-                ! cross sections that are used often (e.g. n2n, ngamma, etc. for
-                ! depletion), it might make sense to optimize this section or
-                ! pre-calculate cross sections
-
-                if (score_bin > 1) then
-                  ! Set default score
-                  score = ZERO
-
-                  ! TODO: The following search for the matching reaction could
-                  ! be replaced by adding a dictionary on each Nuclide instance
-                  ! of the form {MT: i_reaction, ...}
-
-                  REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
-                    ! Get pointer to reaction
-                    rxn => nuclides(i_nuclide) % reactions(m)
-
-                    ! Check if this is the desired MT
-                    if (score_bin == rxn % MT) then
-                      ! Retrieve index on nuclide energy grid and interpolation
-                      ! factor
-                      i_energy = micro_xs(i_nuclide) % index_grid
-                      f = micro_xs(i_nuclide) % interp_factor
-
-                      if (i_energy >= rxn % threshold) then
-                        score = ((ONE - f) * rxn % sigma(i_energy - &
-                             rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                             rxn%threshold + 2)) * atom_density * flux
-                      end if
-
-                      exit REACTION_LOOP
-                    end if
-                  end do REACTION_LOOP
-
-                else
-                  call fatal_error("Invalid score type on tally " &
-                       &// to_str(t % id) // ".")
-                end if
-              end select
-
-            else
-              ! ================================================================
-              ! DETERMINE MATERIAL CROSS SECTION
-
-              select case(score_bin)
-              case (SCORE_FLUX)
-                ! For flux, we need no cross section
-                score = flux
-
-              case (SCORE_FLUX_YN)
-                score_index = score_index - 1
-
-                ! For flux, we need no cross section
-                score = flux
-
-                num_nm = 1
-                ! Find the order for a collection of requested moments
-                ! and store the moment contribution of each
-                do n = 0, t % moment_order(j)
-                  ! determine scoring bin index
-                  score_index = score_index + num_nm
-                  ! Update number of total n,m bins for this n (m = [-n: n])
-                  num_nm = 2 * n + 1
-
-                  ! multiply score by the angular flux moments and store
-!$omp critical
-                t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                  t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                  score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                end do
-                j = j + (t % moment_order(j) + 1)**2 - 1
-                cycle SCORE_LOOP
-
-              case (SCORE_TOTAL)
-                ! Total cross section is pre-calculated
-                score = material_xs % total * flux
-
-              case (SCORE_TOTAL_YN)
-                score_index = score_index - 1
-
-                ! Total cross section is pre-calculated
-                score = material_xs % total * flux
-
-                num_nm = 1
-                ! Find the order for a collection of requested moments
-                ! and store the moment contribution of each
-                do n = 0, t % moment_order(j)
-                  ! determine scoring bin index
-                  score_index = score_index + num_nm
-                  ! Update number of total n,m bins for this n (m = [-n: n])
-                  num_nm = 2 * n + 1
-
-                  ! multiply score by the angular flux moments and store
-!$omp critical
-                  t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                    score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                end do
-                j = j + (t % moment_order(j) + 1)**2 - 1
-                cycle SCORE_LOOP
-
-              case (SCORE_SCATTER)
-                ! Scattering cross section is pre-calculated
-                score = (material_xs % total - material_xs % absorption) * flux
-
-              case (SCORE_ABSORPTION)
-                ! Absorption cross section is pre-calculated
-                score = material_xs % absorption * flux
-
-              case (SCORE_FISSION)
-                ! Fission cross section is pre-calculated
-                score = material_xs % fission * flux
-
-              case (SCORE_NU_FISSION)
-                ! Nu-fission cross section is pre-calculated
-                score = material_xs % nu_fission * flux
-
-              case (SCORE_KAPPA_FISSION)
-                score = material_xs % kappa_fission * flux
-
-              case (SCORE_EVENTS)
-                ! For number of events, just score unity
-                score = ONE
-
-              case default
-                ! Any other cross section has to be calculated on-the-fly. This
-                ! is somewhat costly since it requires a loop over each nuclide
-                ! in a material and each reaction in the nuclide
-
-                if (score_bin > 1) then
-                  ! Set default score
-                  score = ZERO
-
-                  ! Get pointer to current material
-                  mat => materials(p % material)
-
-                  do l = 1, mat % n_nuclides
-                    ! Get atom density
-                    atom_density = mat % atom_density(l)
-
-                    ! Get index in nuclides array
-                    i_nuc = mat % nuclide(l)
-
-                    ! TODO: The following search for the matching reaction could
-                    ! be replaced by adding a dictionary on each Nuclide
-                    ! instance of the form {MT: i_reaction, ...}
-
-                    do m = 1, nuclides(i_nuc) % n_reaction
-                      ! Get pointer to reaction
-                      rxn => nuclides(i_nuc) % reactions(m)
-
-                      ! Check if this is the desired MT
-                      if (score_bin == rxn % MT) then
-                        ! Retrieve index on nuclide energy grid and interpolation
-                        ! factor
-                        i_energy = micro_xs(i_nuc) % index_grid
-                        f = micro_xs(i_nuc) % interp_factor
-
-                        if (i_energy >= rxn % threshold) then
-                          score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                               rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                               rxn%threshold + 2)) * atom_density * flux
-                        end if
-
-                        exit
-                      end if
-                    end do
-
-                  end do
-
-                else
-                  call fatal_error("Invalid score type on tally " &
-                       &// to_str(t % id) // ".")
-                end if
-              end select
-            end if
-
-            ! Add score to tally
-!$omp atomic
-            t % results(score_index, filter_index) % value = &
-                 t % results(score_index, filter_index) % value + score
-
-          end do SCORE_LOOP
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, atom_density, flux)
 
         end do NUCLIDE_BIN_LOOP
       end if
@@ -1050,22 +808,11 @@ contains
     integer,        intent(in) :: filter_index
 
     integer :: i             ! loop index for nuclides in material
-    integer :: j             ! loop index for scoring bin types
-    integer :: m             ! loop index for reactions in nuclide
-    integer :: n             ! loop index for legendre order
-    integer :: num_nm        ! Number of N,M orders in harmonic
-    integer :: q             ! loop index for scoring bins
     integer :: i_nuclide     ! index in nuclides array
-    integer :: score_bin     ! type of score, e.g. SCORE_FLUX
-    integer :: score_index   ! scoring bin index
-    integer :: i_energy      ! index in nuclide energy grid
-    real(8) :: f             ! interpolation factor
-    real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
-    type(Reaction),    pointer, save :: rxn => null()
-!$omp threadprivate(t, mat, rxn)
+!$omp threadprivate(t, mat)
 
     ! Get pointer to tally
     t => tallies(i_tally)
@@ -1084,290 +831,21 @@ contains
       i_nuclide = mat % nuclide(i)
       atom_density = mat % atom_density(i)
 
-      ! Loop over score types for each bin
-      j = 0
-      SCORE_LOOP: do q = 1, t % n_user_score_bins
-        j = j + 1
-        ! determine what type of score bin
-        score_bin = t % score_bins(j)
-
-        ! Determine scoring bin index based on what the index of the nuclide
-        ! is in the nuclides array
-        score_index = (i_nuclide - 1)*t % n_score_bins + j
-
-        ! Determine macroscopic nuclide cross section
-        select case(score_bin)
-        case (SCORE_FLUX)
-          score = flux
-
-        case (SCORE_FLUX_YN)
-          score_index = score_index - 1
-
-          ! For flux, we need no cross section
-          score = flux
-
-          num_nm = 1
-          ! Find the order for a collection of requested moments
-          ! and store the moment contribution of each
-          do n = 0, t % moment_order(j)
-            ! determine scoring bin index
-            score_index = score_index + num_nm
-            ! Update number of total n,m bins for this n (m = [-n: n])
-            num_nm = 2 * n + 1
-
-            ! multiply score by the angular flux moments and store
-!$omp critical
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-              score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-          end do
-          j = j + (t % moment_order(j) + 1)**2 - 1
-          cycle SCORE_LOOP
-
-        case (SCORE_TOTAL)
-          score = micro_xs(i_nuclide) % total * atom_density * flux
-
-        case (SCORE_TOTAL_YN)
-          score_index = score_index - 1
-
-          score = micro_xs(i_nuclide) % total * atom_density * flux
-
-          num_nm = 1
-          ! Find the order for a collection of requested moments
-          ! and store the moment contribution of each
-          do n = 0, t % moment_order(j)
-            ! determine scoring bin index
-            score_index = score_index + num_nm
-            ! Update number of total n,m bins for this n (m = [-n: n])
-            num_nm = 2 * n + 1
-
-            ! multiply score by the angular flux moments and store
-!$omp critical
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-              t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-              score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-          end do
-          j = j + (t % moment_order(j) + 1)**2 - 1
-          cycle SCORE_LOOP
-
-        case (SCORE_SCATTER)
-          score = (micro_xs(i_nuclide) % total - &
-               micro_xs(i_nuclide) % absorption) * atom_density * flux
-
-        case (SCORE_ABSORPTION)
-          score = micro_xs(i_nuclide) % absorption * atom_density * flux
-
-        case (SCORE_FISSION)
-          score = micro_xs(i_nuclide) % fission * atom_density * flux
-
-        case (SCORE_NU_FISSION)
-          score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
-
-        case (SCORE_KAPPA_FISSION)
-          score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
-
-        case (SCORE_EVENTS)
-          score = ONE
-
-        case default
-          ! Any other cross section has to be calculated on-the-fly. For cross
-          ! sections that are used often (e.g. n2n, ngamma, etc. for depletion),
-          ! it might make sense to optimize this section or pre-calculate cross
-          ! sections
-
-          if (score_bin > 1) then
-            ! Set default score
-            score = ZERO
-
-            ! TODO: The following search for the matching reaction could be
-            ! replaced by adding a dictionary on each Nuclide instance of the
-            ! form {MT: i_reaction, ...}
-
-            REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
-              ! Get pointer to reaction
-              rxn => nuclides(i_nuclide) % reactions(m)
-
-              ! Check if this is the desired MT
-              if (score_bin == rxn % MT) then
-                ! Retrieve index on nuclide energy grid and interpolation factor
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
-
-                if (i_energy >= rxn % threshold) then
-                  score = ((ONE - f) * rxn % sigma(i_energy - &
-                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                       rxn%threshold + 2)) * atom_density * flux
-                end if
-
-                exit REACTION_LOOP
-              end if
-            end do REACTION_LOOP
-
-          else
-            call fatal_error("Invalid score type on tally " &
-                 &// to_str(t % id) // ".")
-          end if
-        end select
-
-        ! Add score to tally
-!$omp atomic
-        t % results(score_index, filter_index) % value = &
-             t % results(score_index, filter_index) % value + score
-
-      end do SCORE_LOOP
+      ! Determine score for each bin
+      call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
+           i_nuclide, atom_density, flux)
 
     end do NUCLIDE_LOOP
 
     ! ==========================================================================
     ! SCORE TOTAL MATERIAL REACTION RATES
 
-    ! Loop over score types for each bin
-    j = 0
-    MATERIAL_SCORE_LOOP: do q = 1, t % n_user_score_bins
-      j = j + 1
-      ! determine what type of score bin
-      score_bin = t % score_bins(j)
+    i_nuclide = -1
+    atom_density = ZERO
 
-      ! Determine scoring bin index based on what the index of the nuclide
-      ! is in the nuclides array
-      score_index = n_nuclides_total*t % n_score_bins + j
-
-      ! Determine macroscopic material cross section
-      select case(score_bin)
-      case (SCORE_FLUX)
-        score = flux
-
-      case (SCORE_FLUX_YN)
-        score_index = score_index - 1
-
-        ! For flux, we need no cross section
-        score = flux
-
-        num_nm = 1
-        ! Find the order for a collection of requested moments
-        ! and store the moment contribution of each
-        do n = 0, t % moment_order(j)
-          ! determine scoring bin index
-          score_index = score_index + num_nm
-          ! Update number of total n,m bins for this n (m = [-n: n])
-          num_nm = 2 * n + 1
-
-          ! multiply score by the angular flux moments and store
-!$omp critical
-          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-        end do
-        j = j + (t % moment_order(j) + 1)**2 - 1
-        cycle MATERIAL_SCORE_LOOP
-
-      case (SCORE_TOTAL)
-        score = material_xs % total * flux
-
-      case (SCORE_TOTAL_YN)
-        score_index = score_index - 1
-
-        ! Total cross section is pre-calculated
-        score = material_xs % total * flux
-
-        num_nm = 1
-        ! Find the order for a collection of requested moments
-        ! and store the moment contribution of each
-        do n = 0, t % moment_order(j)
-          ! determine scoring bin index
-          score_index = score_index + num_nm
-          ! Update number of total n,m bins for this n (m = [-n: n])
-          num_nm = 2 * n + 1
-
-          ! multiply score by the angular flux moments and store
-!$omp critical
-          t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-            t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-            score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-        end do
-        j = j + (t % moment_order(j) + 1)**2 - 1
-        cycle MATERIAL_SCORE_LOOP
-
-      case (SCORE_SCATTER)
-        score = (material_xs % total - material_xs % absorption) * flux
-
-      case (SCORE_ABSORPTION)
-        score = material_xs % absorption * flux
-
-      case (SCORE_FISSION)
-        score = material_xs % fission * flux
-
-      case (SCORE_NU_FISSION)
-        score = material_xs % nu_fission * flux
-
-      case (SCORE_KAPPA_FISSION)
-        score = material_xs % kappa_fission * flux
-
-      case (SCORE_EVENTS)
-        score = ONE
-
-      case default
-        ! Any other cross section has to be calculated on-the-fly. This is
-        ! somewhat costly since it requires a loop over each nuclide in a
-        ! material and each reaction in the nuclide
-
-        if (score_bin > 1) then
-          ! Set default score
-          score = ZERO
-
-          ! Get pointer to current material
-          mat => materials(p % material)
-
-          do i = 1, mat % n_nuclides
-            ! Get atom density
-            atom_density = mat % atom_density(i)
-
-            ! Get index in nuclides array
-            i_nuclide = mat % nuclide(i)
-
-            ! TODO: The following search for the matching reaction could
-            ! be replaced by adding a dictionary on each Nuclide
-            ! instance of the form {MT: i_reaction, ...}
-
-            do m = 1, nuclides(i_nuclide) % n_reaction
-              ! Get pointer to reaction
-              rxn => nuclides(i_nuclide) % reactions(m)
-
-              ! Check if this is the desired MT
-              if (score_bin == rxn % MT) then
-                ! Retrieve index on nuclide energy grid and interpolation
-                ! factor
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
-
-                if (i_energy >= rxn % threshold) then
-                  score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                       rxn%threshold + 2)) * atom_density * flux
-                end if
-
-                exit
-              end if
-            end do
-
-          end do
-
-        else
-          call fatal_error("Invalid score type on tally " &
-               &// to_str(t % id) // ".")
-        end if
-      end select
-
-      ! Add score to tally
-!$omp atomic
-      t % results(score_index, filter_index) % value = &
-           t % results(score_index, filter_index) % value + score
-
-    end do MATERIAL_SCORE_LOOP
+    ! Determine score for each bin
+    call score_general(p, t, n_nuclides_total*t % n_score_bins, filter_index, &
+         i_nuclide, atom_density, flux)
 
   end subroutine score_all_nuclides
 
@@ -1387,21 +865,15 @@ contains
     integer :: j                    ! loop index for direction
     integer :: k                    ! loop index for mesh cell crossings
     integer :: b                    ! loop index for nuclide bins
-    integer :: n                    ! loop index for legendre order
-    integer :: num_nm               ! Number of N,M orders in harmonic
-    integer :: q                    ! loop index for scoring bins
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
     integer :: n_cross              ! number of surface crossings
     integer :: filter_index         ! single index for single bin
-    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
-    integer :: score_index          ! scoring bin index
     integer :: i_filter_mesh        ! index of mesh filter in filters array
     real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
     real(8) :: flux                 ! tracklength estimate of flux
-    real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -1615,179 +1087,8 @@ contains
             end if
 
             ! Determine score for each bin
-            j = 0
-            SCORE_LOOP: do q = 1, t % n_user_score_bins
-              j = j + 1
-              ! determine what type of score bin
-              score_bin = t % score_bins(j)
-
-              ! Determine scoring bin index
-              score_index = (b - 1)*t % n_score_bins + j
-
-              if (i_nuclide > 0) then
-                ! Determine macroscopic nuclide cross section
-                select case(score_bin)
-                case (SCORE_FLUX)
-                  score = flux
-
-                case (SCORE_FLUX_YN)
-                  score_index = score_index - 1
-
-                  score = flux
-
-                  num_nm = 1
-                  ! Find the order for a collection of requested moments
-                  ! and store the moment contribution of each
-                  do n = 0, t % moment_order(j)
-                    ! determine scoring bin index
-                    score_index = score_index + num_nm
-                    ! Update number of total n,m bins for this n (m = [-n: n])
-                    num_nm = 2 * n + 1
-
-                    ! multiply score by the angular flux moments and store
-!$omp critical
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                  end do
-                  j = j + (t % moment_order(j) + 1)**2 - 1
-                  cycle SCORE_LOOP
-
-                case (SCORE_TOTAL)
-                  score = micro_xs(i_nuclide) % total * &
-                       atom_density * flux
-
-                case (SCORE_TOTAL_YN)
-                  score_index = score_index - 1
-
-                  ! Total cross section is pre-calculated
-                  score = micro_xs(i_nuclide) % total * &
-                    atom_density * flux
-
-                  num_nm = 1
-                  ! Find the order for a collection of requested moments
-                  ! and store the moment contribution of each
-                  do n = 0, t % moment_order(j)
-                    ! determine scoring bin index
-                    score_index = score_index + num_nm
-                    ! Update number of total n,m bins for this n (m = [-n: n])
-                    num_nm = 2 * n + 1
-
-                    ! multiply score by the angular flux moments and store
-!$omp critical
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                  end do
-                  j = j + (t % moment_order(j) + 1)**2 - 1
-                  cycle SCORE_LOOP
-
-                case (SCORE_SCATTER)
-                  score = (micro_xs(i_nuclide) % total - &
-                       micro_xs(i_nuclide) % absorption) * &
-                       atom_density * flux
-                case (SCORE_ABSORPTION)
-                  score = micro_xs(i_nuclide) % absorption * &
-                       atom_density * flux
-                case (SCORE_FISSION)
-                  score = micro_xs(i_nuclide) % fission * &
-                       atom_density * flux
-                case (SCORE_NU_FISSION)
-                  score = micro_xs(i_nuclide) % nu_fission * &
-                       atom_density * flux
-                case (SCORE_KAPPA_FISSION)
-                  score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
-                case (SCORE_EVENTS)
-                  score = ONE
-                case default
-                  call fatal_error("Invalid score type on tally " &
-                       &// to_str(t % id) // ".")
-                end select
-
-              else
-                ! Determine macroscopic material cross section
-                select case(score_bin)
-                case (SCORE_FLUX)
-                  score = flux
-
-                case (SCORE_FLUX_YN)
-                  score_index = score_index - 1
-
-                  score = flux
-
-                  num_nm = 1
-                  ! Find the order for a collection of requested moments
-                  ! and store the moment contribution of each
-                  do n = 0, t % moment_order(j)
-                    ! determine scoring bin index
-                    score_index = score_index + num_nm
-                    ! Update number of total n,m bins for this n (m = [-n: n])
-                    num_nm = 2 * n + 1
-
-                    ! multiply score by the angular flux moments and store
-!$omp critical
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                  end do
-                  j = j + (t % moment_order(j) + 1)**2 - 1
-                  cycle SCORE_LOOP
-
-                case (SCORE_TOTAL)
-                  score = material_xs % total * flux
-
-                case (SCORE_TOTAL_YN)
-                  score_index = score_index - 1
-
-                  ! Total cross section is pre-calculated
-                  score = material_xs % total * flux
-
-                  num_nm = 1
-                  ! Find the order for a collection of requested moments
-                  ! and store the moment contribution of each
-                  do n = 0, t % moment_order(j)
-                    ! determine scoring bin index
-                    score_index = score_index + num_nm
-                    ! Update number of total n,m bins for this n (m = [-n: n])
-                    num_nm = 2 * n + 1
-
-                    ! multiply score by the angular flux moments and store
-!$omp critical
-                    t % results(score_index: score_index + num_nm - 1, filter_index) % value = &
-                      t % results(score_index: score_index + num_nm - 1, filter_index) % value + &
-                      score * calc_rn(n, p % coord0 % uvw)
-!$omp end critical
-                  end do
-                  j = j + (t % moment_order(j) + 1)**2 - 1
-                  cycle SCORE_LOOP
-
-                case (SCORE_SCATTER)
-                  score = (material_xs % total - material_xs % absorption) * flux
-                case (SCORE_ABSORPTION)
-                  score = material_xs % absorption * flux
-                case (SCORE_FISSION)
-                  score = material_xs % fission * flux
-                case (SCORE_NU_FISSION)
-                  score = material_xs % nu_fission * flux
-                case (SCORE_KAPPA_FISSION)
-                  score = material_xs % kappa_fission * flux
-                case (SCORE_EVENTS)
-                  score = ONE
-                case default
-                  call fatal_error("Invalid score type on tally " &
-                       &// to_str(t % id) // ".")
-                end select
-              end if
-
-              ! Add score to tally
-!$omp atomic
-              t % results(score_index, filter_index) % value = &
-                   t % results(score_index, filter_index) % value + score
-
-            end do SCORE_LOOP
+            call score_general(p, t, (b-1)*t % n_score_bins, filter_index, &
+                 i_nuclide, atom_density, flux)
 
           end do NUCLIDE_BIN_LOOP
         end if

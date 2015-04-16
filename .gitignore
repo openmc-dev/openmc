@@ -11,6 +11,9 @@
 # OpenMC executable
 src/openmc
 
+# Inputs generated from Python API
+examples/python/**/*.xml
+
 # emacs backups
 *~
 

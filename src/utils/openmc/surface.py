@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 from openmc.constants import BC_TYPES
 from xml.etree import ElementTree as ET

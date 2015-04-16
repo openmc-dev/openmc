@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 def sort_xml_elements(tree):
 
     # Retrieve all children of the root XML node in the tree

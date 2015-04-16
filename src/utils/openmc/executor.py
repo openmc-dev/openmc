@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 import subprocess
 import os

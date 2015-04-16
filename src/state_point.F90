@@ -39,17 +39,13 @@ contains
   subroutine write_state_point()
 
     character(MAX_FILE_LEN)       :: filename
-    integer                       :: i, j, k, m
-    integer                       :: n_x, n_y, n_z
-    character(11), allocatable    :: name_array(:)
+    integer                       :: i, j, k
     integer, allocatable          :: id_array(:)
     integer, allocatable          :: key_array(:)
-    type(StructuredMesh), pointer :: mesh => null()
-    type(TallyObject), pointer    :: tally => null()
-    type(ElemKeyValueII), pointer :: current => null()
-    type(ElemKeyValueII), pointer :: next => null()
-    type(ElemKeyValueCI), pointer :: cur_nuclide => null()
-    type(ElemKeyValueCI), pointer :: next_nuclide => null()
+    type(StructuredMesh), pointer :: mesh
+    type(TallyObject), pointer    :: tally
+    type(ElemKeyValueII), pointer :: current
+    type(ElemKeyValueII), pointer :: next
     character(8)                  :: moment_name  ! name of moment (e.g, P3)
     integer                       :: n_order      ! loop index for moment orders
     integer                       :: nm_order     ! loop index for Ynm moment orders
@@ -306,14 +302,14 @@ contains
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
               moment_name = 'P' // to_str(tally % moment_order(k))
               call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(tally % id)) // & 
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
                          "/moments")
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally % moment_order(k)
                 moment_name = 'P' // trim(to_str(n_order))
                 call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(tally % id)) // & 
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
                          "/moments")
                 k = k + 1
               end do
@@ -325,7 +321,7 @@ contains
                     trim(to_str(nm_order))
                   call sp % write_data(moment_name, "order" // &
                        trim(to_str(k)), &
-                       group="tallies/tally " // trim(to_str(tally % id)) // & 
+                       group="tallies/tally " // trim(to_str(tally % id)) // &
                              "/moments")
                     k = k + 1
                 end do
@@ -504,9 +500,9 @@ contains
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
 #endif
     integer, allocatable       :: id_array(:)
-    type(ElemKeyValueII), pointer :: current => null()
-    type(ElemKeyValueII), pointer :: next => null()
-    type(TallyObject), pointer :: tally => null()
+    type(ElemKeyValueII), pointer :: current
+    type(ElemKeyValueII), pointer :: next
+    type(TallyObject), pointer :: tally
     type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! ==========================================================================
@@ -661,14 +657,10 @@ contains
     integer, allocatable       :: key_array(:)
     integer                    :: curr_key
     integer, allocatable       :: temp_array(:)
-    integer, allocatable       :: temp_array3D(:,:,:)
-    integer, allocatable       :: temp_array4D(:,:,:,:)
     logical                    :: source_present
-    real(8)                    :: l
     real(8)                    :: real_array(3)
-    real(8), allocatable       :: temp_real_array(:)
-    type(StructuredMesh), pointer :: mesh => null()
-    type(TallyObject), pointer :: tally => null()
+    type(StructuredMesh), pointer :: mesh
+    type(TallyObject), pointer :: tally
     integer                    :: n_order      ! loop index for moment orders
     integer                    :: nm_order     ! loop index for Ynm moment orders
     character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)

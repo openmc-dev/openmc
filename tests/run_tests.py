@@ -179,6 +179,10 @@ class Test(object):
     # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
+        if self.petsc:
+            os.environ['PETSC_DIR'] = PETSC_DIR
+        if self.mpi:
+            os.environ['MPI_DIR'] = MPI_DIR
         build_opts = self.build_opts.split()
         self.cmake += build_opts
         rc = call(self.cmake)

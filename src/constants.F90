@@ -368,8 +368,9 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE   = 1, & ! non-unionized energy grid
-       GRID_LOGARITHM = 2    ! logarithmic mapping
+       GRID_NUCLIDE    = 1, & ! unique energy grid for each nuclide
+       GRID_MAT_UNION  = 2, & ! material union grids with pointers
+       GRID_LOGARITHM  = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

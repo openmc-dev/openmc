@@ -1,16 +1,21 @@
 module endf_reader
 
-  use avg_urr_xs_values, only: set_avg_urr_xs
+  use avg_urr_xs_values, only: read_avg_urr_xs
   use constants
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
-  use unresolved,        only: E_spacing, Isotope, isotopes
+  use unresolved,        only: E_spacing, &
+                               Isotope, &
+                               isotopes, &
+                               represent_urr, &
+                               write_avg_urr_xs
 
   implicit none
 
   integer :: in = 11 ! input unit
   character(80) :: filename ! ENDF-6 filename
+  character(MAX_FILE_LEN) :: path_endf ! path to ENDF-6 files
 
 contains
 
@@ -1005,8 +1010,8 @@ contains
           allocate(tope % GG_mean (tope % NLS(i_ER)))
           allocate(tope % GF_mean (tope % NLS(i_ER)))
           allocate(tope % GX_mean (tope % NLS(i_ER)))
-          if (tope % LSSF == 1) then
-            call set_avg_urr_xs(i)
+          if ((tope % LSSF) == 1 .and. (.not. write_avg_urr_xs)) then
+            call read_avg_urr_xs(i)
           end if
         end if
         if (.not. (allocated(tope % D_mean(i_l + 1) % data))) then

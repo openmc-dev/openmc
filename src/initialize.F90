@@ -34,7 +34,8 @@ module initialize
                               represent_params, &
                               represent_urr, &
                               resonance_ensemble, &
-                              run_fasturr
+                              run_fasturr, &
+                              write_avg_urr_xs
 
 #ifdef MPI
   use mpi
@@ -141,6 +142,9 @@ contains
             call isotopes(i_sotope) % alloc_prob_tables()
             call prob_tables(i_sotope)
           end do
+          if (write_avg_urr_xs)&
+            call fatal_error('Average URR cross sections file generated, no&
+            & transport simulation performed')
 
         case (ON_THE_FLY)
           select case (real_freq)

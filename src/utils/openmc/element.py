@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 
 class Element(object):

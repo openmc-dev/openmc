@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import openmc
 from openmc.opencg_compatible import get_opencg_geometry
 import numpy as np
@@ -354,7 +352,7 @@ class Summary(object):
             if lattice_type == 'rectangular':
                 dimension = self._f['geometry/lattices'][key]['n_cells'][...]
                 lower_left = \
-                     self._f['geometry/lattices'][key]['lower_left'][...]  
+                     self._f['geometry/lattices'][key]['lower_left'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
 

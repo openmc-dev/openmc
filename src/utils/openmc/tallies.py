@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *

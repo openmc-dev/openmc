@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import struct, copy
 import numpy as np
 import scipy.stats
@@ -383,7 +381,7 @@ class StatePoint(object):
 
             # Extract the moment order string for each score
             for k in range(len(scores)):
-                moment = self._get_string(8, 
+                moment = self._get_string(8,
                      path='{0}order{1}'.format(subbase, k+1))
                 moment = moment.lstrip('[\'')
                 moment = moment.rstrip('\']')

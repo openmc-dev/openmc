@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import openmc
 from openmc.checkvalue import *
 from xml.etree import ElementTree as ET

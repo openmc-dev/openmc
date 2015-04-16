@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import warnings
 
 import openmc
@@ -365,7 +363,7 @@ class Material(object):
         else:
 
             subelement = ET.SubElement(element, "compositions")
-            
+
             comps = []
             allnucs = self._nuclides.values() + self._elements.values()
             dist_per_type = allnucs[0][2]

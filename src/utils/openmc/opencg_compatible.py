@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import openmc
 import opencg
 import copy

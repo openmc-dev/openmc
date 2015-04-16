@@ -31,7 +31,7 @@ class Cell(object):
         self._name = None
         self._fill = None
         self._type = None
-        self._surfaces = dict()
+        self._surfaces = {}
         self._rotation = None
         self._translation = None
         self._offset = None
@@ -226,7 +226,7 @@ class Cell(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         if self._type != 'void':
             nuclides.update(self._fill.get_all_nuclides())
@@ -236,7 +236,7 @@ class Cell(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
 
         if self._type == 'fill' or self._type == 'lattice':
             cells.update(self._fill.get_all_cells())
@@ -246,7 +246,7 @@ class Cell(object):
 
     def get_all_universes(self):
 
-        universes = dict()
+        universes = {}
 
         if self._type == 'fill':
             universes[self._fill._id] = self._fill
@@ -380,7 +380,7 @@ class Universe(object):
 
         # Keys     - Cell IDs
         # Values - Cells
-        self._cells = dict()
+        self._cells = {}
 
         # Keys     - Cell IDs
         # Values - Offsets
@@ -483,7 +483,7 @@ class Universe(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
@@ -494,7 +494,7 @@ class Universe(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
 
         # Add this Universe's cells to the dictionary
         cells.update(self._cells)
@@ -511,7 +511,7 @@ class Universe(object):
         # Get all Cells in this Universe
         cells = self.get_all_cells()
 
-        universes = dict()
+        universes = {}
 
         # Append all Universes containing each Cell to the dictionary
         for cell_id, cell in cells.items():
@@ -633,7 +633,7 @@ class Lattice(object):
     def get_unique_universes(self):
 
         unique_universes = np.unique(self._universes.ravel())
-        universes = dict()
+        universes = {}
 
         for universe in unique_universes:
             universes[universe._id] = universe
@@ -643,7 +643,7 @@ class Lattice(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -657,7 +657,7 @@ class Lattice(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
@@ -670,7 +670,7 @@ class Lattice(object):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
-        all_universes = dict()
+        all_universes = {}
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()

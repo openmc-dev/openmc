@@ -4,7 +4,7 @@ def sort_xml_elements(tree):
     elements = tree.getchildren()
 
     # Initialize empty lists for the sorted and comment elements
-    sorted_elements = list()
+    sorted_elements = []
 
     # Initialize an empty set of tags (e.g., Surface, Cell, and Lattice)
     tags = set()
@@ -14,7 +14,7 @@ def sort_xml_elements(tree):
         tags.add(element.tag)
 
     # Initialize an empty list for the comment elements
-    comment_elements = list()
+    comment_elements = []
 
     # Find the comment elements and record their ordering within the
     # tree using a precedence with respect to the subsequent nodes
@@ -38,7 +38,7 @@ def sort_xml_elements(tree):
             continue
 
         # Initialize an empty list of tuples to sort (id, element)
-        tagged_data = list()
+        tagged_data = []
 
         # Retrieve the IDs for each of the elements
         for element in tagged_elements:

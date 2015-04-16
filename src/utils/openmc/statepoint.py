@@ -186,7 +186,7 @@ class StatePoint(object):
         # Initialize dictionaries for the Meshes
         # Keys     - Mesh IDs
         # Values - Mesh objects
-        self._meshes = dict()
+        self._meshes = {}
 
         # Read the number of Meshes
         self._n_meshes = self._get_int(path='tallies/meshes/n_meshes')[0]
@@ -203,8 +203,8 @@ class StatePoint(object):
                  path='tallies/meshes/keys')
 
         else:
-            self._mesh_keys = list()
-            self._mesh_ids = list()
+            self._mesh_keys = []
+            self._mesh_ids = []
 
         # Build dictionary of Meshes
         base = 'tallies/meshes/mesh '
@@ -251,7 +251,7 @@ class StatePoint(object):
         # Initialize dictionaries for the Tallies
         # Keys     - Tally IDs
         # Values   - Tally objects
-        self._tallies = dict()
+        self._tallies = {}
 
         # Read the number of tallies
         self._n_tallies = self._get_int(path='/tallies/n_tallies')[0]
@@ -268,8 +268,8 @@ class StatePoint(object):
                  self._n_tallies, path='tallies/keys')
 
         else:
-            self._tally_keys = list()
-            self._tally_ids = list()
+            self._tally_keys = []
+            self._tally_ids = []
 
         base = 'tallies/tally '
 
@@ -376,7 +376,7 @@ class StatePoint(object):
                  path='{0}{1}/n_user_score_bins'.format(base, tally_key))[0]
 
             # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
-            moments = list()
+            moments = []
             subbase = '{0}{1}/moments/'.format(base, tally_key)
 
             # Extract the moment order string for each score
@@ -664,25 +664,25 @@ class StatePoint(object):
             for filter in tally._filters:
 
                 if filter._type == 'surface':
-                    surface_ids = list()
+                    surface_ids = []
                     for bin in filter._bins:
                         surface_ids.append(summary.surfaces[bin]._id)
                     filter.set_bin_edges(surface_ids)
 
                 if filter._type in ['cell', 'distribcell']:
-                    distribcell_ids = list()
+                    distribcell_ids = []
                     for bin in filter._bins:
                         distribcell_ids.append(summary.cells[bin]._id)
                     filter.set_bin_edges(distribcell_ids)
 
                 if filter._type == 'universe':
-                    universe_ids = list()
+                    universe_ids = []
                     for bin in filter._bins:
                         universe_ids.append(summary.universes[bin]._id)
                     filter.set_bin_edges(universe_ids)
 
                 if filter._type == 'material':
-                    material_ids = list()
+                    material_ids = []
                     for bin in filter._bins:
                         material_ids.append(summary.materials[bin]._id)
                     filter.set_bin_edges(material_ids)

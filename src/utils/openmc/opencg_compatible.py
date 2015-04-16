@@ -7,52 +7,52 @@ import numpy as np
 # A dictionary of all OpenMC Materials created
 # Keys   - Material IDs
 # Values - Materials
-OPENMC_MATERIALS = dict()
+OPENMC_MATERIALS = {}
 
 # A dictionary of all OpenCG Materials created
 # Keys   - Material IDs
 # Values - Materials
-OPENCG_MATERIALS = dict()
+OPENCG_MATERIALS = {}
 
 # A dictionary of all OpenMC Surfaces created
 # Keys   - Surface IDs
 # Values - Surfaces
-OPENMC_SURFACES = dict()
+OPENMC_SURFACES = {}
 
 # A dictionary of all OpenCG Surfaces created
 # Keys   - Surface IDs
 # Values - Surfaces
-OPENCG_SURFACES = dict()
+OPENCG_SURFACES = {}
 
 # A dictionary of all OpenMC Cells created
 # Keys   - Cell IDs
 # Values - Cells
-OPENMC_CELLS = dict()
+OPENMC_CELLS = {}
 
 # A dictionary of all OpenCG Cells created
 # Keys   - Cell IDs
 # Values - Cells
-OPENCG_CELLS = dict()
+OPENCG_CELLS = {}
 
 # A dictionary of all OpenMC Universes created
 # Keys   - Universes IDs
 # Values - Universes
-OPENMC_UNIVERSES = dict()
+OPENMC_UNIVERSES = {}
 
 # A dictionary of all OpenCG Universes created
 # Keys   - Universes IDs
 # Values - Universes
-OPENCG_UNIVERSES = dict()
+OPENCG_UNIVERSES = {}
 
 # A dictionary of all OpenMC Lattices created
 # Keys   - Lattice IDs
 # Values - Lattices
-OPENMC_LATTICES = dict()
+OPENMC_LATTICES = {}
 
 # A dictionary of all OpenCG Lattices created
 # Keys   - Lattice IDs
 # Values - Lattices
-OPENCG_LATTICES = dict()
+OPENCG_LATTICES = {}
 
 
 
@@ -408,7 +408,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
         raise ValueError(msg)
 
     # Initialize an empty list for the new compatible cells
-    compatible_cells = list()
+    compatible_cells = []
 
     # SquarePrism Surfaces
     if opencg_surface._type in ['x-squareprism',

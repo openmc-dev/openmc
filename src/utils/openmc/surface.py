@@ -25,11 +25,11 @@ class Surface(object):
         # A dictionary of the quadratic surface coefficients
         # Key        - coefficeint name
         # Value    - coefficient value
-        self._coeffs = dict()
+        self._coeffs = {}
 
         # An ordered list of the coefficient names to export to XML in the
         # proper order
-        self._coeff_keys = list()
+        self._coeff_keys = []
 
         self.set_id(surface_id)
         self.set_boundary_type(bc_type)

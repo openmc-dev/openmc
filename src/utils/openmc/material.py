@@ -10,7 +10,7 @@ import numpy as np
 
 
 # A list of all IDs for all Materials created
-MATERIAL_IDS = list()
+MATERIAL_IDS = []
 
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
@@ -18,7 +18,7 @@ AUTO_MATERIAL_ID = 10000
 def reset_auto_material_id():
     global AUTO_MATERIAL_ID, MATERIAL_IDS
     AUTO_MATERIAL_ID = 10000
-    MATERIAL_IDS = list()
+    MATERIAL_IDS = []
 
 
 # Units for density supported by OpenMC
@@ -47,15 +47,15 @@ class Material(object):
         # A dictionary of Nuclides
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
-        self._nuclides = dict()
+        self._nuclides = {}
 
         # A dictionary of Elements
         # Keys         - Element names
         # Values     - tuple (element, percent, percent type)
-        self._elements = dict()
+        self._elements = {}
 
         # If specified, a list of tuples of (table name, xs identifier)
-        self._sab = list()
+        self._sab = []
 
         # If true, the material will be initialized as distributed
         self._convert_to_distrib_comps = False
@@ -241,7 +241,7 @@ class Material(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         for nuclide_name, nuclide_tuple in self._nuclides.items():
             nuclide = nuclide_tuple[0]
@@ -318,7 +318,7 @@ class Material(object):
 
     def get_nuclides_xml(self, nuclides, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for nuclide in nuclides.values():
             xml_elements.append(self.get_nuclide_xml(nuclide, distrib))
@@ -328,7 +328,7 @@ class Material(object):
 
     def get_elements_xml(self, elements, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for element in elements.values():
             xml_elements.append(self.get_element_xml(element, distrib))
@@ -414,7 +414,7 @@ class MaterialsFile(object):
     def __init__(self):
 
         # Initialize MaterialsFile class attributes
-        self._materials = list()
+        self._materials = []
         self._default_xs = None
         self._materials_file = ET.Element("materials")
 

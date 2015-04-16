@@ -15,7 +15,7 @@ class Geometry(object):
 
         # Initialize Geometry class attributes
         self._root_universe = None
-        self._offsets = dict()
+        self._offsets = {}
 
 
     def get_offset(self, path, filter_offset):
@@ -61,7 +61,7 @@ class Geometry(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
         materials = self.get_all_materials()
 
         for material in materials:

@@ -63,7 +63,7 @@ class Summary(object):
         # Initialize dictionary for each Nuclide
         # Keys   - Nuclide ZAIDs
         # Values - Nuclide objects
-        self.nuclides = dict()
+        self.nuclides = {}
 
         for key in self._f['nuclides'].keys():
 
@@ -95,7 +95,7 @@ class Summary(object):
         # Initialize dictionary for each Material
         # Keys     - Material keys
         # Values   - Material objects
-        self.materials = dict()
+        self.materials = {}
 
         for key in self._f['materials'].keys():
 
@@ -109,8 +109,8 @@ class Summary(object):
             nuclides = self._f['materials'][key]['nuclides'][...]
             n_sab = self._f['materials'][key]['n_sab'][0]
 
-            sab_names = list()
-            sab_xs = list()
+            sab_names = []
+            sab_xs = []
 
             # Read the names of the S(a,b) tables for this Material
             for i in range(1, n_sab+1):
@@ -154,7 +154,7 @@ class Summary(object):
         # Initialize dictionary for each Surface
         # Keys     - Surface keys
         # Values   - Surfacee objects
-        self.surfaces = dict()
+        self.surfaces = {}
 
         for key in self._f['geometry/surfaces'].keys():
 
@@ -237,7 +237,7 @@ class Summary(object):
         # Initialize dictionary for each Cell
         # Keys     - Cell keys
         # Values   - Cell objects
-        self.cells = dict()
+        self.cells = {}
 
         # Initialize dictionary for each Cell's fill
         # (e.g., Material, Universe or Lattice ID)
@@ -245,7 +245,7 @@ class Summary(object):
         # the corresponding objects
         # Keys     - Cell keys
         # Values   - Filling Material, Universe or Lattice ID
-        self._cell_fills = dict()
+        self._cell_fills = {}
 
         for key in self._f['geometry/cells'].keys():
 
@@ -266,7 +266,7 @@ class Summary(object):
             if 'surfaces' in self._f['geometry/cells'][key].keys():
                 surfaces = self._f['geometry/cells'][key]['surfaces'][...]
             else:
-                surfaces = list()
+                surfaces = []
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id)
@@ -308,7 +308,7 @@ class Summary(object):
         # Initialize dictionary for each Universe
         # Keys     - Universe keys
         # Values   - Universe objects
-        self.universes = dict()
+        self.universes = {}
 
         for key in self._f['geometry/universes'].keys():
 
@@ -338,7 +338,7 @@ class Summary(object):
         # Initialize lattices for each Lattice
         # Keys     - Lattice keys
         # Values   - Lattice objects
-        self.lattices = dict()
+        self.lattices = {}
 
         for key in self._f['geometry/lattices'].keys():
 

@@ -398,7 +398,7 @@ class PlotsFile(object):
     def __init__(self):
 
         # Initialize PlotsFile class attributes
-        self._plots = list()
+        self._plots = []
         self._plots_file = ET.Element("plots")
 
 

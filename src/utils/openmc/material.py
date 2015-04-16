@@ -1,12 +1,13 @@
+from collections import MappingView
+from copy import deepcopy
 import warnings
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-from collections import MappingView
-from copy import deepcopy
-import numpy as np
 
 
 # A list of all IDs for all Materials created
@@ -70,14 +71,13 @@ class Material(object):
 
     def set_id(self, material_id=None):
 
-        global MATERIAL_IDS
+        global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         # If the Material already has an ID, remove it from global list
         if not self._id is None:
             MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
-            global AUTO_MATERIAL_ID
             self._id = AUTO_MATERIAL_ID
             MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
@@ -260,13 +260,13 @@ class Material(object):
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
 
-        string += '{0: <16}'.format('\tS(a,b) Tables') + '\n'
+        string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
             string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
                                                      sab[0], sab[1])
 
-        string += '{0: <16}'.format('\tNuclides') + '\n'
+        string += '{0: <16}\n'.format('\tNuclides')
 
         for nuclide in self._nuclides:
             percent = self._nuclides[nuclide][1]

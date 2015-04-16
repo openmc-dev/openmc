@@ -1,6 +1,7 @@
+import numpy as np
+
 import openmc
 from openmc.opencg_compatible import get_opencg_geometry
-import numpy as np
 
 try:
     import h5py

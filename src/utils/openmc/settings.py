@@ -1,10 +1,11 @@
+import collections
 import warnings
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-import numpy as np
-import multiprocessing
 
 
 class SettingsFile(object):
@@ -152,16 +153,16 @@ class SettingsFile(object):
         self._source_file = source_file
 
 
-    def set_source_space(self, type, params):
+    def set_source_space(self, stype, params):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source space type to a non-string ' \
-                  'value {0}'.format(type)
+                  'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['box', 'point']:
+        elif not stype in ['box', 'point']:
             msg = 'Unable to set source space type to {0} since it is not ' \
-                  'box or point'.format(type)
+                  'box or point'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -181,20 +182,20 @@ class SettingsFile(object):
                       'is not an integer or floating point value'.format(param)
                 raise ValueError(msg)
 
-        self._source_space_type = type
+        self._source_space_type = stype
         self._source_space_params = params
 
 
-    def set_source_angle(self, type, params=[]):
+    def set_source_angle(self, stype, params=[]):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source angle type to a non-string ' \
-                  'value {0}'.format(type)
+                  'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['isotropic', 'monodirectional']:
+        elif not stype in ['isotropic', 'monodirectional']:
             msg = 'Unable to set source angle type to {0} since it is not ' \
-                  'isotropic or monodirectional'.format(type)
+                  'isotropic or monodirectional'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -202,12 +203,12 @@ class SettingsFile(object):
                   'not a Python list/tuple or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif type is 'isotropic' and not params is None:
+        elif stype == 'isotropic' and not params is None:
             msg = 'Unable to set source angle parameters since they are not ' \
                   'it is not supported for isotropic type sources'
             raise ValueError(msg)
 
-        elif type is 'monodirectional' and len(params) != 3:
+        elif stype == 'monodirectional' and len(params) != 3:
             msg = 'Unable to set source angle parameters to {0} ' \
                   'since 3 parameters are required for monodirectional ' \
                   'sources'.format(params)
@@ -220,20 +221,20 @@ class SettingsFile(object):
                       'is not an integer or floating point value'.format(param)
                 raise ValueError(msg)
 
-        self._source_angle_type = type
+        self._source_angle_type = stype
         self._source_angle_params = params
 
 
-    def set_source_energy(self, type, params=[]):
+    def set_source_energy(self, stype, params=[]):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source energy type to a non-string ' \
-                   'value {0}'.format(type)
+                   'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['monoenergetic', 'watt', 'maxwell']:
+        elif not stype in ['monoenergetic', 'watt', 'maxwell']:
             msg = 'Unable to set source energy type to {0} since it is not ' \
-                  'monoenergetic, watt or maxwell'.format(type)
+                  'monoenergetic, watt or maxwell'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -241,19 +242,19 @@ class SettingsFile(object):
                   'is not a Python list/tuple or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif type is 'monoenergetic' and not len(params) != 1:
+        elif stype == 'monoenergetic' and not len(params) != 1:
             msg = 'Unable to set source energy parameters to {0} ' \
                   'since 1 paramater is required for monenergetic ' \
                   'sources'.format(params)
             raise ValueError(msg)
 
-        elif type is 'watt' and len(params) != 2:
+        elif stype == 'watt' and len(params) != 2:
             msg = 'Unable to set source energy parameters to {0} ' \
                   'since 2 parameters are required for monoenergetic ' \
                   'sources'.format(params)
             raise ValueError(msg)
 
-        elif type is 'maxwell' and len(params) != 2:
+        elif stype == 'maxwell' and len(params) != 2:
             msg = 'Unable to set source energy parameters to {0} since 1 ' \
                   'parameter is required for maxwell sources'.format(params)
             raise ValueError(msg)
@@ -266,7 +267,7 @@ class SettingsFile(object):
                       'value'.format(param)
                 raise ValueError(msg)
 
-        self._source_energy_type = type
+        self._source_energy_type = stype
         self._source_energy_params = params
 
 
@@ -806,7 +807,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release ' \
                       'version of openmc')
 
-        if not type(allow) == bool:
+        if not isinstance(allow, bool):
             msg = 'Unable to set DD allow_leakage {0} which is ' \
                   'not a Python bool'.format(dimension)
             raise ValueError(msg)
@@ -820,7 +821,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release ' \
                       'version of openmc')
 
-        if not type(interactions) == bool:
+        if not isinstance(interactions, bool):
             msg = 'Unable to set DD count_interactions {0} which is ' \
                   'not a Python bool'.format(dimension)
             raise ValueError(msg)

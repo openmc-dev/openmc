@@ -1,6 +1,7 @@
-from openmc.checkvalue import *
 import subprocess
 import os
+
+from openmc.checkvalue import *
 
 
 class Executor(object):

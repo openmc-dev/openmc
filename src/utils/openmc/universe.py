@@ -1,9 +1,11 @@
+import abc
+from collections import OrderedDict
+from xml.etree import ElementTree as ET
+
+import numpy as np
+
 import openmc
 from openmc.checkvalue import *
-from xml.etree import ElementTree as ET
-from collections import OrderedDict
-import numpy as np
-import abc
 
 
 ################################################################################

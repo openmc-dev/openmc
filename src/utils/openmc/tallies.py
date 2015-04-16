@@ -1,10 +1,12 @@
+from xml.etree import ElementTree as ET
+import os, copy
+
+import numpy as np
+
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *
 from openmc.constants import *
-from xml.etree import ElementTree as ET
-import numpy as np
-import os, copy
 
 
 # "Static" variables for auto-generated Tally and Mesh IDs

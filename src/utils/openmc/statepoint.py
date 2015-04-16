@@ -1,9 +1,11 @@
-import struct, copy
+import copy
+import struct
+
 import numpy as np
 import scipy.stats
+
 import openmc
 from openmc.constants import *
-
 
 
 class SourceSite(object):

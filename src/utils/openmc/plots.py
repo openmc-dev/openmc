@@ -1,7 +1,9 @@
+from xml.etree import ElementTree as ET
+
+import numpy as np
+
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-import numpy as np
 
 
 # A static variable for auto-generated Plot IDs

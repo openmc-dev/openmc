@@ -1,7 +1,9 @@
-import openmc
-import opencg
 import copy
+
 import numpy as np
+import opencg
+
+import openmc
 
 
 # A dictionary of all OpenMC Materials created

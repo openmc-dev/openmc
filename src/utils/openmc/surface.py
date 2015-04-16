@@ -1,6 +1,7 @@
+from xml.etree import ElementTree as ET
+
 from openmc.checkvalue import *
 from openmc.constants import BC_TYPES
-from xml.etree import ElementTree as ET
 
 
 # A static variable for auto-generated Surface IDs

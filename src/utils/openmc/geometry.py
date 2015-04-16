@@ -1,6 +1,8 @@
+from xml.etree import ElementTree as ET
+
 import openmc
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
+
 
 def reset_auto_ids():
     openmc.reset_auto_material_id()

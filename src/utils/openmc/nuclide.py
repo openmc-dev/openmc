@@ -36,10 +36,7 @@ class Nuclide(object):
 
 
     def __hash__(self):
-        hashable = []
-        hashable.append(self._name)
-        hashable.append(self._xs)
-        return hash(tuple(hashable))
+        return hash((self._name, self._xs))
 
 
     def set_name(self, name):

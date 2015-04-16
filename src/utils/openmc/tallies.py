@@ -1,5 +1,6 @@
+import copy
+import os
 from xml.etree import ElementTree as ET
-import os, copy
 
 import numpy as np
 

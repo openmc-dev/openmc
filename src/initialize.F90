@@ -4,7 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: logarithmic_grid, grid_method
+  use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
@@ -109,10 +109,17 @@ contains
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
 
-      ! Construct logarithmic energy grid for cross-sections
-      if (grid_method == GRID_LOGARITHM) then
+      ! Construct unionized or log energy grid for cross-sections
+      select case (grid_method)
+      case (GRID_NUCLIDE)
+        continue
+      case (GRID_MAT_UNION)
+        call time_unionize % start()
+        call unionized_grid()
+        call time_unionize % stop()
+      case (GRID_LOGARITHM)
         call logarithmic_grid()
-      end if
+      end select
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

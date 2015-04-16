@@ -9,6 +9,7 @@
   <tally id="2">
     <filter type="cell" bins="10 21 22 23" />
     <scores>total-y4</scores>
+    <nuclides>U-235 total</nuclides>
   </tally>
 
 </tallies>

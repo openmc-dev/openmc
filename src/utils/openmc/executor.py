@@ -3,9 +3,6 @@ import subprocess
 import os
 
 
-FNULL = open(os.devnull, 'w')
-
-
 class Executor(object):
 
 
@@ -34,7 +31,8 @@ class Executor(object):
             subprocess.check_call('openmc -p', shell=True,
                                   cwd=self._working_directory)
         else:
-            subprocess.check_call('openmc -p', shell=True, stdout=FNULL,
+            subprocess.check_call('openmc -p', shell=True,
+                                  stdout=open(os.devnull, 'w'),
                                   cwd=self._working_directory)
 
 
@@ -69,5 +67,6 @@ class Executor(object):
             subprocess.check_call(command, shell=True,
                                   cwd=self._working_directory)
         else:
-            subprocess.check_call(command, shell=True, stdout=FNULL,
+            subprocess.check_call(command, shell=True,
+                                  stdout=open(os.devnull, 'w'),
                                   cwd=self._working_directory)

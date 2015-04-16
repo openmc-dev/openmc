@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import warnings
 
 from openmc.checkvalue import *
@@ -437,9 +435,9 @@ class SettingsFile(object):
 
     def set_energy_grid(self, energy_grid):
 
-        if not energy_grid in ['union', 'nuclide']:
+        if not energy_grid in ['nuclide', 'logarithm', 'material-union']:
             msg = 'Unable to set energy grid to {0} which is neither ' \
-                  'union nor nuclide'.format(energy_grid)
+                  'nuclide, logarithm, nor material-union'.format(energy_grid)
             raise ValueError(msg)
 
         self._energy_grid = energy_grid
@@ -1206,7 +1204,7 @@ class SettingsFile(object):
                 subelement.text = 'true'
             else:
                 subelement.text = 'false'
-                
+
             subelement = ET.SubElement(element, "count_interactions")
             if self._dd_count_interactions:
                 subelement.text = 'true'

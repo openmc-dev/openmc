@@ -68,7 +68,6 @@ module hdf5_interface
     module procedure hdf5_read_integer_4Darray
     module procedure hdf5_read_long
     module procedure hdf5_read_string
-    module procedure hdf5_read_string_1Darray
 #ifdef MPI
     module procedure hdf5_read_double_parallel
     module procedure hdf5_read_double_1Darray_parallel
@@ -82,7 +81,6 @@ module hdf5_interface
     module procedure hdf5_read_integer_4Darray_parallel
     module procedure hdf5_read_long_parallel
     module procedure hdf5_read_string_parallel
-!    module procedure hdf5_read_string_1Darray_parallel
 #endif
   end interface hdf5_read_data
 
@@ -208,7 +206,7 @@ contains
     logical :: status ! does the group exist
 
     ! Check if group exists
-    call h5ltpath_valid_f(hdf5_fh, trim(group), .true., status, hdf5_err) 
+    call h5ltpath_valid_f(hdf5_fh, trim(group), .true., status, hdf5_err)
 
     ! Either create or open group
     if (status) then
@@ -259,7 +257,7 @@ contains
 
     integer(HID_T), intent(in)    :: group  ! name of group
     character(*),   intent(in)    :: name   ! name of data
-    integer,        intent(inout) :: buffer ! read data to here 
+    integer,        intent(inout) :: buffer ! read data to here
 
     integer :: buffer_copy(1) ! need an array for read
 
@@ -463,7 +461,7 @@ contains
 
     integer(HID_T), intent(in)    :: group  ! name of group
     character(*),   intent(in)    :: name   ! name of data
-    real(8),        intent(inout) :: buffer ! read data to here 
+    real(8),        intent(inout) :: buffer ! read data to here
 
     real(8) :: buffer_copy(1) ! need an array for read
 
@@ -728,7 +726,7 @@ contains
     call h5dcreate_f(group, name, H5T_STRING, dspace, dset, hdf5_err)
 
     ! Set up dimesnions of string to write
-    dims2 = (/length, 1/) ! full array of strings to write 
+    dims2 = (/length, 1/) ! full array of strings to write
     dims1(1) = length     ! length of string
 
     ! Copy over string buffer to a rank 1 array
@@ -762,7 +760,7 @@ contains
 !    character(len=length, kind=c_char), pointer :: chr_ptr
 !    f_ptr = c_loc(buf_ptr(1))
 !    call h5dread_f(dset, H5T_STRING, f_ptr, hdf5_err, xfer_prp=plist)
-!    call c_f_pointer(buf_ptr(1), chr_ptr) 
+!    call c_f_pointer(buf_ptr(1), chr_ptr)
 !    buffer = chr_ptr
 !    nullify(chr_ptr)
 
@@ -787,39 +785,6 @@ contains
     call h5dclose_f(dset, hdf5_err)
 
   end subroutine hdf5_read_string
-
-!===============================================================================
-! HDF5_READ_STRING_1DARRAY reads string data
-!===============================================================================
-
-  subroutine hdf5_read_string_1Darray(group, name, buffer, length, rank)
-
-    integer(HID_T), intent(in)    :: group              ! name of group
-    character(*),   intent(in)    :: name               ! name of data
-    integer,        intent(in)    :: length             ! length of strings
-    integer,        intent(in)    :: rank                ! number of strings
-    character(*),   intent(inout) :: buffer(length,rank) ! read data to here
-
-    ! Open dataset
-    call h5dopen_f(group, name, dset, hdf5_err)
-
-    ! Get dataspace to read
-    call h5dget_space_f(dset, dspace, hdf5_err)
-
-    ! Set dimensions
-    dims2 = (/length, rank/)
-    dims1(1) = length
-
-    ! Read in the data
-    !call h5ltread_dataset_string_f(dset, H5T_STRING, buffer, dims2, dims1, hdf5_err, &
-    !     mem_space_id=dspace, xfer_prp = plist)
-
-    !call h5ltread_dataset_f(group, name, dims, dims2, H5T_STRING, buffer, hdf5_err)
-
-    ! Close dataset
-    call h5dclose_f(dset, hdf5_err)
-
-  end subroutine hdf5_read_string_1Darray
 
 !===============================================================================
 ! HDF5_WRITE_ATTRIBUTE_STRING writes a string attribute to a variables
@@ -873,7 +838,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -951,7 +916,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1031,7 +996,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1112,7 +1077,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1194,7 +1159,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1273,7 +1238,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1351,7 +1316,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1431,7 +1396,7 @@ contains
     f_ptr = c_loc(buffer(1,1))
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1512,7 +1477,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1594,7 +1559,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1674,7 +1639,7 @@ contains
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, long_type, f_ptr, hdf5_err, xfer_prp=plist)
 
-    ! Close all 
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
@@ -1761,7 +1726,7 @@ contains
     call h5dcreate_f(group, name, H5T_STRING, dspace, dset, hdf5_err)
 
     ! Set up dimesnions of string to write
-    dims2 = (/length, 1/) ! full array of strings to write 
+    dims2 = (/length, 1/) ! full array of strings to write
     dims1(1) = length     ! length of string
 
     ! Copy over string buffer to a rank 1 array
@@ -1797,7 +1762,7 @@ contains
 !    character(len=length, kind=c_char), pointer :: chr_ptr
 !    f_ptr = c_loc(buf_ptr(1))
 !    call h5dread_f(dset, H5T_STRING, f_ptr, hdf5_err, xfer_prp=plist)
-!    call c_f_pointer(buf_ptr(1), chr_ptr) 
+!    call c_f_pointer(buf_ptr(1), chr_ptr)
 !    buffer = chr_ptr
 !    nullify(chr_ptr)
 

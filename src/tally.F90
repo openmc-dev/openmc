@@ -529,8 +529,7 @@ contains
     real(8) :: wgt                  ! post-collision particle weight
     real(8) :: mu                   ! cosine of angle of collision
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer, save :: t => null()
-!$omp threadprivate(t)
+    type(TallyObject), pointer :: t
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt

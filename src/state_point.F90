@@ -23,7 +23,7 @@ module state_point
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none

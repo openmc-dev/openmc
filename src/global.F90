@@ -19,6 +19,9 @@ module global
 #ifdef HDF5
   use hdf5_interface,  only: HID_T
 #endif
+#ifdef MPIF08
+  use mpi_f08
+#endif
 
   implicit none
   save
@@ -212,8 +215,13 @@ module global
   logical :: master      = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
   integer :: mpi_err               ! MPI error code
+#ifdef MPIF08
+  type(MPI_Datatype) :: MPI_BANK
+  type(MPI_Datatype) :: MPI_TALLYRESULT
+#else
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
+#endif
 
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads

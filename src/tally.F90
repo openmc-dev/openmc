@@ -17,7 +17,7 @@ module tally
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none

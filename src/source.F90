@@ -14,7 +14,7 @@ module source
   use string,           only: to_str
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.element import *
 from openmc.geometry import *
 from openmc.nuclide import *

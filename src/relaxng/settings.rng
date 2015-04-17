@@ -106,6 +106,8 @@
           <value>log</value>
           <value>logarithm</value>
           <value>logarithmic</value>
+          <value>material-union</value>
+          <value>union</value>
         </choice>
       </element>
     </optional>

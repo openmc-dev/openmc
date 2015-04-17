@@ -1,18 +1,17 @@
-#!/usr/bin/env python
-
+from collections import MappingView
+from copy import deepcopy
 import warnings
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-from collections import MappingView
-from copy import deepcopy
-import numpy as np
 
 
 # A list of all IDs for all Materials created
-MATERIAL_IDS = list()
+MATERIAL_IDS = []
 
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
@@ -20,7 +19,7 @@ AUTO_MATERIAL_ID = 10000
 def reset_auto_material_id():
     global AUTO_MATERIAL_ID, MATERIAL_IDS
     AUTO_MATERIAL_ID = 10000
-    MATERIAL_IDS = list()
+    MATERIAL_IDS = []
 
 
 # Units for density supported by OpenMC
@@ -49,15 +48,15 @@ class Material(object):
         # A dictionary of Nuclides
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
-        self._nuclides = dict()
+        self._nuclides = {}
 
         # A dictionary of Elements
         # Keys         - Element names
         # Values     - tuple (element, percent, percent type)
-        self._elements = dict()
+        self._elements = {}
 
         # If specified, a list of tuples of (table name, xs identifier)
-        self._sab = list()
+        self._sab = []
 
         # If true, the material will be initialized as distributed
         self._convert_to_distrib_comps = False
@@ -72,14 +71,13 @@ class Material(object):
 
     def set_id(self, material_id=None):
 
-        global MATERIAL_IDS
+        global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         # If the Material already has an ID, remove it from global list
         if not self._id is None:
             MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
-            global AUTO_MATERIAL_ID
             self._id = AUTO_MATERIAL_ID
             MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
@@ -243,7 +241,7 @@ class Material(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         for nuclide_name, nuclide_tuple in self._nuclides.items():
             nuclide = nuclide_tuple[0]
@@ -262,13 +260,13 @@ class Material(object):
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
 
-        string += '{0: <16}'.format('\tS(a,b) Tables') + '\n'
+        string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
             string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
                                                      sab[0], sab[1])
 
-        string += '{0: <16}'.format('\tNuclides') + '\n'
+        string += '{0: <16}\n'.format('\tNuclides')
 
         for nuclide in self._nuclides:
             percent = self._nuclides[nuclide][1]
@@ -320,7 +318,7 @@ class Material(object):
 
     def get_nuclides_xml(self, nuclides, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for nuclide in nuclides.values():
             xml_elements.append(self.get_nuclide_xml(nuclide, distrib))
@@ -330,7 +328,7 @@ class Material(object):
 
     def get_elements_xml(self, elements, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for element in elements.values():
             xml_elements.append(self.get_element_xml(element, distrib))
@@ -365,7 +363,7 @@ class Material(object):
         else:
 
             subelement = ET.SubElement(element, "compositions")
-            
+
             comps = []
             allnucs = self._nuclides.values() + self._elements.values()
             dist_per_type = allnucs[0][2]
@@ -416,7 +414,7 @@ class MaterialsFile(object):
     def __init__(self):
 
         # Initialize MaterialsFile class attributes
-        self._materials = list()
+        self._materials = []
         self._default_xs = None
         self._materials_file = ET.Element("materials")
 

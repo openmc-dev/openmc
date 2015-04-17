@@ -1,12 +1,13 @@
-#!/usr/bin/env python
+import copy
+import os
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *
 from openmc.constants import *
-from xml.etree import ElementTree as ET
-import numpy as np
-import os, copy
 
 
 # "Static" variables for auto-generated Tally and Mesh IDs
@@ -64,7 +65,7 @@ class Filter(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
         hashable.append(self._type)
         hashable.append(self._bins)
         return hash(tuple(hashable))
@@ -532,9 +533,9 @@ class Tally(object):
         # Initialize Tally class attributes
         self._id = None
         self._label = None
-        self._filters = list()
-        self._nuclides = list()
-        self._scores = list()
+        self._filters = []
+        self._nuclides = []
+        self._scores = []
         self._estimator = None
 
         self._num_score_bins = 0
@@ -567,15 +568,15 @@ class Tally(object):
             clone._mean = copy.deepcopy(self._mean, memo)
             clone._std_dev = copy.deepcopy(self._std_dev, memo)
 
-            clone._filters = list()
+            clone._filters = []
             for filter in self._filters:
               clone.add_filter(copy.deepcopy(filter, memo))
 
-            clone._nuclides = list()
+            clone._nuclides = []
             for nuclide in self._nuclides:
               clone.add_nuclide(copy.deepcopy(nuclide, memo))
 
-            clone._scores = list()
+            clone._scores = []
             for score in self._scores:
               clone.add_score(score)
 
@@ -612,7 +613,7 @@ class Tally(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
 
         for filter in self._filters:
             hashable.append((filter._type, tuple(filter._bins)))
@@ -1105,7 +1106,7 @@ class Tally(object):
             tally_group.create_dataset('scores', data=np.array(self._scores))
 
             # Add a string array of the nuclides to the HDF5 group
-            nuclides = list()
+            nuclides = []
 
             for nuclide in self._nuclides:
                 nuclides.append(nuclide._name)
@@ -1140,10 +1141,10 @@ class Tally(object):
             if os.path.exists(filename) and append:
                 tally_results = pickle.load(file(filename, 'rb'))
             else:
-                tally_results = dict()
+                tally_results = {}
 
             # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-{0}'.format(self._id)] = dict()
+            tally_results['Tally-{0}'.format(self._id)] = {}
             tally_group = tally_results['Tally-{0}'.format(self._id)]
 
             # Add basic Tally data to the nested dictionary
@@ -1153,7 +1154,7 @@ class Tally(object):
             tally_group['scores'] = np.array(self._scores)
 
             # Add a string array of the nuclides to the HDF5 group
-            nuclides = list()
+            nuclides = []
 
             for nuclide in self._nuclides:
                 nuclides.append(nuclide._name)
@@ -1161,7 +1162,7 @@ class Tally(object):
             tally_group['nuclides']= np.array(nuclides)
 
             # Create a nested dictionary for the Filters
-            tally_group['filters'] = dict()
+            tally_group['filters'] = {}
             filter_group = tally_group['filters']
 
             for filter in self._filters:
@@ -1182,8 +1183,8 @@ class TalliesFile(object):
     def __init__(self):
 
         # Initialize TalliesFile class attributes
-        self._tallies = list()
-        self._meshes = list()
+        self._tallies = []
+        self._meshes = []
         self._tallies_file = ET.Element("tallies")
 
 

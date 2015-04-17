@@ -103,7 +103,7 @@ module ace_header
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
-    integer, allocatable :: grid_index(:) ! union grid pointers / log grid mapping
+    integer, allocatable :: grid_index(:) ! log grid mapping indices
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
     ! Microscopic cross sections
@@ -371,9 +371,6 @@ module ace_header
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
-
-      if (allocated(this % grid_index)) &
-           deallocate(this % grid_index)
 
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &

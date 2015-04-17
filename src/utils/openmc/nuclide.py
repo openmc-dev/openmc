@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 
 
@@ -38,10 +36,7 @@ class Nuclide(object):
 
 
     def __hash__(self):
-        hashable = list()
-        hashable.append(self._name)
-        hashable.append(self._xs)
-        return hash(tuple(hashable))
+        return hash((self._name, self._xs))
 
 
     def set_name(self, name):

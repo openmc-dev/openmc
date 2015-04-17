@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import numpy as np
 
 
@@ -13,4 +11,3 @@ def is_float(val):
 
 def is_string(val):
     return isinstance(val, (str, np.str))
-

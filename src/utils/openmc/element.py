@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 
 class Element(object):
@@ -36,7 +34,7 @@ class Element(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
         hashable.append(self._name)
         hashable.append(self._xs)
         return hash(tuple(hashable))

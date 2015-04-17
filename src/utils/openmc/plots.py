@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-import numpy as np
 
 
 # A static variable for auto-generated Plot IDs
@@ -400,7 +400,7 @@ class PlotsFile(object):
     def __init__(self):
 
         # Initialize PlotsFile class attributes
-        self._plots = list()
+        self._plots = []
         self._plots_file = ET.Element("plots")
 
 

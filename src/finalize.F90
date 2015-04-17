@@ -6,7 +6,7 @@ module finalize
   use tally,          only: tally_statistics
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
 #ifdef HDF5

@@ -6,7 +6,7 @@ module error
   use global
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none
@@ -155,7 +155,7 @@ contains
 #ifdef NO_F2008
     stop
 #else
-    error stop 
+    error stop
 #endif
 
   end subroutine fatal_error

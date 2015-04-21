@@ -44,3 +44,6 @@ results_error.dat
 
 # Data downloaded from NNDC
 data/nndc
+
+.idea
+.idea/*

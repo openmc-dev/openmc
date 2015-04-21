@@ -28,6 +28,26 @@ class SourceSite(object):
         return string
 
 
+    @property
+    def weight(self):
+        return self._weight
+
+
+    @property
+    def xyz(self):
+        return self._xyz
+
+
+    @property
+    def uvw(self):
+        return self._uvw
+
+
+    @property
+    def E(self):
+        return self._E
+
+
 
 class StatePoint(object):
 
@@ -236,13 +256,13 @@ class StatePoint(object):
             # Create the Mesh and assign properties to it
             mesh = openmc.Mesh(mesh_id)
 
-            mesh.set_dimension(dimension)
-            mesh.set_width(width)
-            mesh.set_lower_left(lower_left)
-            mesh.set_upper_right(upper_right)
+            mesh.dimension = dimension
+            mesh.width = width
+            mesh.lower_left = lower_left
+            mesh.upper_right = upper_right
 
             #FIXME: Set the mesh type to 'rectangular' by default
-            mesh.set_type('rectangular')
+            mesh.type = 'rectangular'
 
             # Add mesh to the global dictionary of all Meshes
             self._meshes[mesh_id] = mesh
@@ -300,8 +320,8 @@ class StatePoint(object):
 
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_key, label)
-            tally.set_estimator(ESTIMATOR_TYPES[estimator_type])
-            tally.set_num_realizations(n_realizations)
+            tally.estimator = ESTIMATOR_TYPES[estimator_type]
+            tally.num_realizations = n_realizations
 
             # Read the number of Filters
             n_filters = self._get_int(
@@ -343,11 +363,11 @@ class StatePoint(object):
 
                 # Create Filter object
                 filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
-                filter.set_stride(stride)
-                filter.set_num_bins(n_bins)
+                filter.stride = stride
+                filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
-                    filter.set_mesh(self._meshes[bins])
+                    filter.mesh = self._meshes[bins]
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)
@@ -370,7 +390,7 @@ class StatePoint(object):
             n_score_bins = self._get_int(
                  path='{0}{1}/n_score_bins'.format(base, tally_key))[0]
 
-            tally.set_num_score_bins(n_score_bins)
+            tally.num_score_bins = n_score_bins
 
             scores = [SCORE_TYPES[j] for j in self._get_int(
                  n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
@@ -440,7 +460,7 @@ class StatePoint(object):
                 tally = self._tallies[tally_key]
 
                 # Compute the total number of bins for this Tally
-                num_tot_bins = tally.get_num_bins()
+                num_tot_bins = tally.num_bins
 
                 # Extract Tally data from the file
                 if self._hdf5:
@@ -457,9 +477,9 @@ class StatePoint(object):
                 nonzero = lambda val: 1 if not val else val
 
                 # Reshape the results arrays
-                new_shape = (nonzero(tally.get_num_filter_bins()),
-                             nonzero(tally.get_num_nuclides()),
-                             nonzero(tally.get_num_score_bins()))
+                new_shape = (nonzero(tally.num_filter_bins),
+                             nonzero(tally.num_nuclides),
+                             nonzero(tally.num_score_bins))
 
                 sum = np.reshape(sum, new_shape)
                 sum_sq = np.reshape(sum_sq, new_shape)
@@ -669,25 +689,25 @@ class StatePoint(object):
                     surface_ids = []
                     for bin in filter._bins:
                         surface_ids.append(summary.surfaces[bin]._id)
-                    filter.set_bin_edges(surface_ids)
+                    filter.bins = surface_ids
 
                 if filter._type in ['cell', 'distribcell']:
                     distribcell_ids = []
                     for bin in filter._bins:
                         distribcell_ids.append(summary.cells[bin]._id)
-                    filter.set_bin_edges(distribcell_ids)
+                    filter.bins = distribcell_ids
 
                 if filter._type == 'universe':
                     universe_ids = []
                     for bin in filter._bins:
                         universe_ids.append(summary.universes[bin]._id)
-                    filter.set_bin_edges(universe_ids)
+                    filter.bins = universe_ids
 
                 if filter._type == 'material':
                     material_ids = []
                     for bin in filter._bins:
                         material_ids.append(summary.materials[bin]._id)
-                    filter.set_bin_edges(material_ids)
+                    filter.bins = material_ids
 
         self._with_summary = True
 

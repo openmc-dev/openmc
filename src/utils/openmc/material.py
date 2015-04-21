@@ -40,8 +40,8 @@ class Material(object):
     def __init__(self, material_id=None, name=''):
 
         # Initialize class attributes
-        self._id = None
-        self._name = ''
+        self._id = material_id
+        self._name = name
         self._density = None
         self._density_units = ''
 
@@ -63,10 +63,6 @@ class Material(object):
 
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
-
-        # Set the Material class attributes
-        self.id = material_id
-        self.name = name
 
 
     @property
@@ -100,7 +96,7 @@ class Material(object):
 
 
     @id.setter
-    def id(self, material_id=None):
+    def id(self, material_id):
 
         global AUTO_MATERIAL_ID, MATERIAL_IDS
 

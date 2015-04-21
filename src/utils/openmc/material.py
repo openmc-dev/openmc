@@ -65,8 +65,8 @@ class Material(object):
         self._distrib_otf_file = None
 
         # Set the Material class attributes
-        self.set_id(material_id)
-        self.set_name(name)
+        self.id = material_id
+        self.name = name
 
 
     @property
@@ -87,6 +87,16 @@ class Material(object):
     @property
     def density_units(self):
         return self._density_units
+
+
+    @property
+    def convert_to_distrib_comps(self):
+        return self._convert_to_distrib_comps
+
+
+    @property
+    def distrib_otf_file(self):
+        return self._distrib_otf_file
 
 
     @id.setter
@@ -157,6 +167,31 @@ class Material(object):
 
         self._density = density
         self._density_units = units
+
+
+    @distrib_otf_file.setter
+    def distrib_otf_file(self, filename):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        if not is_string(filename) and not filename is None:
+            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
+                  'non-string name {1}'.format(self._id, filename)
+            raise ValueError(msg)
+
+        self._distrib_otf_file = filename
+
+
+    @convert_to_distrib_comps.setter
+    def convert_to_distrib_comps(self):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        self._convert_to_distrib_comps = True
 
 
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
@@ -237,29 +272,6 @@ class Material(object):
             raise ValueError(msg)
 
         self._sab.append((name, xs))
-
-
-    def set_otf_mat_file(self, name):
-
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
-                      'version of openmc')
-
-        if not is_string(name) and not name is None:
-            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
-                        'non-string name {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        self._distrib_otf_file = name
-
-
-    def set_as_distrib_comp(self):
-
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
-                      'version of openmc')
-
-        self._convert_to_distrib_comps = True
 
 
     def get_all_nuclides(self):

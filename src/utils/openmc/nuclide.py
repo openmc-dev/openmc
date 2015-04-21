@@ -11,10 +11,10 @@ class Nuclide(object):
         self._zaid = None
 
         # Set the Material class attributes
-        self.set_name(name)
+        self.name = name
 
         if not xs is None:
-            self.set_xs(xs)
+            self.xs = xs
 
 
     def __eq__(self, nuclide2):

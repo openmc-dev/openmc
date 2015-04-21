@@ -69,7 +69,28 @@ class Material(object):
         self.set_name(name)
 
 
-    def set_id(self, material_id=None):
+    @property
+    def id(self):
+        return self._id
+
+
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def density(self):
+        return self._density
+
+
+    @property
+    def density_units(self):
+        return self._density_units
+
+
+    @id.setter
+    def id(self, material_id=None):
 
         global AUTO_MATERIAL_ID, MATERIAL_IDS
 
@@ -103,7 +124,8 @@ class Material(object):
             MATERIAL_IDS.append(material_id)
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Material ID={0} with a non-string ' \
@@ -114,7 +136,8 @@ class Material(object):
             self._name = name
 
 
-    def set_density(self, units, density=NO_DENSITY):
+    @density.setter
+    def density(self, units, density=NO_DENSITY):
 
         if not is_float(density):
             msg = 'Unable to set the density for Material ID={0} to a ' \
@@ -419,6 +442,21 @@ class MaterialsFile(object):
         self._materials_file = ET.Element("materials")
 
 
+    @property
+    def default_xs(self):
+        return self._default_xs
+
+
+    @default_xs.setter
+    def default_xs(self, xs):
+
+        if not is_string(xs):
+            msg = 'Unable to set default xs to a non-string value'.format(xs)
+            raise ValueError(msg)
+
+        self._default_xs = xs
+
+
     def add_material(self, material):
 
         if not isinstance(material, Material):
@@ -448,15 +486,6 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         self._materials.remove(material)
-
-
-    def set_default_xs(self, xs):
-
-        if not is_string(xs):
-            msg = 'Unable to set default xs to a non-string value'.format(xs)
-            raise ValueError(msg)
-
-        self._default_xs = xs
 
 
     def create_material_subelements(self):

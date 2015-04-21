@@ -36,11 +36,77 @@ class Plot(object):
         self._mask_background = None
         self._col_spec = None
 
-        self.set_id(plot_id)
-        self.set_name(name)
+        self.id = plot_id
+        self.name = name
 
 
-    def set_id(self, plot_id=None):
+    @property
+    def id(self):
+        return self._id
+
+
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def width(self):
+        return self._width
+
+
+    @property
+    def pixels(self):
+        return self._pixels
+
+
+    @property
+    def origin(self):
+        return self._origin
+
+
+    @property
+    def filename(self):
+        return self._filename
+
+
+    @property
+    def color(self):
+        return self._color
+
+
+    @property
+    def type(self):
+        return self._type
+
+
+    @property
+    def basis(self):
+        return self._basis
+
+
+    @property
+    def background(self):
+        return self._background
+
+
+    @property
+    def mask_componenets(self):
+        return self._mask_components
+
+
+    @property
+    def mask_background(self):
+        return self._mask_background
+
+
+    @property
+    def col_spec(self):
+        return self._col_spec
+
+
+    @id.setter
+    def id(self, plot_id):
 
         if plot_id is None:
             global AUTO_PLOT_ID
@@ -54,25 +120,27 @@ class Plot(object):
 
         elif plot_id < 0:
             msg = 'Unable to set Plot ID to {0} since it must be a ' \
-                        'non-negative integer'.format(plot_id)
+                  'non-negative integer'.format(plot_id)
             raise ValueError(msg)
 
         else:
             self._id = plot_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Plot ID={0} with a non-string ' \
-                        'value {1}'.format(self._id, name)
+                  'value {1}'.format(self._id, name)
             raise ValueError(msg)
 
         else:
             self._name = name
 
 
-    def set_width(self, width):
+    @width.setter
+    def width(self, width):
 
         if not isinstance(width, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with width {1} which is not ' \
@@ -94,7 +162,8 @@ class Plot(object):
         self._width = width
 
 
-    def set_origin(self, origin):
+    @origin.setter
+    def origin(self, origin):
 
         if not isinstance(origin, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with origin {1} which is not ' \
@@ -117,7 +186,8 @@ class Plot(object):
         self._origin = origin
 
 
-    def set_pixels(self, pixels):
+    @pixels.setter
+    def pixels(self, pixels):
 
         if not isinstance(pixels, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with pixels {1} which is not ' \
@@ -144,7 +214,8 @@ class Plot(object):
         self._pixels = pixels
 
 
-    def set_filename(self, filename):
+    @filename.setter
+    def filename(self, filename):
 
         if not is_string(filename):
             msg = 'Unable to create Plot ID={0} with filename {1} which is ' \
@@ -154,7 +225,8 @@ class Plot(object):
         self._filename = filename
 
 
-    def set_color(self, color):
+    @color.setter
+    def color(self, color):
 
         if not is_string(color):
             msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
@@ -169,7 +241,8 @@ class Plot(object):
         self._color = color
 
 
-    def set_type(self, type):
+    @type.setter
+    def type(self, type):
 
         if not is_string(type):
             msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
@@ -184,7 +257,8 @@ class Plot(object):
         self._type = type
 
 
-    def set_basis(self, basis):
+    @basis.setter
+    def basis(self, basis):
 
         if not is_string(basis):
             msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
@@ -199,7 +273,8 @@ class Plot(object):
         self._basis = basis
 
 
-    def set_background(self, background):
+    @background.setter
+    def background(self, background):
 
         if not isinstance(background, (tuple, list, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with background {1} ' \
@@ -228,7 +303,8 @@ class Plot(object):
         self._background = background
 
 
-    def set_col_spec(self, col_spec):
+    @col_spec.setter
+    def col_spec(self, col_spec):
 
         if not isinstance(col_spec, dict):
             msg= 'Unable to create Plot ID={0} with col_spec parameter {1} ' \
@@ -263,7 +339,8 @@ class Plot(object):
         self._col_spec = col_spec
 
 
-    def set_mask_components(self, mask_components):
+    @mask_componenets.setter
+    def mask_components(self, mask_components):
 
         if not isinstance(mask_components, (list, tuple, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with mask components {1} ' \
@@ -285,7 +362,8 @@ class Plot(object):
         self._mask_components = mask_components
 
 
-    def set_mask_background(self, mask_background):
+    @mask_background.setter
+    def mask_background(self, mask_background):
 
         if not isinstance(mask_background, (list, tuple, np.ndarray)):
             msg = 'Unable to create Plot ID={0} with mask background {1} ' \

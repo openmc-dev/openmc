@@ -40,17 +40,18 @@ class Element(object):
         return hash(tuple(hashable))
 
 
-    def set_name(self, name):
-
-        if not is_string(name):
-            msg = 'Unable to set name for Element with a non-string ' \
-                        'value {0}'.format(name)
-            raise ValueError(msg)
-
-        self._name = name
+    @property
+    def xs(self):
+        return self._xs
 
 
-    def set_xs(self, xs):
+    @property
+    def name(self):
+        return self._name
+
+
+    @xs.setter
+    def xs(self, xs):
 
         if not is_string(xs):
             msg = 'Unable to set cross-section identifier xs for Element ' \
@@ -58,6 +59,17 @@ class Element(object):
             raise ValueError(msg)
 
         self._xs = xs
+
+
+    @name.setter
+    def name(self, name):
+
+        if not is_string(name):
+            msg = 'Unable to set name for Element with a non-string ' \
+                        'value {0}'.format(name)
+            raise ValueError(msg)
+
+        self._name = name
 
 
     def __repr__(self):

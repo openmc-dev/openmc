@@ -924,11 +924,11 @@ clean: CMakeFiles/NightlyUpdate.dir/clean
 # Target rules for target CMakeFiles/openmc.dir
 
 # All Build rule for target.
-CMakeFiles/openmc.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
+CMakeFiles/openmc.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
 CMakeFiles/openmc.dir/all: xml/fox/wxml/CMakeFiles/fox_wxml.dir/all
 CMakeFiles/openmc.dir/all: xml/fox/sax/CMakeFiles/fox_sax.dir/all
-CMakeFiles/openmc.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
 CMakeFiles/openmc.dir/all: xml/fox/dom/CMakeFiles/fox_dom.dir/all
+CMakeFiles/openmc.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 CMakeFiles/openmc.dir/all: xml/fox/fsys/CMakeFiles/fox_fsys.dir/all
 	$(MAKE) -f CMakeFiles/openmc.dir/build.make CMakeFiles/openmc.dir/depend
 	$(MAKE) -f CMakeFiles/openmc.dir/build.make CMakeFiles/openmc.dir/requires
@@ -1164,8 +1164,8 @@ xml/fox/wxml/preinstall:
 # Target rules for target xml/fox/wxml/CMakeFiles/fox_wxml.dir
 
 # All Build rule for target.
-xml/fox/wxml/CMakeFiles/fox_wxml.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
+xml/fox/wxml/CMakeFiles/fox_wxml.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 xml/fox/wxml/CMakeFiles/fox_wxml.dir/all: xml/fox/fsys/CMakeFiles/fox_fsys.dir/all
 	$(MAKE) -f xml/fox/wxml/CMakeFiles/fox_wxml.dir/build.make xml/fox/wxml/CMakeFiles/fox_wxml.dir/depend
 	$(MAKE) -f xml/fox/wxml/CMakeFiles/fox_wxml.dir/build.make xml/fox/wxml/CMakeFiles/fox_wxml.dir/requires
@@ -1217,8 +1217,8 @@ xml/fox/sax/preinstall:
 # Target rules for target xml/fox/sax/CMakeFiles/fox_sax.dir
 
 # All Build rule for target.
-xml/fox/sax/CMakeFiles/fox_sax.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 xml/fox/sax/CMakeFiles/fox_sax.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
+xml/fox/sax/CMakeFiles/fox_sax.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 xml/fox/sax/CMakeFiles/fox_sax.dir/all: xml/fox/fsys/CMakeFiles/fox_fsys.dir/all
 	$(MAKE) -f xml/fox/sax/CMakeFiles/fox_sax.dir/build.make xml/fox/sax/CMakeFiles/fox_sax.dir/depend
 	$(MAKE) -f xml/fox/sax/CMakeFiles/fox_sax.dir/build.make xml/fox/sax/CMakeFiles/fox_sax.dir/requires
@@ -1270,10 +1270,10 @@ xml/fox/dom/preinstall:
 # Target rules for target xml/fox/dom/CMakeFiles/fox_dom.dir
 
 # All Build rule for target.
-xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
+xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
 xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/wxml/CMakeFiles/fox_wxml.dir/all
 xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/sax/CMakeFiles/fox_sax.dir/all
-xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/common/CMakeFiles/fox_common.dir/all
+xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/utils/CMakeFiles/fox_utils.dir/all
 xml/fox/dom/CMakeFiles/fox_dom.dir/all: xml/fox/fsys/CMakeFiles/fox_fsys.dir/all
 	$(MAKE) -f xml/fox/dom/CMakeFiles/fox_dom.dir/build.make xml/fox/dom/CMakeFiles/fox_dom.dir/depend
 	$(MAKE) -f xml/fox/dom/CMakeFiles/fox_dom.dir/build.make xml/fox/dom/CMakeFiles/fox_dom.dir/requires

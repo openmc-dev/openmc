@@ -1,8 +1,0 @@
-# The fortran modules provided by this target.
-provides
- fox_dom
- m_dom_dom
- m_dom_error
- m_dom_extras
- m_dom_parse
- m_dom_utils

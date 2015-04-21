@@ -22,8 +22,8 @@ class Plot(object):
     def __init__(self, plot_id=None, name=''):
 
         # Initialize Plot class attributes
-        self._id = None
-        self._name = ''
+        self.id = plot_id
+        self.name = name
         self._width = [4.0, 4.0]
         self._pixels = [1000, 1000]
         self._origin = [0., 0., 0.]
@@ -35,9 +35,6 @@ class Plot(object):
         self._mask_components = None
         self._mask_background = None
         self._col_spec = None
-
-        self.id = plot_id
-        self.name = name
 
 
     @property

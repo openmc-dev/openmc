@@ -1,6 +1,0 @@
-# The fortran modules provided by this target.
-provides
- fox_wxml
- m_wxml_core
- m_wxml_escape
- m_wxml_overloads

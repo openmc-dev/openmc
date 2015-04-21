@@ -11,7 +11,13 @@ class Executor(object):
         self._working_directory = '.'
 
 
-    def set_working_directory(self, working_directory):
+    @property
+    def working_directory(self):
+        return self._working_directory
+
+
+    @working_directory.setter
+    def working_directory(self, working_directory):
 
         if not is_string(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \

@@ -1,2 +1,0 @@
-/usr/bin/ar cr ../../../lib/libfox_wxml.a  CMakeFiles/fox_wxml.dir/FoX_wxml.f90.o CMakeFiles/fox_wxml.dir/m_wxml_core.F90.o CMakeFiles/fox_wxml.dir/m_wxml_escape.F90.o CMakeFiles/fox_wxml.dir/m_wxml_overloads.F90.o
-/usr/bin/ranlib ../../../lib/libfox_wxml.a

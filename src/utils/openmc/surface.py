@@ -15,13 +15,13 @@ def reset_auto_surface_id():
 
 class Surface(object):
 
-    def __init__(self, surface_id=None, bc_type='transmission', name=''):
+    def __init__(self, surface_id=None, boundary_type='transmission', name=''):
 
         # Initialize class attributes
-        self._id = None
-        self._name = ''
+        self.id = surface_id
+        self.name = name
         self._type = ''
-        self._bc_type = ''
+        self.boundary_type = boundary_type
 
         # A dictionary of the quadratic surface coefficients
         # Key        - coefficeint name
@@ -32,12 +32,34 @@ class Surface(object):
         # proper order
         self._coeff_keys = []
 
-        self.set_id(surface_id)
-        self.set_boundary_type(bc_type)
-        self.set_name(name)
+
+    @property
+    def id(self):
+        return self._id
 
 
-    def set_id(self, surface_id=None):
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def type(self):
+        return self._type
+
+
+    @property
+    def boundary_type(self):
+        return self._boundary_type
+
+
+    @property
+    def coeffs(self):
+        return self._coeffs
+
+
+    @id.setter
+    def id(self, surface_id):
 
         if surface_id is None:
             global AUTO_SURFACE_ID
@@ -59,7 +81,8 @@ class Surface(object):
             self._id = surface_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Surface ID={0} with a non-string ' \
@@ -70,21 +93,22 @@ class Surface(object):
             self._name = name
 
 
-    def set_boundary_type(self, bc_type):
+    @boundary_type.setter
+    def boundary_type(self, boundary_type):
 
-        if not is_string(bc_type):
+        if not is_string(boundary_type):
             msg = 'Unable to set boundary type for Surface ID={0} with a ' \
-                  'non-string value {1}'.format(self._id, bc_type)
+                  'non-string value {1}'.format(self._id, boundary_type)
             raise ValueError(msg)
 
-        elif not bc_type in BC_TYPES.values():
+        elif not boundary_type in BC_TYPES.values():
             msg = 'Unable to set boundary type for Surface ID={0} to ' \
                   '{1} which is not trasmission, vacuum or ' \
-                  'reflective'.format(bc_type)
+                  'reflective'.format(boundary_type)
             raise ValueError(msg)
 
         else:
-            self._bc_type = bc_type
+            self._boundary_type = boundary_type
 
 
     def __repr__(self):
@@ -93,7 +117,7 @@ class Surface(object):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._bc_type)
+        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
 
         coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
 
@@ -110,7 +134,7 @@ class Surface(object):
         element = ET.Element("surface")
         element.set("id", str(self._id))
         element.set("type", self._type)
-        element.set("boundary", self._bc_type)
+        element.set("boundary", self._boundary_type)
 
         coeffs = ''
 
@@ -125,33 +149,50 @@ class Surface(object):
 
 class Plane(Surface):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  A=None, B=None, C=None, D=None, name='',):
 
         # Initialize Plane class attributes
-        super(Plane, self).__init__(surface_id, bc_type, name=name)
+        super(Plane, self).__init__(surface_id, boundary_type, name=name)
 
-        self._A = None
-        self._B = None
-        self._C = None
-        self._D = None
         self._type = 'plane'
         self._coeff_keys = ['A', 'B', 'C', 'D']
 
         if not A is None:
-            self.set_A(A)
+            self.a = A
 
         if not B is None:
-            self.set_B(B)
+            self.b = B
 
         if not C is None:
-            self.set_C(C)
+            self.c = C
 
         if not D is None:
-            self.set_D(D)
+            self.d = D
 
 
-    def set_A(self, A):
+    @property
+    def a(self):
+        return self.coeffs['A']
+
+
+    @property
+    def b(self):
+        return self.coeffs['B']
+
+
+    @property
+    def c(self):
+        return self.coeffs['C']
+
+
+    @property
+    def d(self):
+        return self.coeffs['D']
+
+
+    @a.setter
+    def a(self, A):
 
         if not is_integer(A) and not is_float(A):
             msg = 'Unable to set A coefficient for Plane ID={0} to a ' \
@@ -161,7 +202,8 @@ class Plane(Surface):
         self._coeffs['A'] = A
 
 
-    def set_B(self, B):
+    @b.setter
+    def b(self, B):
 
         if not is_integer(B) and not is_float(B):
             msg = 'Unable to set B coefficient for Plane ID={0} to a ' \
@@ -171,7 +213,8 @@ class Plane(Surface):
         self._coeffs['B'] = B
 
 
-    def set_C(self, C):
+    @c.setter
+    def c(self, C):
 
         if not is_integer(C) and not is_float(C):
             msg = 'Unable to set C coefficient for Plane ID={0} to a ' \
@@ -181,7 +224,8 @@ class Plane(Surface):
         self._coeffs['C'] = C
 
 
-    def set_D(self, D):
+    @d.setter
+    def d(self, D):
 
         if not is_integer(D) and not is_float(D):
             msg = 'Unable to set D coefficient for Plane ID={0} to a ' \
@@ -194,21 +238,26 @@ class Plane(Surface):
 
 class XPlane(Plane):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, name=''):
 
         # Initialize XPlane class attributes
-        super(XPlane, self).__init__(surface_id, bc_type, name=name)
+        super(XPlane, self).__init__(surface_id, boundary_type, name=name)
 
-        self._x0 = None
         self._type = 'x-plane'
         self._coeff_keys = ['x0']
 
         if not x0 is None:
-            self.set_X0(x0)
+            self.x0 = x0
 
 
-    def set_X0(self, x0):
+    @property
+    def x0(self):
+        return self.coeff['x0']
+
+
+    @x0.setter
+    def x0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for XPlane ID={0} to a ' \
@@ -221,21 +270,26 @@ class XPlane(Plane):
 
 class YPlane(Plane):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=None, name=''):
 
         # Initialize YPlane class attributes
-        super(YPlane, self).__init__(surface_id, bc_type, name=name)
+        super(YPlane, self).__init__(surface_id, boundary_type, name=name)
 
-        self._y0 = None
         self._type = 'y-plane'
         self._coeff_keys = ['y0']
 
         if not y0 is None:
-            self.set_Y0(y0)
+            self.y0 = y0
 
 
-    def set_Y0(self, y0):
+    @property
+    def y0(self):
+        return self.coeffs['y0']
+
+
+    @y0.setter
+    def y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for XPlane ID={0} to a ' \
@@ -248,21 +302,26 @@ class YPlane(Plane):
 
 class ZPlane(Plane):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  z0=None, name=''):
 
         # Initialize ZPlane class attributes
-        super(ZPlane, self).__init__(surface_id, bc_type, name=name)
+        super(ZPlane, self).__init__(surface_id, boundary_type, name=name)
 
-        self._z0 = None
         self._type = 'z-plane'
         self._coeff_keys = ['z0']
 
         if not z0 is None:
-            self.set_Z0(z0)
+            self.z0 = z0
 
 
-    def set_Z0(self, z0):
+    @property
+    def z0(self):
+        return self.coeffs['z0']
+
+
+    @z0.setter
+    def z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for ZPlane ID={0} to a ' \
@@ -275,20 +334,25 @@ class ZPlane(Plane):
 
 class Cylinder(Surface):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  R=None, name=''):
 
         # Initialize Cylinder class attributes
-        super(Cylinder, self).__init__(surface_id, bc_type, name=name)
+        super(Cylinder, self).__init__(surface_id, boundary_type, name=name)
 
-        self._R = None
         self._coeff_keys = ['R']
 
         if not R is None:
-            self.set_R(R)
+            self.r = R
 
 
-    def set_R(self, R):
+    @property
+    def r(self):
+        return self.coeffs['R']
+
+
+    @r.setter
+    def r(self, R):
 
         if not is_integer(R) and not is_float(R):
             msg = 'Unable to set R coefficient for Cylinder ID={0} to a ' \
@@ -301,25 +365,34 @@ class Cylinder(Surface):
 
 class XCylinder(Cylinder):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=None, z0=None, R=None, name=''):
 
         # Initialize XCylinder class attributes
-        super(XCylinder, self).__init__(surface_id, bc_type, R, name=name)
+        super(XCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'x-cylinder'
-        self._y0 = None
-        self._z0 = None
         self._coeff_keys = ['y0', 'z0', 'R']
 
         if not y0 is None:
-            self.set_Y0(y0)
+            self.y0 = y0
 
         if not z0 is None:
-            self.set_Z0(z0)
+            self.z0 = z0
 
 
-    def set_Y0(self, y0):
+    @property
+    def y0(self):
+        return self.coeffs['y0']
+
+
+    @property
+    def z0(self):
+        return self.coeffs['z0']
+
+
+    @y0.setter
+    def y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for XCylinder ID={0} to a ' \
@@ -329,7 +402,8 @@ class XCylinder(Cylinder):
         self._coeffs['y0'] = y0
 
 
-    def set_Z0(self, z0):
+    @z0.setter
+    def z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for XCylinder ID={0} to a ' \
@@ -342,25 +416,34 @@ class XCylinder(Cylinder):
 
 class YCylinder(Cylinder):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, z0=None, R=None, name=''):
 
         # Initialize YCylinder class attributes
-        super(YCylinder, self).__init__(surface_id, bc_type, R, name=name)
+        super(YCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'y-cylinder'
-        self._x0 = None
-        self._z0 = None
         self._coeff_keys = ['x0', 'z0', 'R']
 
         if not x0 is None:
-            self.set_X0(x0)
+            self.x0 = x0
 
         if not z0 is None:
-            self.set_Z0(z0)
+            self.z0 = z0
 
 
-    def set_X0(self, x0):
+    @property
+    def x0(self):
+        return self.coeffs['x0']
+
+
+    @property
+    def z0(self):
+        return self.coeffs['z0']
+
+
+    @x0.setter
+    def x0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for YCylinder ID={0} to a ' \
@@ -370,7 +453,8 @@ class YCylinder(Cylinder):
         self._coeffs['x0'] = x0
 
 
-    def set_Z0(self, z0):
+    @z0.setter
+    def z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for YCylinder ID={0} to a ' \
@@ -382,26 +466,35 @@ class YCylinder(Cylinder):
 
 class ZCylinder(Cylinder):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, R=None, name=''):
 
         # Initialize ZCylinder class attributes
         # Initialize YPlane class attributes
-        super(ZCylinder, self).__init__(surface_id, bc_type, R, name=name)
+        super(ZCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'z-cylinder'
-        self._x0 = None
-        self._y0 = None
         self._coeff_keys = ['x0', 'y0', 'R']
 
         if not x0 is None:
-            self.set_X0(x0)
+            self.x0 = x0
 
         if not y0 is None:
-            self.set_Y0(y0)
+            self.y0 = y0
 
 
-    def set_X0(self, x0):
+    @property
+    def x0(self):
+        return self.coeffs['x0']
+
+
+    @property
+    def y0(self):
+        return self.coeffs['y0']
+
+
+    @x0.setter
+    def x0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for ZCylinder ID={0} to a ' \
@@ -411,7 +504,8 @@ class ZCylinder(Cylinder):
         self._coeffs['x0'] = x0
 
 
-    def set_Y0(self, y0):
+    @y0.setter
+    def y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for ZCylinder ID={0} to a ' \
@@ -424,33 +518,50 @@ class ZCylinder(Cylinder):
 
 class Sphere(Surface):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R=None, name=''):
 
         # Initialize Sphere class attributes
-        super(Sphere, self).__init__(surface_id, bc_type, name=name)
+        super(Sphere, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'sphere'
-        self._x0 = None
-        self._y0 = None
-        self._z0 = None
-        self._R = None
         self._coeff_keys = ['x0', 'y0', 'z0', 'R']
 
         if not x0 is None:
-            self.set_X0(x0)
+            self.x0 = x0
 
         if not y0 is None:
-            self.set_Y0(y0)
+            self.y0 = y0
 
         if not z0 is None:
-            self.set_Z0(z0)
+            self.z0 = z0
 
         if not R is None:
-            self.set_Z0(R)
+            self.r = R
 
 
-    def set_X0(self, x0):
+    @property
+    def x0(self):
+        return self.coeffs['x0']
+
+
+    @property
+    def y0(self):
+        return self.coeffs['y0']
+
+
+    @property
+    def z0(self):
+        return self.coeffs['z0']
+
+
+    @property
+    def r(self):
+        return self.coeffs['R']
+
+
+    @x0.setter
+    def x0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for Sphere ID={0} to a ' \
@@ -460,7 +571,8 @@ class Sphere(Surface):
         self._coeffs['x0'] = x0
 
 
-    def set_Y0(self, y0):
+    @y0.setter
+    def y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for Sphere ID={0} to a ' \
@@ -470,7 +582,8 @@ class Sphere(Surface):
         self._coeffs['y0'] = y0
 
 
-    def set_Z0(self, z0):
+    @z0.setter
+    def z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for Sphere ID={0} to a ' \
@@ -480,7 +593,8 @@ class Sphere(Surface):
         self._coeffs['z0'] = z0
 
 
-    def set_R(self, R):
+    @r.setter
+    def r(self, R):
 
         if not is_integer(R) and not is_float(R):
             msg = 'Unable to set R coefficient for Sphere ID={0} to a ' \
@@ -493,32 +607,49 @@ class Sphere(Surface):
 
 class Cone(Surface):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R2=None, name=''):
 
         # Initialize Cone class attributes
-        super(Cone, self).__init__(surface_id, bc_type, name=name)
+        super(Cone, self).__init__(surface_id, boundary_type, name=name)
 
-        self._x0 = None
-        self._y0 = None
-        self._z0 = None
-        self._R2 = None
         self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
 
         if not x0 is None:
-            self.set_X0(x0)
+            self.x0 = x0
 
         if not y0 is None:
-            self.set_Y0(y0)
+            self.y0 = y0
 
         if not z0 is None:
-            self.set_Z0(z0)
+            self.z0 = z0
 
         if not R2 is None:
-            self.set_Z0(R2)
+            self.r2 = R2
 
 
-    def set_X0(self, x0):
+    @property
+    def x0(self):
+        return self.coeffs['x0']
+
+
+    @property
+    def y0(self):
+        return self.coeffs['y0']
+
+
+    @property
+    def z0(self):
+        return self.coeffs['z0']
+
+
+    @property
+    def r2(self):
+        return self.coeffs['r2']
+
+
+    @x0.setter
+    def x0(self, x0):
 
         if not is_integer(x0) and not is_float(x0):
             msg = 'Unable to set x0 coefficient for Cone ID={0} to a ' \
@@ -528,7 +659,8 @@ class Cone(Surface):
         self._coeffs['x0'] = x0
 
 
-    def set_Y0(self, y0):
+    @y0.setter
+    def y0(self, y0):
 
         if not is_integer(y0) and not is_float(y0):
             msg = 'Unable to set y0 coefficient for Cone ID={0} to a ' \
@@ -538,7 +670,8 @@ class Cone(Surface):
         self._coeffs['y0'] = y0
 
 
-    def set_Z0(self, z0):
+    @z0.setter
+    def z0(self, z0):
 
         if not is_integer(z0) and not is_float(z0):
             msg = 'Unable to set z0 coefficient for Cone ID={0} to a ' \
@@ -548,7 +681,8 @@ class Cone(Surface):
         self._coeffs['z0'] = z0
 
 
-    def set_R2(self, R2):
+    @r2.setter
+    def r2(self, R2):
 
         if not is_integer(R2) and not is_float(R2):
             msg = 'Unable to set R^2 coefficient for Cone ID={0} to a ' \
@@ -561,11 +695,12 @@ class Cone(Surface):
 
 class XCone(Cone):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R2=None, name=''):
 
         # Initialize XCone class attributes
-        super(XCone, self).__init__(surface_id, bc_type, x0, y0, z0, R2, name=name)
+        super(XCone, self).__init__(surface_id, boundary_type, x0, y0,
+                                    z0, R2, name=name)
 
         self._type = 'x-cone'
 
@@ -573,11 +708,12 @@ class XCone(Cone):
 
 class YCone(Cone):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R2=None, name=''):
 
         # Initialize YCone class attributes
-        super(YCone, self).__init__(surface_id, bc_type, x0, y0, z0, R2, name=name)
+        super(YCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
+                                    R2, name=name)
 
         self._type = 'y-cone'
 
@@ -585,10 +721,11 @@ class YCone(Cone):
 
 class ZCone(Cone):
 
-    def __init__(self, surface_id=None, bc_type='transmission',
+    def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R2=None, name=''):
 
         # Initialize ZCone class attributes
-        super(ZCone, self).__init__(surface_id, bc_type, x0, y0, z0, R2, name=name)
+        super(ZCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
+                                    R2, name=name)
 
         self._type = 'z-cone'

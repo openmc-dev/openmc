@@ -20,6 +20,28 @@ class Geometry(object):
         self._offsets = {}
 
 
+    @property
+    def root_universe(self):
+        return self._root_universe
+
+
+    @root_universe.setter
+    def root_universe(self, root_universe):
+
+        if not isinstance(root_universe, openmc.Universe):
+            msg = 'Unable to add root Universe {0} to Geometry since ' \
+                  'it is not a Universe'.format(root_universe)
+            raise ValueError(msg)
+
+        elif root_universe._id != 0:
+            msg = 'Unable to add root Universe {0} to Geometry since ' \
+                  'it has ID={1} instead of ' \
+                  'ID=0'.format(root_universe, root_universe._id)
+            raise ValueError(msg)
+
+        self._root_universe = root_universe
+
+
     def get_offset(self, path, filter_offset):
         """
         Returns the corresponding location in the results array for a given
@@ -111,22 +133,6 @@ class Geometry(object):
         return list(material_universes)
 
 
-    def set_root_universe(self, root_universe):
-
-        if not isinstance(root_universe, openmc.Universe):
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it is not a Universe'.format(root_universe)
-            raise ValueError(msg)
-
-        elif root_universe._id != 0:
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it has ID={1} instead of ' \
-                  'ID=0'.format(root_universe, root_universe._id)
-            raise ValueError(msg)
-
-        self._root_universe = root_universe
-
-
 
 class GeometryFile(object):
 
@@ -137,7 +143,13 @@ class GeometryFile(object):
         self._geometry_file = ET.Element("geometry")
 
 
-    def set_geometry(self, geometry):
+    @property
+    def geometry(self):
+        return self._geometry
+
+
+    @geometry.setter
+    def geometry(self, geometry):
 
         if not isinstance(geometry, Geometry):
             msg = 'Unable to set the Geometry to {0} for the GeometryFile ' \

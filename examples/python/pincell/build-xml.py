@@ -103,7 +103,7 @@ borated_water.add_s_alpha_beta('HH2O', '71t')
 
 # Instantiate a MaterialsFile, register all Materials, and export to XML
 materials_file = openmc.MaterialsFile()
-materials_file.set_default_xs('71c')
+materials_file.default_xs = '71c'
 materials_file.add_materials([uo2, helium, zircaloy, borated_water])
 materials_file.export_to_xml()
 
@@ -121,10 +121,10 @@ right = openmc.XPlane(surface_id=5, x0=0.62992, name='right')
 bottom = openmc.YPlane(surface_id=6, y0=-0.62992, name='bottom')
 top = openmc.YPlane(surface_id=7, y0=0.62992, name='top')
 
-left.set_boundary_type('reflective')
-right.set_boundary_type('reflective')
-top.set_boundary_type('reflective')
-bottom.set_boundary_type('reflective')
+left.boundary_type = 'reflective'
+right.boundary_type = 'reflective'
+top.boundary_type = 'reflective'
+bottom.boundary_type = 'reflective'
 
 # Instantiate Cells
 fuel = openmc.Cell(cell_id=1, name='cell 1')
@@ -145,10 +145,10 @@ water.add_surface(bottom, halfspace=+1)
 water.add_surface(top, halfspace=-1)
 
 # Register Materials with Cells
-fuel.set_fill(uo2)
-gap.set_fill(helium)
-clad.set_fill(zircaloy)
-water.set_fill(borated_water)
+fuel.fill = uo2
+gap.fill = helium
+clad.fill = zircaloy
+water.fill = borated_water
 
 # Instantiate Universe
 root = openmc.Universe(universe_id=0, name='root universe')
@@ -158,11 +158,11 @@ root.add_cells([fuel, gap, clad, water])
 
 # Instantiate a Geometry and register the root Universe
 geometry = openmc.Geometry()
-geometry.set_root_universe(root)
+geometry.root_universe = root
 
 # Instantiate a GeometryFile, register Geometry, and export to XML
 geometry_file = openmc.GeometryFile()
-geometry_file.set_geometry(geometry)
+geometry_file.geometry = geometry
 geometry_file.export_to_xml()
 
 
@@ -172,14 +172,14 @@ geometry_file.export_to_xml()
 
 # Instantiate a SettingsFile, set all runtime parameters, and export to XML
 settings_file = openmc.SettingsFile()
-settings_file.set_batches(batches)
-settings_file.set_inactive(inactive)
-settings_file.set_particles(particles)
+settings_file.batches = batches
+settings_file.inactive = inactive
+settings_file.particles = particles
 settings_file.set_source_space('box', [-0.62992, -0.62992, -1, \
                                       0.62992, 0.62992, 1])
-settings_file.set_entropy_lower_left([-0.39218, -0.39218, -1.e50])
-settings_file.set_entropy_upper_right([0.39218, 0.39218, 1.e50])
-settings_file.set_entropy_dimension([10, 10, 1])
+settings_file.entropy_lower_left = [-0.39218, -0.39218, -1.e50]
+settings_file.entropy_upper_right = [0.39218, 0.39218, 1.e50]
+settings_file.entropy_dimension = [10, 10, 1]
 settings_file.export_to_xml()
 
 
@@ -189,15 +189,15 @@ settings_file.export_to_xml()
 
 # Instantiate a tally mesh
 mesh = openmc.Mesh(mesh_id=1)
-mesh.set_type('rectangular')
-mesh.set_dimension([100, 100, 1])
-mesh.set_lower_left([-0.62992, -0.62992, -1.e50])
-mesh.set_upper_right([0.62992, 0.62992, 1.e50])
+mesh.type = 'rectangular'
+mesh.dimension = [100, 100, 1]
+mesh.lower_left = [-0.62992, -0.62992, -1.e50]
+mesh.upper_right = [0.62992, 0.62992, 1.e50]
 
 # Instantiate some tally Filters
 energy_filter = openmc.Filter(type='energy', bins=[0., 4.e-6, 20.])
 mesh_filter = openmc.Filter()
-mesh_filter.set_mesh(mesh)
+mesh_filter.mesh = mesh
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1)

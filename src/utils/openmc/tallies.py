@@ -2,8 +2,6 @@ import copy
 import os
 from xml.etree import ElementTree as ET
 
-import numpy as np
-
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *
@@ -119,7 +117,10 @@ class Filter(object):
     @type.setter
     def type(self, type):
 
-        if not type in FILTER_TYPES.values():
+        if type is None:
+            self._type = type
+
+        elif not type in FILTER_TYPES.values():
             msg = 'Unable to set Filter type to {0} since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)

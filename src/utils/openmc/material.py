@@ -3,8 +3,6 @@ from copy import deepcopy
 import warnings
 from xml.etree import ElementTree as ET
 
-import numpy as np
-
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
@@ -142,8 +140,7 @@ class Material(object):
             self._name = name
 
 
-    @density.setter
-    def density(self, units, density=NO_DENSITY):
+    def set_density(self, units, density=NO_DENSITY):
 
         if not is_float(density):
             msg = 'Unable to set the density for Material ID={0} to a ' \

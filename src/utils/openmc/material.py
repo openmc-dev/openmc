@@ -38,8 +38,8 @@ class Material(object):
     def __init__(self, material_id=None, name=''):
 
         # Initialize class attributes
-        self._id = material_id
-        self._name = name
+        self.id = material_id
+        self.name = name
         self._density = None
         self._density_units = ''
 
@@ -99,7 +99,7 @@ class Material(object):
         global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         # If the Material already has an ID, remove it from global list
-        if not self._id is None:
+        if hasattr(self, '_id') and not self._id is None:
             MATERIAL_IDS.remove(self._id)
 
         if material_id is None:

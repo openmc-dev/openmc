@@ -144,7 +144,7 @@ def get_opencg_surface(openmc_surface):
     name = openmc_surface._name
 
     # Correct for OpenMC's syntax for Surfaces dividing Cells
-    boundary = openmc_surface._bc_type
+    boundary = openmc_surface._boundary_type
     if boundary == 'transmission':
         boundary = 'interface'
 
@@ -562,15 +562,15 @@ def get_openmc_cell(opencg_cell):
     fill = opencg_cell._fill
 
     if (opencg_cell._type == 'universe'):
-        openmc_cell.set_fill(get_openmc_universe(fill))
+        openmc_cell.fill = get_openmc_universe(fill)
     elif (opencg_cell._type == 'lattice'):
-        openmc_cell.set_fill(get_openmc_lattice(fill))
+        openmc_cell.fill = get_openmc_lattice(fill)
     else:
-        openmc_cell.set_fill(get_openmc_material(fill))
+        openmc_cell.fill = get_openmc_material(fill)
 
     if opencg_cell._rotation:
         rotation = np.asarray(opencg_cell._rotation, dtype=np.int)
-        openmc_cell.set_rotation(rotation)
+        openmc_cell.rotation = rotation
 
     if opencg_cell._translation:
         translation = np.asarray(opencg_cell._translation, dtype=np.float64)
@@ -679,11 +679,21 @@ def get_opencg_lattice(openmc_lattice):
         return OPENCG_LATTICES[lattice_id]
 
     # Create an OpenCG Lattice to represent this OpenMC Lattice
-    name = openmc_lattice._name
-    dimension = openmc_lattice._dimension
-    pitch = openmc_lattice._pitch
-    lower_left = openmc_lattice._lower_left
-    universes = openmc_lattice._universes
+    name = openmc_lattice.name
+    dimension = openmc_lattice.dimension
+    pitch = openmc_lattice.pitch
+    lower_left = openmc_lattice.lower_left
+    universes = openmc_lattice.universes
+
+    if len(pitch) == 2:
+        new_pitch = np.ones(3, dtype=np.float64)
+        new_pitch[:2] = pitch
+        pitch = new_pitch
+
+    if len(lower_left) == 2:
+        new_lower_left = np.ones(3, dtype=np.float64)
+        new_lower_left[:2] = lower_left
+        lower_left = new_lower_left
 
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)[::-1]), \
@@ -765,10 +775,10 @@ def get_openmc_lattice(opencg_lattice):
                                np.array(dimension, dtype=np.float64))) / -2.0
 
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
-    openmc_lattice.set_dimension(dimension)
-    openmc_lattice.set_pitch(width)
-    openmc_lattice.set_universes(universe_array)
-    openmc_lattice.set_lower_left(lower_left)
+    openmc_lattice.dimension = dimension
+    openmc_lattice.pitch = width
+    openmc_lattice.universes = universe_array
+    openmc_lattice.lower_left = lower_left
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice
@@ -843,6 +853,6 @@ def get_openmc_geometry(opencg_geometry):
     openmc_root_universe = get_openmc_universe(opencg_root_universe)
 
     openmc_geometry = openmc.Geometry()
-    openmc_geometry.set_root_universe(openmc_root_universe)
+    openmc_geometry.root_universe = openmc_root_universe
 
     return openmc_geometry

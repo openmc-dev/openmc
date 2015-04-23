@@ -182,7 +182,7 @@ contains
           if (coord % next % rotated) then
             ! If next level is rotated, apply rotation matrix
             coord % next % uvw = matmul(cells(coord % cell) % &
-                 rotation, coord % uvw)
+                 rotation_matrix, coord % uvw)
           else
             ! Otherwise, copy this level's direction
             coord % next % uvw = coord % uvw

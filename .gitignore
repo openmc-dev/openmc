@@ -11,6 +11,9 @@
 # OpenMC executable
 src/openmc
 
+# Inputs generated from Python API
+examples/python/**/*.xml
+
 # emacs backups
 *~
 
@@ -41,3 +44,6 @@ results_error.dat
 
 # Data downloaded from NNDC
 data/nndc
+
+.idea
+.idea/*

@@ -4,7 +4,7 @@ import sys
 
 from numpy.testing import assert_allclose, assert_equal
 
-from statepoint import StatePoint
+from openmc.statepoint import StatePoint
 
 if len(sys.argv) > 2:
     path1 = sys.argv[1]

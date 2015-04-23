@@ -7,7 +7,7 @@ import itertools
 import re
 import warnings
 
-from statepoint import StatePoint
+from openmc.statepoint import StatePoint
 
 alphanum = re.compile(r"[\W_]+")
 

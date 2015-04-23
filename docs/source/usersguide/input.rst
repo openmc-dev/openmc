@@ -784,7 +784,7 @@ The following quadratic surfaces can be modeled:
 Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :id:
-    A unique integer that can be used to identify the surface.
+    A unique integer that can be used to identify the cell.
 
     *Default*: None
 

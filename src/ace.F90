@@ -190,7 +190,6 @@ contains
 
       ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
       if (allocated(mat % names)) deallocate(mat % names)
-      if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
 

@@ -1057,13 +1057,14 @@ contains
 
         ! Copy rotation angles in x,y,z directions
         call get_node_array(node_cell, "rotation", temp_double_array3)
+        c % rotation = temp_double_array3
         phi   = -temp_double_array3(1) * PI/180.0_8
         theta = -temp_double_array3(2) * PI/180.0_8
         psi   = -temp_double_array3(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
-        allocate(c % rotation(3,3))
-        c % rotation = reshape((/ &
+        allocate(c % rotation_matrix(3,3))
+        c % rotation_matrix = reshape((/ &
              cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
              -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
              cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &

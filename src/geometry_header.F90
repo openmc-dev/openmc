@@ -141,8 +141,9 @@ module geometry_header
                            ! here too
 
      ! Rotation matrix and translation vector
-     real(8), allocatable :: rotation(:,:)
      real(8), allocatable :: translation(:)
+     real(8), allocatable :: rotation(:)
+     real(8), allocatable :: rotation_matrix(:,:)
   end type Cell
 
   ! array index of universe 0

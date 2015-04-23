@@ -204,9 +204,9 @@ contains
         end if
 
         ! Apply rotation
-        if (allocated(c % rotation)) then
-          p % coord % xyz = matmul(c % rotation, p % coord % xyz)
-          p % coord % uvw = matmul(c % rotation, p % coord % uvw)
+        if (allocated(c % rotation_matrix)) then
+          p % coord % xyz = matmul(c % rotation_matrix, p % coord % xyz)
+          p % coord % uvw = matmul(c % rotation_matrix, p % coord % uvw)
           p % coord % rotated = .true.
         end if
 

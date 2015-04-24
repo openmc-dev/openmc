@@ -1,8 +1,7 @@
-#!/usr/bin/env python
+import numpy as np
 
 import openmc
 from openmc.opencg_compatible import get_opencg_geometry
-import numpy as np
 
 try:
     import h5py
@@ -65,7 +64,7 @@ class Summary(object):
         # Initialize dictionary for each Nuclide
         # Keys   - Nuclide ZAIDs
         # Values - Nuclide objects
-        self.nuclides = dict()
+        self.nuclides = {}
 
         for key in self._f['nuclides'].keys():
 
@@ -87,7 +86,7 @@ class Summary(object):
                 self.nuclides[zaid] = openmc.Element(name=name, xs=xs)
             else:
                 self.nuclides[zaid] = openmc.Nuclide(name=name, xs=xs)
-                self.nuclides[zaid].set_zaid(zaid)
+                self.nuclides[zaid].zaid = zaid
 
 
     def _read_materials(self):
@@ -97,7 +96,7 @@ class Summary(object):
         # Initialize dictionary for each Material
         # Keys     - Material keys
         # Values   - Material objects
-        self.materials = dict()
+        self.materials = {}
 
         for key in self._f['materials'].keys():
 
@@ -112,8 +111,8 @@ class Summary(object):
             nuclides = self._f['materials'][key]['nuclides'][...]
             n_sab = self._f['materials'][key]['n_sab'][0]
 
-            sab_names = list()
-            sab_xs = list()
+            sab_names = []
+            sab_xs = []
 
             # Read the names of the S(a,b) tables for this Material
             for i in range(1, n_sab+1):
@@ -157,7 +156,7 @@ class Summary(object):
         # Initialize dictionary for each Surface
         # Keys     - Surface keys
         # Values   - Surfacee objects
-        self.surfaces = dict()
+        self.surfaces = {}
 
         for key in self._f['geometry/surfaces'].keys():
 
@@ -241,7 +240,7 @@ class Summary(object):
         # Initialize dictionary for each Cell
         # Keys     - Cell keys
         # Values   - Cell objects
-        self.cells = dict()
+        self.cells = {}
 
         # Initialize dictionary for each Cell's fill
         # (e.g., Material, Universe or Lattice ID)
@@ -249,7 +248,7 @@ class Summary(object):
         # the corresponding objects
         # Keys     - Cell keys
         # Values   - Filling Material, Universe or Lattice ID
-        self._cell_fills = dict()
+        self._cell_fills = {}
 
         for key in self._f['geometry/cells'].keys():
 
@@ -271,7 +270,7 @@ class Summary(object):
             if 'surfaces' in self._f['geometry/cells'][key].keys():
                 surfaces = self._f['geometry/cells'][key]['surfaces'][...]
             else:
-                surfaces = list()
+                surfaces = []
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
@@ -282,14 +281,14 @@ class Summary(object):
                     translation = \
                       self._f['geometry/cells'][key]['translation'][...]
                     translation = np.asarray(translation, dtype=np.float64)
-                    cell.set_translation(translation)
+                    cell.translation = translation
 
                 rotated = self._f['geometry/cells'][key]['rotated'][0]
                 if rotated:
                     rotation = \
                       self._f['geometry/cells'][key]['rotation'][...]
                     rotation = np.asarray(rotation, dtype=np.int)
-                    cell.set_rotation(rotation)
+                    cell.rotation = rotation
 
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)
@@ -313,7 +312,7 @@ class Summary(object):
         # Initialize dictionary for each Universe
         # Keys     - Universe keys
         # Values   - Universe objects
-        self.universes = dict()
+        self.universes = {}
 
         for key in self._f['geometry/universes'].keys():
 
@@ -343,7 +342,7 @@ class Summary(object):
         # Initialize lattices for each Lattice
         # Keys     - Lattice keys
         # Values   - Lattice objects
-        self.lattices = dict()
+        self.lattices = {}
 
         for key in self._f['geometry/lattices'].keys():
 
@@ -356,9 +355,9 @@ class Summary(object):
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
 
             if lattice_type == 'rectangular':
-                dimension = self._f['geometry/lattices'][key]['n_cells'][...]
+                dimension = self._f['geometry/lattices'][key]['dimension'][...]
                 lower_left = \
-                     self._f['geometry/lattices'][key]['lower_left'][...]  
+                     self._f['geometry/lattices'][key]['lower_left'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
 
@@ -369,13 +368,14 @@ class Summary(object):
 
                 # Create the Lattice
                 lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
-                lattice.set_dimension(tuple(dimension))
-                lattice.set_lower_left(lower_left)
-                lattice.set_pitch(pitch)
+                lattice.dimension = tuple(dimension)
+                lattice.lower_left = lower_left
+                lattice.pitch = pitch
+
 
                 # If the Universe specified outer the Lattice is not void (-22)
                 if outer != -22:
-                    lattice.set_outer(self.universes[outer])
+                    lattice.outer = self.universes[outer]
 
                 # Build array of Universe pointers for the Lattice
                 universes = \
@@ -392,7 +392,7 @@ class Summary(object):
                 universes = np.transpose(universes, (1,0,2))
                 universes.shape = shape
                 universes = universes[:,::-1,:]
-                lattice.set_universes(universes)
+                lattice.universes = universes
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
@@ -408,15 +408,15 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
-                lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
-                lattice.set_num_rings(n_rings)
-                lattice.set_num_axial(n_axial)
-                lattice.set_center(center)
-                lattice.set_pitch(pitch)
+                lattice = openmc.HexLattice(lattice_id=lattice_id, name)
+                lattice.num_rings = n_rings
+                lattice.num_axial = n_axial
+                lattice.center = center
+                lattice.pitch = pitch
 
                 # If the Universe specified outer the Lattice is not void (-22)
                 if outer != -22:
-                    lattice.set_outer(self.universes[outer])
+                    lattice.outer = self.universes[outer]
 
                 # Build array of Universe pointers for the Lattice
                 universes = \
@@ -457,11 +457,11 @@ class Summary(object):
                 fill = self.get_lattice_by_id(fill_id)
 
             # Set the fill for the Cell
-            self.cells[cell_key].set_fill(fill)
+            self.cells[cell_key].fill = fill
 
         # Set the root universe for the Geometry
         root_universe = self.get_universe_by_id(0)
-        self.openmc_geometry.set_root_universe(root_universe)
+        self.openmc_geometry.root_universe = root_universe
 
 
     def make_opencg_geometry(self):

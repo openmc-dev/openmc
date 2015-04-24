@@ -1624,22 +1624,26 @@ contains
 
     ! write global tallies
     if (n_realizations > 1) then
-      write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
-           % sum, global_tallies(K_COLLISION) % sum_sq
-      write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
-           % sum, global_tallies(K_TRACKLENGTH) % sum_sq
-      write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
-           % sum, global_tallies(K_ABSORPTION) % sum_sq
-      if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
+      if (run_mode == MODE_EIGENVALUE) then
+        write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
+             % sum, global_tallies(K_COLLISION) % sum_sq
+        write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
+             % sum, global_tallies(K_TRACKLENGTH) % sum_sq
+        write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
+             % sum, global_tallies(K_ABSORPTION) % sum_sq
+        if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
+      end if
       write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
            global_tallies(LEAKAGE) % sum_sq
     else
       if (master) call warning("Could not compute uncertainties -- only one &
            &active batch simulated!")
 
-      write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
-      write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum
-      write(ou,103) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum
+      if (run_mode == MODE_EIGENVALUE) then
+        write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
+        write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum
+        write(ou,103) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum
+      end if
       write(ou,103) "Leakage Fraction", global_tallies(LEAKAGE) % sum
     end if
     write(ou,*)

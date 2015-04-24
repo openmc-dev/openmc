@@ -1,18 +1,15 @@
-#!/usr/bin/env python
-
+from collections import MappingView
+from copy import deepcopy
 import warnings
+from xml.etree import ElementTree as ET
 
 import openmc
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-from collections import MappingView
-from copy import deepcopy
-import numpy as np
 
 
 # A list of all IDs for all Materials created
-MATERIAL_IDS = list()
+MATERIAL_IDS = []
 
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
@@ -20,7 +17,7 @@ AUTO_MATERIAL_ID = 10000
 def reset_auto_material_id():
     global AUTO_MATERIAL_ID, MATERIAL_IDS
     AUTO_MATERIAL_ID = 10000
-    MATERIAL_IDS = list()
+    MATERIAL_IDS = []
 
 
 # Units for density supported by OpenMC
@@ -41,23 +38,23 @@ class Material(object):
     def __init__(self, material_id=None, name=''):
 
         # Initialize class attributes
-        self._id = None
-        self._name = ''
+        self.id = material_id
+        self.name = name
         self._density = None
         self._density_units = ''
 
         # A dictionary of Nuclides
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
-        self._nuclides = dict()
+        self._nuclides = {}
 
         # A dictionary of Elements
         # Keys         - Element names
         # Values     - tuple (element, percent, percent type)
-        self._elements = dict()
+        self._elements = {}
 
         # If specified, a list of tuples of (table name, xs identifier)
-        self._sab = list()
+        self._sab = []
 
         # If true, the material will be initialized as distributed
         self._convert_to_distrib_comps = False
@@ -65,21 +62,47 @@ class Material(object):
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
 
-        # Set the Material class attributes
-        self.set_id(material_id)
-        self.set_name(name)
+
+    @property
+    def id(self):
+        return self._id
 
 
-    def set_id(self, material_id=None):
+    @property
+    def name(self):
+        return self._name
 
-        global MATERIAL_IDS
+
+    @property
+    def density(self):
+        return self._density
+
+
+    @property
+    def density_units(self):
+        return self._density_units
+
+
+    @property
+    def convert_to_distrib_comps(self):
+        return self._convert_to_distrib_comps
+
+
+    @property
+    def distrib_otf_file(self):
+        return self._distrib_otf_file
+
+
+    @id.setter
+    def id(self, material_id):
+
+        global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         # If the Material already has an ID, remove it from global list
-        if not self._id is None:
+        if hasattr(self, '_id') and not self._id is None:
             MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
-            global AUTO_MATERIAL_ID
             self._id = AUTO_MATERIAL_ID
             MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
@@ -105,7 +128,8 @@ class Material(object):
             MATERIAL_IDS.append(material_id)
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Material ID={0} with a non-string ' \
@@ -136,6 +160,31 @@ class Material(object):
 
         self._density = density
         self._density_units = units
+
+
+    @distrib_otf_file.setter
+    def distrib_otf_file(self, filename):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        if not is_string(filename) and not filename is None:
+            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
+                  'non-string name {1}'.format(self._id, filename)
+            raise ValueError(msg)
+
+        self._distrib_otf_file = filename
+
+
+    @convert_to_distrib_comps.setter
+    def convert_to_distrib_comps(self):
+
+        # TODO: remove this when distributed materials are merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        self._convert_to_distrib_comps = True
 
 
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
@@ -218,32 +267,9 @@ class Material(object):
         self._sab.append((name, xs))
 
 
-    def set_otf_mat_file(self, name):
-
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
-                      'version of openmc')
-
-        if not is_string(name):
-            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
-                        'non-string name {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        self._distrib_otf_file = name
-
-
-    def set_as_distrib_comp(self):
-
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
-                      'version of openmc')
-
-        self._convert_to_distrib_comps = True
-
-
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         for nuclide_name, nuclide_tuple in self._nuclides.items():
             nuclide = nuclide_tuple[0]
@@ -262,13 +288,13 @@ class Material(object):
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
 
-        string += '{0: <16}'.format('\tS(a,b) Tables') + '\n'
+        string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
             string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
                                                      sab[0], sab[1])
 
-        string += '{0: <16}'.format('\tNuclides') + '\n'
+        string += '{0: <16}\n'.format('\tNuclides')
 
         for nuclide in self._nuclides:
             percent = self._nuclides[nuclide][1]
@@ -320,7 +346,7 @@ class Material(object):
 
     def get_nuclides_xml(self, nuclides, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for nuclide in nuclides.values():
             xml_elements.append(self.get_nuclide_xml(nuclide, distrib))
@@ -330,7 +356,7 @@ class Material(object):
 
     def get_elements_xml(self, elements, distrib=False):
 
-        xml_elements = list()
+        xml_elements = []
 
         for element in elements.values():
             xml_elements.append(self.get_element_xml(element, distrib))
@@ -368,7 +394,7 @@ class Material(object):
         else:
 
             subelement = ET.SubElement(element, "compositions")
-            
+
             comps = []
             allnucs = self._nuclides.values() + self._elements.values()
             dist_per_type = allnucs[0][2]
@@ -419,9 +445,24 @@ class MaterialsFile(object):
     def __init__(self):
 
         # Initialize MaterialsFile class attributes
-        self._materials = list()
+        self._materials = []
         self._default_xs = None
         self._materials_file = ET.Element("materials")
+
+
+    @property
+    def default_xs(self):
+        return self._default_xs
+
+
+    @default_xs.setter
+    def default_xs(self, xs):
+
+        if not is_string(xs):
+            msg = 'Unable to set default xs to a non-string value'.format(xs)
+            raise ValueError(msg)
+
+        self._default_xs = xs
 
 
     def add_material(self, material):
@@ -453,15 +494,6 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         self._materials.remove(material)
-
-
-    def set_default_xs(self, xs):
-
-        if not is_string(xs):
-            msg = 'Unable to set default xs to a non-string value'.format(xs)
-            raise ValueError(msg)
-
-        self._default_xs = xs
 
 
     def create_material_subelements(self):

@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-import numpy as np
 
 
 class CMFDMesh(object):
@@ -19,7 +19,43 @@ class CMFDMesh(object):
         self._map = None
 
 
-    def set_lower_left(self, lower_left):
+    @property
+    def lower_left(self):
+        return self._lower_left
+
+
+    @property
+    def upper_right(self):
+        return self._upper_right
+
+
+    @property
+    def dimension(self):
+        return self._dimension
+
+
+    @property
+    def width(self):
+        return self._width
+
+
+    @property
+    def energy(self):
+        return self._energy
+
+
+    @property
+    def albedo(self):
+        return self._albedo
+
+
+    @property
+    def map(self):
+        return self._mape
+
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
@@ -41,7 +77,8 @@ class CMFDMesh(object):
         self._lower_left = lower_left
 
 
-    def set_upper_right(self, upper_right):
+    @upper_right.setter
+    def upper_right(self, upper_right):
 
         if not isinstance(upper_right, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh with upper_right {0} which is ' \
@@ -63,7 +100,8 @@ class CMFDMesh(object):
         self._upper_right = upper_right
 
 
-    def set_dimension(self, dimension):
+    @dimension.setter
+    def dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh with dimension {0} which is ' \
@@ -85,7 +123,8 @@ class CMFDMesh(object):
         self._dimension = dimension
 
 
-    def set_width(self, width):
+    @width.setter
+    def width(self, width):
 
         if not width is None:
 
@@ -109,7 +148,8 @@ class CMFDMesh(object):
         self._width = width
 
 
-    def set_energy(self, energy):
+    @energy.setter
+    def energy(self, energy):
 
         if not isinstance(energy, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
@@ -131,7 +171,8 @@ class CMFDMesh(object):
         self._energy = energy
 
 
-    def set_albedo(self, albedo):
+    @albedo.setter
+    def albedo(self, albedo):
 
         if not isinstance(albedo, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
@@ -158,7 +199,8 @@ class CMFDMesh(object):
         self._albedo = albedo
 
 
-    def set_map(self, map):
+    @map.setter
+    def map(self, map):
 
         if not isinstance(map, (tuple, list, np.ndarray)):
             msg = 'Unable to set CMFD Mesh map to {0} which is not ' \
@@ -278,7 +320,83 @@ class CMFDFile(object):
         self._cmfd_mesh_element = None
 
 
-    def set_active_flush(self, active_flush):
+    @property
+    def active_flush(self):
+        return self._active_flush
+
+
+    @property
+    def begin(self):
+        return self._begin
+
+
+    @property
+    def display(self):
+        return self._display
+
+
+    @property
+    def feedback(self):
+        return self._feedback
+
+
+    @property
+    def inactive(self):
+        return self._inactive
+
+
+    @property
+    def inactive_flush(self):
+        return self._inactive_flush
+
+
+    @property
+    def ksp_monitor(self):
+        return self._ksp_monitor
+
+
+    @property
+    def cmfd_mesh(self):
+        return self._cmfd_mesh
+
+
+    @property
+    def norm(self):
+        return self._norm
+
+
+    @property
+    def num_flushes(self):
+        return self._num_flushes
+
+
+    @property
+    def power_monitor(self):
+        return self._power_monitor
+
+
+    @property
+    def run_adjoint(self):
+        return self._run_adjoint
+
+
+    @property
+    def snes_monitor(self):
+        return self._snes_monitor
+
+
+    @property
+    def solver(self):
+        return self._solver
+
+
+    @property
+    def write_matrices(self):
+        return self._write_matrices
+
+
+    @active_flush.setter
+    def active_flush(self, active_flush):
 
         if not is_integer(active_flush):
             msg = 'Unable to set CMFD active flush batch to a non-integer ' \
@@ -293,7 +411,8 @@ class CMFDFile(object):
         self._active_flush = active_flush
 
 
-    def set_begin(self, begin):
+    @begin.setter
+    def begin(self, begin):
 
         if not is_integer(begin):
             msg = 'Unable to set CMFD begin batch to a non-integer ' \
@@ -308,7 +427,8 @@ class CMFDFile(object):
         self._begin = begin
 
 
-    def set_display(self, display):
+    @display.setter
+    def display(self, display):
 
         if not is_string(display):
             msg = 'Unable to set CMFD display to a non-string ' \
@@ -323,7 +443,8 @@ class CMFDFile(object):
         self._display = display
 
 
-    def set_feedback(self, feedback):
+    @feedback.setter
+    def feedback(self, feedback):
 
         if not isinstance(feedback, bool):
             msg = 'Unable to set CMFD feedback to {0} which is ' \
@@ -333,7 +454,8 @@ class CMFDFile(object):
         self._feedback = feedback
 
 
-    def set_inactive(self, inactive):
+    @inactive.setter
+    def inactive(self, inactive):
 
         if not isinstance(inactive, bool):
             msg = 'Unable to set CMFD inactive batch to {0} which is ' \
@@ -343,7 +465,8 @@ class CMFDFile(object):
         self._inactive = inactive
 
 
-    def set_inactive_flush(self, inactive_flush):
+    @inactive_flush.setter
+    def inactive_flush(self, inactive_flush):
 
         if not is_integer(inactive_flush):
             msg = 'Unable to set CMFD inactive flush batch to {0} which is ' \
@@ -358,7 +481,8 @@ class CMFDFile(object):
         self._inactive_flush = inactive_flush
 
 
-    def set_ksp_monitor(self, ksp_monitor):
+    @ksp_monitor.setter
+    def ksp_monitor(self, ksp_monitor):
 
         if not isinstance(ksp_monitor, bool):
             msg = 'Unable to set CMFD ksp monitor to {0} which is a ' \
@@ -368,7 +492,8 @@ class CMFDFile(object):
         self._ksp_monitor = ksp_monitor
 
 
-    def set_mesh(self, mesh):
+    @cmfd_mesh.setter
+    def cmfd_mesh(self, mesh):
 
         if not isinstance(mesh, CMFDMesh):
             msg = 'Unable to set CMFD mesh to {0} which is not a ' \
@@ -378,7 +503,8 @@ class CMFDFile(object):
         self._mesh = mesh
 
 
-    def set_norm(self, norm):
+    @norm.setter
+    def norm(self, norm):
 
         if not is_integer(norm) and not is_float(norm):
             msg = 'Unable to set the CMFD norm to {0} which is not ' \
@@ -388,8 +514,8 @@ class CMFDFile(object):
         self._norm = norm
 
 
-
-    def set_num_flushes(self, num_flushes):
+    @snes_monitor.setter
+    def snum_flushes(self, num_flushes):
 
         if not is_integer(num_flushes):
             msg = 'Unable to set the CMFD number of flushes to {0} ' \
@@ -404,7 +530,8 @@ class CMFDFile(object):
         self._num_flushes = num_flushes
 
 
-    def set_power_monitor(self, power_monitor):
+    @power_monitor.setter
+    def power_monitor(self, power_monitor):
 
         if not isinstance(power_monitor, bool):
             msg = 'Unable to set CMFD power monitor to {0} which is a ' \
@@ -414,7 +541,8 @@ class CMFDFile(object):
         self._power_monitor = power_monitor
 
 
-    def set_run_adjoint(self, run_adjoint):
+    @run_adjoint.setter
+    def run_adjoint(self, run_adjoint):
 
         if not isinstance(run_adjoint, bool):
             msg = 'Unable to set CMFD run adjoint to {0} which is a ' \
@@ -424,7 +552,8 @@ class CMFDFile(object):
         self._run_adjoint = run_adjoint
 
 
-    def set_snes_monitor(self, snes_monitor):
+    @snes_monitor.setter
+    def snes_monitor(self, snes_monitor):
 
         if not isinstance(snes_monitor, bool):
             msg = 'Unable to set CMFD snes monitor to {0} which is a ' \
@@ -434,7 +563,8 @@ class CMFDFile(object):
         self._snes_monitor = snes_monitor
 
 
-    def set_solver(self, solver):
+    @solver.setter
+    def solver(self, solver):
 
         if not solver in ['power', 'jfnk']:
             msg = 'Unable to set CMFD solver to {0} which is not ' \
@@ -444,7 +574,8 @@ class CMFDFile(object):
         self._solver = solver
 
 
-    def set_write_matrices(self, write_matrices):
+    @write_matrices.setter
+    def write_matrices(self, write_matrices):
 
         if not isinstance(write_matrices, bool):
             msg = 'Unable to set CMFD write matrices to {0} which is a ' \
@@ -454,14 +585,14 @@ class CMFDFile(object):
         self._write_matrices = write_matrices
 
 
-    def create_active_flush_subelement(self):
+    def get_active_flush_subelement(self):
 
         if not self._active_flush is None:
             element = ET.SubElement(self._cmfd_file, "active_flush")
             element.text = '{0}'.format(str(self._active_flush))
 
 
-    def create_begin_subelement(self):
+    def get_begin_subelement(self):
 
         if not self._begin is None:
             element = ET.SubElement(self._cmfd_file, "begin")

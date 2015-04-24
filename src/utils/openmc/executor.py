@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
-from openmc.checkvalue import *
 import subprocess
 import os
 
-
-FNULL = open(os.devnull, 'w')
+from openmc.checkvalue import *
 
 
 class Executor(object):
@@ -15,7 +11,13 @@ class Executor(object):
         self._working_directory = '.'
 
 
-    def set_working_directory(self, working_directory):
+    @property
+    def working_directory(self):
+        return self._working_directory
+
+
+    @working_directory.setter
+    def working_directory(self, working_directory):
 
         if not is_string(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \
@@ -36,7 +38,8 @@ class Executor(object):
             subprocess.check_call('openmc -p', shell=True,
                                   cwd=self._working_directory)
         else:
-            subprocess.check_call('openmc -p', shell=True, stdout=FNULL,
+            subprocess.check_call('openmc -p', shell=True,
+                                  stdout=open(os.devnull, 'w'),
                                   cwd=self._working_directory)
 
 
@@ -71,5 +74,6 @@ class Executor(object):
             subprocess.check_call(command, shell=True,
                                   cwd=self._working_directory)
         else:
-            subprocess.check_call(command, shell=True, stdout=FNULL,
+            subprocess.check_call(command, shell=True,
+                                  stdout=open(os.devnull, 'w'),
                                   cwd=self._working_directory)

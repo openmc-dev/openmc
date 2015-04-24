@@ -37,7 +37,7 @@ endif()
 
 set(MPI_ENABLED FALSE)
 set(HDF5_ENABLED FALSE)
-if($ENV{FC} MATCHES "mpi.*")
+if($ENV{FC} MATCHES "mpi[^/]*$")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)

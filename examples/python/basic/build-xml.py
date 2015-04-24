@@ -33,7 +33,7 @@ fuel.add_nuclide(u235, 1.)
 
 # Instantiate a MaterialsFile, register all Materials, and export to XML
 materials_file = openmc.MaterialsFile()
-materials_file.set_default_xs('71c')
+materials_file.default_xs = '71c'
 materials_file.add_materials([moderator, fuel])
 materials_file.export_to_xml()
 
@@ -46,7 +46,7 @@ materials_file.export_to_xml()
 surf1 = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=7, name='surf 1')
 surf2 = openmc.ZCylinder(surface_id=2, x0=0, y0=0, R=9, name='surf 2')
 surf3 = openmc.ZCylinder(surface_id=3, x0=0, y0=0, R=11, name='surf 3')
-surf3.set_boundary_type('vacuum')
+surf3.boundary_type = 'vacuum'
 
 # Instantiate Cells
 cell1 = openmc.Cell(cell_id=1, name='cell 1')
@@ -62,14 +62,14 @@ cell4.add_surface(surface=surf2, halfspace=+1)
 cell4.add_surface(surface=surf3, halfspace=-1)
 
 # Register Materials with Cells
-cell2.set_fill(fuel)
-cell3.set_fill(moderator)
-cell4.set_fill(moderator)
+cell2.fill = fuel
+cell3.fill = moderator
+cell4.fill = moderator
 
 # Instantiate Universes
 universe1 = openmc.Universe(universe_id=37)
 root = openmc.Universe(universe_id=0, name='root universe')
-cell1.set_fill(universe1)
+cell1.fill = universe1
 
 # Register Cells with Universes
 universe1.add_cells([cell2, cell3])
@@ -77,11 +77,11 @@ root.add_cells([cell1, cell4])
 
 # Instantiate a Geometry and register the root Universe
 geometry = openmc.Geometry()
-geometry.set_root_universe(root)
+geometry.root_universe = root
 
 # Instantiate a GeometryFile, register Geometry, and export to XML
 geometry_file = openmc.GeometryFile()
-geometry_file.set_geometry(geometry)
+geometry_file.geometry = geometry
 geometry_file.export_to_xml()
 
 
@@ -91,9 +91,9 @@ geometry_file.export_to_xml()
 
 # Instantiate a SettingsFile, set all runtime parameters, and export to XML
 settings_file = openmc.SettingsFile()
-settings_file.set_batches(batches)
-settings_file.set_inactive(inactive)
-settings_file.set_particles(particles)
+settings_file.batches = batches
+settings_file.inactive = inactive
+settings_file.particles = particles
 settings_file.set_source_space('box', [-4, -4, -4, 4, 4, 4])
 settings_file.export_to_xml()
 

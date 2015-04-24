@@ -345,6 +345,9 @@ class Cell(object):
             element.set("fill", str(self._fill._id))
             self._fill.create_xml_subelement(xml_element)
 
+        elif self._fill == "void":
+            element.set("material", "void")
+
         else:
             element.set("fill", str(self._fill))
             self._fill.create_xml_subelement(xml_element)

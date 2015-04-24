@@ -114,22 +114,29 @@ class Cell(object):
     @fill.setter
     def fill(self, fill):
 
-        if not isinstance(fill, (openmc.Material, Universe, Lattice)) \
-            and fill != 'void':
+        if isinstance(fill, str):
+            if fill.strip().lower() == 'void':
+                self._type = 'void'
+            else:
+                msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
+                       'Universe fill {1}'.format(self._id, fill)
+                raise ValueError(msg)
+
+        elif isinstance(fill, openmc.Material):
+            self._type = 'normal'
+
+        elif isinstance(fill, Universe):
+            self._type = 'fill'
+
+        elif isinstance(fill, Lattice):
+            self._type = 'lattice'
+
+        else:
             msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
                    'Universe fill {1}'.format(self._id, fill)
             raise ValueError(msg)
 
         self._fill = fill
-
-        if isinstance(fill, Lattice):
-            self._type = 'lattice'
-        elif isinstance(fill, Universe):
-            self._type = 'fill'
-        elif fill == 'void':
-            self._type = 'normal'
-        else:
-            self._type = 'normal'
 
 
     @rotation.setter
@@ -247,7 +254,7 @@ class Cell(object):
         path = path[1:]
 
         # If the Cell is filled by a Material
-        if self._type == 'normal':
+        if self._type == 'normal' or self._type == 'void':
             offset = 0
 
         # If the Cell is filled by a Universe
@@ -345,7 +352,7 @@ class Cell(object):
             element.set("fill", str(self._fill._id))
             self._fill.create_xml_subelement(xml_element)
 
-        elif self._fill == "void":
+        elif self._fill.strip().lower() == "void":
             element.set("material", "void")
 
         else:

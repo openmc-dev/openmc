@@ -73,11 +73,12 @@ contains
     type(Particle), intent(inout) :: p
 
     integer :: i_nuclide    ! index in nuclides array
+    integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
     type(Nuclide), pointer, save :: nuc => null()
 !$omp threadprivate(nuc)
 
-    i_nuclide = sample_nuclide(p, 'total  ')
+    call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
     ! Get pointer to table
     nuc => nuclides(i_nuclide)
@@ -107,7 +108,7 @@ contains
 
     ! Sample a scattering reaction and determine the secondary energy of the
     ! exiting neutron
-    call scatter(p, i_nuclide)
+    call scatter(p, i_nuclide, i_nuc_mat)
 
     ! Play russian roulette if survival biasing is turned on
 
@@ -122,13 +123,13 @@ contains
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
-  function sample_nuclide(p, base) result(i_nuclide)
+  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(in) :: p
     character(7),   intent(in) :: base      ! which reaction to sample based on
-    integer                    :: i_nuclide
+    integer, intent(out)       :: i_nuclide
+    integer, intent(out)       :: i_nuc_mat
 
-    integer :: i
     real(8) :: prob
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
@@ -149,20 +150,20 @@ contains
       cutoff = prn() * material_xs % fission
     end select
 
-    i = 0
+    i_nuc_mat = 0
     prob = ZERO
     do while (prob < cutoff)
-      i = i + 1
+      i_nuc_mat = i_nuc_mat + 1
 
       ! Check to make sure that a nuclide was sampled
-      if (i > mat % n_nuclides) then
+      if (i_nuc_mat > mat % n_nuclides) then
         call write_particle_restart(p)
         call fatal_error("Did not sample any nuclide during collision.")
       end if
 
       ! Find atom density
-      i_nuclide    = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
+      i_nuclide    = mat % nuclide(i_nuc_mat)
+      atom_density = mat % atom_density(i_nuc_mat)
 
       ! Determine microscopic cross section
       select case (base)
@@ -179,7 +180,7 @@ contains
       prob = prob + sigma
     end do
 
-  end function sample_nuclide
+  end subroutine sample_nuclide
 
 !===============================================================================
 ! SAMPLE_FISSION
@@ -303,10 +304,11 @@ contains
 ! SCATTER
 !===============================================================================
 
-  subroutine scatter(p, i_nuclide)
+  subroutine scatter(p, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
+    integer,        intent(in)    :: i_nuc_mat
 
     integer :: i
     integer :: i_grid
@@ -334,6 +336,10 @@ contains
       ! ELASTIC SCATTERING
 
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
+        if (materials(p % material) % p0(i_nuc_mat)) &
+          & call fatal_error("thermal scattering law data and isotropic lab&
+          & scattering specified for the same nuclide")
+
         ! S(a,b) scattering
         call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
              p % E, p % coord0 % uvw, p % mu)
@@ -344,7 +350,8 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord0 % uvw, p % mu, p % wgt)
+             p % E, p % coord0 % uvw, p % mu, p % wgt, &
+             & materials(p % material) % p0(i_nuc_mat))
       end if
 
       p % event_MT = ELASTIC
@@ -387,7 +394,7 @@ contains
 
       ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
-           p % mu, p % wgt)
+           p % mu, p % wgt, materials(p % material) % p0(i_nuc_mat))
       p % event_MT = rxn % MT
 
     end if
@@ -402,21 +409,24 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
+  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt, iso_lab)
 
     integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
-    real(8), intent(out)    :: mu_lab
     real(8), intent(inout)  :: wgt
+    real(8), intent(out)    :: mu_lab ! cosine of polar angle in lab system
+    logical, intent(in)     :: iso_lab
 
     real(8) :: awr       ! atomic weight ratio of target
     real(8) :: mu_cm     ! cosine of polar angle in center-of-mass
+    real(8) :: phi       ! azimuthal angle
     real(8) :: vel       ! magnitude of velocity
     real(8) :: v_n(3)    ! velocity of neutron
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
+    real(8) :: uvw_in(3) ! incoming direction
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
     type(Nuclide), pointer, save :: nuc => null()
 !$omp threadprivate(nuc)
@@ -429,6 +439,9 @@ contains
 
     ! Neutron velocity in LAB
     v_n = vel * uvw
+
+    ! incoming direction
+    uvw_in(:) = uvw(:)
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
@@ -465,11 +478,17 @@ contains
     vel = sqrt(E)
 
     ! compute cosine of scattering angle in LAB frame by taking dot product of
-    ! neutron's pre- and post-collision angle
-    mu_lab = dot_product(uvw, v_n) / vel
+    ! neutron's pre- and post-collision unit vectors
+    if (iso_lab) then
+      uvw(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
+    else
+      uvw = v_n / vel
+    end if
 
-    ! Set energy and direction of particle in LAB frame
-    uvw = v_n / vel
+    mu_lab = dot_product(uvw_in, uvw)
 
   end subroutine elastic_scatter
 
@@ -1277,7 +1296,7 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt)
+  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt, iso_lab)
 
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
@@ -1285,6 +1304,7 @@ contains
     real(8), intent(inout)  :: uvw(3) ! directional cosines
     real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
     real(8), intent(inout)  :: wgt    ! particle weight
+    logical, intent(in)     :: iso_lab
 
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
@@ -1292,9 +1312,12 @@ contains
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
     real(8) :: yield       ! neutron yield
+    real(8) :: uvw_in(3)   ! incoming direction
+    real(8) :: phi         ! azimuthal angle
 
-    ! copy energy of neutron
+    ! copy energy, direction of neutron
     E_in = E
+    uvw_in(:) = uvw(:)
 
     ! determine A and Q
     A = nuc % awr
@@ -1328,8 +1351,17 @@ contains
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
-    ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+    ! compute cosine of scattering angle in LAB frame by taking dot product of
+    ! neutron's pre- and post-collision unit vectors
+    if (iso_lab) then
+      uvw(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      mu = dot_product(uvw_in, uvw)
+    else
+      uvw = rotate_angle(uvw_in, mu)      
+    end if
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then

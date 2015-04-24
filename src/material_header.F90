@@ -32,6 +32,9 @@ module material_header
     ! Does this material contain fissionable nuclides?
     logical :: fissionable = .false.
 
+    ! enforce isotropic scattering in lab
+    logical, allocatable :: p0(:)
+
   end type Material
 
 end module material_header

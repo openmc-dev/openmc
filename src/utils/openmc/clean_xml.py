@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-
 def sort_xml_elements(tree):
 
     # Retrieve all children of the root XML node in the tree
     elements = tree.getchildren()
 
     # Initialize empty lists for the sorted and comment elements
-    sorted_elements = list()
+    sorted_elements = []
 
     # Initialize an empty set of tags (e.g., Surface, Cell, and Lattice)
     tags = set()
@@ -16,7 +14,7 @@ def sort_xml_elements(tree):
         tags.add(element.tag)
 
     # Initialize an empty list for the comment elements
-    comment_elements = list()
+    comment_elements = []
 
     # Find the comment elements and record their ordering within the
     # tree using a precedence with respect to the subsequent nodes
@@ -40,7 +38,7 @@ def sort_xml_elements(tree):
             continue
 
         # Initialize an empty list of tuples to sort (id, element)
-        tagged_data = list()
+        tagged_data = []
 
         # Retrieve the IDs for each of the elements
         for element in tagged_elements:
@@ -68,11 +66,11 @@ def sort_xml_elements(tree):
 
 
 def clean_xml_indentation(element, level=0):
-    '''
+    """
     copy and paste from http://effbot.org/zone/elementent-lib.htm#prettyprint
     it basically walks your tree and adds spaces and newlines so the tree is
     printed in a nice way
-    '''
+    """
 
     i = "\n" + level*"    "
 

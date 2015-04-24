@@ -1,12 +1,11 @@
-#!/usr/bin/env python
-
+import collections
 import warnings
+from xml.etree import ElementTree as ET
+
+import numpy as np
 
 from openmc.checkvalue import *
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
-import numpy as np
-import multiprocessing
 
 
 class SettingsFile(object):
@@ -77,13 +76,244 @@ class SettingsFile(object):
         self._dd_mesh_upper_right = None
         self._dd_nodemap = None
         self._dd_allow_leakage = False
+        self._dd_count_interactions = False
 
         self._settings_file = ET.Element("settings")
         self._eigenvalue_element = None
         self._source_element = None
 
 
-    def set_batches(self, batches):
+    @property
+    def batches(self):
+        return self._batches
+
+
+    @property
+    def generations_per_batch(self):
+        return self._generations_per_batch
+
+
+    @property
+    def inactive(self):
+        return self._inactive
+
+
+    @property
+    def particles(self):
+        return self._particles
+
+
+    @property
+    def source_file(self):
+        return self._source_file
+
+
+    @property
+    def source_space_type(self):
+        return self._source_space_type
+
+
+    @property
+    def source_space_params(self):
+        return self._source_space_params
+
+
+    @property
+    def source_angle_type(self):
+        return self._source_angle_type
+
+
+    @property
+    def source_angle_params(self):
+        return self._source_angle_params
+
+
+    @property
+    def source_energy_type(self):
+        return self._source_energy_type
+
+
+    @property
+    def source_energy_params(self):
+        return self._source_energy_params
+
+
+    @property
+    def confidence_intervals(self):
+        return self._confidence_intervals
+
+
+    @property
+    def cross_sections(self):
+        return self._cross_sections
+
+
+    @property
+    def energy_grid(self):
+        return self._energy_grid
+
+
+    @property
+    def ptables(self):
+        return self._ptables
+
+
+    @property
+    def run_cmfd(self):
+        return self._run_cmfd
+
+
+    @property
+    def seed(self):
+        return self._seed
+
+
+    @property
+    def survival_biasing(self):
+        return self._survival_biasing
+
+
+    @property
+    def entropy_dimension(self):
+        return self._entropy_dimension
+
+
+    @property
+    def entropy_lower_left(self):
+        return self._entropy_lower_left
+
+
+    @property
+    def entropy_upper_right(self):
+        return self._entropy_upper_right
+
+
+    @property
+    def output(self):
+        return self._output
+
+
+    @property
+    def output_path(self):
+        return self._output_path
+
+
+    @property
+    def statepoint_batches(self):
+        return self._statepoint_batches
+
+
+    @property
+    def statepoint_interval(self):
+        return self._statepoint_interval
+
+    @property
+    def sourcepoint_batches(self):
+        return self._sourcepoint_interval
+
+
+    @property
+    def sourcepoint_interval(self):
+        return self._sourcepoint_interval
+
+
+    @property
+    def sourcepoint_separate(self):
+        return self._sourcepoint_separate
+
+
+    @property
+    def sourcepoint_write(self):
+        return self._sourcepoint_write
+
+
+    @property
+    def sourcepoint_overwrite(self):
+        return self._sourcepoint_overwrite
+
+
+    @property
+    def threads(self):
+        return self._threads
+
+
+    @property
+    def no_reduce(self):
+        return self._no_reduce
+
+
+    @property
+    def verbosity(self):
+        return self._verbosity
+
+
+    @property
+    def trace(self):
+        return self._trace
+
+
+    @property
+    def track(self):
+        return self._track
+
+
+    @property
+    def weight(self):
+        return self._weight
+
+
+    @property
+    def weight_avg(self):
+        return self._weight_avg
+
+
+    @property
+    def ufs_dimension(self):
+        return self._ufs_dimension
+
+
+    @property
+    def ufs_lower_left(self):
+        return self._ufs_lower_left
+
+
+    @property
+    def ufs_upper_right(self):
+        return self._ufs_upper_right
+
+
+    @property
+    def dd_mesh_dimension(self):
+        return self._dd_mesh_dimension
+
+
+    @property
+    def dd_mesh_lower_left(self):
+        return self._dd_mesh_lower_left
+
+
+    @property
+    def dd_mesh_upper_right(self):
+        return self._dd_mesh_upper_right
+
+
+    @property
+    def dd_nodemap(self):
+        return self._dd_nodemap
+
+
+    @property
+    def dd_allow_leakage(self):
+        return self._dd_allow_leakage
+
+
+    @property
+    def dd_count_interactions(self):
+        return self._dd_count_interactions
+
+
+    @batches.setter
+    def batches(self, batches):
 
         if not is_integer(batches):
             msg = 'Unable to set batches to a non-integer ' \
@@ -98,7 +328,8 @@ class SettingsFile(object):
         self._batches = batches
 
 
-    def set_generations_per_batch(self, generations_per_batch):
+    @generations_per_batch.setter
+    def generations_per_batch(self, generations_per_batch):
 
         if not is_integer(generations_per_batch):
             msg = 'Unable to set generations per batch to a non-integer ' \
@@ -113,7 +344,8 @@ class SettingsFile(object):
         self._generations_per_batch = generations_per_batch
 
 
-    def set_inactive(self, inactive):
+    @inactive.setter
+    def inactive(self, inactive):
 
         if not is_integer(inactive):
             msg = 'Unable to set inactive batches to a non-integer ' \
@@ -128,7 +360,8 @@ class SettingsFile(object):
         self._inactive = inactive
 
 
-    def set_particles(self, particles):
+    @particles.setter
+    def particles(self, particles):
 
         if not is_integer(particles):
             msg = 'Unable to set particles to a non-integer ' \
@@ -143,7 +376,8 @@ class SettingsFile(object):
         self._particles = particles
 
 
-    def set_source_file(self, source_file):
+    @source_file.setter
+    def source_file(self, source_file):
 
         if not is_string(source_file):
             msg = 'Unable to set source file to a non-string ' \
@@ -153,16 +387,16 @@ class SettingsFile(object):
         self._source_file = source_file
 
 
-    def set_source_space(self, type, params):
+    def set_source_space(self, stype, params):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source space type to a non-string ' \
-                  'value {0}'.format(type)
+                  'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['box', 'point']:
+        elif not stype in ['box', 'point']:
             msg = 'Unable to set source space type to {0} since it is not ' \
-                  'box or point'.format(type)
+                  'box or point'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -182,20 +416,20 @@ class SettingsFile(object):
                       'is not an integer or floating point value'.format(param)
                 raise ValueError(msg)
 
-        self._source_space_type = type
+        self._source_space_type = stype
         self._source_space_params = params
 
 
-    def set_source_angle(self, type, params=[]):
+    def set_source_angle(self, stype, params=[]):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source angle type to a non-string ' \
-                  'value {0}'.format(type)
+                  'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['isotropic', 'monodirectional']:
+        elif not stype in ['isotropic', 'monodirectional']:
             msg = 'Unable to set source angle type to {0} since it is not ' \
-                  'isotropic or monodirectional'.format(type)
+                  'isotropic or monodirectional'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -203,12 +437,12 @@ class SettingsFile(object):
                   'not a Python list/tuple or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif type is 'isotropic' and not params is None:
+        elif stype == 'isotropic' and not params is None:
             msg = 'Unable to set source angle parameters since they are not ' \
                   'it is not supported for isotropic type sources'
             raise ValueError(msg)
 
-        elif type is 'monodirectional' and len(params) != 3:
+        elif stype == 'monodirectional' and len(params) != 3:
             msg = 'Unable to set source angle parameters to {0} ' \
                   'since 3 parameters are required for monodirectional ' \
                   'sources'.format(params)
@@ -221,20 +455,20 @@ class SettingsFile(object):
                       'is not an integer or floating point value'.format(param)
                 raise ValueError(msg)
 
-        self._source_angle_type = type
+        self._source_angle_type = stype
         self._source_angle_params = params
 
 
-    def set_source_energy(self, type, params=[]):
+    def set_source_energy(self, stype, params=[]):
 
-        if not is_string(type):
+        if not is_string(stype):
             msg = 'Unable to set source energy type to a non-string ' \
-                   'value {0}'.format(type)
+                   'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not type in ['monoenergetic', 'watt', 'maxwell']:
+        elif not stype in ['monoenergetic', 'watt', 'maxwell']:
             msg = 'Unable to set source energy type to {0} since it is not ' \
-                  'monoenergetic, watt or maxwell'.format(type)
+                  'monoenergetic, watt or maxwell'.format(stype)
             raise ValueError(msg)
 
         elif not isinstance(params, (tuple, list, np.ndarray)):
@@ -242,19 +476,19 @@ class SettingsFile(object):
                   'is not a Python list/tuple or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif type is 'monoenergetic' and not len(params) != 1:
+        elif stype == 'monoenergetic' and not len(params) != 1:
             msg = 'Unable to set source energy parameters to {0} ' \
                   'since 1 paramater is required for monenergetic ' \
                   'sources'.format(params)
             raise ValueError(msg)
 
-        elif type is 'watt' and len(params) != 2:
+        elif stype == 'watt' and len(params) != 2:
             msg = 'Unable to set source energy parameters to {0} ' \
                   'since 2 parameters are required for monoenergetic ' \
                   'sources'.format(params)
             raise ValueError(msg)
 
-        elif type is 'maxwell' and len(params) != 2:
+        elif stype == 'maxwell' and len(params) != 2:
             msg = 'Unable to set source energy parameters to {0} since 1 ' \
                   'parameter is required for maxwell sources'.format(params)
             raise ValueError(msg)
@@ -267,11 +501,12 @@ class SettingsFile(object):
                       'value'.format(param)
                 raise ValueError(msg)
 
-        self._source_energy_type = type
+        self._source_energy_type = stype
         self._source_energy_params = params
 
 
-    def set_output(self, output):
+    @output.setter
+    def output(self, output):
 
         if not isinstance(output, dict):
             msg = 'Unable to set output to {0} which is not a Python ' \
@@ -295,7 +530,8 @@ class SettingsFile(object):
         self._output = output
 
 
-    def set_output_path(self, output_path):
+    @output_path.setter
+    def output_path(self, output_path):
 
         if not is_string(output_path):
             msg = 'Unable to set output path to non-string ' \
@@ -305,7 +541,8 @@ class SettingsFile(object):
         self._output_path = output_path
 
 
-    def set_verbosity(self, verbosity):
+    @verbosity.setter
+    def verbosity(self, verbosity):
 
         if not is_integer(verbosity):
             msg = 'Unable to set verbosity to non-integer ' \
@@ -320,7 +557,8 @@ class SettingsFile(object):
         self._verbosity = verbosity
 
 
-    def set_statepoint_batches(self, batches):
+    @statepoint_batches.setter
+    def statepoint_batches(self, batches):
 
         if not isinstance(batches, (tuple, list, np.ndarray)):
             msg = 'Unable to set statepoint batches to {0} which is not a ' \
@@ -342,7 +580,8 @@ class SettingsFile(object):
         self._statepoint_batches = batches
 
 
-    def set_statepoint_interval(self, interval):
+    @statepoint_interval.setter
+    def statepoint_interval(self, interval):
 
         if not is_integer(interval):
             msg = 'Unable to set statepoint interval to non-integer ' \
@@ -352,7 +591,8 @@ class SettingsFile(object):
         self._statepoint_interval = interval
 
 
-    def set_sourcepoint_batches(self, batches):
+    @sourcepoint_batches.setter
+    def sourcepoint_batches(self, batches):
 
         if not isinstance(batches, (tuple, list, np.ndarray)):
             msg = 'Unable to set sourcepoint batches to {0} which is ' \
@@ -374,7 +614,8 @@ class SettingsFile(object):
         self._sourcepoint_batches = batches
 
 
-    def set_sourcepoint_interval(self, interval):
+    @sourcepoint_interval.setter
+    def sourcepoint_interval(self, interval):
 
         if not is_integer(interval):
             msg = 'Unable to set sourcepoint interval to non-integer ' \
@@ -384,7 +625,8 @@ class SettingsFile(object):
         self._sourcepoint_interval = interval
 
 
-    def set_sourcepoint_separate(self, source_separate):
+    @sourcepoint_separate.setter
+    def sourcepoint_separate(self, source_separate):
 
         if not isinstance(source_separate, (bool, np.bool)):
             msg = 'Unable to set sourcepoint separate to non-boolean ' \
@@ -394,7 +636,8 @@ class SettingsFile(object):
         self._sourcepoint_separate = source_separate
 
 
-    def set_sourcepoint_write(self, source_write):
+    @sourcepoint_write.setter
+    def sourcepoint_write(self, source_write):
 
         if not isinstance(source_write, (bool, np.bool)):
             msg = 'Unable to set sourcepoint write to non-boolean ' \
@@ -404,7 +647,8 @@ class SettingsFile(object):
         self._sourcepoint_write = source_write
 
 
-    def set_sourcepoint_overwrite(self, source_overwrite):
+    @sourcepoint_overwrite.setter
+    def sourcepoint_overwrite(self, source_overwrite):
 
         if not isinstance(source_overwrite, (bool, np.bool)):
             msg = 'Unable to set sourcepoint overwrite to non-boolean ' \
@@ -414,7 +658,8 @@ class SettingsFile(object):
         self._sourcepoint_overwrite = source_overwrite
 
 
-    def set_confidence_intervals(self, confidence_intervals):
+    @confidence_intervals.setter
+    def confidence_intervals(self, confidence_intervals):
 
         if not isinstance(confidence_intervals, (bool, np.bool)):
             msg = 'Unable to set confidence interval to non-boolean ' \
@@ -424,7 +669,8 @@ class SettingsFile(object):
         self._confidence_intervals = confidence_intervals
 
 
-    def set_cross_sections(self, cross_sections):
+    @cross_sections.setter
+    def cross_sections(self, cross_sections):
 
         if not is_string(cross_sections):
             msg = 'Unable to set cross sections to non-string ' \
@@ -434,17 +680,19 @@ class SettingsFile(object):
         self._cross_sections = cross_sections
 
 
-    def set_energy_grid(self, energy_grid):
+    @energy_grid.setter
+    def energy_grid(self, energy_grid):
 
-        if not energy_grid in ['union', 'nuclide']:
+        if not energy_grid in ['nuclide', 'logarithm', 'material-union']:
             msg = 'Unable to set energy grid to {0} which is neither ' \
-                  'union nor nuclide'.format(energy_grid)
+                  'nuclide, logarithm, nor material-union'.format(energy_grid)
             raise ValueError(msg)
 
         self._energy_grid = energy_grid
 
 
-    def set_ptables(self, ptables):
+    @ptables.setter
+    def ptables(self, ptables):
 
         if not isinstance(ptables, (bool, np.bool)):
             msg = 'Unable to set ptables to non-boolean ' \
@@ -454,7 +702,8 @@ class SettingsFile(object):
         self._ptables = ptables
 
 
-    def set_run_cmfd(self, run_cmfd):
+    @run_cmfd.setter
+    def run_cmfd(self, run_cmfd):
 
         if not isinstance(run_cmfd, (bool, np.bool)):
             msg = 'Unable to set run_cmfd to non-boolean ' \
@@ -464,7 +713,8 @@ class SettingsFile(object):
         self._run_cmfd = run_cmfd
 
 
-    def set_seed(self, seed):
+    @seed.setter
+    def seed(self, seed):
 
         if not is_integer(seed):
             msg = 'Unable to set seed to non-integer value {0}'.format(seed)
@@ -477,7 +727,8 @@ class SettingsFile(object):
         self._seed = seed
 
 
-    def set_survival_biasing(self, survival_biasing):
+    @survival_biasing.setter
+    def survival_biasing(self, survival_biasing):
 
         if not isinstance(survival_biasing, (bool, np.bool)):
             msg = 'Unable to set survival biasing to non-boolean ' \
@@ -487,7 +738,8 @@ class SettingsFile(object):
         self._survival_biasing = survival_biasing
 
 
-    def set_weight(self, weight, weight_avg):
+    @weight.setter
+    def weight(self, weight, weight_avg):
 
         if not is_float(weight):
             msg = 'Unable to set weight cutoff to non-floating point ' \
@@ -513,7 +765,8 @@ class SettingsFile(object):
         self._weight_avg = weight_avg
 
 
-    def set_entropy_dimension(self, dimension):
+    @entropy_dimension.setter
+    def entropy_dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list)):
             msg = 'Unable to set entropy mesh dimension to {0} which is ' \
@@ -535,7 +788,8 @@ class SettingsFile(object):
         self._entropy_dimension = dimension
 
 
-    def set_entropy_lower_left(self, lower_left):
+    @entropy_lower_left.setter
+    def entropy_lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list)):
             msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
@@ -558,7 +812,8 @@ class SettingsFile(object):
         self._entropy_lower_left = lower_left
 
 
-    def set_entropy_upper_right(self, upper_right):
+    @entropy_upper_right.setter
+    def entropy_upper_right(self, upper_right):
 
         if not isinstance(upper_right, (tuple, list)):
             msg = 'Unable to set entropy mesh upper right corner to {0} ' \
@@ -581,7 +836,8 @@ class SettingsFile(object):
         self._entropy_upper_right = upper_right
 
 
-    def set_no_reduce(self, no_reduce):
+    @no_reduce.setter
+    def no_reduce(self, no_reduce):
 
         if not isinstance(no_reduce, (bool, np.bool)):
             msg = 'Unable to set the no_reduce to a non-boolean ' \
@@ -591,7 +847,8 @@ class SettingsFile(object):
         self._no_reduce = no_reduce
 
 
-    def set_threads(self, threads):
+    @threads.setter
+    def threads(self, threads):
 
         if not is_integer(threads):
             msg = 'Unable to set the threads to a non-integer ' \
@@ -606,7 +863,8 @@ class SettingsFile(object):
         self._threads = threads
 
 
-    def set_trace(self, trace):
+    @trace.setter
+    def trace(self, trace):
 
         if not isinstance(trace, (list, tuple)):
             msg = 'Unable to set the trace to {0} which is not a Python ' \
@@ -636,7 +894,8 @@ class SettingsFile(object):
         self._trace = trace
 
 
-    def set_track(self, track):
+    @track.setter
+    def track(self, track):
 
         if not isinstance(track, (list, tuple)):
             msg = 'Unable to set the track to {0} which is not a Python ' \
@@ -667,7 +926,8 @@ class SettingsFile(object):
         self._track = track
 
 
-    def set_ufs_dimension(self, dimension):
+    @ufs_dimension.setter
+    def ufs_dimension(self, dimension):
 
         if not is_integer(dimension) and not is_float(dimension):
             msg = 'Unable to set UFS dimension to non-integer or ' \
@@ -682,7 +942,8 @@ class SettingsFile(object):
         self._ufs_dimension = dimension
 
 
-    def set_ufs_lower_left(self, lower_left):
+    @ufs_lower_left.setter
+    def ufs_lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set UFS mesh lower left corner to {0} which is ' \
@@ -697,7 +958,8 @@ class SettingsFile(object):
         self._ufs_lower_left = lower_left
 
 
-    def set_ufs_upper_right(self, upper_right):
+    @ufs_upper_right.setter
+    def ufs_upper_right(self, upper_right):
 
         if not isinstance(upper_right, tuple) and \
           not isinstance(upper_right, list):
@@ -713,7 +975,8 @@ class SettingsFile(object):
         self._ufs_upper_right = upper_right
 
 
-    def set_dd_mesh_dimension(self, dimension):
+    @dd_mesh_dimension.setter
+    def dd_mesh_dimension(self, dimension):
 
         # TODO: remove this when domain decomposition is merged
         warnings.warn('This feature is not yet implemented in a release ' \
@@ -733,7 +996,8 @@ class SettingsFile(object):
         self._dd_mesh_dimension = dimension
 
 
-    def set_dd_mesh_lower_left(self, lower_left):
+    @dd_mesh_lower_left.setter
+    def dd_mesh_lower_left(self, lower_left):
 
         # TODO: remove this when domain decomposition is merged
         warnings.warn('This feature is not yet implemented in a release ' \
@@ -752,7 +1016,8 @@ class SettingsFile(object):
         self._dd_mesh_lower_left = lower_left
 
 
-    def set_dd_mesh_upper_right(self, upper_right):
+    @dd_mesh_upper_right.setter
+    def dd_mesh_upper_right(self, upper_right):
 
         # TODO: remove this when domain decomposition is merged
         warnings.warn('This feature is not yet implemented in a release ' \
@@ -772,7 +1037,8 @@ class SettingsFile(object):
         self._dd_mesh_upper_right = upper_right
 
 
-    def set_dd_nodemap(self, nodemap):
+    @dd_nodemap.setter
+    def dd_nodemap(self, nodemap):
 
         # TODO: remove this when domain decomposition is merged
         warnings.warn('This feature is not yet implemented in a release ' \
@@ -781,7 +1047,7 @@ class SettingsFile(object):
         if not isinstance(nodemap, tuple) and \
           not isinstance(nodemap, list):
             msg = 'Unable to set DD nodemap {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
+                  'not a Python tuple or list'.format(nodemap)
             raise ValueError(msg)
 
         nodemap = np.array(nodemap).flatten()
@@ -798,20 +1064,38 @@ class SettingsFile(object):
                   'mesh'.format(len(nodemap))
             raise ValueError(msg)
 
-        self._dd_mesh_dimension = dimension
+        self._dd_nodemap = nodemap
 
-    def set_dd_allow_leakage(self, allow):
+
+    @dd_allow_leakage.setter
+    def dd_allow_leakage(self, allow):
 
         # TODO: remove this when domain decomposition is merged
         warnings.warn('This feature is not yet implemented in a release ' \
                       'version of openmc')
 
-        if not type(allow) == bool:
+        if not isinstance(allow, bool):
             msg = 'Unable to set DD allow_leakage {0} which is ' \
-                  'not a Python bool'.format(dimension)
+                  'not a Python bool'.format(allow)
             raise ValueError(msg)
 
         self._dd_allow_leakage = allow
+
+
+    @dd_count_interactions.setter
+    def dd_count_interactions(self, interactions):
+
+        # TODO: remove this when domain decomposition is merged
+        warnings.warn('This feature is not yet implemented in a release ' \
+                      'version of openmc')
+
+        if not isinstance(interactions, bool):
+            msg = 'Unable to set DD count_interactions {0} which is ' \
+                  'not a Python bool'.format(interactions)
+            raise ValueError(msg)
+
+        self._dd_count_interactions = interactions
+
 
     def create_eigenvalue_subelement(self):
 
@@ -1182,14 +1466,20 @@ class SettingsFile(object):
 
             if not self._dd_nodemap is None:
                 subelement = ET.SubElement(element, "nodemap")
-                subsubelement.text = ' '.join([str(n) for n in self._dd_nodemap])
+                subelement.text = ' '.join([str(n) for n in self._dd_nodemap])
 
             subelement = ET.SubElement(element, "allow_leakage")
             if self._dd_allow_leakage:
                 subelement.text = 'true'
             else:
                 subelement.text = 'false'
-                
+
+            subelement = ET.SubElement(element, "count_interactions")
+            if self._dd_count_interactions:
+                subelement.text = 'true'
+            else:
+                subelement.text = 'false'
+
 
     def export_to_xml(self):
 

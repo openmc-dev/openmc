@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+import copy
+import os
+from xml.etree import ElementTree as ET
 
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *
 from openmc.constants import *
-from xml.etree import ElementTree as ET
-import numpy as np
-import os, copy
 
 
 # "Static" variables for auto-generated Tally and Mesh IDs
@@ -29,20 +28,11 @@ class Filter(object):
     # Initialize Filter class attributes
     def __init__(self, type=None, bins=None):
 
-        self._type = None
-        self._bins = None
+        self.type = type
+        self.bins = bins
         self._mesh = None
         self._offset = -1
         self._stride = None
-
-        # FIXME
-        self._num_bins = None
-
-        if not type is None:
-            self.set_type(type)
-
-        if not bins is None:
-            self.set_bin_edges(bins)
 
 
     def __eq__(self, filter2):
@@ -64,7 +54,7 @@ class Filter(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
         hashable.append(self._type)
         hashable.append(self._bins)
         return hash(tuple(hashable))
@@ -94,9 +84,43 @@ class Filter(object):
             return existing
 
 
-    def set_type(self, type):
+    @property
+    def type(self):
+        return self._type
 
-        if not type in FILTER_TYPES.values():
+
+    @property
+    def bins(self):
+        return self._bins
+
+
+    @property
+    def num_bins(self):
+        return self._num_bins
+
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+
+    @property
+    def offset(self):
+        return self._offset
+
+
+    @property
+    def stride(self):
+        return self._stride
+
+
+    @type.setter
+    def type(self, type):
+
+        if type is None:
+            self._type = type
+
+        elif not type in FILTER_TYPES.values():
             msg = 'Unable to set Filter type to {0} since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
@@ -104,10 +128,14 @@ class Filter(object):
         self._type = type
 
 
-    def set_bin_edges(self, bins):
+    @bins.setter
+    def bins(self, bins):
 
-        if self._type is None:
-            msg = 'Unable to set bin edges for Filter to {0} since ' \
+        if bins is None:
+            self.num_bins = 0
+
+        elif self._type is None:
+            msg = 'Unable to set bins for Filter to {0} since ' \
                   'the Filter type has not yet been set'.format(bins)
             raise ValueError(msg)
 
@@ -125,12 +153,12 @@ class Filter(object):
             for edge in bins:
 
                 if not is_integer(edge):
-                    msg = 'Unable to add bin edge {0} to a {1} Filter since ' \
+                    msg = 'Unable to add bin {0} to a {1} Filter since ' \
                           'it is a non-integer'.format(edge, self._type)
                     raise ValueError(msg)
 
                 elif edge < 0:
-                    msg = 'Unable to add bin edge {0} to a {1} Filter since ' \
+                    msg = 'Unable to add bin  {0} to a {1} Filter since ' \
                           'it is a negative integer'.format(edge, self._type)
                     raise ValueError(msg)
 
@@ -164,17 +192,17 @@ class Filter(object):
         elif self._type == 'mesh':
 
             if not len(bins) == 1:
-                msg = 'Unable to add bin edges {0} to a mesh Filter since ' \
+                msg = 'Unable to add bins {0} to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
 
             elif not is_integer(bins[0]):
-                msg = 'Unable to add bin edge {0} to mesh Filter since it ' \
+                msg = 'Unable to add bin {0} to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
 
             elif bins[0] < 0:
-                msg = 'Unable to add bin edge {0} to mesh Filter since it ' \
+                msg = 'Unable to add bin {0} to mesh Filter since it ' \
                        'is a negative integer'.format(bins[0])
                 raise ValueError(msg)
 
@@ -183,7 +211,8 @@ class Filter(object):
 
 
     # FIXME
-    def set_num_bins(self, num_bins):
+    @num_bins.setter
+    def num_bins(self, num_bins):
 
         if not is_integer(num_bins) or num_bins < 0:
             msg = 'Unable to set the number of bins {0} for a {1} Filter ' \
@@ -194,7 +223,8 @@ class Filter(object):
         self._num_bins = num_bins
 
 
-    def set_mesh(self, mesh):
+    @mesh.setter
+    def mesh(self, mesh):
 
         if not isinstance(mesh, Mesh):
             msg = 'Unable to set Mesh to {0} for Filter since it is not a ' \
@@ -202,11 +232,12 @@ class Filter(object):
             raise ValueError(msg)
 
         self._mesh = mesh
-        self.set_type('mesh')
-        self.set_bin_edges(self._mesh._id)
+        self.type = 'mesh'
+        self.bins = self._mesh._id
 
 
-    def set_offset(self, offset):
+    @offset.setter
+    def offset(self, offset):
 
         if not is_integer(offset):
             msg = 'Unable to set offset {0} for a {1} Filter since it is a ' \
@@ -216,7 +247,8 @@ class Filter(object):
         self._offset = offset
 
 
-    def set_stride(self, stride):
+    @stride.setter
+    def stride(self, stride):
 
         if not is_integer(stride):
             msg = 'Unable to set stride {0} for a {1} Filter since it is a ' \
@@ -229,21 +261,6 @@ class Filter(object):
             raise ValueError(msg)
 
         self._stride = stride
-
-
-    def get_num_bins(self):
-
-        # FIXME
-        #if self._type == 'mesh':
-        #    num_bins = self._mesh.getNumMeshCells()
-        #elif self._type == 'energy' or self._type == 'energyout':
-        #    num_bins = len(self._bins) - 1
-        #else:
-        #    num_bins = len(self._bins)
-
-        #return num_bins
-
-        return self._num_bins
 
 
     def get_bin_index(self, bin):
@@ -274,16 +291,13 @@ class Mesh(object):
     def __init__(self, mesh_id=None, name=''):
 
         # Initialize Mesh class attributes
-        self._id = None
-        self._name = ''
+        self.id = mesh_id
+        self.name = name
         self._type = 'rectangular'
         self._dimension = None
         self._lower_left = None
         self._upper_right = None
         self._width = None
-
-        self.set_id(mesh_id)
-        self.set_name(name)
 
 
     def __deepcopy__(self, memo):
@@ -311,7 +325,48 @@ class Mesh(object):
             return existing
 
 
-    def set_id(self, mesh_id=None):
+    @property
+    def id(self):
+        return self._id
+
+
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def type(self):
+        return self._type
+
+
+    @property
+    def dimension(self):
+        return self._dimension
+
+
+    @property
+    def lower_left(self):
+        return self._lower_left
+
+
+    @property
+    def upper_right(self):
+        return self._upper_right
+
+
+    @property
+    def width(self):
+        return self._width
+
+
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self._dimension)
+
+
+    @id.setter
+    def id(self, mesh_id):
 
         if mesh_id is None:
             global AUTO_MESH_ID
@@ -332,7 +387,8 @@ class Mesh(object):
             self._id = mesh_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Mesh ID={0} with a non-string ' \
@@ -343,7 +399,8 @@ class Mesh(object):
             self._name = name
 
 
-    def set_type(self, type):
+    @type.setter
+    def type(self, type):
 
         if not is_string(type):
             msg = 'Unable to set Mesh ID={0} for type {1} which is not ' \
@@ -359,7 +416,8 @@ class Mesh(object):
         self._type = type
 
 
-    def set_dimension(self, dimension):
+    @dimension.setter
+    def dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list, np.ndarray)):
             msg = 'Unable to set Mesh ID={0} with dimension {1} which is ' \
@@ -382,7 +440,8 @@ class Mesh(object):
         self._dimension = dimension
 
 
-    def set_lower_left(self, lower_left):
+    @lower_left.setter
+    def lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set Mesh ID={0} with lower_left {1} which is ' \
@@ -406,7 +465,8 @@ class Mesh(object):
         self._lower_left = lower_left
 
 
-    def set_upper_right(self, upper_right):
+    @upper_right.setter
+    def upper_right(self, upper_right):
 
         if not isinstance(upper_right, (tuple, list, np.ndarray)):
             msg = 'Unable to set Mesh ID={0} with upper_right {1} which ' \
@@ -430,7 +490,8 @@ class Mesh(object):
         self._upper_right = upper_right
 
 
-    def set_width(self, width):
+    @width.setter
+    def width(self, width):
 
         if not width is None:
 
@@ -467,10 +528,6 @@ class Mesh(object):
         string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
         return string
-
-
-    def get_num_mesh_cells(self):
-        return np.prod(self._dimension)
 
 
     def get_mesh_xml(self):
@@ -530,11 +587,11 @@ class Tally(object):
     def __init__(self, tally_id=None, label=''):
 
         # Initialize Tally class attributes
-        self._id = None
-        self._label = None
-        self._filters = list()
-        self._nuclides = list()
-        self._scores = list()
+        self.id = tally_id
+        self.label = label
+        self._filters = []
+        self._nuclides = []
+        self._scores = []
         self._estimator = None
 
         self._num_score_bins = 0
@@ -544,9 +601,6 @@ class Tally(object):
         self._sum_sq = None
         self._mean = None
         self._std_dev = None
-
-        self.set_id(tally_id)
-        self.set_label(label)
 
 
     def __deepcopy__(self, memo):
@@ -567,15 +621,15 @@ class Tally(object):
             clone._mean = copy.deepcopy(self._mean, memo)
             clone._std_dev = copy.deepcopy(self._std_dev, memo)
 
-            clone._filters = list()
+            clone._filters = []
             for filter in self._filters:
               clone.add_filter(copy.deepcopy(filter, memo))
 
-            clone._nuclides = list()
+            clone._nuclides = []
             for nuclide in self._nuclides:
               clone.add_nuclide(copy.deepcopy(nuclide, memo))
 
-            clone._scores = list()
+            clone._scores = []
             for score in self._scores:
               clone.add_score(score)
 
@@ -612,7 +666,7 @@ class Tally(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
 
         for filter in self._filters:
             hashable.append((filter._type, tuple(filter._bins)))
@@ -639,7 +693,102 @@ class Tally(object):
         new_tally._std_dev = np.sqrt(self._std_dev**2 + other._std_dev**2)
 
 
-    def set_estimator(self, estimator):
+    @property
+    def id(self):
+        return self._id
+
+
+    @property
+    def label(self):
+        return self._label
+
+
+    @property
+    def filters(self):
+        return self._filters
+
+
+    @property
+    def num_filters(self):
+        return len(self._filters)
+
+
+    @property
+    def nuclides(self):
+        return self._nuclides
+
+
+    @property
+    def num_nuclides(self):
+        return len(self._nuclides)
+
+
+    @property
+    def scores(self):
+        return self._scores
+
+
+    @property
+    def num_scores(self):
+        return len(self._scores)
+
+
+    @property
+    def num_score_bins(self):
+        return self._num_score_bins
+
+
+    @property
+    def num_filter_bins(self):
+
+        num_bins = 1
+
+        for filter in self._filters:
+            num_bins *= filter.num_bins
+
+        return num_bins
+
+
+    @property
+    def num_bins(self):
+        num_bins = self.num_filter_bins
+        num_bins *= self.num_nuclides
+        num_bins *= self.num_score_bins
+        return num_bins
+
+
+    @property
+    def estimator(self):
+        return self._estimator
+
+
+    @property
+    def num_realizations(self):
+        return self._num_realizations
+
+
+    @property
+    def sum(self):
+        return self._sum
+
+
+    @property
+    def sum_sq(self):
+        return self._sum_sq
+
+
+    @property
+    def mean(self):
+        return self._mean
+
+
+    @property
+    def std_dev(self):
+        return self._std_dev
+
+
+    @estimator.setter
+    def estimator(self, estimator):
         if not estimator in ['analog', 'tracklength']:
             msg = 'Unable to set the estimator for Tally ID={0} to {1} since ' \
                   'it is not a valid estimator type'.format(self._id, estimator)
@@ -648,7 +797,8 @@ class Tally(object):
         self._estimator = estimator
 
 
-    def set_id(self, tally_id=None):
+    @id.setter
+    def id(self, tally_id):
 
         if tally_id is None:
             global AUTO_TALLY_ID
@@ -669,7 +819,8 @@ class Tally(object):
             self._id = tally_id
 
 
-    def set_label(self, label=None):
+    @label.setter
+    def label(self, label):
 
         if not is_string(label):
             msg = 'Unable to set name for Tally ID={0} with a non-string ' \
@@ -710,11 +861,13 @@ class Tally(object):
             self._scores.append(score)
 
 
-    def set_num_score_bins(self, num_score_bins):
+    @num_score_bins.setter
+    def num_score_bins(self, num_score_bins):
         self._num_score_bins = num_score_bins
 
 
-    def set_num_realizations(self, num_realizations):
+    @num_realizations.setter
+    def num_realizations(self, num_realizations):
 
         if not is_integer(num_realizations):
             msg = 'Unable to set the number of realizations to {0} for ' \
@@ -803,7 +956,10 @@ class Tally(object):
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
         for nuclide in self._nuclides:
-            string += '{0} '.format(nuclide._name)
+            if isinstance(nuclide, Nuclide):
+                string += '{0} '.format(nuclide._name)
+            else:
+                string += '{0} '.format(nuclide)
 
         string += '\n'
 
@@ -811,39 +967,6 @@ class Tally(object):
         string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self._estimator)
 
         return string
-
-
-    def get_num_filters(self):
-        return len(self._filters)
-
-
-    def get_num_filter_bins(self):
-
-        num_bins = 1
-
-        for filter in self._filters:
-            num_bins *= filter.get_num_bins()
-
-        return num_bins
-
-
-    def get_num_nuclides(self):
-        return len(self._nuclides)
-
-
-    def get_num_scores(self):
-        return len(self._scores)
-
-
-    def get_num_score_bins(self):
-        return self._num_score_bins
-
-
-    def get_num_bins(self):
-        num_bins = self.get_num_filter_bins()
-        num_bins *= self.get_num_nuclides()
-        num_bins *= self.get_num_score_bins()
-        return num_bins
 
 
     def get_tally_xml(self):
@@ -876,7 +999,10 @@ class Tally(object):
 
             nuclides = ''
             for nuclide in self._nuclides:
-                nuclides += '{0} '.format(nuclide._name)
+                if isinstance(nuclide, Nuclide):
+                    nuclides += '{0} '.format(nuclide._name)
+                else:
+                    nuclides += '{0} '.format(nuclide)
 
             subelement = ET.SubElement(element, "nuclides")
             subelement.text = nuclides.rstrip(' ')
@@ -1099,7 +1225,7 @@ class Tally(object):
             tally_group.create_dataset('scores', data=np.array(self._scores))
 
             # Add a string array of the nuclides to the HDF5 group
-            nuclides = list()
+            nuclides = []
 
             for nuclide in self._nuclides:
                 nuclides.append(nuclide._name)
@@ -1134,10 +1260,10 @@ class Tally(object):
             if os.path.exists(filename) and append:
                 tally_results = pickle.load(file(filename, 'rb'))
             else:
-                tally_results = dict()
+                tally_results = {}
 
             # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-{0}'.format(self._id)] = dict()
+            tally_results['Tally-{0}'.format(self._id)] = {}
             tally_group = tally_results['Tally-{0}'.format(self._id)]
 
             # Add basic Tally data to the nested dictionary
@@ -1147,7 +1273,7 @@ class Tally(object):
             tally_group['scores'] = np.array(self._scores)
 
             # Add a string array of the nuclides to the HDF5 group
-            nuclides = list()
+            nuclides = []
 
             for nuclide in self._nuclides:
                 nuclides.append(nuclide._name)
@@ -1155,7 +1281,7 @@ class Tally(object):
             tally_group['nuclides']= np.array(nuclides)
 
             # Create a nested dictionary for the Filters
-            tally_group['filters'] = dict()
+            tally_group['filters'] = {}
             filter_group = tally_group['filters']
 
             for filter in self._filters:
@@ -1176,8 +1302,8 @@ class TalliesFile(object):
     def __init__(self):
 
         # Initialize TalliesFile class attributes
-        self._tallies = list()
-        self._meshes = list()
+        self._tallies = []
+        self._meshes = []
         self._tallies_file = ET.Element("tallies")
 
 

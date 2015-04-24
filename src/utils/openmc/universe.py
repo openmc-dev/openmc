@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+import abc
+from collections import OrderedDict
+from xml.etree import ElementTree as ET
 
 import openmc
 from openmc.checkvalue import *
-from xml.etree import ElementTree as ET
-from collections import OrderedDict
-import numpy as np
-import abc
 
 
 ################################################################################
@@ -14,6 +12,10 @@ import abc
 
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
+
+# A dictionary for storing IDs of cell elements that have already been written,
+# used to optimize the writing process
+WRITTEN_IDS = {}
 
 def reset_auto_cell_id():
     global AUTO_CELL_ID
@@ -25,48 +27,58 @@ class Cell(object):
     def __init__(self, cell_id=None, name=''):
 
         # Initialize Cell class attributes
-        self._id = None
-        self._name = None
+        self.id = cell_id
+        self.name= name
         self._fill = None
         self._type = None
-        self._surfaces = dict()
+        self._surfaces = {}
         self._rotation = None
         self._translation = None
         self._offset = None
 
-        self.set_id(cell_id)
-        self.set_name(name)
+
+    @property
+    def id(self):
+        return self._id
 
 
-    def get_offset(self, path, filter_offset):
-
-        # Get the current element and remove it from the list
-        cell_id = path[0]
-        path = path[1:]
-
-        # If the Cell is filled by a Material
-        if self._type == 'normal':
-            offset = 0
-
-        # If the Cell is filled by a Universe
-        elif self._type == 'fill':
-            offset = self._offset[filter_offset-1]
-            offset += self._fill.get_offset(path, filter_offset)
-
-        # If the Cell is filled by a Lattice
-        else:
-            offset = self._fill.get_offset(path, filter_offset)
-
-        return offset
-
-        # Make a recursive call to the Universe filling this Cell
-        offset = self._cells[cell_id].get_offset(path, filter_offset)
-
-        # Return the offset computed at all nested Universe levels
-        return offset
+    @property
+    def name(self):
+        return self._name
 
 
-    def set_id(self, cell_id=None):
+    @property
+    def fill(self):
+        return self._fill
+
+
+    @property
+    def type(self):
+        return self._fill
+
+
+    @property
+    def surfaces(self):
+        return self._surfaces
+
+
+    @property
+    def rotation(self):
+        return self._rotation
+
+
+    @property
+    def translation(self):
+        return self._translation
+
+
+    @property
+    def offset(self):
+        return self._offset
+
+
+    @id.setter
+    def id(self, cell_id):
 
         if cell_id is None:
             global AUTO_CELL_ID
@@ -87,7 +99,8 @@ class Cell(object):
             self._id = cell_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not isinstance(name, str):
             msg = 'Unable to set name for Cell ID={0} with a non-string ' \
@@ -98,7 +111,8 @@ class Cell(object):
             self._name = name
 
 
-    def set_fill(self, fill):
+    @fill.setter
+    def fill(self, fill):
 
         if not isinstance(fill, (openmc.Material, Universe, Lattice)) \
             and fill != 'void':
@@ -116,6 +130,67 @@ class Cell(object):
             self._type = 'normal'
         else:
             self._type = 'normal'
+
+
+    @rotation.setter
+    def rotation(self, rotation):
+
+        if not isinstance(rotation, (tuple, list, np.ndarray)):
+            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(rotation, self._id)
+            raise ValueError(msg)
+
+        elif len(rotation) != 3:
+            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
+                  'it does not contain 3 values'.format(rotation, self._id)
+            raise ValueError(msg)
+
+        for axis in rotation:
+
+            if not is_integer(axis) and not is_float(axis):
+                msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
+                      'it is not an integer or floating point ' \
+                      'value'.format(axis, self._id)
+                raise ValueError(msg)
+
+            self._rotation = rotation
+
+
+    @translation.setter
+    def translation(self, translation):
+
+        if not isinstance(translation, (tuple, list, np.ndarray)):
+            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(translation, self._id)
+            raise ValueError(msg)
+
+        elif len(translation) != 3:
+            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
+                  'it does not contain 3 values'.format(translation, self._id)
+            raise ValueError(msg)
+
+        for axis in translation:
+            if not is_integer(axis) and not is_float(axis):
+                msg = 'Unable to add translation {0} to Cell ID={1} since ' \
+                      'it is not an integer or floating point ' \
+                      'value'.format(axis, self._id)
+                raise ValueError(msg)
+
+        self._translation = translation
+
+
+    @offset.setter
+    def offset(self, offset):
+
+        if not isinstance(offset, (tuple, list, np.ndarray)):
+            msg = 'Unable to set offset {0} to Cell ID={1} since ' \
+                  'it is not a Python tuple/list or NumPy ' \
+                  'array'.format(offset, self._id)
+            raise ValueError(msg)
+
+        self._offset = offset
 
 
     def add_surface(self, surface, halfspace):
@@ -165,66 +240,37 @@ class Cell(object):
             self.add_surface(surface)
 
 
-    def set_rotation(self, rotation):
+    def get_offset(self, path, filter_offset):
 
-        if not isinstance(rotation, (tuple, list, np.ndarray)):
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(rotation, self._id)
-            raise ValueError(msg)
+        # Get the current element and remove it from the list
+        cell_id = path[0]
+        path = path[1:]
 
-        elif len(rotation) != 3:
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(rotation, self._id)
-            raise ValueError(msg)
+        # If the Cell is filled by a Material
+        if self._type == 'normal':
+            offset = 0
 
-        for axis in rotation:
+        # If the Cell is filled by a Universe
+        elif self._type == 'fill':
+            offset = self._offset[filter_offset-1]
+            offset += self._fill.get_offset(path, filter_offset)
 
-            if not is_integer(axis) and not is_float(axis):
-                msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(axis, self._id)
-                raise ValueError(msg)
+        # If the Cell is filled by a Lattice
+        else:
+            offset = self._fill.get_offset(path, filter_offset)
 
-            self._rotation = rotation
+        return offset
 
+        # Make a recursive call to the Universe filling this Cell
+        offset = self._cells[cell_id].get_offset(path, filter_offset)
 
-    def set_translation(self, translation):
-
-        if not isinstance(translation, (tuple, list, np.ndarray)):
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(translation, self._id)
-            raise ValueError(msg)
-
-        elif len(translation) != 3:
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(translation, self._id)
-            raise ValueError(msg)
-
-        for axis in translation:
-            if not is_integer(axis) and not is_float(axis):
-                msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(axis, self._id)
-                raise ValueError(msg)
-
-        self._translation = translation
-
-    def set_offset(self, offset):
-
-        if not isinstance(offset, (tuple, list, np.ndarray)):
-            msg = 'Unable to set offset {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(offset, self._id)
-            raise ValueError(msg)
-
-        self._offset = offset
+        # Return the offset computed at all nested Universe levels
+        return offset
 
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         if self._type != 'void':
             nuclides.update(self._fill.get_all_nuclides())
@@ -234,7 +280,7 @@ class Cell(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
 
         if self._type == 'fill' or self._type == 'lattice':
             cells.update(self._fill.get_all_cells())
@@ -244,7 +290,7 @@ class Cell(object):
 
     def get_all_universes(self):
 
-        universes = dict()
+        universes = {}
 
         if self._type == 'fill':
             universes[self._fill._id] = self._fill
@@ -372,23 +418,36 @@ class Universe(object):
     def __init__(self, universe_id=None, name=''):
 
         # Initialize Cell class attributes
-        self._id = None
-        self._name = None
+        self.id = universe_id
+        self.name = name
 
         # Keys     - Cell IDs
         # Values - Cells
-        self._cells = dict()
+        self._cells = {}
 
         # Keys     - Cell IDs
         # Values - Offsets
         self._cell_offsets = OrderedDict()
         self._num_regions = 0
 
-        self.set_id(universe_id)
-        self.set_name(name)
+
+    @property
+    def id(self):
+        return self._id
 
 
-    def set_id(self, universe_id=None):
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def cells(self):
+        return self._cells
+
+
+    @id.setter
+    def id(self, universe_id):
 
         if universe_id is None:
             global AUTO_UNIVERSE_ID
@@ -410,7 +469,8 @@ class Universe(object):
             self._id = universe_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Universe ID={0} with a non-string ' \
@@ -480,7 +540,7 @@ class Universe(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
@@ -491,7 +551,7 @@ class Universe(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
 
         # Add this Universe's cells to the dictionary
         cells.update(self._cells)
@@ -508,7 +568,7 @@ class Universe(object):
         # Get all Cells in this Universe
         cells = self.get_all_cells()
 
-        universes = dict()
+        universes = {}
 
         # Append all Universes containing each Cell to the dictionary
         for cell_id, cell in cells.items():
@@ -534,12 +594,9 @@ class Universe(object):
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
 
-            # Determine if XML element already contains subelement for this Cell
-            path = './cell[@id=\'{0}\']'.format(cell_id)
-            test = xml_element.find(path)
-
-            # If the element does not contain the Cell subelement, then add it
-            if test is None:
+            # If the cell was not already written, write it
+            if not cell_id in WRITTEN_IDS:
+                WRITTEN_IDS[cell_id] = None
 
                 # Create XML subelement for this Cell
                 cell_subelement = cell.create_xml_subelement(xml_element)
@@ -563,17 +620,40 @@ class Lattice(object):
     def __init__(self, lattice_id=None, name=''):
 
         # Initialize Lattice class attributes
-        self._id = None
-        self._name = None
+        self.id = lattice_id
+        self.name = name
         self._pitch = None
         self._outer = None
         self._universes = None
 
-        self.set_id(lattice_id)
-        self.set_name(name)
+
+    @property
+    def id(self):
+        return self._id
 
 
-    def set_id(self, lattice_id=None):
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def pitch(self):
+        return self._pitch
+
+
+    @property
+    def outer(self):
+        return self._outer
+
+
+    @property
+    def universes(self):
+        return self._universes
+
+
+    @id.setter
+    def id(self, lattice_id):
 
         if lattice_id is None:
             global AUTO_UNIVERSE_ID
@@ -594,7 +674,8 @@ class Lattice(object):
             self._id = lattice_id
 
 
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Lattice ID={0} with a non-string ' \
@@ -605,7 +686,8 @@ class Lattice(object):
             self._name = name
 
 
-    def set_outer(self, outer):
+    @outer.setter
+    def outer(self, outer):
 
         if not isinstance(outer, Universe):
             msg = 'Unable to set Lattice ID={0} outer universe to {1} ' \
@@ -615,7 +697,8 @@ class Lattice(object):
         self._outer = outer
 
 
-    def set_universes(self, universes):
+    @universes.setter
+    def universes(self, universes):
 
         if not isinstance(universes, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} universes to {1} since ' \
@@ -629,7 +712,7 @@ class Lattice(object):
     def get_unique_universes(self):
 
         unique_universes = np.unique(self._universes.ravel())
-        universes = dict()
+        universes = {}
 
         for universe in unique_universes:
             universes[universe._id] = universe
@@ -639,7 +722,7 @@ class Lattice(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -653,7 +736,7 @@ class Lattice(object):
 
     def get_all_cells(self):
 
-        cells = dict()
+        cells = {}
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
@@ -666,7 +749,7 @@ class Lattice(object):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
-        all_universes = dict()
+        all_universes = {}
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -700,7 +783,23 @@ class RectLattice(Lattice):
         self._offsets = None
 
 
-    def set_dimension(self, dimension):
+    @property
+    def dimension(self):
+        return self._dimension
+
+
+    @property
+    def lower_left(self):
+        return self._lower_left
+
+
+    @property
+    def offsets(self):
+        return self._offsets
+
+
+    @dimension.setter
+    def dimension(self, dimension):
 
         if not isinstance(dimension, (tuple, list, np.ndarray)):
             msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
@@ -731,7 +830,8 @@ class RectLattice(Lattice):
         self._dimension = dimension
 
 
-    def set_lower_left(self, lower_left):
+    @lower_left.setter
+    def lower_left(self, lower_left):
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
             msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
@@ -757,7 +857,8 @@ class RectLattice(Lattice):
         self._lower_left = lower_left
 
 
-    def set_offsets(self, offsets):
+    @offsets.setter
+    def offsets(self, offsets):
 
         if not isinstance(offsets, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
@@ -768,7 +869,8 @@ class RectLattice(Lattice):
         self._offsets = offsets
 
 
-    def set_pitch(self, pitch):
+    @Lattice.pitch.setter
+    def pitch(self, pitch):
 
         if not isinstance(pitch, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
@@ -985,7 +1087,23 @@ class HexLattice(Lattice):
         self._center = None
 
 
-    def set_num_rings(self, num_rings):
+    @property
+    def num_rings(self):
+        return self._num_rings
+
+
+    @property
+    def num_axial(self):
+        return self._num_axial
+
+
+    @property
+    def center(self):
+        return self._center
+
+
+    @num_rings.setter
+    def num_rings(self, num_rings):
 
         if not is_integer(num_rings) and num_rings < 1:
             msg = 'Unable to set HexLattice ID={0} number of rings to {1} ' \
@@ -995,7 +1113,8 @@ class HexLattice(Lattice):
         self._num_rings = num_rings
 
 
-    def set_num_axial(self, num_axial):
+    @num_axial.setter
+    def num_axial(self, num_axial):
 
         if not is_integer(num_axial) and num_axial < 1:
             msg = 'Unable to set HexLattice ID={0} number of axial to {1} ' \
@@ -1005,7 +1124,8 @@ class HexLattice(Lattice):
         self._num_axial = num_axial
 
 
-    def set_center(self, center):
+    @center.setter
+    def center(self, center):
 
         if not isinstance(center, (tuple, list, np.ndarray)):
             msg = 'Unable to set HexLattice ID={0} dimension to {1} since ' \
@@ -1030,7 +1150,8 @@ class HexLattice(Lattice):
         self._center = center
 
 
-    def set_pitch(self, pitch):
+    @Lattice.pitch.setter
+    def pitch(self, pitch):
 
         if not isinstance(pitch, (tuple, list, np.ndarray)):
             msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
@@ -1060,8 +1181,11 @@ class HexLattice(Lattice):
         self._pitch = pitch
 
 
-    def set_universes(self, universes):
-        super(HexLattice, self).set_universes(universes)
+    @Lattice.universes.setter
+    def universes(self, universes):
+
+        # Call Lattice.universes parent class setter property
+        Lattice.universes.fset(self, universes)
 
         # NOTE: This routine assumes that the user creates a "ragged" list of
         # lists, where each sub-list corresponds to one ring of Universes.
@@ -1084,7 +1208,7 @@ class HexLattice(Lattice):
 
         # Set the number of axial positions.
         if n_dims == 3:
-            self.set_num_axial(self._universes.shape[0])
+            self.num_axial = self._universes.shape[0]
 
         else:
             self._num_axial = None
@@ -1092,7 +1216,7 @@ class HexLattice(Lattice):
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
         if n_dims == 3:
-            self.set_num_rings(len(self._universes[0]))
+            self.num_rings = len(self._universes[0])
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
@@ -1100,7 +1224,7 @@ class HexLattice(Lattice):
                     raise ValueError(msg)
 
         else:
-            self.set_num_rings(self._universes.shape[0])
+            self.num_rings = self._universes.shape[0]
 
         # Make sure there are the correct number of elements in each ring.
         if n_dims == 3:

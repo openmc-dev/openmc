@@ -38,7 +38,7 @@ iron.add_nuclide(fe56, 1.)
 
 # Instantiate a MaterialsFile, register all Materials, and export to XML
 materials_file = openmc.MaterialsFile()
-materials_file.set_default_xs('71c')
+materials_file.default_xs = '71c'
 materials_file.add_materials([moderator, fuel, iron])
 materials_file.export_to_xml()
 
@@ -54,10 +54,10 @@ bottom = openmc.YPlane(surface_id=3, y0=-4, name='bottom')
 top = openmc.YPlane(surface_id=4, y0=4, name='top')
 fuel_surf = openmc.ZCylinder(surface_id=5, x0=0, y0=0, R=0.4)
 
-left.set_boundary_type('vacuum')
-right.set_boundary_type('vacuum')
-top.set_boundary_type('vacuum')
-bottom.set_boundary_type('vacuum')
+left.boundary_type = 'vacuum'
+right.boundary_type = 'vacuum'
+top.boundary_type = 'vacuum'
+bottom.boundary_type = 'vacuum'
 
 # Instantiate Cells
 cell1 = openmc.Cell(cell_id=1, name='Cell 1')
@@ -78,11 +78,11 @@ cell5.add_surface(fuel_surf, halfspace=-1)
 cell6.add_surface(fuel_surf, halfspace=+1)
 
 # Register Materials with Cells
-cell2.set_fill(fuel)
-cell3.set_fill(moderator)
-cell4.set_fill(moderator)
-cell5.set_fill(iron)
-cell6.set_fill(moderator)
+cell2.fill = fuel
+cell3.fill = moderator
+cell4.fill = moderator
+cell5.fill = iron
+cell6.fill = moderator
 
 # Instantiate Universe
 univ1 = openmc.Universe(universe_id=1)
@@ -98,24 +98,24 @@ root.add_cell(cell1)
 
 # Instantiate a Lattice
 lattice = openmc.HexLattice(lattice_id=5)
-lattice.set_center([0., 0., 0.])
-lattice.set_pitch([1., 2.])
-lattice.set_universes([
-     [ [univ2] + [univ3]*11, [univ2] + [univ3]*5, [univ3] ],
-     [ [univ2] + [univ1]*11, [univ2] + [univ1]*5, [univ1] ],
-     [ [univ2] + [univ3]*11, [univ2] + [univ3]*5, [univ3] ]])
-lattice.set_outer(univ2)
+lattice.center = [0., 0., 0.]
+lattice.pitch = [1., 2.]
+lattice.universes = \
+    [ [ [univ2] + [univ3]*11, [univ2] + [univ3]*5, [univ3] ],
+      [ [univ2] + [univ1]*11, [univ2] + [univ1]*5, [univ1] ],
+      [ [univ2] + [univ3]*11, [univ2] + [univ3]*5, [univ3] ] ]
+lattice.outer = univ2
 
 # Fill Cell with the Lattice
-cell1.set_fill(lattice)
+cell1.fill = lattice
 
 # Instantiate a Geometry and register the root Universe
 geometry = openmc.Geometry()
-geometry.set_root_universe(root)
+geometry.root_universe = root
 
 # Instantiate a GeometryFile, register Geometry, and export to XML
 geometry_file = openmc.GeometryFile()
-geometry_file.set_geometry(geometry)
+geometry_file.geometry = geometry
 geometry_file.export_to_xml()
 
 
@@ -125,9 +125,9 @@ geometry_file.export_to_xml()
 
 # Instantiate a SettingsFile, set all runtime parameters, and export to XML
 settings_file = openmc.SettingsFile()
-settings_file.set_batches(batches)
-settings_file.set_inactive(inactive)
-settings_file.set_particles(particles)
+settings_file.batches = batches
+settings_file.inactive = inactive
+settings_file.particles = particles
 settings_file.set_source_space('box', [-1, -1, -1, 1, 1, 1])
 settings_file.export_to_xml()
 
@@ -137,19 +137,19 @@ settings_file.export_to_xml()
 ###############################################################################
 
 plot_xy = openmc.Plot(plot_id=1)
-plot_xy.set_filename('plot_xy')
-plot_xy.set_origin([0, 0, 0])
-plot_xy.set_width([6, 6])
-plot_xy.set_pixels([400, 400])
-plot_xy.set_color('mat')
+plot_xy.filename = 'plot_xy'
+plot_xy.origin = [0, 0, 0]
+plot_xy.width = [6, 6]
+plot_xy.pixels = [400, 400]
+plot_xy.color = 'mat'
 
 plot_yz = openmc.Plot(plot_id=2)
-plot_yz.set_filename('plot_yz')
-plot_yz.set_basis('yz')
-plot_yz.set_origin([0, 0, 0])
-plot_yz.set_width([8, 8])
-plot_yz.set_pixels([400, 400])
-plot_yz.set_color('mat')
+plot_yz.filename = 'plot_yz'
+plot_yz.basis = 'yz'
+plot_yz.origin = [0, 0, 0]
+plot_yz.width = [8, 8]
+plot_yz.pixels = [400, 400]
+plot_yz.color = 'mat'
 
 # Instantiate a PlotsFile, add Plot, and export to XML
 plot_file = openmc.PlotsFile()

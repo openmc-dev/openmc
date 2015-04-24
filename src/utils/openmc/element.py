@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 
 class Element(object):
@@ -11,10 +9,10 @@ class Element(object):
         self._xs = None
 
         # Set the Material class attributes
-        self.set_name(name)
+        self.name = name
 
         if not xs is None:
-            self.set_xs(xs)
+            self.xs = xs
 
 
     def __eq__(self, element2):
@@ -36,23 +34,24 @@ class Element(object):
 
 
     def __hash__(self):
-        hashable = list()
+        hashable = []
         hashable.append(self._name)
         hashable.append(self._xs)
         return hash(tuple(hashable))
 
 
-    def set_name(self, name):
-
-        if not is_string(name):
-            msg = 'Unable to set name for Element with a non-string ' \
-                        'value {0}'.format(name)
-            raise ValueError(msg)
-
-        self._name = name
+    @property
+    def xs(self):
+        return self._xs
 
 
-    def set_xs(self, xs):
+    @property
+    def name(self):
+        return self._name
+
+
+    @xs.setter
+    def xs(self, xs):
 
         if not is_string(xs):
             msg = 'Unable to set cross-section identifier xs for Element ' \
@@ -60,6 +59,17 @@ class Element(object):
             raise ValueError(msg)
 
         self._xs = xs
+
+
+    @name.setter
+    def name(self, name):
+
+        if not is_string(name):
+            msg = 'Unable to set name for Element with a non-string ' \
+                        'value {0}'.format(name)
+            raise ValueError(msg)
+
+        self._name = name
 
 
     def __repr__(self):

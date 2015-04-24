@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from openmc.checkvalue import *
 
 
@@ -13,10 +11,10 @@ class Nuclide(object):
         self._zaid = None
 
         # Set the Material class attributes
-        self.set_name(name)
+        self.name = name
 
         if not xs is None:
-            self.set_xs(xs)
+            self.xs = xs
 
 
     def __eq__(self, nuclide2):
@@ -38,13 +36,26 @@ class Nuclide(object):
 
 
     def __hash__(self):
-        hashable = list()
-        hashable.append(self._name)
-        hashable.append(self._xs)
-        return hash(tuple(hashable))
+        return hash((self._name, self._xs))
 
 
-    def set_name(self, name):
+    @property
+    def name(self):
+        return self._name
+
+
+    @property
+    def xs(self):
+        return self._xs
+
+
+    @property
+    def zaid(self):
+        return self._zaid
+
+
+    @name.setter
+    def name(self, name):
 
         if not is_string(name):
             msg = 'Unable to set name for Nuclide with a non-string ' \
@@ -54,7 +65,8 @@ class Nuclide(object):
         self._name = name
 
 
-    def set_xs(self, xs):
+    @xs.setter
+    def xs(self, xs):
 
         if not is_string(xs):
             msg = 'Unable to set cross-section identifier xs for Nuclide ' \
@@ -64,7 +76,8 @@ class Nuclide(object):
         self._xs = xs
 
 
-    def set_zaid(self, zaid):
+    @zaid.setter
+    def zaid(self, zaid):
 
         if not is_integer(zaid):
             msg = 'Unable to set zaid for Nuclide ' \

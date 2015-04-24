@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+from xml.etree import ElementTree as ET
 
 import openmc
 from openmc.clean_xml import *
-from xml.etree import ElementTree as ET
+
 
 def reset_auto_ids():
     openmc.reset_auto_material_id()
@@ -17,7 +17,29 @@ class Geometry(object):
 
         # Initialize Geometry class attributes
         self._root_universe = None
-        self._offsets = dict()
+        self._offsets = {}
+
+
+    @property
+    def root_universe(self):
+        return self._root_universe
+
+
+    @root_universe.setter
+    def root_universe(self, root_universe):
+
+        if not isinstance(root_universe, openmc.Universe):
+            msg = 'Unable to add root Universe {0} to Geometry since ' \
+                  'it is not a Universe'.format(root_universe)
+            raise ValueError(msg)
+
+        elif root_universe._id != 0:
+            msg = 'Unable to add root Universe {0} to Geometry since ' \
+                  'it has ID={1} instead of ' \
+                  'ID=0'.format(root_universe, root_universe._id)
+            raise ValueError(msg)
+
+        self._root_universe = root_universe
 
 
     def get_offset(self, path, filter_offset):
@@ -63,7 +85,7 @@ class Geometry(object):
 
     def get_all_nuclides(self):
 
-        nuclides = dict()
+        nuclides = {}
         materials = self.get_all_materials()
 
         for material in materials:
@@ -111,22 +133,6 @@ class Geometry(object):
         return list(material_universes)
 
 
-    def set_root_universe(self, root_universe):
-
-        if not isinstance(root_universe, openmc.Universe):
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it is not a Universe'.format(root_universe)
-            raise ValueError(msg)
-
-        elif root_universe._id != 0:
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it has ID={1} instead of ' \
-                  'ID=0'.format(root_universe, root_universe._id)
-            raise ValueError(msg)
-
-        self._root_universe = root_universe
-
-
 
 class GeometryFile(object):
 
@@ -137,7 +143,13 @@ class GeometryFile(object):
         self._geometry_file = ET.Element("geometry")
 
 
-    def set_geometry(self, geometry):
+    @property
+    def geometry(self):
+        return self._geometry
+
+
+    @geometry.setter
+    def geometry(self, geometry):
 
         if not isinstance(geometry, Geometry):
             msg = 'Unable to set the Geometry to {0} for the GeometryFile ' \

@@ -21,7 +21,6 @@ module mpiio_interface
     module procedure mpi_write_integer_4Darray
     module procedure mpi_write_long
     module procedure mpi_write_string
-    !module procedure mpi_write_string_1Darray
   end interface mpi_write_data
 
   ! Generic HDF5 read procedure interface
@@ -38,7 +37,6 @@ module mpiio_interface
     module procedure mpi_read_integer_4Darray
     module procedure mpi_read_long
     module procedure mpi_read_string
-    !module procedure mpi_read_string_1Darray
   end interface mpi_read_data
 
 contains

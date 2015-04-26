@@ -26,10 +26,9 @@ contains
 
     integer :: i ! index in nuclides array
     integer :: j ! index in materials array
-    type(ListReal), pointer, save :: list => null()
-    type(Nuclide),  pointer, save :: nuc  => null()
-    type(Material), pointer, save :: mat  => null()
-    !$omp threadprivate(list, nuc, mat)
+    type(ListReal) :: list
+    type(Nuclide),  pointer :: nuc
+    type(Material), pointer :: mat
 
     call write_message("Creating unionized energy grid...", 5)
 
@@ -52,7 +51,6 @@ contains
 
       ! delete linked list and dictionary
       call list % clear()
-      deallocate(list)
     end do
 
     ! Set pointers to unionized energy grid for each nuclide
@@ -72,7 +70,7 @@ contains
     real(8) :: E_max                 ! Maximum energy in MeV
     real(8) :: E_min                 ! Minimum energy in MeV
     real(8), allocatable :: umesh(:) ! Equally log-spaced energy grid
-    type(Nuclide), pointer :: nuc => null()
+    type(Nuclide), pointer :: nuc
 
     ! Set minimum/maximum energies
     E_max = 20.0_8
@@ -116,7 +114,7 @@ contains
 
   subroutine add_grid_points(list, energy)
 
-    type(ListReal), pointer :: list
+    type(ListReal) :: list
     real(8), intent(in) :: energy(:)
 
     integer :: i       ! index in energy array
@@ -126,16 +124,6 @@ contains
 
     i = 1
     n = size(energy)
-
-    ! If the original list is empty, we need to allocate the first element and
-    ! store first energy point
-    if (.not. associated(list)) then
-      allocate(list)
-      do i = 1, n
-        call list % append(energy(i))
-      end do
-      return
-    end if
 
     ! Set current index to beginning of the list
     current = 1
@@ -189,8 +177,8 @@ contains
     integer :: index_e      ! index on union energy grid
     real(8) :: union_energy ! energy on union grid
     real(8) :: energy       ! energy on nuclide grid
-    type(Nuclide),  pointer :: nuc => null()
-    type(Material), pointer :: mat => null()
+    type(Nuclide),  pointer :: nuc
+    type(Material), pointer :: mat
 
     do k = 1, n_materials
       mat => materials(k)

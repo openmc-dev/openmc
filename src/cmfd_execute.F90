@@ -1,4 +1,4 @@
-module cmfd_execute 
+module cmfd_execute
 
 !==============================================================================
 ! CMFD_EXECUTE -- This module is the highest level cmfd module that controls the
@@ -20,10 +20,8 @@ contains
   subroutine execute_cmfd()
 
     use cmfd_data,              only: set_up_cmfd
-    use cmfd_power_solver,      only: cmfd_power_execute
-    use cmfd_jfnk_solver,       only: cmfd_jfnk_execute
     use cmfd_solver,            only: cmfd_solver_execute
-    use error,                  only: warning, fatal_error 
+    use error,                  only: warning, fatal_error
 
     ! CMFD single processor on master
     if (master) then
@@ -31,35 +29,18 @@ contains
       ! Start cmfd timer
       call time_cmfd % start()
 
-      ! Create cmfd data from OpenMC tallies 
+      ! Create cmfd data from OpenMC tallies
       call set_up_cmfd()
 
-      ! Process solver options
-      call process_cmfd_options()
-
       ! Call solver
-#ifdef PETSC
-      if (trim(cmfd_solver_type) == 'power') then
-        call cmfd_power_execute()
-      elseif (trim(cmfd_solver_type) == 'jfnk') then
-        call cmfd_jfnk_execute()
-      else
-        call fatal_error('solver type became invalid after input processing') 
-      end if
-#else
       call cmfd_solver_execute()
-#endif
 
       ! Save k-effective
       cmfd % k_cmfd(current_batch) = cmfd % keff
 
       ! check to perform adjoint on last batch
       if (current_batch == n_batches .and. cmfd_run_adjoint) then
-        if (trim(cmfd_solver_type) == 'power') then
-          call cmfd_power_execute(adjoint = .true.)
-        elseif (trim(cmfd_solver_type) == 'jfnk') then
-          call cmfd_jfnk_execute(adjoint = .true.)
-        end if
+        call cmfd_solver_execute(adjoint=.true.)
       end if
 
     end if
@@ -102,26 +83,6 @@ contains
 
   end subroutine cmfd_init_batch
 
-!==============================================================================
-! PROCESS_CMFD_OPTIONS processes user options that interface with PETSc 
-!==============================================================================
-
-  subroutine process_cmfd_options()
-
-#ifdef PETSC
-    use global,       only: cmfd_snes_monitor, cmfd_ksp_monitor, mpi_err
-
-    ! Check for snes monitor
-    if (cmfd_snes_monitor) call PetscOptionsSetValue("-snes_monitor", &
-         "stdout", mpi_err)
-
-    ! Check for ksp monitor
-    if (cmfd_ksp_monitor) call PetscOptionsSetValue("-ksp_monitor", &
-         "stdout", mpi_err)
-#endif
-
-    end subroutine process_cmfd_options
-
 !===============================================================================
 ! CALC_FISSION_SOURCE calculates the cmfd fission source
 !===============================================================================
@@ -130,7 +91,7 @@ contains
 
     use constants,  only: CMFD_NOACCEL, ZERO, TWO
     use global,     only: cmfd, cmfd_coremap, master, entropy_on, current_batch
-    use string,     only: to_str 
+    use string,     only: to_str
 
 #ifdef MPI
     use global,     only: mpi_err
@@ -291,11 +252,11 @@ contains
     ng = cmfd % indices(4)
 
     ! allocate arrays in cmfd object (can take out later extend to multigroup)
-    if (.not.allocated(cmfd%sourcecounts)) then 
+    if (.not.allocated(cmfd%sourcecounts)) then
       allocate(cmfd%sourcecounts(ng,nx,ny,nz))
       cmfd % sourcecounts = 0
     end if
-    if (.not.allocated(cmfd % weightfactors)) then 
+    if (.not.allocated(cmfd % weightfactors)) then
       allocate(cmfd % weightfactors(ng,nx,ny,nz))
       cmfd % weightfactors = ONE
     end if
@@ -303,7 +264,7 @@ contains
     ! Compute new weight factors
     if (new_weights) then
 
-      ! Set weight factors to a default 1.0 
+      ! Set weight factors to a default 1.0
       cmfd%weightfactors = ONE
 
       ! Count bank sites in mesh and reverse due to egrid structure

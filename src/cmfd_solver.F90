@@ -178,23 +178,19 @@ contains
   subroutine compute_adjoint()
 
     use error,   only: fatal_error
-#ifdef PETSC
     use global,  only: cmfd_write_matrices
-#endif
 
-#ifdef PETSC
     ! Transpose matrices
     call loss % transpose()
     call prod % transpose()
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call loss % write_petsc_binary('adj_lossmat.bin')
-      call prod % write_petsc_binary('adj_prodmat.bin')
+      call loss % write('adj_loss.dat')
+      call prod % write('adj_prod.dat')
     end if
-#else
-    call fatal_error('Adjoint calculations only allowed with PETSc')
-#endif
+
+    call fatal_error('Adjoint calculations temporarily disabled')
 
   end subroutine compute_adjoint
 
@@ -743,13 +739,11 @@ contains
     ! Write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        filename = 'adj_fluxvec.bin'
+        filename = 'adj_fluxvec.dat'
       else
-        filename = 'fluxvec.bin'
+        filename = 'fluxvec.dat'
       end if
-#ifdef PETSC
-      call phi_n % write_petsc_binary(filename)
-#endif
+      ! TODO: call phi_n % write(filename)
     end if
 
   end subroutine extract_results

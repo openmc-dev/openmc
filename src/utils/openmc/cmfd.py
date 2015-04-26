@@ -514,8 +514,8 @@ class CMFDFile(object):
         self._norm = norm
 
 
-    @snes_monitor.setter
-    def snum_flushes(self, num_flushes):
+    @num_flushes.setter
+    def num_flushes(self, num_flushes):
 
         if not is_integer(num_flushes):
             msg = 'Unable to set the CMFD number of flushes to {0} ' \

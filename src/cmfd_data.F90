@@ -79,7 +79,7 @@ contains
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject),    pointer :: t => null() ! pointer for tally object
+    class(TallyObject),   pointer :: t => null() ! pointer for tally object
     type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
@@ -93,7 +93,7 @@ contains
     cmfd % openmc_src = ZERO
 
     ! Associate tallies and mesh
-    t => cmfd_tallies(1)
+    t => cmfd_tallies(1) % obj
     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
     m => meshes(i_mesh)
 
@@ -108,7 +108,7 @@ contains
    TAL: do ital = 1, n_cmfd_tallies
 
      ! Associate tallies and mesh
-     t => cmfd_tallies(ital)
+     t => cmfd_tallies(ital) % obj
      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
      m => meshes(i_mesh)
 

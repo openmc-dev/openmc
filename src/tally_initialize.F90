@@ -2,7 +2,8 @@ module tally_initialize
 
   use constants
   use global
-  use tally_header, only: TallyObject, TallyMapElement, TallyMapItem
+  use tally_header, only: TallyObject, TallyMapElement, TallyMapItem, &
+                          TallyContainer
 
   implicit none
   private
@@ -38,11 +39,11 @@ contains
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
     integer :: max_n_filters = 0 ! maximum number of filters
-    type(TallyObject), pointer :: t => null()
+    class(TallyObject), pointer :: t => null()
 
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
-      t => tallies(i)
+      t => tallies(i) % obj
 
       ! Allocate stride and matching_bins arrays
       allocate(t % stride(t % n_filters))
@@ -88,7 +89,7 @@ contains
     integer :: k    ! loop index for bins
     integer :: bin  ! filter bin entries
     integer :: type ! type of tally filter
-    type(TallyObject), pointer :: t => null()
+    class(TallyObject), pointer :: t => null()
 
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters
@@ -103,7 +104,7 @@ contains
 
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
-      t => tallies(i)
+      t => tallies(i) % obj
 
       ! No need to set up tally maps for surface current tallies
       if (t % type == TALLY_SURFACE_CURRENT) cycle
@@ -176,7 +177,7 @@ contains
     character(*), intent(in) :: tally_group ! name of tally group
     integer,      intent(in) :: n           ! number of tallies to add
 
-    type(TallyObject), allocatable :: temp(:) ! temporary tallies array
+    type(TallyContainer), allocatable :: temp(:) ! temporary tallies array
 
     if (n_tallies == 0) then
       ! Allocate tallies array

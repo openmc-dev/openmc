@@ -1966,7 +1966,8 @@ contains
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Yn/Pn tally
-    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
+    integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn
+                             ! tally
     integer :: n_bins        ! Total new bins for this score
     integer :: n_order       ! Moment order requested
     integer :: n_order_pos   ! Position of Scattering order in score name string
@@ -1981,7 +1982,7 @@ contains
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(ElemKeyValueCI), pointer :: pair_list => null()
-    type(TallyObject),    pointer :: t => null()
+    class(TallyObject),   pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
     type(Node), pointer :: doc => null()
@@ -2176,11 +2177,12 @@ contains
     ! READ TALLY DATA
 
     READ_TALLIES: do i = 1, n_user_tallies
-      ! Get pointer to tally
-      t => tallies(i)
-
       ! Get pointer to tally xml node
       call get_list_item(node_tal_list, i, node_tal)
+
+      ! Get pointer to tally
+      allocate(TallyObject :: tallies(i) % obj)
+      t => tallies(i) % obj
 
       ! Set tally type to volume by default
       t % type = TALLY_VOLUME
@@ -2597,6 +2599,7 @@ contains
               call fatal_error("Cannot tally flux with an outgoing energy &
                    &filter.")
             end if
+
           case ('flux-yn')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -3195,8 +3198,8 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              i_mesh = cmfd_tallies(1) % &
-                  filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
+              i_mesh = cmfd_tallies(1) % obj % &
+                  filters(cmfd_tallies(1) % obj % find_filter(FILTER_MESH)) % &
                   int_bins(1)
               pl % meshlines_mesh => meshes(i_mesh)
 

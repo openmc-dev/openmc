@@ -13,7 +13,8 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
-  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use tally_header,     only: TallyObject, TallyResult, TallyMapItem, &
+                              TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -34,13 +35,13 @@ contains
 
   subroutine score_general(p, t, start_index, filter_index, i_nuclide, &
        atom_density, flux)
-    type(Particle),             intent(in)    :: p
-    type(TallyObject), pointer, intent(inout) :: t
-    integer,                    intent(in)    :: start_index
-    integer,                    intent(in)    :: i_nuclide
-    integer,                    intent(in)    :: filter_index   ! for % results
-    real(8),                    intent(in)    :: flux           ! flux estimate
-    real(8),                    intent(in)    :: atom_density   ! atom/b-cm
+    type(Particle),              intent(in)    :: p
+    class(TallyObject), pointer, intent(inout) :: t
+    integer,                     intent(in)    :: start_index
+    integer,                     intent(in)    :: i_nuclide
+    integer,                     intent(in)    :: filter_index   ! for % results
+    real(8),                     intent(in)    :: flux           ! flux estimate
+    real(8),                     intent(in)    :: atom_density   ! atom/b-cm
 
     integer :: i                    ! loop index for scoring bins
     integer :: l                    ! loop index for nuclides in material
@@ -530,7 +531,7 @@ contains
     real(8) :: wgt                  ! post-collision particle weight
     real(8) :: mu                   ! cosine of angle of collision
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer, save :: t => null()
+    class(TallyObject), pointer, save :: t => null()
 !$omp threadprivate(t)
 
     ! Copy particle's pre- and post-collision weight and angle
@@ -544,7 +545,7 @@ contains
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_analog_tallies % get_item(i)
-      t => tallies(i_tally)
+      t => tallies(i_tally) % obj
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
@@ -628,7 +629,7 @@ contains
   subroutine score_fission_eout(p, t, i_score)
 
     type(Particle), intent(in) :: p
-    type(TallyObject), pointer :: t
+    class(TallyObject), pointer :: t
     integer, intent(in)        :: i_score ! index for score
 
     integer :: i             ! index of outgoing energy filter
@@ -701,8 +702,8 @@ contains
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer, save :: t => null()
-    type(Material),    pointer, save :: mat => null()
+    class(TallyObject), pointer, save :: t => null()
+    type(Material),     pointer, save :: mat => null()
 !$omp threadprivate(t, mat)
 
     ! Determine track-length estimate of flux
@@ -714,7 +715,7 @@ contains
     TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_tracklength_tallies % get_item(i)
-      t => tallies(i_tally)
+      t => tallies(i_tally) % obj
 
       ! Check if this tally has a mesh filter -- if so, we treat it separately
       ! since multiple bins can be scored to with a single track
@@ -810,12 +811,12 @@ contains
     integer :: i             ! loop index for nuclides in material
     integer :: i_nuclide     ! index in nuclides array
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer, save :: t => null()
-    type(Material),    pointer, save :: mat => null()
+    class(TallyObject), pointer, save :: t => null()
+    type(Material),     pointer, save :: mat => null()
 !$omp threadprivate(t, mat)
 
     ! Get pointer to tally
-    t => tallies(i_tally)
+    t => tallies(i_tally) % obj
 
     ! Get pointer to current material. We need this in order to determine what
     ! nuclides are in the material
@@ -883,13 +884,13 @@ contains
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
-    type(TallyObject),    pointer, save :: t => null()
+    class(TallyObject),   pointer, save :: t => null()
     type(StructuredMesh), pointer, save :: m => null()
     type(Material),       pointer, save :: mat => null()
     type(LocalCoord),     pointer, save :: coord => null()
 !$omp threadprivate(t, m, mat, coord)
 
-    t => tallies(i_tally)
+    t => tallies(i_tally) % obj
     matching_bins(1:t%n_filters) = 1
 
     ! ==========================================================================
@@ -1115,13 +1116,13 @@ contains
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
     real(8) :: E ! particle energy
-    type(TallyObject),    pointer, save :: t => null()
+    class(TallyObject),   pointer, save :: t => null()
     type(StructuredMesh), pointer, save :: m => null()
     type(LocalCoord),     pointer, save :: coord => null()
 !$omp threadprivate(t, m, coord)
 
     found_bin = .true.
-    t => tallies(i_tally)
+    t => tallies(i_tally) % obj
     matching_bins(1:t%n_filters) = 1
 
     FILTER_LOOP: do i = 1, t % n_filters
@@ -1246,7 +1247,7 @@ contains
     logical :: x_same               ! same starting/ending x index (i)
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
-    type(TallyObject),    pointer, save :: t => null()
+    class(TallyObject),   pointer, save :: t => null()
     type(StructuredMesh), pointer, save :: m => null()
 !$omp threadprivate(t, m)
 
@@ -1257,7 +1258,7 @@ contains
 
       ! Get pointer to tally
       i_tally = active_current_tallies % get_item(i)
-      t => tallies(i_tally)
+      t => tallies(i_tally) % obj
 
       ! Get index for mesh and surface filters
       i_filter_mesh = t % find_filter(FILTER_MESH)
@@ -1612,7 +1613,7 @@ contains
     if (master .or. (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
-        call accumulate_tally(tallies(active_tallies % get_item(i)))
+        call accumulate_tally(tallies(active_tallies % get_item(i)) % obj)
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
@@ -1647,10 +1648,10 @@ contains
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
-    type(TallyObject), pointer :: t => null()
+    class(TallyObject), pointer :: t => null()
 
     do i = 1, active_tallies % size()
-      t => tallies(active_tallies % get_item(i))
+      t => tallies(active_tallies % get_item(i)) % obj
 
       m = t % total_score_bins
       n = t % total_filter_bins
@@ -1718,7 +1719,7 @@ contains
 
   subroutine accumulate_tally(t)
 
-    type(TallyObject), intent(inout) :: t
+    class(TallyObject), intent(inout) :: t
 
     ! Increment number of realizations
     if (reduce_tallies) then
@@ -1741,11 +1742,11 @@ contains
   subroutine tally_statistics()
 
     integer :: i    ! index in tallies array
-    type(TallyObject), pointer :: t => null()
+    class(TallyObject), pointer :: t => null()
 
     ! Calculate statistics for user-defined tallies
     do i = 1, n_tallies
-      t => tallies(i)
+      t => tallies(i) % obj
 
       call statistics_result(t % results, t % n_realizations)
     end do
@@ -1827,13 +1828,13 @@ contains
       call active_tallies % add(i_user_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
-      if (user_tallies(i) % type == TALLY_VOLUME) then
-        if (user_tallies(i) % estimator == ESTIMATOR_ANALOG) then
+      if (user_tallies(i) % obj % type == TALLY_VOLUME) then
+        if (user_tallies(i) % obj % estimator == ESTIMATOR_ANALOG) then
           call active_analog_tallies % add(i_user_tallies + i)
-        elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
+        elseif (user_tallies(i) % obj % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % add(i_user_tallies + i)
         end if
-      elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (user_tallies(i) % obj % type == TALLY_SURFACE_CURRENT) then
         call active_current_tallies % add(i_user_tallies + i)
       end if
     end do
@@ -1867,13 +1868,13 @@ contains
       call active_tallies % add(i_cmfd_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
-      if (cmfd_tallies(i) % type == TALLY_VOLUME) then
-        if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
+      if (cmfd_tallies(i) % obj % type == TALLY_VOLUME) then
+        if (cmfd_tallies(i) % obj % estimator == ESTIMATOR_ANALOG) then
           call active_analog_tallies % add(i_cmfd_tallies + i)
-        elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
+        elseif (cmfd_tallies(i) % obj % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % add(i_cmfd_tallies + i)
         end if
-      elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (cmfd_tallies(i) % obj % type == TALLY_SURFACE_CURRENT) then
         call active_current_tallies % add(i_cmfd_tallies + i)
       end if
     end do

@@ -560,9 +560,9 @@ contains
     integer :: lid                    ! lattice IDs
     integer :: i_array                ! index in surfaces/materials array 
     integer :: id                     ! user-specified id
-    type(Cell),        pointer :: c => null()
-    class(Lattice),    pointer :: lat => null()
-    type(TallyObject), pointer :: t => null()
+    type(Cell),         pointer :: c => null()
+    class(Lattice),     pointer :: lat => null()
+    class(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
       ! =======================================================================
@@ -683,7 +683,7 @@ contains
     end do
 
     TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+      t => tallies(i) % obj
 
       ! =======================================================================
       ! ADJUST INDICES FOR EACH TALLY FILTER

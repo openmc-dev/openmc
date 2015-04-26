@@ -303,7 +303,7 @@ contains
     integer :: i_filter_mesh ! index for mesh filter
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
-    type(TallyObject),    pointer :: t => null()
+    class(TallyObject),   pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
     type(Node), pointer :: node_mesh => null()
@@ -420,7 +420,8 @@ contains
     do i = 1, n_cmfd_tallies
 
       ! Point t to tally variable
-      t => cmfd_tallies(i)
+      allocate(TallyObject :: cmfd_tallies(i) % obj)
+      t => cmfd_tallies(i) % obj
 
       ! Set reset property
       if (check_for_node(doc, "reset")) then

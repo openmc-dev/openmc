@@ -492,7 +492,7 @@ contains
     integer           :: i, j
     integer, allocatable :: temp_array(:) ! nuclide bin array
     type(StructuredMesh), pointer :: m => null()
-    type(TallyObject), pointer :: t => null()
+    class(TallyObject), pointer :: t => null()
 
     ! Write total number of meshes
     call su % write_data(n_meshes, "n_meshes", group="tallies")
@@ -529,7 +529,7 @@ contains
 
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
-      t => tallies(i)
+      t => tallies(i) % obj
 
       ! Write size of each tally
       call su % write_data(t % total_score_bins, "total_score_bins", &

@@ -58,9 +58,8 @@ contains
     real(8) :: macro_total          ! material macro total xs
     real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: uvw(3)               ! particle direction
-    type(Material),    pointer, save :: mat => null()
-    type(Reaction),    pointer, save :: rxn => null()
-!$omp threadprivate(mat, rxn)
+    type(Material),    pointer :: mat
+    type(Reaction),    pointer :: rxn
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -530,8 +529,7 @@ contains
     real(8) :: wgt                  ! post-collision particle weight
     real(8) :: mu                   ! cosine of angle of collision
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer, save :: t => null()
-!$omp threadprivate(t)
+    type(TallyObject), pointer :: t
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
@@ -701,9 +699,8 @@ contains
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer, save :: t => null()
-    type(Material),    pointer, save :: mat => null()
-!$omp threadprivate(t, mat)
+    type(TallyObject), pointer :: t
+    type(Material),    pointer :: mat
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -810,9 +807,8 @@ contains
     integer :: i             ! loop index for nuclides in material
     integer :: i_nuclide     ! index in nuclides array
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer, save :: t => null()
-    type(Material),    pointer, save :: mat => null()
-!$omp threadprivate(t, mat)
+    type(TallyObject), pointer :: t
+    type(Material),    pointer :: mat
 
     ! Get pointer to tally
     t => tallies(i_tally)
@@ -883,11 +879,10 @@ contains
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
-    type(TallyObject),    pointer, save :: t => null()
-    type(StructuredMesh), pointer, save :: m => null()
-    type(Material),       pointer, save :: mat => null()
-    type(LocalCoord),     pointer, save :: coord => null()
-!$omp threadprivate(t, m, mat, coord)
+    type(TallyObject),    pointer :: t
+    type(StructuredMesh), pointer :: m
+    type(Material),       pointer :: mat
+    type(LocalCoord),     pointer :: coord
 
     t => tallies(i_tally)
     matching_bins(1:t%n_filters) = 1
@@ -1115,10 +1110,9 @@ contains
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
     real(8) :: E ! particle energy
-    type(TallyObject),    pointer, save :: t => null()
-    type(StructuredMesh), pointer, save :: m => null()
-    type(LocalCoord),     pointer, save :: coord => null()
-!$omp threadprivate(t, m, coord)
+    type(TallyObject),    pointer :: t
+    type(StructuredMesh), pointer :: m
+    type(LocalCoord),     pointer :: coord
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1246,9 +1240,8 @@ contains
     logical :: x_same               ! same starting/ending x index (i)
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
-    type(TallyObject),    pointer, save :: t => null()
-    type(StructuredMesh), pointer, save :: m => null()
-!$omp threadprivate(t, m)
+    type(TallyObject),    pointer :: t
+    type(StructuredMesh), pointer :: m
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
@@ -1647,7 +1640,7 @@ contains
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     do i = 1, active_tallies % size()
       t => tallies(active_tallies % get_item(i))
@@ -1741,7 +1734,7 @@ contains
   subroutine tally_statistics()
 
     integer :: i    ! index in tallies array
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     ! Calculate statistics for user-defined tallies
     do i = 1, n_tallies

@@ -256,8 +256,7 @@ contains
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i
-    type(Bank), pointer, save :: src => null()
-!$omp threadprivate(src)
+    type(Bank), pointer :: src
 
     ! set defaults
     call p % initialize()

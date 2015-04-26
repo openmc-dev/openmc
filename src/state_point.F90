@@ -43,7 +43,7 @@ contains
     integer, allocatable          :: id_array(:)
     integer, allocatable          :: key_array(:)
     type(StructuredMesh), pointer :: mesh
-    type(TallyObject), pointer    :: tally
+    class(TallyObject),   pointer :: tally
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
     character(8)                  :: moment_name  ! name of moment (e.g, P3)
@@ -218,7 +218,7 @@ contains
 
         ! Write all tally information except results
         do i = 1, n_tallies
-          tally => tallies(i)
+          tally => tallies(i) % obj
           key_array(i) = tally % id
           id_array(i) = i
         end do
@@ -234,7 +234,7 @@ contains
         TALLY_METADATA: do i = 1, n_tallies
 
           ! Get pointer to tally
-          tally => tallies(i)
+          tally => tallies(i) % obj
 
           call sp % write_data(len(tally % label), "label_size", &
                group="tallies/tally " // trim(to_str(tally % id)))
@@ -368,7 +368,7 @@ contains
         TALLY_RESULTS: do i = 1, n_tallies
 
           ! Set point to current tally
-          tally => tallies(i)
+          tally => tallies(i) % obj
 
           ! Write sum and sum_sq for each bin
           call sp % write_tally_result(tally % results, "results", &
@@ -502,7 +502,7 @@ contains
     integer, allocatable       :: id_array(:)
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
-    type(TallyObject), pointer :: tally
+    class(TallyObject), pointer   :: tally
     type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! ==========================================================================
@@ -579,7 +579,7 @@ contains
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
 
-        tally => tallies(i)
+        tally => tallies(i) % obj
 
         ! Determine size of tally results array
         m = size(tally % results, 1)
@@ -660,7 +660,7 @@ contains
     logical                    :: source_present
     real(8)                    :: real_array(3)
     type(StructuredMesh), pointer :: mesh
-    type(TallyObject), pointer :: tally
+    class(TallyObject), pointer :: tally
     integer                    :: n_order      ! loop index for moment orders
     integer                    :: nm_order     ! loop index for Ynm moment orders
     character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
@@ -823,7 +823,7 @@ contains
     TALLY_METADATA: do i = 1, n_tallies
 
       ! Get pointer to tally
-      tally => tallies(i)
+      tally => tallies(i) % obj
       curr_key = key_array(id_array(i))
 
       call sp % read_data(j, "label_size", group="tallies/tally " // &
@@ -955,7 +955,7 @@ contains
         TALLY_RESULTS: do i = 1, n_tallies
 
           ! Set pointer to tally
-          tally => tallies(i)
+          tally => tallies(i) % obj
           curr_key = key_array(id_array(i))
 
           ! Read sum and sum_sq for each bin

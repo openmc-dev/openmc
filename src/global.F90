@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyContainer, TallyMap, TallyResult
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -89,13 +89,13 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(StructuredMesh), allocatable, target :: meshes(:)
-  type(TallyObject),    allocatable, target :: tallies(:)
+  type(StructuredMesh),  allocatable, target :: meshes(:)
+  type(TallyContainer),  allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
 
   ! Pointers for different tallies
-  type(TallyObject), pointer :: user_tallies(:) => null()
-  type(TallyObject), pointer :: cmfd_tallies(:) => null()
+  type(TallyContainer), pointer :: user_tallies(:) => null()
+  type(TallyContainer), pointer :: cmfd_tallies(:) => null()
 
   ! Starting index (minus 1) in tallies for each tally group
   integer :: i_user_tallies = -1

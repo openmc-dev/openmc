@@ -128,6 +128,16 @@ module tally_header
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
 
+!===============================================================================
+! TALLYCONTAINER polymorphic object that stores a class(TallyObject)
+!===============================================================================
+
+  type TallyContainer
+    class(TallyObject), allocatable :: obj
+    contains
+    procedure :: clear => tallycontainer_clear
+  end type TallyContainer
+
   contains
 
 !===============================================================================
@@ -193,5 +203,16 @@ module tally_header
       this % n_realizations = 0
 
     end subroutine tallyobject_clear
+
+!===============================================================================
+! TALLYCONTAINER_CLEAR deallocates a TallyContainer element and sets it to its
+! as initialized state.
+!===============================================================================
+
+    subroutine tallycontainer_clear(this)
+      class(TallyContainer), intent(inout) :: this
+      call this % obj % clear()
+      deallocate(this % obj)
+    end subroutine tallycontainer_clear
 
 end module tally_header

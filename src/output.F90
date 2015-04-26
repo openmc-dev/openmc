@@ -700,8 +700,8 @@ contains
 
   subroutine print_tally(t, unit)
 
-    type(TallyObject), pointer :: t
-    integer,          optional :: unit
+    class(TallyObject), pointer :: t
+    integer,           optional :: unit
 
     integer :: i     ! index for filter or score bins
     integer :: j     ! index in filters array
@@ -1197,8 +1197,8 @@ contains
 
     integer                 :: i      ! loop index
     character(MAX_FILE_LEN) :: path   ! path of summary file
-    type(Material),    pointer :: m => null()
-    type(TallyObject), pointer :: t => null()
+    type(Material),     pointer :: m => null()
+    class(TallyObject), pointer :: t => null()
 
     ! Create filename for log file
     path = trim(path_output) // "summary.out"
@@ -1256,7 +1256,7 @@ contains
     if (n_tallies > 0) then
       call header("TALLY SUMMARY", unit=UNIT_SUMMARY)
       do i = 1, n_tallies
-        t=> tallies(i)
+        t => tallies(i) % obj
         call print_tally(t, unit=UNIT_SUMMARY)
       end do
     end if
@@ -1704,7 +1704,7 @@ contains
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
-    type(TallyObject), pointer :: t
+    class(TallyObject), pointer :: t
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -1753,7 +1753,7 @@ contains
     end if
 
     TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+      t => tallies(i) % obj
 
       if (confidence_intervals) then
         ! Calculate t-value for confidence intervals
@@ -1934,7 +1934,7 @@ contains
 
   subroutine write_surface_current(t)
 
-    type(TallyObject), pointer :: t
+    class(TallyObject), pointer :: t
 
     integer :: i                    ! mesh index for x
     integer :: j                    ! mesh index for y
@@ -2106,9 +2106,9 @@ contains
 
   function get_label(t, i_filter) result(label)
 
-    type(TallyObject), pointer :: t        ! tally object
-    integer, intent(in)        :: i_filter ! index in filters array
-    character(30)              :: label    ! user-specified identifier
+    class(TallyObject), pointer :: t        ! tally object
+    integer, intent(in)         :: i_filter ! index in filters array
+    character(30)               :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin

@@ -303,9 +303,6 @@ module global
   ! Is CMFD active
   logical :: cmfd_run = .false.
 
-  ! CMFD communicator
-  integer :: cmfd_comm
-
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
   type(Timer) :: time_cmfdbuild ! timer for matrix build
@@ -324,9 +321,6 @@ module global
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! Eigenvalue solver type
-  character(len=10) :: cmfd_solver_type = 'power'
-
   ! Adjoint method type
   character(len=10) :: cmfd_adjoint_type = 'physical'
 
@@ -344,8 +338,6 @@ module global
   logical :: cmfd_downscatter = .false.
 
   ! Convergence monitoring
-  logical :: cmfd_snes_monitor  = .false.
-  logical :: cmfd_ksp_monitor   = .false.
   logical :: cmfd_power_monitor = .false.
 
   ! Cmfd output

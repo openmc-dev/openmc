@@ -22,14 +22,13 @@ package manager`_. Simply enter the following commands into the terminal:
     sudo apt-get update
     sudo apt-get install openmc
 
-Currently, the binary package does not allow for parallel simulations, HDF5_, or
-CMFD acceleration through PETSc_. Users who need such capabilities should build
-OpenMC from source as is described in :ref:`usersguide_install`.
+Currently, the binary package does not allow for parallel simulations or use of
+HDF5_. Users who need such capabilities should build OpenMC from source as is
+described in :ref:`usersguide_install`.
 
 .. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 .. _HDF5: http://www.hdfgroup.org/HDF5/
-.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 -------------------------------------------
 Installing from Source on Linux or Mac OS X

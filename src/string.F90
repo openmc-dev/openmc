@@ -151,7 +151,7 @@ contains
 ! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
-  elemental function to_lower(word) result(word_lower)
+  function to_lower(word) result(word_lower)
 
     character(*), intent(in) :: word
     character(len=len(word)) :: word_lower
@@ -174,7 +174,7 @@ contains
 ! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
-  elemental function to_upper(word) result(word_upper)
+  function to_upper(word) result(word_upper)
 
     character(*), intent(in) :: word
     character(len=len(word)) :: word_upper

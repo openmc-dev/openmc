@@ -36,8 +36,7 @@ contains
     real(8) :: d_collision            ! sampled distance to collision
     real(8) :: distance               ! distance particle travels
     logical :: found_cell             ! found cell which particle is in?
-    type(LocalCoord), pointer, save :: coord => null()
-!$omp threadprivate(coord)
+    type(LocalCoord), pointer :: coord
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then

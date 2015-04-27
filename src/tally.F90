@@ -1741,7 +1741,7 @@ contains
                 case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)         
                   
                  call GetTallyUncertainty(temp_std_dev,temp_rel_err,score_index, filter_index,t)
-                  if (temp_real % std_dev < temp_std_dev) then 
+                 if (temp_real % std_dev < temp_std_dev) then 
                     temp_real % std_dev = temp_std_dev
                   end if
           

@@ -271,6 +271,12 @@ class Material(object):
         self._sab.append((name, xs))
 
 
+    def make_isotropic_in_lab(self):
+
+        for nuclide_name in self._nuclides:
+            self._nuclides[nuclide_name][0].make_isotropic_in_lab()
+
+
     def get_all_nuclides(self):
 
         nuclides = {}
@@ -330,6 +336,9 @@ class Material(object):
 
         if not nuclide[0]._xs is None:
             xml_element.set("xs", nuclide[0]._xs)
+
+        if not nuclide[0]._scattering is None:
+            xml_element.set("scattering", nuclide[0]._scattering)
 
         return xml_element
 
@@ -495,6 +504,11 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         self._materials.remove(material)
+
+    def make_isotropic_in_lab(self):
+
+        for material in self._materials:
+            materials.make_isotropic_in_lab()
 
 
     def create_material_subelements(self):

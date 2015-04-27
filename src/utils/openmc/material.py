@@ -189,23 +189,27 @@ class Material(object):
 
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
 
-        if not isinstance(nuclide, openmc.Nuclide):
-            msg = 'Unable to add an Nuclide to Material ID={0} with a ' \
+        if not isinstance(nuclide, (openmc.Nuclide, str)):
+            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
                   'non-Nuclide value {1}'.format(self._id, nuclide)
             raise ValueError(msg)
 
         elif not is_float(percent):
-            msg = 'Unable to add an Nuclide to Material ID={0} with a ' \
+            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
                   'non-floating point value {1}'.format(self._id, percent)
             raise ValueError(msg)
 
         elif not percent_type in ['ao', 'wo', 'at/g-cm']:
-            msg = 'Unable to add an Nuclide to Material ID={0} with a ' \
+            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
                   'percent type {1}'.format(self._id, percent_type)
             raise ValueError(msg)
 
-        # Copy this Nuclide to separate it from the Nuclide in other Materials
-        nuclide = deepcopy(nuclide)
+        if isinstance(nuclide, openmc.Nuclide):
+            # Copy this Nuclide to separate it from the Nuclide in
+            # other Materials
+            nuclide = deepcopy(nuclide)
+        else:
+            nuclide = openmc.Nuclide(nuclide)
 
         self._nuclides[nuclide._name] = (nuclide, percent, percent_type)
 

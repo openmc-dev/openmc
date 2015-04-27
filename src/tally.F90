@@ -2331,12 +2331,11 @@ contains
                                                              ! variance of the 
                                                              ! results
     type(TallyObject), pointer :: t => null()
-    type(Temptrigger), pointer :: temp_t => null()
     
     trig_dist % max_ratio = 0
     if (master) then
       satisfy_triggers = .true.
-      ! check trigger for Egienvalue
+      ! check trigger for Eigenvalue
       if (keff_trigger % trigger_type > 0) then
         select case (keff_trigger % trigger_type)        
         case(VARIANCE) 
@@ -2359,20 +2358,20 @@ contains
             trig_dist % temp_name = CHAR_EIGENVALUE
           end if 
         end if 
-      end if
-      temp_t => temp_result              
+      end if   
+                
       ! Compute uncertainties for all tallies, scores with triggers
       TALLY_LOOP: do i = 1, n_tallies
         t => tallies(i)
-        allocate(temp_t % results(t % total_score_bins, t % total_filter_bins))
         ! Calculate statistics and get the temporary result
-        if (n_realizations > 1) call tally_trigger_statistics(t,temp_t)
-        
+        if ( t % n_realizations == 1) then
+          cycle Tally_LOOP
+        end if
         allocate(temp_nuclide_name(t % n_nuclide_bins))
         
         ! Check trigger for current
         if (t % type == TALLY_SURFACE_CURRENT) then
-          call compute_tally_current(t,temp_t,temp_real)
+          call compute_tally_current(t,temp_real)
           select case (t % score(1) % type)        
             case(VARIANCE) 
               temp_trig = temp_real % variance
@@ -2457,10 +2456,7 @@ contains
                   
                 case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)         
                   
-                  temp_std_dev = temp_t % results(score_index, filter_index) % &
-                       trigger_sum_sq
-                  temp_rel_err = temp_std_dev / temp_t % results(score_index, & 
-                       filter_index) % trigger_sum
+                 call GetTallyUncertainty(temp_std_dev,temp_rel_err,score_index, filter_index,t)
                   if (temp_real % std_dev < temp_std_dev) then 
                     temp_real % std_dev = temp_std_dev
                   end if
@@ -2475,10 +2471,7 @@ contains
              
                   do n_order = 0, t % moment_order(k)
                     score_index = score_index + 1
-                    temp_std_dev = temp_t % results(score_index, & 
-                         filter_index)% trigger_sum_sq
-                    temp_rel_err = temp_std_dev / temp_t % results &
-                         (score_index,filter_index) % trigger_sum
+                    call GetTallyUncertainty(temp_std_dev,temp_rel_err,score_index, filter_index,t)
                     if (temp_real % std_dev < temp_std_dev) then 
                       temp_real % std_dev = temp_std_dev
                     end if
@@ -2496,10 +2489,7 @@ contains
                   do n_order = 0, t % moment_order(k)
                     do nm_order = -n_order, n_order
                       score_index = score_index + 1
-                      temp_std_dev = temp_t % results(score_index, & 
-                           filter_index) % trigger_sum_sq
-                      temp_rel_err = temp_std_dev / temp_t % results &
-                           (score_index, filter_index) % trigger_sum
+                      call GetTallyUncertainty(temp_std_dev,temp_rel_err,score_index, filter_index,t)
                       if (temp_real % std_dev < temp_std_dev) then 
                         temp_real % std_dev = temp_std_dev
                       end if
@@ -2514,10 +2504,7 @@ contains
                   k = k + (t % moment_order(k) + 1)**2 - 1
            
                 case default
-                  temp_std_dev = temp_t % results(score_index,  &
-                       filter_index) % trigger_sum_sq
-                  temp_rel_err = temp_std_dev / temp_t % results &
-                       (score_index, filter_index) % trigger_sum
+                  call GetTallyUncertainty(temp_std_dev,temp_rel_err,score_index, filter_index,t)
                   if (temp_real % std_dev < temp_std_dev) then 
                     temp_real % std_dev = temp_std_dev
                   end if
@@ -2560,7 +2547,6 @@ contains
           if (t % n_filters == 0) exit print_bin
         end do print_bin
         deallocate (temp_nuclide_name)
-        deallocate (temp_t % results)
       end do TALLY_LOOP
     end if    
  end subroutine check_tally_triggers
@@ -2570,10 +2556,9 @@ contains
 ! compare to trigger threshold
 !===============================================================================
  
- subroutine compute_tally_current(t,temp_t,s)
+ subroutine compute_tally_current(t,s)
 
     type(TallyObject), pointer :: t
-    type(TempTrigger), pointer :: temp_t
 
     integer :: i                    ! mesh index for x
     integer :: j                    ! mesh index for y
@@ -2624,8 +2609,8 @@ contains
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            ! call GetTempResult(temp_std_dev,temp_rel_err,n,filter_inx)
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2636,8 +2621,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2651,8 +2635,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2663,8 +2646,7 @@ contains
             
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2678,8 +2660,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2691,8 +2672,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2706,8 +2686,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2718,8 +2697,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2733,8 +2711,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2745,8 +2722,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2760,8 +2736,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2772,8 +2747,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            temp_std_dev = temp_t % results(1,filter_index) % trigger_sum_sq
-            temp_rel_err = temp_std_dev / temp_t % results(1,filter_index) % trigger_sum
+            call GetTallyUncertainty(temp_std_dev,temp_rel_err,1,filter_index,t)
             if (s % std_dev < temp_std_dev) then 
               s % std_dev = temp_std_dev
             end if
@@ -2964,19 +2938,28 @@ contains
   end subroutine tally_statistics
   
 !===============================================================================
-! TALLY_TRIGGER_STATISTICS just computes the mean and standard deviation of the  
+! GETTALLYUNCERTAINTY just computes the mean and standard deviation of the  
 ! mean of each tally and stores them in the val_sq attributes of the 
 ! TriggerResults respectively for trigger.
 !===============================================================================
 
-  subroutine tally_trigger_statistics(t, s)
-
+  subroutine GetTallyUncertainty(std, rld, scoreindex, filterindex,t)
+    real(8), intent(inout) :: std
+    real(8), intent(inout) :: rld
+    real(8) :: tempsum = .0
+    integer :: n
+    integer, intent(in)    :: filterindex
+    integer, intent(in)    :: scoreindex
+    type(TallyResult)      :: tempresult
     type(TallyObject), pointer :: t 
-    type(TempTrigger), pointer :: s 
+    
+    n = t % n_realizations
+    tempresult = t % results(scoreindex,filterindex)
+    tempsum    = tempresult % sum/n
+    std = sqrt((tempresult % sum_sq/n - tempsum  * tempsum ) / (n - 1))
+    rld = std / tempsum
 
-    call trigger_statistics_result(t % results, t % n_realizations, s % results)
-
-  end subroutine tally_trigger_statistics
+  end subroutine GetTallyUncertainty
   
 
 
@@ -3022,27 +3005,6 @@ contains
          this % sum) / (n - 1))
 
   end subroutine statistics_result
-
-!===============================================================================
-! STATISTICS_TRIGGER_RESULT just determines the sample mean and the standard 
-! deviation of the mean for a TriggerResult for a trigger .
-!===============================================================================
-
-  elemental subroutine trigger_statistics_result(this, n, that)
-
-    type(TallyResult), intent(inout)   :: this
-    type(TriggerResult), intent(inout) :: that
-    integer,           intent(in)      :: n
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    that % trigger_sum    = this % sum/n
-    that % trigger_sum_sq = sqrt((this % sum_sq/n - that % trigger_sum * &
-         that % trigger_sum) / (n - 1))
-
-  end subroutine trigger_statistics_result
   
 !===============================================================================
 ! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a

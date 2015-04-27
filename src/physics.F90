@@ -337,8 +337,8 @@ contains
 
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
         if (materials(p % material) % p0(i_nuc_mat)) &
-          & call fatal_error("thermal scattering law data and isotropic lab&
-          & scattering specified for the same nuclide")
+             call fatal_error("thermal scattering law data and isotropic lab&
+             & scattering specified for the same nuclide")
 
         ! S(a,b) scattering
         call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
@@ -351,7 +351,7 @@ contains
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn, &
              p % E, p % coord0 % uvw, p % mu, p % wgt, &
-             & materials(p % material) % p0(i_nuc_mat))
+             materials(p % material) % p0(i_nuc_mat))
       end if
 
       p % event_MT = ELASTIC

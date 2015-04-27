@@ -105,7 +105,7 @@ class Summary(object):
 
             material_id = int(key.lstrip('material '))
             index = self._f['materials'][key]['index'][0]
-            name = self._f['materials'][key]['label'][0]
+            name = self._f['materials'][key]['name'][0]
             density = self._f['materials'][key]['atom_density'][0]
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'][...]
@@ -165,7 +165,7 @@ class Summary(object):
 
             surface_id = int(key.lstrip('surface '))
             index = self._f['geometry/surfaces'][key]['index'][0]
-            name = self._f['geometry/surfaces'][key]['label'][0]
+            name = self._f['geometry/surfaces'][key]['name'][0]
             surf_type = self._f['geometry/surfaces'][key]['type'][...][0]
             bc = self._f['geometry/surfaces'][key]['boundary_condition'][...][0]
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
@@ -257,7 +257,7 @@ class Summary(object):
 
             cell_id = int(key.lstrip('cell '))
             index = self._f['geometry/cells'][key]['index'][0]
-            name = self._f['geometry/cells'][key]['label'][0]
+            name = self._f['geometry/cells'][key]['name'][0]
             fill_type = self._f['geometry/cells'][key]['fill_type'][...][0]
 
             if fill_type == 'normal':
@@ -351,7 +351,7 @@ class Summary(object):
 
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'][0]
-            name = self._f['geometry/lattices'][key]['label'][0]
+            name = self._f['geometry/lattices'][key]['name'][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
 
             if lattice_type == 'rectangular':

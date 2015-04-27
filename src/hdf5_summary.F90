@@ -127,8 +127,8 @@ contains
       call su % write_data(i, "index", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
 
-      ! Write label for this cell
-      call su % write_data(c % label, "label", &
+      ! Write name for this cell
+      call su % write_data(c % name, "name", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
 
       ! Write universe for this cell
@@ -204,8 +204,8 @@ contains
       call su % write_data(i, "index", &
            group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
-      ! Write label for this surface
-      call su % write_data(s % label, "label", &
+      ! Write name for this surface
+      call su % write_data(s % name, "name", &
            group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write surface type
@@ -319,8 +319,8 @@ contains
       call su % write_data(i, "index", &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
-      ! Write label for this lattice
-      call su % write_data(lat % label, "label", &
+      ! Write name for this lattice
+      call su % write_data(lat % name, "name", &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
@@ -449,8 +449,8 @@ contains
       call su % write_data(i, "index", &
            group="materials/material " // trim(to_str(m % id)))
 
-      ! Write label for this material
-      call su % write_data(m % label, "label", &
+      ! Write name for this material
+      call su % write_data(m % name, "name", &
            group="materials/material " // trim(to_str(m % id)))
 
       ! Write atom density with units

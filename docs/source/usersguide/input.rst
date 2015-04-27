@@ -708,8 +708,8 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
-  :label:
-    An optional string label to identify the surface in summary output
+  :name:
+    An optional string name to identify the surface in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
     *Default*: ""
@@ -794,8 +794,8 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
-  :label:
-    An optional string label to identify the cell in summary output files.
+  :name:
+    An optional string name to identify the cell in summary output files.
     This string is limmited to 52 characters for formatting purposes.
 
     *Default*: ""
@@ -865,8 +865,8 @@ the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the lattice.
 
-  :label:
-    An optional string label to identify the lattice in summary output
+  :name:
+    An optional string name to identify the lattice in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
     *Default*: ""
@@ -930,8 +930,8 @@ the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the lattice.
 
-  :label:
-    An optional string label to identify the hex_lattice in summary output
+  :name:
+    An optional string name to identify the hex_lattice in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
     *Default*: ""
@@ -1013,8 +1013,8 @@ Each ``material`` element can have the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the material.
 
-  :label:
-    An optional string label to identify the material in summary output
+  :name:
+    An optional string name to identify the material in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
     *Default*: ""
@@ -1121,8 +1121,8 @@ and ``<assume_separate>``.
 
 The ``<tally>`` element accepts the following sub-elements:
 
-  :label:
-    An optional string label to identify the tally in summary output
+  :name:
+    An optional string name to identify the tally in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
     *Default*: ""

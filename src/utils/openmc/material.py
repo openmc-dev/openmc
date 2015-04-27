@@ -375,7 +375,7 @@ class Material(object):
         element.set("id", str(self._id))
 
         if len(self._name) > 0:
-            element.set("label", str(self._name))
+            element.set("name", str(self._name))
 
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")

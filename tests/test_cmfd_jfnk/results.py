@@ -23,11 +23,11 @@ results1[0::2] = tally1._sum.ravel()
 results1[1::2] = tally1._sum_sq.ravel()
 
 for tally_id in sp._tallies:
-  if 'CMFD flux, total, scatter-1' in sp._tallies[tally_id]._label:
+  if 'CMFD flux, total, scatter-1' in sp._tallies[tally_id]._name:
     tally2 = sp._tallies[tally_id]
-  elif 'CMFD neutron production' in sp._tallies[tally_id]._label:
+  elif 'CMFD neutron production' in sp._tallies[tally_id]._name:
     tally3 = sp._tallies[tally_id]
-  elif 'CMFD surface currents' in sp._tallies[tally_id]._label:
+  elif 'CMFD surface currents' in sp._tallies[tally_id]._name:
     tally4 = sp._tallies[tally_id]
 
 results2 = np.zeros((tally2._sum.size + tally2._sum.size, ))

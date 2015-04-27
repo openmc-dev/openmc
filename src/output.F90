@@ -369,8 +369,8 @@ contains
     ! Write user-specified id for cell
     write(unit_,*) 'Cell ' // to_str(c % id)
 
-    ! Write user-specified label for cell
-    write(unit_,*) '    Label = ' // c % label
+    ! Write user-specified name for cell
+    write(unit_,*) '    Name = ' // c % name
 
     ! Find index in cells array and write
     index_cell = cell_dict % get_key(c % id)
@@ -490,8 +490,8 @@ contains
     ! Write information about lattice
     write(unit_,*) 'Lattice ' // to_str(lat % id)
 
-    ! Write user-specified label for lattice
-    write(unit_,*) '    Label = ' // lat % label
+    ! Write user-specified name for lattice
+    write(unit_,*) '    Name = ' // lat % name
 
     select type(lat)
     type is (RectLattice)
@@ -578,8 +578,8 @@ contains
     ! Write user-specified id of surface
     write(unit_,*) 'Surface ' // to_str(surf % id)
 
-    ! Write user-specified label for surface
-    write(unit_,*) '    Label = ' // surf % label
+    ! Write user-specified name for surface
+    write(unit_,*) '    Name = ' // surf % name
 
     ! Write type of surface
     select case (surf % type)
@@ -677,8 +677,8 @@ contains
     ! Write identifier for material
     write(unit_,*) 'Material ' // to_str(mat % id)
 
-    ! Write user-specified label for material
-    write(unit_,*) '    Label = ' // mat % label
+    ! Write user-specified name for material
+    write(unit_,*) '    Name = ' // mat % name
 
     ! Write total atom density in atom/b-cm
     write(unit_,*) '    Atom Density = ' // trim(to_str(mat % density)) &
@@ -1779,12 +1779,12 @@ contains
       end if
 
       ! Write header block
-      if (t % label == "") then
+      if (t % name == "") then
         call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, &
              level=3)
       else
         call header("TALLY " // trim(to_str(t % id)) // ": " &
-             // trim(t % label), unit=UNIT_TALLY, level=3)
+             // trim(t % name), unit=UNIT_TALLY, level=3)
       endif
 
       ! Handle surface current tallies separately

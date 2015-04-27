@@ -298,17 +298,17 @@ class StatePoint(object):
         # Iterate over all Tallies
         for tally_key in self._tally_keys:
 
-            # Read user-specified Tally label (if specified)
-            label_size = self._get_int(
-                 path='{0}{1}/label_size'.format(base, tally_key))[0]
+            # Read user-specified Tally name (if specified)
+            name_size = self._get_int(
+                 path='{0}{1}/name_size'.format(base, tally_key))[0]
 
-            if label_size > 0:
-                label = self._get_string(
-                     label_size, path='{0}{1}/label'.format(base, tally_key))
+            if name_size > 0:
+                name = self._get_string(
+                     name_size, path='{0}{1}/name'.format(base, tally_key))
 
-            # Remove leading and trailing characters from string label
-            label = label.lstrip('[\'')
-            label = label.rstrip('\']')
+            # Remove leading and trailing characters from string name
+            name = name.lstrip('[\'')
+            name = name.rstrip('\']')
 
             # Read integer Tally estimator type code (analog or tracklength)
             estimator_type = self._get_int(
@@ -319,7 +319,7 @@ class StatePoint(object):
                  path='{0}{1}/n_realizations'.format(base, tally_key))[0]
 
             # Create Tally object and assign basic properties
-            tally = openmc.Tally(tally_key, label)
+            tally = openmc.Tally(tally_key, name)
             tally.estimator = ESTIMATOR_TYPES[estimator_type]
             tally.num_realizations = n_realizations
 
@@ -570,7 +570,7 @@ class StatePoint(object):
 
 
     def get_tally(self, score, filters, nuclides,
-                  label='', estimator='tracklength'):
+                  name='', estimator='tracklength'):
         """Finds and returns a Tally object with certain properties.
 
         Parameters
@@ -584,8 +584,8 @@ class StatePoint(object):
         nuclides : list
                 A list of Nuclide objects
 
-        label : str
-                The label specified for the Tally (default is '')
+        name : str
+                The name specified for the Tally (default is '')
 
         estimator: str
                 The type of estimator ('tracklength' (default) or 'analog')
@@ -597,8 +597,8 @@ class StatePoint(object):
         # Iterate over all tallies to find the appropriate one
         for tally_id, test_tally in self._tallies.items():
 
-            # Determine if the queried Tally label is the same as this Tally
-            if not label == test_tally._label:
+            # Determine if the queried Tally name is the same as this Tally
+            if not name == test_tally._name:
                 continue
 
             # Determine if the queried Tally estimator is the same as this Tally
@@ -643,7 +643,7 @@ class StatePoint(object):
         return tally
 
 
-    def get_tally_id(self, score, filters, label='', estimator='tracklength'):
+    def get_tally_id(self, score, filters, name='', estimator='tracklength'):
         """Retrieve the Tally ID for a given list of filters and score(s).
 
         Parameters
@@ -654,14 +654,14 @@ class StatePoint(object):
         filters : list
                 A list of Filter objects
 
-        label : str
-                The label specified for the Tally (default is '')
+        name : str
+                The name specified for the Tally (default is '')
 
         estimator: str
                 The type of estimator ('tracklength' (default) or 'analog')
         """
 
-        tally = self.get_tally(score, filters, label, estimator)
+        tally = self.get_tally(score, filters, name, estimator)
         return tally._id
 
 

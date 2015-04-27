@@ -346,7 +346,7 @@ class Cell(object):
         element.set("id", str(self._id))
 
         if len(self._name) > 0:
-            element.set("label", str(self._name))
+            element.set("name", str(self._name))
 
         if isinstance(self._fill, openmc.Material):
             element.set("material", str(self._fill._id))
@@ -991,7 +991,7 @@ class RectLattice(Lattice):
         lattice_subelement.set("id", str(self._id))
 
         if len(self._name) > 0:
-            lattice_subelement.set("label", str(self._name))
+            lattice_subelement.set("name", str(self._name))
 
         # Export the Lattice cell pitch
         if len(self._pitch) == 3:
@@ -1320,7 +1320,7 @@ class HexLattice(Lattice):
         lattice_subelement.set("id", str(self._id))
 
         if len(self._name) > 0:
-            lattice_subelement.set("label", str(self._name))
+            lattice_subelement.set("name", str(self._name))
 
         # Export the Lattice cell pitch
         if len(self._pitch) == 2:

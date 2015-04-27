@@ -920,8 +920,9 @@ contains
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-          ! set negative SLBW elastic xs to zero
+          ! set negative SLBW elastic xs and competitive xs to zero
           if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
+          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO) then
@@ -1098,8 +1099,9 @@ contains
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-          ! set negative SLBW elastic xs to zero
+          ! set negative SLBW elastic xs and competitive xs to zero
           if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
+          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO) then
@@ -1279,8 +1281,9 @@ contains
         ! elastic scattering xs
         tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-        ! set negative SLBW elastic xs to zero
+        ! set negative SLBW elastic xs and competitive xs to zero
         if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
+        if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
         ! radiative capture xs
         if (avg_urr_g_xs > ZERO) then
@@ -1506,8 +1509,9 @@ contains
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
-      ! set negative SLBW elastic xs to zero
+      ! set negative SLBW elastic xs and competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
+      if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
       ! radiative capture xs
       if (avg_urr_g_xs > ZERO) then
@@ -1816,6 +1820,14 @@ contains
               end if
             end if
 
+            ! set negative competitive xs to zero
+            if (tope % prob_tables(i_E, i_T) % avg_x % xs < ZERO) then
+              tope % prob_tables(i_E, i_T) % avg_t % xs &
+                & = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                & + abs(tope % prob_tables(i_E, i_T) % avg_x % xs)
+              tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
+            end if
+
             if (tope % prob_tables(i_E, i_T) % avg_t % xs < xs_t_min)&
               & xs_t_min = tope % prob_tables(i_E, i_T) % avg_t % xs
             if (tope % prob_tables(i_E, i_T) % avg_t % xs > xs_t_max)&
@@ -2107,8 +2119,9 @@ contains
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
-      ! set negative SLBW elastic xs to zero
+      ! set negative SLBW elastic xs anc competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
+      if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
       if (avg_urr_g_xs > ZERO) then
         capture_xs = g % xs / avg_urr_g_xs &
@@ -2918,7 +2931,6 @@ contains
     real(8) :: k_val ! computed wavenumber
 
     ! compute center-of-mass neutron wavenumber evaluated at some energy
-    if (E < ZERO) call fatal_error('Negative energy in wavenumber calculation')
     k_val = C_1 * A / (A + ONE) * sqrt(E)
 
   end function wavenumber
@@ -3963,7 +3975,7 @@ contains
         if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
       end if
 
-      ! first level inelastic scattering xs
+      ! competitive reaction xs
       if (tope % E < tope % MF3_x_e(1)) then
         inelastic_xs = ZERO
       else if (tope % E > tope % MF3_x_e(size(tope % MF3_x_e))) then
@@ -3981,6 +3993,7 @@ contains
         end if
         if (competitive) inelastic_xs = inelastic_xs + x % xs
       end if
+      if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
       ! capture xs
       if (tope % E < tope % MF3_g_e(1)) then

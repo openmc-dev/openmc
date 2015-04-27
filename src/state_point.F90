@@ -236,10 +236,10 @@ contains
           ! Get pointer to tally
           tally => tallies(i)
 
-          call sp % write_data(len(tally % label), "label_size", &
+          call sp % write_data(len(tally % name), "name_size", &
                group="tallies/tally " // trim(to_str(tally % id)))
-          if (len(tally % label) > 0) then
-            call sp % write_data(tally % label, "label", &
+          if (len(tally % name) > 0) then
+            call sp % write_data(tally % name, "name", &
                  group="tallies/tally " // trim(to_str(tally % id)))
           endif
 
@@ -649,7 +649,7 @@ contains
 
     character(MAX_FILE_LEN)    :: path_temp
     character(19)              :: current_time
-    character(52)              :: label
+    character(52)              :: name
     integer                    :: i, j, k
     integer                    :: length(4)
     integer                    :: int_array(3)
@@ -826,10 +826,10 @@ contains
       tally => tallies(i)
       curr_key = key_array(id_array(i))
 
-      call sp % read_data(j, "label_size", group="tallies/tally " // &
+      call sp % read_data(j, "name_size", group="tallies/tally " // &
            trim(to_str(curr_key)))
       if (j > 0) then
-        call sp % read_data(label, "label", group="tallies/tally " // &
+        call sp % read_data(name, "name", group="tallies/tally " // &
              trim(to_str(curr_key)))
       end if
 

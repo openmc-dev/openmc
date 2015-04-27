@@ -976,10 +976,10 @@ contains
         call fatal_error("Must specify id of cell in geometry XML file.")
       end if
 
-      ! Copy cell label
-      c % label = ''
-      if (check_for_node(node_cell, "label")) then
-        call get_node_value(node_cell, "label", c % label)
+      ! Copy cell name
+      c % name = ''
+      if (check_for_node(node_cell, "name")) then
+        call get_node_value(node_cell, "name", c % name)
       end if
 
       if (check_for_node(node_cell, "universe")) then
@@ -1161,10 +1161,10 @@ contains
              &// to_str(s % id))
       end if
 
-      ! Copy surface label
-      s % label = ''
-      if (check_for_node(node_surf, "label")) then
-        call get_node_value(node_surf, "label", s % label)
+      ! Copy surface name
+      s % name = ''
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s % name)
       end if
 
       ! Copy and interpret surface type
@@ -1289,10 +1289,10 @@ contains
              &// to_str(lat % id))
       end if
 
-      ! Copy lattice label
-      lat % label = ''
-      if (check_for_node(node_lat, "label")) then
-        call get_node_value(node_lat, "label", lat % label)
+      ! Copy lattice name
+      lat % name = ''
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
       end if
 
       ! Read number of lattice cells in each dimension
@@ -1418,10 +1418,10 @@ contains
              &// to_str(lat % id))
       end if
 
-      ! Copy lattice label
-      lat % label = ''
-      if (check_for_node(node_lat, "label")) then
-        call get_node_value(node_lat, "label", lat % label)
+      ! Copy lattice name
+      lat % name = ''
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
       end if
 
       ! Read number of lattice cells in each dimension
@@ -1669,10 +1669,10 @@ contains
              &// to_str(mat % id))
       end if
 
-      ! Copy material label
-      mat % label = ''
-      if (check_for_node(node_mat, "label")) then
-        call get_node_value(node_mat, "label", mat % label)
+      ! Copy material name
+      mat % name = ''
+      if (check_for_node(node_mat, "name")) then
+        call get_node_value(node_mat, "name", mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -2237,10 +2237,10 @@ contains
              &// to_str(t % id))
       end if
 
-      ! Copy tally label
-      t % label = ''
-      if (check_for_node(node_tal, "label")) &
-        call get_node_value(node_tal, "label", t % label)
+      ! Copy tally name
+      t % name = ''
+      if (check_for_node(node_tal, "name")) &
+        call get_node_value(node_tal, "name", t % name)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS

@@ -9,6 +9,7 @@ class Nuclide(object):
         self._name = ''
         self._xs = None
         self._zaid = None
+        self._scattering = None
 
         # Set the Material class attributes
         self.name = name
@@ -54,6 +55,11 @@ class Nuclide(object):
         return self._zaid
 
 
+    @property
+    def scattering(self):
+        return self._scattering
+
+
     @name.setter
     def name(self, name):
 
@@ -87,10 +93,24 @@ class Nuclide(object):
         self._zaid = zaid
 
 
+    @scattering.setter
+    def scattering(self, scattering):
+
+        if not scattering in ['ace', 'lab']:
+            msg = 'Unable to set scattering for Nuclide to {0} ' \
+                  'which is not "ace" or "lab"'.format(scattering)
+            raise ValueError(msg)
+
+        self._scattering = scattering
+
+
     def __repr__(self):
 
         string = 'Nuclide    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         if self._zaid is not None:
-          string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+        if self._scattering is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t', 
+                                                self._scattering)
         return string

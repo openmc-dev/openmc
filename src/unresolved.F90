@@ -882,10 +882,8 @@ contains
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
-          call fatal_error('LSSF=0 pointwise not yet supported - check whether&
-            & need to add ACE or ENDF-6 background')
           ! add resonance xs component to background
-          call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
         ! multipy the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
@@ -1064,7 +1062,7 @@ contains
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
         elseif (tope % LSSF == 1) then
           ! multipy the self-shielding factors by the infinite-dilute xs
@@ -1245,7 +1243,7 @@ contains
       if (tope % LSSF == 0) then
 
         ! add resonance xs component to background
-        call add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
+        call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
       elseif (tope % LSSF == 1) then
         ! multipy the self-shielding factors by the average (infinite-dilute)
@@ -1469,7 +1467,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_ace_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
 
     else if (tope % LSSF == 1) then
       ! multipy the self-shielding factors by the infinite-dilute xs
@@ -2080,7 +2078,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_ace_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
 
     ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
@@ -3913,12 +3911,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ADD_ACE_BACKGROUND adds the resonance xs component to the evaluator-supplied
+! ADD_MF3_BACKGROUND adds the resonance xs component to the evaluator-supplied
 ! background
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_ace_background(iso, i_nuc, n_pts, t, n, g, f, x)
+  subroutine add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(CrossSection) :: t ! total xs object
@@ -3967,13 +3965,18 @@ contains
       else if (tope % E > tope % MF3_n_e(size(tope % MF3_n_e))) then
         call fatal_error('Energy is above File 3 elastic energy grid')
       else
-        i_grid = binary_search(tope % MF3_n_e, size(tope % MF3_n_e), tope % E)
-        fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
-          & tope % MF3_n_e(i_grid + 1), tope % INT)
-        micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid), &
-          & tope % MF3_n(i_grid + 1), tope % INT) + n % xs
-        if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
+        i_grid = binary_search(tope % MF3_n_e, size(tope % MF3_n_e),tope % E)
+        if (tope % INT == LINEAR_LINEAR .or. &
+          & tope % MF3_n_e(i_grid) > ZERO) then
+          fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
+            & tope % MF3_n_e(i_grid + 1), tope % INT)
+          micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid),&
+            & tope % MF3_n(i_grid + 1), tope % INT) + n % xs
+        else
+          micro_xs(i_nuc) % elastic = ZERO
+        end if
       end if
+      if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
 
       ! competitive reaction xs
       if (tope % E < tope % MF3_x_e(1)) then
@@ -4022,12 +4025,12 @@ contains
         else if (tope % E > tope % MF3_f_e(size(tope % MF3_f_e))) then
           call fatal_error('Energy is above File 3 fission energy grid')
         else
-          i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope % E)
+          i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope%E)
           if (tope % INT == LINEAR_LINEAR .or. &
             & tope % MF3_f_e(i_grid) > ZERO) then
             fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
               & tope % MF3_f_e(i_grid + 1), tope % INT)
-            micro_xs(i_nuc) % fission = interpolator(fact, tope % MF3_f(i_grid), &
+            micro_xs(i_nuc) % fission = interpolator(fact, tope%MF3_f(i_grid),&
               & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
           else
             micro_xs(i_nuc) % fission = f % xs
@@ -4040,11 +4043,10 @@ contains
 
       ! total xs
       micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
-        &                     + micro_xs(i_nuc) % absorption &
-        &                     + inelastic_xs
+           + micro_xs(i_nuc) % absorption + inelastic_xs
     end if
 
-  end subroutine add_ace_background
+  end subroutine add_mf3_background
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

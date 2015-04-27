@@ -408,7 +408,7 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
-                lattice = openmc.HexLattice(lattice_id=lattice_id, name)
+                lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
                 lattice.num_rings = n_rings
                 lattice.num_axial = n_axial
                 lattice.center = center

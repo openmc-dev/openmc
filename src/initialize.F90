@@ -4,10 +4,11 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use energy_grid,      only: unionized_grid
+  use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
-  use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
+  use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
+                              &BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
@@ -108,12 +109,17 @@ contains
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
 
-      ! Construct unionized energy grid from cross-sections
-      if (grid_method == GRID_UNION) then
+      ! Construct unionized or log energy grid for cross-sections
+      select case (grid_method)
+      case (GRID_NUCLIDE)
+        continue
+      case (GRID_MAT_UNION)
         call time_unionize % start()
         call unionized_grid()
         call time_unionize % stop()
-      end if
+      case (GRID_LOGARITHM)
+        call logarithmic_grid()
+      end select
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
@@ -547,16 +553,15 @@ contains
 
   subroutine adjust_indices()
 
-    integer :: i             ! index for various purposes
-    integer :: j             ! index for various purposes
-    integer :: k             ! loop index for lattices
-    integer :: m             ! loop index for lattices
-    integer :: mid, lid      ! material and lattice IDs
-    integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array
-    integer :: id            ! user-specified id
+    integer :: i                      ! index for various purposes
+    integer :: j                      ! index for various purposes
+    integer :: k                      ! loop index for lattices
+    integer :: m                      ! loop index for lattices
+    integer :: lid                    ! lattice IDs
+    integer :: i_array                ! index in surfaces/materials array 
+    integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
-    type(Lattice),     pointer :: lat => null()
+    class(Lattice),    pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
@@ -609,18 +614,8 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
           c % fill = lid
-          if (mid == MATERIAL_VOID) then
-            c % material = mid
-          else if (material_dict % has_key(mid)) then
-            c % material = material_dict % get_key(mid)
-          else
-            call fatal_error("Could not find material " // trim(to_str(mid)) &
-                 &// " specified on lattice " // trim(to_str(lid)))
-          end if
-
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
                &// trim(to_str(c % id)) // " is neither a universe nor a &
@@ -633,28 +628,57 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i)
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+      lat => lattices(i) % obj
+      select type (lat)
 
-      do m = 1, n_z
-        do k = 1, n_y
-          do j = 1, n_x
-            id = lat % universes(j,k,m)
-            if (universe_dict % has_key(id)) then
-              lat % universes(j,k,m) = universe_dict % get_key(id)
-            else
-              call fatal_error("Invalid universe number " // trim(to_str(id)) &
-                   &// " specified on lattice " // trim(to_str(lat % id)))
-            end if
+      type is (RectLattice)
+        do m = 1, lat % n_cells(3)
+          do k = 1, lat % n_cells(2)
+            do j = 1, lat % n_cells(1)
+              id = lat % universes(j,k,m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j,k,m) = universe_dict % get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat % id)))
+              end if
+            end do
           end do
         end do
-      end do
+
+      type is (HexLattice)
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
+                cycle
+              else if (j + k > 3*lat % n_rings - 1) then
+                cycle
+              end if
+              id = lat % universes(j, k, m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j, k, m) = universe_dict % get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat % id)))
+              end if
+            end do
+          end do
+        end do
+
+      end select
+
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict % has_key(lat % outer)) then
+          lat % outer = universe_dict % get_key(lat % outer)
+        else
+          call fatal_error("Invalid universe number " &
+               &// trim(to_str(lat % outer)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
+        end if
+      end if
 
     end do
 

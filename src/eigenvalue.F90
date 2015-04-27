@@ -110,7 +110,7 @@ contains
     ! END OF RUN WRAPUP
 
     if (master) call header("SIMULATION FINISHED", level=1)
-    
+
     ! Clear particle
     call p % clear()
 
@@ -374,7 +374,7 @@ contains
 
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
@@ -384,7 +384,7 @@ contains
 
     finish = start + n_bank
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
          MPI_COMM_WORLD, mpi_err)
 
 #else
@@ -456,9 +456,9 @@ contains
     ! indices for all processors
 
 #ifdef MPI
-    ! First do an exclusive scan to get the starting indices for 
+    ! First do an exclusive scan to get the starting indices for
     start = 0_8
-    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
     finish = start + index_temp
 
@@ -518,7 +518,7 @@ contains
         ! process
         if (neighbor /= rank) then
           n_request = n_request + 1
-          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
+          call MPI_ISEND(temp_sites(index_local), int(n), MPI_BANK, neighbor, &
                rank, MPI_COMM_WORLD, request(n_request), mpi_err)
         end if
 
@@ -562,7 +562,7 @@ contains
         ! asynchronous receive for the source sites
 
         n_request = n_request + 1
-        call MPI_IRECV(source_bank(index_local), n, MPI_BANK, &
+        call MPI_IRECV(source_bank(index_local), int(n), MPI_BANK, &
              neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
 
       else
@@ -633,10 +633,10 @@ contains
         m % n_dimension = 3
         allocate(m % dimension(3))
         m % dimension = n
-        
+
         ! determine width
         m % width = (m % upper_right - m % lower_left) / m % dimension
-        
+
       end if
 
       ! allocate p

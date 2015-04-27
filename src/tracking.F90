@@ -28,16 +28,15 @@ contains
 
     type(Particle), intent(inout) :: p
 
-    integer :: surface_crossed ! surface which particle is on
-    integer :: lattice_crossed ! lattice boundary which particle crossed
-    integer :: last_cell       ! most recent cell particle was in
-    integer :: n_event         ! number of collisions/crossings
-    real(8) :: d_boundary      ! distance to nearest boundary
-    real(8) :: d_collision     ! sampled distance to collision
-    real(8) :: distance        ! distance particle travels
-    logical :: found_cell      ! found cell which particle is in?
-    type(LocalCoord), pointer, save :: coord => null()
-!$omp threadprivate(coord)
+    integer :: surface_crossed        ! surface which particle is on
+    integer :: lattice_translation(3) ! in-lattice translation vector
+    integer :: last_cell              ! most recent cell particle was in
+    integer :: n_event                ! number of collisions/crossings
+    real(8) :: d_boundary             ! distance to nearest boundary
+    real(8) :: d_collision            ! sampled distance to collision
+    real(8) :: distance               ! distance particle travels
+    logical :: found_cell             ! found cell which particle is in?
+    type(LocalCoord), pointer :: coord
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
@@ -62,9 +61,8 @@ contains
     n_event = 0
 
     ! Add paricle's starting weight to count for normalizing tallies later
-!$omp critical
+!$omp atomic
     total_weight = total_weight + p % wgt
-!$omp end critical
 
     ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO
@@ -88,7 +86,8 @@ contains
       if (p % material /= p % last_material) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
-      call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
+      call distance_to_boundary(p, d_boundary, surface_crossed, &
+           &lattice_translation)
 
       ! Sample a distance to collision
       if (material_xs % total == ZERO) then
@@ -112,11 +111,10 @@ contains
            call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
-!$omp critical
+!$omp atomic
       global_tallies(K_TRACKLENGTH) % value = &
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
-!$omp end critical
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -124,10 +122,10 @@ contains
 
         last_cell = p % coord % cell
         p % coord % cell = NONE
-        if (lattice_crossed /= NONE) then
+        if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = NONE
-          call cross_lattice(p, lattice_crossed)
+          call cross_lattice(p, lattice_translation)
           p % event = EVENT_LATTICE
         else
           ! Particle crosses surface
@@ -140,11 +138,10 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-!$omp critical
+!$omp atomic
         global_tallies(K_COLLISION) % value = &
              global_tallies(K_COLLISION) % value + p % wgt * &
              material_xs % nu_fission / material_xs % total
-!$omp end critical
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the
@@ -184,7 +181,7 @@ contains
           if (coord % next % rotated) then
             ! If next level is rotated, apply rotation matrix
             coord % next % uvw = matmul(cells(coord % cell) % &
-                 rotation, coord % uvw)
+                 rotation_matrix, coord % uvw)
           else
             ! Otherwise, copy this level's direction
             coord % next % uvw = coord % uvw

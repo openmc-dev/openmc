@@ -2,23 +2,25 @@
 
 import sys
 
-# import statepoint
 sys.path.insert(0, '../../src/utils')
-import statepoint
+
+# import statepoint
+from openmc.statepoint import StatePoint
 
 # read in statepoint file
 if len(sys.argv) > 1:
-    sp = statepoint.StatePoint(sys.argv[1])
+    sp = StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.09.binary')
+    sp = StatePoint('statepoint.09.binary')
+
 sp.read_results()
 
 # set up output string
 outstr = ''
- 
+
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:12.6E} {1:12.6E}\n".format(sp._k_combined[0], sp._k_combined[1])
 
 # write results to file
 with open('results_test.dat','w') as fh:

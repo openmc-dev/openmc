@@ -2,20 +2,21 @@
 
 import sys
 
-# import particle restart 
 sys.path.insert(0, '../../src/utils')
+
+# import particle restart
 import particle_restart as pr
 
 # read in particle restart file
 if len(sys.argv) > 1:
     p = pr.Particle(sys.argv[1])
 else:
-    p = pr.Particle('particle_12_842.binary')
+    p = pr.Particle('particle_12_616.binary')
 
 # set up output string
 outstr = ''
- 
-# write out properties 
+
+# write out properties
 outstr += 'current batch:\n'
 outstr += "{0:12.6E}\n".format(p.current_batch)
 outstr += 'current gen:\n'

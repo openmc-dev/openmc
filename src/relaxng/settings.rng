@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="settings" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <optional>
+      <element name="confidence_intervals">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <choice>
+      <element name="eigenvalue">
+        <interleave>
+          <choice>
+            <element name="batches">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="batches">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="inactive">
+              <data type="nonNegativeInteger"/>
+            </element>
+            <attribute name="inactive">
+              <data type="nonNegativeInteger"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="particles">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="particles">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="generations_per_batch">
+                <data type="positiveInteger"/>
+              </element>
+              <attribute name="generations_per_batch">
+                <data type="positiveInteger"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+      <element name="fixed_source">
+        <interleave>
+          <choice>
+            <element name="batches">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="batches">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="particles">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="particles">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </choice>
+    <optional>
+      <element name="cross_sections">
+        <data type="string">
+          <param name="maxLength">255</param>
+        </data>
+      </element>
+    </optional>
+    <optional>
+      <element name="cutoff">
+        <interleave>
+          <optional>
+            <choice>
+              <element name="weight">
+                <data type="double"/>
+              </element>
+              <attribute name="weight">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="weight_avg">
+                <data type="double"/>
+              </element>
+              <attribute name="weight_avg">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="energy_grid">
+        <choice>
+          <value>nuclide</value>
+          <value>log</value>
+          <value>logarithm</value>
+          <value>logarithmic</value>
+          <value>material-union</value>
+          <value>union</value>
+        </choice>
+      </element>
+    </optional>
+    <optional>
+      <element name="entropy">
+        <interleave>
+          <optional>
+            <choice>
+              <element name="dimension">
+                <list>
+                  <oneOrMore>
+                    <data type="int"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="dimension">
+                <list>
+                  <oneOrMore>
+                    <data type="int"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="log_grid_bins">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="natural_elements">
+        <data type="string">
+          <param name="maxLength">20</param>
+        </data>
+      </element>
+    </optional>
+    <optional>
+      <element name="no_reduce">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="output">
+        <interleave>
+          <optional>
+            <choice>
+              <element name="summary">
+                <data type="boolean"/>
+              </element>
+              <attribute name="summary">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="cross_sections">
+                <data type="boolean"/>
+              </element>
+              <attribute name="cross_sections">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="tallies">
+                <data type="boolean"/>
+              </element>
+              <attribute name="tallies">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="output_path">
+        <data type="string">
+          <param name="maxLength">255</param>
+        </data>
+      </element>
+    </optional>
+    <optional>
+      <element name="ptables">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="run_cmfd">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="seed">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="source">
+        <interleave>
+          <optional>
+            <element name="file">
+              <data type="string">
+                <param name="maxLength">255</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="space">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </element>
+                  <attribute name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="length">
+                      <data type="int"/>
+                    </element>
+                    <attribute name="length">
+                      <data type="int"/>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="interpolation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </element>
+                    <attribute name="interplation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+          <optional>
+            <element name="angle">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </element>
+                  <attribute name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="length">
+                      <data type="int"/>
+                    </element>
+                    <attribute name="length">
+                      <data type="int"/>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="interpolation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </element>
+                    <attribute name="interplation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+          <optional>
+            <element name="energy">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </element>
+                  <attribute name="type">
+                    <data type="string">
+                      <param name="maxLength">16</param>
+                    </data>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="length">
+                      <data type="int"/>
+                    </element>
+                    <attribute name="length">
+                      <data type="int"/>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="interpolation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </element>
+                    <attribute name="interplation">
+                      <data type="string">
+                        <param name="maxLength">10</param>
+                      </data>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="parameters">
+                      <list>
+                        <oneOrMore>
+                          <data type="double"/>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+          <optional>
+            <choice>
+              <element name="write_initial">
+                <data type="boolean"/>
+              </element>
+              <attribute name="write_initial">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="state_point">
+        <choice>
+          <choice>
+            <element name="batches">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="batches">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="interval">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="interval">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+        </choice>
+      </element>
+    </optional>
+    <optional>
+      <element name="source_point">
+        <interleave>
+          <optional>
+            <choice>
+              <choice>
+                <element name="batches">
+                  <list>
+                    <oneOrMore>
+                      <data type="positiveInteger"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="batches">
+                  <list>
+                    <oneOrMore>
+                      <data type="positiveInteger"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="interval">
+                  <data type="positiveInteger"/>
+                </element>
+                <attribute name="interval">
+                  <data type="positiveInteger"/>
+                </attribute>
+              </choice>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="separate">
+                <data type="boolean"/>
+              </element>
+              <attribute name="separate">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="write">
+                <data type="boolean"/>
+              </element>
+              <attribute name="write">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="overwrite_latest">
+                <data type="boolean"/>
+              </element>
+              <attribute name="overwrite_latest">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="survival_biasing">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="threads">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="trace">
+        <list>
+          <oneOrMore>
+            <data type="positiveInteger"/>
+          </oneOrMore>
+        </list>
+      </element>
+    </optional>
+    <optional>
+      <element name="track">
+        <list>
+          <oneOrMore>
+            <data type="positiveInteger"/>
+          </oneOrMore>
+        </list>
+      </element>
+    </optional>
+    <optional>
+      <element name="verbosity">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="uniform_fs">
+        <interleave>
+          <choice>
+            <element name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="resonance_scattering">
+        <zeroOrMore>
+          <element name="scatterer">
+            <interleave>
+              <choice>
+                <element name="nuclide">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </element>
+                <attribute name="nuclide">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="method">
+                  <data type="string">
+                    <param name="maxLength">16</param>
+                  </data>
+                </element>
+                <attribute name="method">
+                  <data type="string">
+                    <param name="maxLength">16</param>
+                  </data>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="xs_label">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </element>
+                <attribute name="xs_label">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="xs_label_0K">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </element>
+                <attribute name="xs_label_0K">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="E_min">
+                  <data type="double"/>
+                </element>
+                <attribute name="E_min">
+                  <data type="double"/>
+                </attribute>
+              </choice>
+              <optional>
+                <choice>
+                  <element name="E_max">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="E_max">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+              </optional>
+            </interleave>
+          </element>
+        </zeroOrMore>
+      </element>
+    </optional>
+  </interleave>
+</element>

@@ -1,0 +1,27 @@
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq -y python-numpy
+  - sudo apt-get install -qq -y python-scipy
+  - sudo apt-get install -qq -y python-h5py
+  - sudo apt-get install -qq -y gfortran
+  - sudo apt-get install -qq -y g++
+  - ./tests/travis_install.sh
+  - export FC=gfortran
+  - export MPI_DIR=$PWD/mpich_install
+  - export PHDF5_DIR=$PWD/phdf5_install
+  - export HDF5_DIR=$PWD/hdf5_install
+  - export PETSC_DIR=$PWD/petsc_install
+
+before_script:
+  - cd data
+  - git clone --branch=master git://github.com/bhermanmit/nndc_xs nndc_xs
+  - cat nndc_xs/nndc.tar.gza* | tar xzvf -
+  - rm -rf nndc_xs
+  - export CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
+  - cd ..
+
+script:
+  - cd tests
+  - export OMP_NUM_THREADS=3
+  - ./travis.sh
+  - cd ..

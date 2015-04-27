@@ -1733,14 +1733,15 @@ contains
         end if
 
         ! Check enforced isotropic lab scattering
-        if (check_for_node(node_nuc, "lab")) then
-          call get_node_value(node_nuc, "lab", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == "true") then
+        if (check_for_node(node_nuc, "scattering")) then
+          call get_node_value(node_nuc, "scattering", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == "lab") then
             call list_iso_lab % append(.true.)
-          else if (trim(adjustl(to_lower(temp_str))) == "false") then
+          else if (trim(adjustl(to_lower(temp_str))) == "ace") then
             call list_iso_lab % append(.false.)
           else
-            call fatal_error("Isotropic lab scattering must be true or false")
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
           end if
         else
           call list_iso_lab % append(.false.)

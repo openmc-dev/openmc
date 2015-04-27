@@ -116,7 +116,8 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
   # IBM XL compiler options
-  set(f90flags  "-WF,-DNO_F2008 -O2")
+  set(f90flags  "-O2")
+  add_definitions(-DNO_F2008)
   if(debug)
     set(f90flags  "-g -C -qflag=i:i -u")
     set(ldflags   "-g")

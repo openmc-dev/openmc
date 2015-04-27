@@ -332,13 +332,11 @@ contains
       ! ELASTIC SCATTERING
 
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
-        if (materials(p % material) % p0(i_nuc_mat)) &
-             call fatal_error("thermal scattering law data and isotropic lab&
-             & scattering specified for the same nuclide")
 
         ! S(a,b) scattering
         call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
-             p % E, p % coord0 % uvw, p % mu)
+             p % E, p % coord0 % uvw, p % mu, &
+             materials(p % material) % p0(i_nuc_mat))
 
       else
         ! get pointer to elastic scattering reaction
@@ -492,13 +490,15 @@ contains
 ! according to a specified S(a,b) table.
 !===============================================================================
 
-  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu)
+  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu_lab, iso_lab)
 
     integer, intent(in)     :: i_nuclide ! index in micro_xs
     integer, intent(in)     :: i_sab     ! index in sab_tables
     real(8), intent(inout)  :: E         ! incoming/outgoing energy
     real(8), intent(inout)  :: uvw(3)    ! directional cosines
-    real(8), intent(out)    :: mu        ! scattering cosine
+    real(8)                 :: uvw_in(3) ! incoming direction
+    real(8), intent(out)    :: mu_lab    ! cosine of polar angle in lab system
+    logical, intent(in)     :: iso_lab
 
     integer :: i            ! incoming energy bin
     integer :: j            ! outgoing energy bin
@@ -522,9 +522,13 @@ contains
     real(8) :: c_j, c_j1      ! cumulative probability
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
+    real(8) :: phi            ! azimuthal angle
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
+
+    ! incoming direction
+    uvw_in(:) = uvw(:)
 
     ! Determine whether inelastic or elastic scattering will occur
     if (prn() < micro_xs(i_nuclide) % elastic_sab / &
@@ -555,7 +559,7 @@ contains
         mu_i1jk = sab % elastic_mu(k,i+1)
 
         ! Cosine of angle between incoming and outgoing neutron
-        mu = (1 - f)*mu_ijk + f*mu_i1jk
+        mu_lab = (1 - f)*mu_ijk + f*mu_i1jk
 
       elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
         ! This treatment is used for data derived in the coherent
@@ -571,7 +575,7 @@ contains
         end if
 
         ! Characteristic scattering cosine for this Bragg edge
-        mu = ONE - TWO*sab % elastic_e_in(k) / E
+        mu_lab = ONE - TWO*sab % elastic_e_in(k) / E
 
       end if
 
@@ -646,7 +650,7 @@ contains
         mu_i1jk = sab % inelastic_mu(k,j,i+1)
 
         ! Cosine of angle between incoming and outgoing neutron
-        mu = (1 - f)*mu_ijk + f*mu_i1jk
+        mu_lab = (1 - f)*mu_ijk + f*mu_i1jk
 
       else if (sab % secondary_mode == SAB_SECONDARY_CONT) then
         ! Continuous secondary energy - this is to be similar to
@@ -723,7 +727,7 @@ contains
 
         ! Will use mu from the randomly chosen incoming and closest outgoing
         ! energy bins
-        mu = sab % inelastic_data(l) % mu(k, j)
+        mu_lab = sab % inelastic_data(l) % mu(k, j)
 
       else
         call fatal_error("Invalid secondary energy mode on S(a,b) table " &
@@ -731,8 +735,19 @@ contains
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
 
-    ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+
+    ! compute cosine of scattering angle in LAB frame by taking dot product of
+    ! neutron's pre- and post-collision unit vectors
+    if (iso_lab) then
+      uvw(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
+      mu_lab = dot_product(uvw_in, uvw)
+    else
+      ! change direction of particle
+      uvw = rotate_angle(uvw, mu_lab)
+    end if
 
   end subroutine sab_scatter
 

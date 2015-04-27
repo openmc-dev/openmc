@@ -1607,8 +1607,6 @@ contains
                                             ! scores
     character(len=52), allocatable   :: temp_nuclide_name(:) ! temporary nuclide 
                                                              ! names
-    type(Temptrigger), target        :: temp_result          ! get the tempory 
-                                                             ! result 
     type(TriggerObject)              :: temp_real            ! the temporary 
                                                              ! standard deviation
                                                              ! relative error and 
@@ -2228,13 +2226,13 @@ contains
 !===============================================================================
 
   subroutine GetTallyUncertainty(std, rld, scoreindex, filterindex,t)
-    real(8), intent(inout) :: std
-    real(8), intent(inout) :: rld
-    real(8) :: tempsum = .0
-    integer :: n
+    integer                :: n
     integer, intent(in)    :: filterindex
     integer, intent(in)    :: scoreindex
-    type(TallyResult)      :: tempresult
+    real(8)                :: tempsum = .0
+    real(8), intent(inout) :: std
+    real(8), intent(inout) :: rld
+    type(TallyResult)          :: tempresult
     type(TallyObject), pointer :: t 
     
     n = t % n_realizations

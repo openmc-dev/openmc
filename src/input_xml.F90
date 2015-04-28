@@ -2942,7 +2942,7 @@ contains
       else
         n_triggers = 0
       end if
-      
+
       if (trigger_on) then
         call get_node_list(node_tal, "trigger", node_trigger_list)
         t % n_user_triggers = get_list_size(node_trigger_list)

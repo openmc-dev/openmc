@@ -2934,9 +2934,8 @@ contains
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
       end if
-
+      
       !Read the trigger information
-
       if (keff_trigger % trigger_type > 0) then
         n_triggers = 1
       else

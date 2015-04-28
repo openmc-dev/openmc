@@ -2935,13 +2935,14 @@ contains
              &// trim(to_str(t % id)) // ".")
       end if
       
+      
       !Read the trigger information
       if (keff_trigger % trigger_type > 0) then
         n_triggers = 1
       else
         n_triggers = 0
       end if
-
+      
       if (trigger_on) then
         call get_node_list(node_tal, "trigger", node_trigger_list)
         t % n_user_triggers = get_list_size(node_trigger_list)

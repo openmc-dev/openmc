@@ -367,7 +367,8 @@ class StatePoint(object):
                 filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
-                    filter.mesh = self._meshes[bins]
+                    key = self._mesh_keys[self._mesh_ids.index(bins)]
+                    filter._mesh = self._meshes[key]
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)

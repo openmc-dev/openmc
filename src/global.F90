@@ -291,6 +291,9 @@ module global
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
+  ! Number of distribcell maps
+  integer :: n_maps
+
   ! Write out initial source
   logical :: write_initial_source = .false.
 

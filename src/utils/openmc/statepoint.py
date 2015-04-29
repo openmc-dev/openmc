@@ -339,6 +339,10 @@ class StatePoint(object):
                 filter_type = self._get_int(
                      path='{0}{1}/type'.format(subbase, j))[0]
 
+                # Read the Filter offset
+                offset = self._get_int(
+                     path='{0}{1}/offset'.format(subbase, j))[0]
+
                 n_bins = self._get_int(
                      path='{0}{1}/n_bins'.format(subbase, j))[0]
 
@@ -363,6 +367,7 @@ class StatePoint(object):
 
                 # Create Filter object
                 filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
+                filter.offset = offset
                 filter.stride = stride
                 filter.num_bins = n_bins
 
@@ -677,6 +682,7 @@ class StatePoint(object):
             nuclide_zaids = copy.deepcopy(tally._nuclides)
 
             for nuclide_zaid in nuclide_zaids:
+
                 tally.remove_nuclide(nuclide_zaid)
                 if nuclide_zaid == -1:
                     tally.add_nuclide(openmc.Nuclide('total'))

@@ -1,11 +1,15 @@
 import copy
 import struct
+import sys
 
 import numpy as np
 import scipy.stats
 
 import openmc
 from openmc.constants import *
+
+if sys.version > '3':
+    long = int
 
 
 class SourceSite(object):

@@ -34,7 +34,7 @@ class Cell(object):
         self._surfaces = {}
         self._rotation = None
         self._translation = None
-        self._offset = None
+        self._offsets = None
 
 
     @property
@@ -73,8 +73,8 @@ class Cell(object):
 
 
     @property
-    def offset(self):
-        return self._offset
+    def offsets(self):
+        return self._offsets
 
 
     @id.setter
@@ -188,16 +188,16 @@ class Cell(object):
         self._translation = translation
 
 
-    @offset.setter
-    def offset(self, offset):
+    @offsets.setter
+    def offsets(self, offsets):
 
-        if not isinstance(offset, (tuple, list, np.ndarray)):
-            msg = 'Unable to set offset {0} to Cell ID={1} since ' \
+        if not isinstance(offsets, (tuple, list, np.ndarray)):
+            msg = 'Unable to set offsets {0} to Cell ID={1} since ' \
                   'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(offset, self._id)
+                  'array'.format(offsets, self._id)
             raise ValueError(msg)
 
-        self._offset = offset
+        self._offsets = offsets
 
 
     def add_surface(self, surface, halfspace):
@@ -259,19 +259,13 @@ class Cell(object):
 
         # If the Cell is filled by a Universe
         elif self._type == 'fill':
-            offset = self._offset[filter_offset-1]
+            offset = self._offsets[filter_offset-1]
             offset += self._fill.get_offset(path, filter_offset)
 
         # If the Cell is filled by a Lattice
         else:
             offset = self._fill.get_offset(path, filter_offset)
 
-        return offset
-
-        # Make a recursive call to the Universe filling this Cell
-        offset = self._cells[cell_id].get_offset(path, filter_offset)
-
-        # Return the offset computed at all nested Universe levels
         return offset
 
 
@@ -335,7 +329,7 @@ class Cell(object):
                                             self._rotation)
         string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
                                             self._translation)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offset)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
 
         return string
 
@@ -376,10 +370,6 @@ class Cell(object):
                     # Create the XML subelement for this Surface
                     surface = self._surfaces[surface_id][0]
                     surface_subelement = surface.create_xml_subelement()
-
-                    if len(surface._name) > 0:
-                        xml_element.append(ET.Comment(surface._name))
-
                     xml_element.append(surface_subelement)
 
                 # Append the halfspace and Surface ID
@@ -614,10 +604,6 @@ class Universe(object):
 
                 # Append the Universe ID to the subelement and add to Element
                 cell_subelement.set("universe", str(self._id))
-
-                if len(cell._name) > 0:
-                    xml_element.append(ET.Comment(cell._name))
-
                 xml_element.append(cell_subelement)
 
 
@@ -1078,9 +1064,6 @@ class RectLattice(Lattice):
         universes = ET.SubElement(lattice_subelement, "universes")
         universes.text = universe_ids
 
-        if len(self._name) > 0:
-            xml_element.append(ET.Comment(self._name))
-
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)
 
@@ -1175,7 +1158,7 @@ class HexLattice(Lattice):
             raise ValueError(msg)
 
 
-        elif len(pitch) != 1 and len(pitch) != 2:
+        elif len(pitch) != 2 and len(pitch) != 3:
             msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
                   'not contain 2 or 3 coordinates'.format(self._id, pitch)
             raise ValueError(msg)
@@ -1393,9 +1376,6 @@ class HexLattice(Lattice):
 
         universes = ET.SubElement(lattice_subelement, "universes")
         universes.text = '\n' + universe_ids
-
-        if len(self._name) > 0:
-            xml_element.append(ET.Comment(self._name))
 
         # Append the XML subelement for this Lattice to the XML element
         xml_element.append(lattice_subelement)

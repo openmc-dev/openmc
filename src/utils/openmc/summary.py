@@ -273,6 +273,12 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id)
 
             if fill_type == 'universe':
+                maps = self._f['geometry/cells'][key]['maps'][0]
+
+                if maps > 0:
+                    offset = self._f['geometry/cells'][key]['offset'][...]
+                    cell.set_offset(offset)
+
                 translated = self._f['geometry/cells'][key]['translated'][0]
                 if translated:
                     translation = \
@@ -349,6 +355,11 @@ class Summary(object):
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
+            maps = self._f['geometry/lattices'][key]['maps'][0]
+            offset_size = self._f['geometry/lattices'][key]['offset_size'][0]
+
+            if offset_size > 0:
+                offsets = self._f['geometry/lattices'][key]['offsets'][...]
 
             if lattice_type == 'rectangular':
                 dimension = self._f['geometry/lattices'][key]['dimension'][...]
@@ -389,12 +400,17 @@ class Summary(object):
                 universes = universes[:,::-1,:]
                 lattice.universes = universes
 
+                if offset_size > 0:
+                    offsets = np.swapaxes(offsets, 0, 1)
+                    offsets = np.swapaxes(offsets, 1, 2)
+                    lattice.offsets = offsets
+
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
 
             if lattice_type == 'hexagonal':
-                n_rings = self._f['geometry/latties'][key]['n_rings'][0]
-                n_axial = self._f['geometry/latties'][key]['n_axial'][0]
+                n_rings = self._f['geometry/lattices'][key]['n_rings'][0]
+                n_axial = self._f['geometry/lattices'][key]['n_axial'][0]
                 center = self._f['geometry/lattices'][key]['center'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
@@ -404,7 +420,7 @@ class Summary(object):
 
                 # Create the Lattice
                 lattice = openmc.HexLattice(lattice_id=lattice_id)
-                lattice.num_rings(n_rings)
+                lattice.num_rings = n_rings
                 lattice.num_axial = n_axial
                 lattice.center = center
                 lattice.pitch = pitch
@@ -423,6 +439,9 @@ class Summary(object):
                             if universe_ids[i,j,k] != -1:
                               universes[i,j,k] = \
                                    self.get_universe_by_id(universe_ids[i,j,k])
+
+                if offset_size > 0:
+                    lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice

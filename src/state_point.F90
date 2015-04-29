@@ -256,6 +256,9 @@ contains
             call sp % write_data(tally % filters(j) % type, "type", &
                  group="tallies/tally " // trim(to_str(tally % id)) // &
                  "/filter " // to_str(j))
+            call sp % write_data(tally % filters(j) % offset, "offset", &
+                 group="tallies/tally " // trim(to_str(tally % id)) // &
+                 "/filter " // to_str(j))
             call sp % write_data(tally % filters(j) % n_bins, "n_bins", &
                  group="tallies/tally " // trim(to_str(tally % id)) // &
                  "/filter " // to_str(j))
@@ -280,7 +283,11 @@ contains
           ! Set up nuclide bin array and then write
           allocate(key_array(tally % n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
-            key_array(j) = tally % nuclide_bins(j)
+            if (tally % nuclide_bins(j) > 0) then
+              key_array(j) = nuclides(tally % nuclide_bins(j)) % zaid
+            else
+              key_array(j) = tally % nuclide_bins(j)
+            end if
           end do NUCLIDE_LOOP
           call sp % write_data(key_array, "nuclides", &
                group="tallies/tally " // trim(to_str(tally % id)), &
@@ -844,6 +851,9 @@ contains
         call sp % read_data(tally % filters(j) % type, "type", &
              group="tallies/tally " // trim(to_str(curr_key)) // &
              "/filter " // to_str(j))
+        call sp % read_data(tally % filters(j) % offset, "offset", &
+              group="tallies/tally " // trim(to_str(curr_key)) // &
+               "/filter " // to_str(j))
         call sp % read_data(tally % filters(j) % n_bins, "n_bins", &
              group="tallies/tally " // trim(to_str(curr_key)) // &
              "/filter " // to_str(j))
@@ -878,6 +888,7 @@ contains
           tally % nuclide_bins(j) = temp_array(j)
         end if
       end do NUCLIDE_LOOP
+
       deallocate(temp_array)
 
       ! Write number of score bins, score bins, user score bins

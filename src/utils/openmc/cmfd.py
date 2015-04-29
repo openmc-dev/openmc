@@ -585,14 +585,14 @@ class CMFDFile(object):
         self._write_matrices = write_matrices
 
 
-    def get_active_flush_subelement(self):
+    def create_active_flush_subelement(self):
 
         if not self._active_flush is None:
             element = ET.SubElement(self._cmfd_file, "active_flush")
             element.text = '{0}'.format(str(self._active_flush))
 
 
-    def get_begin_subelement(self):
+    def create_begin_subelement(self):
 
         if not self._begin is None:
             element = ET.SubElement(self._cmfd_file, "begin")

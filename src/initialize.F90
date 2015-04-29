@@ -6,7 +6,7 @@ module initialize
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists
+  use geometry,         only: neighbor_lists, count_instance, calc_offsets
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                               &BASE_UNIVERSE
   use global
@@ -21,7 +21,7 @@ module initialize
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject, TallyResult
+  use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
@@ -92,6 +92,9 @@ contains
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
 
+    ! Initialize distribcell_filters
+    call prepare_distribcell()
+    
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
@@ -691,6 +694,17 @@ contains
       FILTER_LOOP: do j = 1, t % n_filters
 
         select case (t % filters(j) % type)
+        case (FILTER_DISTRIBCELL)
+          do k = 1, size(t % filters(j) % int_bins)
+            id = t % filters(j) % int_bins(k)
+            if (cell_dict % has_key(id)) then
+              t % filters(j) % int_bins(k) = cell_dict % get_key(id)
+            else
+              call fatal_error("Could not find cell " // trim(to_str(id)) // &
+                               " specified on tally " // trim(to_str(t % id)))
+            end if
+
+          end do
         case (FILTER_CELL, FILTER_CELLBORN)
 
           do k = 1, t % filters(j) % n_bins
@@ -904,5 +918,231 @@ contains
     end if
 
   end subroutine allocate_banks
+
+!===============================================================================
+! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
+! offsets for distribcells
+!===============================================================================
+
+  subroutine prepare_distribcell()
+
+    integer :: i, j       ! Tally, filter loop counters
+    integer :: extra      ! Number of extra filters to add
+    integer :: n_filt     ! Number of filters originally in tally
+    logical :: count_all  ! Count all cells
+    integer, allocatable :: univ_list(:)              ! Target offsets
+    type(TallyObject),    pointer :: tally            ! Current tally
+    type(Universe),       pointer :: univ             ! Pointer to universe
+    type(Cell),           pointer :: c             ! Pointer to cell
+
+    count_all = .false.
+
+    ! Loop over tallies    
+    do i = 1, n_tallies
+
+      extra = 0
+
+      ! Get pointer to tally
+      tally => tallies(i)
+
+      n_filt = tally % n_filters
+
+      ! Loop over the filters to determine how many additional filters
+      ! need to be added to this tally
+      do j = 1, tally % n_filters
+
+        ! Determine type of filter
+        if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
+          count_all = .true.
+          extra = extra + size(tally % filters(j) % int_bins) - 1
+        end if
+
+      end do
+
+      if (extra > 0) then
+        call fatal_error("At least one Distribcell filter was specified with&
+                         &multiple bins. This feature is not yet supported.")
+      end if      
+
+    end do
+    
+    if (count_all) then
+      
+      univ => universes(BASE_UNIVERSE)
+
+      ! sum the number of occurrences of all cells
+      call count_instance(univ)
+
+      ! Loop over tallies    
+      do i = 1, n_tallies    
+
+        ! Get pointer to tally
+        tally => tallies(i)      
+
+        ! Initialize the filters
+        do j = 1, tally % n_filters
+
+          ! Set the number of bins to the number of instances of the cell
+          if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
+            c => cells(tally % filters(j) % int_bins(1))
+            tally % filters(j) % n_bins = c % instances
+          end if
+
+        end do
+      end do
+
+    end if
+
+    ! Allocate offset maps at each level in the geometry
+    call allocate_offsets(univ_list)
+
+    ! Calculate offsets for each target distribcell
+    do i = 1, n_maps
+      do j = 1, n_universes  
+        univ => universes(j)
+        call calc_offsets(univ_list(i), i, univ)
+      end do
+    end do
+
+    ! Deallocate temporary target counts
+    do i = 1, n_universes  
+      univ => universes(i)
+      deallocate(univ % kount)
+      deallocate(univ % search)
+    end do
+
+    deallocate(univ_list)
+  
+  end subroutine prepare_distribcell
+
+
+  
+!===============================================================================
+! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
+! memory for distribcell offset tables
+!===============================================================================
+
+  recursive subroutine allocate_offsets(univ_list)
+
+    integer, intent(out), allocatable :: univ_list(:)
+    integer :: i, j, k, l, m                    ! Loop counters
+    integer :: maps   
+    type(DictIntInt) :: cell_list               ! distribells to track
+    
+    type(Universe),    pointer :: univ          ! pointer to universe
+    class(Lattice),    pointer :: lat           ! pointer to lattice
+    type(TallyObject), pointer :: tally         ! pointer to tally
+    type(TallyFilter), pointer :: filter        ! pointer to filter
+    
+    ! Begin gathering list of cells in distribcell tallies
+    maps = 0
+    
+    ! Populate list of distribcells to track
+    do i = 1, n_tallies
+      tally => tallies(i)
+
+      do j = 1, tally % n_filters
+        filter => tally % filters(j)        
+
+        if (filter % type == FILTER_DISTRIBCELL) then
+          if (.not. cell_list % has_key(filter % int_bins(1))) then
+            call cell_list % add_key(filter % int_bins(1),0)
+          end if
+        end if 
+
+      end do
+    end do
+    
+    ! Compute the number of unique universes containing these distribcells
+    ! to determine the number of offset tables to allocate
+    do i = 1, n_universes
+      univ => universes(i)
+
+      do j = 1, univ % n_cells
+
+        if (cell_list % has_key(univ % cells(j))) then
+          maps = maps + 1
+          cycle
+        end if
+
+      end do
+    end do
+    
+    
+    ! Allocate the list of offset tables for each unique universe
+    allocate(univ_list(maps))
+
+    k = 1
+    do i = 1, n_universes
+    
+      univ => universes(i)
+
+      ! Allocate search + kount
+      allocate(univ % kount(maps))
+      allocate(univ % search(maps))
+
+      do j = 1, maps
+        univ % kount(j) = 0
+        univ % search(j) = .false.
+      end do      
+
+      do j = 1, univ % n_cells
+      
+        if (cell_list % has_key(univ % cells(j))) then
+          
+            ! Loop over all tallies    
+            do l = 1, n_tallies
+              tally => tallies(l)
+              
+              do m = 1, tally % n_filters
+                filter => tally % filters(m)
+                
+                ! Loop over only distribcell filters
+                ! If filter points to cell we just found, set offset index
+                if (filter % type == FILTER_DISTRIBCELL) then                  
+                  if (filter % int_bins(1) == univ % cells(j)) then
+                    filter % offset = k
+                  end if
+                end if
+
+              end do
+            end do          
+          
+          univ_list(k) = univ % id
+          k = k + 1
+          cycle
+        end if
+      end do
+    end do
+    
+    ! Allocate the offset tables for lattices    
+    do i = 1, n_lattices
+      lat => lattices(i) % obj
+
+      select type(lat)
+
+      type is (RectLattice)
+        allocate(lat % offset(maps, lat % n_cells(1), lat % n_cells(2), &
+                 lat % n_cells(3)))
+      type is (HexLattice)
+        allocate(lat % offset(maps, 2 * lat % n_rings - 1, &
+             2 * lat % n_rings - 1, lat % n_axial))
+      end select
+
+      lat % offset(:, :, :, :) = 0
+
+    end do
+
+    ! Allocate offset table for fill cells
+    do i = 1, n_cells
+      if (cells(i) % material == NONE) then
+        allocate(cells(i) % offset(maps))
+      end if
+    end do
+    
+    ! Store the number of maps as global variable
+    n_maps = maps
+    
+  end subroutine allocate_offsets
 
 end module initialize

@@ -33,7 +33,6 @@ module cmfd_solver
   type(Vector) :: serr_v  ! Error in source
 
   ! CMFD linear solver interface
-  procedure(linsolve), pointer :: cmfd_linsolver => null()
   abstract interface
     subroutine linsolve(A, b, x, tol, i)
       import :: Matrix
@@ -101,7 +100,7 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use global,    only: cmfd, cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
+    use global,    only: cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
                          cmfd_write_matrices
 
     logical, intent(in) :: adjoint
@@ -155,16 +154,6 @@ contains
     norm_n = ZERO
     norm_o = ZERO
 
-    ! Set up solver
-    select case(cmfd % indices(4))
-      case(1)
-        cmfd_linsolver => cmfd_linsolver_1g
-      case(2)
-        cmfd_linsolver => cmfd_linsolver_2g
-      case default
-        cmfd_linsolver => cmfd_linsolver_ng
-    end select
-
     ! Set tolerances
     ktol = cmfd_ktol
     stol = cmfd_stol
@@ -201,7 +190,7 @@ contains
 
     use constants,  only: ONE
     use error,      only: fatal_error
-    use global,     only: cmfd_atoli, cmfd_rtoli
+    use global,     only: cmfd, cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -239,7 +228,14 @@ contains
       s_o % val = s_o % val / k_lo
 
       ! Compute new flux vector
-      call cmfd_linsolver(loss, s_o, phi_n, toli, innerits)
+      select case(cmfd % indices(4))
+      case(1)
+        call cmfd_linsolver_1g(loss, s_o, phi_n, toli, innerits)
+      case(2)
+        call cmfd_linsolver_2g(loss, s_o, phi_n, toli, innerits)
+      case default
+        call cmfd_linsolver_ng(loss, s_o, phi_n, toli, innerits)
+      end select
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)

@@ -115,6 +115,17 @@ class StatePoint(object):
     def tallies(self):
         return self._tallies
 
+    @property
+    def tallies_present(self):
+        return self._tallies_present
+
+    @property
+    def global_tallies(self):
+        return self._global_tallies
+
+    @property
+    def n_realizations(self):
+        return self._n_realizations
 
     def _read_metadata(self):
 
@@ -372,7 +383,7 @@ class StatePoint(object):
 
                 if FILTER_TYPES[filter_type] == 'mesh':
                     key = self._mesh_keys[self._mesh_ids.index(bins)]
-                    filter._mesh = self._meshes[key]
+                    filter.mesh = self._meshes[key]
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)

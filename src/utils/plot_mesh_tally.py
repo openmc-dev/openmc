@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 
-from statepoint import *
+from openmc.statepoint import StatePoint
 
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -130,14 +130,13 @@ class MeshPlotter(tk.Frame):
         selectedTally = self.datafile.tallies[tally_id]
 
         # Get mesh for selected tally
-        self.mesh = self.datafile.meshes[
-            selectedTally.filters['mesh'].bins[0] - 1]
+        self.mesh = selectedTally.filters_by_name['mesh'].mesh
 
         # Get mesh dimensions
         self.nx, self.ny, self.nz = self.mesh.dimension
 
         # Repopulate comboboxes baesd on current basis selection
-        text = self.basisBox['values'][self.basisBox.current()]
+        text = self.basisBox.get()
         if text == 'xy':
             self.axialBox['values'] = [str(i+1) for i in range(self.nz)]
         elif text == 'yz':
@@ -164,7 +163,8 @@ class MeshPlotter(tk.Frame):
 
         # create a label/combobox for each filter in selected tally
         count = 0
-        for filterType in selectedTally.filters:
+        for f in selectedTally.filters:
+            filterType = f.type
             if filterType == 'mesh':
                 continue
             count += 1
@@ -176,7 +176,6 @@ class MeshPlotter(tk.Frame):
             self.filterBoxes[filterType] = combobox
 
             # Set combobox items
-            f = selectedTally.filters[filterType]
             if filterType in ['energyin', 'energyout']:
                 combobox['values'] = ['{0} to {1}'.format(*f.bins[i:i+2])
                                       for i in range(f.length)]
@@ -198,7 +197,7 @@ class MeshPlotter(tk.Frame):
     def redraw(self, event=None):
         basis = self.basisBox.current() + 1
         axial_level = self.axialBox.current() + 1
-        is_mean = self.meanBox.current()
+        mbvalue = self.meanBox.get()
 
         # Get selected tally
         tally_id = self.meshTallies[self.tallyBox.current()]
@@ -206,71 +205,45 @@ class MeshPlotter(tk.Frame):
 
         # Create spec_list
         spec_list = []
-        for f in selectedTally.filters.values():
+        for f in selectedTally.filters:
             if f.type == 'mesh':
+                mesh_filter = f
                 continue
             index = self.filterBoxes[f.type].current()
-            spec_list.append((f.type, index))
+            spec_list.append((f, index))
 
-        # Take is_mean and convert it to an index of the score
-        score_loc = is_mean
-        if score_loc > 1:
-            score_loc = 1
-
-        text = self.basisBox['values'][self.basisBox.current()]
+        text = self.basisBox.get()
         if text == 'xy':
-            matrix = np.zeros((self.nx, self.ny))
-            for i in range(self.nx):
-                for j in range(self.ny):
-                    matrix[i, j] = self.datafile.get_value(tally_id,
-                        spec_list + [('mesh', (i + 1, j + 1, axial_level))],
-                        self.scoreBox.current())[score_loc]
-                    # Calculate relative uncertainty from absolute, if requested
-                    if is_mean == 2:
-                        # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(tally_id,
-                            spec_list + [('mesh', (i + 1, j + 1, axial_level))],
-                            self.scoreBox.current())[0]
-                        if mean_val > 0.0:
-                            matrix[i, j] = matrix[i, j] / mean_val
-                        else:
-                            matrix[i, j] = 0.0
-
+            dims = (self.nx, self.ny)
         elif text == 'yz':
-            matrix = np.zeros((self.ny, self.nz))
-            for i in range(self.ny):
-                for j in range(self.nz):
-                    matrix[i, j] = self.datafile.get_value(tally_id,
-                        spec_list + [('mesh', (axial_level, i + 1, j + 1))],
-                        self.scoreBox.current())[score_loc]
-                    # Calculate relative uncertainty from absolute, if requested
-                    if is_mean == 2:
-                        # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(tally_id,
-                            spec_list + [('mesh', (axial_level, i + 1, j + 1))],
-                            self.scoreBox.current())[0]
-                        if mean_val > 0.0:
-                            matrix[i, j] = matrix[i, j] / mean_val
-                        else:
-                            matrix[i, j] = 0.0
-
+            dims = (self.ny, self.nz)
         else:
-            matrix = np.zeros((self.nx, self.nz))
-            for i in range(self.nx):
-                for j in range(self.nz):
-                    matrix[i, j] = self.datafile.get_value(tally_id,
-                        spec_list + [('mesh', (i + 1, axial_level, j + 1))],
-                        self.scoreBox.current())[score_loc]
-                    # Calculate relative uncertainty from absolute, if requested
-                    if is_mean == 2:
-                        # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(tally_id,
-                            spec_list + [('mesh', (i + 1, axial_level, j + 1))],
-                            self.scoreBox.current())[0]
-                        if mean_val > 0.0:
-                            matrix[i, j] = matrix[i, j] / mean_val
-                        else:
-                            matrix[i, j] = 0.0
+            dims = (self.nx, self.nz)
+        matrix = np.zeros(dims)
+        for i in range(dims[0]):
+            for j in range(dims[1]):
+                if text == 'xy':
+                    meshtuple = (i + 1, j + 1, axial_level)
+                elif text == 'yz':
+                    meshtuple = (axial_level, i + 1, j + 1)
+                else:
+                    meshtuple = (i + 1, axial_level, j + 1)
+                filters, filter_bins = zip(*spec_list + [
+                    (mesh_filter, meshtuple)])
+                mean = selectedTally.get_value(
+                    self.scoreBox.get(), filters, filter_bins)
+                stdev = selectedTally.get_value(
+                    self.scoreBox.get(), filters, filter_bins,
+                    value='std_dev')
+                if mbvalue == 'Mean':
+                    matrix[i, j] = mean
+                elif mbvalue == 'Absolute uncertainty':
+                    matrix[i, j] = stdev
+                else:
+                    if mean > 0.:
+                        matrix[i, j] = stdev/mean
+                    else:
+                        matrix[i, j] = 0.
 
         # Clear the figure
         self.fig.clear()
@@ -292,13 +265,14 @@ class MeshPlotter(tk.Frame):
         # Create StatePoint object and read in data
         self.datafile = StatePoint(filename)
         self.datafile.read_results()
-        self.datafile.generate_stdev()
+        self.datafile.compute_stdev()
 
         # Find which tallies are mesh tallies
         self.meshTallies = []
-        for itally, tally in enumerate(self.datafile.tallies):
-            if 'mesh' in tally.filters:
+        for itally, tally in self.datafile.tallies.iteritems():
+            if any([f.type == 'mesh' for f in tally.filters]):
                 self.meshTallies.append(itally)
+                tally.filters_by_name = {f.type: f for f in tally.filters}
 
         if not self.meshTallies:
             messagebox.showerror("Invalid StatePoint File",

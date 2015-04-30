@@ -3,11 +3,10 @@
 import sys
 import numpy as np
 
-import openmc
-
 sys.path.insert(0, '../../src/utils')
 
 # import statepoint
+import openmc
 from openmc.statepoint import StatePoint
 
 # read in statepoint file

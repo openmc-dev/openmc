@@ -597,7 +597,7 @@ class StatePoint(object):
             if not score in test_tally._scores:
                 continue
 
-            # Determine if queried Tally filters is the same length as this Tally
+            # Determine if queried Tally filters is same length as this Tally
             if len(filters) != len(test_tally._filters):
                 continue
 

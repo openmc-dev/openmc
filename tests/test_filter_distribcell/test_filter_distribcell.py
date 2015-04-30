@@ -27,7 +27,6 @@ def test_run():
         proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
                stderr=STDOUT, stdout=PIPE)
     else:
-        print opts.exe, cwd
         proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
     print(proc.communicate()[0])
     returncode = proc.returncode
@@ -94,9 +93,7 @@ def teardown():
     output.append(cwd + '/settings.xml')
     output.append(cwd + '/tallies.xml')
     output.append(cwd + '/results_test.dat')
-    print output
     for f in output:
-        print f
         if os.path.exists(str(f)):
             os.remove(str(f))
 

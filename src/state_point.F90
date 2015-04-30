@@ -236,13 +236,6 @@ contains
           ! Get pointer to tally
           tally => tallies(i)
 
-          call sp % write_data(len(tally % name), "name_size", &
-               group="tallies/tally " // trim(to_str(tally % id)))
-          if (len(tally % name) > 0) then
-            call sp % write_data(tally % name, "name", &
-                 group="tallies/tally " // trim(to_str(tally % id)))
-          endif
-
           call sp % write_data(tally % estimator, "estimator", &
                group="tallies/tally " // trim(to_str(tally % id)))
           call sp % write_data(tally % n_realizations, "n_realizations", &
@@ -825,13 +818,6 @@ contains
       ! Get pointer to tally
       tally => tallies(i)
       curr_key = key_array(id_array(i))
-
-      call sp % read_data(j, "name_size", group="tallies/tally " // &
-           trim(to_str(curr_key)))
-      if (j > 0) then
-        call sp % read_data(name, "name", group="tallies/tally " // &
-             trim(to_str(curr_key)))
-      end if
 
       call sp % read_data(tally % estimator, "estimator", &
            group="tallies/tally " // trim(to_str(curr_key)))

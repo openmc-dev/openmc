@@ -298,18 +298,6 @@ class StatePoint(object):
         # Iterate over all Tallies
         for tally_key in self._tally_keys:
 
-            # Read user-specified Tally name (if specified)
-            name_size = self._get_int(
-                 path='{0}{1}/name_size'.format(base, tally_key))[0]
-
-            if name_size > 0:
-                name = self._get_string(
-                     name_size, path='{0}{1}/name'.format(base, tally_key))
-
-            # Remove leading and trailing characters from string name
-            name = name.lstrip('[\'')
-            name = name.rstrip('\']')
-
             # Read integer Tally estimator type code (analog or tracklength)
             estimator_type = self._get_int(
                  path='{0}{1}/estimator'.format(base, tally_key))[0]
@@ -319,7 +307,7 @@ class StatePoint(object):
                  path='{0}{1}/n_realizations'.format(base, tally_key))[0]
 
             # Create Tally object and assign basic properties
-            tally = openmc.Tally(tally_key, name)
+            tally = openmc.Tally(tally_key)
             tally.estimator = ESTIMATOR_TYPES[estimator_type]
             tally.num_realizations = n_realizations
 
@@ -673,6 +661,9 @@ class StatePoint(object):
             raise ValueError(msg)
 
         for tally_id, tally in self._tallies.items():
+
+            # Get the Tally name from the summary file
+            tally.name = summary.tallies[tally_id].name
 
             nuclide_zaids = copy.deepcopy(tally._nuclides)
 

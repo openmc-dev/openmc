@@ -547,6 +547,14 @@ contains
       ! Get pointer to tally
       t => tallies(i)
 
+      ! Write the name for this tally
+      call su % write_data(len(t % name), "name_size", &
+           group="tallies/tally " // trim(to_str(t % id)))
+      if (len(t % name) > 0) then
+        call su % write_data(t % name, "name", &
+             group="tallies/tally " // trim(to_str(t % id)))
+      endif
+
       ! Write size of each tally
       call su % write_data(t % total_score_bins, "total_score_bins", &
            group="tallies/tally " // trim(to_str(t % id)))

@@ -26,6 +26,7 @@ class Summary(object):
 
         self._read_metadata()
         self._read_geometry()
+        self._read_tallies()
 
 
     def _read_metadata(self):
@@ -398,8 +399,8 @@ class Summary(object):
                 self.lattices[index] = lattice
 
             if lattice_type == 'hexagonal':
-                n_rings = self._f['geometry/latties'][key]['n_rings'][0]
-                n_axial = self._f['geometry/latties'][key]['n_axial'][0]
+                n_rings = self._f['geometry/lattices'][key]['n_rings'][0]
+                n_axial = self._f['geometry/lattices'][key]['n_axial'][0]
                 center = self._f['geometry/lattices'][key]['center'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
@@ -462,6 +463,73 @@ class Summary(object):
         # Set the root universe for the Geometry
         root_universe = self.get_universe_by_id(0)
         self.openmc_geometry.root_universe = root_universe
+
+
+    def _read_tallies(self):
+
+        # Initialize dictionaries for the Tallies
+        # Keys     - Tally IDs
+        # Values   - Tally objects
+        self.tallies = {}
+
+        # Read the number of tallies
+        self.n_tallies = self._f['tallies/n_tallies'][0]
+
+        # OpenMC Tally keys
+        all_keys = self._f['tallies/'].keys()
+        tally_keys = [key for key in all_keys if 'tally' in key]
+
+        base = 'tallies/tally '
+
+        # Iterate over all Tallies
+        for tally_key in tally_keys:
+
+            tally_id = int(tally_key.strip('tally '))
+            subbase = '{0}{1}'.format(base, tally_id)
+
+            # Read Tally name metadata
+            name_size = self._f['{0}/name_size'.format(subbase)][0]
+            if (name_size > 0):
+                tally_name = self._f['{0}/name'.format(subbase)][0]
+                tally_name = tally_name.lstrip('[\'')
+                tally_name = tally_name.rstrip('\']')
+            else:
+                tally_name = ''
+
+            # Create Tally object and assign basic properties
+            tally = openmc.Tally(tally_id, tally_name)
+
+            # Read score metadata
+            score_bins = self._f['{0}/score_bins'.format(subbase)][...]
+            for score_bin in score_bins:
+                tally.add_score(openmc.SCORE_TYPES[score_bin])
+            num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
+            tally.num_score_bins = num_score_bins
+
+            # Read filter metadata
+            num_filters = self._f['{0}/n_filters'.format(subbase)][0]
+
+            # Initialize all Filters
+            for j in range(1, num_filters+1):
+
+                subsubbase = '{0}/filter {1}'.format(subbase, j)
+
+                # Read filter type (e.g., "cell", "energy", etc.)
+                filter_type = self._f['{0}/type_name'.format(subsubbase)][0]
+
+                # Read the filter bins
+                num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
+                bins = self._f['{0}/bins'.format(subsubbase)][...]
+
+                # Create Filter object
+                filter = openmc.Filter(filter_type, bins)
+                filter.num_bins = num_bins
+
+                # Add Filter to the Tally
+                tally.add_filter(filter)
+
+            # Add Tally to the global dictionary of all Tallies
+            self.tallies[tally_id] = tally
 
 
     def make_opencg_geometry(self):

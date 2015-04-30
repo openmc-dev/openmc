@@ -19,7 +19,7 @@ sp.read_results()
 sp.compute_ci()
 
 # Check if tallies are present
-if not sp._tallies_present:
+if not sp.tallies_present:
     raise Exception("No tally data in state point!")
 
 # Loop over all tallies

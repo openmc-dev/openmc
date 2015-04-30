@@ -261,15 +261,12 @@ set_target_properties(${program} PROPERTIES
 #===============================================================================
 
 install(TARGETS ${program} RUNTIME DESTINATION bin)
-install(PROGRAMS utils/statepoint_cmp.py
+install(PROGRAMS utils/plot_mesh_tally.py
   DESTINATION bin
-  RENAME statepoint_cmp)
+  RENAME plot_mesh_tally)
 install(PROGRAMS utils/statepoint_histogram.py
   DESTINATION bin
   RENAME statepoint_histogram)
-install(PROGRAMS utils/statepoint_meshplot.py
-  DESTINATION bin
-  RENAME statepoint_meshplot)
 install(PROGRAMS utils/update_inputs.py
   DESTINATION bin
   RENAME update_inputs)

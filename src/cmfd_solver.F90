@@ -181,16 +181,14 @@ contains
     use global,  only: cmfd_write_matrices
 
     ! Transpose matrices
-    call loss % transpose()
-    call prod % transpose()
+    loss = loss % transpose()
+    prod = prod % transpose()
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
       call loss % write('adj_loss.dat')
       call prod % write('adj_prod.dat')
     end if
-
-    call fatal_error('Adjoint calculations temporarily disabled')
 
   end subroutine compute_adjoint
 

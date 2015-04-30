@@ -239,13 +239,39 @@ contains
 ! MATRIX_TRANSPOSE transposes a sparse matrix
 !===============================================================================
 
-  subroutine matrix_transpose(self)
+  function matrix_transpose(self) result(mat)
 
-    class(Matrix), intent(inout) :: self ! matrix instance
+    class(Matrix), intent(in) :: self ! matrix instance
+    type(Matrix)              :: mat  ! transposed matrix
 
-    ! TODO: Implement CSR transpose
+    integer :: i, j        ! loop indices for row/column
+    integer :: i_transpose ! loop index for row in transposed matrix
+    integer :: first, last ! indices in col() array
 
-  end subroutine matrix_transpose
+    call mat % create(self % n, self % nnz)
+    do i_transpose = 1, mat % n
+      ! Set up row in transposed matrix
+      call mat % new_row()
+
+      ROW: do i = 1, self % n
+        ! Get range of columns for row i
+        first = self % row(i)
+        last  = self % row(i+1) - 1
+
+        COL: do j = first, last
+          if (self % col(j) == i_transpose) then
+            ! If column in original matrix matches row in transposed, add value
+            call mat % add_value(i, self % val(j))
+          elseif (self % col(j) > i_transpose) then
+            exit COL
+          end if
+        end do COL
+      end do ROW
+    end do
+
+    call mat % new_row()
+
+  end function matrix_transpose
 
 !===============================================================================
 ! MATRIX_VECTOR_MULTIPLY allow a vector to multiply the matrix

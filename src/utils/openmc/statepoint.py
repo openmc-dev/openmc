@@ -1,11 +1,15 @@
 import copy
 import struct
+import sys
 
 import numpy as np
 import scipy.stats
 
 import openmc
 from openmc.constants import *
+
+if sys.version > '3':
+    long = int
 
 
 class SourceSite(object):
@@ -111,6 +115,17 @@ class StatePoint(object):
     def tallies(self):
         return self._tallies
 
+    @property
+    def tallies_present(self):
+        return self._tallies_present
+
+    @property
+    def global_tallies(self):
+        return self._global_tallies
+
+    @property
+    def n_realizations(self):
+        return self._n_realizations
 
     def _read_metadata(self):
 
@@ -355,7 +370,8 @@ class StatePoint(object):
                 filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
-                    filter.mesh = self._meshes[bins]
+                    key = self._mesh_keys[self._mesh_ids.index(bins)]
+                    filter.mesh = self._meshes[key]
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)

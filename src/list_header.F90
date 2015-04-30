@@ -34,12 +34,6 @@ module list_header
     type(ListElemChar), pointer :: prev => null()
   end type ListElemChar
 
-  type :: ListElemLog
-    logical :: data
-    type(ListElemLog), pointer :: next => null()
-    type(ListElemLog), pointer :: prev => null()
-  end type ListElemLog
-
 
 !===============================================================================
 ! LIST* types contain the linked list with convenience methods. We originally
@@ -113,28 +107,6 @@ module list_header
     procedure :: remove => list_remove_char     ! Remove specified item
     procedure :: size => list_size_char         ! Size of list
   end type ListChar
-
-  type, public :: ListLog
-    private
-    integer :: count = 0 ! Number of elements in list
-
-    ! Used in get_item for fast sequential lookups 
-    integer :: last_index = huge(0)
-    type(ListElemLog), pointer :: last_elem => null()
-
-    ! Pointers to beginning and end of list
-    type(ListElemLog), public, pointer :: head => null()
-    type(ListElemLog), public, pointer :: tail => null()
-  contains
-    procedure :: append => list_append_log     ! Add item to end of list
-    procedure :: clear => list_clear_log       ! Remove all items
-    procedure :: contains => list_contains_log ! Does list contain?
-    procedure :: get_item => list_get_item_log ! Get i-th item in list
-    procedure :: index => list_index_log       ! Determine index of given item
-    procedure :: insert => list_insert_log     ! Insert item in i-th position
-    procedure :: remove => list_remove_log     ! Remove specified item
-    procedure :: size => list_size_log         ! Size of list
-  end type ListLog
 
 contains
 
@@ -218,31 +190,6 @@ contains
 
   end subroutine list_append_char
 
-  subroutine list_append_log(this, data)
-    class(ListLog) :: this
-    logical        :: data
-
-    type(ListElemLog), pointer :: elem
-
-    ! Create element and set dat
-    allocate(elem)
-    elem % data = data
-
-    if (.not. associated(this % head)) then
-      ! If list is empty, set head and tail to new element
-      this % head => elem
-      this % tail => elem
-    else
-      ! Otherwise append element at end of list
-      this % tail % next => elem
-      elem % prev => this % tail
-      this % tail => this % tail % next
-    end if
-
-    this % count = this % count + 1
-
-  end subroutine list_append_log
-
 !===============================================================================
 ! LIST_CLEAR removes all elements from the list
 !===============================================================================
@@ -325,32 +272,6 @@ contains
 
   end subroutine list_clear_char
 
-  subroutine list_clear_log(this)
-    class(ListLog) :: this
-
-    type(ListElemLog), pointer :: current => null()
-    type(ListElemLog), pointer :: next => null()
-    
-    if (this % count > 0) then
-      current => this % head
-      do while (associated(current))
-        ! Set pointer to next element
-        next => current % next
-
-        ! Deallocate memory for current element
-        deallocate(current)
-
-        ! Move to next element
-        current => next
-      end do
-
-      nullify(this % head)
-      nullify(this % tail)
-      this % count = 0
-    end if
-
-  end subroutine list_clear_log
-
 !===============================================================================
 ! LIST_CONTAINS determines whether the list contains a specified item. Since it
 ! relies on the index method, it is O(n).
@@ -382,15 +303,6 @@ contains
     in_list = (this % index(data) > 0)
 
   end function list_contains_char
-
-  function list_contains_log(this, data) result(in_list)
-    class(ListLog) :: this
-    logical        :: data
-    logical        :: in_list
-
-    in_list = (this % index(data) > 0)
-
-  end function list_contains_log
 
 !===============================================================================
 ! LIST_GET_ITEM returns the item in the list at position 'i_list'. If the index
@@ -496,39 +408,6 @@ contains
 
   end function list_get_item_char
 
-  function list_get_item_log(this, i_list) result(data)
-    class(ListLog) :: this
-    integer        :: i_list
-    logical        :: data
-
-    integer :: last_index
-
-    if (i_list < 1 .or. i_list > this % count) then
-      ! Check for index out of bounds
-      data = .false.
-    elseif (i_list == 1) then
-      data = this % head % data
-      this % last_index = 1
-      this % last_elem => this % head
-    elseif (i_list == this % count) then
-      data = this % tail % data
-      this % last_index = this % count
-      this % last_elem => this % tail
-    else
-      if (i_list < this % last_index) then
-        this % last_index = 1
-        this % last_elem => this % head
-      end if
-
-      do last_index = this % last_index + 1, i_list
-        this % last_elem => this % last_elem % next
-        this % last_index = last_index
-      end do
-      data = this % last_elem % data
-    end if
-
-  end function list_get_item_log
-
 !===============================================================================
 ! LIST_INDEX determines the first index in the list that contains 'data'. If
 ! 'data' is not present in the list, the return value is -1.
@@ -596,27 +475,6 @@ contains
     if (.not. associated(elem)) i_list = -1
 
   end function list_index_char
-
-  function list_index_log(this, data) result(i_list)
-
-    class(ListLog) :: this
-    logical        :: data
-    integer        :: i_list
-
-    type(ListElemLog), pointer :: elem
-
-    i_list = 0
-    elem => this % head
-    do while (associated(elem))
-      i_list = i_list + 1
-      if (data .eqv. elem % data) exit
-      elem => elem % next
-    end do
-
-    ! Check if we reached the end of the list
-    if (.not. associated(elem)) i_list = -1
-
-  end function list_index_log
 
 !===============================================================================
 ! LIST_INSERT inserts 'data' at index 'i_list' within the list. If 'i_list'
@@ -789,62 +647,6 @@ contains
 
   end subroutine list_insert_char
 
-  subroutine list_insert_log(this, i_list, data)
-
-    class(ListLog) :: this
-    integer        :: i_list
-    logical        :: data
-
-    integer :: i
-    type(ListElemLog), pointer :: elem => null()
-    type(ListElemLog), pointer :: new_elem => null()
-
-    if (i_list > this % count) then
-      ! Check whether specified index is greater than number of elements -- if
-      ! so, just append it to the end of the list
-      call this % append(data)
-
-    else if (i_list == 1) then
-      ! Check for new head element
-      allocate(new_elem)
-      new_elem % data = data
-      new_elem % next => this % head
-      this % head => new_elem
-      this % count = this % count + 1
-
-    else
-      ! Default case with new element somewhere in middle of list
-      if (i_list >= this % last_index) then
-        i = this % last_index
-        elem => this % last_elem
-      else
-        i = 0
-        elem => this % head
-      end if
-      do while (associated(elem))
-        i = i + 1
-        if (i == i_list - 1) then
-          ! Allocate new element
-          allocate(new_elem)
-          new_elem % data = data
-          
-          ! Put it before the i-th element
-          new_elem % prev => elem % prev
-          new_elem % next => elem
-          new_elem % prev % next => new_elem
-          new_elem % next % prev => new_elem
-          this % count = this % count + 1
-          this % last_index = i_list
-          this % last_elem => new_elem
-          exit
-        end if
-        i = i + 1
-        elem => elem % next
-      end do
-    end if
-
-  end subroutine list_insert_log
-
 !===============================================================================
 ! LIST_REMOVE removes the first item in the list that contains 'data'. If 'data'
 ! is not in the list, no action is taken.
@@ -967,45 +769,6 @@ contains
 
   end subroutine list_remove_char
 
-  subroutine list_remove_log(this, data)
-
-    class(ListLog) :: this
-    logical        :: data
-
-    type(ListElemLog), pointer :: elem => null()
-
-    elem => this % head
-    do while (associated(elem))
-      ! Check for matching data
-      if (elem % data .eqv. data) then
-
-        ! Determine whether the current element is the head, tail, or a middle
-        ! element
-        if (associated(elem, this % head)) then
-          this % head => elem % next
-          if (associated(elem, this % tail)) nullify(this % tail)
-          if (associated(this % head)) nullify(this % head % prev)
-          deallocate(elem)
-        else if (associated(elem, this % tail)) then
-          this % tail => elem % prev
-          deallocate(this % tail % next)
-        else
-          elem % prev % next => elem % next
-          elem % next % prev => elem % prev
-          deallocate(elem)
-        end if
-
-        ! Decrease count and exit
-        this % count = this % count - 1
-        exit
-      end if
-
-      ! Advance pointers
-      elem => elem % next
-    end do
-
-  end subroutine list_remove_log
-
 !===============================================================================
 ! LIST_SIZE returns the number of elements in the list
 !===============================================================================
@@ -1036,14 +799,5 @@ contains
     size = this % count
 
   end function list_size_char
-
-  function list_size_log(this) result(size)
-
-    class(ListLog) :: this
-    integer        :: size
-
-    size = this % count
-
-  end function list_size_log
 
 end module list_header

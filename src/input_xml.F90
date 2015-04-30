@@ -7,7 +7,7 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
   use global
-  use list_header,      only: ListChar, ListLog, ListReal
+  use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
   use plot_header
@@ -1581,7 +1581,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
-    type(ListLog)  :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -1740,15 +1740,15 @@ contains
         if (check_for_node(node_nuc, "scattering")) then
           call get_node_value(node_nuc, "scattering", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == "lab") then
-            call list_iso_lab % append(.true.)
+            call list_iso_lab % append(1)
           else if (trim(adjustl(to_lower(temp_str))) == "ace") then
-            call list_iso_lab % append(.false.)
+            call list_iso_lab % append(0)
           else
             call fatal_error("Scattering must be isotropic in lab or follow&
                  & the ACE file data")
           end if
         else
-          call list_iso_lab % append(.false.)
+          call list_iso_lab % append(0)
         end if
 
         ! store full name
@@ -1880,8 +1880,12 @@ contains
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)
 
-        ! Copy isotropic lab scattering flag
-        mat % p0(j) = list_iso_lab % get_item(j)
+        ! Cast integer isotropic lab scattering flag to boolean
+        if (list_iso_lab % get_item(j) == 1) then
+          mat % p0(j) = .true.
+        else
+          mat % p0(j) = .false.
+        end if
 
       end do ALL_NUCLIDES
 

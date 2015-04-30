@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+import sys
+import numpy as np
+
 # import statepoint
+sys.path.insert(0, '../../src/utils')
 from openmc.statepoint import StatePoint
 from openmc import Filter
-import numpy as np
-import sys
 
 # read in statepoint file
 sp3 = StatePoint(sys.argv[1])

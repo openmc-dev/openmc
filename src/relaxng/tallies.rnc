@@ -17,8 +17,8 @@ element tallies {
 
   element tally {
     (element id { xsd:int } | attribute id { xsd:int }) &
-    (element label { xsd:string { maxLength="52" } } |
-      attribute label { xsd:string { maxLength="52" } })? &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
     (element estimator { ( "analog" | "tracklength" ) } |
       attribute estimator { ( "analog" | "tracklength" ) })? &
     element filter {

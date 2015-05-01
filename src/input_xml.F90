@@ -977,7 +977,6 @@ contains
       end if
 
       ! Copy cell name
-      c % name = ''
       if (check_for_node(node_cell, "name")) then
         call get_node_value(node_cell, "name", c % name)
       end if
@@ -1162,7 +1161,6 @@ contains
       end if
 
       ! Copy surface name
-      s % name = ''
       if (check_for_node(node_surf, "name")) then
         call get_node_value(node_surf, "name", s % name)
       end if
@@ -1290,7 +1288,6 @@ contains
       end if
 
       ! Copy lattice name
-      lat % name = ''
       if (check_for_node(node_lat, "name")) then
         call get_node_value(node_lat, "name", lat % name)
       end if
@@ -1419,7 +1416,6 @@ contains
       end if
 
       ! Copy lattice name
-      lat % name = ''
       if (check_for_node(node_lat, "name")) then
         call get_node_value(node_lat, "name", lat % name)
       end if
@@ -1670,7 +1666,6 @@ contains
       end if
 
       ! Copy material name
-      mat % name = ''
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
       end if
@@ -2238,7 +2233,6 @@ contains
       end if
 
       ! Copy tally name
-      t % name = ''
       if (check_for_node(node_tal, "name")) &
         call get_node_value(node_tal, "name", t % name)
 

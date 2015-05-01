@@ -200,7 +200,7 @@ mesh_filter = openmc.Filter()
 mesh_filter.mesh = mesh
 
 # Instantiate the Tally
-tally = openmc.Tally(tally_id=1)
+tally = openmc.Tally(tally_id=1, name='tally 1')
 tally.add_filter(energy_filter)
 tally.add_filter(mesh_filter)
 tally.add_score('flux')

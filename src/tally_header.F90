@@ -71,7 +71,7 @@ module tally_header
     ! Basic data
 
     integer :: id                   ! user-defined identifier
-    character(len=52) :: label = "" ! user-defined label
+    character(len=52) :: name = "" ! user-defined name
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
@@ -159,7 +159,7 @@ module tally_header
 
       ! This routine will go through each item in TallyObject and set the value
       ! to its default, as-initialized values, including deallocations.
-      this % label = ""
+      this % name = ""
 
       if (allocated(this % filters)) then
         do i = 1, size(this % filters)

@@ -708,6 +708,12 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :name:
+    An optional string name to identify the surface in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", or "sphere".
@@ -788,6 +794,12 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :name:
+    An optional string name to identify the cell in summary output files.
+    This string is limmited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :universe:
     The ``id`` of the universe that this cell is contained in.
 
@@ -853,6 +865,12 @@ the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the lattice.
 
+  :name:
+    An optional string name to identify the lattice in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :dimension:
     Two or three integers representing the number of lattice cells in the x- and
     y- (and z-) directions, respectively.
@@ -911,6 +929,12 @@ the following attributes or sub-elements:
 
   :id:
     A unique integer that can be used to identify the lattice.
+
+  :name:
+    An optional string name to identify the hex_lattice in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :n_rings:
     An integer representing the number of radial ring positions in the xy-plane.
@@ -988,6 +1012,12 @@ Each ``material`` element can have the following attributes or sub-elements:
 
   :id:
     A unique integer that can be used to identify the material.
+
+  :name:
+    An optional string name to identify the material in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
@@ -1091,10 +1121,11 @@ and ``<assume_separate>``.
 
 The ``<tally>`` element accepts the following sub-elements:
 
-  :label:
-    This is an optional sub-element specifying the name of this tally to be used
-    for output purposes. This string is limited to 52 characters for formatting
-    purposes.
+  :name:
+    An optional string name to identify the tally in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :filter:
     Specify a filter that restricts contributions to the tally to particles

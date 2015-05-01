@@ -108,12 +108,12 @@
           </choice>
           <optional>
             <choice>
-              <element name="label">
+              <element name="name">
                 <data type="string">
                   <param name="maxLength">52</param>
                 </data>
               </element>
-              <attribute name="label">
+              <attribute name="name">
                 <data type="string">
                   <param name="maxLength">52</param>
                 </data>

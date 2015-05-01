@@ -307,7 +307,7 @@ contains
           MOMENT_LOOP: do j = 1, tally % n_user_score_bins
             select case(tally % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              moment_name = 'P' // to_str(tally % moment_order(k))
+              moment_name = 'P' // trim(to_str(tally % moment_order(k)))
               call sp % write_data(moment_name, "order" // trim(to_str(k)), &
                    group="tallies/tally " // trim(to_str(tally % id)) // &
                          "/moments")

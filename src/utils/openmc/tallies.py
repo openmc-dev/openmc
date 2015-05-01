@@ -1124,10 +1124,10 @@ class Tally(object):
 
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                value = ((filter_bins[i][0] - 1) * ny * nz +
-                                 (filter_bins[i][1] - 1) * nz +
-                                 (filter_bins[i][2] - 1))
-                filter_index += value * test_filter._stride
+                val = ((filter_bins[i][0] - 1) * ny * nz +
+                       (filter_bins[i][1] - 1) * nz +
+                       (filter_bins[i][2] - 1))
+                filter_index += val * test_filter._stride
 
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)

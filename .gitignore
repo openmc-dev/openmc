@@ -41,6 +41,7 @@ results_error.dat
 
 # Test build files
 tests/build/
+tests/ctestscript.run
 
 # HDF5 files
 *.h5
@@ -61,3 +62,4 @@ data/nndc
 # PyCharm project configuration files
 .idea
 .idea/*
+

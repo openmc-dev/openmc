@@ -2970,13 +2970,13 @@ contains
                   score_name(n_order_pos:(len_trim(score_name)))),4)
                   if (n_order > MAX_ANG_ORDER) then
                   
-                  ! User requested too many orders; throw a warning and
-                  ! set to the maximum order.
-                  ! The above scheme will essentially take the absolute value
-                  call warning("Invalid scattering order of " &
-                       // trim(to_str(n_order)) // " requested. Setting to the &
-                       & maximum permissible value, " &
-                       // trim(to_str(MAX_ANG_ORDER)))
+                    ! User requested too many orders; throw a warning and
+                    ! set to the maximum order.
+                    ! The above scheme will essentially take the absolute value
+                    call warning("Invalid scattering order of " &
+                         // trim(to_str(n_order)) // " requested. Setting to the &
+                         & maximum permissible value, " &
+                         // trim(to_str(MAX_ANG_ORDER)))
                     n_order = MAX_ANG_ORDER
                   end if
                   score_name = trim(MOMENT_STRS(imomstr)) // "n"
@@ -2999,21 +2999,23 @@ contains
                     n_order = int(str_to_int( &
                       score_name(n_order_pos:(len_trim(score_name)))),4)
                     if (n_order > MAX_ANG_ORDER) then
-                    ! User requested too many orders; throw a warning and set to
-                    ! the maximum order.
-                    ! The above scheme will essentially take the absolute value
                     
-                    call warning("Invalid scattering order of " &
-                         // trim(to_str(n_order)) // " requested. Setting to &
-                         & the maximum permissible value, " &
-                         // trim(to_str(MAX_ANG_ORDER)))
-                        n_order = MAX_ANG_ORDER
+                      ! User requested too many orders; throw a warning and set to
+                      ! the maximum order.
+                      ! The above scheme will essentially take the absolute value
+                    
+                      call warning("Invalid scattering order of " &
+                           // trim(to_str(n_order)) // " requested. Setting to &
+                           & the maximum permissible value, " &
+                           // trim(to_str(MAX_ANG_ORDER)))
+                      n_order = MAX_ANG_ORDER
                     end if
                     score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
                     exit
                   end if
                 end do
               end if
+              
               t % score(trig_ind) % score_name = score_name
               
               select case (trim(score_name))

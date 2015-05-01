@@ -26,6 +26,7 @@ class Summary(object):
 
         self._read_metadata()
         self._read_geometry()
+        self._read_tallies()
 
 
     def _read_metadata(self):
@@ -105,6 +106,7 @@ class Summary(object):
 
             material_id = int(key.lstrip('material '))
             index = self._f['materials'][key]['index'][0]
+            name = self._f['materials'][key]['name'][0]
             density = self._f['materials'][key]['atom_density'][0]
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'][...]
@@ -123,7 +125,7 @@ class Summary(object):
                 sab_xs.append(sab_table.split('.')[1])
 
             # Create the Material
-            material = openmc.Material(material_id=material_id)
+            material = openmc.Material(material_id=material_id, name=name)
 
             # Set the Material's density to g/cm3 - this is what is used in OpenMC
             material.set_density(density=density, units='g/cm3')
@@ -164,6 +166,7 @@ class Summary(object):
 
             surface_id = int(key.lstrip('surface '))
             index = self._f['geometry/surfaces'][key]['index'][0]
+            name = self._f['geometry/surfaces'][key]['name'][0]
             surf_type = self._f['geometry/surfaces'][key]['type'][...][0]
             bc = self._f['geometry/surfaces'][key]['boundary_condition'][...][0]
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
@@ -172,47 +175,47 @@ class Summary(object):
 
             if surf_type == 'X Plane':
                 x0 = coeffs[0]
-                surface = openmc.XPlane(surface_id, bc, x0)
+                surface = openmc.XPlane(surface_id, bc, x0, name)
 
             elif surf_type == 'Y Plane':
                 y0 = coeffs[0]
-                surface = openmc.YPlane(surface_id, bc, y0)
+                surface = openmc.YPlane(surface_id, bc, y0, name)
 
             elif surf_type == 'Z Plane':
                 z0 = coeffs[0]
-                surface = openmc.ZPlane(surface_id, bc, z0)
+                surface = openmc.ZPlane(surface_id, bc, z0, name)
 
             elif surf_type == 'Plane':
                 A = coeffs[0]
                 B = coeffs[1]
                 C = coeffs[2]
                 D = coeffs[3]
-                surface = openmc.Plane(surface_id, bc, A, B, C, D)
+                surface = openmc.Plane(surface_id, bc, A, B, C, D, name)
 
             elif surf_type == 'X Cylinder':
                 y0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.XCylinder(surface_id, bc, y0, z0, R)
+                surface = openmc.XCylinder(surface_id, bc, y0, z0, R, name)
 
             elif surf_type == 'Y Cylinder':
                 x0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.YCylinder(surface_id, bc, x0, z0, R)
+                surface = openmc.YCylinder(surface_id, bc, x0, z0, R, name)
 
             elif surf_type == 'Z Cylinder':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 R = coeffs[2]
-                surface = openmc.ZCylinder(surface_id, bc, x0, y0, R)
+                surface = openmc.ZCylinder(surface_id, bc, x0, y0, R, name)
 
             elif surf_type == 'Sphere':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 z0 = coeffs[2]
                 R = coeffs[3]
-                surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R)
+                surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R, name)
 
             elif surf_type in ['X Cone', 'Y Cone', 'Z Cone']:
                 x0 = coeffs[0]
@@ -221,11 +224,11 @@ class Summary(object):
                 R2 = coeffs[3]
 
                 if surf_type == 'X Cone':
-                    surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2, name)
                 if surf_type == 'Y Cone':
-                    surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2, name)
                 if surf_type == 'Z Cone':
-                    surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2)
+                    surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
 
             # Add Surface to global dictionary of all Surfaces
             self.surfaces[index] = surface
@@ -255,6 +258,7 @@ class Summary(object):
 
             cell_id = int(key.lstrip('cell '))
             index = self._f['geometry/cells'][key]['index'][0]
+            name = self._f['geometry/cells'][key]['name'][0]
             fill_type = self._f['geometry/cells'][key]['fill_type'][...][0]
 
             if fill_type == 'normal':
@@ -270,7 +274,7 @@ class Summary(object):
                 surfaces = []
 
             # Create this Cell
-            cell = openmc.Cell(cell_id=cell_id)
+            cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
                 maps = self._f['geometry/cells'][key]['maps'][0]
@@ -354,6 +358,7 @@ class Summary(object):
 
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'][0]
+            name = self._f['geometry/lattices'][key]['name'][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
             maps = self._f['geometry/lattices'][key]['maps'][0]
             offset_size = self._f['geometry/lattices'][key]['offset_size'][0]
@@ -374,10 +379,11 @@ class Summary(object):
                 universe_ids = np.swapaxes(universe_ids, 1, 2)
 
                 # Create the Lattice
-                lattice = openmc.RectLattice(lattice_id=lattice_id)
+                lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
                 lattice.dimension = tuple(dimension)
                 lattice.lower_left = lower_left
                 lattice.pitch = pitch
+
 
                 # If the Universe specified outer the Lattice is not void (-22)
                 if outer != -22:
@@ -419,7 +425,7 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
-                lattice = openmc.HexLattice(lattice_id=lattice_id)
+                lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
                 lattice.num_rings = n_rings
                 lattice.num_axial = n_axial
                 lattice.center = center
@@ -476,6 +482,73 @@ class Summary(object):
         # Set the root universe for the Geometry
         root_universe = self.get_universe_by_id(0)
         self.openmc_geometry.root_universe = root_universe
+
+
+    def _read_tallies(self):
+
+        # Initialize dictionaries for the Tallies
+        # Keys     - Tally IDs
+        # Values   - Tally objects
+        self.tallies = {}
+
+        # Read the number of tallies
+        self.n_tallies = self._f['tallies/n_tallies'][0]
+
+        # OpenMC Tally keys
+        all_keys = self._f['tallies/'].keys()
+        tally_keys = [key for key in all_keys if 'tally' in key]
+
+        base = 'tallies/tally '
+
+        # Iterate over all Tallies
+        for tally_key in tally_keys:
+
+            tally_id = int(tally_key.strip('tally '))
+            subbase = '{0}{1}'.format(base, tally_id)
+
+            # Read Tally name metadata
+            name_size = self._f['{0}/name_size'.format(subbase)][0]
+            if (name_size > 0):
+                tally_name = self._f['{0}/name'.format(subbase)][0]
+                tally_name = tally_name.lstrip('[\'')
+                tally_name = tally_name.rstrip('\']')
+            else:
+                tally_name = ''
+
+            # Create Tally object and assign basic properties
+            tally = openmc.Tally(tally_id, tally_name)
+
+            # Read score metadata
+            score_bins = self._f['{0}/score_bins'.format(subbase)][...]
+            for score_bin in score_bins:
+                tally.add_score(openmc.SCORE_TYPES[score_bin])
+            num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
+            tally.num_score_bins = num_score_bins
+
+            # Read filter metadata
+            num_filters = self._f['{0}/n_filters'.format(subbase)][0]
+
+            # Initialize all Filters
+            for j in range(1, num_filters+1):
+
+                subsubbase = '{0}/filter {1}'.format(subbase, j)
+
+                # Read filter type (e.g., "cell", "energy", etc.)
+                filter_type = self._f['{0}/type_name'.format(subsubbase)][0]
+
+                # Read the filter bins
+                num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
+                bins = self._f['{0}/bins'.format(subsubbase)][...]
+
+                # Create Filter object
+                filter = openmc.Filter(filter_type, bins)
+                filter.num_bins = num_bins
+
+                # Add Filter to the Tally
+                tally.add_filter(filter)
+
+            # Add Tally to the global dictionary of all Tallies
+            self.tallies[tally_id] = tally
 
 
     def make_opencg_geometry(self):

@@ -127,6 +127,10 @@ contains
       call su % write_data(i, "index", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
 
+      ! Write name for this cell
+      call su % write_data(c % name, "name", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
+
       ! Write universe for this cell
       call su % write_data(universes(c % universe) % id, "universe", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -206,6 +210,10 @@ contains
 
       ! Write internal OpenMC index for this surface
       call su % write_data(i, "index", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      ! Write name for this surface
+      call su % write_data(s % name, "name", &
            group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write surface type
@@ -317,6 +325,10 @@ contains
 
       ! Write internal OpenMC index for this lattice
       call su % write_data(i, "index", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+      ! Write name for this lattice
+      call su % write_data(lat % name, "name", &
            group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
@@ -465,6 +477,10 @@ contains
       call su % write_data(i, "index", &
            group="materials/material " // trim(to_str(m % id)))
 
+      ! Write name for this material
+      call su % write_data(m % name, "name", &
+           group="materials/material " // trim(to_str(m % id)))
+
       ! Write atom density with units
       call su % write_data(m % density, "atom_density", &
            group="materials/material " // trim(to_str(m % id)))
@@ -559,6 +575,14 @@ contains
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+
+      ! Write the name for this tally
+      call su % write_data(len(t % name), "name_size", &
+           group="tallies/tally " // trim(to_str(t % id)))
+      if (len(t % name) > 0) then
+        call su % write_data(t % name, "name", &
+             group="tallies/tally " // trim(to_str(t % id)))
+      endif
 
       ! Write size of each tally
       call su % write_data(t % total_score_bins, "total_score_bins", &

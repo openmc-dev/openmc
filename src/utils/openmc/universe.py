@@ -339,6 +339,9 @@ class Cell(object):
         element = ET.Element("cell")
         element.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            element.set("name", str(self._name))
+
         if isinstance(self._fill, openmc.Material):
             element.set("material", str(self._fill._id))
 
@@ -981,6 +984,9 @@ class RectLattice(Lattice):
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
 
+        if len(self._name) > 0:
+            lattice_subelement.set("name", str(self._name))
+
         # Export the Lattice cell pitch
         if len(self._pitch) == 3:
             pitch = ET.SubElement(lattice_subelement, "pitch")
@@ -1306,6 +1312,9 @@ class HexLattice(Lattice):
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
+
+        if len(self._name) > 0:
+            lattice_subelement.set("name", str(self._name))
 
         # Export the Lattice cell pitch
         if len(self._pitch) == 2:

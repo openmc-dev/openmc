@@ -2934,33 +2934,32 @@ contains
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
       end if
-      
-      
       !Read the trigger information
       if (keff_trigger % trigger_type > 0) then
         n_triggers = 1
       else
         n_triggers = 0
       end if
-
+      
       if (trigger_on) then
         call get_node_list(node_tal, "trigger", node_trigger_list)
         t % n_user_triggers = get_list_size(node_trigger_list)
         n_triggers = n_triggers + t % n_user_triggers
-
+        
         if (n_triggers == 0) then
           call fatal_error("Trigger is set and no trigger is found in tally XML &
                & or settings XML file.")
         end if
-
+        
         if (t % n_user_triggers > 0) then
           allocate(t % score(t % n_user_triggers))
+          
           ! Get the scores for each trigger
           Trigger_Loop: do trig_ind =1, t % n_user_triggers
-
-          ! Get pointer to trigger mode
+          
+            ! Get pointer to trigger mode
             call get_list_item(node_trigger_list, trig_ind , node_trigger)
-
+            
             ! Get scores information
             if (check_for_node(node_trigger, "scores")) then
               call get_node_value(node_trigger, "scores", score_name)
@@ -2970,16 +2969,18 @@ contains
                   n_order = int(str_to_int( &
                   score_name(n_order_pos:(len_trim(score_name)))),4)
                   if (n_order > MAX_ANG_ORDER) then
-                    ! User requested too many orders; throw a warning and
-                    ! set to the maximum order.
-                    ! The above scheme will essentially take the absolute value
-                    call warning("Invalid scattering order of " &
-                        // trim(to_str(n_order)) // " requested. Setting to the &
-                        & maximum permissible value, " &
-                        // trim(to_str(MAX_ANG_ORDER)))
+                  
+                  ! User requested too many orders; throw a warning and
+                  ! set to the maximum order.
+                  ! The above scheme will essentially take the absolute value
+                  call warning("Invalid scattering order of " &
+                       // trim(to_str(n_order)) // " requested. Setting to the &
+                       & maximum permissible value, " &
+                       // trim(to_str(MAX_ANG_ORDER)))
                     n_order = MAX_ANG_ORDER
                   end if
                   score_name = trim(MOMENT_STRS(imomstr)) // "n"
+                  
                   ! Find total number of bins for this case
                   if (imomstr >= YN_LOC) then
                     n_bins = (n_order + 1)**2
@@ -2989,22 +2990,24 @@ contains
                   exit
                 end if
               end do
+              
               ! Check the Moment_N_Strs, but only if we werent successful above
               if (imomstr > size(MOMENT_STRS)) then
                 do imomstr = 1, size(MOMENT_N_STRS)
                   if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
                     n_order_pos = scan(score_name,'0123456789')
                     n_order = int(str_to_int( &
-                    score_name(n_order_pos:(len_trim(score_name)))),4)
+                      score_name(n_order_pos:(len_trim(score_name)))),4)
                     if (n_order > MAX_ANG_ORDER) then
-                      ! User requested too many orders; throw a warning and set to
-                      ! the maximum order.
-                      ! The above scheme will essentially take the absolute value
-                      call warning("Invalid scattering order of " &
-                           // trim(to_str(n_order)) // " requested. Setting to &
-                           & the maximum permissible value, " &
-                           // trim(to_str(MAX_ANG_ORDER)))
-                      n_order = MAX_ANG_ORDER
+                    ! User requested too many orders; throw a warning and set to
+                    ! the maximum order.
+                    ! The above scheme will essentially take the absolute value
+                    
+                    call warning("Invalid scattering order of " &
+                         // trim(to_str(n_order)) // " requested. Setting to &
+                         & the maximum permissible value, " &
+                         // trim(to_str(MAX_ANG_ORDER)))
+                        n_order = MAX_ANG_ORDER
                     end if
                     score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
                     exit
@@ -3012,13 +3015,13 @@ contains
                 end do
               end if
               t % score(trig_ind) % score_name = score_name
-
+              
               select case (trim(score_name))
               case ('all')
                 if (t % n_user_triggers /= 1) then
                   call fatal_error("Cannot set trigger for all and other scoring &
-                         & functions in the same tally. Separate scoring &
-                         & functions into distinct tallies")
+                       & functions in the same tally. Separate scoring &
+                       & functions into distinct tallies")
                 else
                   t % trigger_for_all = .true.
                 end if

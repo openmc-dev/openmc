@@ -12,7 +12,8 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyMap, TallyResult , TriggerDistance, &
+                              KTrigger
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -137,18 +138,33 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-
+  
+  ! Check whether reach the trigger 
+  logical :: satisfy_triggers = .false.
+  ! Temporary trig_dist to see how far the result is from trigger threshold
+  type(TriggerDistance) :: trig_dist
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
+  integer    :: n_basic_batches   ! # of basic batches ,when trigger is applied, 
+                                  !   it represents the minimum number of batches
+                                  !   the OpenMC will run
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
+  integer    :: n_batch_interval = 1 ! # the batch interval
+  logical    :: no_batch_interval = .false.  ! whether to predict batches
+
+  ! Flag for turning trigger on
+  logical    :: trigger_on = .false.
+
+  ! Trigger for k-effective
+  type(KTrigger) :: keff_trigger
 
   ! External source
   type(ExtSource), target :: external_source

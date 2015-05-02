@@ -316,7 +316,19 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-
+  
+  ! Tally trigger types and threshold
+  integer, parameter :: &
+       VARIANCE           = 1, &
+       RELATIVE_ERROR     = 2, &
+       STANDARD_DEVIATION = 3 
+       
+  ! The string that shows whether trigger is applied in eigenvalue or without 
+  ! nuclides
+  character(*), parameter :: &
+       CHAR_EIGENVALUE = "eigenvalue", &
+       NO_NUCLIDE      = "a"        ! Just for comparing in tally
+          
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

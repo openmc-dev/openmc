@@ -39,9 +39,9 @@ module tally_header
 !===============================================================================
 
   type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
+    real(8) :: value          = 0.
+    real(8) :: sum            = 0.
+    real(8) :: sum_sq         = 0.
   end type TallyResult
 
 !===============================================================================
@@ -61,6 +61,61 @@ module tally_header
       procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
+!===============================================================================
+! TRIGGEROBJECT describes a trigger that stores the variance, relative error and
+! standard deviration of the uncertainty
+!===============================================================================
+   type TriggerObject
+     real(8) :: rel_err =0.0
+     real(8) :: std_dev =0.0
+     real(8) :: variance=0.0
+   end type TriggerObject
+
+!===============================================================================
+! TRIGGERRESULT describes accumulation of results in a particular tally bin when
+! trigger is applied
+!===============================================================================
+   type TriggerResult
+     real(8) :: trigger_sum=0.
+     real(8) :: trigger_sum_sq=0.
+   end type TriggerResult
+
+!===============================================================================
+! TEMPTRIGGER describes a trigger stores temporary results
+!===============================================================================
+   type TempTrigger
+    type(TriggerResult), allocatable :: results(:,:)
+   end type TempTrigger
+
+!===============================================================================
+! SCOREOBJECT describes a score that stores the position, the type and value of 
+! threshold and the name  
+!===============================================================================
+   type ScoreObject
+      integer :: position = 0 
+      integer :: type
+      real(8)    :: threshold
+      character(len=52) :: score_name  
+   end type ScoreObject
+
+!===============================================================================
+! TRIGGERDISTANCE describes the search for the max uncertainty/trigger ratio
+!===============================================================================
+   type TriggerDistance
+      integer    :: id
+      real(8)    :: max_ratio = 0
+      character(len=52) :: temp_name
+      character(len=52) :: temp_nuclide 
+   end type TriggerDistance
+   
+!===============================================================================
+! KTRIGGER describes a trigger for k
+!===============================================================================
+   type KTrigger
+     integer    :: trigger_type = 0
+     real(8)    :: threshold    = 0 
+   end type KTrigger
+      
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -122,7 +177,14 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-
+    
+    ! Trigger information
+    type(ScoreObject),  allocatable :: score(:)
+    character(len =52), allocatable :: score_for_all(:) ! The names of scores 
+                                                        ! when "all" are used in scores
+    integer :: n_user_triggers = 0
+    logical :: trigger_for_all = .false.                ! All scores share the 
+                                                        ! same trigger
     ! Type-Bound procedures
     contains
       procedure :: clear => tallyobject_clear ! Deallocates TallyObject
@@ -191,6 +253,15 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
+      
+      if (allocated(this % score)) &
+           deallocate (this % score)
+      if (allocated(this % score_for_all)) &
+           deallocate (this % score_for_all) 
+      
+      this % n_user_triggers = 0
+      
+      this % trigger_for_all = .false.
 
     end subroutine tallyobject_clear
 

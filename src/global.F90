@@ -13,6 +13,7 @@ module global
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use trigger_header,   only: TriggerDistance, KTrigger
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -137,18 +138,29 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
+  
+  ! Whether user-specified tally precision triggers are satisfied
+  logical :: satisfy_triggers = .false.
+
+  ! The distance from convergence for user-specified tally precision triggers
+  type(TriggerDistance) :: trig_dist
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
+  integer    :: max_batches       ! maximum # of batches when using triggers
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
+  integer    :: n_batch_interval = 1    ! batch interval for triggers
+  logical    :: pred_batches = .false.  ! predict batches for triggers
+  logical    :: trigger_on = .false.    ! flag for turning triggers on/off
+  type(KTrigger) :: keff_trigger        ! trigger for k-effective
 
   ! External source
   type(ExtSource), target :: external_source

@@ -34,7 +34,12 @@ element tallies {
     }? &
     element scores { 
       list { xsd:string { maxLength = "20" }+ }
-    }
+    } &
+    element trigger {
+      (element type { xsd:string } | attribute type { xsd:string }) &
+      (element threshold { xsd:double} | attribute threshold { xsd:double }) &
+      (element scores { list { xsd:string { maxLength = "20" }+ } } | attribute threshold { list { xsd:string { maxLength = "20"}+ } } )?
+    }?
   }* &
 
   element assume_separate { xsd:boolean }?

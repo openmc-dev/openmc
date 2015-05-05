@@ -1951,7 +1951,7 @@ contains
 #endif
 
 #ifdef HDF5
-# ifdef MPI
+#ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
     dims1(1) = n_particles

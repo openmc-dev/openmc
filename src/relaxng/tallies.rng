@@ -204,6 +204,50 @@
               </oneOrMore>
             </list>
           </element>
+          <optional>
+            <element name="trigger">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="type">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="threshold">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="threshold">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="scores">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="threshold">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
         </interleave>
       </element>
     </zeroOrMore>

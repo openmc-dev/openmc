@@ -371,7 +371,7 @@ module unresolved
     type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
 
     ! max resonances for a given (l,J)
-    integer :: n_lam_tmp = 40000
+    integer :: n_lam_tmp = 1000000
     integer, allocatable :: n_lam(:,:,:)
 
     ! vector of Reich-Moore resonances for each l
@@ -586,7 +586,7 @@ contains
 
           i_res = 0
           n_above_urr = 0
-          RESONANCE_LOOP: do while(n_above_urr < n_res/2 + 1)
+          RESONANCE_LOOP: do while(n_above_urr < n_res + 1)
 
             i_res = i_res + 1
 

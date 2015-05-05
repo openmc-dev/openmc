@@ -236,13 +236,6 @@ contains
           ! Get pointer to tally
           tally => tallies(i)
 
-          call sp % write_data(len(tally % label), "label_size", &
-               group="tallies/tally " // trim(to_str(tally % id)))
-          if (len(tally % label) > 0) then
-            call sp % write_data(tally % label, "label", &
-                 group="tallies/tally " // trim(to_str(tally % id)))
-          endif
-
           call sp % write_data(tally % estimator, "estimator", &
                group="tallies/tally " // trim(to_str(tally % id)))
           call sp % write_data(tally % n_realizations, "n_realizations", &
@@ -300,7 +293,7 @@ contains
           MOMENT_LOOP: do j = 1, tally % n_user_score_bins
             select case(tally % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              moment_name = 'P' // to_str(tally % moment_order(k))
+              moment_name = 'P' // trim(to_str(tally % moment_order(k)))
               call sp % write_data(moment_name, "order" // trim(to_str(k)), &
                    group="tallies/tally " // trim(to_str(tally % id)) // &
                          "/moments")
@@ -649,7 +642,7 @@ contains
 
     character(MAX_FILE_LEN)    :: path_temp
     character(19)              :: current_time
-    character(52)              :: label
+    character(52)              :: name
     integer                    :: i, j, k
     integer                    :: length(4)
     integer                    :: int_array(3)
@@ -825,13 +818,6 @@ contains
       ! Get pointer to tally
       tally => tallies(i)
       curr_key = key_array(id_array(i))
-
-      call sp % read_data(j, "label_size", group="tallies/tally " // &
-           trim(to_str(curr_key)))
-      if (j > 0) then
-        call sp % read_data(label, "label", group="tallies/tally " // &
-             trim(to_str(curr_key)))
-      end if
 
       call sp % read_data(tally % estimator, "estimator", &
            group="tallies/tally " // trim(to_str(curr_key)))

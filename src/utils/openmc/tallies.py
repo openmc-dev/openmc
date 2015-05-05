@@ -584,11 +584,11 @@ class Mesh(object):
 
 class Tally(object):
 
-    def __init__(self, tally_id=None, label=''):
+    def __init__(self, tally_id=None, name=''):
 
         # Initialize Tally class attributes
         self.id = tally_id
-        self.label = label
+        self.name = name
         self._filters = []
         self._nuclides = []
         self._scores = []
@@ -612,7 +612,7 @@ class Tally(object):
 
             clone = type(self).__new__(type(self))
             clone._id = self._id
-            clone._label = self._label
+            clone._name = self._name
             clone._estimator = self._estimator
             clone._num_score_bins = self._num_score_bins
             clone._num_realizations = self._num_realizations
@@ -678,7 +678,7 @@ class Tally(object):
             hashable.append(score)
 
         hashable.append(self._estimator)
-        hashable.append(self._label)
+        hashable.append(self._name)
 
         return hash(tuple(hashable))
 
@@ -699,8 +699,8 @@ class Tally(object):
 
 
     @property
-    def label(self):
-        return self._label
+    def name(self):
+        return self._name
 
 
     @property
@@ -819,16 +819,16 @@ class Tally(object):
             self._id = tally_id
 
 
-    @label.setter
-    def label(self, label):
+    @name.setter
+    def name(self, name):
 
-        if not is_string(label):
+        if not is_string(name):
             msg = 'Unable to set name for Tally ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, label)
+                  'value {1}'.format(self._id, name)
             raise ValueError(msg)
 
         else:
-            self._label = label
+            self._name = name
 
 
     def add_filter(self, filter):
@@ -945,7 +945,7 @@ class Tally(object):
 
         string = 'Tally\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._label)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
 
         string += '{0: <16}\n'.format('\tFilters')
 
@@ -976,9 +976,9 @@ class Tally(object):
         # Tally ID
         element.set("id", str(self._id))
 
-        # Optional Tally label
-        if self._label != '':
-            element.set("label", self._label)
+        # Optional Tally name
+        if self._name != '':
+            element.set("name", self._name)
 
         # Optional Tally filters
         for filter in self._filters:
@@ -1124,10 +1124,10 @@ class Tally(object):
 
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                value = ((filter_bins[i][0] - 1) * ny * nz +
-                                 (filter_bins[i][1] - 1) * nz +
-                                 (filter_bins[i][2] - 1))
-                filter_index += value * test_filter._stride
+                val = ((filter_bins[i][0] - 1) * ny * nz +
+                       (filter_bins[i][1] - 1) * nz +
+                       (filter_bins[i][2] - 1))
+                filter_index += val * test_filter._stride
 
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
@@ -1220,7 +1220,7 @@ class Tally(object):
 
             # Add basic Tally data to the HDF5 group
             tally_group.create_dataset('id', data=self._id)
-            tally_group.create_dataset('label', data=self._label)
+            tally_group.create_dataset('name', data=self._name)
             tally_group.create_dataset('estimator', data=self._estimator)
             tally_group.create_dataset('scores', data=np.array(self._scores))
 
@@ -1268,7 +1268,7 @@ class Tally(object):
 
             # Add basic Tally data to the nested dictionary
             tally_group['id'] = self._id
-            tally_group['label'] = self._label
+            tally_group['name'] = self._name
             tally_group['estimator'] = self._estimator
             tally_group['scores'] = np.array(self._scores)
 

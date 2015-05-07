@@ -129,7 +129,7 @@ element settings {
   element track { list { xsd:positiveInteger+ } }? &
 
   element trigger {
-    (element status { xsd:boolean } | attribute status { xsd:boolean }) &
+    (element active { xsd:boolean } | attribute active { xsd:boolean }) &
     (element max_batches { xsd:positiveInteger } | attribute max_batches { xsd:positiveInteger }) &
     (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
   }? &

@@ -654,11 +654,11 @@ compared with their corresponding trigger thresholds. If any triggers have not
 been met, OpenMC will continue until either all trigger thresholds have been 
 satisfied or ``<max_batches>`` has been reached.
 
-The ``<trigger>`` element describes the status of the trigger(s), the maximum 
-number of batches and the batch interval. It has the following 
-attributes/sub-elements:
+The ``<trigger>`` element provides an active "toggle switch" for tally
+precision trigger(s), the maximum number of batches and the batch interval. It 
+has the following attributes/sub-elements:
 
-  :status:
+  :active:
     This determines whether or not to use trigger(s). Trigger(s) are used when
     this tag is set to "true".
 

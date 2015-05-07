@@ -593,10 +593,10 @@
       <element name="trigger">
         <interleave>
           <choice>
-            <element name="status">
+            <element name="active">
               <data type="boolean"/>
             </element>
-            <attribute name="status">
+            <attribute name="active">
               <data type="boolean"/>
             </attribute>
           </choice>

@@ -44,7 +44,7 @@ class SettingsFile(object):
 
         # Trigger subelement
         self._trigger_subelement = None
-        self._trigger_status = None
+        self._trigger_active = None
         self._trigger_max_batches = None
         self._trigger_batch_interval = None
 
@@ -201,8 +201,8 @@ class SettingsFile(object):
 
 
     @property
-    def trigger_status(self):
-        return self._trigger_status
+    def trigger_active(self):
+        return self._trigger_active
 
 
     @property
@@ -895,15 +895,15 @@ class SettingsFile(object):
 
 
 
-    @trigger_status.setter
-    def trigger_status(self, trigger_status):
+    @trigger_active.setter
+    def trigger_active(self, trigger_active):
 
-        if not isinstance(trigger_status, bool):
-            msg = 'Unable to set trigger status to a ' \
-                  'non-boolean value {0}'.format(trigger_status)
+        if not isinstance(trigger_active, bool):
+            msg = 'Unable to set trigger active to a ' \
+                  'non-boolean value {0}'.format(trigger_active)
             raise ValueError(msg)
 
-        self._trigger_status = trigger_status
+        self._trigger_active = trigger_active
 
 
     @trigger_max_batches.setter
@@ -1500,21 +1500,21 @@ class SettingsFile(object):
 
     def create_trigger_subelement(self):
 
-        self.create_trigger_status_subelement()
+        self.create_trigger_active_subelement()
         self.create_trigger_max_batches_subelement()
         self.create_trigger_batch_interval_subelement()
 
 
-    def create_trigger_status_subelement(self):
+    def create_trigger_active_subelement(self):
 
-        if not self._trigger_status is None:
+        if not self._trigger_active is None:
 
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
                                                       "trigger")
 
-            element = ET.SubElement(self._trigger_subelement, "status")
-            element.text = '{0}'.format(str(self._trigger_status).lower())
+            element = ET.SubElement(self._trigger_subelement, "active")
+            element.text = '{0}'.format(str(self._trigger_active).lower())
 
 
     def create_trigger_max_batches_subelement(self):

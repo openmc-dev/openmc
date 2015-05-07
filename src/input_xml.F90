@@ -131,8 +131,8 @@ contains
     if (check_for_node(doc, "trigger")) then
       call get_node_ptr(doc, "trigger", node_trigger)
 
-      ! Get trigger status
-      call get_node_value(node_trigger, "status", temp_str)
+      ! Check if trigger(s) are to be turned on
+      call get_node_value(node_trigger, "active", temp_str)
       temp_str = trim(to_lower(temp_str))
 
       if (temp_str == 'true' .or. temp_str == '1') then
@@ -140,7 +140,7 @@ contains
       elseif (temp_str == 'false' .or. temp_str == '0') then
         trigger_on = .false.
       else
-        call fatal_error("Unrecognized trigger status: " // temp_str)
+        call fatal_error("Unrecognized trigger active: " // temp_str)
       end if
 
       if (trigger_on) then
@@ -196,7 +196,7 @@ contains
         n_max_batches = n_batches
       end if
 
-      !Get number of inactive batches
+      ! Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
@@ -2933,7 +2933,7 @@ contains
              &// trim(to_str(t % id)) // ".")
       end if
       
-      ! If settings.xml trigger status is turned on, create tally triggers
+      ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then
 
         ! Get list of trigger nodes for this tally

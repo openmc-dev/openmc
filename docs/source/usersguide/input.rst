@@ -192,11 +192,11 @@ should be performed. It has the following attributes/sub-elements:
 
         *Default*: None
 
-  :threshold:
-    The precision trigger's convergence criterion for the 
-    combined :math:`k_{eff}`.
+    :threshold:
+      The precision trigger's convergence criterion for the 
+      combined :math:`k_{eff}`.
 
-    *Default*: None
+      *Default*: None
 
   .. note:: See section on the :ref:`trigger` for more information.
 

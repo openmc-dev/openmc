@@ -146,7 +146,7 @@ contains
       if (trigger_on) then
 
         if (check_for_node(node_trigger, "max_batches") )then
-          call get_node_value(node_trigger, "max_batches", max_batches)
+          call get_node_value(node_trigger, "max_batches", n_max_batches)
         else
           call fatal_error("The max_batches must be specified with triggers")
         end if
@@ -193,7 +193,7 @@ contains
       ! Get number of basic batches
       call get_node_value(node_mode, "batches", n_batches)
       if (.not. trigger_on) then
-        max_batches = n_batches
+        n_max_batches = n_batches
       end if
 
       !Get number of inactive batches
@@ -204,8 +204,8 @@ contains
       end if
 
       ! Allocate array for batch keff and entropy
-      allocate(k_generation(max_batches*gen_per_batch))
-      allocate(entropy(max_batches*gen_per_batch))
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
       entropy = ZERO
 
       ! Get the trigger information for keff
@@ -263,7 +263,7 @@ contains
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
       if (.not. trigger_on) then
-        max_batches = n_batches
+        n_max_batches = n_batches
       end if
       n_active = n_batches
       n_inactive    = 0
@@ -3000,8 +3000,8 @@ contains
 
           ! Get the trigger type - "variance", "std_dev" or "rel_err"
           if (check_for_node(node_trigger, "type")) then
-           call get_node_value(node_trigger, "type", temp_str)
-            temp_str = to_lower(temp_str)
+            call get_node_value(node_trigger, "type", temp_str)
+                 temp_str = to_lower(temp_str)
           else
             call fatal_error("Must specify trigger type for tally " // &
                  trim(to_str(t % id)) // " in tally XML file.")

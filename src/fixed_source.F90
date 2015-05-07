@@ -41,7 +41,7 @@ contains
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, max_batches
+    BATCH_LOOP: do current_batch = 1, n_max_batches
 
       ! In a restart run, skip any batches that have already been simulated
       if (restart_run .and. current_batch <= restart_batch) then
@@ -129,7 +129,7 @@ contains
          MPI_COMM_WORLD, mpi_err)              
 #endif
     if (satisfy_triggers .or. &
-         (trigger_on .and. current_batch == max_batches)) then
+         (trigger_on .and. current_batch == n_max_batches)) then
       call statepoint_batch % add(current_batch)
     end if
 

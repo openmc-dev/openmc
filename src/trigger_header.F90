@@ -17,15 +17,6 @@ module trigger_header
     real(8)            :: std_dev =0.0  ! temp std. dev. container 
     real(8)            :: rel_err =0.0  ! temp rel. err. container
   end type TriggerObject
-
-!===============================================================================
-! TRIGGERDISTANCE enables the search for the max uncertainty/threshold ratio
-!===============================================================================
-  type TriggerDistance
-    integer           :: tally_id         ! id for tally with max uncertainty
-    real(8)           :: max_ratio = 0    ! maximum uncertainty ratio
-    character(len=52) :: name             ! "eigenvalue" or tally score
-  end type TriggerDistance
    
 !===============================================================================
 ! KTRIGGER describes a user-specified precision trigger for k-effective

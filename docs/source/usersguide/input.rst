@@ -190,7 +190,7 @@ should be performed. It has the following attributes/sub-elements:
       :rel_err:
         Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
 
-        *Default*: None
+      *Default*: None
 
     :threshold:
       The precision trigger's convergence criterion for the 

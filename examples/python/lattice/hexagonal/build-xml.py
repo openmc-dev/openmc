@@ -129,6 +129,9 @@ settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
 settings_file.set_source_space('box', [-1, -1, -1, 1, 1, 1])
+settings_file.keff_trigger = {'type' : 'std_dev', 'threshold' : 5E-4}
+settings_file.trigger_active = True
+settings_file.trigger_max_batches = 100
 settings_file.export_to_xml()
 
 

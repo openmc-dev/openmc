@@ -52,7 +52,7 @@ contains
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-        & zero_padded(current_batch, count_digits(n_batches))
+        & zero_padded(current_batch, count_digits(n_max_batches))
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -412,7 +412,7 @@ contains
 
         ! Set filename
         filename = trim(path_output) // 'source.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+            & zero_padded(current_batch, count_digits(n_max_batches))
 
 #ifdef HDF5
         filename = trim(filename) // '.h5'
@@ -434,7 +434,7 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+            & zero_padded(current_batch, count_digits(n_max_batches))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -530,7 +530,7 @@ contains
 #endif
 
       ! Transfer values to value on master
-      if (current_batch == n_batches) then
+      if (current_batch == n_max_batches .or. satisfy_triggers) then
         global_tallies(:) % sum    = global_temp(1,:)
         global_tallies(:) % sum_sq = global_temp(2,:)
       end if
@@ -602,7 +602,7 @@ contains
 
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
-          if (current_batch == n_batches) then
+          if (current_batch == n_max_batches .or. satisfy_triggers) then
             tally % results(:,:) % sum = tally_temp(1,:,:)
             tally % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if

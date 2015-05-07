@@ -17,6 +17,7 @@ class SettingsFile(object):
         self._generations_per_batch = None
         self._inactive = None
         self._particles = None
+        self._keff_trigger = None
 
         # Source subelement
         self._source_subelement = None
@@ -40,6 +41,12 @@ class SettingsFile(object):
         self._entropy_dimension = None
         self._entropy_lower_left = None
         self._entropy_upper_right = None
+
+        # Trigger subelement
+        self._trigger_subelement = None
+        self._trigger_active = None
+        self._trigger_max_batches = None
+        self._trigger_batch_interval = None
 
         self._output = None
         self._output_path = None
@@ -79,7 +86,7 @@ class SettingsFile(object):
         self._dd_count_interactions = False
 
         self._settings_file = ET.Element("settings")
-        self._eigenvalue_element = None
+        self._eigenvalue_subelement = None
         self._source_element = None
 
 
@@ -101,6 +108,11 @@ class SettingsFile(object):
     @property
     def particles(self):
         return self._particles
+
+
+    @property
+    def keff_trigger(self):
+        return self._keff_trigger
 
 
     @property
@@ -186,6 +198,21 @@ class SettingsFile(object):
     @property
     def entropy_upper_right(self):
         return self._entropy_upper_right
+
+
+    @property
+    def trigger_active(self):
+        return self._trigger_active
+
+
+    @property
+    def trigger_max_batches(self):
+        return self._trigger_max_batches
+
+
+    @property
+    def trigger_batch_interval(self):
+        return self._batch_interval
 
 
     @property
@@ -374,6 +401,37 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         self._particles = particles
+
+
+    @keff_trigger.setter
+    def keff_trigger(self, keff_trigger):
+
+        if not isinstance(keff_trigger, dict):
+            msg = 'Unable to set a trigger on keff from {0} which ' \
+                  'is not a Python dictionary'.format(keff_trigger)
+            raise ValueError(msg)
+
+        elif not 'type' in keff_trigger:
+            msg = 'Unable to set a trigger on keff from {0} which ' \
+                  'does not have a "type" key'.format(keff_trigger)
+            raise ValueError(msg)
+
+        elif not keff_trigger['type'] in ['variance', 'std_dev', 'rel_err']:
+            msg = 'Unable to set a trigger on keff with ' \
+                  'type {0}'.format(keff_trigger['type'])
+            raise ValueError(msg)
+
+        elif not 'threshold' in keff_trigger:
+            msg = 'Unable to set a trigger on keff from {0} which ' \
+                  'does not have a "threshold" key'.format(keff_trigger)
+            raise ValueError(msg)
+
+        elif not is_float(keff_trigger['threshold']):
+            msg = 'Unable to set a trigger on keff with ' \
+                  'threshold {0}'.format(keff_trigger['threshold'])
+            raise ValueError(msg)
+
+        self._keff_trigger = keff_trigger
 
 
     @source_file.setter
@@ -836,6 +894,50 @@ class SettingsFile(object):
         self._entropy_upper_right = upper_right
 
 
+
+    @trigger_active.setter
+    def trigger_active(self, trigger_active):
+
+        if not isinstance(trigger_active, bool):
+            msg = 'Unable to set trigger active to a ' \
+                  'non-boolean value {0}'.format(trigger_active)
+            raise ValueError(msg)
+
+        self._trigger_active = trigger_active
+
+
+    @trigger_max_batches.setter
+    def trigger_max_batches(self, trigger_max_batches):
+
+        if not is_integer(trigger_max_batches):
+            msg = 'Unable to set trigger max batches to a non-integer ' \
+                  'value {0}'.format(trigger_max_batches)
+            raise ValueError(msg)
+
+        elif trigger_max_batches <= 0:
+            msg = 'Unable to set trigger max batches to a non-positive ' \
+                  'value {0}'.format(trigger_max_batches)
+            raise ValueError(msg)
+
+        self._trigger_max_batches = trigger_max_batches
+
+
+    @trigger_batch_interval.setter
+    def trigger_batch_interval(self, trigger_batch_interval):
+
+        if not is_integer(trigger_batch_interval):
+            msg = 'Unable to set trigger batch interval to a non-integer ' \
+                  'value {0}'.format(trigger_batch_interval)
+            raise ValueError(msg)
+
+        elif trigger_batch_interval <= 0:
+            msg = 'Unable to set trigger batch interval to a non-positive ' \
+                  'value {0}'.format(trigger_batch_interval)
+            raise ValueError(msg)
+
+        self._trigger_batch_interval = trigger_batch_interval
+
+
     @no_reduce.setter
     def no_reduce(self, no_reduce):
 
@@ -1103,17 +1205,18 @@ class SettingsFile(object):
         self.create_batches_subelement()
         self.create_inactive_subelement()
         self.create_generations_per_batch_subelement()
+        self.create_keff_trigger_subelement()
 
 
     def create_batches_subelement(self):
 
         if not self._batches is None:
 
-            if self._eigenvalue_element is None:
-                self._eigenvalue_element = ET.SubElement(self._settings_file,
+            if self._eigenvalue_subelement is None:
+                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
 
-            element = ET.SubElement(self._eigenvalue_element, "batches")
+            element = ET.SubElement(self._eigenvalue_subelement, "batches")
             element.text = '{0}'.format(self._batches)
 
 
@@ -1121,11 +1224,11 @@ class SettingsFile(object):
 
         if not self._generations_per_batch is None:
 
-            if self._eigenvalue_element is None:
-                self._eigenvalue_element = ET.SubElement(self._settings_file,
+            if self._eigenvalue_subelement is None:
+                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
 
-            element = ET.SubElement(self._eigenvalue_element,
+            element = ET.SubElement(self._eigenvalue_subelement,
                                     "generations_per_batch")
             element.text = '{0}'.format(self._generations_per_batch)
 
@@ -1134,11 +1237,11 @@ class SettingsFile(object):
 
         if not self._inactive is None:
 
-            if self._eigenvalue_element is None:
-                self._eigenvalue_element = ET.SubElement(self._settings_file,
+            if self._eigenvalue_subelement is None:
+                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
 
-            element = ET.SubElement(self._eigenvalue_element, "inactive")
+            element = ET.SubElement(self._eigenvalue_subelement, "inactive")
             element.text = '{0}'.format(self._inactive)
 
 
@@ -1146,12 +1249,27 @@ class SettingsFile(object):
 
         if not self._particles is None:
 
-            if self._eigenvalue_element is None:
-                self._eigenvalue_element = ET.SubElement(self._settings_file,
+            if self._eigenvalue_subelement is None:
+                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
 
-            element = ET.SubElement(self._eigenvalue_element, "particles")
+            element = ET.SubElement(self._eigenvalue_subelement, "particles")
             element.text = '{0}'.format(self._particles)
+
+
+    def create_keff_trigger_subelement(self):
+
+        if not self._keff_trigger is None:
+
+            if self._eigenvalue_subelement is None:
+                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
+                                                         "eigenvalue")
+
+            element = ET.SubElement(self._eigenvalue_subelement, "keff_trigger")
+
+            for key in self._keff_trigger:
+                subelement = ET.SubElement(element, key)
+                subelement.text = str(self._keff_trigger[key]).lower()
 
 
     def create_source_subelement(self):
@@ -1380,6 +1498,49 @@ class SettingsFile(object):
                                                    self._entropy_upper_right[2])
 
 
+    def create_trigger_subelement(self):
+
+        self.create_trigger_active_subelement()
+        self.create_trigger_max_batches_subelement()
+        self.create_trigger_batch_interval_subelement()
+
+
+    def create_trigger_active_subelement(self):
+
+        if not self._trigger_active is None:
+
+            if self._trigger_subelement is None:
+                self._trigger_subelement = ET.SubElement(self._settings_file,
+                                                      "trigger")
+
+            element = ET.SubElement(self._trigger_subelement, "active")
+            element.text = '{0}'.format(str(self._trigger_active).lower())
+
+
+    def create_trigger_max_batches_subelement(self):
+
+        if not self._trigger_max_batches is None:
+
+            if self._trigger_subelement is None:
+                self._trigger_subelement = ET.SubElement(self._settings_file,
+                                                      "trigger")
+
+            element = ET.SubElement(self._trigger_subelement, "max_batches")
+            element.text = '{0}'.format(self._trigger_max_batches)
+
+
+    def create_trigger_batch_interval_subelement(self):
+
+        if not self._trigger_batch_interval is None:
+
+            if self._trigger_subelement is None:
+                self._trigger_subelement = ET.SubElement(self._settings_file,
+                                                      "trigger")
+
+            element = ET.SubElement(self._trigger_subelement, "batch_interval")
+            element.text = '{0}'.format(self._trigger_batch_interval)
+
+
     def create_no_reduce_subelement(self):
 
         if not self._no_reduce is None:
@@ -1497,6 +1658,7 @@ class SettingsFile(object):
         self.create_survival_biasing_subelement()
         self.create_cutoff_subelement()
         self.create_entropy_subelement()
+        self.create_trigger_subelement()
         self.create_no_reduce_subelement()
         self.create_threads_subelement()
         self.create_verbosity_subelement()

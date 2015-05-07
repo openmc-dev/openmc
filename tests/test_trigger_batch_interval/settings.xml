@@ -11,7 +11,7 @@
   </eigenvalue>
   
   <trigger>
-    <status>true</status>
+    <active>true</active>
     <max_batches>30</max_batches>
     <batch_interval>1</batch_interval>
   </trigger>

@@ -10,7 +10,7 @@
     </keff_trigger>
   </eigenvalue>
   <trigger>
-    <status>false</status>
+    <active>false</active>
     <max_batches>15</max_batches>
     <batch_interval>1</batch_interval>
   </trigger>

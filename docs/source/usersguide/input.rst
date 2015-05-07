@@ -192,11 +192,11 @@ should be performed. It has the following attributes/sub-elements:
 
         *Default*: None
 
-    :threshold:
-      The precision trigger's convergence criterion for the 
-      combined :math:`k_{eff}`.
+  :threshold:
+    The precision trigger's convergence criterion for the 
+    combined :math:`k_{eff}`.
 
-      *Default*: None
+    *Default*: None
 
   .. note:: See section on the :ref:`trigger` for more information.
 
@@ -648,11 +648,11 @@ particle number, respectively.
 OpenMC includes tally precision triggers which allow the user to define
 uncertainty thresholds on :math:`k_{eff}` in the ``<eigenvalue>`` subelement of 
 ``settings.xml``, and/or tallies in ``tallies.xml``. When using triggers, 
-OpenMC will run until it completes as many batches as defined by `
-``<batches>``. At this point, the uncertainties on all tallied values are 
-computed and compared with their corresponding trigger thresholds. If any 
-triggers have not been met, OpenMC will continue until either all trigger
-thresholds have been satisfied or ``<max_batches>`` has been reached.
+OpenMC will run until it completes as many batches as defined by ``<batches>``.
+At this point, the uncertainties on all tallied values are computed and 
+compared with their corresponding trigger thresholds. If any triggers have not 
+been met, OpenMC will continue until either all trigger thresholds have been 
+satisfied or ``<max_batches>`` has been reached.
 
 The ``<trigger>`` element describes the status of the trigger(s), the maximum 
 number of batches and the batch interval. It has the following 

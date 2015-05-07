@@ -23,15 +23,21 @@ contains
   subroutine check_triggers()
 
     implicit none
-    integer :: n_pred_batches   ! predicted # batches to satisfy all triggers
+
+    ! Variables to reflect distance to trigger convergence criteria
+    real(8)            :: max_ratio       ! max uncertainty/thresh ratio
+    integer            :: tally_id        ! id for tally with max ratio
+    character(len=52)  :: name            ! "eigenvalue" or tally score
+
+    integer    :: n_pred_batches  ! predicted # batches to satisfy all triggers
     
     ! Checks if current_batch is one for which the triggers must be checked
     if (current_batch < n_batches .or. (.not. trigger_on)) return
     if (mod((current_batch - n_batches), n_batch_interval) /= 0 .and. &
-         current_batch /= max_batches) return
+         current_batch /= n_max_batches) return
 
     ! Check the trigger and output the result
-    call check_tally_triggers()
+    call check_tally_triggers(max_ratio, tally_id, name)
 
     ! When trigger threshold is reached, write information 
     if (satisfy_triggers) then
@@ -39,15 +45,13 @@ contains
           trim(to_str(current_batch)))
     
     ! When trigger is not reached write convergence info for user
-    elseif (trig_dist % name == "eigenvalue") then
+    elseif (name == "eigenvalue") then
       call write_message("Triggers unsatisfied, max unc./thresh. is " // &
-           trim(to_str(trig_dist % max_ratio)) //  " for " // &
-           trim(trig_dist % name))
+           trim(to_str(max_ratio)) //  " for " // trim(name))
     else
       call write_message("Triggers unsatisfied, max unc./thresh. is " // & 
-           trim(to_str(trig_dist % max_ratio)) // " for " // & 
-           trim(trig_dist % name) // " in tally " // &
-           trim(to_str(trig_dist % tally_id)))
+           trim(to_str(max_ratio)) // " for " // trim(name) // &
+           " in tally " // trim(to_str(tally_id)))
     end if 
 
     ! If batch_interval is not set, estimate batches till triggers are satisfied
@@ -57,11 +61,11 @@ contains
       ! The prediction uses the fact that tally variances are proportional
       ! to 1/N where N is the number of the batches/particles
       n_batch_interval = int((current_batch-n_inactive) * &
-           (trig_dist % max_ratio ** 2)) + n_inactive-n_batches + 1
+           (max_ratio ** 2)) + n_inactive-n_batches + 1
       n_pred_batches = n_batch_interval + n_batches
 
       ! Write the predicted number of batches for the user
-      if (n_pred_batches > max_batches) then 
+      if (n_pred_batches > n_max_batches) then 
         call warning("The estimated number of batches is " // &
              trim(to_str(n_pred_batches)) // & 
              " --  greater than max batches. ")
@@ -74,12 +78,17 @@ contains
 
 
 !===============================================================================
-! CHECK whether uncertainty reach the threshold, find the maximum 
-! uncertainty/threshold ratio for all triggers
+! CHECK_TALLY_TRIGGERS checks whether uncertainties are below the threshold,
+! and finds the maximum  uncertainty/threshold ratio for all triggers
 !===============================================================================
 
- subroutine check_tally_triggers() 
-    
+ subroutine check_tally_triggers(max_ratio, tally_id, name)
+
+    ! Variables to reflect distance to trigger convergence criteria
+    real(8), intent(inout) :: max_ratio       ! max uncertainty/thresh ratio
+    integer, intent(inout) :: tally_id        ! id for tally with max ratio
+    character(len=52), intent(inout) :: name  ! "eigenvalue" or tally score
+
     integer :: i              ! index in tallies array
     integer :: j              ! level in tally hierarchy
     integer :: n              ! loop index for nuclides
@@ -96,7 +105,7 @@ contains
     type(TriggerObject), pointer   :: trigger         ! tally trigger
 
     ! Initialize tally trigger maximum uncertainty ratio to zero
-    trig_dist % max_ratio = 0
+    max_ratio = 0
 
     if (master) then
 
@@ -123,9 +132,9 @@ contains
             else
               ratio = uncertainty / keff_trigger % threshold
             end if
-            if (trig_dist % max_ratio < ratio) then
-              trig_dist % max_ratio = ratio             
-              trig_dist % name = "eigenvalue"
+            if (max_ratio < ratio) then
+              max_ratio = ratio             
+              name = "eigenvalue"
             end if 
           end if 
         end if   
@@ -268,10 +277,10 @@ contains
                     ratio = uncertainty / t % triggers(s) % threshold
                   end if 
                   
-                  if (trig_dist % max_ratio < ratio) then
-                    trig_dist % max_ratio = ratio
-                    trig_dist % name  = t % triggers(s) % score_name
-                    trig_dist % tally_id = t % id
+                  if (max_ratio < ratio) then
+                    max_ratio = ratio
+                    name  = t % triggers(s) % score_name
+                    tally_id = t % id
                   end if
                 end if
               end do NUCLIDE_LOOP
@@ -303,9 +312,9 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = 0.0         ! temporary relative error of result
     real(8) :: std_dev  = 0.0         ! temporary standard deviration of result
-    type(TallyObject), pointer :: t   ! tally pointer
-    type(TriggerObject)   :: trigger  ! tally trigger
-    type(StructuredMesh), pointer :: m => null()
+    type(TallyObject), pointer    :: t        ! surface current tally
+    type(TriggerObject)           :: trigger  ! surface current tally trigger
+    type(StructuredMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)

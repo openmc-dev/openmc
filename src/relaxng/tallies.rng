@@ -234,7 +234,7 @@
                         </oneOrMore>
                       </list>
                     </element>
-                    <attribute name="threshold">
+                    <attribute name="scores">
                       <list>
                         <oneOrMore>
                           <data type="string">

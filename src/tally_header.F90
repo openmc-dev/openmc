@@ -1,6 +1,7 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES
+  use constants,          only: NONE, N_FILTER_TYPES
+  use trigger_header,     only: TriggerObject
 
   implicit none
 
@@ -123,6 +124,10 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
+    
+    ! Tally precision triggers
+    integer                           :: n_triggers = 0  ! # of triggers
+    type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
     ! Type-Bound procedures
     contains
@@ -192,6 +197,11 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
+      
+      if (allocated(this % triggers)) &
+           deallocate (this % triggers)
+      
+      this % n_triggers = 0
 
     end subroutine tallyobject_clear
 

@@ -316,7 +316,13 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-
+  
+  ! Tally trigger types and threshold
+  integer, parameter :: &
+       VARIANCE           = 1, &
+       RELATIVE_ERROR     = 2, &
+       STANDARD_DEVIATION = 3 
+       
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

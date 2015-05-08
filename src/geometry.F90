@@ -199,7 +199,7 @@ contains
         p % coord % universe = c % fill
 
         ! Determine all distribcell offsets for this cell level
-        if (.not. allocated(p % coord % mapping)) then
+        if (.not. associated(p % coord % mapping)) then
           allocate(p % coord % mapping(n_maps))
         end if
         do j = 1, n_maps
@@ -264,7 +264,7 @@ contains
 
         ! Determine all distribcell offsets for this cell level
         if (lat % are_valid_indices(i_xyz)) then
-          if (.not. allocated(p % coord % mapping)) then
+          if (.not. associated(p % coord % mapping)) then
             allocate(p % coord % mapping(n_maps))
           end if
 
@@ -637,7 +637,7 @@ contains
       p % coord % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
       ! Determine all distribcell offsets for this lattice cell
-      if (.not. allocated(p % coord % mapping)) then
+      if (.not. associated(p % coord % mapping)) then
         allocate(p % coord % mapping(n_maps))
       end if
       do i = 1, n_maps

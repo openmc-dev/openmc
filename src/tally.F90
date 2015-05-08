@@ -1160,7 +1160,7 @@ contains
         coord => p % coord0
         offset = 0
         do while(associated(coord))
-          if (allocated(coord % mapping)) then
+          if (associated(coord % mapping)) then
             offset = offset + coord % mapping(t % filters(i) % offset)
           end if
           if (t % filters(i) % int_bins(1) == coord % cell) then

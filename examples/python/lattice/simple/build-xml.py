@@ -130,6 +130,8 @@ settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
 settings_file.set_source_space('box', [-1, -1, -1, 1, 1, 1])
+settings_file.trigger_active = True
+settings_file.trigger_max_batches = 100
 settings_file.export_to_xml()
 
 
@@ -164,10 +166,15 @@ mesh.width = [1, 1]
 mesh_filter = openmc.Filter()
 mesh_filter.mesh = mesh
 
+# Instantiate tally Trigger
+trigger = openmc.Trigger(trigger_type='rel_err', threshold=1E-2)
+trigger.add_score('all')
+
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1)
 tally.add_filter(mesh_filter)
 tally.add_score('total')
+tally.add_trigger(trigger)
 
 # Instantiate a TalliesFile, register Tally/Mesh, and export to XML
 tallies_file = openmc.TalliesFile()

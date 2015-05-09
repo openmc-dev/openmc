@@ -45,7 +45,6 @@ FC='gfortran'
 MPI_DIR='/opt/mpich/3.1.3-gnu'
 HDF5_DIR='/opt/hdf5/1.8.14-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.14-gnu'
-PETSC_DIR='/opt/petsc/3.5.2-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -59,8 +58,6 @@ if 'HDF5_DIR' in os.environ:
     HDF5_DIR = os.environ['HDF5_DIR']
 if 'PHDF5_DIR' in os.environ:
     PHDF5_DIR = os.environ['PHDF5_DIR']
-if 'PETSC_DIR' in os.environ:
-    PETSC_DIR = os.environ['PETSC_DIR']
 
 # CTest script template
 ctest_str = """set (CTEST_SOURCE_DIRECTORY "{source_dir}")
@@ -110,14 +107,13 @@ tests = OrderedDict()
 
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
-                 hdf5=False, petsc=False, valgrind=False, coverage=False):
+                 hdf5=False, valgrind=False, coverage=False):
         self.name = name
         self.debug = debug
         self.optimize = optimize
         self.mpi = mpi
         self.openmp = openmp
         self.hdf5 = hdf5
-        self.petsc = petsc
         self.valgrind = valgrind
         self.coverage = coverage
         self.success = True
@@ -152,8 +148,6 @@ class Test(object):
             build_str += "-Doptimize=ON "
         if self.openmp:
             build_str += "-Dopenmp=ON "
-        if self.petsc:
-            build_str += "-Dpetsc=ON "
         if self.coverage:
             build_str += "-Dcoverage=ON "
         self.build_opts = build_str
@@ -167,8 +161,6 @@ class Test(object):
     # Runs the ctest script which performs all the cmake/ctest/cdash
     def run_ctest_script(self):
         os.environ['FC'] = self.fc
-        if self.petsc:
-            os.environ['PETSC_DIR'] = PETSC_DIR
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
         rc = call(['ctest', '-S', 'ctestscript.run','-V'])
@@ -179,8 +171,6 @@ class Test(object):
     # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
-        if self.petsc:
-            os.environ['PETSC_DIR'] = PETSC_DIR
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
         build_opts = self.build_opts.split()
@@ -272,9 +262,9 @@ class Test(object):
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
-             hdf5=False, petsc=False, valgrind=False, coverage=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc,
-    valgrind, coverage)})
+             hdf5=False, valgrind=False, coverage=False):
+    tests.update({name: Test(name, debug, optimize, mpi, openmp, hdf5,
+                             valgrind, coverage)})
 
 # List of all tests that may be run. User can add -C to command line to specify
 # a subset of these configurations
@@ -302,22 +292,11 @@ add_test('phdf5-optimize', mpi=True, hdf5=True, optimize=True)
 add_test('phdf5-omp-normal', mpi=True, hdf5=True, openmp=True)
 add_test('phdf5-omp-debug', mpi=True, hdf5=True, openmp=True, debug=True)
 add_test('phdf5-omp-optimize', mpi=True, hdf5=True, openmp=True, optimize=True)
-add_test('petsc-normal', petsc=True, mpi=True)
-add_test('petsc-debug', petsc=True, mpi=True, debug=True)
-add_test('petsc-optimize', petsc=True, mpi=True, optimize=True)
-add_test('phdf5-petsc-normal', mpi=True, hdf5=True, petsc=True)
-add_test('phdf5-petsc-debug', mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('phdf5-petsc-optimize', mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
-add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 add_test('basic-debug_valgrind', debug=True, valgrind=True)
 add_test('hdf5-debug_valgrind', hdf5=True, debug=True, valgrind=True)
-add_test('petsc-debug_valgrind', petsc=True, mpi=True, debug=True, valgrind=True)
 add_test('basic-debug_coverage', debug=True, coverage=True)
 add_test('hdf5-debug_coverage', debug=True, hdf5=True, coverage=True)
 add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
-add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
 
 # Check to see if we should just print build configuration information to user
 if options.list_build_configs:
@@ -328,7 +307,6 @@ if options.list_build_configs:
         print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
         print('  MPI Active:...........{0}'.format(tests[key].mpi))
         print('  OpenMP Active:........{0}'.format(tests[key].openmp))
-        print('  PETSc Active:.........{0}'.format(tests[key].petsc))
         print('  Valgrind Test:........{0}'.format(tests[key].valgrind))
         print('  Coverage Test:........{0}\n'.format(tests[key].coverage))
     exit()

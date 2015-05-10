@@ -18,3 +18,4 @@ as debugging.
     xml-parsing
     statepoint
     voxel
+    docbuild

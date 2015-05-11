@@ -38,14 +38,6 @@ contains
       if (check_overlaps) call reduce_overlap_count()
     end if
 
-#ifdef PETSC
-    ! Finalize PETSc
-    if (cmfd_run) then
-      call PetscFinalize(mpi_err)
-      call MPI_COMM_FREE(cmfd_comm, mpi_err)
-    end if
-#endif
-
     ! Stop timers and show timing statistics
     call time_finalize % stop()
     call time_total % stop()

@@ -2934,7 +2934,7 @@ contains
           end select
 
           ! Append the score to the list of possible trigger scores
-          call trigger_scores % add_key(trim(score_name), l)
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
 
         end do
         t % n_score_bins = n_scores

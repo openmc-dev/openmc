@@ -26,12 +26,6 @@ element cmfd {
 
   element dhat_reset { xsd:boolean }? &
 
-  element solver { xsd:string }? &
-
-  element snes_monitor { xsd:boolean }? &
-
-  element ksp_monitor { xsd:boolean }? &
-
   element power_monitor { xsd:boolean }? &
 
   element write_matrices { xsd:boolean }? &

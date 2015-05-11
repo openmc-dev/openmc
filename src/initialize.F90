@@ -435,9 +435,6 @@ contains
         case ('-v', '-version', '--version')
           call print_version()
           stop
-        case ('-eps_tol', '-ksp_gmres_restart')
-          ! Handle options that would be based to PETSC
-          i = i + 1
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
         case default
@@ -558,7 +555,7 @@ contains
     integer :: k                      ! loop index for lattices
     integer :: m                      ! loop index for lattices
     integer :: lid                    ! lattice IDs
-    integer :: i_array                ! index in surfaces/materials array 
+    integer :: i_array                ! index in surfaces/materials array
     integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
     class(Lattice),    pointer :: lat => null()

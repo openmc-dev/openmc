@@ -10,7 +10,6 @@ before_install:
   - export MPI_DIR=$PWD/mpich_install
   - export PHDF5_DIR=$PWD/phdf5_install
   - export HDF5_DIR=$PWD/hdf5_install
-  - export PETSC_DIR=$PWD/petsc_install
 
 before_script:
   - cd data

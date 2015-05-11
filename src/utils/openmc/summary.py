@@ -528,20 +528,22 @@ class Summary(object):
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)][0]
 
+            print num_filters
+
             # Initialize all Filters
             for j in range(1, num_filters+1):
 
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
-                # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type = self._f['{0}/type_name'.format(subsubbase)][0]
+                # Read filter type (e.g., "cell", "energy", etc.) integer code
+                filter_type = self._f['{0}/type'.format(subsubbase)][0]
 
                 # Read the filter bins
                 num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(filter_type, bins)
+                filter = openmc.Filter(openmc.FILTER_TYPES[filter_type], bins)
                 filter.num_bins = num_bins
 
                 # Add Filter to the Tally

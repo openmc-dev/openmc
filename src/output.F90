@@ -2308,11 +2308,6 @@ contains
         path = trim(path) // "->" // to_str(c%id)
 
         ! ====================================================================
-        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-        !if (c % type == CELL_NORMAL) then
-        !  call fatal_error("Unexpected end of search with normal cell.")
-
-        ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
         if (c % type == CELL_FILL) then
 

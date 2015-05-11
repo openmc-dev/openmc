@@ -14,8 +14,6 @@ module geometry_header
      real(8) :: x0                     ! Translation in x-coordinate
      real(8) :: y0                     ! Translation in y-coordinate
      real(8) :: z0                     ! Translation in z-coordinate
-     integer, allocatable :: kount(:)  ! Distribcell target counts
-     logical, allocatable :: search(:) ! Distribcell search completed
   end type Universe
 
 !===============================================================================

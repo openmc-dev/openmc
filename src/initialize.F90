@@ -930,7 +930,9 @@ contains
     integer, allocatable :: univ_list(:)              ! Target offsets
     type(TallyObject),    pointer :: tally            ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
-    type(Cell),           pointer :: c             ! Pointer to cell
+    type(Cell),           pointer :: c                ! Pointer to cell
+    integer, allocatable :: kounts(:,:)               ! Target counts
+    logical, allocatable :: found(:,:)                ! Target search completed
 
     count_all = .false.
 
@@ -991,23 +993,19 @@ contains
     end if
 
     ! Allocate offset maps at each level in the geometry
-    call allocate_offsets(univ_list)
+    call allocate_offsets(univ_list, kounts, found)
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes  
         univ => universes(j)
-        call calc_offsets(univ_list(i), i, univ)
+        call calc_offsets(univ_list(i), i, univ, kounts, found)
       end do
     end do
 
-    ! Deallocate temporary target counts
-    do i = 1, n_universes  
-      univ => universes(i)
-      deallocate(univ % kount)
-      deallocate(univ % search)
-    end do
-
+    ! Deallocate temporary target variable arrays
+    deallocate(kounts)
+    deallocate(found)
     deallocate(univ_list)
   
   end subroutine prepare_distribcell
@@ -1019,20 +1017,21 @@ contains
 ! memory for distribcell offset tables
 !===============================================================================
 
-  recursive subroutine allocate_offsets(univ_list)
+  recursive subroutine allocate_offsets(univ_list, kounts, found)
 
-    integer, intent(out), allocatable :: univ_list(:)
+    integer, intent(out), allocatable     :: univ_list(:)
+    integer, intent(out), allocatable     :: kounts(:,:)  ! Target counts
+    logical, intent(out), allocatable     :: found(:,:)   ! Targets found
+
     integer :: i, j, k, l, m                    ! Loop counters
-    integer :: maps   
-    type(DictIntInt) :: cell_list               ! distribells to track
-    
+    type(DictIntInt) :: cell_list               ! distribells to track    
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice
     type(TallyObject), pointer :: tally         ! pointer to tally
     type(TallyFilter), pointer :: filter        ! pointer to filter
     
     ! Begin gathering list of cells in distribcell tallies
-    maps = 0
+    n_maps = 0
     
     ! Populate list of distribcells to track
     do i = 1, n_tallies
@@ -1058,30 +1057,34 @@ contains
       do j = 1, univ % n_cells
 
         if (cell_list % has_key(univ % cells(j))) then
-          maps = maps + 1
+          n_maps = n_maps + 1
           cycle
         end if
 
       end do
     end do
     
-    
     ! Allocate the list of offset tables for each unique universe
-    allocate(univ_list(maps))
+    allocate(univ_list(n_maps))
+
+    ! Allocate list to accumulate target distribccell counts in each universe
+    allocate(kounts(n_universes, n_maps))
+
+    ! Allocate list to track if target distribcells are found in each universe
+    allocate(found(n_universes, n_maps))
+
+    do i = 1, n_universes
+      do j = 1, n_maps
+          kounts(i,j) = 0
+          found(i,j) = .false.
+        end do
+    end do
 
     k = 1
     do i = 1, n_universes
     
       univ => universes(i)
 
-      ! Allocate search + kount
-      allocate(univ % kount(maps))
-      allocate(univ % search(maps))
-
-      do j = 1, maps
-        univ % kount(j) = 0
-        univ % search(j) = .false.
-      end do      
 
       do j = 1, univ % n_cells
       
@@ -1119,10 +1122,10 @@ contains
       select type(lat)
 
       type is (RectLattice)
-        allocate(lat % offset(maps, lat % n_cells(1), lat % n_cells(2), &
+        allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
                  lat % n_cells(3)))
       type is (HexLattice)
-        allocate(lat % offset(maps, 2 * lat % n_rings - 1, &
+        allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
              2 * lat % n_rings - 1, lat % n_axial))
       end select
 
@@ -1133,13 +1136,10 @@ contains
     ! Allocate offset table for fill cells
     do i = 1, n_cells
       if (cells(i) % material == NONE) then
-        allocate(cells(i) % offset(maps))
+        allocate(cells(i) % offset(n_maps))
       end if
     end do
-    
-    ! Store the number of maps as global variable
-    n_maps = maps
-    
+
   end subroutine allocate_offsets
 
 end module initialize

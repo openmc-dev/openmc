@@ -1620,11 +1620,13 @@ contains
 ! routine is called once upon initialization.
 !===============================================================================
 
-  subroutine calc_offsets(goal, map, univ)
+  subroutine calc_offsets(goal, map, univ, kounts, found)
 
-    integer, intent(in) :: goal           ! target universe ID
-    integer, intent(in) :: map            ! map index in vector of maps
-    type(Universe), intent(in) :: univ    ! universe searching in
+    integer, intent(in) :: goal                ! target universe ID
+    integer, intent(in) :: map                 ! map index in vector of maps
+    type(Universe), intent(in) :: univ         ! universe searching in
+    integer, intent(inout)     :: kounts(:,:)  ! Target counts 
+    logical, intent(inout)     :: found(:,:)   ! Targets found
 
     integer :: i                          ! index over cells
     integer :: j, k, m                    ! indices in lattice
@@ -1657,7 +1659,7 @@ contains
 
         ! Count contents of this cell
         next_univ => universes(c % fill)
-        offset = offset + count_target(next_univ, goal, map)
+        offset = offset + count_target(next_univ, kounts, found, goal, map)
 
         ! Move into the next universe
         next_univ => universes(c % fill)
@@ -1680,7 +1682,7 @@ contains
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
-                offset = offset + count_target(next_univ, goal, map)
+                offset = offset + count_target(next_univ, kounts, found, goal, map)
               end do
             end do
           end do
@@ -1700,7 +1702,7 @@ contains
                 else
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % universes(j, k, m))
-                  offset = offset + count_target(next_univ, goal, map)
+                  offset = offset + count_target(next_univ, kounts, found, goal, map)
                 end if
               end do
             end do
@@ -1719,9 +1721,11 @@ contains
 ! universe ID beginning with the universe given.
 !===============================================================================
 
-  recursive function count_target(univ, goal, map) result(kount)
+  recursive function count_target(univ, kounts, found, goal, map) result(kount)
 
-    type(Universe), intent(inout) :: univ  ! universe to search through
+    type(Universe), intent(inout) :: univ         ! universe to search through
+    integer, intent(inout)        :: kounts(:,:)  ! Target counts 
+    logical, intent(inout)        :: found(:,:)   ! Targets found
     integer, intent(in) :: goal            ! target universe ID
     integer             :: kount           ! number of times target located
     integer             :: map             ! current map
@@ -1735,8 +1739,8 @@ contains
     class(Lattice), pointer :: lat         ! pointer to current lattice
 
     ! Don't research places already checked
-    if (univ % search(map)) then
-      kount = univ % kount(map)
+    if (found(universe_dict % get_key(univ % id), map)) then
+      kount = kounts(universe_dict % get_key(univ % id), map)
       return
     end if
 
@@ -1744,8 +1748,8 @@ contains
     ! Kount = 1, then quit
     if (univ % id == goal) then
       kount = 1
-      univ % kount(map) = 1
-      univ % search(map) = .true.
+      kounts(universe_dict % get_key(univ % id), map) = 1
+      found(universe_dict % get_key(univ % id), map) = .true.
       return
     end if
 
@@ -1775,7 +1779,7 @@ contains
           return
         end if
         
-        kount = kount + count_target(next_univ, goal, map)
+        kount = kount + count_target(next_univ, kounts, found, goal, map)
         c => cells(cell_index)
 
       ! ====================================================================
@@ -1801,7 +1805,7 @@ contains
                   cycle
                 end if
               
-                kount = kount + count_target(next_univ, goal, map)
+                kount = kount + count_target(next_univ, kounts, found, goal, map)
 
               end do
             end do
@@ -1828,7 +1832,7 @@ contains
                       cycle
                     end if
 
-                    kount = kount + count_target(next_univ, goal, map)
+                    kount = kount + count_target(next_univ, kounts, found, goal, map)
                   end if
                 end do
               end do
@@ -1839,8 +1843,8 @@ contains
       end if
     end do
 
-    univ % kount(map) = kount
-    univ % search(map) = .true.
+    kounts(universe_dict % get_key(univ % id), map) = kount
+    found(universe_dict % get_key(univ % id), map) = .true.
              
   end function count_target
 

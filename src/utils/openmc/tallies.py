@@ -70,7 +70,7 @@ class Tally(object):
 
             clone._triggers = []
             for trigger in self._triggers:
-              trigger.add_trigger(trigger)
+              clone.add_trigger(trigger)
 
             memo[id(self)] = clone
 
@@ -423,6 +423,62 @@ class Tally(object):
 
         return string
 
+
+    def can_merge(self, tally):
+
+        if not isinstance(tally, Tally):
+            return False
+
+        # Must have same estimator
+        if self._estimator != tally._estimator:
+            return False
+
+        # Must have same filters
+        if len(self._filters) != len(tally._filters):
+            return False
+
+        for filter in self._filters:
+            if not filter in tally._filters:
+                return False
+
+        # Must have same nuclides
+        if len(self._nuclides) != len(tally._nuclides):
+            return False
+
+        for nuclide in self._nuclides:
+            if not nuclide in tally._nuclides:
+                return False
+
+        # Tallies are mergeable if all conditional checks passed
+        return True
+
+
+        # FIXME: Check if filters are mergeable
+
+
+    def merge(self, tally):
+
+        if not self.can_merge(tally):
+            msg = 'Unable to merge tally ID={0} with {1}'.format(tally.id, self.id)
+            raise ValueError(msg)
+
+        # Create deep copy of tally to return as merged tally
+        merged_tally = copy.deepcopy(self)
+
+        # Differentiate Tally with a new auto-generated Tally ID
+        merged_tally.id = None
+
+        # Add scores from second tally to merged tally
+        for score in tally._scores:
+            merged_tally.add_score(score)
+
+        # Add triggers from second tally to merged tally
+        for trigger in tally._triggers:
+            merged_tally.add_trigger(trigger)
+
+        # FIXME: Check if filters are mergeable
+
+        return merged_tally
 
 
     def get_tally_xml(self):

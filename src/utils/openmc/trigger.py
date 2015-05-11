@@ -112,4 +112,3 @@ class Trigger(object):
 
             scores.rstrip(' ')
             subelement.set("scores", scores)
-__author__ = 'wboyd'

@@ -528,8 +528,6 @@ class Summary(object):
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)][0]
 
-            print num_filters
-
             # Initialize all Filters
             for j in range(1, num_filters+1):
 

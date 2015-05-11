@@ -11,6 +11,7 @@ class Filter(object):
     def __init__(self, type=None, bins=None):
 
         self.type = type
+        self._num_bins = 0
         self.bins = bins
         self._mesh = None
         self._offset = -1
@@ -259,15 +260,11 @@ class Filter(object):
             return False
 
         # Mesh filters cannot have more than one bin
-        elif self.type == 'mesh' and self.bins != filter.bins:
+        elif self.type == 'mesh':
             return False
 
         # Different energy bins are not mergeable
-        elif self.type == 'energy' and self.bins != filter.bins:
-            return False
-
-        # Different energyout bins are not mergeable
-        elif self.type == 'energyout' and self.bins != filter.bins:
+        elif 'energy' in self.type:
             return False
 
         else:

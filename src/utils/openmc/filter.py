@@ -250,18 +250,23 @@ class Filter(object):
         if not isinstance(filter, Filter):
             return False
 
+        # Filters must be of the same type
         elif self.type != filter.type:
             return False
 
+        # Distribcell filters cannot have more than one bin
         elif self.type == 'distribcell':
             return False
 
+        # Mesh filters cannot have more than one bin
         elif self.type == 'mesh' and self.bins != filter.bins:
             return False
 
+        # Different energy bins are not mergeable
         elif self.type == 'energy' and self.bins != filter.bins:
             return False
 
+        # Different energyout bins are not mergeable
         elif self.type == 'energyout' and self.bins != filter.bins:
             return False
 

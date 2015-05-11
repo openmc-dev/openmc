@@ -433,27 +433,29 @@ class Tally(object):
         if self._estimator != tally._estimator:
             return False
 
-        # Must have same filters
-        if len(self._filters) != len(tally._filters):
-            return False
-
-        for filter1 in self._filters:
-            contains_filter = False
-
-            for filter2 in tally._filters:
-                if filter1 == filter2 or filter1.can_merge(filter2):
-                    contains_filter = True
-                    break
-
-            if not contains_filter:
-                return False
-
         # Must have same nuclides
         if len(self._nuclides) != len(tally._nuclides):
             return False
 
         for nuclide in self._nuclides:
             if not nuclide in tally._nuclides:
+                return False
+
+        # Must have same or mergeable filters
+        if len(self._filters) != len(tally._filters):
+            return False
+
+        # Look to see if all filters are the same, or one or more can be merged
+        for filter1 in self._filters:
+            mergeable_filter = False
+
+            for filter2 in tally._filters:
+                if filter1 == filter2 or filter1.can_merge(filter2):
+                    mergeable_filter = True
+                    break
+
+            # If no mergeable filter was found, the tallies are not mergable
+            if not mergeable_filter:
                 return False
 
         # Tallies are mergeable if all conditional checks passed
@@ -833,17 +835,59 @@ class TalliesFile(object):
         self._tallies_file = ET.Element("tallies")
 
 
-    def add_tally(self, tally):
+    def add_tally(self, tally, merge=False):
 
         if not isinstance(tally, Tally):
             msg = 'Unable to add a non-Tally {0} to the TalliesFile'.format(tally)
             raise ValueError(msg)
 
-        self._tallies.append(tally)
+        if merge:
+            merged = False
+
+            # Look for a tally to merge with this one
+            for i, tally2 in enumerate(self._tallies):
+
+                # If a mergeable tally is found
+                if tally2.can_merge(tally):
+
+                    # Replace tally 2 with the merged tally
+                    merged_tally = tally2.merge(tally)
+                    self._tallies[i] = merged_tally
+                    merged = True
+
+            # If not mergeable tally was found, simply add this tally
+            if not merged:
+                self._tallies.append(tally)
+
+        else:
+            self._tallies.append(tally)
 
 
     def remove_tally(self, tally):
         self._tallies.remove(tally)
+
+
+    def merge_tallies(self):
+
+        for i, tally1 in enumerate(self._tallies):
+            for j, tally2 in enumerate(self._tallies):
+
+                # Do not merge the same tally with itself
+                if i == j:
+                    continue
+
+                # If the two tallies are mergeable
+                if tally1.can_merge(tally2):
+
+                    # Replace tally 1 with the merged tally
+                    merged_tally = tally1.merge(tally2)
+                    self._tallies[i] = merged_tally
+
+                    # Remove tally 2 since it is no longer neede
+                    self._tallies.pop(j)
+
+                    # Continue iterating from the first loop
+                    break
 
 
     def add_mesh(self, mesh):

@@ -1061,7 +1061,7 @@ Here is an example of a properly defined 2d hexagonal lattice:
         <pitch> 1.0 </pitch>
         <universes>
                   202
-               202   202 
+               202   202
             202   202   202
                202   202
             202   101   202
@@ -1718,19 +1718,9 @@ It can be turned on with "true" and off with "false".
 The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
 the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
 and the second is the relative inner tolerance for Gauss-Seidel iterations
-for CMFD calculations. It is only used in the standalone CMFD power iteration
-solver and not when PETSc is active.
+for CMFD calculations.
 
   *Default*: 1.e-10 1.e-5
-
-``<ksp_monitor>`` Element
--------------------------
-
-The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES
-iterations in PETSc. This option can be turned on with "true" and turned off
-with "false".
-
-  *Default*: false
 
 ``<ktol>`` Element
 --------------------
@@ -1820,26 +1810,16 @@ iteration. This option can be turned on with "true" and turned off with "false".
 -------------------------
 
 The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
-calculation be performed on the last batch when CMFD is active. OpenMC should be
-compiled with PETSc when using this option.
+calculation be performed on the last batch when CMFD is active.
 
   *Default*: false
-
-``<solver>`` Element
---------------------
-
-The ``<solver>`` element controls whether the CMFD eigenproblem is solved with
-standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
-By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
-
-  *Default*: power
 
 ``<shift>`` Element
 --------------------
 
-The ``<shfit>`` element specifies an optional Wielandt shift parameter for
-accelerating power iterations. It can only be used when PETSc is not active.
-It is by default very large so the impact of the shift is effectively zero.
+The ``<shift>`` element specifies an optional Wielandt shift parameter for
+accelerating power iterations. It is by default very large so the impact of the
+shift is effectively zero.
 
   *Default*: 1e6
 
@@ -1848,10 +1828,9 @@ It is by default very large so the impact of the shift is effectively zero.
 
 The ``<spectral>`` element specifies an optional spectral radius that can be set to
 accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
-solve. Note this is only used in the standalone CMFD solver and does not affect
-the calculation when PETSc is active.
+solve.
 
-  *Default*: power
+  *Default*: 0.0
 
 ``<stol>`` Element
 ------------------
@@ -1872,10 +1851,9 @@ should be reset.
 ``<write_matrices>`` Element
 ----------------------------
 
-The ``<write_matrices>`` element is used to view the PETSc sparse matrices
-created when solving CMFD equations. These binary output files can be imported
-into MATLAB using PETSc-MATLAB utilities. This option can be
-turned on with "true" and off with "false".
+The ``<write_matrices>`` element is used to write the sparse matrices created
+when solving CMFD equations. This option can be turned on with "true" and off
+with "false".
 
   *Default*: false
 

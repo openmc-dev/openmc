@@ -306,14 +306,11 @@ class CMFDFile(object):
         self._feedback = None
         self._inactive = None
         self._inactive_flush = None
-        self._ksp_monitor = None
         self._cmfd_mesh = None
         self._norm = None
         self._num_flushes = None
         self._power_monitor = None
         self._run_adjoint = None
-        self._snes_monitor = None
-        self._solver = None
         self._write_matrices = None
 
         self._cmfd_file = ET.Element("cmfd")
@@ -351,11 +348,6 @@ class CMFDFile(object):
 
 
     @property
-    def ksp_monitor(self):
-        return self._ksp_monitor
-
-
-    @property
     def cmfd_mesh(self):
         return self._cmfd_mesh
 
@@ -378,11 +370,6 @@ class CMFDFile(object):
     @property
     def run_adjoint(self):
         return self._run_adjoint
-
-
-    @property
-    def snes_monitor(self):
-        return self._snes_monitor
 
 
     @property
@@ -481,17 +468,6 @@ class CMFDFile(object):
         self._inactive_flush = inactive_flush
 
 
-    @ksp_monitor.setter
-    def ksp_monitor(self, ksp_monitor):
-
-        if not isinstance(ksp_monitor, bool):
-            msg = 'Unable to set CMFD ksp monitor to {0} which is a ' \
-                  'non-boolean value'.format(ksp_monitor)
-            raise ValueError(msg)
-
-        self._ksp_monitor = ksp_monitor
-
-
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
 
@@ -552,28 +528,6 @@ class CMFDFile(object):
         self._run_adjoint = run_adjoint
 
 
-    @snes_monitor.setter
-    def snes_monitor(self, snes_monitor):
-
-        if not isinstance(snes_monitor, bool):
-            msg = 'Unable to set CMFD snes monitor to {0} which is a ' \
-                  'non-boolean value'.format(snes_monitor)
-            raise ValueError(msg)
-
-        self._snes_monitor = snes_monitor
-
-
-    @solver.setter
-    def solver(self, solver):
-
-        if not solver in ['power', 'jfnk']:
-            msg = 'Unable to set CMFD solver to {0} which is not ' \
-                  '"power" or "jfnk"'.format(solver)
-            raise ValueError(msg)
-
-        self._solver = solver
-
-
     @write_matrices.setter
     def write_matrices(self, write_matrices):
 
@@ -627,13 +581,6 @@ class CMFDFile(object):
             element.text = '{0}'.format(str(self._inactive_flush))
 
 
-    def create_ksp_monitor_subelement(self):
-
-        if not self._ksp_monitor is None:
-            element = ET.SubElement(self._cmfd_file, "ksp_monitor")
-            element.text = '{0}'.format(str(self._ksp_monitor).lower())
-
-
     def create_mesh_subelement(self):
 
         if not self._mesh is None:
@@ -669,20 +616,6 @@ class CMFDFile(object):
             element.text = '{0}'.format(str(self._run_adjoint).lower())
 
 
-    def create_snes_monitor_subelement(self):
-
-        if not self._snes_monitor is None:
-            element = ET.SubElement(self._cmfd_file, "snes_monitor")
-            element.text = '{0}'.format(str(self._snes_monitor).lower())
-
-
-    def create_solver_subelement(self):
-
-        if not self._solver is None:
-            element = ET.SubElement(self._cmfd_file, "solver")
-            element.text = '{0}'.format(str(self._solver))
-
-
     def create_write_matrices_subelement(self):
 
         if not self._write_matrices is None:
@@ -698,14 +631,11 @@ class CMFDFile(object):
         self.create_feedback_subelement()
         self.create_inactive_subelement()
         self.create_inactive_flush_subelement()
-        self.create_ksp_monitor_subelement()
         self.create_mesh_subelement()
         self.create_norm_subelement()
         self.create_num_flushes_subelement()
         self.create_power_monitor_subelement()
         self.create_run_adjoint_subelement()
-        self.create_snes_monitor_subelement()
-        self.create_solver_subelement()
         self.create_write_matrices_subelement()
 
         # Clean the indentation in the file to be user-readable

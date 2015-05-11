@@ -927,12 +927,12 @@ contains
     integer :: extra      ! Number of extra filters to add
     integer :: n_filt     ! Number of filters originally in tally
     logical :: count_all  ! Count all cells
-    integer, allocatable :: univ_list(:)              ! Target offsets
     type(TallyObject),    pointer :: tally            ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
     type(Cell),           pointer :: c                ! Pointer to cell
-    integer, allocatable :: kounts(:,:)               ! Target counts
-    logical, allocatable :: found(:,:)                ! Target search completed
+    integer, allocatable :: univ_list(:)              ! Target offsets
+    integer, allocatable :: kounts(:,:)               ! Target count
+    logical, allocatable :: found(:,:)                ! Target found
 
     count_all = .false.
 
@@ -1019,9 +1019,9 @@ contains
 
   recursive subroutine allocate_offsets(univ_list, kounts, found)
 
-    integer, intent(out), allocatable     :: univ_list(:)
-    integer, intent(out), allocatable     :: kounts(:,:)  ! Target counts
-    logical, intent(out), allocatable     :: found(:,:)   ! Targets found
+    integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
+    integer, intent(out), allocatable     :: kounts(:,:)  ! Target count
+    logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer :: i, j, k, l, m                    ! Loop counters
     type(DictIntInt) :: cell_list               ! distribells to track    

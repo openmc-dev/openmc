@@ -1625,8 +1625,8 @@ contains
     integer, intent(in) :: goal                ! target universe ID
     integer, intent(in) :: map                 ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
-    integer, intent(inout)     :: kounts(:,:)  ! Target counts 
-    logical, intent(inout)     :: found(:,:)   ! Targets found
+    integer, intent(inout)     :: kounts(:,:)  ! Target count
+    logical, intent(inout)     :: found(:,:)   ! Target found
 
     integer :: i                          ! index over cells
     integer :: j, k, m                    ! indices in lattice
@@ -1682,7 +1682,7 @@ contains
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
-                offset = offset + count_target(next_univ, kounts, found, goal, map)
+                offset = offset+count_target(next_univ,kounts,found,goal,map)
               end do
             end do
           end do
@@ -1702,7 +1702,7 @@ contains
                 else
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % universes(j, k, m))
-                  offset = offset + count_target(next_univ, kounts, found, goal, map)
+                  offset = offset+count_target(next_univ,kounts,found,goal,map)
                 end if
               end do
             end do
@@ -1724,8 +1724,8 @@ contains
   recursive function count_target(univ, kounts, found, goal, map) result(kount)
 
     type(Universe), intent(inout) :: univ         ! universe to search through
-    integer, intent(inout)        :: kounts(:,:)  ! Target counts 
-    logical, intent(inout)        :: found(:,:)   ! Targets found
+    integer, intent(inout)        :: kounts(:,:)  ! Target count
+    logical, intent(inout)        :: found(:,:)   ! Target found
     integer, intent(in) :: goal            ! target universe ID
     integer             :: kount           ! number of times target located
     integer             :: map             ! current map
@@ -1805,7 +1805,7 @@ contains
                   cycle
                 end if
               
-                kount = kount + count_target(next_univ, kounts, found, goal, map)
+                kount = kount + count_target(next_univ,kounts,found,goal,map)
 
               end do
             end do
@@ -1832,7 +1832,7 @@ contains
                       cycle
                     end if
 
-                    kount = kount + count_target(next_univ, kounts, found, goal, map)
+                    kount = kount+count_target(next_univ,kounts,found,goal,map)
                   end if
                 end do
               end do

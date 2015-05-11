@@ -21,7 +21,6 @@ endif()
 
 option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
-option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
@@ -145,78 +144,6 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
 endif()
 
 #===============================================================================
-# PETSc for CMFD functionality
-#===============================================================================
-
-set (PETSC_ENABLED FALSE)
-if(petsc)
-  set(PETSC_ENABLED TRUE)
-  find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
-  find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
-
-  # If libfblas wasn't found, search the PETSc lib directory
-  if(PETSC_FBLAS_LIB STREQUAL "PETSC_FBLAS_LIB-NOTFOUND")
-    find_library(PETSC_FBLAS_LIB fblas $ENV{PETSC_DIR}/lib)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_FBLAS_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FBLAS_LIB})
-  endif()
-
-  # If libflapack wasn't found, search the PETSc lib directory
-  if(PETSC_FLAPACK_LIB STREQUAL "PETSC_FLAPACK_LIB-NOTFOUND")
-    find_library(PETSC_FLAPACK_LIB flapack $ENV{PETSC_DIR}/lib)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_FLAPACK_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FLAPACK_LIB})
-  endif()
-
-  # If libdl wasn't found, search /usr/lib64
-  if(PETSC_DL_LIB STREQUAL "PETSC_DL_LIB-NOTFOUND")
-    find_library(PETSC_DL_LIB libdl.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_DL_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_DL_LIB})
-  endif()
-
-  # If libm wasn't found, search /usr/lib64
-  if(PETSC_M_LIB STREQUAL "PETSC_M_LIB-NOTFOUND")
-    find_library(PETSC_M_LIB libm.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_M_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_M_LIB})
-  endif()
-
-  # If libpthread wasn't found, search /usr/lib64
-  if(PETSC_PTHREAD_LIB STREQUAL "PETSC_PTHREAD_LIB-NOTFOUND")
-    find_library(PETSC_PTHREAD_LIB libpthread.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_PTHREAD_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_PTHREAD_LIB})
-  endif()
-
-  # If librt wasn't found, search /usr/lib64
-  if(PETSC_RT_LIB STREQUAL "PETSC_RT_LIB-NOTFOUND")
-    find_library(PETSC_RT_LIB librt.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_RT_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_RT_LIB})
-  endif()
-
-  # If libssl wasn't found, search /usr/lib64
-  if(PETSC_SSL_LIB STREQUAL "PETSC_SSL_LIB-NOTFOUND")
-    find_library(PETSC_SSL_LIB libssl.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_SSL_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_SSL_LIB})
-  endif()
-
-  # If libcrypto wasn't found, search /usr/lib64
-  if(PETSC_CRYPTO_LIB STREQUAL "PETSC_CRYPTO_LIB-NOTFOUND")
-    find_library(PETSC_CRYPTO_LIB libcrypto.so /usr/lib64)
-    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_CRYPTO_LIB-NOTFOUND)
-    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_CRYPTO_LIB})
-  endif()
-
-  message("-- Using PETSC: ${libpetsc}")
-  add_definitions(-DPETSC)
-  include_directories($ENV{PETSC_DIR}/include)
-  set(libraries "${libpetsc};${PETSC_PACKAGE_LIBS};${libraries}")
-endif()
-
-#===============================================================================
 # git SHA1 hash
 #===============================================================================
 
@@ -294,14 +221,6 @@ include(CTest)
 
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
-
-# Check to see if PETSC is compiled for CMFD tests
-if (NOT ${PETSC_ENABLED})
-  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd_jfnk.py)
-  foreach(cmfd_test in ${CMFD_TESTS})
-    list(REMOVE_ITEM TESTS ${cmfd_test})
-  endforeach(cmfd_test)
-endif(NOT ${PETSC_ENABLED})
 
 # Check for MEM_CHECK and COVERAGE variables
 if (DEFINED ENV{MEM_CHECK})

@@ -437,8 +437,15 @@ class Tally(object):
         if len(self._filters) != len(tally._filters):
             return False
 
-        for filter in self._filters:
-            if not filter in tally._filters:
+        for filter1 in self._filters:
+            contains_filter = False
+
+            for filter2 in tally._filters:
+                if filter1 == filter2 or filter1.can_merge(filter2):
+                    contains_filter = True
+                    break
+
+            if not contains_filter:
                 return False
 
         # Must have same nuclides
@@ -453,9 +460,6 @@ class Tally(object):
         return True
 
 
-        # FIXME: Check if filters are mergeable
-
-
     def merge(self, tally):
 
         if not self.can_merge(tally):
@@ -468,6 +472,14 @@ class Tally(object):
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
 
+        # Merge filters
+        for i, filter1 in enumerate(merged_tally._filters):
+            for filter2 in tally._filters:
+                if filter1 != filter2 and filter1.can_merge(filter2):
+                    merged_filter = filter1.merge(filter2)
+                    merged_tally._filters[i] = merged_filter
+                    break
+
         # Add scores from second tally to merged tally
         for score in tally._scores:
             merged_tally.add_score(score)
@@ -475,8 +487,6 @@ class Tally(object):
         # Add triggers from second tally to merged tally
         for trigger in tally._triggers:
             merged_tally.add_trigger(trigger)
-
-        # FIXME: Check if filters are mergeable
 
         return merged_tally
 

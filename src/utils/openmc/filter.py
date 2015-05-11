@@ -245,6 +245,47 @@ class Filter(object):
         self._stride = stride
 
 
+    def can_merge(self, filter):
+
+        if not isinstance(filter, Filter):
+            return False
+
+        elif self.type != filter.type:
+            return False
+
+        elif self.type == 'distribcell':
+            return False
+
+        elif self.type == 'mesh' and self.bins != filter.bins:
+            return False
+
+        elif self.type == 'energy' and self.bins != filter.bins:
+            return False
+
+        elif self.type == 'energyout' and self.bins != filter.bins:
+            return False
+
+        else:
+            return True
+
+
+    def merge(self, filter):
+
+        if not self.can_merge(filter):
+            msg = 'Unable to merge {0} with {1} filters'.format(self._type, filter._type)
+            raise ValueError(msg)
+
+        # Create deep copy of filter to return as merged filter
+        merged_filter = copy.deepcopy(self)
+
+        # Merge unique filter bins
+        merged_bins = list(set(self._bins + filter._bins))
+        merged_filter.bins = merged_bins
+        merged_filter.num_bins = len(merged_bins)
+
+        return merged_filter
+
+
     def get_bin_index(self, bin):
 
         try:

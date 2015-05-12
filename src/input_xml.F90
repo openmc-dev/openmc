@@ -16,36 +16,37 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: background, &
-                              band_spacing, &
-                              competitive, &
-                              endf_files, &
-                              E_spacing, &
-                              Etables, &
-                              first_bound, &
-                              formalism, &
-                              histories_avg_urr, &
-                              i_real_user, &
-                              isotopes, &
-                              l_waves, &
-                              last_bound, &
-                              max_batches_avg_urr, &
-                              max_dE_point_urr, &
-                              min_batches_avg_urr, &
-                              min_dE_point_urr, &
-                              n_bands, &
-                              n_fasturr, &
-                              n_reals, &
-                              n_tables, &
-                              path_avg_urr_xs, &
-                              real_freq, &
-                              represent_params, &
-                              represent_urr, &
-                              run_fasturr, &
-                              tol_avg_urr, &
-                              tol_point_urr, &
-                              write_avg_urr_xs, &
-                              write_urr_tables, &
+  use unresolved,       only: background,&
+                              band_spacing,&
+                              competitive,&
+                              endf_files,&
+                              E_spacing,&
+                              Etables,&
+                              first_bound,&
+                              formalism,&
+                              histories_avg_urr,&
+                              i_real_user,&
+                              isotopes,&
+                              l_waves,&
+                              last_bound,&
+                              max_batches_avg_urr,&
+                              max_dE_point_urr,&
+                              max_E_point_urr,&
+                              min_batches_avg_urr,&
+                              min_dE_point_urr,&
+                              n_bands,&
+                              n_fasturr,&
+                              n_reals,&
+                              n_tables,&
+                              path_avg_urr_xs,&
+                              real_freq,&
+                              represent_params,&
+                              represent_urr,&
+                              run_fasturr,&
+                              tol_avg_urr,&
+                              tol_point_urr,&
+                              write_avg_urr_xs,&
+                              write_urr_tables,&
                               xs_bands
 
   use xml_interface
@@ -3245,7 +3246,6 @@ contains
         formalism = SLBW
       case ('mlbw')
         formalism = MLBW
-        call fatal_error('MLBW formalism not yet supported for the URR')
       case ('mnbw')
         formalism = MNBW
         call fatal_error('MNBW formalism not yet supported for the URR')
@@ -3322,6 +3322,11 @@ contains
       else
         call fatal_error('No maximum fractional error tolerance for cross section&
           & reconstruction is given in urr.xml')
+      end if
+      if (check_for_node(point_xs_node, 'max_energy')) then
+        call get_node_value(point_xs_node, 'max_energy', max_E_point_urr)
+      else
+        max_E_point_urr = 1.0e100_8
       end if
     end if
 

@@ -127,6 +127,11 @@ contains
         call initialize_endf()
         call tabulate_w()
 
+        ! allocate space for a realization of parameters localized about E_n
+        do i_sotope = 1, n_fasturr
+          call isotopes(i_sotope) % alloc_local_realization()
+        end do
+
         select case (represent_urr)
         case (PROB_BANDS)
           do i_sotope = 1, n_fasturr
@@ -149,9 +154,7 @@ contains
         case (ON_THE_FLY)
           select case (real_freq)
           case (EVENT)
-            do i_sotope = 1, n_fasturr
-              call isotopes(i_sotope) % alloc_local_realization()
-            end do
+            continue
           case (HISTORY)
             continue
             call fatal_error('History-based URR realizations not yet supported')

@@ -40,7 +40,7 @@ the following commands in a terminal:
 
 .. code-block:: sh
 
-    git clone git://github.com/mit-crpg/openmc.git
+    git clone git@github.com:mit-crpg/openmc.git
     cd openmc
     git checkout -b master origin/master
     mkdir src/build

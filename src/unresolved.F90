@@ -2433,9 +2433,8 @@ contains
         ! add subsequent resonance energies at the sampled spacing above the
         ! last resonance
         this % E_lam = this % E_lam + this % D_lJ
+        tope % local_realization(i_l, i_J) % E_lam(this % i_res) = this % E_lam
       end if
-      tope % local_realization(i_l, i_J) % E_lam(this % i_res) &
-           = this % E_lam
     end if
 
   end subroutine level_spacing

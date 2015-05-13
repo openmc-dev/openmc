@@ -35,6 +35,7 @@ module unresolved
   real(8) :: first_bound         ! xs boundary between first two bands
   real(8) :: last_bound          ! xs boundary between last two bands
   real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
+  real(8) :: max_E_point_urr     ! max energy for pointwise xs recon [eV]
   real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
   real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
   real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
@@ -91,6 +92,9 @@ module unresolved
 
     ! calculate SLBW partial cross sections
     procedure :: slbw_xs => slbw_xs
+
+    ! calculate MLBW partial cross sections
+    procedure :: mlbw_xs => mlbw_xs
 
   end type Resonance
 
@@ -547,6 +551,8 @@ contains
     allocate(tope % n_lam(n_reals, tope % NLS(tope % i_urr),&
       & maxval(tope % NJS(:))))
 
+    res % i_res = 0
+
     ! loop over independent realizations
     ENSEMBLE_LOOP: do i_ens = 1, n_reals
 
@@ -759,7 +765,9 @@ contains
 
       dE_trial = max_dE_point_urr
       tope % E = tope % E + dE_trial
-      if (tope % E > tope % EH(tope % i_urr) + dE_trial) exit
+      if (tope % E &
+           > min(tope % EH(tope % i_urr), max_E_point_urr) + dE_trial)&
+           exit
       if (i_ES < tope % NE) then
         if (tope % E > tope % ES(i_ES + 1)) then
           i_ES = i_ES + 1
@@ -776,7 +784,7 @@ contains
         call flush_sigmas(t, n, g, f, x)
 
         ! loop over orbital quantum numbers
-        ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+        LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
           ! set current orbital angular momentum quantum number
           tope % L = i_l - 1
@@ -785,14 +793,10 @@ contains
           n_res = n_res_contrib(tope % L)
 
           ! loop over total angular momentum quantum numbers
-          TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+          LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
             ! set current total angular momentum quantum number
             tope % J = tope % AJ(i_l) % data(i_J)
-
-            ! compute statistical spin factor
-            tope % g_J = (TWO * tope % J + ONE) &
-              & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
             ! zero the resonance counter
             res % i_res = 0
@@ -821,34 +825,65 @@ contains
                 n_rrr_res = abs(i_low - n_res/2) + 1
 
                 ! loop over contributing resolved resonance region resonances
-                RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
-
+                LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
                   i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-
-                  call add_resonance(res, iso, i_rrr_res, i_l, i_J, &
-                    & tope % i_urr - 1, t, n, g, f, x)
-
-                end do RRR_RESONANCES_LOOP
+                  res % i_res = res % i_res + 1
+                  call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
+                       tope % i_urr - 1)
+                end do LOC_RRR_RESONANCES_LOOP
               end if
 
               ! loop over contributing unresolved resonance region resonances
-              URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
-
-                call add_resonance(res, iso, i_res, i_l, i_J, &
-                  & tope % i_urr, t, n, g, f, x)
-
-              end do URR_RESONANCES_LOOP
+              LOC_URR_RESONANCES_LOOP: do i_res = 1, n_res - res % i_res
+                res % i_res = res % i_res + 1
+                call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
+              end do LOC_URR_RESONANCES_LOOP
 
             else
               ! we're firmly in the URR and can ignore anything going on in
               ! the upper resolved resonance region energies
-              URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
-
-                call add_resonance(res, iso, i_res, i_l, i_J, &
-                  & tope % i_urr, t, n, g, f, x)
-
-              end do URR_LOOP
+              LOC_URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+                res % i_res = res % i_res + 1
+                call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
+              end do LOC_URR_LOOP
             end if
+          end do LOC_TOTAL_ANG_MOM_LOOP
+        end do LOC_ORBITAL_ANG_MOM_LOOP
+
+        ! loop over orbital quantum numbers
+        ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+
+          ! set current orbital angular momentum quantum number
+          tope % L = i_l - 1
+
+          ! get the number of contributing l-wave resonances for this l
+          n_res = n_res_contrib(tope % L)
+
+          ! loop over total angular momentum quantum numbers
+          TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+
+            ! set current total angular momentum quantum number
+            tope % J = tope % AJ(i_l) % data(i_J)
+
+            ! compute statistical spin factor
+            tope % g_J = (TWO * tope % J + ONE) &
+                 / (FOUR * tope % SPI(tope % i_urr) + TWO)
+
+            ! loop over resonances localized about e_n
+            RESONANCES_LOOP: do i_res = 1, n_res
+
+              res % i_res = i_res
+              res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_res)
+              res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_res)
+              res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_res)
+              res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_res)
+              res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_res)
+              res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_res)
+
+              call res % calc_xs(iso)
+              call accum_resonances(res, t, n, g, f, x)
+
+            end do RESONANCES_LOOP
           end do TOTAL_ANG_MOM_LOOP
         end do ORBITAL_ANG_MOM_LOOP
 
@@ -918,7 +953,7 @@ contains
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-          ! set negative SLBW elastic xs and competitive xs to zero
+          ! set negative elastic xs and competitive xs to zero
           if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
           if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
@@ -953,7 +988,7 @@ contains
         call flush_sigmas(t, n, g, f, x)
 
         ! loop over orbital quantum numbers
-        ORBITAL_ANG_MOM_LOOP1: do i_l = 1, tope % NLS(tope % i_urr)
+        ORBITAL_ANG_MOM_LOOPb: do i_l = 1, tope % NLS(tope % i_urr)
 
           ! set current orbital angular momentum quantum number
           tope % L = i_l - 1
@@ -962,74 +997,32 @@ contains
           n_res = n_res_contrib(tope % L)
 
           ! loop over total angular momentum quantum numbers
-          TOTAL_ANG_MOM_LOOP1: do i_J = 1, tope % NJS(i_l)
+          TOTAL_ANG_MOM_LOOPb: do i_J = 1, tope % NJS(i_l)
 
             ! set current total angular momentum quantum number
             tope % J = tope % AJ(i_l) % data(i_J)
 
             ! compute statistical spin factor
             tope % g_J = (TWO * tope % J + ONE) &
-              & / (FOUR * tope % SPI(tope % i_urr) + TWO)
+                 / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-            ! zero the resonance counter
-            res % i_res = 0
+            ! loop over resonances localized about e_n
+            RESONANCES_LOOPb: do i_res = 1, n_res
 
-            ! find the nearest lower resonance
-            if (tope % E &
-              & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
-              i_low = 1
-            else
-              i_low = binary_search(&
-                & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
-                & tope % n_lam(i_real, i_l, i_J), tope % E)
-            end if
+              res % i_res = i_res
+              res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_res)
+              res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_res)
+              res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_res)
+              res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_res)
+              res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_res)
+              res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_res)
 
-            ! loop over the addition of resonances to this ladder
-            if (i_low - n_res/2 < 1) then
-              ! if we're near the lower end of the URR, need to incorporate
-              ! resolved resonance region resonances in order to fix-up
-              ! (i.e. smooth out) cross sections at the RRR-URR crossover
-              ! energy
+              call res % calc_xs(iso)
+              call accum_resonances(res, t, n, g, f, x)
 
-              ! if the RRR has resonances with this l-state
-              if (i_l <= tope % NLS(tope % i_urr - 1)) then
-
-                ! how many RRR resonances are contributing
-                n_rrr_res = abs(i_low - n_res/2) + 1
-
-                ! loop over contributing resolved resonance region resonances
-                RRR_RESONANCES_LOOP1: do i_res = n_rrr_res, 1, -1
-
-                  i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-
-                  call add_resonance(res, iso, i_rrr_res, i_l, i_J, &
-                    & tope % i_urr - 1, t, n, g, f, x)
-
-                end do RRR_RESONANCES_LOOP1
-              end if
-
-              ! loop over contributing unresolved resonance region resonances
-              URR_RESONANCES_LOOP1: do i_res = 1, i_low + n_res/2 - 1
-
-                call add_resonance(res, iso, i_res, i_l, i_J, &
-                  & tope % i_urr, t, n, g, f, x)
-
-              end do URR_RESONANCES_LOOP1
-
-            else
-              ! we're deep in the URR and can ignore anything going on in the
-              ! upper resolved resonance region energies
-! TODO: move t outside of loop
-              RESONANCES_LOOP1: do i_res &
-                & = i_low - n_res/2, i_low + n_res/2 - 1
-
-                call add_resonance(res, iso, i_res, i_l, i_J, &
-                  & tope % i_urr, t, n, g, f, x)
-
-              end do RESONANCES_LOOP1
-            end if
-          end do TOTAL_ANG_MOM_LOOP1
-        end do ORBITAL_ANG_MOM_LOOP1
+            end do RESONANCES_LOOPb
+          end do TOTAL_ANG_MOM_LOOPb
+        end do ORBITAL_ANG_MOM_LOOPb
 
         ! add potential scattering contribution
         call n % potential_xs(iso)
@@ -1097,7 +1090,7 @@ contains
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-          ! set negative SLBW elastic xs and competitive xs to zero
+          ! set negative elastic xs and competitive xs to zero
           if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
           if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
@@ -1138,7 +1131,7 @@ contains
       call flush_sigmas(t, n, g, f, x)
 
       ! loop over orbital quantum numbers
-      ORBITAL_ANG_MOM_LOOP2: do i_l = 1, tope % NLS(tope % i_urr)
+      ORBITAL_ANG_MOM_LOOPc: do i_l = 1, tope % NLS(tope % i_urr)
 
         ! set current orbital angular momentum quantum number
         tope % L = i_l - 1
@@ -1147,72 +1140,32 @@ contains
         n_res = n_res_contrib(tope % L)
 
         ! loop over total angular momentum quantum numbers
-        TOTAL_ANG_MOM_LOOP2: do i_J = 1, tope % NJS(i_l)
+        TOTAL_ANG_MOM_LOOPc: do i_J = 1, tope % NJS(i_l)
 
           ! set current total angular momentum quantum number
           tope % J = tope % AJ(i_l) % data(i_J)
 
           ! compute statistical spin factor
           tope % g_J = (TWO * tope % J + ONE) &
-            & / (FOUR * tope % SPI(tope % i_urr) + TWO)
+               / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-          ! zero the resonance counter
-          res % i_res = 0
+          ! loop over resonances localized about e_n
+          RESONANCES_LOOPc: do i_res = 1, n_res
 
-          ! find the nearest lower resonance
-          if (tope % E &
-            & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
-            i_low = 1
-          else
-            i_low = binary_search(&
-              & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
-              & tope % n_lam(i_real, i_l, i_J), tope % E)
-          end if
+            res % i_res = i_res
+            res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_res)
+            res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_res)
+            res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_res)
+            res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_res)
+            res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_res)
+            res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_res)
 
-          ! loop over the addition of resonances to this ladder
-          if (i_low - n_res/2 < 1) then
-            ! if we're near the lower end of the URR, need to incorporate
-            ! resolved resonance region resonances in order to fix-up
-            ! (i.e. smooth out) cross sections at the RRR-URR crossover
-            ! energy
+            call res % calc_xs(iso)
+            call accum_resonances(res, t, n, g, f, x)
 
-            ! if the RRR has resonances with this l-state
-            if (i_l <= tope % NLS(tope % i_urr - 1)) then
-
-              ! how many RRR resonances are contributing
-              n_rrr_res = abs(i_low - n_res/2) + 1
-
-              ! loop over contributing resolved resonance region resonances
-              RRR_RESONANCES_LOOP2: do i_res = n_rrr_res, 1, -1
-
-                i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-
-                call add_resonance(res, iso, i_rrr_res, i_l, i_J, &
-                  & tope % i_urr - 1, t, n, g, f, x)
-
-              end do RRR_RESONANCES_LOOP2
-            end if
-
-            ! loop over contributing unresolved resonance region resonances
-            URR_RESONANCES_LOOP2: do i_res = 1, i_low + n_res/2 - 1
-
-              call add_resonance(res, iso, i_res, i_l, i_J, &
-                & tope % i_urr, t, n, g, f, x)
-
-            end do URR_RESONANCES_LOOP2
-
-          else
-            ! we're firmly in the URR and can ignore anything going on in the
-            ! upper resolved resonance region energies
-            RESONANCES_LOOP2: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
-
-              call add_resonance(res, iso, i_res, i_l, i_J, &
-                & tope % i_urr, t, n, g, f, x)
-
-            end do RESONANCES_LOOP2
-          end if
-        end do TOTAL_ANG_MOM_LOOP2
-      end do ORBITAL_ANG_MOM_LOOP2
+          end do RESONANCES_LOOPc
+        end do TOTAL_ANG_MOM_LOOPc
+      end do ORBITAL_ANG_MOM_LOOPc
 
       ! add potential scattering contribution
       call n % potential_xs(iso)
@@ -1279,7 +1232,7 @@ contains
         ! elastic scattering xs
         tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
 
-        ! set negative SLBW elastic xs and competitive xs to zero
+        ! set negative elastic xs and competitive xs to zero
         if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
         if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
@@ -1382,7 +1335,7 @@ contains
     end if
 
     ! loop over orbital quantum numbers
-    ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+    LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
       ! set current orbital angular momentum quantum number
       tope % L = i_l - 1
@@ -1391,19 +1344,15 @@ contains
       n_res = n_res_contrib(tope % L)
 
       ! loop over total angular momentum quantum numbers
-      TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+      LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum number
         tope % J = tope % AJ(i_l) % data(i_J)
 
-        ! compute statistical spin factor
-        tope % g_J = (TWO * tope % J + ONE) &
-          & / (FOUR * tope % SPI(tope % i_urr) + TWO)
-
         ! zero the resonance counter
         res % i_res = 0
 
-        ! find nearest lower resonance
+        ! find the nearest lower resonance
         if (tope % E &
           & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
           i_low = 1
@@ -1427,34 +1376,65 @@ contains
             n_rrr_res = abs(i_low - n_res/2) + 1
 
             ! loop over contributing resolved resonance region resonances
-            RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
-
+            LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
               i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-
-              call add_resonance(res, iso, i_rrr_res, i_l, i_J, &
-                & tope % i_urr - 1, t, n, g, f, x)
-
-            end do RRR_RESONANCES_LOOP
+              res % i_res = res % i_res + 1
+              call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
+                   tope % i_urr - 1)
+            end do LOC_RRR_RESONANCES_LOOP
           end if
 
           ! loop over contributing unresolved resonance region resonances
-          URR_RESONANCES_LOOP: do i_res = 1, i_low + n_res/2 - 1
-
-            call add_resonance(res, iso, i_res, i_l, i_J, &
-              & tope % i_urr, t, n, g, f, x)
-
-          end do URR_RESONANCES_LOOP
+          LOC_URR_RESONANCES_LOOP: do i_res = 1, n_res - res % i_res
+            res % i_res = res % i_res + 1
+            call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
+          end do LOC_URR_RESONANCES_LOOP
 
         else
           ! we're firmly in the URR and can ignore anything going on in
           ! the upper resolved resonance region energies
-          URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
-
-            call add_resonance(res, iso, i_res, i_l, i_J, &
-              & tope % i_urr, t, n, g, f, x)
-
-          end do URR_LOOP
+          LOC_URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+            res % i_res = res % i_res + 1
+            call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
+          end do LOC_URR_LOOP
         end if
+      end do LOC_TOTAL_ANG_MOM_LOOP
+    end do LOC_ORBITAL_ANG_MOM_LOOP
+
+    ! loop over orbital quantum numbers
+    ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+
+      ! set current orbital angular momentum quantum number
+      tope % L = i_l - 1
+
+      ! get the number of contributing l-wave resonances for this l
+      n_res = n_res_contrib(tope % L)
+
+      ! loop over total angular momentum quantum numbers
+      TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+
+        ! set current total angular momentum quantum number
+        tope % J = tope % AJ(i_l) % data(i_J)
+
+        ! compute statistical spin factor
+        tope % g_J = (TWO * tope % J + ONE) &
+             / (FOUR * tope % SPI(tope % i_urr) + TWO)
+
+        ! loop over resonances localized about e_n
+        RESONANCES_LOOP: do i_res = 1, n_res
+
+          res % i_res = i_res
+          res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_res)
+          res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_res)
+          res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_res)
+          res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_res)
+          res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_res)
+          res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_res)
+
+          call res % calc_xs(iso)
+          call accum_resonances(res, t, n, g, f, x)
+
+        end do RESONANCES_LOOP
       end do TOTAL_ANG_MOM_LOOP
     end do ORBITAL_ANG_MOM_LOOP
 
@@ -1507,7 +1487,7 @@ contains
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
-      ! set negative SLBW elastic xs and competitive xs to zero
+      ! set negative elastic xs and competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
       if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
@@ -1627,7 +1607,7 @@ contains
           call tope % flush_histories()
 
           ! loop over orbital quantum numbers
-          ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+          LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
             ! set current orbital angular momentum quantum number
             tope % L = i_l - 1
@@ -1636,14 +1616,10 @@ contains
             n_res = n_res_contrib(tope % L)
 
             ! loop over total angular momentum quantum numbers
-            TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+            LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
               ! set current total angular momentum quantum number
               tope % J = tope % AJ(i_l) % data(i_J)
-
-              ! compute statistical spin factor
-              tope % g_J = (TWO * tope % J + ONE) &
-                & / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
               ! set current partial width degrees of freedom
               tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
@@ -1662,16 +1638,52 @@ contains
               call res % sample_parameters(iso, i_l, i_J)
 
               ! loop over the addition of resonances to this ladder
-              RESONANCES_LOOP: do i_r = 1, n_res
+              LOC_RESONANCES_LOOP: do i_r = 1, n_res
 
                 if (represent_params == E_RESONANCE) then
                   ! interpolate mean URR parameters to current resonance energy
                   call set_mean_parameters(iso, res % E_lam, i_l, i_J)
                 end if
 
+                res % i_res = i_r
+
                 ! sample unresolved resonance parameters for this spin
                 ! sequence, at this energy
                 call res % sample_parameters(iso, i_l, i_J)
+
+              end do LOC_RESONANCES_LOOP
+            end do LOC_TOTAL_ANG_MOM_LOOP
+          end do LOC_ORBITAL_ANG_MOM_LOOP
+
+          ! loop over orbital quantum numbers
+          ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+
+            ! set current orbital angular momentum quantum number
+            tope % L = i_l - 1
+
+            ! get the number of contributing l-wave resonances for this l
+            n_res = n_res_contrib(tope % L)
+
+            ! loop over total angular momentum quantum numbers
+            TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+
+              ! set current total angular momentum quantum number
+              tope % J = tope % AJ(i_l) % data(i_J)
+
+              ! compute statistical spin factor
+              tope % g_J = (TWO * tope % J + ONE) &
+                   / (FOUR * tope % SPI(tope % i_urr) + TWO)
+
+              ! loop over resonances localized about e_n
+              RESONANCES_LOOP: do i_r = 1, n_res
+
+                res % i_res = i_r
+                res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_r)
+                res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)
+                res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_r)
+                res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_r)
+                res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_r)
+                res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_r)
 
                 TEMPERATURES_LOOP: do i_T = 1, tope % nT
 
@@ -1701,7 +1713,7 @@ contains
             call tope % prob_tables(i_E, i_T) % avg_n % potential_xs(iso)
             call tope % prob_tables(i_E, i_T) % avg_t % potential_xs(iso)
 
-            ! set negative SLBW elastic xs to zero
+            ! set negative elastic xs to zero
             if (tope % prob_tables(i_E, i_T) % avg_n % xs < ZERO) then
               tope % prob_tables(i_E, i_T) % avg_t % xs &
                 & = tope % prob_tables(i_E, i_T) % avg_t % xs &
@@ -2010,6 +2022,55 @@ contains
     call flush_sigmas(t, n, g, f, x)
 
     ! loop over orbital quantum numbers
+    LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+
+      ! set current orbital angular momentum quantum number
+      tope % L = i_l - 1
+
+      ! get the number of contributing l-wave resonances for this l
+      n_res = n_res_contrib(tope % L)
+
+      ! loop over total angular momentum quantum numbers
+      LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+
+        ! set current total angular momentum quantum number
+        tope % J = tope % AJ(i_l) % data(i_J)
+
+        ! set current partial width degrees of freedom
+        tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
+        tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
+        tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
+        tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
+
+        ! zero the resonance counter
+        res % i_res = 0
+
+        ! set mean URR parameters to neutron energy
+        call set_mean_parameters(iso, E, i_l, i_J)
+
+        ! sample unresolved resonance parameters for this spin
+        ! sequence, at this energy
+        call res % sample_parameters(iso, i_l, i_J)
+
+        ! loop over the addition of resonances to this ladder
+        LOC_RESONANCES_LOOP: do i_r = 1, n_res
+
+          if (represent_params == E_RESONANCE) then
+            ! interpolate mean URR parameters to current resonance energy
+            call set_mean_parameters(iso, res % E_lam, i_l, i_J)
+          end if
+
+          res % i_res = i_r
+
+          ! sample unresolved resonance parameters for this spin
+          ! sequence, at this energy
+          call res % sample_parameters(iso, i_l, i_J)
+
+        end do LOC_RESONANCES_LOOP
+      end do LOC_TOTAL_ANG_MOM_LOOP
+    end do LOC_ORBITAL_ANG_MOM_LOOP
+
+    ! loop over orbital quantum numbers
     ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
       ! set current orbital angular momentum quantum number
@@ -2026,35 +2087,18 @@ contains
 
         ! compute statistical spin factor
         tope % g_J = (TWO * tope % J + ONE) &
-                & / (FOUR * tope % SPI(tope % i_urr) + TWO)
+             / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-        ! set current partial width degrees of freedom
-        tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
-        tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
-        tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
-        tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
-
-        ! zero the resonance counter
-        res % i_res = 0
-
-        ! set mean URR parameters to neutron energy
-        call set_mean_parameters(iso, tope % E, i_l, i_J)
-
-        ! sample unresolved resonance parameters for this spin
-        ! sequence, at this energy
-        call res % sample_parameters(iso, i_l, i_J)
-
-        ! loop over the addition of resonances to this ladder
+        ! loop over resonances localized about e_n
         RESONANCES_LOOP: do i_r = 1, n_res
 
-          if (represent_params == E_RESONANCE) then
-            ! interpolate mean URR parameters to current resonance energy
-            call set_mean_parameters(iso, res % E_lam, i_l, i_J)
-          end if
-
-          ! sample unresolved resonance parameters for this spin
-          ! sequence, at this energy
-          call res % sample_parameters(iso, i_l, i_J)
+          res % i_res = i_r
+          res % E_lam = tope % local_realization(i_l, i_J) % E_lam(i_r)
+          res % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)
+          res % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(i_r)
+          res % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(i_r)
+          res % Gam_x = tope % local_realization(i_l, i_J) % Gam_x(i_r)
+          res % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(i_r)
 
           ! calculate the contribution to the partial cross sections,
           ! at this energy, from an additional resonance
@@ -2062,7 +2106,7 @@ contains
 
           ! add this contribution to the accumulated partial cross
           ! section values built up from all resonances
-! TODO: move t outside of loop
+          ! TODO: move t outside of loop
           call accum_resonances(res, t, n, g, f, x)
 
         end do RESONANCES_LOOP
@@ -2117,7 +2161,7 @@ contains
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
         & * micro_xs(i_nuc) % elastic
 
-      ! set negative SLBW elastic xs anc competitive xs to zero
+      ! set negative elastic xs and competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
       if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
@@ -2371,36 +2415,25 @@ contains
 
     tope => isotopes(iso)
 
-    n_res = n_res_contrib(tope % L)
-
-    ! sample a level spacing from the Wigner distribution
-    this % D_lJ = wigner_dist(tope % D)
-
-    if (tope % E == tope % E_last .and. represent_urr == ON_THE_FLY) then
-      if (this % i_res == 0) then
-        this % E_lam = (tope % E - n_res/2 * tope % D) &
-          & + (ONE - TWO * prn()) * this % D_lJ
-        this % i_res = this % i_res + 1
-      else
-        this % E_lam &
-          = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
-      end if
+    if (tope % E == tope % E_last) then
+      ! Energy hasn't changed since last realization, so use the same one
+      this % E_lam &
+           = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
     else
-      ! set lowest energy (i.e. the first) resonance for this ladder well below
-      ! the energy grid point such that the ladder spans a sufficient energy
-      ! range
+      ! sample a level spacing from the Wigner distribution
+      this % D_lJ = wigner_dist(tope % D)
       if (this % i_res == 0) then
+        ! set lowest energy (i.e. the first) resonance for this ladder well below
+        ! the energy grid point such that the ladder spans a sufficient energy
+        ! range
+        n_res = n_res_contrib(tope % L)
         this % E_lam = (tope % E - n_res/2 * tope % D) &
-          & + (ONE - TWO * prn()) * this % D_lJ
-        this % i_res = this % i_res + 1
-
+             + (ONE - TWO * prn()) * this % D_lJ
+      else
         ! add subsequent resonance energies at the sampled spacing above the
         ! last resonance
-      else
         this % E_lam = this % E_lam + this % D_lJ
-        if (represent_urr == ON_THE_FLY) &
-          tope % local_realization(i_l, i_J) % E_lam(this % i_res) &
-          = this % E_lam
+        tope % local_realization(i_l, i_J) % E_lam(this % i_res) = this % E_lam
       end if
     end if
 
@@ -2479,8 +2512,8 @@ contains
     ! TODO: Actually sample a chi-squared distribution rather than using
     ! tabulated values. Look at the third Monte Carlo Sampler?
 
-    if (tope % E == tope % E_last .and. represent_urr == ON_THE_FLY) then
-
+    if (tope % E == tope % E_last) then
+      ! Energy hasn't changed since last realization, so use the same one
       this % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(this % i_res)
       this % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(this % i_res)
       this % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(this % i_res)
@@ -2488,7 +2521,6 @@ contains
       this % Gam_t = tope % local_realization(i_l, i_J) % Gam_t(this % i_res)
 
     else
-
       ! sample indices into table of equiprobable chi-squared function values
       i_tabn = ceiling(prn() * 20.0_8)
       i_tabf = ceiling(prn() * 20.0_8)
@@ -2538,14 +2570,13 @@ contains
       ! total width (sum of partials)
       this % Gam_t = this % Gam_n + this % Gam_f + this % Gam_g + this % Gam_x
 
-      if (represent_urr == ON_THE_FLY) then
+      if (this % i_res /= 0) then
         tope % local_realization(i_l, i_J) % Gam_n(this % i_res) = this % Gam_n
         tope % local_realization(i_l, i_J) % Gam_f(this % i_res) = this % Gam_f
         tope % local_realization(i_l, i_J) % Gam_g(this % i_res) = this % Gam_g
         tope % local_realization(i_l, i_J) % Gam_x(this % i_res) = this % Gam_x
         tope % local_realization(i_l, i_J) % Gam_t(this % i_res) = this % Gam_t
       end if
-
     end if
 
   end subroutine channel_width
@@ -2562,15 +2593,12 @@ contains
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
     integer :: iso ! isotope index
 
-    ! accumulate the resonance counter by 1 for this ladder realization
-    this % i_res = this % i_res + 1
-
     ! calculate cross section contributions from an additional resonance
     select case(formalism)
     case (SLBW)
       call this % slbw_xs(iso)
     case (MLBW)
-      call fatal_error('MLBW formalism not yet supported for the URR')
+      call this % mlbw_xs(iso)
     case (REICH_MOORE)
       call fatal_error('Reich-Moore formalism not yet supported for the URR')
     case (MNBW)
@@ -2694,6 +2722,220 @@ contains
                & + this % dxs_x
 
   end subroutine slbw_xs
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! MLBW_XS calculates a multi-level Breit-Wigner elastic scattering cross
+! section and single-level Breit-Wigner cross sections for other reactions at
+! E_n
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine mlbw_xs(this, iso)
+
+    class(Resonance), intent(inout) :: this ! pseudo-resonance object
+    type(Isotope), pointer :: tope => null() ! nuclide pointer
+    integer :: iso ! isotope index
+    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
+    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
+    real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
+    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
+    real(8) :: E_shift ! shifted resonance energy in the lab system
+    real(8) :: theta   ! total width / Doppler width
+    real(8) :: x       ! derived variable
+    real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
+    real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
+    real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
+    real(8) :: sig_lam ! peak resonance cross section
+    real(8) :: sig_lam_Gam_t_n_psi ! compound variable
+
+    tope => isotopes(iso)
+
+    if (tope % J == tope % SPI(tope % i_urr)) then
+      call fatal_error('Computing MLBW elastic scattering cross section&
+           & for resonance with total orbital angular momentum quantum&
+           & number, J, equal to the nuclear spin, I')
+    end if
+
+    k_n = wavenumber(tope % AWR, tope % E)
+
+    ! (use absolute value of energy in order to handle bound levels which have
+    ! negative resonance energies)
+    k_lam = wavenumber(tope % AWR, abs(this % E_lam))
+
+    ! if URR parameters have resonance energy dependence
+    if (represent_params == E_RESONANCE) then
+
+      E_shift = this % E_lam &
+        & + this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
+        & - shift(tope % L, k_n * tope % ac(tope % i_urr))) &
+        & / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
+
+      Gam_n_n = this % Gam_n &
+        & * penetration(tope % L, k_n   * tope % ac(tope % i_urr)) &
+        & / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+
+      if (tope % E >= tope % E_ex2) then
+        ! two competitive reactions possible, can't calculate an energy-dependent
+        ! width because it depends on the two (unprovided) reaction partial widths
+        Gam_x_n = this % Gam_x
+      else if (tope % E >= tope % E_ex1) then
+        ! can compute an energy-dependent width for the one competitive reaction
+        k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
+        k_lam_x = wavenumber(tope % AWR, abs(this % E_lam - tope % E_ex1))
+        Gam_x_n = this % Gam_x &
+          & * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr)) &
+          & / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr))
+      else
+        Gam_x_n = ZERO
+      end if
+
+    else
+
+      ! assume all URR parameters already have neutron energy dependence
+      E_shift = this % E_lam
+      Gam_n_n = this % Gam_n
+      Gam_x_n = this % Gam_x
+
+    end if
+
+    Gam_t_n = this % Gam_t - this % Gam_n - this % Gam_x &
+         + Gam_n_n + Gam_x_n
+
+    theta = HALF * Gam_t_n &
+         / sqrt(K_BOLTZMANN * 1.0E6_8 * tope % T * tope % E / tope % AWR)
+
+    x = (TWO * (tope % E - E_shift)) / Gam_t_n
+
+    sig_lam = FOUR * PI / (k_lam * k_lam) * tope % g_J &
+         * this % Gam_n / this % Gam_t
+
+    ! this particular form comes from the NJOY2012 manual
+    this % dxs_n = sig_lam * &
+         ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
+         - (ONE - Gam_n_n / Gam_t_n)&
+         + HALF * G_func(iso, E_shift, Gam_n_n, Gam_t_n, this % i_res)&
+         / Gam_n_n) * psi(tope % T, theta, x) &
+         + (sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
+         + H_func(iso, E_shift, Gam_n_n, Gam_t_n, this % i_res)&
+         / Gam_n_n) * chi(tope % T, theta, x))
+
+    sig_lam_Gam_t_n_psi = sig_lam * psi(tope % T, theta, x) / Gam_t_n
+
+    if (this % Gam_g > ZERO) then
+      this % dxs_g = sig_lam_Gam_t_n_psi * this % Gam_g
+    else
+      this % dxs_g = ZERO
+    end if
+
+    if (this % Gam_f > ZERO) then
+      this % dxs_f = sig_lam_Gam_t_n_psi * this % Gam_f
+    else
+      this % dxs_f = ZERO
+    end if
+
+    ! can only have a competitive resonance component w/ a single open channel
+    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+      this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
+    else
+      this % dxs_x = ZERO
+    end if
+
+    this % dxs_t = this % dxs_n &
+         + this % dxs_g &
+         + this % dxs_f &
+         + this % dxs_x
+
+  end subroutine mlbw_xs
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! G_FUNC calculates a value for the G-function appearing in the NJOY-2012 form
+! of the MLBW resonance formalae
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function G_func(iso, E_res, G_n, G_t, i_res) result(G_val)
+
+    type(Isotope), pointer :: tope => null() ! isotope pointer
+    integer :: iso   ! isotope index
+    integer :: i_l   ! orbital angular momentum quantum number index
+    integer :: i_J   ! total angular momentum quantum number index
+    integer :: i_r   ! spin sequence resonance index
+    integer :: i_res ! index of current nearest resonance
+    real(8) :: G_val ! G-function value
+    real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
+    real(8) :: G_n   ! neutron width of the resonance at E_res
+    real(8) :: G_t   ! total width of the resonance at E_res
+
+    tope => isotopes(iso)
+
+    G_val = ZERO
+
+    i_l = tope % L + 1
+
+    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+      RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
+! TODO: compute E-dependence of local realization's parameters
+        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+
+        G_val = G_val&
+             + G_n * tope % local_realization(i_l, i_J) % Gam_n(i_r)&
+             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
+             / ((E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
+             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
+             + (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
+             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r)) / 4.0_8)
+
+      end do RESONANCE_LOOP
+    end do TOTAL_ANG_MOM_LOOP
+
+  end function G_func
+
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! H_FUNC calculates a value for the H-function appearing in the NJOY-2012 form
+! of the MLBW resonance formalae
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function H_func(iso, E_res, G_n, G_t, i_res) result(H_val)
+
+    type(Isotope), pointer :: tope => null() ! isotope pointer
+    integer :: iso   ! isotope index
+    integer :: i_l   ! orbital angular momentum quantum number index
+    integer :: i_J   ! total angular momentum quantum number index
+    integer :: i_r   ! spin sequence resonance index
+    integer :: i_res ! index of current nearest resonance
+    real(8) :: H_val ! G-function value
+    real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
+    real(8) :: G_n   ! neutron width of the resonance at E_res
+    real(8) :: G_t   ! total width of the resonance at E_res
+
+    tope => isotopes(iso)
+
+    H_val = ZERO
+
+    i_l = tope % L + 1
+
+    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+      RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
+! TODO: compute E-dependence of local realization's parameters
+        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+
+        H_val = H_val&
+             + G_n * tope % local_realization(i_l, i_J) % Gam_n(i_r)&
+             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
+             / ((E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
+             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
+             + (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
+             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r)) / 4.0_8)
+
+      end do RESONANCE_LOOP
+    end do TOTAL_ANG_MOM_LOOP
+
+  end function H_func
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -3701,6 +3943,13 @@ contains
       call fatal_error('Only 1 and 2 are supported ENDF-6 LRU values')
     end select
 
+    tope % local_realization(i_l, i_J) % E_lam(res % i_res) = res % E_lam
+    tope % local_realization(i_l, i_J) % Gam_n(res % i_res) = res % Gam_n
+    tope % local_realization(i_l, i_J) % Gam_g(res % i_res) = res % Gam_g
+    tope % local_realization(i_l, i_J) % Gam_f(res % i_res) = res % Gam_f
+    tope % local_realization(i_l, i_J) % Gam_x(res % i_res) = res % Gam_x
+    tope % local_realization(i_l, i_J) % Gam_t(res % i_res) = res % Gam_t
+
   end subroutine set_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -3761,40 +4010,6 @@ contains
     end if
 
   end subroutine set_mean_parameters
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ADD_RESONANCE add an additional contributing resonance
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine add_resonance(res, iso, i_res, i_l, i_J, i_ER, t, n, g, f, x)
-
-    type(Resonance) :: res ! resonance object
-    type(CrossSection) :: t ! total xs object
-    type(CrossSection) :: n ! elastic scattering xs object
-    type(CrossSection) :: g ! radiative capture xs object
-    type(CrossSection) :: f ! fission xs object
-    type(CrossSection) :: x ! competitive inelastic scattering xs object
-    integer :: iso   ! isotope index
-    integer :: i_ER  ! resonance energy region index
-    integer :: i_res ! resonance index
-    integer :: i_l   ! orbital quantum number index
-    integer :: i_J   ! total angular momentum quantum number index
-
-    ! set resonance parameters
-    call set_parameters(res, iso, i_res, i_l, i_J, i_ER)
-
-    ! calculate the contribution to the partial cross sections,
-    ! at this energy, from an additional resonance
-    call res % calc_xs(iso)
-
-    ! add this contribution to the accumulated partial cross
-    ! section values built up from all resonances
-! TODO: move t outside of loop
-    call accum_resonances(res, t, n, g, f, x)
-
-  end subroutine add_resonance
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

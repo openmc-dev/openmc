@@ -4014,40 +4014,6 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ADD_RESONANCE add an additional contributing resonance
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine add_resonance(res, iso, i_res, i_l, i_J, i_ER, t, n, g, f, x)
-
-    type(Resonance) :: res ! resonance object
-    type(CrossSection) :: t ! total xs object
-    type(CrossSection) :: n ! elastic scattering xs object
-    type(CrossSection) :: g ! radiative capture xs object
-    type(CrossSection) :: f ! fission xs object
-    type(CrossSection) :: x ! competitive inelastic scattering xs object
-    integer :: iso   ! isotope index
-    integer :: i_ER  ! resonance energy region index
-    integer :: i_res ! resonance index
-    integer :: i_l   ! orbital quantum number index
-    integer :: i_J   ! total angular momentum quantum number index
-
-    ! set resonance parameters
-    call set_parameters(res, iso, i_res, i_l, i_J, i_ER)
-
-    ! calculate the contribution to the partial cross sections,
-    ! at this energy, from an additional resonance
-    call res % calc_xs(iso)
-
-    ! add this contribution to the accumulated partial cross
-    ! section values built up from all resonances
-! TODO: move t outside of loop
-    call accum_resonances(res, t, n, g, f, x)
-
-  end subroutine add_resonance
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
 ! INTERP_AVG_URR_XS interpolates the averaged, infinite-dilute URR cross
 ! sections computed via Monte Carlo from mean resonance parameters (i.e. not
 ! the evaluator-supplied File 3 background cross sections)

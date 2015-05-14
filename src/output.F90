@@ -2339,9 +2339,9 @@ contains
             n_z = lat % n_cells(3)
 
             ! Loop over lattice coordinates
-            do k = 1, n_x
+            do m = 1, n_z
               do l = 1, n_y
-                do m = 1, n_z
+                do k = 1, n_x
 
                   if (final > lat % offset(map, k, l, m) + offset) then
                     old_m = m
@@ -2371,17 +2371,17 @@ contains
             ! Write to the geometry stack
             path = trim(path) // "->" // to_str(lat%id)
 
-            n_x = lat % n_axial
+            n_z = lat % n_axial
             n_y = 2 * lat % n_rings - 1
-            n_z = 2 * lat % n_rings - 1
+            n_x = 2 * lat % n_rings - 1
             old_m = 1
             old_l = 1
             old_k = 1
 
             ! Loop over lattice coordinates
-            do m = 1, n_x
+            do m = 1, n_z
               do l = 1, n_y
-                do k = 1, n_z
+                do k = 1, n_x
 
                   ! This array position is never used
                   if (k + l < lat % n_rings + 1) then

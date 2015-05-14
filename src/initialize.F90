@@ -959,7 +959,7 @@ contains
       end do
 
       if (extra > 0) then
-        call fatal_error("At least one Distribcell filter was specified with&
+        call fatal_error("At least one Distribcell filter was specified with &
                          &multiple bins. This feature is not yet supported.")
       end if      
 

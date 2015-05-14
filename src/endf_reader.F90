@@ -358,7 +358,7 @@ contains
       end if
       if (MT > 51) then
         backspace(in)
-        call fatal_error('Reached end of MF3 w/o reading an&
+        call warning('Reached end of MF3 w/o reading an&
           & (n,n1) cross section in '//trim(filename))
         exit
       end if
@@ -427,7 +427,7 @@ contains
       end if
       if (MT > 52) then
         backspace(in)
-        call fatal_error('Reached end of MF3 w/o reading an&
+        call warning('Reached end of MF3 w/o reading an&
           & (n,n2) Q-value in '//trim(filename))
         exit
       end if

@@ -2291,7 +2291,7 @@ contains
         end if
       end if
 
-      if (n == 1 .and. c % type /= 1) then
+      if (n == 1 .and. c % type /= CELL_NORMAL) then
         this_cell = .true.
       end if
 

@@ -2080,7 +2080,7 @@ contains
 
     if (x_size == y_size) then
       do i = 1, x_size
-        write(unit_num, '(ES23.16, ES23.16)') x_vals(i), y_vals(i)
+        write(unit_num, '(ES24.16, ES24.16)') x_vals(i), y_vals(i)
       end do
     else
       continue

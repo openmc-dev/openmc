@@ -776,13 +776,13 @@ contains
 !      if (i_ES < tope % NE) then
 !        if (tope % E > tope % ES(i_ES + 1)) then
 !          i_ES = i_ES + 1
-!          write(*,'(A40,ES23.16,A12)') &
+!          write(*,'(A40,ES15.16,A12)') &
 !            & 'Reconstructing URR xs in', tope % ES(i_ES), ' eV interval'
 !        end if
 !      end if
       n_pts = n_pts + 1
       tope % E = 1.0e6_8 * nuc % energy(n_pts)
-      if (tope % E > maxval(tope % slbw_resonances(1) % E_lam(:))) exit
+      if (tope % E > maxval(tope % mlbw_resonances(1) % E_lam(:))) exit
 !      enhance  = .true.
 
 !      do while(enhance)
@@ -808,13 +808,13 @@ contains
 
             ! find the nearest lower resonance
             if (tope % E &
-                 < tope % slbw_resonances(i_l) % E_lam(1)) then
+                 < tope % mlbw_resonances(i_l) % E_lam(1)) then
 !              & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
               i_low = 1
             else
               i_low = binary_search(&
-                   tope % slbw_resonances(i_l) % E_lam(:),&
-                   size(tope % slbw_resonances(i_l) % E_lam(:)), tope % E)
+                   tope % mlbw_resonances(i_l) % E_lam(:),&
+                   size(tope % mlbw_resonances(i_l) % E_lam(:)), tope % E)
               i_low = i_low - n_res/2 - 1
               if (i_low < 1) i_low = 1
 !                & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
@@ -822,7 +822,7 @@ contains
             end if
 
             res % i_res = 0
-            LOC_RRR_RESONANCES_LOOP: do i_res = 1, size(tope%slbw_resonances(i_l)%E_lam(:))!i_low, i_low + n_res - 1
+            LOC_RRR_RESONANCES_LOOP: do i_res = 1, size(tope%mlbw_resonances(i_l)%E_lam(:))!i_low, i_low + n_res - 1
               res % i_res = res % i_res + 1
               i_r = i_res
               call set_parameters(res, iso, i_r, i_l, None,&
@@ -879,18 +879,18 @@ contains
 
           ! find the nearest lower resonance
           if (tope % E &
-               < tope % slbw_resonances(i_l) % E_lam(1)) then
+               < tope % mlbw_resonances(i_l) % E_lam(1)) then
             i_low = 1
           else
             i_low = binary_search(&
-                 tope % slbw_resonances(i_l) % E_lam(:),&
-                 size(tope % slbw_resonances(i_l) % E_lam(:)), tope % E)
+                 tope % mlbw_resonances(i_l) % E_lam(:),&
+                 size(tope % mlbw_resonances(i_l) % E_lam(:)), tope % E)
             i_low = i_low - n_res/2
             if (i_low < 1) i_low = 1
           end if
 
           ! loop over resonances localized about E_n
-          RESONANCES_LOOP: do i_res = 1, size(tope%slbw_resonances(i_l)%E_lam(:))!n_res
+          RESONANCES_LOOP: do i_res = 1, size(tope%mlbw_resonances(i_l)%E_lam(:))!n_res
 
 !            if (i_low + i_res - 1 > size(tope % slbw_resonances(i_l) % E_lam(:))) then
 !              tope % J = tope % urr_resonances(i_l) % AJ(size(tope % slbw_resonances(i_l) % E_lam(:)))
@@ -898,7 +898,7 @@ contains
 !            else
               ! set current total angular momentum quantum number
 !              tope % J = tope % slbw_resonances(i_l) % AJ(i_low + i_res - 1)
-              tope % J = tope % slbw_resonances(i_l) % AJ(i_res)
+              tope % J = tope % mlbw_resonances(i_l) % AJ(i_res)
 !            end if
 
             ! compute statistical spin factor
@@ -2894,8 +2894,10 @@ contains
 
     x = (TWO * (tope % E - E_shift)) / Gam_t_n
 
-    sig_lam = FOUR * PI / (k_lam * k_lam) * tope % g_J &
-         * this % Gam_n / this % Gam_t
+    sig_lam = FOUR * PI / (k_n * k_n) * tope % g_J &
+         * Gam_n_n / Gam_t_n
+!    sig_lam = FOUR * PI / (k_lam * k_lam) * tope % g_J &
+!         * this % Gam_n / this % Gam_t
 
     ! this particular form comes from the NJOY2012 manual
     this % dxs_n = sig_lam * &
@@ -2954,6 +2956,14 @@ contains
     real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
     real(8) :: G_n   ! neutron width of the resonance at E_res
     real(8) :: G_t   ! total width of the resonance at E_res
+    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
+    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
+    real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
+    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
+    real(8) :: E_shift ! shifted resonance energy in the lab system
+    real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
+    real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
+    real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
 
     tope => isotopes(iso)
 
@@ -2961,21 +2971,76 @@ contains
 
     i_l = tope % L + 1
 
-    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
-      RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
+!    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+      RESONANCE_LOOP: do i_r = 1, size(tope%mlbw_resonances(i_l)%E_lam(:))!n_res_contrib(tope % L)
 ! TODO: compute E-dependence of local realization's parameters
-        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+        if (i_r == i_res) cycle! .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
 
+        k_n = wavenumber(tope % AWR, tope % E)
+
+        ! (use absolute value of energy in order to handle bound levels which have
+        ! negative resonance energies)
+        k_lam = wavenumber(tope % AWR, abs(tope % local_realization(i_l, 1) % E_lam(i_r)))
+
+        ! if URR parameters have resonance energy dependence
+        if (represent_params == E_RESONANCE) then
+
+          E_shift = tope % local_realization(i_l, 1) % E_lam(i_r)&
+               + tope % local_realization(i_l, 1) % Gam_n(i_r) * (shift(tope % L, k_lam * tope % ac(tope % i_urr - 1)) &
+               - shift(tope % L, k_n * tope % ac(tope % i_urr - 1))) &
+               / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr - 1)))
+
+          Gam_n_n = tope % local_realization(i_l, 1) % Gam_n(i_r)&
+               * penetration(tope % L, k_n   * tope % ac(tope % i_urr - 1)) &
+               / penetration(tope % L, k_lam * tope % ac(tope % i_urr - 1))
+
+          if (tope % E >= tope % E_ex2) then
+            ! two competitive reactions possible, can't calculate an energy-dependent
+            ! width because it depends on the two (unprovided) reaction partial widths
+            Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)
+          else if (tope % E >= tope % E_ex1) then
+            ! can compute an energy-dependent width for the one competitive reaction
+            k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
+            k_lam_x = wavenumber(tope % AWR, abs(tope % local_realization(i_l, 1) % E_lam(i_r) - tope % E_ex1))
+            Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)&
+                 * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr - 1)) &
+                 / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr - 1))
+          else
+            Gam_x_n = ZERO
+          end if
+
+        else
+
+          ! assume all URR parameters already have neutron energy dependence
+          E_shift = tope % local_realization(i_l, 1) % E_lam(i_r)
+          Gam_n_n = tope % local_realization(i_l, 1) % Gam_n(i_r)
+          Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)
+
+        end if
+
+        Gam_t_n = tope % local_realization(i_l, 1) % Gam_t(i_r)&
+             - tope % local_realization(i_l, 1) % Gam_n(i_r)&
+             - tope % local_realization(i_l, 1) % Gam_x(i_r)&
+             + Gam_n_n&
+             + Gam_x_n
+
+!        G_val = G_val&
+!             + G_n * tope % local_realization(i_l, 1) % Gam_n(i_r)&
+!             * (G_t + tope % local_realization(i_l, 1) % Gam_t(i_r))&
+!             / ((E_res - tope % local_realization(i_l, 1) % E_lam(i_r))&
+!             * (E_res - tope % local_realization(i_l, 1) % E_lam(i_r))&
+!             + (G_t + tope % local_realization(i_l, 1) % Gam_t(i_r))&
+!             * (G_t + tope % local_realization(i_l, 1) % Gam_t(i_r)) / 4.0_8)
         G_val = G_val&
-             + G_n * tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
-             / ((E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
-             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
-             + (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
-             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r)) / 4.0_8)
+             + G_n * Gam_n_n&
+             * (G_t + Gam_t_n)&
+             / ((E_res - E_shift)&
+             * (E_res - E_shift)&
+             + (G_t + Gam_t_n)&
+             * (G_t + Gam_t_n) / 4.0_8)
 
       end do RESONANCE_LOOP
-    end do TOTAL_ANG_MOM_LOOP
+!    end do TOTAL_ANG_MOM_LOOP
 
   end function G_func
 
@@ -2999,6 +3064,14 @@ contains
     real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
     real(8) :: G_n   ! neutron width of the resonance at E_res
     real(8) :: G_t   ! total width of the resonance at E_res
+    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
+    real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
+    real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
+    real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
+    real(8) :: E_shift ! shifted resonance energy in the lab system
+    real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
+    real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
+    real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
 
     tope => isotopes(iso)
 
@@ -3006,21 +3079,76 @@ contains
 
     i_l = tope % L + 1
 
-    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
-      RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
+!    TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
+      RESONANCE_LOOP: do i_r = 1, size(tope%mlbw_resonances(i_l)%E_lam(:))!n_res_contrib(tope % L)
 ! TODO: compute E-dependence of local realization's parameters
-        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+        if (i_r == i_res) cycle! .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
 
+        k_n = wavenumber(tope % AWR, tope % E)
+
+        ! (use absolute value of energy in order to handle bound levels which have
+        ! negative resonance energies)
+        k_lam = wavenumber(tope % AWR, abs(tope % local_realization(i_l, 1) % E_lam(i_r)))
+
+        ! if URR parameters have resonance energy dependence
+        if (represent_params == E_RESONANCE) then
+
+          E_shift = tope % local_realization(i_l, 1) % E_lam(i_r)&
+               + tope % local_realization(i_l, 1) % Gam_n(i_r) * (shift(tope % L, k_lam * tope % ac(tope % i_urr - 1)) &
+               - shift(tope % L, k_n * tope % ac(tope % i_urr - 1))) &
+               / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr - 1)))
+
+          Gam_n_n = tope % local_realization(i_l, 1) % Gam_n(i_r)&
+               * penetration(tope % L, k_n   * tope % ac(tope % i_urr - 1)) &
+               / penetration(tope % L, k_lam * tope % ac(tope % i_urr - 1))
+
+          if (tope % E >= tope % E_ex2) then
+            ! two competitive reactions possible, can't calculate an energy-dependent
+            ! width because it depends on the two (unprovided) reaction partial widths
+            Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)
+          else if (tope % E >= tope % E_ex1) then
+            ! can compute an energy-dependent width for the one competitive reaction
+            k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
+            k_lam_x = wavenumber(tope % AWR, abs(tope % local_realization(i_l, 1) % E_lam(i_r) - tope % E_ex1))
+            Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)&
+                 * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr - 1)) &
+                 / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr - 1))
+          else
+            Gam_x_n = ZERO
+          end if
+
+        else
+
+          ! assume all URR parameters already have neutron energy dependence
+          E_shift = tope % local_realization(i_l, 1) % E_lam(i_r)
+          Gam_n_n = tope % local_realization(i_l, 1) % Gam_n(i_r)
+          Gam_x_n = tope % local_realization(i_l, 1) % Gam_x(i_r)
+
+        end if
+
+        Gam_t_n = tope % local_realization(i_l, 1) % Gam_t(i_r)&
+             - tope % local_realization(i_l, 1) % Gam_n(i_r)&
+             - tope % local_realization(i_l, 1) % Gam_x(i_r)&
+             + Gam_n_n&
+             + Gam_x_n
+
+!        H_val = H_val&
+!             + G_n * tope % local_realization(i_l, 1) % Gam_n(i_r)&
+!             * (E_res - tope % local_realization(i_l, 1) % E_lam(i_r))&
+!             / ((E_res - tope % local_realization(i_l, 1) % E_lam(i_r))&
+!             * (E_res - tope % local_realization(i_l, 1) % E_lam(i_r))&
+!             + (G_t + tope % local_realization(i_l, 1) % Gam_t(i_r))&
+!             * (G_t + tope % local_realization(i_l, 1) % Gam_t(i_r)) / 4.0_8)
         H_val = H_val&
-             + G_n * tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
-             / ((E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
-             * (E_res - tope % local_realization(i_l, i_J) % E_lam(i_r))&
-             + (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r))&
-             * (G_t + tope % local_realization(i_l, i_J) % Gam_t(i_r)) / 4.0_8)
+             + G_n * Gam_n_n&
+             * (E_res - E_shift)&
+             / ((E_res - E_shift)&
+             * (E_res - E_shift)&
+             + (G_t + Gam_t_n)&
+             * (G_t + Gam_t_n) / 4.0_8)
 
       end do RESONANCE_LOOP
-    end do TOTAL_ANG_MOM_LOOP
+!    end do TOTAL_ANG_MOM_LOOP
 
   end function H_func
 

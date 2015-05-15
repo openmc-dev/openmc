@@ -2337,25 +2337,40 @@ contains
             n_x = lat % n_cells(1)
             n_y = lat % n_cells(2)
             n_z = lat % n_cells(3)
+            old_m = 1
+            old_l = 1
+            old_k = 1
 
             ! Loop over lattice coordinates
-            do m = 1, n_z
-              do l = 1, n_y
-                do k = 1, n_x
+            do k = 1, n_x
+             do l = 1, n_y
+               do m = 1, n_z 
 
-                  if (final > lat % offset(map, k, l, m) + offset) then
-                    old_m = m
-                    old_l = l
-                    old_k = k 
-                   cycle
+                  if (final >= lat % offset(map, k, l, m) + offset) then
+                    if (k == n_x .and. l == n_y .and. m == n_z) then
+                      ! This is last lattice cell, so target must be here
+                      lat_offset = lat % offset(map, k, l, m)
+                      offset = offset + lat_offset
+                      next_univ => universes(lat % universes(k, l, m))
+                      path = trim(path) // "(" // trim(to_str(k)) // &
+                           "," // trim(to_str(l)) // "," // &
+                           trim(to_str(m)) // ")"
+                      call find_offset(map, goal, next_univ, final, offset, path)
+                      return
+                    else
+                      old_m = m
+                      old_l = l
+                      old_k = k
+                      cycle
+                    end if
                   else
                     ! Target is at this lattice position
-                    lat_offset = lat % offset(map, k, l, m)
+                    lat_offset = lat % offset(map, old_k, old_l, old_m)
                     offset = offset + lat_offset
-                    next_univ => universes(lat % universes(k, l, m))  
-                    path = trim(path) // "(" // trim(to_str(k)) // &
-                         "," // trim(to_str(l)) // "," // &
-                         trim(to_str(m)) // ")"
+                    next_univ => universes(lat % universes(old_k, old_l, old_m))  
+                    path = trim(path) // "(" // trim(to_str(old_k)) // &
+                         "," // trim(to_str(old_l)) // "," // &
+                         trim(to_str(old_m)) // ")"
                     call find_offset(map, goal, next_univ, final, offset, path)
                     return
                   end if

@@ -2401,8 +2401,9 @@ contains
                     lat_offset = lat % offset(map, old_k, old_l, old_m)
                     offset = offset + lat_offset
                     next_univ => universes(lat % universes(old_k, old_l, old_m))
-                    path = trim(path) // "(" // trim(to_str(old_k)) // &
-                         "," // trim(to_str(old_l)) // "," // &
+                    path = trim(path) // "(" // &
+                         trim(to_str(old_k - lat % n_rings)) // "," // &
+                         trim(to_str(old_l - lat % n_rings)) // "," // &
                          trim(to_str(old_m)) // ")"
                     call find_offset(map, goal, next_univ, final, offset, path)
                     return

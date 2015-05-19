@@ -15,7 +15,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
   cd ..
 
   # Build PHDF5
-  wget -q http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.14.tar.gz
+  wget -q http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.14/src/hdf5-1.8.14.tar.gz
   tar -xzvf hdf5-1.8.14.tar.gz >/dev/null 2>&1
   mv hdf5-1.8.14 phdf5-1.8.14; cd phdf5-1.8.14
   CC=$PWD/../mpich_install/bin/mpicc FC=$PWD/../mpich_install/bin/mpif90 \

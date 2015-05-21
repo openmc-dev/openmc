@@ -1,11 +1,13 @@
 import copy
 import os
 from xml.etree import ElementTree as ET
+import numpy as np
 
 from openmc import Nuclide
 from openmc.clean_xml import *
 from openmc.checkvalue import *
 from openmc.constants import *
+from openmc.summary import Summary
 
 
 # "Static" variables for auto-generated Tally and Mesh IDs
@@ -1235,11 +1237,11 @@ class Tally(object):
         """
 
         # Determine the score index from the score string
-        score_index = self._scores.index(score)
+        score_index = self.scores.index(score)
 
         # Determine the nuclide index from the nuclide string/object
         if not nuclide is None:
-            nuclide_index = self._nuclides.index(nuclide)
+            nuclide_index = self.nuclides.index(nuclide)
         else:
             nuclide_index = 0
 
@@ -1250,51 +1252,51 @@ class Tally(object):
         for i, filter in enumerate(filters):
 
             # Find the equivalent Filter in this Tally's list of Filters
-            test_filter = self.find_filter(filter._type, filter._bins)
+            test_filter = self.find_filter(filter.type, filter.bins)
 
             # Filter bins for a mesh are an (x,y,z) tuple
-            if filter._type == 'mesh':
+            if filter.type == 'mesh':
 
                 # Get the dimensions of the corresponding mesh
-                nx, ny, nz = test_filter._mesh._dimension
+                nx, ny, nz = test_filter.mesh.dimension
 
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
                 val = ((filter_bins[i][0] - 1) * ny * nz +
                        (filter_bins[i][1] - 1) * nz +
                        (filter_bins[i][2] - 1))
-                filter_index += val * test_filter._stride
+                filter_index += val * test_filter.stride
 
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
-            elif filter._type == 'distribcell':
+            elif filter.type == 'distribcell':
                 bin = filter_bins[i]
-                filter_index += bin * test_filter._stride
+                filter_index += bin * test_filter.stride
 
             else:
                 bin = filter_bins[i]
                 bin_index = test_filter.get_bin_index(bin)
-                filter_index += bin_index * test_filter._stride
+                filter_index += bin_index * test_filter.stride
 
         # Return the desired result from Tally
         if value == 'mean':
-            return self._mean[filter_index, nuclide_index, score_index]
+            return self.mean[filter_index, nuclide_index, score_index]
         elif value == 'std_dev':
-            return self._std_dev[filter_index, nuclide_index, score_index]
+            return self.std_dev[filter_index, nuclide_index, score_index]
         elif value == 'sum':
-            return self._sum[filter_index, nuclide_index, score_index]
+            return self.sum[filter_index, nuclide_index, score_index]
         elif value == 'sum_sq':
-            return self._sum_sq[filter_index, nuclide_index, score_index]
+            return self.sum_sq[filter_index, nuclide_index, score_index]
         else:
             msg = 'Unable to return results from Tally ID={0} for score {1} ' \
                   'since the value {2} is not \'mean\', \'std_dev\', ' \
-                  '\'sum\', or \'sum_sq\''.format(self._id, score, value)
+                  '\'sum\', or \'sum_sq\''.format(self.id, score, value)
             raise LookupError(msg)
 
 
-    def export_results(self, filename='tally-results', directory='.',
-                      format='hdf5', append=True):
-        """Returns a tally score value given a list of filters to satisfy.
+    def get_pandas_dataframe(self, filters=True, nuclides=True,
+                             scores=True, summary=None):
+        """Exports tallly results to an HDF5 or Python pickle binary file.
 
         Parameters
         ----------
@@ -1305,8 +1307,241 @@ class Tally(object):
               The name of the directory for the results (default is '.')
 
         format : str
-              The format for the exported file - HDF5 ('hdf5', default), Python
-              pickle ('pkl'), comma-separated values ('csv') files are supported.
+              The format for the exported file - HDF5 ('hdf5', default) and
+              Python pickle ('pkl') files are supported.
+
+        append : bool
+              Whether or not to append the results to the file (default is True)
+        """
+
+        # FIXME: docstring this bitch
+
+        # Attempt to import the pandas package
+        try:
+            import pandas as pd
+        except ImportError:
+            msg = 'The pandas Python package must be installed on your system'
+            raise ImportError(msg)
+
+        # Compute batch statistics if not yet computed
+        self.compute_std_dev()
+
+        # Attempt to import the pandas package
+        data_size = self.sum.size
+
+        # Initialize a pandas dataframe for the tally data
+        df = pd.DataFrame()
+
+        # Include columns for filters if user requested them
+        if filters:
+
+            for filter in self.filters:
+
+                # mesh filters
+                if filter.type == 'mesh':
+
+                    if (len(filter.mesh.dimension) == 3):
+                        nx, ny, nz = filter.mesh.dimension
+                    else:
+                        nx, ny = filter.mesh.dimension
+                        nz = 1
+
+                    filter_dict = {}
+                    mesh_id = filter.mesh.id
+                    mesh_key = 'mesh {0}'.format(mesh_id)
+
+                    filter_bins = np.arange(1, nx+1)
+                    repeat_factor = ny * nz * filter.stride
+                    filter_bins = np.repeat(filter_bins, repeat_factor)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    filter_dict[(mesh_key, 'x')] = filter_bins
+
+                    filter_bins = np.arange(1, ny+1)
+                    repeat_factor = nz * filter.stride
+                    filter_bins = np.repeat(filter_bins, repeat_factor)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    filter_dict[(mesh_key, 'y')] = filter_bins
+
+                    filter_bins = np.arange(1, nz+1)
+                    repeat_factor = filter.stride
+                    filter_bins = np.repeat(filter_bins, repeat_factor)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    filter_dict[(mesh_key, 'z')] = filter_bins
+
+                    df = pd.concat([df, pd.DataFrame(filter_dict)], axis=1)
+
+                # distribcell filters
+                elif filter.type == 'distribcell':
+
+                    if isinstance(summary, Summary):
+
+                        try:
+                            import opencg
+                        except ImportError:
+                            msg = 'The OpenCG Python package must be installed ' \
+                                  'to use a Summary for distribcell dataframes'
+                            raise ImportError(msg)
+
+                        summary.make_opencg_geometry()
+                        opencg_goemetry = summary.opencg_geometry
+                        openmc_geometry = summary.openmc_geometry
+
+                        # Use OpenCG to compute the number of regions
+                        opencg_goemetry.initializeCellOffsets()
+                        num_regions = opencg_goemetry._num_regions
+
+                        offsets_to_coords = {}
+
+                        for region in range(num_regions):
+                            coords = opencg_goemetry.findRegion(region)
+                            path = opencg.get_path(coords)
+                            cell_id = path[-1]
+
+                            if cell_id == filter._bins[0]:
+                                offset = openmc_geometry.get_offset(path, filter.offset)
+                                offsets_to_coords[offset] = coords
+
+                        # The offset is the dataframe bin, the path we must unravel into columns
+                        num_offsets = len(offsets_to_coords)
+
+                        levels_remain = True
+                        counter = 1
+
+                        while(levels_remain):
+                            levels_remain = False
+
+                            level_dict = {}
+                            level_key = 'level {0}'.format(counter)
+                            univ_key = (level_key, 'univ', 'id')
+                            cell_key = (level_key, 'cell', 'id')
+                            lat_id_key = (level_key, 'lat', 'id')
+                            lat_x_key = (level_key, 'lat', 'x')
+                            lat_y_key = (level_key, 'lat', 'y')
+                            lat_z_key = (level_key, 'lat', 'z')
+
+                            level_dict[univ_key] = np.empty(num_offsets)
+                            level_dict[cell_key] = np.empty(num_offsets)
+                            level_dict[lat_id_key] = np.empty(num_offsets)
+                            level_dict[lat_x_key] = np.empty(num_offsets)
+                            level_dict[lat_y_key] = np.empty(num_offsets)
+                            level_dict[lat_z_key] = np.empty(num_offsets)
+                            level_dict[univ_key][:] = np.nan
+                            level_dict[cell_key][:] = np.nan
+                            level_dict[lat_id_key][:] = np.nan
+                            level_dict[lat_x_key][:] = np.nan
+                            level_dict[lat_y_key][:] = np.nan
+                            level_dict[lat_z_key][:] = np.nan
+
+                            for offset in range(num_offsets):
+                                coords = offsets_to_coords[offset]
+
+                                if coords == None:
+                                    continue
+
+                                if coords._type == 'universe':
+                                    univ_id = coords._universe._id
+                                    cell_id = coords._cell._id
+                                    level_dict[univ_key][offset] = univ_id
+                                    level_dict[cell_key][offset] = cell_id
+
+                                else:
+                                    lat_id = coords._lattice._id
+                                    lat_x = coords._lat_x
+                                    lat_y = coords._lat_y
+                                    lat_z = coords._lat_z
+                                    level_dict[lat_id_key][offset] = lat_id
+                                    level_dict[lat_x_key][offset] = lat_x
+                                    level_dict[lat_y_key][offset] = lat_y
+                                    level_dict[lat_z_key][offset] = lat_z
+
+                                if coords._next == None:
+                                    offsets_to_coords[offset] = None
+                                else:
+                                    offsets_to_coords[offset] = coords._next
+                                    levels_remain = True
+
+                            # FIXME: must tile, repeat these
+                            for level_key, level_bins in level_dict.items():
+                                level_bins = np.repeat(level_bins, filter.stride)
+                                tile_factor = data_size / len(level_bins)
+                                level_bins = np.tile(level_bins, tile_factor)
+                                level_dict[level_key] = level_bins
+
+                            df = pd.concat([df, pd.DataFrame(level_dict)], axis=1)
+                            counter += 1
+
+                    filter_bins = np.arange(filter.num_bins)
+                    filter_bins = np.repeat(filter_bins, filter.stride)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    df[filter.type] = filter_bins
+
+                # energy, energyout filters
+                elif 'energy' in filter.type:
+                    bins = filter.bins
+                    num_bins = filter.num_bins
+                    template = '{0:.1e} - {1:.1e}'
+
+                    filter_bins = \
+                        [template.format(bins[i], bins[i+1]) for i in range(num_bins)]
+                    filter_bins = np.repeat(filter_bins, filter.stride)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    df[filter.type + ' [MeV]'] = filter_bins
+
+                # universe, material, surface, cell, cellborn, distribcell filters
+                else:
+                    filter_bins = np.repeat(filter.bins, filter.stride)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    df[filter.type] = filter_bins
+
+        # Include column for nuclides if user requested it
+        if nuclides:
+            nuclides = []
+
+            for nuclide in self.nuclides:
+                if is_integer(nuclide):
+                    nuclides.append(nuclide)
+                else:
+                    nuclides.append(nuclide.name)
+
+            nuclides = np.repeat(nuclides, len(self.scores))
+            tile_factor = data_size / len(nuclides)
+            df['nuclide'] = np.tile(nuclides, tile_factor)
+
+        # Include column for scores if user requested it
+        if scores:
+            tile_factor = data_size / len(self.scores)
+            df['score'] = np.tile(self.scores, tile_factor)
+
+        # Append columns with mean, std. dev. for each tally bin
+        df['mean'] = self.mean.ravel()
+        df['std. dev.'] = self.std_dev.ravel()
+
+        df.index.name = 'bin'
+        df = df.dropna(axis=1)
+        return df
+
+
+    def export_results(self, filename='tally-results', directory='.',
+                      format='hdf5', append=True):
+        """Exports tallly results to an HDF5 or Python pickle binary file.
+
+        Parameters
+        ----------
+        filename : str
+              The name of the file for the results (default is 'tally-results')
+
+        directory : str
+              The name of the directory for the results (default is '.')
+
+        format : str
+              The format for the exported file - HDF5 ('hdf5', default) and
+              Python pickle ('pkl') files are supported.
 
         append : bool
               Whether or not to append the results to the file (default is True)

@@ -129,7 +129,6 @@ contains
     type(Particle), intent(inout) :: p
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
-
     integer :: i                    ! index over cells
     integer :: j                    ! index over distribcell maps
     integer :: i_xyz(3)             ! indices in lattice
@@ -589,7 +588,6 @@ contains
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_translation(3)
-
     integer :: i_xyz(3)       ! indices in lattice
     integer :: i              ! map loop index
     logical :: found          ! particle found in cell?

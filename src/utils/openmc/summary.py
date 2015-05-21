@@ -546,7 +546,7 @@ class Summary(object):
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(openmc.FILTER_TYPES[filter_type], bins)
+                filter = openmc.Filter(filter_type, bins)
                 filter.num_bins = num_bins
 
                 # Add Filter to the Tally

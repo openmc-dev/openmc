@@ -332,9 +332,6 @@ class StatePoint(object):
 
             subbase = '{0}{1}/filter '.format(base, tally_key)
 
-            # Initialize the stride
-            stride = 1
-
             # Initialize all Filters
             for j in range(1, n_filters+1):
 
@@ -359,7 +356,6 @@ class StatePoint(object):
                     bins = self._get_double(
                          n_bins+1, path='{0}{1}/bins'.format(subbase, j))
 
-                # FIXME
                 elif FILTER_TYPES[filter_type] in ['mesh', 'distribcell']:
                     bins = self._get_int(
                          path='{0}{1}/bins'.format(subbase, j))[0]
@@ -371,7 +367,6 @@ class StatePoint(object):
                 # Create Filter object
                 filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
                 filter.offset = offset
-                filter.stride = stride
                 filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
@@ -380,9 +375,6 @@ class StatePoint(object):
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)
-
-                # Update the stride for the next Filter
-                stride *= n_bins
 
             # Read Nuclide bins
             n_nuclides = self._get_int(
@@ -405,6 +397,14 @@ class StatePoint(object):
                  n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
             n_user_scores = self._get_int(
                  path='{0}{1}/n_user_score_bins'.format(base, tally_key))[0]
+
+            # Compute and set the filter strides
+            for i in range(n_filters):
+                filter = tally.filters[i]
+                filter.stride = n_score_bins * n_nuclides
+
+                for j in range(i+1, n_filters):
+                    filter.stride *= tally.filters[j].num_bins
 
             # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
             moments = []

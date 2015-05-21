@@ -1085,7 +1085,6 @@ contains
     
       univ => universes(i)
 
-
       do j = 1, univ % n_cells
       
         if (cell_list % has_key(univ % cells(j))) then

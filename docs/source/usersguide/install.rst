@@ -107,7 +107,7 @@ with GitHub since this involves setting up ssh_ keys. With git installed and
 setup, the following command will download the full source code from the GitHub
 repository::
 
-    git clone git://github.com/mit-crpg/openmc.git
+    git clone https://github.com/mit-crpg/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::

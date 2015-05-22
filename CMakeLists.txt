@@ -169,29 +169,29 @@ endif()
 
 # Only initialize git submodules if it is not there. User is responsible
 # for future updates of fox xml submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../.git)
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox/.git)
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
     message("-- Cloning FoX XML git repository...")
     execute_process(COMMAND git clone https://github.com/mit-crpg/fox.git src/xml/fox
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     execute_process(COMMAND git checkout bdc852f4f43d969fb1b179cba79295c1e095a455
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox)
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox)
   else()
     message("-- Initializing/Updating FoX XML submodule...")
     execute_process(COMMAND git submodule init
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     execute_process(COMMAND git submodule update
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endif()
-add_subdirectory(xml/fox)
+add_subdirectory(src/xml/fox)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source *.F90 xml/openmc_fox.F90)
+file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
 target_link_libraries(${program} ${libraries} fox_dom)
 set_target_properties(${program} PROPERTIES
@@ -203,28 +203,16 @@ set_target_properties(${program} PROPERTIES
 #===============================================================================
 
 install(TARGETS ${program} RUNTIME DESTINATION bin)
-install(PROGRAMS utils/plot_mesh_tally.py
-  DESTINATION bin
-  RENAME plot_mesh_tally)
-install(PROGRAMS utils/statepoint_histogram.py
-  DESTINATION bin
-  RENAME statepoint_histogram)
-install(PROGRAMS utils/update_inputs.py
-  DESTINATION bin
-  RENAME update_inputs)
-install(PROGRAMS utils/xml_validate.py
-  DESTINATION bin
-  RENAME xml_validate)
 install(DIRECTORY relaxng DESTINATION share)
-install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
-install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
+install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
+install(FILES LICENSE DESTINATION "share/doc/${program}/copyright")
 
 find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
   install(CODE "execute_process(
                   COMMAND ${PYTHON_EXECUTABLE} setup.py install
                   --prefix=${CMAKE_INSTALL_PREFIX}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
 endif()
 
 #===============================================================================
@@ -235,7 +223,7 @@ endif()
 include(CTest)
 
 # Get a list of all the tests to run
-file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
+file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
 # Check for MEM_CHECK and COVERAGE variables
 if (DEFINED ENV{MEM_CHECK})

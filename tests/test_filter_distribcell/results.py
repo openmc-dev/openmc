@@ -4,7 +4,7 @@ import sys
 import numpy as np
 
 # import statepoint
-sys.path.insert(0, '../../src/utils')
+sys.path.insert(0, '../..')
 from openmc.statepoint import StatePoint
 from openmc import Filter
 

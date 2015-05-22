@@ -21,7 +21,7 @@ class Executor(object):
         # Capture and re-print OpenMC output in real-time
         while (True and output):
             line = p.stdout.readline()
-            print line,
+            print(line),
 
             # If OpenMC is finished, break loop
             if line == '' and p.poll() != None:

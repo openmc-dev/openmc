@@ -1,9 +1,5 @@
-#!/usr/bin/env python
-
 from __future__ import division
-
 from struct import pack
-import sys
 
 
 def ascii_to_binary(ascii_file, binary_file):
@@ -67,11 +63,3 @@ def ascii_to_binary(ascii_file, binary_file):
 
     # Close binary file
     binary.close()
-
-if __name__ == '__main__':
-    # Check for proper number of arguments
-    if len(sys.argv) < 3:
-        sys.exit('Usage: {0} ascii_file binary_file'.format(sys.argv[0]))
-
-    # Convert ASCII file
-    ascii_to_binary(sys.argv[1], sys.argv[2])

@@ -758,13 +758,10 @@ contains
     j = t % find_filter(FILTER_DISTRIBCELL)
     if (j > 0) then
       string = ""
-
-      do i = 1, t % filters(j) % n_bins
-        id = t % filters(j) % int_bins(i)
-        c => cells(id)
-        string = trim(string) // ' ' // trim(to_str(c % id))
-      end do
-      write(unit_, *) '    Cell Bins:' // trim(string)
+      id = t % filters(j) % int_bins(1)
+      c => cells(id)
+      string = trim(string) // ' ' // trim(to_str(c % id))
+      write(unit_, *) '    Distribcell Bins:' // trim(string)
     end if
 
     ! Write any cells bins if present

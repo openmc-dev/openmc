@@ -56,6 +56,13 @@ endif()
 #===============================================================================
 
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+  # Make sure version is sufficient
+  execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
+    OUTPUT_VARIABLE GCC_VERSION)
+  if(GCC_VERSION VERSION_LESS 4.6)
+    message(FATAL_ERROR "gfortran version must be 4.6 or higher")
+  endif()
+
   # GNU Fortran compiler options
   set(f90flags  "-cpp -std=f2008 -fbacktrace")
   if(debug)

@@ -55,23 +55,20 @@ files are called:
 Validating XML Files
 --------------------
 
-Input files can be checked before executing OpenMC using the ``xml_validate``
-script. It is located in ``src/utils/xml_validate.py`` in the source code or in
-``bin/xml_validate`` in the install directory.
-
-Two command line arguments can be set when running ``xml_validate``:
+Input files can be checked before executing OpenMC using the
+``openmc-validate-xml`` script which is installed alongside the Python API. Two
+command line arguments can be set when running ``openmc-validate-xml``:
 
 * ``-i``, ``--input-path`` - Location of OpenMC input files.
   *Default*: current working directory
 * ``-r``, ``--relaxng-path`` - Location of OpenMC RelaxNG files.
   *Default*: None
 
-If the RelaxNG path is not set, ``xml_validate`` will search for these files
-because it expects that the user is either running the script located in the
-install directory ``bin`` folder or in ``src/utils``. Once executed, it will
-match OpenMC XML files with their RelaxNG schema and check if they are valid.
-Below is a table of the messages that will be printed after each file is
-checked.
+If the RelaxNG path is not set, the script will search for these files because
+it expects that the user is either running the script located in the install
+directory ``bin`` folder or in ``src/utils``. Once executed, it will match
+OpenMC XML files with their RelaxNG schema and check if they are valid.  Below
+is a table of the messages that will be printed after each file is checked.
 
 ========================  ===================================
 Message                   Description
@@ -193,7 +190,7 @@ should be performed. It has the following attributes/sub-elements:
       *Default*: None
 
     :threshold:
-      The precision trigger's convergence criterion for the 
+      The precision trigger's convergence criterion for the
       combined :math:`k_{eff}`.
 
       *Default*: None
@@ -646,16 +643,16 @@ particle number, respectively.
 -------------------------
 
 OpenMC includes tally precision triggers which allow the user to define
-uncertainty thresholds on :math:`k_{eff}` in the ``<eigenvalue>`` subelement of 
-``settings.xml``, and/or tallies in ``tallies.xml``. When using triggers, 
+uncertainty thresholds on :math:`k_{eff}` in the ``<eigenvalue>`` subelement of
+``settings.xml``, and/or tallies in ``tallies.xml``. When using triggers,
 OpenMC will run until it completes as many batches as defined by ``<batches>``.
-At this point, the uncertainties on all tallied values are computed and 
-compared with their corresponding trigger thresholds. If any triggers have not 
-been met, OpenMC will continue until either all trigger thresholds have been 
+At this point, the uncertainties on all tallied values are computed and
+compared with their corresponding trigger thresholds. If any triggers have not
+been met, OpenMC will continue until either all trigger thresholds have been
 satisfied or ``<max_batches>`` has been reached.
 
 The ``<trigger>`` element provides an active "toggle switch" for tally
-precision trigger(s), the maximum number of batches and the batch interval. It 
+precision trigger(s), the maximum number of batches and the batch interval. It
 has the following attributes/sub-elements:
 
   :active:
@@ -674,11 +671,11 @@ has the following attributes/sub-elements:
     OpenMC will check if the trigger has been reached at each batch defined
     by ``batch_interval`` after the minimum number of batches is reached.
 
-    .. note:: If this tag is not present, the ``batch_interval`` is predicted 
-              dynamically by OpenMC for each convergence check. The predictive 
-              model assumes no correlation between fission sources 
-              distributions from batch-to-batch. This assumption is reasonable 
-              for fixed source and small criticality calculations, but is very 
+    .. note:: If this tag is not present, the ``batch_interval`` is predicted
+              dynamically by OpenMC for each convergence check. The predictive
+              model assumes no correlation between fission sources
+              distributions from batch-to-batch. This assumption is reasonable
+              for fixed source and small criticality calculations, but is very
               optimistic for highly coupled full-core reactor problems.
 
 
@@ -1382,8 +1379,8 @@ The ``<tally>`` element accepts the following sub-elements:
       Number of scoring events
 
   :trigger:
-    Precision trigger applied to all filter bins and nuclides for this tally. 
-    It must specify the trigger's type, threshold and scores to which it will 
+    Precision trigger applied to all filter bins and nuclides for this tally.
+    It must specify the trigger's type, threshold and scores to which it will
     be applied. It has the following attributes/sub-elements:
 
    :type:

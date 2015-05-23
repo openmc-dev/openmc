@@ -854,6 +854,7 @@ class TalliesFile(object):
                     merged_tally = tally2.merge(tally)
                     self._tallies[i] = merged_tally
                     merged = True
+                    break
 
             # If not mergeable tally was found, simply add this tally
             if not merged:

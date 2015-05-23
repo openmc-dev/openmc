@@ -11,6 +11,23 @@ class Executor(object):
         self._working_directory = '.'
 
 
+    def _run_openmc(self, command, output):
+
+        # Launch a subprocess to run OpenMC
+        p = subprocess.Popen(command, shell=True, 
+                             cwd=self._working_directory,
+                             stdout=subprocess.PIPE)
+
+        # Capture and re-print OpenMC output in real-time
+        while (True and output):
+            line = p.stdout.readline()
+            print(line),
+
+            # If OpenMC is finished, break loop
+            if line == '' and p.poll() != None:
+                break
+
+
     @property
     def working_directory(self):
         return self._working_directory
@@ -33,14 +50,7 @@ class Executor(object):
 
 
     def plot_geometry(self, output=True):
-
-        if output:
-            subprocess.check_call('openmc -p', shell=True,
-                                  cwd=self._working_directory)
-        else:
-            subprocess.check_call('openmc -p', shell=True,
-                                  stdout=open(os.devnull, 'w'),
-                                  cwd=self._working_directory)
+        self._run_openmc('openmc -p', output)
 
 
     def run_simulation(self, particles=None, threads=None,
@@ -70,10 +80,4 @@ class Executor(object):
 
         command = pre_args + 'openmc ' + post_args
 
-        if output:
-            subprocess.check_call(command, shell=True,
-                                  cwd=self._working_directory)
-        else:
-            subprocess.check_call(command, shell=True,
-                                  stdout=open(os.devnull, 'w'),
-                                  cwd=self._working_directory)
+        self._run_openmc(command, output)

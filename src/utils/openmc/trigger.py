@@ -57,7 +57,7 @@ class Trigger(object):
 
         if not trigger_type in ['variance', 'std_dev', 'rel_err']:
             msg = 'Unable to create a tally trigger with ' \
-                  'type {0}'.format(trigger_type)
+                  'type "{0}"'.format(trigger_type)
             raise ValueError(msg)
 
         self._trigger_type = trigger_type
@@ -68,7 +68,7 @@ class Trigger(object):
 
         if not is_float(threshold):
             msg = 'Unable to set a tally trigger threshold with ' \
-                  'threshold {0}'.format(threshold)
+                  'threshold "{0}"'.format(threshold)
             raise ValueError(msg)
 
         self._threshold = threshold
@@ -77,7 +77,7 @@ class Trigger(object):
     def add_score(self, score):
 
         if not is_string(score):
-            msg = 'Unable to add score {0} to tally trigger since ' \
+            msg = 'Unable to add score "{0}" to tally trigger since ' \
                   'it is not a string'.format(score)
             raise ValueError(msg)
 

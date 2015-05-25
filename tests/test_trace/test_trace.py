@@ -23,7 +23,7 @@ def test_run():
     print(stdout)
     returncode = proc.returncode
     assert returncode == 0, 'OpenMC did not exit successfully.'
-    assert stdout.find('Simulating Particle 453') != -1
+    assert stdout.find(b'Simulating Particle 453') != -1
 
 def test_created_statepoint():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))

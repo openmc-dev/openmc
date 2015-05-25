@@ -669,6 +669,18 @@ class StatePoint(object):
 
 
     def link_with_summary(self, summary):
+        """Links Tallies and Filters with Summary model information.
+
+        This routine retrieves model information (materials, geometry) from a
+        Summary object populated with an HDF5 'summary.h5' file and inserts
+        it into the Tally objects. This can be helpful when ciewing and
+        manipulating large scale Tally data.
+
+        Parameters
+        ----------
+        summary : Summary
+                A Summary object
+        """
 
         if not isinstance(summary, openmc.summary.Summary):
             msg = 'Unable to link statepoint with {0} which ' \

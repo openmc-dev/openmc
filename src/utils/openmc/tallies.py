@@ -1,13 +1,13 @@
 import copy
 import os
 from xml.etree import ElementTree as ET
+
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
+from openmc.summary import Summary
 from openmc.clean_xml import *
 from openmc.checkvalue import *
-from openmc.constants import *
-from openmc.summary import Summary
 
 
 # "Static" variable for auto-generated Tally IDs
@@ -689,25 +689,32 @@ class Tally(object):
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
                              scores=True, summary=None):
-        """Exports tallly results to an HDF5 or Python pickle binary file.
+        """Build a Pandas DataFrame for the Tally data.
+
+        This routine constructs a Pandas DataFrame object for the Tally data
+        with columns annotated by filter, nuclide and score bin information.
+        This capability has been tested for Pandas >=v0.13.1. However, it is
+        recommended to use the v0.16 or newer versions of Pandas since this
+        this routine uses the Multi-index Pandas feature, if possible.
 
         Parameters
         ----------
-        filename : str
-              The name of the file for the results (default is 'tally-results')
+        filters : bool
+              Include columns with filter bin information (default is True).
 
-        directory : str
-              The name of the directory for the results (default is '.')
+        nuclides : bool
+              Include columns with nuclide bin information (default is True).
 
-        format : str
-              The format for the exported file - HDF5 ('hdf5', default) and
-              Python pickle ('pkl') files are supported.
+        scores : bool
+              Include columns with score bin information (default is True).
 
-        append : bool
-              Whether or not to append the results to the file (default is True)
+        summary : None or Summary
+              An optional Summary object to be used to construct columns for
+              for distribcell tally filters (default is None). The geometric
+              information in the Summary object is embedded into a Multi-index
+              column with a geometric "path" to each distribcell intance.
+              NOTE: This option requires the OpenCG Python package.
         """
-
-        # FIXME: docstring this bitch
 
         # Attempt to import the pandas package
         try:
@@ -719,13 +726,13 @@ class Tally(object):
         # Compute batch statistics if not yet computed
         self.compute_std_dev()
 
-        # Attempt to import the pandas package
-        data_size = self.sum.size
-
         # Initialize a pandas dataframe for the tally data
         df = pd.DataFrame()
 
-        # Include columns for filters if user requested them
+        # Find the total length of the tally data array
+        data_size = self.sum.size
+
+        # Build DataFrame columns for filters if user requested them
         if filters:
 
             for filter in self.filters:
@@ -733,16 +740,21 @@ class Tally(object):
                 # mesh filters
                 if filter.type == 'mesh':
 
+                    # Initialize dictionary to build Pandas Multi-index column
+                    filter_dict = {}
+
+                    # Append Mesh ID as outermost index of mult-index
+                    mesh_id = filter.mesh.id
+                    mesh_key = 'mesh {0}'.format(mesh_id) 
+
+                    # Find mesh dimensions - use 3D indices for simplicity
                     if (len(filter.mesh.dimension) == 3):
                         nx, ny, nz = filter.mesh.dimension
                     else:
                         nx, ny = filter.mesh.dimension
                         nz = 1
 
-                    filter_dict = {}
-                    mesh_id = filter.mesh.id
-                    mesh_key = 'mesh {0}'.format(mesh_id)
-
+                    # Generate multi-index sub-column for x-axis
                     filter_bins = np.arange(1, nx+1)
                     repeat_factor = ny * nz * filter.stride
                     filter_bins = np.repeat(filter_bins, repeat_factor)
@@ -750,6 +762,7 @@ class Tally(object):
                     filter_bins = np.tile(filter_bins, tile_factor)
                     filter_dict[(mesh_key, 'x')] = filter_bins
 
+                    # Generate multi-index sub-column for y-axis
                     filter_bins = np.arange(1, ny+1)
                     repeat_factor = nz * filter.stride
                     filter_bins = np.repeat(filter_bins, repeat_factor)
@@ -757,6 +770,7 @@ class Tally(object):
                     filter_bins = np.tile(filter_bins, tile_factor)
                     filter_dict[(mesh_key, 'y')] = filter_bins
 
+                    # Generate multi-index sub-column for z-axis
                     filter_bins = np.arange(1, nz+1)
                     repeat_factor = filter.stride
                     filter_bins = np.repeat(filter_bins, repeat_factor)
@@ -764,6 +778,7 @@ class Tally(object):
                     filter_bins = np.tile(filter_bins, tile_factor)
                     filter_dict[(mesh_key, 'z')] = filter_bins
 
+                    # Append the multi-index column to the DataFrame
                     df = pd.concat([df, pd.DataFrame(filter_dict)], axis=1)
 
                 # distribcell filters
@@ -771,13 +786,15 @@ class Tally(object):
 
                     if isinstance(summary, Summary):
 
+                        # Attempt to import the OpenCG package
                         try:
                             import opencg
                         except ImportError:
-                            msg = 'The OpenCG Python package must be installed ' \
+                            msg = 'The OpenCG package must be installed ' \
                                   'to use a Summary for distribcell dataframes'
                             raise ImportError(msg)
 
+                        # Create and extract the OpenCG geometry the Summary
                         summary.make_opencg_geometry()
                         opencg_goemetry = summary.opencg_geometry
                         openmc_geometry = summary.openmc_geometry
@@ -786,27 +803,42 @@ class Tally(object):
                         opencg_goemetry.initializeCellOffsets()
                         num_regions = opencg_goemetry._num_regions
 
+                        # Initialize a dictionary mapping OpenMC distribcell
+                        # offsets to OpenCG LocalCoords linked lists
                         offsets_to_coords = {}
 
+                        # Use OpenCG to compute LocalCoords linked list for 
+                        # each region and store in dictionary 
                         for region in range(num_regions):
                             coords = opencg_goemetry.findRegion(region)
                             path = opencg.get_path(coords)
                             cell_id = path[-1]
 
+                            # If this region is in Cell corresponding to the
+                            # distribcell filter bin, store it in dictionary
                             if cell_id == filter._bins[0]:
-                                offset = openmc_geometry.get_offset(path, filter.offset)
+                                offset = openmc_geometry.get_offset(path, 
+                                     filter.offset)
                                 offsets_to_coords[offset] = coords
 
-                        # The offset is the dataframe bin, the path we must unravel into columns
+                        # Each distribcell offset is a DataFrame bin
+                        # Unravel the paths into DataFrame columns
                         num_offsets = len(offsets_to_coords)
 
+                        # Initialize termination condition for while loop
                         levels_remain = True
-                        counter = 1
+                        counter = 0
 
+                        # Iterate over each level in the CSG tree hierarchy
                         while(levels_remain):
                             levels_remain = False
 
+                            # Initialize dictionary to build Pandas Multi-index
+                            # column for this level in the CSG tree hierarchy
                             level_dict = {}
+
+                            # Initialize prefix Multi-index keys
+                            counter += 1
                             level_key = 'level {0}'.format(counter)
                             univ_key = (level_key, 'univ', 'id')
                             cell_key = (level_key, 'cell', 'id')
@@ -815,12 +847,18 @@ class Tally(object):
                             lat_y_key = (level_key, 'lat', 'y')
                             lat_z_key = (level_key, 'lat', 'z')
 
+                            # Allocate NumPy arrays for each CSG level and 
+                            # each Multi-index column in the DataFrame
                             level_dict[univ_key] = np.empty(num_offsets)
                             level_dict[cell_key] = np.empty(num_offsets)
                             level_dict[lat_id_key] = np.empty(num_offsets)
                             level_dict[lat_x_key] = np.empty(num_offsets)
                             level_dict[lat_y_key] = np.empty(num_offsets)
                             level_dict[lat_z_key] = np.empty(num_offsets)
+
+                            # Initialize Multi-index columns to NaN - this is
+                            # necessary since some distribcell instances may
+                            # have very different LocalCoords linked lists
                             level_dict[univ_key][:] = np.nan
                             level_dict[cell_key][:] = np.nan
                             level_dict[lat_id_key][:] = np.nan
@@ -828,18 +866,23 @@ class Tally(object):
                             level_dict[lat_y_key][:] = np.nan
                             level_dict[lat_z_key][:] = np.nan
 
+                            # Iterate over all regions (distribcell instances)
                             for offset in range(num_offsets):
                                 coords = offsets_to_coords[offset]
 
+                                # If entire LocalCoords has been unraveled into
+                                # Multi-index columns already, continue
                                 if coords == None:
                                     continue
 
+                                # Assign entry to Universe Multi-index column
                                 if coords._type == 'universe':
                                     univ_id = coords._universe._id
                                     cell_id = coords._cell._id
                                     level_dict[univ_key][offset] = univ_id
                                     level_dict[cell_key][offset] = cell_id
 
+                                # Assign entry to Lattice Multi-index column
                                 else:
                                     lat_id = coords._lattice._id
                                     lat_x = coords._lat_x
@@ -850,22 +893,26 @@ class Tally(object):
                                     level_dict[lat_y_key][offset] = lat_y
                                     level_dict[lat_z_key][offset] = lat_z
 
+                                # Move to next node in LocalCoords linked list
                                 if coords._next == None:
                                     offsets_to_coords[offset] = None
                                 else:
                                     offsets_to_coords[offset] = coords._next
                                     levels_remain = True
 
-                            # FIXME: must tile, repeat these
+                            # Tile the Multi-index columns
                             for level_key, level_bins in level_dict.items():
-                                level_bins = np.repeat(level_bins, filter.stride)
+                                level_bins = np.repeat(level_bins,filter.stride)
                                 tile_factor = data_size / len(level_bins)
                                 level_bins = np.tile(level_bins, tile_factor)
                                 level_dict[level_key] = level_bins
+           
+                            # Append the multi-index column to the DataFrame
+                            df = pd.concat([df,pd.DataFrame(level_dict)],axis=1)
 
-                            df = pd.concat([df, pd.DataFrame(level_dict)], axis=1)
-                            counter += 1
-
+                    # Create DataFrame column for distribcell instances IDs
+                    # NOTE: This is performed regardless of whether the user
+                    # requests Summary geomeric information
                     filter_bins = np.arange(filter.num_bins)
                     filter_bins = np.repeat(filter_bins, filter.stride)
                     tile_factor = data_size / len(filter_bins)
@@ -876,32 +923,38 @@ class Tally(object):
                 elif 'energy' in filter.type:
                     bins = filter.bins
                     num_bins = filter.num_bins
-                    template = '{0:.1e} - {1:.1e}'
 
-                    filter_bins = \
-                        [template.format(bins[i], bins[i+1]) for i in range(num_bins)]
+                    # Create strings for 
+                    template = '{0:.1e} - {1:.1e}'
+                    filter_bins = []
+                    for i in range(num_bins):
+                        filter_bins.append(template.format(bins[i], bins[i+1]))
+
+                    # Tile the energy bins into a DataFrame column
                     filter_bins = np.repeat(filter_bins, filter.stride)
                     tile_factor = data_size / len(filter_bins)
                     filter_bins = np.tile(filter_bins, tile_factor)
                     df[filter.type + ' [MeV]'] = filter_bins
 
-                # universe, material, surface, cell, cellborn, distribcell filters
+                # universe, material, surface, cell, and cellborn filters
                 else:
                     filter_bins = np.repeat(filter.bins, filter.stride)
                     tile_factor = data_size / len(filter_bins)
                     filter_bins = np.tile(filter_bins, tile_factor)
                     df[filter.type] = filter_bins
 
-        # Include column for nuclides if user requested it
+        # Include DataFrame column for nuclides if user requested it
         if nuclides:
             nuclides = []
 
             for nuclide in self.nuclides:
-                if is_integer(nuclide):
-                    nuclides.append(nuclide)
-                else:
+                # Write Nuclide name if Summary info was linked with StatePoint
+                if isinstance(nuclide, Nuclide):
                     nuclides.append(nuclide.name)
+                else:
+                    nuclides.append(nuclide)
 
+            # Tile the nuclide bins into a DataFrame column
             nuclides = np.repeat(nuclides, len(self.scores))
             tile_factor = data_size / len(nuclides)
             df['nuclide'] = np.tile(nuclides, tile_factor)

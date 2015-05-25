@@ -26,7 +26,7 @@ class Trigger(object):
 
             clone._scores = []
             for score in self._scores:
-              clone.add_score(score)
+                clone.add_score(score)
 
             memo[id(self)] = clone
 

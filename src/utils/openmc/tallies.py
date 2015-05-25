@@ -1,5 +1,6 @@
 import copy
 import os
+import itertools
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -257,8 +258,8 @@ class Tally(object):
     def add_trigger(self, trigger):
 
         if not isinstance(trigger, Trigger):
-            msg = 'Unable to add a tally trigger for  for Tally ID={0} to ' \
-                  '{1} since it is not a valid estimator type'.format(trigger)
+            msg = 'Unable to add a tally trigger for Tally ID={0} to ' \
+                  'since "{1}" is not a Trigger'.format(self.id, trigger)
             raise ValueError(msg)
 
         self._triggers.append(trigger)
@@ -291,7 +292,7 @@ class Tally(object):
 
         if not is_string(name):
             msg = 'Unable to set name for Tally ID={0} with a non-string ' \
-                  'value {1}'.format(self.id, name)
+                  'value "{1}"'.format(self.id, name)
             raise ValueError(msg)
 
         else:
@@ -303,8 +304,8 @@ class Tally(object):
         global filters
 
         if not isinstance(filter, Filter):
-            msg = 'Unable to add Filter {0} to Tally ID={1} since it is not ' \
-                  'a Filter object'.format(filter, self.id)
+            msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
+                  'not a Filter object'.format(filter, self.id)
             raise ValueError(msg)
 
         self._filters.append(filter)
@@ -317,8 +318,8 @@ class Tally(object):
     def add_score(self, score):
 
         if not is_string(score):
-            msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
-                  'string'.format(score, self.id)
+            msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
+                  'not a string'.format(score, self.id)
             raise ValueError(msg)
 
         # If the score is already in the Tally, don't add it again
@@ -337,13 +338,13 @@ class Tally(object):
     def num_realizations(self, num_realizations):
 
         if not is_integer(num_realizations):
-            msg = 'Unable to set the number of realizations to {0} for ' \
+            msg = 'Unable to set the number of realizations to "{0}" for ' \
                   'Tally ID={1} since it is not an ' \
                   'integer'.format(num_realizations)
             raise ValueError(msg)
 
         elif num_realizations < 0:
-            msg = 'Unable to set the number of realizations to {0} for ' \
+            msg = 'Unable to set the number of realizations to "{0}" for ' \
                   'Tally ID={1} since it is a negative ' \
                   'value'.format(num_realizations)
             raise ValueError(msg)
@@ -354,13 +355,13 @@ class Tally(object):
     def set_results(self, sum, sum_sq):
 
         if not isinstance(sum, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to {0}for Tally ID={1} since ' \
+            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
                   'it is not a Python tuple/list or NumPy ' \
                   'array'.format(sum, self.id)
             raise ValueError(msg)
 
         if not isinstance(sum_sq, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to {0}for Tally ID={1} since ' \
+            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
                   'it is not a Python tuple/list or NumPy ' \
                   'array'.format(sum_sq, self.id)
             raise ValueError(msg)
@@ -372,7 +373,7 @@ class Tally(object):
     def remove_score(self, score):
 
         if not score in self.scores:
-            msg = 'Unable to remove score {0} from Tally ID={1} since the ' \
+            msg = 'Unable to remove score "{0}" from Tally ID={1} since the ' \
                   'Tally does not contain this score'.format(score, self.id)
             ValueError(msg)
 
@@ -382,7 +383,7 @@ class Tally(object):
     def remove_filter(self, filter):
 
         if not filter in self.filters:
-            msg = 'Unable to remove filter {0} from Tally ID={1} since the ' \
+            msg = 'Unable to remove filter "{0}" from Tally ID={1} since the ' \
                   'Tally does not contain this filter'.format(filter, self.id)
             ValueError(msg)
 
@@ -392,7 +393,7 @@ class Tally(object):
     def remove_nuclide(self, nuclide):
 
         if not nuclide in self.nuclides:
-            msg = 'Unable to remove nuclide {0} from Tally ID={1} since the ' \
+            msg = 'Unable to remove nuclide "{0}" from Tally ID={1} since the ' \
                   'Tally does not contain this nuclide'.format(nuclide, self.id)
             ValueError(msg)
 
@@ -570,130 +571,243 @@ class Tally(object):
         return element
 
 
-    def find_filter(self, filter_type, bins):
+    def find_filter(self, filter_type):
 
         filter = None
 
+        # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-
-            # Determine if the Filter has the same type as the one requested
-            if test_filter.type != filter_type:
-                continue
-
-            # Determine if the Filter has the same bin edges as the one requested
-            elif test_filter.bins != bins:
-                continue
-
-            else:
+            if test_filter.type == filter_type:
                 filter = test_filter
                 break
 
-        # If we found the Filter, return it
-        if not filter is None:
-            return filter
-
-        # Otherwise, throw an Exception
-        else:
-            msg = 'Unable to find filter type {0} with bin edges {1} in ' \
-                  'Tally ID={2}'.format(filter_type, bins, self.id)
+        # If we did not find the Filter, throw an Exception
+        if filter is None:
+            msg = 'Unable to find filter type "{0}" in ' \
+                  'Tally ID={1}'.format(filter_type, self.id)
             raise ValueError(msg)
+
+        return filter
+
+
+    def get_filter_index(self, filter_type, filter_bin):
+        """Returns the index in the Tally's results array for a Filter bin
+
+        Parameters
+        ----------
+        filter_type : str
+                The type of Filter (e.g., 'cell', 'energy', etc.)
+
+        filter_bin : int, list
+                The bin is an integer ID for 'material', 'surface', 'cell',
+                'cellborn', and 'universe' Filters. The bin is an integer for
+                the cell instance ID for 'distribcell' Filters. The bin is
+                a 2-tuple of floats for 'energy' and 'energyout' filters
+                corresponding to the energy boundaries of the bin of interest.
+                The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
+                the mesh cell of interest.
+        """
+
+        # Find the equivalent Filter in this Tally's list of Filters
+        filter = self.find_filter(filter_type)
+
+        # Get the index for the requested bin from the Filter and return it
+        filter_index = filter.get_bin_index(filter_bin)
+        return filter_index
+
+
+    def get_nuclide_index(self, nuclide):
+        """Returns the index in the Tally's results array for a Nuclide bin
+
+        Parameters
+        ----------
+        nuclide : str
+                The name of the Nuclide (e.g., 'H-1', 'U-238')
+        """
+
+        nuclide_index = -1
+
+        # Look for the user-requested nuclide in all of the Tally's Nuclides
+        for i, test_nuclide in enumerate(self.nuclides):
+
+            # If the Summary was linked, then values are Nuclide objects
+            if isinstance(test_nuclide, Nuclide):
+                if test_nuclide._name == nuclide:
+                    nuclide_index = i
+                    break
+
+            # If the Summary has not been linked, then values are ZAIDs
+            else:
+                if test_nuclide == nuclide:
+                    nuclide_index = i
+                    break
+
+        if nuclide_index == -1:
+            msg = 'Unable to get the nuclide index for Tally since "{0}" ' \
+                  'is not one of the nuclides'.format(nuclide)
+            raise ValueError(msg)
+        else:
+            return nuclide_index
 
 
     def get_score_index(self, score):
-
-        try:
-            index = self.scores.index(score)
-
-        except ValueError:
-            msg = 'Unable to get the score index for Tally since {0} ' \
-                  'is not one of the bins'.format(bin)
-            raise ValueError(msg)
-
-        return index
-
-
-    def get_value(self, score, filters, filter_bins, nuclide=None, value='mean'):
-        """Returns a tally score value given a list of filters to satisfy.
+        """Returns the index in the Tally's results array for a score bin
 
         Parameters
         ----------
         score : str
-              The score string of interest
-
-        filters : list
-              A list of the filters of interest
-
-        filter_bins : list
-              A list of the filter bins of interest. These are integers for
-              material, surface, cell, cellborn, distribcell, universe filters,
-              and floats for energy or energyout filters. The bins are tuples
-              of three integers (x,y,z) for mesh filters. The order of the bins
-              in the list is assumed to correspond to the order of the filters.
-
-        nuclide : Nuclide
-              The Nuclide of interest
-
-        value : str
-              A string for the type of value to return ('mean' (default), 'std_dev',
-              'sum', or 'sum_sq' are accepted)
+                The score string (e.g., 'absorption', 'nu-fission')
         """
 
-        # Determine the score index from the score string
-        score_index = self.scores.index(score)
+        try:
+            score_index = self.scores.index(score)
 
-        # Determine the nuclide index from the nuclide string/object
-        if not nuclide is None:
-            nuclide_index = self.nuclides.index(nuclide)
+        except ValueError:
+            msg = 'Unable to get the score index for Tally since "{0}" ' \
+                  'is not one of the scores'.format(score)
+            raise ValueError(msg)
+
+        return score_index
+
+
+    def get_values(self, scores=[], filters=[], filter_bins=[],
+                   nuclides=[], value='mean'):
+        """Returns a tally score value given a list of filters to satisfy.
+
+        This routine constructs a 3D NumPy array for the requested Tally data
+        indexed by filter bin, nuclide bin, and score index. The routine will
+        order the data in the array
+
+        Parameters
+        ----------
+        scores : list
+                A list of one or more score strings
+                (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+                A list of filter type strings
+                (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+                A list of the filter bins corresponding to the filter_types
+                parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
+                in the list is the integer ID for 'material', 'surface', 'cell',
+                'cellborn', and 'universe' Filters. Each bin is an integer for
+                the cell instance ID for 'distribcell Filters. Each bin is
+                a 2-tuple of floats for 'energy' and 'energyout' filters
+                corresponding to the energy boundaries of the bin of interest.
+                The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
+                to the mesh cell of interest. The order of the bins in the list
+                must correspond of the filter_types parameter.
+
+        nuclides : list
+                A list of nuclide name strings
+                (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+              A string for the type of value to return  - 'mean' (default),
+              'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+        """
+
+        # Compute batch statistics if not yet computed
+        self.compute_std_dev()
+
+        ############################      FILTERS      #########################
+        # Determine the score indices from any of the requested scores
+        if filters:
+
+            # Initialize empty list of indices for each bin in each Filter
+            filter_indices = []
+
+            # Loop over all of the Tally's Filters
+            for i, filter in enumerate(self.filters):
+
+                # Initialize empty list of indices for this Filter's bins
+                filter_indices.append([])
+
+                user_filter = False
+
+                # If a user-requested Filter, get the user-requested bins
+                for j, test_filter in enumerate(filters):
+                    if filter.type == test_filter:
+                        bins = filter_bins[j]
+                        user_filter = True
+                        break
+
+                # If not a user-requested Filter, get all bins
+                if not user_filter:
+
+                    # Create list of 2- or 3-tuples tuples for mesh cell bins
+                    if filter.type == 'mesh':
+                        dimension = filter.mesh.dimension
+                        xyz = map(lambda x: np.arange(1,x+1), dimension)
+                        bins = list(itertools.product(*xyz))
+
+                    # Create list of 2-tuples for energy boundary bins
+                    elif filter.type in ['energy', 'energyout']:
+                        bins = []
+                        for i in range(filter.num_bins):
+                            bins.append((filter.bins[i], filter.bins[i+1]))
+
+                    # Create list of IDs for bins for all other Filter types
+                    else:
+                        bins = filter.bins
+
+                # Add indices for each bin in this Filter to the list
+                for bin in bins:
+                    filter_indices[i].append(
+                        self.get_filter_index(filter.type, bin))
+
+            # Apply cross-product sum between all filter bin indices
+            filter_indices = map(sum, itertools.product(*filter_indices))
+
+        # If user did not specify any specific Filters, use them all
         else:
-            nuclide_index = 0
+            filter_indices = np.arange(self.num_filter_bins)
 
-        # Initialize index for Filter in Tally.results[:,:,:]
-        filter_index = 0
+        ############################      NUCLIDES      ########################
+        # Determine the score indices from any of the requested scores
+        if nuclides:
+            nuclide_indices = np.zeros(len(nuclides), dtype=np.int)
+            for i, nuclide in enumerate(nuclides):
+                nuclide_indices[i] = self.get_nuclide_index(nuclide)
 
-        # Iterate over specified Filters to compute filter index
-        for i, filter in enumerate(filters):
+        # If user did not specify any specific Nuclides, use them all
+        else:
+            nuclide_indices = np.arange(self.num_nuclides)
 
-            # Find the equivalent Filter in this Tally's list of Filters
-            test_filter = self.find_filter(filter.type, filter.bins)
+        #############################      SCORES      #########################
+        # Determine the score indices from any of the requested scores
+        if scores:
+            score_indices = np.zeros(len(scores), dtype=np.int)
+            for i, score in enumerate(scores):
+                score_indices[i] = self.get_score_index(score)
 
-            # Filter bins for a mesh are an (x,y,z) tuple
-            if filter.type == 'mesh':
+        # If user did not specify any specific scores, use them all
+        else:
+            score_indices = np.arange(self.num_scores)
 
-                # Get the dimensions of the corresponding mesh
-                nx, ny, nz = test_filter.mesh.dimension
-
-                # Convert (x,y,z) to a single bin -- this is similar to
-                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                val = ((filter_bins[i][0] - 1) * ny * nz +
-                       (filter_bins[i][1] - 1) * nz +
-                       (filter_bins[i][2] - 1))
-                filter_index += val * test_filter.stride
-
-            # Filter bins for distribcell are the "IDs" of each unique placement
-            # of the Cell in the Geometry (integers starting at 0)
-            elif filter.type == 'distribcell':
-                bin = filter_bins[i]
-                filter_index += bin * test_filter.stride
-
-            else:
-                bin = filter_bins[i]
-                bin_index = test_filter.get_bin_index(bin)
-                filter_index += bin_index * test_filter.stride
+        # Construct cross-product of all three index types with each other
+        indices = np.ix_(filter_indices, nuclide_indices, score_indices)
 
         # Return the desired result from Tally
         if value == 'mean':
-            return self.mean[filter_index, nuclide_index, score_index]
+            data = self.mean[indices]
         elif value == 'std_dev':
-            return self.std_dev[filter_index, nuclide_index, score_index]
+            data = self.std_dev[indices]
+        elif value == 'rel_err':
+            data = self.std_dev[indices] / self.mean[indices]
         elif value == 'sum':
-            return self.sum[filter_index, nuclide_index, score_index]
+            data = self.sum[indices]
         elif value == 'sum_sq':
-            return self.sum_sq[filter_index, nuclide_index, score_index]
+            data = self.sum_sq[indices]
         else:
-            msg = 'Unable to return results from Tally ID={0} for score {1} ' \
-                  'since the value {2} is not \'mean\', \'std_dev\', ' \
-                  '\'sum\', or \'sum_sq\''.format(self.id, score, value)
+            msg = 'Unable to return results from Tally ID={0} since the ' \
+                  'the requested value "{1}" is not \'mean\', \'std_dev\', ' \
+                  '\rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
+
+        return data.squeeze()
 
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
@@ -1004,19 +1118,19 @@ class Tally(object):
 
         if not is_string(filename):
             msg = 'Unable to export the results for Tally ID={0} to ' \
-                  'filename={1} since it is not a ' \
+                  'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
         elif not is_string(directory):
             msg = 'Unable to export the results for Tally ID={0} to ' \
-                  'directory={1} since it is not a ' \
+                  'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)
             raise ValueError(msg)
 
         elif not format in ['hdf5', 'pkl', 'csv']:
-            msg = 'Unable to export the results for Tally ID={0} to ' \
-                  'format {1} since it is not supported'.format(self.id, format)
+            msg = 'Unable to export the results for Tally ID={0} to format ' \
+                  '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
         elif not isinstance(append, (bool, np.bool)):

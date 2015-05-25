@@ -884,7 +884,7 @@ class TalliesFile(object):
                     merged_tally = tally1.merge(tally2)
                     self._tallies[i] = merged_tally
 
-                    # Remove tally 2 since it is no longer neede
+                    # Remove tally 2 since it is no longer needed
                     self._tallies.pop(j)
 
                     # Continue iterating from the first loop

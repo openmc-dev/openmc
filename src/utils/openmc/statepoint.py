@@ -652,28 +652,6 @@ class StatePoint(object):
         return tally
 
 
-    def get_tally_id(self, score, filters, name='', estimator='tracklength'):
-        """Retrieve the Tally ID for a given list of filters and score(s).
-
-        Parameters
-        ----------
-        score : str
-                The score string
-
-        filters : list
-                A list of Filter objects
-
-        name : str
-                The name specified for the Tally (default is '')
-
-        estimator: str
-                The type of estimator ('tracklength' (default) or 'analog')
-        """
-
-        tally = self.get_tally(score, filters, name, estimator)
-        return tally._id
-
-
     def link_with_summary(self, summary):
 
         if not isinstance(summary, openmc.summary.Summary):

@@ -6,10 +6,12 @@ from openmc.plots import *
 from openmc.settings import *
 from openmc.surface import *
 from openmc.universe import *
+from openmc.mesh import *
+from openmc.filter import *
+from openmc.trigger import *
 from openmc.tallies import *
 from openmc.cmfd import *
 from openmc.executor import *
-#from statepoint import *
 
 try:
     from openmc.opencg_compatible import *

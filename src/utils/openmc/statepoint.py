@@ -435,7 +435,7 @@ class StatePoint(object):
                 tally.add_score(score)
 
             # Add Tally to the global dictionary of all Tallies
-            self._tallies[tally_key] = tally
+            self.tallies[tally_key] = tally
 
 
     def read_results(self):
@@ -574,76 +574,92 @@ class StatePoint(object):
 
 
         # Calculate sample mean and standard deviation for user-defined Tallies
-        for tally_id, tally in self._tallies.items():
+        for tally_id, tally in self.tallies.items():
             tally.compute_std_dev(t_value)
 
 
-    def get_tally(self, score, filters, nuclides,
-                  name='', estimator='tracklength'):
+    def get_tally(self, scores=[], filters=[], nuclides=[],
+                  name=None, estimator=None):
         """Finds and returns a Tally object with certain properties.
+
+        This routine searches the list of Tallies and returns the first Tally
+        found it finds which satisfieds all of the input parameters.
+        NOTE: The input parameters do not need to match the complete Tally
+        specification and may only represent a subset of the Tallies properties.
 
         Parameters
         ----------
-        score : str
-                The score string
+        scores : list
+                A list of one or more score strings (default is [])
 
         filters : list
-                A list of Filter objects
+                A list of Filter objects (default is [])
 
         nuclides : list
-                A list of Nuclide objects
+                A list of Nuclide objects (default is [])
 
         name : str
-                The name specified for the Tally (default is '')
+                The name specified for the Tally (default is None)
 
         estimator: str
-                The type of estimator ('tracklength' (default) or 'analog')
+                The type of estimator ('tracklength', 'analog'; default is None)
         """
 
-        # Loop over the domain-to-tallies mapping to find the Tally
         tally = None
 
         # Iterate over all tallies to find the appropriate one
-        for tally_id, test_tally in self._tallies.items():
+        for tally_id, test_tally in self.tallies.items():
 
-            # Determine if the queried Tally name is the same as this Tally
-            if not name == test_tally._name:
+            # Determine if Tally has queried name
+            if name and not name == test_tally.name:
                 continue
 
-            # Determine if the queried Tally estimator is the same as this Tally
-            if not estimator == test_tally._estimator:
+            # Determine if Tally has queried estimator
+            if estimator and not estimator == test_tally.estimator:
                 continue
 
-            # Determine if the queried Tally scores are the same as this Tally
-            if not score in test_tally._scores:
-                continue
+            # Determine if Tally has the queried score(s)
+            if scores:
+                contains_scores = True
 
-            # Determine if queried Tally filters is same length as this Tally
-            if len(filters) != len(test_tally._filters):
-                continue
+                # Iterate over the scores requested by the user
+                for score in scores:
+                    if not score in test_tally.scores:
+                        contains_scores = False
+                        break
 
-            # Determine if the queried Tally filters are the same as this Tally
-            contains_filters = True
+                if not contains_scores:
+                    continue
 
-            # Iterate over the filters requested by the user
-            for filter in filters:
-                if not filter in test_tally._filters:
-                    contains_filters = False
-                    break
+            # Determine if Tally has the queried Filter(s)
+            if filters:
+                contains_filters = True
 
-            # Determine if the queried Nuclide is in this Tally
-            contains_nuclides = True
+                # Iterate over the Filters requested by the user
+                for filter in filters:
+                    if not filter in test_tally.filters:
+                        contains_filters = False
+                        break
 
-            # Iterate over the Nuclides requested by the user
-            for nuclide in nuclides:
-                if not nuclide in test_tally._nuclides:
-                    contains_nuclides = False
-                    break
+                if not contains_filters:
+                    continue
 
-            # If the Tally contained all Filters and Nuclides, return the Tally
-            if contains_filters and contains_nuclides:
-                tally = test_tally
-                break
+            # Determine if Tally has the queried Nuclide(s)
+            if nuclides:
+                contains_nuclides = True
+
+                # Iterate over the Nuclides requested by the user
+                for nuclide in nuclides:
+                    if not nuclide in test_tally.nuclides:
+                        contains_nuclides = False
+                        break
+
+                if not contains_nuclides:
+                    continue
+
+            # If the current Tally met user's request, break loop and return it
+            tally = test_tally
+            break
 
         # If we did not find the Tally, return an error message
         if tally is None:
@@ -659,12 +675,12 @@ class StatePoint(object):
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 
-        for tally_id, tally in self._tallies.items():
+        for tally_id, tally in self.tallies.items():
 
             # Get the Tally name from the summary file
             tally.name = summary.tallies[tally_id].name
 
-            nuclide_zaids = copy.deepcopy(tally._nuclides)
+            nuclide_zaids = copy.deepcopy(tally.nuclides)
 
             for nuclide_zaid in nuclide_zaids:
 
@@ -674,30 +690,30 @@ class StatePoint(object):
                 else:
                     tally.add_nuclide(summary.nuclides[nuclide_zaid])
 
-            for filter in tally._filters:
+            for filter in tally.filters:
 
-                if filter._type == 'surface':
+                if filter.type == 'surface':
                     surface_ids = []
-                    for bin in filter._bins:
-                        surface_ids.append(summary.surfaces[bin]._id)
+                    for bin in filter.bins:
+                        surface_ids.append(summary.surfaces[bin].id)
                     filter.bins = surface_ids
 
-                if filter._type in ['cell', 'distribcell']:
+                if filter.type in ['cell', 'distribcell']:
                     distribcell_ids = []
-                    for bin in filter._bins:
-                        distribcell_ids.append(summary.cells[bin]._id)
+                    for bin in filter.bins:
+                        distribcell_ids.append(summary.cells[bin].id)
                     filter.bins = distribcell_ids
 
-                if filter._type == 'universe':
+                if filter.type == 'universe':
                     universe_ids = []
-                    for bin in filter._bins:
-                        universe_ids.append(summary.universes[bin]._id)
+                    for bin in filter.bins:
+                        universe_ids.append(summary.universes[bin].id)
                     filter.bins = universe_ids
 
-                if filter._type == 'material':
+                if filter.type == 'material':
                     material_ids = []
-                    for bin in filter._bins:
-                        material_ids.append(summary.materials[bin]._id)
+                    for bin in filter.bins:
+                        material_ids.append(summary.materials[bin].id)
                     filter.bins = material_ids
 
         self._with_summary = True

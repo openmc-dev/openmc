@@ -49,30 +49,30 @@ class Tally(object):
         if existing is None:
 
             clone = type(self).__new__(type(self))
-            clone._id = self._id
-            clone._name = self._name
-            clone._estimator = self._estimator
-            clone._num_score_bins = self._num_score_bins
-            clone._num_realizations = self._num_realizations
-            clone._sum = copy.deepcopy(self._sum, memo)
-            clone._sum_sq = copy.deepcopy(self._sum_sq, memo)
-            clone._mean = copy.deepcopy(self._mean, memo)
-            clone._std_dev = copy.deepcopy(self._std_dev, memo)
+            clone.id = self.id
+            clone.name = self.name
+            clone.estimator = self.estimator
+            clone.num_score_bins = self.num_score_bins
+            clone.num_realizations = self.num_realizations
+            clone._sum = copy.deepcopy(self.sum, memo)
+            clone._sum_sq = copy.deepcopy(self.sum_sq, memo)
+            clone._mean = copy.deepcopy(self.mean, memo)
+            clone._std_dev = copy.deepcopy(self.std_dev, memo)
 
-            clone._filters = []
-            for filter in self._filters:
+            clone.filters = []
+            for filter in self.filters:
               clone.add_filter(copy.deepcopy(filter, memo))
 
-            clone._nuclides = []
-            for nuclide in self._nuclides:
+            clone.nuclides = []
+            for nuclide in self.nuclides:
               clone.add_nuclide(copy.deepcopy(nuclide, memo))
 
-            clone._scores = []
-            for score in self._scores:
+            clone.scores = []
+            for score in self.scores:
               clone.add_score(score)
 
-            clone._triggers = []
-            for trigger in self._triggers:
+            clone.triggers = []
+            for trigger in self.triggers:
               clone.add_trigger(trigger)
 
             memo[id(self)] = clone
@@ -87,21 +87,30 @@ class Tally(object):
     def __eq__(self, tally2):
 
         # Check all filters
-        for filter in self._filters:
-            if not filter in tally2._filters:
+        if len(self.filters) != len(tally2.filters):
+            return False
+
+        for filter in self.filters:
+            if not filter in tally2.filters:
                 return False
 
         # Check all nuclides
-        for nuclide in self._nuclides:
-            if not nuclide in tally2._nuclides:
+        if len(self.nuclides) != len(tally2.nuclides):
+            return False
+
+        for nuclide in self.nuclides:
+            if not nuclide in tally2.nuclides:
                 return False
 
         # Check all scores
-        for score in self._scores:
-            if not score in tally2._scores:
+        if len(self.scores) != len(tally2.scores):
+            return False
+
+        for score in self.scores:
+            if not score in tally2.scores:
                 return False
 
-        if self._estimator != tally2._estimator:
+        if self.estimator != tally2.estimator:
             return False
 
         return True
@@ -110,17 +119,17 @@ class Tally(object):
     def __hash__(self):
         hashable = []
 
-        for filter in self._filters:
-            hashable.append((filter._type, tuple(filter._bins)))
+        for filter in self.filters:
+            hashable.append((filter.type, tuple(filter.bins)))
 
-        for nuclide in self._nuclides:
-            hashable.append(nuclide._name)
+        for nuclide in self.nuclides:
+            hashable.append(nuclide.name)
 
-        for score in self._scores:
+        for score in self.scores:
             hashable.append(score)
 
-        hashable.append(self._estimator)
-        hashable.append(self._name)
+        hashable.append(self.estimator)
+        hashable.append(self.name)
 
         return hash(tuple(hashable))
 
@@ -132,7 +141,7 @@ class Tally(object):
 
         new_tally = Tally()
         new_tally._mean = self._mean + other._mean
-        new_tally._std_dev = np.sqrt(self._std_dev**2 + other._std_dev**2)
+        new_tally._std_dev = np.sqrt(self.std_dev**2 + other.std_dev**2)
 
 
     @property
@@ -239,7 +248,7 @@ class Tally(object):
 
         if not estimator in ['analog', 'tracklength']:
             msg = 'Unable to set the estimator for Tally ID={0} to {1} since ' \
-                  'it is not a valid estimator type'.format(self._id, estimator)
+                  'it is not a valid estimator type'.format(self.id, estimator)
             raise ValueError(msg)
 
         self._estimator = estimator
@@ -282,7 +291,7 @@ class Tally(object):
 
         if not is_string(name):
             msg = 'Unable to set name for Tally ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
+                  'value {1}'.format(self.id, name)
             raise ValueError(msg)
 
         else:
@@ -295,7 +304,7 @@ class Tally(object):
 
         if not isinstance(filter, Filter):
             msg = 'Unable to add Filter {0} to Tally ID={1} since it is not ' \
-                  'a Filter object'.format(filter, self._id)
+                  'a Filter object'.format(filter, self.id)
             raise ValueError(msg)
 
         self._filters.append(filter)
@@ -309,11 +318,11 @@ class Tally(object):
 
         if not is_string(score):
             msg = 'Unable to add score {0} to Tally ID={1} since it is not a ' \
-                  'string'.format(score, self._id)
+                  'string'.format(score, self.id)
             raise ValueError(msg)
 
         # If the score is already in the Tally, don't add it again
-        if score in self._scores:
+        if score in self.scores:
             return
         else:
             self._scores.append(score)
@@ -347,13 +356,13 @@ class Tally(object):
         if not isinstance(sum, (tuple, list, np.ndarray)):
             msg = 'Unable to set the sum to {0}for Tally ID={1} since ' \
                   'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum, self._id)
+                  'array'.format(sum, self.id)
             raise ValueError(msg)
 
         if not isinstance(sum_sq, (tuple, list, np.ndarray)):
             msg = 'Unable to set the sum to {0}for Tally ID={1} since ' \
                   'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum_sq, self._id)
+                  'array'.format(sum_sq, self.id)
             raise ValueError(msg)
 
         self._sum = sum
@@ -362,9 +371,9 @@ class Tally(object):
 
     def remove_score(self, score):
 
-        if not score in self._scores:
+        if not score in self.scores:
             msg = 'Unable to remove score {0} from Tally ID={1} since the ' \
-                  'Tally does not contain this score'.format(score, self._id)
+                  'Tally does not contain this score'.format(score, self.id)
             ValueError(msg)
 
         self._scores.remove(score)
@@ -372,9 +381,9 @@ class Tally(object):
 
     def remove_filter(self, filter):
 
-        if not filter in self._filters:
+        if not filter in self.filters:
             msg = 'Unable to remove filter {0} from Tally ID={1} since the ' \
-                  'Tally does not contain this filter'.format(filter, self._id)
+                  'Tally does not contain this filter'.format(filter, self.id)
             ValueError(msg)
 
         self._filters.remove(filter)
@@ -382,9 +391,9 @@ class Tally(object):
 
     def remove_nuclide(self, nuclide):
 
-        if not nuclide in self._nuclides:
+        if not nuclide in self.nuclides:
             msg = 'Unable to remove nuclide {0} from Tally ID={1} since the ' \
-                  'Tally does not contain this nuclide'.format(nuclide, self._id)
+                  'Tally does not contain this nuclide'.format(nuclide, self.id)
             ValueError(msg)
 
         self._nuclides.remove(nuclide)
@@ -393,36 +402,36 @@ class Tally(object):
     def compute_std_dev(self, t_value=1.0):
 
         # Calculate sample mean and standard deviation
-        self._mean = self._sum / self._num_realizations
-        self._std_dev = np.sqrt((self._sum_sq / self._num_realizations - \
-                                 self._mean**2) / (self._num_realizations - 1))
+        self._mean = self.sum / self.num_realizations
+        self._std_dev = np.sqrt((self.sum_sq / self.num_realizations - \
+                                 self.mean**2) / (self.num_realizations - 1))
         self._std_dev *= t_value
 
 
     def __repr__(self):
 
         string = 'Tally\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
 
         string += '{0: <16}\n'.format('\tFilters')
 
-        for filter in self._filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter._type,
-                                                          filter._bins)
+        for filter in self.filters:
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
+                                                          filter.bins)
 
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
-        for nuclide in self._nuclides:
+        for nuclide in self.nuclides:
             if isinstance(nuclide, Nuclide):
-                string += '{0} '.format(nuclide._name)
+                string += '{0} '.format(nuclide.name)
             else:
                 string += '{0} '.format(nuclide)
 
         string += '\n'
 
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
-        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self._estimator)
+        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
+        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
 
         return string
 
@@ -433,26 +442,26 @@ class Tally(object):
             return False
 
         # Must have same estimator
-        if self._estimator != tally._estimator:
+        if self.estimator != tally.estimator:
             return False
 
         # Must have same nuclides
-        if len(self._nuclides) != len(tally._nuclides):
+        if len(self.nuclides) != len(tally.nuclides):
             return False
 
-        for nuclide in self._nuclides:
-            if not nuclide in tally._nuclides:
+        for nuclide in self.nuclides:
+            if not nuclide in tally.nuclides:
                 return False
 
         # Must have same or mergeable filters
-        if len(self._filters) != len(tally._filters):
+        if len(self.filters) != len(tally.filters):
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
-        for filter1 in self._filters:
+        for filter1 in self.filters:
             mergeable_filter = False
 
-            for filter2 in tally._filters:
+            for filter2 in tally.filters:
                 if filter1 == filter2 or filter1.can_merge(filter2):
                     mergeable_filter = True
                     break
@@ -478,19 +487,19 @@ class Tally(object):
         merged_tally.id = None
 
         # Merge filters
-        for i, filter1 in enumerate(merged_tally._filters):
-            for filter2 in tally._filters:
+        for i, filter1 in enumerate(merged_tally.filters):
+            for filter2 in tally.filters:
                 if filter1 != filter2 and filter1.can_merge(filter2):
                     merged_filter = filter1.merge(filter2)
-                    merged_tally._filters[i] = merged_filter
+                    merged_tally.filters[i] = merged_filter
                     break
 
         # Add scores from second tally to merged tally
-        for score in tally._scores:
+        for score in tally.scores:
             merged_tally.add_score(score)
 
         # Add triggers from second tally to merged tally
-        for trigger in tally._triggers:
+        for trigger in tally.triggers:
             merged_tally.add_trigger(trigger)
 
         return merged_tally
@@ -501,33 +510,33 @@ class Tally(object):
         element = ET.Element("tally")
 
         # Tally ID
-        element.set("id", str(self._id))
+        element.set("id", str(self.id))
 
         # Optional Tally name
-        if self._name != '':
-            element.set("name", self._name)
+        if self.name != '':
+            element.set("name", self.name)
 
         # Optional Tally filters
-        for filter in self._filters:
+        for filter in self.filters:
 
             subelement = ET.SubElement(element, "filter")
-            subelement.set("type", str(filter._type))
+            subelement.set("type", str(filter.type))
 
-            if not filter._bins is None:
+            if not filter.bins is None:
 
                 bins = ''
-                for bin in filter._bins:
+                for bin in filter.bins:
                     bins += '{0} '.format(bin)
 
                 subelement.set("bins", bins.rstrip(' '))
 
         # Optional Nuclides
-        if len(self._nuclides) > 0:
+        if len(self.nuclides) > 0:
 
             nuclides = ''
-            for nuclide in self._nuclides:
+            for nuclide in self.nuclides:
                 if isinstance(nuclide, Nuclide):
-                    nuclides += '{0} '.format(nuclide._name)
+                    nuclides += '{0} '.format(nuclide.name)
                 else:
                     nuclides += '{0} '.format(nuclide)
 
@@ -535,27 +544,27 @@ class Tally(object):
             subelement.text = nuclides.rstrip(' ')
 
         # Scores
-        if len(self._scores) == 0:
+        if len(self.scores) == 0:
             msg = 'Unable to get XML for Tally ID={0} since it does not ' \
-                  'contain any scores'.format(self._id)
+                  'contain any scores'.format(self.id)
             raise ValueError(msg)
 
         else:
 
             scores = ''
-            for score in self._scores:
+            for score in self.scores:
                 scores += '{0} '.format(score)
 
             subelement = ET.SubElement(element,    "scores")
             subelement.text = scores.rstrip(' ')
 
         # Tally estimator type
-        if not self._estimator is None:
+        if not self.estimator is None:
             subelement = ET.SubElement(element, "estimator")
-            subelement.text = self._estimator
+            subelement.text = self.estimator
 
         # Optional Triggers
-        for trigger in self._triggers:
+        for trigger in self.triggers:
             trigger.get_trigger_xml(element)
 
         return element
@@ -565,14 +574,14 @@ class Tally(object):
 
         filter = None
 
-        for test_filter in self._filters:
+        for test_filter in self.filters:
 
             # Determine if the Filter has the same type as the one requested
-            if test_filter._type != filter_type:
+            if test_filter.type != filter_type:
                 continue
 
             # Determine if the Filter has the same bin edges as the one requested
-            elif test_filter._bins != bins:
+            elif test_filter.bins != bins:
                 continue
 
             else:
@@ -586,14 +595,14 @@ class Tally(object):
         # Otherwise, throw an Exception
         else:
             msg = 'Unable to find filter type {0} with bin edges {1} in ' \
-                  'Tally ID={2}'.format(filter_type, bins, self._id)
+                  'Tally ID={2}'.format(filter_type, bins, self.id)
             raise ValueError(msg)
 
 
     def get_score_index(self, score):
 
         try:
-            index = self._scores.index(score)
+            index = self.scores.index(score)
 
         except ValueError:
             msg = 'Unable to get the score index for Tally since {0} ' \
@@ -816,7 +825,7 @@ class Tally(object):
 
                             # If this region is in Cell corresponding to the
                             # distribcell filter bin, store it in dictionary
-                            if cell_id == filter._bins[0]:
+                            if cell_id == filter.bins[0]:
                                 offset = openmc_geometry.get_offset(path, 
                                      filter.offset)
                                 offsets_to_coords[offset] = coords
@@ -987,7 +996,7 @@ class Tally(object):
 
         format : str
               The format for the exported file - HDF5 ('hdf5', default) and
-              Python pickle ('pkl') files are supported.
+              Python pickle ('pkl') files are supported
 
         append : bool
               Whether or not to append the results to the file (default is True)
@@ -996,23 +1005,23 @@ class Tally(object):
         if not is_string(filename):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'filename={1} since it is not a ' \
-                  'string'.format(self._id, filename)
+                  'string'.format(self.id, filename)
             raise ValueError(msg)
 
         elif not is_string(directory):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'directory={1} since it is not a ' \
-                  'string'.format(self._id, directory)
+                  'string'.format(self.id, directory)
             raise ValueError(msg)
 
         elif not format in ['hdf5', 'pkl', 'csv']:
             msg = 'Unable to export the results for Tally ID={0} to ' \
-                  'format {1} since it is not supported'.format(self._id, format)
+                  'format {1} since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
         elif not isinstance(append, (bool, np.bool)):
             msg = 'Unable to export the results for Tally ID={0} since the ' \
-                  'append parameters is not True/False'.format(self._id, append)
+                  'append parameters is not True/False'.format(self.id, append)
             raise ValueError(msg)
 
         # Make directory if it does not exist
@@ -1033,19 +1042,19 @@ class Tally(object):
                 tally_results = h5py.File(filename, 'w')
 
             # Create an HDF5 group within the file for this particular Tally
-            tally_group = tally_results.create_group('Tally-{0}'.format(self._id))
+            tally_group = tally_results.create_group('Tally-{0}'.format(self.id))
 
             # Add basic Tally data to the HDF5 group
-            tally_group.create_dataset('id', data=self._id)
-            tally_group.create_dataset('name', data=self._name)
-            tally_group.create_dataset('estimator', data=self._estimator)
-            tally_group.create_dataset('scores', data=np.array(self._scores))
+            tally_group.create_dataset('id', data=self.id)
+            tally_group.create_dataset('name', data=self.name)
+            tally_group.create_dataset('estimator', data=self.estimator)
+            tally_group.create_dataset('scores', data=np.array(self.scores))
 
             # Add a string array of the nuclides to the HDF5 group
             nuclides = []
 
-            for nuclide in self._nuclides:
-                nuclides.append(nuclide._name)
+            for nuclide in self.nuclides:
+                nuclides.append(nuclide.name)
 
 
             tally_group.create_dataset('nuclides', data=np.array(nuclides))
@@ -1053,14 +1062,14 @@ class Tally(object):
             # Create an HDF5 sub-group for the Filters
             filter_group = tally_group.create_group('filters')
 
-            for filter in self._filters:
-                filter_group.create_dataset(filter._type, data=filter._bins)
+            for filter in self.filters:
+                filter_group.create_dataset(filter.type, data=filter.bins)
 
             # Add all results to the main HDF5 group for the Tally
-            tally_group.create_dataset('sum', data=self._sum)
-            tally_group.create_dataset('sum_sq', data=self._sum_sq)
-            tally_group.create_dataset('mean', data=self._mean)
-            tally_group.create_dataset('std_dev', data=self._std_dev)
+            tally_group.create_dataset('sum', data=self.sum)
+            tally_group.create_dataset('sum_sq', data=self.sum_sq)
+            tally_group.create_dataset('mean', data=self.mean)
+            tally_group.create_dataset('std_dev', data=self.std_dev)
 
             # Close the Tally results HDF5 file
             tally_results.close()
@@ -1080,20 +1089,20 @@ class Tally(object):
                 tally_results = {}
 
             # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-{0}'.format(self._id)] = {}
-            tally_group = tally_results['Tally-{0}'.format(self._id)]
+            tally_results['Tally-{0}'.format(self.id)] = {}
+            tally_group = tally_results['Tally-{0}'.format(self.id)]
 
             # Add basic Tally data to the nested dictionary
-            tally_group['id'] = self._id
-            tally_group['name'] = self._name
-            tally_group['estimator'] = self._estimator
-            tally_group['scores'] = np.array(self._scores)
+            tally_group['id'] = self.id
+            tally_group['name'] = self.name
+            tally_group['estimator'] = self.estimator
+            tally_group['scores'] = np.array(self.scores)
 
             # Add a string array of the nuclides to the HDF5 group
             nuclides = []
 
-            for nuclide in self._nuclides:
-                nuclides.append(nuclide._name)
+            for nuclide in self.nuclides:
+                nuclides.append(nuclide.name)
 
             tally_group['nuclides']= np.array(nuclides)
 
@@ -1101,14 +1110,14 @@ class Tally(object):
             tally_group['filters'] = {}
             filter_group = tally_group['filters']
 
-            for filter in self._filters:
-                filter_group[filter._type] = filter._bins
+            for filter in self.filters:
+                filter_group[filter.type] = filter.bins
 
             # Add all results to the main sub-dictionary for the Tally
-            tally_group['sum'] = self._sum
-            tally_group['sum_sq'] = self._sum_sq
-            tally_group['mean'] = self._mean
-            tally_group['std_dev'] = self._std_dev
+            tally_group['sum'] = self.sum
+            tally_group['sum_sq'] = self.sum_sq
+            tally_group['mean'] = self.mean
+            tally_group['std_dev'] = self.std_dev
 
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))

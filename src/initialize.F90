@@ -924,7 +924,6 @@ contains
   subroutine prepare_distribcell()
 
     integer :: i, j       ! Tally, filter loop counters
-    integer :: extra      ! Number of extra filters to add
     integer :: n_filt     ! Number of filters originally in tally
     logical :: count_all  ! Count all cells
     type(TallyObject),    pointer :: tally            ! Current tally
@@ -939,8 +938,6 @@ contains
     ! Loop over tallies    
     do i = 1, n_tallies
 
-      extra = 0
-
       ! Get pointer to tally
       tally => tallies(i)
 
@@ -953,15 +950,13 @@ contains
         ! Determine type of filter
         if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
           count_all = .true.
-          extra = extra + size(tally % filters(j) % int_bins) - 1
+          if (size(tally % filters(j) % int_bins) > 1) then
+            call fatal_error("A distribcell filter was specified with &
+                             &multiple bins. This feature is not supported.")
+          end if      
         end if
 
       end do
-
-      if (extra > 0) then
-        call fatal_error("At least one Distribcell filter was specified with &
-                         &multiple bins. This feature is not yet supported.")
-      end if      
 
     end do
     

@@ -1712,8 +1712,6 @@ contains
       end if
     end do
     
-    return
-        
   end subroutine calc_offsets
   
 !===============================================================================

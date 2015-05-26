@@ -4,6 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
+  use set_header,       only: SetInt
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists, count_instance, calc_offsets
@@ -1017,7 +1018,7 @@ contains
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer :: i, j, k, l, m                    ! Loop counters
-    type(DictIntInt) :: cell_list               ! distribells to track    
+    type(SetInt)               :: cell_list     ! distribells to track    
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice
     type(TallyObject), pointer :: tally         ! pointer to tally
@@ -1034,8 +1035,8 @@ contains
         filter => tally % filters(j)        
 
         if (filter % type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list % has_key(filter % int_bins(1))) then
-            call cell_list % add_key(filter % int_bins(1),0)
+          if (.not. cell_list % contains(filter % int_bins(1))) then
+            call cell_list % add(filter % int_bins(1))
           end if
         end if 
 
@@ -1047,7 +1048,7 @@ contains
     do i = 1, n_universes
       univ => universes(i)
       do j = 1, univ % n_cells
-        if (cell_list % has_key(univ % cells(j))) then
+        if (cell_list % contains(univ % cells(j))) then
           n_maps = n_maps + 1
           cycle
         end if
@@ -1077,7 +1078,7 @@ contains
 
       do j = 1, univ % n_cells
       
-        if (cell_list % has_key(univ % cells(j))) then
+        if (cell_list % contains(univ % cells(j))) then
           
             ! Loop over all tallies    
             do l = 1, n_tallies

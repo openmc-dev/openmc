@@ -930,7 +930,7 @@ contains
     type(Universe),       pointer :: univ             ! Pointer to universe
     type(Cell),           pointer :: c                ! Pointer to cell
     integer, allocatable :: univ_list(:)              ! Target offsets
-    integer, allocatable :: kounts(:,:)               ! Target count
+    integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
 
     count_all = .false.
@@ -988,18 +988,18 @@ contains
     end if
 
     ! Allocate offset maps at each level in the geometry
-    call allocate_offsets(univ_list, kounts, found)
+    call allocate_offsets(univ_list, counts, found)
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes  
         univ => universes(j)
-        call calc_offsets(univ_list(i), i, univ, kounts, found)
+        call calc_offsets(univ_list(i), i, univ, counts, found)
       end do
     end do
 
     ! Deallocate temporary target variable arrays
-    deallocate(kounts)
+    deallocate(counts)
     deallocate(found)
     deallocate(univ_list)
   
@@ -1012,10 +1012,10 @@ contains
 ! memory for distribcell offset tables
 !===============================================================================
 
-  recursive subroutine allocate_offsets(univ_list, kounts, found)
+  recursive subroutine allocate_offsets(univ_list, counts, found)
 
     integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
-    integer, intent(out), allocatable     :: kounts(:,:)  ! Target count
+    integer, intent(out), allocatable     :: counts(:,:)  ! Target count
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer :: i, j, k, l, m                    ! Loop counters
@@ -1063,14 +1063,14 @@ contains
     allocate(univ_list(n_maps))
 
     ! Allocate list to accumulate target distribccell counts in each universe
-    allocate(kounts(n_universes, n_maps))
+    allocate(counts(n_universes, n_maps))
 
     ! Allocate list to track if target distribcells are found in each universe
     allocate(found(n_universes, n_maps))
 
     do i = 1, n_universes
       do j = 1, n_maps
-          kounts(i,j) = 0
+          counts(i,j) = 0
           found(i,j) = .false.
         end do
     end do

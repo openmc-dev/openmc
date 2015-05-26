@@ -1099,7 +1099,6 @@ contains
           
           univ_list(k) = univ % id
           k = k + 1
-          cycle
         end if
       end do
     end do

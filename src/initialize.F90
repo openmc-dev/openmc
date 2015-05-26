@@ -1005,8 +1005,6 @@ contains
   
   end subroutine prepare_distribcell
 
-
-  
 !===============================================================================
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
 ! memory for distribcell offset tables

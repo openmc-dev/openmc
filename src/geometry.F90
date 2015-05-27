@@ -131,7 +131,6 @@ contains
     integer,        optional      :: search_cells(:)
 
     integer :: i                    ! index over cells
-    integer :: j                    ! index over distribcell maps
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -586,7 +585,6 @@ contains
     integer,        intent(in)    :: lattice_translation(3)
 
     integer :: i_xyz(3)       ! indices in lattice
-    integer :: i              ! map loop index
     logical :: found          ! particle found in cell?
     class(Lattice),   pointer :: lat
     type(LocalCoord), pointer :: parent_coord
@@ -637,10 +635,8 @@ contains
       if (.not. associated(p % coord % mapping)) then
         allocate(p % coord % mapping(n_maps))
       end if
-      do i = 1, n_maps
-        p % coord % mapping(i) = lat % offset(i, i_xyz(1), i_xyz(2), i_xyz(3))
-      end do
-
+      p % coord % mapping(:) = lat % offset(:, i_xyz(1), i_xyz(2), i_xyz(3))
+   
       call find_cell(p, found)
       if (.not. found) then
         ! In some circumstances, a particle crossing the corner of a cell may
@@ -1617,8 +1613,8 @@ contains
 
   subroutine calc_offsets(goal, map, univ, counts, found)
 
-    integer, intent(in) :: goal                ! target universe ID
-    integer, intent(in) :: map                 ! map index in vector of maps
+    integer, intent(inout) :: goal             ! target universe ID
+    integer, intent(inout) :: map              ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
     integer, intent(inout)     :: counts(:,:)  ! Target count
     logical, intent(inout)     :: found(:,:)   ! Target found
@@ -1677,7 +1673,8 @@ contains
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
-                offset = offset + count_target(next_univ,counts,found,goal,map)
+                offset = offset + &
+                     count_target(next_univ, counts, found, goal, map)
               end do
             end do
           end do
@@ -1720,14 +1717,14 @@ contains
     type(Universe), intent(inout) :: univ         ! universe to search through
     integer, intent(inout)        :: counts(:,:)  ! Target count
     logical, intent(inout)        :: found(:,:)   ! Target found
-    integer, intent(in) :: goal            ! target universe ID
-    integer             :: count           ! number of times target located
-    integer             :: map             ! current map
+    integer, intent(inout)        :: goal         ! target universe ID
+    integer, intent(inout)        :: map          ! current map
 
     integer :: i                           ! index over cells
     integer :: j, k, m                     ! indices in lattice
     integer :: n                           ! number of cells to search
     integer :: cell_index                  ! index in cells array
+    integer :: count                       ! number of times target located
     type(Cell),     pointer :: c           ! pointer to current cell
     type(Universe), pointer :: next_univ   ! next univ to loop through
     class(Lattice), pointer :: lat         ! pointer to current lattice
@@ -1799,7 +1796,8 @@ contains
                   cycle
                 end if
               
-                count = count + count_target(next_univ,counts,found,goal,map)
+                count = count + &
+                     count_target(next_univ, counts, found, goal, map)
 
               end do
             end do
@@ -1826,7 +1824,8 @@ contains
                       cycle
                     end if
 
-                    count = count+count_target(next_univ,counts,found,goal,map)
+                    count = count + &
+                         count_target(next_univ, counts, found, goal, map)
                   end if
                 end do
               end do

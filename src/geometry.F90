@@ -266,10 +266,7 @@ contains
           if (.not. associated(p % coord % mapping)) then
             allocate(p % coord % mapping(n_maps))
           end if
-
-          do j = 1, n_maps
-            p % coord % mapping(j) = lat % offset(j, i_xyz(1), i_xyz(2), i_xyz(3))
-          end do
+          p % coord % mapping(:) = lat % offset(:, i_xyz(1), i_xyz(2), i_xyz(3))
         end if
 
         call find_cell(p, found)

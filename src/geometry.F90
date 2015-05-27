@@ -1682,7 +1682,7 @@ contains
               do m = 1, lat % n_cells(3)
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
-                offset = offset+count_target(next_univ,counts,found,goal,map)
+                offset = offset + count_target(next_univ,counts,found,goal,map)
               end do
             end do
           end do
@@ -1702,7 +1702,8 @@ contains
                 else
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % universes(j, k, m))
-                  offset = offset+count_target(next_univ,counts,found,goal,map)
+                  offset = offset + 
+                       count_target(next_univ, counts, found, goal, map)
                 end if
               end do
             end do

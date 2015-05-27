@@ -1616,8 +1616,8 @@ contains
     integer, intent(inout) :: goal             ! target universe ID
     integer, intent(inout) :: map              ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
-    integer, intent(inout)     :: counts(:,:)  ! Target count
-    logical, intent(inout)     :: found(:,:)   ! Target found
+    integer, intent(inout)     :: counts(:,:)  ! target count
+    logical, intent(inout)     :: found(:,:)   ! target found
 
     integer :: i                          ! index over cells
     integer :: j, k, m                    ! indices in lattice
@@ -1715,8 +1715,8 @@ contains
   recursive function count_target(univ, counts, found, goal, map) result(count)
 
     type(Universe), intent(inout) :: univ         ! universe to search through
-    integer, intent(inout)        :: counts(:,:)  ! Target count
-    logical, intent(inout)        :: found(:,:)   ! Target found
+    integer, intent(inout)        :: counts(:,:)  ! target count
+    logical, intent(inout)        :: found(:,:)   ! target found
     integer, intent(inout)        :: goal         ! target universe ID
     integer, intent(inout)        :: map          ! current map
 

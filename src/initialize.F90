@@ -1050,7 +1050,6 @@ contains
       do j = 1, univ % n_cells
         if (cell_list % contains(univ % cells(j))) then
           n_maps = n_maps + 1
-          cycle
         end if
       end do
     end do
@@ -1064,13 +1063,8 @@ contains
     ! Allocate list to track if target distribcells are found in each universe
     allocate(found(n_universes, n_maps))
 
-    do i = 1, n_universes
-      do j = 1, n_maps
-        counts(i,j) = 0
-        found(i,j) = .false.
-      end do
-    end do
-
+    counts(:,:) = 0
+    found(:,:) = .false.
     k = 1
 
     do i = 1, n_universes

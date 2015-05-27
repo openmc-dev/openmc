@@ -203,9 +203,7 @@ contains
         if (.not. associated(p % coord % mapping)) then
           allocate(p % coord % mapping(n_maps))
         end if
-        do j = 1, n_maps
-          p % coord % mapping(j) = c % offset(j)
-        end do
+        p % coord % mapping(:) = c % offset(:)
 
         ! Apply translation
         if (allocated(c % translation)) then
@@ -1702,7 +1700,7 @@ contains
                 else
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % universes(j, k, m))
-                  offset = offset + 
+                  offset = offset + &
                        count_target(next_univ, counts, found, goal, map)
                 end if
               end do

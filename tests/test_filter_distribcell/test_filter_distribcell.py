@@ -88,10 +88,6 @@ def test_results():
 def teardown():
     cwd = os.getcwd()
     output = glob.glob(cwd + '/statepoint.*')
-    output.append(cwd + '/geometry.xml')
-    output.append(cwd + '/materials.xml')
-    output.append(cwd + '/settings.xml')
-    output.append(cwd + '/tallies.xml')
     output.append(cwd + '/results_test.dat')
     for f in output:
         if os.path.exists(str(f)):

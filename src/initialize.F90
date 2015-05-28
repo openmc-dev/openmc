@@ -4,6 +4,7 @@ module initialize
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
+  use set_header,       only: SetInt
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists, count_instance, calc_offsets
@@ -924,22 +925,19 @@ contains
   subroutine prepare_distribcell()
 
     integer :: i, j       ! Tally, filter loop counters
-    integer :: extra      ! Number of extra filters to add
     integer :: n_filt     ! Number of filters originally in tally
     logical :: count_all  ! Count all cells
     type(TallyObject),    pointer :: tally            ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
     type(Cell),           pointer :: c                ! Pointer to cell
     integer, allocatable :: univ_list(:)              ! Target offsets
-    integer, allocatable :: kounts(:,:)               ! Target count
+    integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
 
     count_all = .false.
 
     ! Loop over tallies    
     do i = 1, n_tallies
-
-      extra = 0
 
       ! Get pointer to tally
       tally => tallies(i)
@@ -953,15 +951,13 @@ contains
         ! Determine type of filter
         if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
           count_all = .true.
-          extra = extra + size(tally % filters(j) % int_bins) - 1
+          if (size(tally % filters(j) % int_bins) > 1) then
+            call fatal_error("A distribcell filter was specified with &
+                             &multiple bins. This feature is not supported.")
+          end if      
         end if
 
       end do
-
-      if (extra > 0) then
-        call fatal_error("At least one Distribcell filter was specified with &
-                         &multiple bins. This feature is not yet supported.")
-      end if      
 
     end do
     
@@ -993,38 +989,36 @@ contains
     end if
 
     ! Allocate offset maps at each level in the geometry
-    call allocate_offsets(univ_list, kounts, found)
+    call allocate_offsets(univ_list, counts, found)
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes  
         univ => universes(j)
-        call calc_offsets(univ_list(i), i, univ, kounts, found)
+        call calc_offsets(univ_list(i), i, univ, counts, found)
       end do
     end do
 
     ! Deallocate temporary target variable arrays
-    deallocate(kounts)
+    deallocate(counts)
     deallocate(found)
     deallocate(univ_list)
   
   end subroutine prepare_distribcell
 
-
-  
 !===============================================================================
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
 ! memory for distribcell offset tables
 !===============================================================================
 
-  recursive subroutine allocate_offsets(univ_list, kounts, found)
+  recursive subroutine allocate_offsets(univ_list, counts, found)
 
     integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
-    integer, intent(out), allocatable     :: kounts(:,:)  ! Target count
+    integer, intent(out), allocatable     :: counts(:,:)  ! Target count
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer :: i, j, k, l, m                    ! Loop counters
-    type(DictIntInt) :: cell_list               ! distribells to track    
+    type(SetInt)               :: cell_list     ! distribells to track    
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice
     type(TallyObject), pointer :: tally         ! pointer to tally
@@ -1041,8 +1035,8 @@ contains
         filter => tally % filters(j)        
 
         if (filter % type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list % has_key(filter % int_bins(1))) then
-            call cell_list % add_key(filter % int_bins(1),0)
+          if (.not. cell_list % contains(filter % int_bins(1))) then
+            call cell_list % add(filter % int_bins(1))
           end if
         end if 
 
@@ -1053,14 +1047,10 @@ contains
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
       univ => universes(i)
-
       do j = 1, univ % n_cells
-
-        if (cell_list % has_key(univ % cells(j))) then
+        if (cell_list % contains(univ % cells(j))) then
           n_maps = n_maps + 1
-          cycle
         end if
-
       end do
     end do
     
@@ -1068,26 +1058,21 @@ contains
     allocate(univ_list(n_maps))
 
     ! Allocate list to accumulate target distribccell counts in each universe
-    allocate(kounts(n_universes, n_maps))
+    allocate(counts(n_universes, n_maps))
 
     ! Allocate list to track if target distribcells are found in each universe
     allocate(found(n_universes, n_maps))
 
-    do i = 1, n_universes
-      do j = 1, n_maps
-          kounts(i,j) = 0
-          found(i,j) = .false.
-        end do
-    end do
-
+    counts(:,:) = 0
+    found(:,:) = .false.
     k = 1
+
     do i = 1, n_universes
-    
       univ => universes(i)
 
       do j = 1, univ % n_cells
       
-        if (cell_list % has_key(univ % cells(j))) then
+        if (cell_list % contains(univ % cells(j))) then
           
             ! Loop over all tallies    
             do l = 1, n_tallies
@@ -1109,7 +1094,6 @@ contains
           
           univ_list(k) = univ % id
           k = k + 1
-          cycle
         end if
       end do
     end do

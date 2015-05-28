@@ -28,7 +28,6 @@ module geometry_header
     integer              :: outside          ! Material to fill area outside
     integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
-    integer :: level                         ! Level of lattice
     integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
     
     contains

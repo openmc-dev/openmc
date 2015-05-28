@@ -1218,8 +1218,9 @@ The ``<tally>`` element accepts the following sub-elements:
     The ``filter`` element has the following attributes/sub-elements:
 
       :type:
-        The type of the filter. Accepted options are "cell", "cellborn",
-        "material", "universe", "energy", "energyout", and "mesh".
+        The type of the filter. Accepted options are "cell", "cellborn", 
+        "material", "universe", "energy", "energyout", "mesh", and 
+        "distribcell".
 
       :bins:
         For each filter type, the corresponding ``bins`` entry is given as
@@ -1257,6 +1258,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
         :mesh:
           The ``id`` of a structured mesh to be tallied over.
+
+        :distribcell:
+          The single cell which should be tallied uniquely for all instances.
+
+          .. note::
+              The distribcell filter will take a single cell ID and will tally
+              each unique occurrence of that cell separately. This filter will
+              not accept more than one cell ID. It is not recommended to combine
+              this filter with a cell or mesh filter.
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the

@@ -170,11 +170,19 @@ endif()
 # Only initialize git submodules if it is not there. User is responsible
 # for future updates of fox xml submodule.
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox/.git)
-  message("-- Initializing/Updating FoX XML submodule...")
-  execute_process(COMMAND git submodule init
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-  execute_process(COMMAND git submodule update
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../.git)
+    message("-- Cloning FoX XML git repository...")
+    execute_process(COMMAND git clone https://github.com/mit-crpg/fox.git src/xml/fox
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    execute_process(COMMAND git checkout bdc852f4f43d969fb1b179cba79295c1e095a455
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/xml/fox)
+  else()
+    message("-- Initializing/Updating FoX XML submodule...")
+    execute_process(COMMAND git submodule init
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    execute_process(COMMAND git submodule update
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  endif()
 endif()
 add_subdirectory(xml/fox)
 

@@ -65,10 +65,7 @@ sp3_t2_d1 = sp3_t2.get_values(scores=['total'], filters=['distribcell'],
 
 sp3_t3_c60 = sp3_t3.get_values(scores=['total'], filters=['cell'],
                                filter_bins=[(26,)], value='mean')
-sp3_t4_d = 0
-for i in range(241):
-  sp3_t4_d += sp3_t4.get_values(scores=['total'], filters=['distribcell'],
-                                filter_bins=[(i,)], value='mean')
+sp3_t4_d = sum(sp3_t4.get_values(scores=['total'], value='mean'))
 
 sp3_t5_c27 = sp3_t5.get_values(scores=['total'], filters=['cell'],
                                filter_bins=[(19,)], value='mean')
@@ -90,7 +87,7 @@ outstr += "{0:12.6E}\n".format(sp1_t1_d2[()])
 outstr += "{0:12.6E}\n".format(sp3_t1_c1[()])
 outstr += "{0:12.6E}\n".format(sp3_t2_d1[()])
 outstr += "{0:12.6E}\n".format(sp3_t3_c60[()])
-outstr += "{0:12.6E}\n".format(sp3_t4_d[()])
+outstr += "{0:12.6E}\n".format(sp3_t4_d)
 outstr += "{0:12.6E}\n".format(sp3_t5_c27[()])
 outstr += "{0:12.6E}\n".format(sp3_t6_d)
 

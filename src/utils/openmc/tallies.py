@@ -606,6 +606,10 @@ class Tally(object):
                 corresponding to the energy boundaries of the bin of interest.
                 The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
                 the mesh cell of interest.
+
+        Returns
+        -------
+             The index in the Tally data array for this filter bin.
         """
 
         # Find the equivalent Filter in this Tally's list of Filters
@@ -623,6 +627,10 @@ class Tally(object):
         ----------
         nuclide : str
                 The name of the Nuclide (e.g., 'H-1', 'U-238')
+
+        Returns
+        -------
+             The index in the Tally data array for this nuclide.
         """
 
         nuclide_index = -1
@@ -657,6 +665,10 @@ class Tally(object):
         ----------
         score : str
                 The score string (e.g., 'absorption', 'nu-fission')
+
+        Returns
+        -------
+             The index in the Tally data array for this score.
         """
 
         try:
@@ -707,7 +719,24 @@ class Tally(object):
         value : str
               A string for the type of value to return  - 'mean' (default),
               'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+             A scalar or NumPy array of the Tally data indexed in the order
+             each filter, nuclide and score is listed in the parameters.
+
+        Raises
+        ------
+             KeyError: An error when this routine is called before the Tally
+             is populated with data by the StatePoint.read_results() routine.
         """
+
+        if not (self._sum and self._sum_sq):
+            msg = 'The Tally ID={0} has no data to return. Call the ' \
+                  'StatePoint.read_results() routine before using ' \
+                  'Tally.get_values(...)'.format(self.id)
+            raise KeyError(msg)
+
 
         # Compute batch statistics if not yet computed
         self.compute_std_dev()
@@ -816,9 +845,9 @@ class Tally(object):
 
         This routine constructs a Pandas DataFrame object for the Tally data
         with columns annotated by filter, nuclide and score bin information.
-        This capability has been tested for Pandas >=v0.13.1. However, it is
-        recommended to use the v0.16 or newer versions of Pandas since this
-        this routine uses the Multi-index Pandas feature, if possible.
+        This capability has been tested for Pandas >=v0.13.1. However, if p
+        possible, it is recommended to use the v0.16 or newer versions of 
+        Pandas since this this routine uses the Multi-index Pandas feature.
 
         Parameters
         ----------
@@ -837,7 +866,24 @@ class Tally(object):
               information in the Summary object is embedded into a Multi-index
               column with a geometric "path" to each distribcell intance.
               NOTE: This option requires the OpenCG Python package.
+
+        Returns
+        -------
+             A Pandas DataFrame with each column annotated by filter, nuclide
+             and score bin information (if these parameters are True), and the
+             mean and standard deviation of the Tally's data.
+
+        Raises
+        ------
+             KeyError: An error when this routine is called before the Tally
+             is populated with data by the StatePoint.read_results() routine.
         """
+
+        if not (self._sum and self._sum_sq):
+            msg = 'The Tally ID={0} has no data to return. Call the ' \
+                  'StatePoint.read_results() routine before using ' \
+                  'Tally.get_pandas_dataframe(...)'.format(self.id)
+            raise KeyError(msg)
 
         # Attempt to import the pandas package
         try:
@@ -1116,7 +1162,18 @@ class Tally(object):
 
         append : bool
               Whether or not to append the results to the file (default is True)
+
+        Raises
+        ------
+             KeyError: An error when this routine is called before the Tally
+             is populated with data by the StatePoint.read_results() routine.
         """
+
+        if not (self._sum and self._sum_sq):
+            msg = 'The Tally ID={0} has no data to export. Call the ' \
+                  'StatePoint.read_results() routine before using ' \
+                  'Tally.export_results(...)'.format(self.id)
+            raise KeyError(msg)
 
         if not is_string(filename):
             msg = 'Unable to export the results for Tally ID={0} to ' \

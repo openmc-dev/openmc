@@ -691,6 +691,7 @@ class StatePoint(object):
 
             # Get the Tally name from the summary file
             tally.name = summary.tallies[tally_id].name
+            tally.with_summary = True
 
             nuclide_zaids = copy.deepcopy(tally.nuclides)
 
@@ -727,7 +728,7 @@ class StatePoint(object):
                     for bin in filter.bins:
                         material_ids.append(summary.materials[bin].id)
                     filter.bins = material_ids
-
+ 
         self._with_summary = True
 
 

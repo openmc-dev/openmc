@@ -1,12 +1,11 @@
 import numpy as np
 
 import openmc
-from openmc.opencg_compatible import get_opencg_geometry
 
 try:
     import h5py
 except ImportError:
-    msg = 'Unable to import h5py which is necessary for openmc.summary'
+    msg = 'Unable to import h5py which is needed by openmc.summary'
     raise ImportError(msg)
 
 
@@ -557,6 +556,14 @@ class Summary(object):
 
 
     def make_opencg_geometry(self):
+
+        try:
+            from openmc.opencg_compatible import get_opencg_geometry
+        except ImportError:
+            msg = 'Unable to import opencg which is needed ' \
+                  'by Summary.make_opencg_geometry()'
+            raise ImportError(msg)
+
         if self.opencg_geometry is None:
             self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
 

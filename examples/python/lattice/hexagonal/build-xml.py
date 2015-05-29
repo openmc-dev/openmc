@@ -159,3 +159,18 @@ plot_file = openmc.PlotsFile()
 plot_file.add_plot(plot_xy)
 plot_file.add_plot(plot_yz)
 plot_file.export_to_xml()
+
+
+###############################################################################
+#                   Exporting to OpenMC tallies.xml File
+###############################################################################
+
+# Instantiate a distribcell Tally
+tally = openmc.Tally(tally_id=1)
+tally.add_filter(openmc.Filter(type='distribcell', bins=[cell2.id]))
+tally.add_score('total')
+
+# Instantiate a TalliesFile, register Tally/Mesh, and export to XML
+tallies_file = openmc.TalliesFile()
+tallies_file.add_tally(tally)
+tallies_file.export_to_xml()

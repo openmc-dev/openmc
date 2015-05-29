@@ -953,7 +953,7 @@ class Tally(object):
                         counter = 0
 
                         # Iterate over each level in the CSG tree hierarchy
-                        while(levels_remain):
+                        while levels_remain:
                             levels_remain = False
 
                             # Initialize dictionary to build Pandas Multi-index
@@ -1025,13 +1025,15 @@ class Tally(object):
 
                             # Tile the Multi-index columns
                             for level_key, level_bins in level_dict.items():
-                                level_bins = np.repeat(level_bins,filter.stride)
+                                level_bins = \
+                                     np.repeat(level_bins, filter.stride)
                                 tile_factor = data_size / len(level_bins)
                                 level_bins = np.tile(level_bins, tile_factor)
                                 level_dict[level_key] = level_bins
            
                             # Append the multi-index column to the DataFrame
-                            df = pd.concat([df,pd.DataFrame(level_dict)],axis=1)
+                            df = pd.concat([df, pd.DataFrame(level_dict)], 
+                                           axis=1)
 
                     # Create DataFrame column for distribcell instances IDs
                     # NOTE: This is performed regardless of whether the user

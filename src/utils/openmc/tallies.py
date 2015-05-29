@@ -361,7 +361,7 @@ class Tally(object):
     @with_summary.setter
     def with_summary(self, with_summary):
 
-        if not is_bool(with_summary):
+        if not isinstance(with_summary, bool):
             msg = 'Unable to set with_summary to a non-boolean ' \
                   'value "{0}"'.format(with_summary)
             raise ValueError(msg)
@@ -749,7 +749,7 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if not (self._sum and self._sum_sq):
+        if self._sum is None or self._sum_sq is None:
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_values(...)'.format(self.id)
@@ -898,7 +898,7 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if not (self._sum and self._sum_sq):
+        if self._sum is None or self._sum_sq is None:
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
@@ -1197,7 +1197,7 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if not (self._sum and self._sum_sq):
+        if self._sum is None or self._sum_sq is None:
             msg = 'The Tally ID={0} has no data to export. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.export_results(...)'.format(self.id)

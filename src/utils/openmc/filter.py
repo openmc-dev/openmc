@@ -301,6 +301,10 @@ class Filter(object):
                 corresponding to the energy boundaries of the bin of interest.
                 The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
                 the mesh cell of interest.
+        
+        Returns
+        -------
+             The index in the Tally data array for this filter bin.
         """
 
 

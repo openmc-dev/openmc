@@ -35,6 +35,7 @@ class Tally(object):
 
         self._num_score_bins = 0
         self._num_realizations = 0
+        self._with_summary = False
 
         self._sum = None
         self._sum_sq = None
@@ -225,6 +226,11 @@ class Tally(object):
 
 
     @property
+    def with_summary(self):
+        return self._with_summary
+
+
+    @property
     def sum(self):
         return self._sum
 
@@ -350,6 +356,17 @@ class Tally(object):
             raise ValueError(msg)
 
         self._num_realizations = num_realizations
+
+
+    @with_summary.setter
+    def with_summary(self, with_summary):
+
+        if not is_bool(with_summary):
+            msg = 'Unable to set with_summary to a non-boolean ' \
+                  'value "{0}"'.format(with_summary)
+            raise ValueError(msg)
+
+        self._with_summary = with_summary
 
 
     def set_results(self, sum, sum_sq):
@@ -731,6 +748,7 @@ class Tally(object):
              is populated with data by the StatePoint.read_results() routine.
         """
 
+        # Ensure that StatePoint.read_results() was called first
         if not (self._sum and self._sum_sq):
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
@@ -879,10 +897,19 @@ class Tally(object):
              is populated with data by the StatePoint.read_results() routine.
         """
 
+        # Ensure that StatePoint.read_results() was called first
         if not (self._sum and self._sum_sq):
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
+            raise KeyError(msg)
+
+        # If using Summary, ensure StatePoint.link_with_summary(...) was called
+        if summary and not self.with_summary:
+            msg = 'The Tally ID={0} has not been linked with the Summary. ' \
+                  'Call the StatePoint.link_with_summary(...) routine ' \
+                  'before using Tally.get_pandas_dataframe(...) with ' \
+                  'Summary info'.format(self.id)
             raise KeyError(msg)
 
         # Attempt to import the pandas package
@@ -1169,6 +1196,7 @@ class Tally(object):
              is populated with data by the StatePoint.read_results() routine.
         """
 
+        # Ensure that StatePoint.read_results() was called first
         if not (self._sum and self._sum_sq):
             msg = 'The Tally ID={0} has no data to export. Call the ' \
                   'StatePoint.read_results() routine before using ' \

@@ -147,6 +147,7 @@
                       <value>material</value>
                       <value>universe</value>
                       <value>surface</value>
+                      <value>distribcell</value>
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
@@ -159,6 +160,7 @@
                       <value>material</value>
                       <value>universe</value>
                       <value>surface</value>
+                      <value>distribcell</value>
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>

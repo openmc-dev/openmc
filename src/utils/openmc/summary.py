@@ -277,6 +277,12 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
+                maps = self._f['geometry/cells'][key]['maps'][0]
+
+                if maps > 0:
+                    offset = self._f['geometry/cells'][key]['offset'][...]
+                    cell.set_offset(offset)
+
                 translated = self._f['geometry/cells'][key]['translated'][0]
                 if translated:
                     translation = \
@@ -354,6 +360,11 @@ class Summary(object):
             index = self._f['geometry/lattices'][key]['index'][0]
             name = self._f['geometry/lattices'][key]['name'][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
+            maps = self._f['geometry/lattices'][key]['maps'][0]
+            offset_size = self._f['geometry/lattices'][key]['offset_size'][0]
+
+            if offset_size > 0:
+                offsets = self._f['geometry/lattices'][key]['offsets'][...]
 
             if lattice_type == 'rectangular':
                 dimension = self._f['geometry/lattices'][key]['dimension'][...]
@@ -395,6 +406,11 @@ class Summary(object):
                 universes = universes[:,::-1,:]
                 lattice.universes = universes
 
+                if offset_size > 0:
+                    offsets = np.swapaxes(offsets, 0, 1)
+                    offsets = np.swapaxes(offsets, 1, 2)
+                    lattice.offsets = offsets
+
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
 
@@ -429,6 +445,9 @@ class Summary(object):
                             if universe_ids[i,j,k] != -1:
                               universes[i,j,k] = \
                                    self.get_universe_by_id(universe_ids[i,j,k])
+
+                if offset_size > 0:
+                    lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
@@ -514,15 +533,15 @@ class Summary(object):
 
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
-                # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type = self._f['{0}/type_name'.format(subsubbase)][0]
+                # Read filter type (e.g., "cell", "energy", etc.) integer code
+                filter_type = self._f['{0}/type'.format(subsubbase)][0]
 
                 # Read the filter bins
                 num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(filter_type, bins)
+                filter = openmc.Filter(openmc.FILTER_TYPES[filter_type], bins)
                 filter.num_bins = num_bins
 
                 # Add Filter to the Tally

@@ -56,15 +56,28 @@ for adir in sorted(folders):
     for i in range(35 - sz):
         print('.', end="")
 
+    # Handle source file test separately since it requires running OpenMC twice
     if adir == 'test_source_file':
-        # Handle source file test separately since it requires running OpenMC
-        # twice
         if os.path.exists('results_error.dat'):
             os.remove('results_error.dat')
         proc = Popen(['python', 'test_source_file.py', '--exe', openmc_exe],
                      stderr=STDOUT, stdout=PIPE)
         returncode = proc.wait()
         if os.path.exists('results_error.dat'):
+            os.rename('results_error.dat', 'results_true.dat')
+        print(BOLD + OKGREEN + "[OK]" + ENDC)
+        os.chdir('..')
+        continue
+
+    # Handle distribcell test separately since it requires running OpenMC 3x
+    elif adir == 'test_filter_distribcell':
+        if os.path.exists('results_error.dat'):
+            os.remove('results_error.dat')
+        proc = Popen(['python', 'test_filter_distribcell.py',
+                      '--exe', openmc_exe], stderr=STDOUT, stdout=PIPE)
+        returncode = proc.wait()
+        if os.path.exists('results_error.dat'):
+            print('renamed results_error!!!')
             os.rename('results_error.dat', 'results_true.dat')
         print(BOLD + OKGREEN + "[OK]" + ENDC)
         os.chdir('..')

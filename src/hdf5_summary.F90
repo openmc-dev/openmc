@@ -154,6 +154,14 @@ contains
         call su % write_data(universes(c % fill) % id, "fill", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
 
+        call su % write_data(size(c % offset), "maps", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        if (size(c % offset) > 0) then
+          call su % write_data(c % offset, "offset", &
+               length=size(c % offset), &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
         if (allocated(c % translation)) then
           call su % write_data(1, "translated", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -164,7 +172,7 @@ contains
                group="geometry/cells/cell " // trim(to_str(c % id)))
         end if
 
-        if (allocated(c % rotation_matrix)) then
+        if (allocated(c % rotation)) then
           call su % write_data(1, "rotated", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
           call su % write_data(c % rotation, "rotation", length=3, &
@@ -352,6 +360,16 @@ contains
 
         call su % write_data(lat % outer, "outer", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset), "offset_size", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset,1), "maps", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        if (size(lat % offset) > 0) then
+          call su % write_data(lat % offset, "offsets", &
+               length=shape(lat % offset), &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
@@ -398,13 +416,23 @@ contains
 
         call su % write_data(lat % outer, "outer", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset), "offset_size", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset,1), "maps", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        if (size(lat % offset) > 0) then
+          call su % write_data(lat % offset, "offsets", &
+               length=shape(lat % offset), &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(2*lat % n_rings - 1, 2*lat % n_rings - 1, &
             &lat % n_axial))
-        do j = 1, lat % n_axial
+        do m = 1, lat % n_axial
           do k = 1, 2*lat % n_rings - 1
-            do m = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
               if (j + k < lat % n_rings + 1) then
                 ! This array position is never used; put a -1 to indicate this
                 lattice_universes(j,k,m) = -1
@@ -488,6 +516,7 @@ contains
         call su % write_data(m % i_sab_tables, "i_sab_tables", &
              length=m % n_sab, &
              group="materials/material " // trim(to_str(m % id)))
+
         do j = 1, m % n_sab
           call su % write_data(m % sab_names(j), to_str(j), &
                group="materials/material " // &

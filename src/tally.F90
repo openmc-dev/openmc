@@ -3,6 +3,7 @@ module tally
   use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
+  use geometry_header
   use global
   use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
@@ -10,7 +11,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord, Particle
+  use particle_header,  only: LocalCoord, Particle, deallocate_coord
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -1109,6 +1110,7 @@ contains
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
+    integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
@@ -1152,6 +1154,23 @@ contains
         end do
         nullify(coord)
 
+      case (FILTER_DISTRIBCELL)
+        ! determine next distribcell bin
+        matching_bins(i) = NO_BIN_FOUND
+        coord => p % coord0
+        offset = 0
+        do while(associated(coord))
+          if (associated(coord % mapping)) then
+            offset = offset + coord % mapping(t % filters(i) % offset)
+          end if
+          if (t % filters(i) % int_bins(1) == coord % cell) then
+            matching_bins(i) = offset + 1
+            exit
+          end if
+          coord => coord % next
+        end do
+        nullify(coord)
+        
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
         matching_bins(i) = get_next_bin(FILTER_CELLBORN, &

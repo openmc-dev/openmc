@@ -2542,49 +2542,41 @@ contains
           n_words = get_arraysize_string(node_tal, "nuclides")
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
+
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
               t % nuclide_bins(j) = -1
               cycle
             end if
 
-            ! Check if xs specifier was given
-            if (ends_with(sarray(j), 'c')) then
-              word = sarray(j)
-            else
-              if (default_xs == '') then
-                ! No default cross section specified, search through nuclides
-                pair_list => nuclide_dict % keys()
-                do while (associated(pair_list))
-                  if (starts_with(pair_list % key, &
-                       sarray(j))) then
-                    word = pair_list % key(1:150)
-                    exit
-                  end if
+            ! If a specific nuclide was specified
+            word = to_lower(sarray(j))
 
-                  ! Advance to next
-                  pair_list => pair_list % next
-                end do
+            ! Append default_xs specifier to nuclide if needed
+            if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
+              word = word // "." // default_xs
+            end if
 
-                ! Check if no nuclide was found
-                if (.not. associated(pair_list)) then
-                  call fatal_error("Could not find the nuclide " &
-                       &// trim(sarray(j)) // " specified in tally " &
-                       &// trim(to_str(t % id)) // " in any material.")
-                end if
-                deallocate(pair_list)
-              else
-                ! Set nuclide to default xs
-                word = trim(sarray(j)) // "." // default_xs
+            ! Search through nuclides
+            pair_list => nuclide_dict % keys()
+            do while (associated(pair_list))
+              call write_message(pair_list % key)
+              if (starts_with(pair_list % key, word)) then
+                word = pair_list % key(1:150)
+                exit
               end if
-            end if
 
-            ! Check to make sure nuclide specified is in problem
-            if (.not. nuclide_dict % has_key(to_lower(word))) then
-              call fatal_error("The nuclide " // trim(word) // " from tally " &
-                   &// trim(to_str(t % id)) &
-                   &// " is not present in any material.")
+              ! Advance to next
+              pair_list => pair_list % next
+            end do
+
+            ! Check if no nuclide was found
+            if (.not. associated(pair_list)) then
+              call fatal_error("Could not find the nuclide " &
+                   &// trim(word) // " specified in tally " &
+                   &// trim(to_str(t % id)) // " in any material.")
             end if
+            deallocate(pair_list)
 
             ! Set bin to index in nuclides array
             t % nuclide_bins(j) = nuclide_dict % get_key(to_lower(word))

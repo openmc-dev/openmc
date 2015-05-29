@@ -2579,7 +2579,7 @@ contains
             deallocate(pair_list)
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get_key(to_lower(word))
+            t % nuclide_bins(j) = nuclide_dict % get_key(word)
           end do
 
           ! Set number of nuclide bins

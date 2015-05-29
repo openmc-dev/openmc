@@ -919,12 +919,12 @@ class Tally(object):
 
                         # Create and extract the OpenCG geometry the Summary
                         summary.make_opencg_geometry()
-                        opencg_goemetry = summary.opencg_geometry
+                        opencg_geometry = summary.opencg_geometry
                         openmc_geometry = summary.openmc_geometry
 
                         # Use OpenCG to compute the number of regions
-                        opencg_goemetry.initializeCellOffsets()
-                        num_regions = opencg_goemetry._num_regions
+                        opencg_geometry.initializeCellOffsets()
+                        num_regions = opencg_geometry._num_regions
 
                         # Initialize a dictionary mapping OpenMC distribcell
                         # offsets to OpenCG LocalCoords linked lists
@@ -933,7 +933,7 @@ class Tally(object):
                         # Use OpenCG to compute LocalCoords linked list for 
                         # each region and store in dictionary 
                         for region in range(num_regions):
-                            coords = opencg_goemetry.findRegion(region)
+                            coords = opencg_geometry.findRegion(region)
                             path = opencg.get_path(coords)
                             cell_id = path[-1]
 

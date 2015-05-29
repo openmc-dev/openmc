@@ -673,7 +673,7 @@ class StatePoint(object):
 
         This routine retrieves model information (materials, geometry) from a
         Summary object populated with an HDF5 'summary.h5' file and inserts
-        it into the Tally objects. This can be helpful when ciewing and
+        it into the Tally objects. This can be helpful when viewing and
         manipulating large scale Tally data.
 
         Parameters

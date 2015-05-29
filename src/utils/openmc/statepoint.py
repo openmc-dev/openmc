@@ -579,7 +579,7 @@ class StatePoint(object):
 
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, estimator=None):
+                  name=None, id=None, estimator=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -590,19 +590,31 @@ class StatePoint(object):
         Parameters
         ----------
         scores : list
-                A list of one or more score strings (default is [])
+             A list of one or more score strings (default is []).
 
         filters : list
-                A list of Filter objects (default is [])
+             A list of Filter objects (default is []).
 
         nuclides : list
-                A list of Nuclide objects (default is [])
+             A list of Nuclide objects (default is []).
 
         name : str
-                The name specified for the Tally (default is None)
+             The name specified for the Tally (default is None).
+
+        id : int
+             The id specified for the Tally (default is None).
 
         estimator: str
-                The type of estimator ('tracklength', 'analog'; default is None)
+             The type of estimator ('tracklength', 'analog'; default is None).
+
+        Returns
+        -------
+             A Tally object.
+
+        Raises
+        ------
+             LookupError : An error when a Tally meeting all of the input 
+             parameters cannot be found in the statepoint.
         """
 
         tally = None
@@ -611,7 +623,11 @@ class StatePoint(object):
         for tally_id, test_tally in self.tallies.items():
 
             # Determine if Tally has queried name
-            if name and not name == test_tally.name:
+            if name and name != test_tally.name:
+                continue
+
+            # Determine if Tally has queried id
+            if id and id != test_tally.id:
                 continue
 
             # Determine if Tally has queried estimator
@@ -679,7 +695,12 @@ class StatePoint(object):
         Parameters
         ----------
         summary : Summary
-                A Summary object
+             A Summary object.
+
+        Raises
+        ------
+             ValueError : An error when the argument passed to the 'summary' 
+             parameter is not an openmc.Summary object.
         """
 
         if not isinstance(summary, openmc.summary.Summary):

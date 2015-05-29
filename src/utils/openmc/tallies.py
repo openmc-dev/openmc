@@ -613,16 +613,16 @@ class Tally(object):
         Parameters
         ----------
         filter_type : str
-                The type of Filter (e.g., 'cell', 'energy', etc.)
+             The type of Filter (e.g., 'cell', 'energy', etc.)
 
         filter_bin : int, list
-                The bin is an integer ID for 'material', 'surface', 'cell',
-                'cellborn', and 'universe' Filters. The bin is an integer for
-                the cell instance ID for 'distribcell' Filters. The bin is
-                a 2-tuple of floats for 'energy' and 'energyout' filters
-                corresponding to the energy boundaries of the bin of interest.
-                The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
-                the mesh cell of interest.
+              The bin is an integer ID for 'material', 'surface', 'cell',
+              'cellborn', and 'universe' Filters. The bin is an integer for
+              the cell instance ID for 'distribcell' Filters. The bin is
+              a 2-tuple of floats for 'energy' and 'energyout' filters
+              corresponding to the energy boundaries of the bin of interest.
+              The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
+              the mesh cell of interest.
 
         Returns
         -------
@@ -643,11 +643,16 @@ class Tally(object):
         Parameters
         ----------
         nuclide : str
-                The name of the Nuclide (e.g., 'H-1', 'U-238')
+             The name of the Nuclide (e.g., 'H-1', 'U-238')
 
         Returns
         -------
              The index in the Tally data array for this nuclide.
+
+        Raises
+        ------
+             KeyError : An error when the argument passed to the 'nuclide' 
+             parameter cannot be found in the Tally.
         """
 
         nuclide_index = -1
@@ -670,7 +675,7 @@ class Tally(object):
         if nuclide_index == -1:
             msg = 'Unable to get the nuclide index for Tally since "{0}" ' \
                   'is not one of the nuclides'.format(nuclide)
-            raise ValueError(msg)
+            raise KeyError(msg)
         else:
             return nuclide_index
 
@@ -681,11 +686,16 @@ class Tally(object):
         Parameters
         ----------
         score : str
-                The score string (e.g., 'absorption', 'nu-fission')
+             The score string (e.g., 'absorption', 'nu-fission')
 
         Returns
         -------
              The index in the Tally data array for this score.
+
+        Raises
+        ------
+             ValueError: An error when the argument passed to the 'score' 
+             parameter cannot be found in the Tally.
         """
 
         try:
@@ -710,32 +720,32 @@ class Tally(object):
         Parameters
         ----------
         scores : list
-                A list of one or more score strings
-                (e.g., ['absorption', 'nu-fission']; default is [])
+             A list of one or more score strings
+             (e.g., ['absorption', 'nu-fission']; default is [])
 
         filters : list
-                A list of filter type strings
-                (e.g., ['mesh', 'energy']; default is [])
+             A list of filter type strings
+             (e.g., ['mesh', 'energy']; default is [])
 
         filter_bins : list
-                A list of the filter bins corresponding to the filter_types
-                parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
-                in the list is the integer ID for 'material', 'surface', 'cell',
-                'cellborn', and 'universe' Filters. Each bin is an integer for
-                the cell instance ID for 'distribcell Filters. Each bin is
-                a 2-tuple of floats for 'energy' and 'energyout' filters
-                corresponding to the energy boundaries of the bin of interest.
-                The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
-                to the mesh cell of interest. The order of the bins in the list
-                must correspond of the filter_types parameter.
+             A list of the filter bins corresponding to the filter_types
+             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
+             in the list is the integer ID for 'material', 'surface', 'cell',
+             'cellborn', and 'universe' Filters. Each bin is an integer for
+             the cell instance ID for 'distribcell Filters. Each bin is
+             a 2-tuple of floats for 'energy' and 'energyout' filters
+             corresponding to the energy boundaries of the bin of interest.
+             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
+             to the mesh cell of interest. The order of the bins in the list
+             must correspond of the filter_types parameter.
 
         nuclides : list
-                A list of nuclide name strings
-                (e.g., ['U-235', 'U-238']; default is [])
+             A list of nuclide name strings
+             (e.g., ['U-235', 'U-238']; default is [])
 
         value : str
-              A string for the type of value to return  - 'mean' (default),
-              'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+             A string for the type of value to return  - 'mean' (default),
+             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
 
         Returns
         -------
@@ -744,7 +754,7 @@ class Tally(object):
 
         Raises
         ------
-             KeyError: An error when this routine is called before the Tally
+             ValueError : An error when this routine is called before the Tally
              is populated with data by the StatePoint.read_results() routine.
         """
 
@@ -753,7 +763,7 @@ class Tally(object):
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_values(...)'.format(self.id)
-            raise KeyError(msg)
+            raise ValueError(msg)
 
 
         # Compute batch statistics if not yet computed
@@ -870,20 +880,20 @@ class Tally(object):
         Parameters
         ----------
         filters : bool
-              Include columns with filter bin information (default is True).
+             Include columns with filter bin information (default is True).
 
         nuclides : bool
-              Include columns with nuclide bin information (default is True).
+             Include columns with nuclide bin information (default is True).
 
         scores : bool
-              Include columns with score bin information (default is True).
+             Include columns with score bin information (default is True).
 
         summary : None or Summary
-              An optional Summary object to be used to construct columns for
-              for distribcell tally filters (default is None). The geometric
-              information in the Summary object is embedded into a Multi-index
-              column with a geometric "path" to each distribcell intance.
-              NOTE: This option requires the OpenCG Python package.
+             An optional Summary object to be used to construct columns for
+             for distribcell tally filters (default is None). The geometric
+             information in the Summary object is embedded into a Multi-index
+             column with a geometric "path" to each distribcell intance.
+             NOTE: This option requires the OpenCG Python package.
 
         Returns
         -------
@@ -893,7 +903,7 @@ class Tally(object):
 
         Raises
         ------
-             KeyError: An error when this routine is called before the Tally
+             KeyError : An error when this routine is called before the Tally
              is populated with data by the StatePoint.read_results() routine.
         """
 
@@ -1178,21 +1188,21 @@ class Tally(object):
         Parameters
         ----------
         filename : str
-              The name of the file for the results (default is 'tally-results')
+             The name of the file for the results (default is 'tally-results')
 
         directory : str
-              The name of the directory for the results (default is '.')
+             The name of the directory for the results (default is '.')
 
         format : str
-              The format for the exported file - HDF5 ('hdf5', default) and
-              Python pickle ('pkl') files are supported
+             The format for the exported file - HDF5 ('hdf5', default) and
+             Python pickle ('pkl') files are supported
 
         append : bool
-              Whether or not to append the results to the file (default is True)
+             Whether or not to append the results to the file (default is True)
 
         Raises
         ------
-             KeyError: An error when this routine is called before the Tally
+             KeyError : An error when this routine is called before the Tally
              is populated with data by the StatePoint.read_results() routine.
         """
 

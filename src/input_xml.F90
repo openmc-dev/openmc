@@ -986,7 +986,6 @@ contains
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
     integer, allocatable :: temp_int_array(:)
-    real(8) :: temp_double_array3(3)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
@@ -1043,6 +1042,9 @@ contains
     n_universes = 0
     do i = 1, n_cells
       c => cells(i)
+
+      ! Initialize the number of cell instances - this is a base case for distribcells
+      c % instances = 0
 
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)
@@ -1140,11 +1142,11 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_double_array3)
-        c % rotation = temp_double_array3
-        phi   = -temp_double_array3(1) * PI/180.0_8
-        theta = -temp_double_array3(2) * PI/180.0_8
-        psi   = -temp_double_array3(3) * PI/180.0_8
+        allocate(c % rotation(3))
+        call get_node_array(node_cell, "rotation", c % rotation)
+        phi   = -c % rotation(1) * PI/180.0_8
+        theta = -c % rotation(2) * PI/180.0_8
+        psi   = -c % rotation(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
         allocate(c % rotation_matrix(3,3))
@@ -2361,6 +2363,18 @@ contains
 
           ! Determine type of filter
           select case (temp_str)
+
+          case ('distribcell')
+
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DISTRIBCELL
+            
+            ! Going to add new filters to this tally if n_words > 1
+            
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL

@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 try:
-    from openmc.opencg_compatible import get_opencg_geometry
+    import opencg
 except ImportError:
     msg = 'Unable to import opencg which is needed by openmc.opencg_compatible'
     raise ImportError(msg)

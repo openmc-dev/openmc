@@ -29,7 +29,7 @@ module particle_header
     logical :: rotated = .false.
 
     ! Distributed Mapping Info
-    integer, allocatable :: mapping(:)
+    integer, pointer :: mapping(:) => null()
 
     ! Pointer to next (more local) set of coordinates
     type(LocalCoord), pointer :: next => null()
@@ -164,7 +164,9 @@ contains
       if (associated(coord % next)) call deallocate_coord(coord%next)
 
       ! deallocate original coordinate
-      if (allocated(coord % mapping)) deallocate(coord % mapping)
+      if (associated(coord % mapping)) deallocate(coord % mapping)
+
+      ! deallocate this coord
       deallocate(coord)
     end if
 

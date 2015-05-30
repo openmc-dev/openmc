@@ -3,8 +3,9 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
+  use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
   use global
   use list_header,      only: ListChar, ListReal
   use material_header,  only: Material
@@ -85,6 +86,8 @@ contains
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
+    type(Node), pointer :: node_trigger   => null() 
+    type(Node), pointer :: node_keff_trigger => null()   
     type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
@@ -136,6 +139,43 @@ contains
            path_output = trim(path_output) // "/"
     end if
 
+    ! Check for a trigger node and get trigger information
+    if (check_for_node(doc, "trigger")) then
+      call get_node_ptr(doc, "trigger", node_trigger)
+
+      ! Check if trigger(s) are to be turned on
+      call get_node_value(node_trigger, "active", temp_str)
+      temp_str = trim(to_lower(temp_str))
+
+      if (temp_str == 'true' .or. temp_str == '1') then
+        trigger_on = .true.
+      elseif (temp_str == 'false' .or. temp_str == '0') then
+        trigger_on = .false.
+      else
+        call fatal_error("Unrecognized trigger active: " // temp_str)
+      end if
+
+      if (trigger_on) then
+
+        if (check_for_node(node_trigger, "max_batches") )then
+          call get_node_value(node_trigger, "max_batches", n_max_batches)
+        else
+          call fatal_error("The max_batches must be specified with triggers")
+        end if
+
+        ! Get the batch interval to check triggers
+        if (.not. check_for_node(node_trigger, "batch_interval"))then
+          pred_batches = .true.
+        else
+          call get_node_value(node_trigger, "batch_interval", temp_int)
+          n_batch_interval = temp_int
+          if (n_batch_interval <= 0) then
+            call fatal_error("The batch interval must be greater than zero")
+          end if
+        end if
+      end if
+    end if
+
     ! Make sure that either eigenvalue or fixed source was specified
     if (.not.check_for_node(doc, "eigenvalue") .and. &
          .not.check_for_node(doc, "fixed_source")) then
@@ -162,8 +202,13 @@ contains
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
 
-      ! Copy batch and generation information
+      ! Get number of basic batches
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
+
+      ! Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
@@ -171,9 +216,40 @@ contains
       end if
 
       ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_batches*gen_per_batch))
-      allocate(entropy(n_batches*gen_per_batch))
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
       entropy = ZERO
+
+      ! Get the trigger information for keff
+      if (check_for_node(node_mode, "keff_trigger")) then
+        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
+
+        if (check_for_node(node_keff_trigger, "type")) then
+          call get_node_value(node_keff_trigger, "type", temp_str)
+          temp_str = trim(to_lower(temp_str))
+
+          select case (temp_str)
+          case ('std_dev')
+            keff_trigger % trigger_type = STANDARD_DEVIATION
+          case ('variance')
+            keff_trigger % trigger_type = VARIANCE
+          case ('rel_err')
+            keff_trigger % trigger_type = RELATIVE_ERROR
+          case default
+            call fatal_error("Unrecognized keff trigger type " // temp_str)
+          end select
+
+        else
+          call fatal_error("Specify keff trigger type in settings XML")
+        end if
+
+        if (check_for_node(node_keff_trigger, "threshold")) then
+          call get_node_value(node_keff_trigger, "threshold", &
+               keff_trigger % threshold)
+        else
+          call fatal_error("Specify keff trigger threshold in settings XML")
+        end if
+      end if
     end if
 
     ! Fixed source calculation information
@@ -198,6 +274,9 @@ contains
 
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
       n_active = n_batches
       n_inactive    = 0
       gen_per_batch = 1
@@ -219,18 +298,32 @@ contains
     if (check_for_node(doc, "energy_grid")) then
       call get_node_value(doc, "energy_grid", temp_str)
     else
-      temp_str = 'union'
+      temp_str = 'logarithm'
     end if
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('union')
-      grid_method = GRID_UNION
-    case ('lethargy')
-      call fatal_error("Lethargy mapped energy grid not yet supported.")
+    case ('material-union', 'union')
+      grid_method = GRID_MAT_UNION
+      if (trim(temp_str) == 'union') &
+           call warning('Energy grids will be unionized by material.  Global&
+           & energy grid unionization is no longer an allowed option.')
+    case ('logarithm', 'logarithmic', 'log')
+      grid_method = GRID_LOGARITHM
     case default
       call fatal_error("Unknown energy grid method: " // trim(temp_str))
     end select
+
+    ! Number of bins for logarithmic grid
+    if (check_for_node(doc, "log_grid_bins")) then
+      call get_node_value(doc, "log_grid_bins", n_log_bins)
+      if (n_log_bins < 1) then
+        call fatal_error("Number of bins for logarithmic grid must be &
+             &greater than zero.")
+      end if
+    else
+      n_log_bins = 8000
+    end if
 
     ! Verbosity
     if (check_for_node(doc, "verbosity")) then
@@ -536,11 +629,11 @@ contains
 
         ! Copy dimensions
         call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
-        
+
         ! Calculate width
         entropy_mesh % width = (entropy_mesh % upper_right - &
              entropy_mesh % lower_left) / entropy_mesh % dimension
-        
+
       end if
 
       ! Turn on Shannon entropy calculation
@@ -1026,30 +1119,29 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k, m
+    integer :: i, j, k, m, i_x, i_a, input_index
     integer :: n
-    integer :: n_x, n_y, n_z
+    integer :: n_x, n_y, n_z, n_rings, n_rlats, n_hlats
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: mid
-    integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    type(Cell),    pointer :: c => null()
-    type(Surface), pointer :: s => null()
-    type(Lattice), pointer :: lat => null()
+    type(Cell),     pointer :: c => null()
+    type(Surface),  pointer :: s => null()
+    class(Lattice), pointer :: lat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
     type(Node), pointer :: node_lat => null()
     type(NodeList), pointer :: node_cell_list => null()
     type(NodeList), pointer :: node_surf_list => null()
-    type(NodeList), pointer :: node_lat_list => null()
+    type(NodeList), pointer :: node_rlat_list => null()
+    type(NodeList), pointer :: node_hlat_list => null()
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -1091,8 +1183,7 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! default some values
-      c % distributed = .false.
+      ! Initialize the number of cell instances - this is a base case for distribcells
       c % instances = 0
 
       ! Get pointer to i-th cell node
@@ -1104,6 +1195,12 @@ contains
       else
         call fatal_error("Must specify id of cell in geometry XML file.")
       end if
+
+      ! Copy cell name
+      if (check_for_node(node_cell, "name")) then
+        call get_node_value(node_cell, "name", c % name)
+      end if
+
       if (check_for_node(node_cell, "universe")) then
         call get_node_value(node_cell, "universe", c % universe)
       else
@@ -1185,14 +1282,15 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_int_array3)
-        phi   = -temp_int_array3(1) * PI/180.0_8
-        theta = -temp_int_array3(2) * PI/180.0_8
-        psi   = -temp_int_array3(3) * PI/180.0_8
+        allocate(c % rotation(3))
+        call get_node_array(node_cell, "rotation", c % rotation)
+        phi   = -c % rotation(1) * PI/180.0_8
+        theta = -c % rotation(2) * PI/180.0_8
+        psi   = -c % rotation(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
-        allocate(c % rotation(3,3))
-        c % rotation = reshape((/ &
+        allocate(c % rotation_matrix(3,3))
+        c % rotation_matrix = reshape((/ &
              cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
              -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
              cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
@@ -1280,6 +1378,11 @@ contains
       if (surface_dict % has_key(s % id)) then
         call fatal_error("Two or more surfaces use the same unique ID: " &
              &// to_str(s % id))
+      end if
+
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s % name)
       end if
 
       ! Copy and interpret surface type
@@ -1374,17 +1477,23 @@ contains
     ! READ LATTICES FROM GEOMETRY.XML
 
     ! Get pointer to list of XML <lattice>
-    call get_node_list(doc, "lattice", node_lat_list)
+    call get_node_list(doc, "lattice", node_rlat_list)
+    call get_node_list(doc, "hex_lattice", node_hlat_list)
 
     ! Allocate lattices array
-    n_lattices = get_list_size(node_lat_list)
+    n_rlats = get_list_size(node_rlat_list)
+    n_hlats = get_list_size(node_hlat_list)
+    n_lattices = n_rlats + n_hlats
     allocate(lattices(n_lattices))
 
-    do i = 1, n_lattices
-      lat => lattices(i)
+    RECT_LATTICES: do i = 1, n_rlats
+      allocate(RectLattice::lattices(i) % obj)
+      lat => lattices(i) % obj
+      select type(lat)
+      type is (RectLattice)
 
       ! Get pointer to i-th lattice
-      call get_list_item(node_lat_list, i, node_lat)
+      call get_list_item(node_rlat_list, i, node_lat)
 
       ! ID of lattice
       if (check_for_node(node_lat, "id")) then
@@ -1399,32 +1508,26 @@ contains
              &// to_str(lat % id))
       end if
 
-      ! Read lattice type
-      word = ''
-      if (check_for_node(node_lat, "type")) &
-        call get_node_value(node_lat, "type", word)
-      select case (to_lower(word))
-      case ('rect', 'rectangle', 'rectangular')
-        lat % type = LATTICE_RECT
-      case ('hex', 'hexagon', 'hexagonal')
-        lat % type = LATTICE_HEX
-      case default
-        call fatal_error("Invalid lattice type: " // trim(word))
-      end select
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
+      end if
 
       ! Read number of lattice cells in each dimension
       n = get_arraysize_integer(node_lat, "dimension")
-      if (n /= 2 .and. n /= 3) then
-        call fatal_error("Lattice must be two or three dimensions.")
+      if (n == 2) then
+        call get_node_array(node_lat, "dimension", lat % n_cells(1:2))
+        lat % n_cells(3) = 1
+        lat % is_3d = .false.
+      else if (n == 3) then
+        call get_node_array(node_lat, "dimension", lat % n_cells)
+        lat % is_3d = .true.
+      else
+        call fatal_error("Rectangular lattice must be two or three dimensions.")
       end if
 
-      lat % n_dimension = n
-      allocate(lat % dimension(n))
-      call get_node_array(node_lat, "dimension", lat % dimension)
-
       ! Read lattice lower-left location
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "lower_left")) then
+      if (get_arraysize_double(node_lat, "lower_left") /= n) then
         call fatal_error("Number of entries on <lower_left> must be the same &
              &as the number of entries on <dimension>.")
       end if
@@ -1432,24 +1535,42 @@ contains
       allocate(lat % lower_left(n))
       call get_node_array(node_lat, "lower_left", lat % lower_left)
 
-      ! Read lattice widths
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "width")) then
-        call fatal_error("Number of entries on <width> must be the same as &
-             &the number of entries on <lower_left>.")
+      ! Read lattice pitches.
+      ! TODO: Remove this deprecation warning in a future release.
+      if (check_for_node(node_lat, "width")) then
+        call warning("The use of 'width' is deprecated and will be disallowed &
+             &in a future release.  Use 'pitch' instead.  The utility openmc/&
+             &src/utils/update_inputs.py can be used to automatically update &
+             &geometry.xml files.")
+        if (get_arraysize_double(node_lat, "width") /= n) then
+          call fatal_error("Number of entries on <pitch> must be the same as &
+               &the number of entries on <dimension>.")
+        end if
+
+      else if (get_arraysize_double(node_lat, "pitch") /= n) then
+        call fatal_error("Number of entries on <pitch> must be the same as &
+             &the number of entries on <dimension>.")
       end if
 
-      allocate(lat % width(n))
-      call get_node_array(node_lat, "width", lat % width)
+      allocate(lat % pitch(n))
+      ! TODO: Remove the 'width' code in a future release.
+      if (check_for_node(node_lat, "width")) then
+        call get_node_array(node_lat, "width", lat % pitch)
+      else
+        call get_node_array(node_lat, "pitch", lat % pitch)
+      end if
+
+      ! TODO: Remove deprecation warning in a future release.
+      if (check_for_node(node_lat, "type")) then
+        call warning("The use of 'type' is no longer needed.  The utility &
+             &openmc/src/utils/update_inputs.py can be used to automatically &
+             &update geometry.xml files.")
+      end if
 
       ! Copy number of dimensions
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+      n_x = lat % n_cells(1)
+      n_y = lat % n_cells(2)
+      n_z = lat % n_cells(3)
       allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
@@ -1467,27 +1588,210 @@ contains
         do k = 0, n_y - 1
           do j = 1, n_x
             lat % universes(j, n_y - k, m) = &
-               temp_int_array(j + n_x*k + n_x*n_y*(m-1))
+                &temp_int_array(j + n_x*k + n_x*n_y*(m-1))
           end do
         end do
       end do
       deallocate(temp_int_array)      
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 
-    end do
+      end select
+    end do RECT_LATTICES
+
+    HEX_LATTICES: do i = 1, n_hlats
+      allocate(HexLattice::lattices(n_rlats + i) % obj)
+      lat => lattices(n_rlats + i) % obj
+      select type (lat)
+      type is (HexLattice)
+
+      ! Get pointer to i-th lattice
+      call get_list_item(node_hlat_list, i, node_lat)
+
+      ! ID of lattice
+      if (check_for_node(node_lat, "id")) then
+        call get_node_value(node_lat, "id", lat % id)
+      else
+        call fatal_error("Must specify id of lattice in geometry XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (lattice_dict % has_key(lat % id)) then
+        call fatal_error("Two or more lattices use the same unique ID: " &
+             &// to_str(lat % id))
+      end if
+
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
+      end if
+
+      ! Read number of lattice cells in each dimension
+      call get_node_value(node_lat, "n_rings", lat % n_rings)
+      if (check_for_node(node_lat, "n_axial")) then
+        call get_node_value(node_lat, "n_axial", lat % n_axial)
+        lat % is_3d = .true.
+      else
+        lat % n_axial = 1
+        lat % is_3d = .false.
+      end if
+
+      ! Read lattice lower-left location
+      n = get_arraysize_double(node_lat, "center")
+      if (lat % is_3d .and. n /= 3) then
+        call fatal_error("A hexagonal lattice with <n_axial> must have &
+             &<center> specified by 3 numbers.")
+      else if ((.not. lat % is_3d) .and. n /= 2) then
+        call fatal_error("A hexagonal lattice without <n_axial> must have &
+             &<center> specified by 2 numbers.")
+      end if
+
+      allocate(lat % center(n))
+      call get_node_array(node_lat, "center", lat % center)
+
+      ! Read lattice pitches
+      n = get_arraysize_double(node_lat, "pitch")
+      if (lat % is_3d .and. n /= 2) then
+        call fatal_error("A hexagonal lattice with <n_axial> must have <pitch> &
+              &specified by 2 numbers.")
+      else if ((.not. lat % is_3d) .and. n /= 1) then
+        call fatal_error("A hexagonal lattice without <n_axial> must have &
+             &<pitch> specified by 1 number.")
+      end if
+
+      allocate(lat % pitch(n))
+      call get_node_array(node_lat, "pitch", lat % pitch)
+
+      ! Copy number of dimensions
+      n_rings = lat % n_rings
+      n_z = lat % n_axial
+      allocate(lat % universes(2*n_rings - 1, 2*n_rings - 1, n_z))
+
+      ! Check that number of universes matches size
+      n = get_arraysize_integer(node_lat, "universes")
+      if (n /= (3*n_rings**2 - 3*n_rings + 1)*n_z) then
+        call fatal_error("Number of universes on <universes> does not match &
+             &size of lattice " // trim(to_str(lat % id)) // ".")
+      end if
+
+      allocate(temp_int_array(n))
+      call get_node_array(node_lat, "universes", temp_int_array)
+
+      ! Read universes
+      ! Universes in hexagonal lattices are stored in a manner that represents
+      ! a skewed coordinate system: (x, alpha) rather than (x, y).  There is
+      ! no obvious, direct relationship between the order of universes in the
+      ! input and the order that they will be stored in the skewed array so
+      ! the following code walks a set of index values across the skewed array
+      ! in a manner that matches the input order.  Note that i_x = 0, i_a = 0
+      ! corresponds to the center of the hexagonal lattice.
+
+      input_index = 1
+      do m = 1, n_z
+        ! Initialize lattice indecies.
+        i_x = 1
+        i_a = n_rings - 1
+
+        ! Map upper triangular region of hexagonal lattice.
+        do k = 1, n_rings-1
+          ! Walk index to lower-left neighbor of last row start.
+          i_x = i_x - 1
+          do j = 1, k
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*k
+          i_a = i_a + k
+        end do
+
+        ! Map middle square region of hexagonal lattice.
+        do k = 1, 2*n_rings - 1
+          if (mod(k, 2) == 1) then
+            ! Walk index to lower-left neighbor of last row start.
+            i_x = i_x - 1
+          else
+            ! Walk index to lower-right neighbor of last row start
+            i_x = i_x + 1
+            i_a = i_a - 1
+          end if
+          do j = 1, n_rings - mod(k-1, 2)
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*(n_rings - mod(k-1, 2))
+          i_a = i_a + n_rings - mod(k-1, 2)
+        end do
+
+        ! Map lower triangular region of hexagonal lattice.
+        do k = 1, n_rings-1
+          ! Walk index to lower-right neighbor of last row start.
+          i_x = i_x + 1
+          i_a = i_a - 1
+          do j = 1, n_rings - k
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*(n_rings - k)
+          i_a = i_a + n_rings - k
+        end do
+      end do
+      deallocate(temp_int_array)
+
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
+      if (check_for_node(node_lat, "outside")) then
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
+      end if
+
+      ! Add lattice to dictionary
+      call lattice_dict % add_key(lat % id, n_rlats + i)
+
+      end select
+    end do HEX_LATTICES
 
     ! Close geometry XML file
     call close_xmldoc(doc)
@@ -1600,6 +1904,11 @@ contains
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
              &// to_str(mat % id))
+      end if
+
+      ! Copy material name
+      if (check_for_node(node_mat, "name")) then
+        call get_node_value(node_mat, "name", mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -2301,9 +2610,13 @@ contains
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Yn/Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
-    integer :: n_bins        ! Total new bins for this score
-    integer :: n_order       ! Moment order requested
-    integer :: n_order_pos   ! Position of Scattering order in score name string
+    integer :: n_bins        ! total new bins for this score
+    integer :: n_user_trig   ! number of user-specified tally triggers
+    integer :: trig_ind      ! index of triggers array for each tally
+    integer :: user_trig_ind ! index of user-specified triggers for each tally
+    real(8) :: threshold     ! trigger convergence threshold
+    integer :: n_order       ! moment order requested
+    integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
@@ -2314,6 +2627,7 @@ contains
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
+    type(DictCharInt) :: trigger_scores
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -2322,9 +2636,13 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
+    type(Node), pointer :: node_trigger=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
+    type(NodeList), pointer :: node_trigger_list => null()
+    type(ElemKeyValueCI), pointer :: scores
+    type(ElemKeyValueCI), pointer :: next
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -2548,10 +2866,9 @@ contains
              &// to_str(t % id))
       end if
 
-      ! Copy tally label
-      t % label = ''
-      if (check_for_node(node_tal, "label")) &
-        call get_node_value(node_tal, "label", t % label)
+      ! Copy tally name
+      if (check_for_node(node_tal, "name")) &
+        call get_node_value(node_tal, "name", t % name)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
@@ -2590,7 +2907,7 @@ contains
           end if
 
           ! Determine type of filter
-          select case (temp_str)          
+          select case (temp_str)
 
           case ('distribcell')
 
@@ -2891,7 +3208,7 @@ contains
           j = j + 1
           ! Get the input string in scores(l) but if score is one of the moment
           ! scores then strip off the n and store it as an integer to be used
-          ! later. Then perform the select case on this modified (number 
+          ! later. Then perform the select case on this modified (number
           ! removed) string
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
@@ -3089,9 +3406,8 @@ contains
             ! Check to make sure that current is the only desired response
             ! for this tally
             if (n_words > 1) then
-              call fatal_error("Cannot tally other scoring functions in the &
-                   &same tally as surface currents. Separate other scoring &
-                   &functions into a distinct tally.")
+              call fatal_error("Cannot tally other scores in the &
+                   &same tally as surface currents")
             end if
 
             ! Since the number of bins for the mesh filter was already set
@@ -3161,6 +3477,10 @@ contains
             end if
 
           end select
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
+
         end do
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
@@ -3170,6 +3490,184 @@ contains
       else
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
+      end if
+      
+      ! If settings.xml trigger is turned on, create tally triggers
+      if (trigger_on) then
+
+        ! Get list of trigger nodes for this tally
+        call get_node_list(node_tal, "trigger", node_trigger_list)
+
+        ! Initialize the number of triggers
+        n_user_trig = get_list_size(node_trigger_list)
+
+        ! Count the number of triggers needed for all scores including "all"
+        t % n_triggers = 0
+        COUNT_TRIGGERS: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Count the number of scores for this trigger
+          do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              do while (associated(scores))
+                next => scores % next
+                deallocate(scores)
+                scores => next
+                t % n_triggers = t % n_triggers + 1
+              end do
+
+            else
+              t % n_triggers = t % n_triggers + 1
+            end if
+
+          end do
+
+          deallocate(sarray)
+
+        end do COUNT_TRIGGERS
+
+        ! Allocate array of triggers for this tally
+        if (t % n_triggers > 0) then
+          allocate(t % triggers(t % n_triggers))
+        end if
+
+        ! Initialize overall trigger index for this tally to zero
+        trig_ind = 1
+
+        ! Create triggers for all scores specified on each trigger
+        TRIGGER_LOOP: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get the trigger type - "variance", "std_dev" or "rel_err"
+          if (check_for_node(node_trigger, "type")) then
+            call get_node_value(node_trigger, "type", temp_str)
+                 temp_str = to_lower(temp_str)
+          else
+            call fatal_error("Must specify trigger type for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get the convergence threshold for the trigger
+          if (check_for_node(node_trigger, "threshold")) then
+            call get_node_value(node_trigger, "threshold", threshold)
+          else
+            call fatal_error("Must specify trigger threshold for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get list scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Create a trigger for each score
+          SCORE_LOOP: do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            ! Expand "all" to include TriggerObjects for each score in tally
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              ! Loop over all tally scores
+              do while (associated(scores))
+                score_name = trim(scores % key)
+
+                ! Store the score name and index in the trigger
+                t % triggers(trig_ind) % score_name = trim(score_name)
+                t % triggers(trig_ind) % score_index = &
+                     trigger_scores % get_key(trim(score_name))
+
+                ! Set the trigger convergence threshold type
+                select case (temp_str)
+                case ('std_dev')
+                  t % triggers(trig_ind) % type = STANDARD_DEVIATION
+                case ('variance')
+                  t % triggers(trig_ind) % type = VARIANCE
+                case ('rel_err')
+                  t % triggers(trig_ind) % type = RELATIVE_ERROR
+                case default
+                  call fatal_error("Unknown trigger type " // &
+                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
+                end select
+
+                ! Store the trigger convergence threshold
+                t % triggers(trig_ind) % threshold = threshold
+
+                ! Move to next score
+                next => scores % next
+                deallocate(scores)
+                scores => next
+
+                ! Increment the overall trigger index
+                trig_ind = trig_ind + 1
+              end do
+
+            ! Scores other than the "all" placeholder
+            else
+
+              ! Store the score name and index
+              t % triggers(trig_ind) % score_name = trim(score_name)
+              t % triggers(trig_ind) % score_index = &
+                   trigger_scores % get_key(trim(score_name))
+
+              ! Check if an invalid score was set for the trigger
+              if (t % triggers(trig_ind) % score_index == 0) then
+                call fatal_error("The trigger score " // trim(score_name) // &
+                     " is not set for tally " // trim(to_str(t % id)))
+              end if
+
+              ! Store the trigger convergence threshold
+              t % triggers(trig_ind) % threshold = threshold
+
+              ! Set the trigger convergence threshold type
+              select case (temp_str)
+              case ('std_dev')
+                t % triggers(trig_ind) % type = STANDARD_DEVIATION
+              case ('variance')
+                t % triggers(trig_ind) % type = VARIANCE
+              case ('rel_err')
+                t % triggers(trig_ind) % type = RELATIVE_ERROR
+              case default
+                call fatal_error("Unknown trigger type " // trim(temp_str) // &
+                     " in tally " // trim(to_str(t % id)))
+              end select
+
+              ! Increment the overall trigger index
+              trig_ind = trig_ind + 1
+           end if
+          end do SCORE_LOOP
+
+          ! Deallocate the list of tally scores used to create triggers
+          deallocate(sarray)
+        end do TRIGGER_LOOP
+
+        ! Deallocate dictionary of scores/indices used to populate triggers
+        call trigger_scores % clear()
       end if
 
       ! =======================================================================
@@ -3382,7 +3880,7 @@ contains
       ! Copy plot cell universe level
       if (check_for_node(node_plot, "level")) then
         call get_node_value(node_plot, "level", pl % level)
-        
+
         if (pl % level < 0) then
           call fatal_error("Bad universe level in plot " &
                &// trim(to_str(pl % id)))
@@ -3488,7 +3986,7 @@ contains
           call warning("Meshlines ignored in voxel plot " &
                &// trim(to_str(pl % id)))
         end if
-        
+
         select case(n_meshlines)
           case (0)
             ! Skip if no meshlines are specified
@@ -3496,7 +3994,7 @@ contains
 
             ! Get pointer to meshlines
             call get_list_item(node_meshline_list, 1, node_meshlines)
-            
+
             ! Check mesh type
             if (check_for_node(node_meshlines, "meshtype")) then
               call get_node_value(node_meshlines, "meshtype", meshtype)
@@ -3504,7 +4002,7 @@ contains
               call fatal_error("Must specify a meshtype for meshlines &
                    &specification in plot " // trim(to_str(pl % id)))
             end if
-            
+
             ! Ensure that there is a linewidth for this meshlines specification
             if (check_for_node(node_meshlines, "linewidth")) then
               call get_node_value(node_meshlines, "linewidth", &
@@ -3516,19 +4014,19 @@ contains
 
             ! Check for color
             if (check_for_node(node_meshlines, "color")) then
-              
+
               ! Check and make sure 3 values are specified for RGB
               if (get_arraysize_double(node_meshlines, "color") /= 3) then
                 call fatal_error("Bad RGB for meshlines color in plot " &
                      &// trim(to_str(pl % id)))
               end if
-              
+
               call get_node_array(node_meshlines, "color", &
                   pl % meshlines_color % rgb)
             else
-              
+
               pl % meshlines_color % rgb = (/ 0, 0, 0 /)
-            
+
             end if
 
             ! Set mesh based on type
@@ -3539,7 +4037,7 @@ contains
                 call fatal_error("No UFS mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => ufs_mesh
 
             case ('cmfd')
@@ -3555,17 +4053,17 @@ contains
               pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
- 
+
               if (.not. associated(entropy_mesh)) then
                 call fatal_error("No entropy mesh for meshlines on plot " &
                      &// trim(to_str(pl % id)))
               end if
- 
+
               if (.not. allocated(entropy_mesh % dimension)) then
                 call fatal_error("No dimension specified on entropy mesh &
                      &for meshlines on plot " // trim(to_str(pl % id)))
               end if
- 
+
               pl % meshlines_mesh => entropy_mesh
 
             case ('tally')
@@ -3600,9 +4098,9 @@ contains
             call fatal_error("Mutliple meshlines specified in plot " &
                  &// trim(to_str(pl % id)))
         end select
-        
+
       end if
-      
+
       ! Deal with masks
       call get_node_list(node_plot, "mask", node_mask_list)
       n_masks = get_list_size(node_mask_list)

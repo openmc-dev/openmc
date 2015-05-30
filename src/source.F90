@@ -235,6 +235,9 @@ contains
     case (SRC_ENERGY_MONO)
       ! Monoenergtic source
       site % E = external_source % params_energy(1)
+      if (site % E >= 20) then
+        call fatal_error("Source energies above 20 MeV not allowed.")
+      end if
 
     case (SRC_ENERGY_MAXWELL)
       a = external_source % params_energy(1)
@@ -277,8 +280,7 @@ contains
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i
-    type(Bank), pointer, save :: src => null()
-!$omp threadprivate(src)
+    type(Bank), pointer :: src
 
     if (.not. dd_run) then
 

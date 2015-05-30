@@ -22,6 +22,7 @@ module eigenvalue
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies,       &
                           reset_result
+  use trigger,      only: check_triggers
   use tracking,     only: transport
 
   implicit none
@@ -54,7 +55,7 @@ contains
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, n_batches
+    BATCH_LOOP: do current_batch = 1, n_max_batches
 
       call initialize_batch()
 
@@ -119,6 +120,8 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
+      
+      if (satisfy_triggers) exit BATCH_LOOP
 
     end do BATCH_LOOP
 
@@ -128,7 +131,7 @@ contains
     ! END OF RUN WRAPUP
 
     if (master) call header("SIMULATION FINISHED", level=1)
-    
+
     ! Clear particle
     call p % clear()
 
@@ -294,12 +297,22 @@ contains
     ! Display output
     if (master) call print_batch_keff()
 
+    ! Calculate combined estimate of k-effective
+    if (master) call calculate_combined_keff()
+    
+    ! Check_triggers
+    if (master) call check_triggers()
+#ifdef MPI
+    call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
+         MPI_COMM_WORLD, mpi_err)              
+#endif
+    if (satisfy_triggers .or. &
+         (trigger_on .and. current_batch == n_max_batches)) then
+      call statepoint_batch % add(current_batch)
+    end if
+
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      ! Calculate combined estimate of k-effective
-      if (master) call calculate_combined_keff()
-
-      ! Create state point file
       call write_state_point()
     end if
 
@@ -309,7 +322,7 @@ contains
       call write_source_point()
     end if
 
-    if (master .and. current_batch == n_batches) then
+    if (master .and. current_batch == n_max_batches) then
       ! Make sure combined estimate of k-effective is calculated at the last
       ! batch in case no state point is written
       call calculate_combined_keff()
@@ -357,7 +370,7 @@ contains
 
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
@@ -367,7 +380,7 @@ contains
 
     finish = start + n_bank
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
          MPI_COMM_WORLD, mpi_err)
 
 #else
@@ -439,9 +452,9 @@ contains
     ! indices for all processors
 
 #ifdef MPI
-    ! First do an exclusive scan to get the starting indices for 
+    ! First do an exclusive scan to get the starting indices for
     start = 0_8
-    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
     finish = start + index_temp
 
@@ -501,7 +514,7 @@ contains
         ! process
         if (neighbor /= rank) then
           n_request = n_request + 1
-          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
+          call MPI_ISEND(temp_sites(index_local), int(n), MPI_BANK, neighbor, &
                rank, MPI_COMM_WORLD, request(n_request), mpi_err)
         end if
 
@@ -545,7 +558,7 @@ contains
         ! asynchronous receive for the source sites
 
         n_request = n_request + 1
-        call MPI_IRECV(source_bank(index_local), n, MPI_BANK, &
+        call MPI_IRECV(source_bank(index_local), int(n), MPI_BANK, &
              neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
 
       else
@@ -570,7 +583,7 @@ contains
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
 
     ! Deallocate space for bank_position on the very last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(bank_position)
 #else
     source_bank = temp_sites(1:n_particles)
@@ -579,7 +592,7 @@ contains
     call time_bank_sendrecv % stop()
 
     ! Deallocate space for the temporary source bank on the last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(temp_sites)
 
   end subroutine synchronize_bank
@@ -616,10 +629,10 @@ contains
         m % n_dimension = 3
         allocate(m % dimension(3))
         m % dimension = n
-        
+
         ! determine width
         m % width = (m % upper_right - m % lower_left) / m % dimension
-        
+
       end if
 
       ! allocate p

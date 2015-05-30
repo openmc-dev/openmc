@@ -3,8 +3,8 @@
   <cell id="11" universe="11" material="1"/>
   <cell id="12" universe="12" material="2" surfaces=""/>
 
-  <lattice id="21" type="rect" dimension="2 2" lower_left="-2.0 -2.0"
-    width="2.0 2.0" outside="2">
+  <lattice id="21" dimension="2 2" lower_left="-2.0 -2.0"
+    pitch="2.0 2.0" outer="12">
     <universes>
       11 12
       12 11

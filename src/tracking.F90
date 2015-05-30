@@ -32,20 +32,18 @@ contains
 
     type(Particle), intent(inout) :: p
 
-    integer :: surface_crossed ! surface which particle is on
-    integer :: lattice_crossed ! lattice boundary which particle crossed
-    integer :: last_cell       ! most recent cell particle was in
-    integer :: n_event         ! number of collisions/crossings
-    integer :: meshbin         ! Current DD meshbin
-    real(8) :: d_boundary      ! distance to nearest boundary
-    real(8) :: d_collision     ! sampled distance to collision
-    real(8) :: d_dd_mesh       ! sampled distance to boundary on the DD mesh
-    real(8) :: distance        ! distance particle travels
-    real(8) :: stored_distance ! distance to store when crossing a DD boundary
-    real(8) :: xyz(3)
-    logical :: found_cell      ! found cell which particle is in?
-    type(LocalCoord), pointer, save :: coord => null()
-!$omp threadprivate(coord)
+    integer :: surface_crossed        ! surface which particle is on
+    integer :: lattice_translation(3) ! in-lattice translation vector
+    integer :: last_cell              ! most recent cell particle was in
+    integer :: n_event                ! number of collisions/crossings
+    integer :: meshbin                ! Current DD meshbin
+    real(8) :: d_boundary             ! distance to nearest boundary
+    real(8) :: d_collision            ! sampled distance to collision
+    real(8) :: d_dd_mesh              ! distance to boundary on the DD mesh
+    real(8) :: distance               ! distance particle travels
+    real(8) :: stored_distance        ! remaining dist after DD boundary
+    logical :: found_cell             ! found cell which particle is in?
+    type(LocalCoord), pointer :: coord
 
     integer(8) :: starting_seed
     integer(8) :: debug1 = 0_8
@@ -138,7 +136,8 @@ contains
       ! Find the distance to the nearest boundary
 !      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
 !          print *, prn_seed(1), 'd2b',p % coord0 % xyz
-      call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
+      call distance_to_boundary(p, d_boundary, surface_crossed, &
+           &lattice_translation)
 
       ! Sample a distance to collision
       if (material_xs % total == ZERO) then
@@ -201,14 +200,14 @@ contains
         ! don't need to communicate the particle.  Here we rely on lattice
         ! boundaries NOT being selected by distance_to_boundary when they are
         ! coincident with boundary condition surfaces.
-        if (lattice_crossed /= NONE .or. &
+        if (any(lattice_translation /= 0) .or. &
             .not. (d_collision > d_boundary .and. &
                 abs(d_dd_mesh - distance) < FP_COINCIDENT .and. &
                 .not. surfaces(abs(surface_crossed)) % bc == BC_TRANSMIT)) then
 
           ! If the next interaction would have been a collision, we need to use
           ! the same distance to that collision when the particle is continued
-          ! in the adjacent domain
+          ! in the adjacent domain, for reproducibility
           stored_distance = ZERO
           if (.not. d_collision > d_boundary) then
             stored_distance = d_collision - distance
@@ -254,10 +253,10 @@ contains
 
         last_cell = p % coord % cell
         p % coord % cell = NONE
-        if (lattice_crossed /= NONE) then
+        if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = NONE
-          call cross_lattice(p, lattice_crossed)
+          call cross_lattice(p, lattice_translation)
           p % event = EVENT_LATTICE
         else
           ! Particle crosses surface
@@ -313,7 +312,7 @@ contains
           if (coord % next % rotated) then
             ! If next level is rotated, apply rotation matrix
             coord % next % uvw = matmul(cells(coord % cell) % &
-                 rotation, coord % uvw)
+                 rotation_matrix, coord % uvw)
           else
             ! Otherwise, copy this level's direction
             coord % next % uvw = coord % uvw

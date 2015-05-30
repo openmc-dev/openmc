@@ -74,8 +74,7 @@ contains
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
+    type(Nuclide), pointer :: nuc
 
     i_nuclide = sample_nuclide(p, 'total  ')
 
@@ -90,7 +89,7 @@ contains
     ! change when sampling fission sites. The following block handles all
     ! absorption (including fission)
 
-    if (nuc % fissionable) then
+    if (nuc % fissionable .and. run_mode == MODE_EIGENVALUE) then
       call sample_fission(i_nuclide, i_reaction)
       call create_fission_sites(p, i_nuclide, i_reaction)
     end if
@@ -132,8 +131,7 @@ contains
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     real(8) :: sigma        ! microscopic total xs for nuclide
-    type(Material), pointer, save :: mat => null()
-!$omp threadprivate(mat)
+    type(Material), pointer :: mat
 
     ! Get pointer to current material
     mat => materials(p % material)
@@ -194,9 +192,8 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -230,7 +227,7 @@ contains
       prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-      ! Create fission bank sites if fission occus
+      ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
@@ -312,9 +309,8 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -384,7 +380,7 @@ contains
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
       end do
 
-      ! Perform collision physics for inelastics scattering
+      ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
            p % mu, p % wgt)
       p % event_MT = rxn % MT
@@ -417,8 +413,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
+    type(Nuclide), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -496,7 +491,7 @@ contains
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    type(SAlphaBeta), pointer, save :: sab => null()
+    type(SAlphaBeta), pointer :: sab
     ! Following are needed only for SAB_SECONDARY_CONT scattering
     integer :: l              ! sampled incoming E bin (is i or i + 1)
     real(8) :: E_i_1, E_i_J   ! endpoints on outgoing grid i
@@ -507,8 +502,6 @@ contains
     real(8) :: c_j, c_j1      ! cumulative probability
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
-
-!$omp threadprivate(sab)
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -1066,9 +1059,8 @@ contains
     real(8) :: phi          ! fission neutron azimuthal angle
     real(8) :: weight       ! weight adjustment for ufs method
     logical :: in_mesh      ! source site in ufs mesh?
-    type(Nuclide),  pointer, save :: nuc => null()
-    type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -1178,8 +1170,7 @@ contains
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
-    type(DistEnergy), pointer, save :: edist => null()
-!$omp threadprivate(edist)
+    type(DistEnergy), pointer :: edist
 
     ! Determine total nu
     nu_t = nu_total(nuc, E)
@@ -1294,6 +1285,7 @@ contains
     real(8) :: E_in        ! incoming energy
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
+    real(8) :: yield       ! neutron yield
 
     ! copy energy of neutron
     E_in = E
@@ -1333,8 +1325,13 @@ contains
     ! change direction of particle
     uvw = rotate_angle(uvw, mu)
 
-    ! change weight of particle based on multiplicity
-    wgt = rxn % multiplicity * wgt
+    ! change weight of particle based on yield
+    if (rxn % multiplicity_with_E) then
+      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+    else
+      yield = rxn % multiplicity
+    end if
+    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 
@@ -1575,6 +1572,7 @@ contains
     real(8) :: E_max       ! parameter for n-body dist
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
+    logical :: histogram_interp ! use histogram interpolation on incoming energy
 
     ! ==========================================================================
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
@@ -1671,12 +1669,13 @@ contains
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
-        if (master) call warning("Assuming linear-linear interpolation when &
-             &sampling continuous tabular distribution")
+        histogram_interp = (edist % data(3) == 1)
       else if (NR > 1) then
         ! call write_particle_restart(p)
         call fatal_error("Multiple interpolation regions not supported while &
              &attempting to sample continuous tabular distribution.")
+      else
+        histogram_interp = .false.
       end if
 
       ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1696,11 +1695,15 @@ contains
       end if
 
       ! Sample between the ith and (i+1)th bin
-      r2 = prn()
-      if (r > r2) then
-        l = i + 1
-      else
+      if (histogram_interp) then
         l = i
+      else
+        r2 = prn()
+        if (r > r2) then
+          l = i + 1
+        else
+          l = i
+        end if
       end if
 
       ! interpolation for energy E1 and EK
@@ -1779,10 +1782,12 @@ contains
       end if
 
       ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      if (.not. histogram_interp) then
+        if (l == i) then
+          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+        else
+          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+        end if
       end if
 
     case (5)
@@ -1835,14 +1840,15 @@ contains
       lc = 2 + 2*NR + 2*NE
       U = edist % data(lc + 1)
 
+      y = (E_in - U)/T
+      v = 1 - exp(-y)
+
       ! sample outgoing energy based on evaporation spectrum probability
       ! density function
       n_sample = 0
       do
-        r1 = prn()
-        r2 = prn()
-        E_out = -T * log(r1*r2)
-        if (E_out <= E_in - U) exit
+        x = -log((1 - v*prn())*(1 - v*prn()))
+        if (x <= y) exit
 
         ! check for large number of rejections
         n_sample = n_sample + 1
@@ -1851,6 +1857,8 @@ contains
           call fatal_error("Too many rejections on evaporation spectrum.")
         end if
       end do
+
+      E_out = x*T
 
     case (11)
       ! =======================================================================

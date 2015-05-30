@@ -66,14 +66,11 @@ Prerequisites
       To compile with support for parallel runs on a distributed-memory
       architecture, you will need to have a valid implementation of MPI
       installed on your machine. The code has been tested and is known to work
-      with the latest versions of both OpenMPI_ and MPICH_. Note that if using
-      OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
-      since this may prevent MPI calls from completing successfully in
-      OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
-      with::
+      with the latest versions of both OpenMPI_ and MPICH_. OpenMPI and/or MPICH
+      can be installed on Debian derivatives with::
 
-          sudo apt-get install mpich2 libmpich2-dev
-          sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev
+          sudo apt-get install mpich libmpich-dev
+          sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
 
     * HDF5_ Library for portable binary output format
 
@@ -89,21 +86,6 @@ Prerequisites
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
-    * PETSc_ for CMFD acceleration
-
-      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
-      installed on your computer. The installed version will need to have been
-      compiled with the same compiler you intend to compile OpenMC with. OpenMC
-      requires PETSc_ to be configured with Fortran datatypes. An example of
-      configuring PETSc_ is listed below::
-
-           ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
-                       --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
-                       --with-fortran-datatypes
-
-      The BLAS/LAPACK library is not required to be downloaded and can be linked
-      explicitly (e.g., Intel MKL library).
-
     * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
@@ -111,7 +93,6 @@ Prerequisites
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
-.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 Obtaining the Source
 --------------------
@@ -126,7 +107,7 @@ with GitHub since this involves setting up ssh_ keys. With git installed and
 setup, the following command will download the full source code from the GitHub
 repository::
 
-    git clone git://github.com/mit-crpg/openmc.git
+    git clone https://github.com/mit-crpg/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::
@@ -142,10 +123,10 @@ Build Configuration
 -------------------
 
 Compiling OpenMC with CMake is carried out in two steps. First, ``cmake`` is run
-to determine the compiler, whether optional packages (MPI, HDF5, PETSc) are
-available, to generate a list of dependencies between source files so that they
-may be compiled in the correct order, and to generate a normal Makefile. The
-Makefile is then used by ``make`` to actually carry out the compile and linking
+to determine the compiler, whether optional packages (MPI, HDF5) are available,
+to generate a list of dependencies between source files so that they may be
+compiled in the correct order, and to generate a normal Makefile. The Makefile
+is then used by ``make`` to actually carry out the compile and linking
 commands. A typical out-of-source build would thus look something like the
 following
 
@@ -179,10 +160,6 @@ optimize
 openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
   being used must support OpenMP.
-
-petsc
-  Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
-  set to the base directory of the PETSc installation.
 
 To set any of these options (e.g. turning on debug mode), the following form
 should be used:

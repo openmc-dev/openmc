@@ -7,7 +7,7 @@ module global
   use constants
   use dd_header,        only: dd_type, deallocate_dd
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use plot_header,      only: ObjectPlot
@@ -15,6 +15,7 @@ module global
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use testing_header,   only: TestSuiteClass
+  use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
 #ifdef HDF5
@@ -28,12 +29,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),      allocatable, target :: cells(:)
-  type(Universe),  allocatable, target :: universes(:)
-  type(Lattice),   allocatable, target :: lattices(:)
-  type(Surface),   allocatable, target :: surfaces(:)
-  type(Material),  allocatable, target :: materials(:)
-  type(ObjectPlot),allocatable, target :: plots(:)
+  type(Cell),              allocatable, target :: cells(:)
+  type(Universe),          allocatable, target :: universes(:)
+  type(LatticeContainer),  allocatable, target :: lattices(:)
+  type(Surface),           allocatable, target :: surfaces(:)
+  type(Material),          allocatable, target :: materials(:)
+  type(ObjectPlot),        allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -78,11 +79,6 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
-
-  ! Unionized energy grid
-  integer :: grid_method ! how to treat the energy grid
-  integer :: n_grid      ! number of points on unionized grid
-  real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
@@ -158,7 +154,17 @@ module global
   integer    :: overall_gen   = 0 ! overall generation in the run
   integer    :: current_stage = 0 ! current scatter stage within a generation
   logical    :: generation_incomplete = .true. ! flag signaling generation end
-  
+
+  ! ============================================================================
+  ! TALLY PRECISION TRIGGER VARIABLES
+
+  integer        :: n_max_batches             ! max # of batches
+  integer        :: n_batch_interval = 1      ! batch interval for triggers
+  logical        :: pred_batches = .false.    ! predict batches for triggers
+  logical        :: trigger_on = .false.      ! flag for turning triggers on/off
+  type(KTrigger) :: keff_trigger              ! trigger for k-effective
+  logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
+
   ! External source
   type(ExtSource), target :: external_source
 
@@ -239,7 +245,7 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for unionizing energy grid
+  type(Timer) :: time_unionize      ! timer for material xs-energy grid union
   type(Timer) :: time_bank          ! timer for fission bank synchronization
   type(Timer) :: time_bank_sample   ! timer for fission bank sampling
   type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
@@ -310,6 +316,9 @@ module global
   ! Testing data structure
   type(TestSuiteClass) :: unittests
 
+  ! Number of distribcell maps
+  integer :: n_maps
+
   ! Write out initial source
   logical :: write_initial_source = .false.
 
@@ -327,9 +336,6 @@ module global
 
   ! Is CMFD active
   logical :: cmfd_run = .false.
-
-  ! CMFD communicator
-  integer :: cmfd_comm
 
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
@@ -349,9 +355,6 @@ module global
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! Eigenvalue solver type
-  character(len=10) :: cmfd_solver_type = 'power'
-
   ! Adjoint method type
   character(len=10) :: cmfd_adjoint_type = 'physical'
 
@@ -369,8 +372,6 @@ module global
   logical :: cmfd_downscatter = .false.
 
   ! Convergence monitoring
-  logical :: cmfd_snes_monitor  = .false.
-  logical :: cmfd_ksp_monitor   = .false.
   logical :: cmfd_power_monitor = .false.
 
   ! Cmfd output
@@ -482,9 +483,6 @@ contains
     end if
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
-
-    ! Deallocate energy grid
-    if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

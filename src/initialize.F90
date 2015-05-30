@@ -5,10 +5,11 @@ module initialize
   use constants
   use dd_init,            only: initialize_domain_decomp
   use dict_header,        only: DictIntInt, ElemKeyValueII
-  use energy_grid,        only: unionized_grid
+  use energy_grid,        only: logarithmic_grid, grid_method, unionized_grid
   use error,              only: fatal_error, warning
   use geometry,           only: neighbor_lists, count_instance, calc_offsets
-  use geometry_header,    only: Cell, Universe, Lattice, BASE_UNIVERSE
+  use geometry_header,    only: Cell, Universe, Lattice, RectLattice,          &
+                                HexLattice, BASE_UNIVERSE
   use global
   use input_xml,          only: read_input_xml, read_cross_sections_xml,       &
                                 cells_in_univ_dict, read_plots_xml
@@ -20,6 +21,7 @@ module initialize
   use particle_header,    only: ParticleBuffer
   use random_lcg,         only: initialize_prng
   use random_lcg_header,  only: N_STREAMS
+  use set_header,         only: SetInt
   use source,             only: initialize_source
   use state_point,        only: load_state_point
   use string,             only: to_str, str_to_int, starts_with, ends_with
@@ -102,6 +104,9 @@ contains
 
     ! Use dictionaries to redefine index pointers
     call adjust_indices()    
+
+    ! Initialize distribcell_filters
+    call prepare_distribcell()
     
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -134,12 +139,17 @@ contains
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
 
-      ! Construct unionized energy grid from cross-sections
-      if (grid_method == GRID_UNION) then
+      ! Construct unionized or log energy grid for cross-sections
+      select case (grid_method)
+      case (GRID_NUCLIDE)
+        continue
+      case (GRID_MAT_UNION)
         call time_unionize % start()
         call unionized_grid()
         call time_unionize % stop()
-      end if
+      case (GRID_LOGARITHM)
+        call logarithmic_grid()
+      end select
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
@@ -510,9 +520,6 @@ contains
         case ('-v', '-version', '--version')
           call print_version()
           stop
-        case ('-eps_tol', '-ksp_gmres_restart')
-          ! Handle options that would be based to PETSC
-          i = i + 1
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
           i = i + 1
@@ -631,16 +638,15 @@ contains
 
   subroutine adjust_indices()
 
-    integer :: i             ! index for various purposes
-    integer :: j             ! index for various purposes
-    integer :: k             ! loop index for lattices
-    integer :: m             ! loop index for lattices
-    integer :: mid, lid      ! material and lattice IDs
-    integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array
-    integer :: id            ! user-specified id
+    integer :: i                      ! index for various purposes
+    integer :: j                      ! index for various purposes
+    integer :: k                      ! loop index for lattices
+    integer :: m                      ! loop index for lattices
+    integer :: lid                    ! lattice IDs
+    integer :: i_array                ! index in surfaces/materials array
+    integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
-    type(Lattice),     pointer :: lat => null()
+    class(Lattice),    pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
@@ -693,18 +699,8 @@ contains
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
           c % fill = lid
-          if (mid == MATERIAL_VOID) then
-            c % material = mid
-          else if (material_dict % has_key(mid)) then
-            c % material = material_dict % get_key(mid)
-          else
-            call fatal_error("Could not find material " // trim(to_str(mid)) &
-                 &// " specified on lattice " // trim(to_str(lid)))
-          end if
-
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
                &// trim(to_str(c % id)) // " is neither a universe nor a &
@@ -717,28 +713,57 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i)
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+      lat => lattices(i) % obj
+      select type (lat)
 
-      do m = 1, n_z
-        do k = 1, n_y
-          do j = 1, n_x
-            id = lat % universes(j,k,m)
-            if (universe_dict % has_key(id)) then
-              lat % universes(j,k,m) = universe_dict % get_key(id)
-            else
-              call fatal_error("Invalid universe number " // trim(to_str(id)) &
-                   &// " specified on lattice " // trim(to_str(lat % id)))
-            end if
+      type is (RectLattice)
+        do m = 1, lat % n_cells(3)
+          do k = 1, lat % n_cells(2)
+            do j = 1, lat % n_cells(1)
+              id = lat % universes(j,k,m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j,k,m) = universe_dict % get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat % id)))
+              end if
+            end do
           end do
         end do
-      end do
+
+      type is (HexLattice)
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
+                cycle
+              else if (j + k > 3*lat % n_rings - 1) then
+                cycle
+              end if
+              id = lat % universes(j, k, m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j, k, m) = universe_dict % get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat % id)))
+              end if
+            end do
+          end do
+        end do
+
+      end select
+
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict % has_key(lat % outer)) then
+          lat % outer = universe_dict % get_key(lat % outer)
+        else
+          call fatal_error("Invalid universe number " &
+               &// trim(to_str(lat % outer)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
+        end if
+      end if
 
     end do
 
@@ -755,10 +780,10 @@ contains
           do k = 1, size(t % filters(j) % int_bins)
             id = t % filters(j) % int_bins(k)
             if (cell_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = cell_dict % get_key(id)        
+              t % filters(j) % int_bins(k) = cell_dict % get_key(id)
             else
               call fatal_error("Could not find cell " // trim(to_str(id)) // &
-                   " specified on tally " // trim(to_str(t % id)))
+                               " specified on tally " // trim(to_str(t % id)))
             end if
 
           end do
@@ -1018,543 +1043,211 @@ contains
   end subroutine allocate_banks
 
 !===============================================================================
-! PREPARE_DISTRIBUTION initializes any distributed cells and materials present
+! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
+! offsets for distribcells
 !===============================================================================
 
-  subroutine prepare_distribution()
-  
-    integer :: i,j,k     ! loop counters
-    integer :: l         ! cell instance counter
-    integer :: n_words   ! number of bins in filter
-    integer :: extra     ! number of extra filters to add
-    integer :: n_filt    ! number of filters originally in tally
-    integer, allocatable :: univ_list(:)
-    type(TallyFilter),    allocatable :: filters(:)   ! Filter data (type/bins)
-    type(TallyObject),    pointer :: t => null()
-    type(Universe),       pointer :: univ
-    type(Cell),           pointer :: c
-    type(Material),       pointer :: mat
+  subroutine prepare_distribcell()
 
-    call write_message("Initialized distribcell maps...", 7)
+    integer :: i, j       ! Tally, filter loop counters
+    integer :: n_filt     ! Number of filters originally in tally
+    logical :: count_all  ! Count all cells
+    type(TallyObject),    pointer :: tally            ! Current tally
+    type(Universe),       pointer :: univ             ! Pointer to universe
+    type(Cell),           pointer :: c                ! Pointer to cell
+    integer, allocatable :: univ_list(:)              ! Target offsets
+    integer, allocatable :: counts(:,:)               ! Target count
+    logical, allocatable :: found(:,:)                ! Target found
 
-    ! sum the number of occurrences of all cells
-    univ => universes(BASE_UNIVERSE)
-    call count_instance(univ)
+    count_all = .false.
 
-    ! begin with filters    
     ! Loop over tallies    
     do i = 1, n_tallies
 
-      extra = 0
-
       ! Get pointer to tally
-      t => tallies(i)      
+      tally => tallies(i)
 
-      n_filt = t % n_filters
+      n_filt = tally % n_filters
 
-      ! Loop over the filters      
-      ! This loop, we will be determining how many additional filters
+      ! Loop over the filters to determine how many additional filters
       ! need to be added to this tally
-
-      do j = 1, t % n_filters
+      do j = 1, tally % n_filters
 
         ! Determine type of filter
-        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-          extra = extra + size(t % filters(j) % int_bins) - 1
+        if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
+          count_all = .true.
+          if (size(tally % filters(j) % int_bins) > 1) then
+            call fatal_error("A distribcell filter was specified with &
+                             &multiple bins. This feature is not supported.")
+          end if      
         end if
 
       end do
 
-      if (extra > 0) then
+    end do
+    
+    if (count_all) then
+      
+      univ => universes(BASE_UNIVERSE)
 
-        call fatal_error("At least one Distribcell filter was specified with&
-                   &multiple bins. This feature is not yet supported.")
-        ! Allocate space for new filters      
-        allocate(filters(extra + t % n_filters))
-        ! Move old filters into the new array
-        filters(1:n_filt) = t % filters
+      ! sum the number of occurrences of all cells
+      call count_instance(univ)
 
-        ! Update the filter array with the new filters
-        t % n_filters = t % n_filters + extra
+      ! Loop over tallies    
+      do i = 1, n_tallies    
 
-        k = n_filt + 1
-        do j = 1, n_filt
+        ! Get pointer to tally
+        tally => tallies(i)      
 
-          if (filters(j) % type == FILTER_DISTRIBCELL) then
+        ! Initialize the filters
+        do j = 1, tally % n_filters
 
-            n_words = size(filters(j) % int_bins)
-
-            do l = 2, n_words
-              ! Move int_bin(l) from filter j to filter k            
-              filters(k) % type = FILTER_DISTRIBCELL
-              allocate(filters(k) % int_bins(1))
-              filters(k) % int_bins(1) = filters(j) % int_bins(l)
-              k = k + 1
-            end do
-
-            ! Once all excess int_bins have been moved, shrink this filter
-            l = filters(j) % int_bins(1)
-            deallocate(filters(j) % int_bins)
-            allocate(filters(j) % int_bins(1))
-            filters(j) % int_bins(1) = l
-
+          ! Set the number of bins to the number of instances of the cell
+          if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
+            c => cells(tally % filters(j) % int_bins(1))
+            tally % filters(j) % n_bins = c % instances
           end if
 
         end do
-
-        ! Move the tally filter array back into the real tally object
-        call move_alloc(filters,t % filters)
-
-      end if
-
-      ! Now it's time to finally initialize the filters now
-      ! that the tally filters array has been updated
-
-      do j = 1, t % n_filters
-        ! Determine type of filter
-        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-          call write_message("Setting up distribcel tally "//trim(to_str(t%id))//"...", 9)
-
-          ! Set number of bins      
-          c => cells(t % filters(j) % int_bins(1))
-          t % filters(j) % n_bins = c % instances 
-
-        end if
-
       end do
 
-    end do
+    end if
 
-    call allocate_offsets(univ_list)
+    ! Allocate offset maps at each level in the geometry
+    call allocate_offsets(univ_list, counts, found)
 
-    ! Verify correct xml input of distributed materials
-    call verify_distribmats()
-
-    ! Calculate the numbers to be stored for all maps except the special end one  
-    do i = 1, n_maps - 1
-      ! This step must be done for each map for each universe
-      ! because the maps are summed as you progress down through the tree.
-      ! calc_offsets only sets values for the universe specified by 'univ'
+    ! Calculate offsets for each target distribcell
+    do i = 1, n_maps
       do j = 1, n_universes  
         univ => universes(j)
-        call calc_offsets(univ_list(i),i,univ)
+        call calc_offsets(univ_list(i), i, univ, counts, found)
       end do
     end do
 
-    do i = 1, n_universes  
-      univ => universes(i)
-      deallocate(univ % kount)
-      deallocate(univ % search)
-    end do
-
-    do i = 1, n_materials
-      mat => materials(i)
-      if (.not. mat % distrib_comp) then
-        mat % map = n_maps
-      end if
-    end do
-
+    ! Deallocate temporary target variable arrays
+    deallocate(counts)
+    deallocate(found)
     deallocate(univ_list)
-
-  end subroutine prepare_distribution
+  
+  end subroutine prepare_distribcell
 
 !===============================================================================
-! ALLOCATE_OFFSETS determines the number of maps needed and allocates the 
-! required memory, in addition to a few other pre-processing steps related
-! to distribution
+! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
+! memory for distribcell offset tables
 !===============================================================================
 
-  subroutine allocate_offsets(univ_list)
+  recursive subroutine allocate_offsets(univ_list, counts, found)
 
-    integer, intent(out), allocatable :: univ_list(:)
-    integer :: i,j,k,l,m
-    integer :: maps   
-    type(DictIntInt) :: cell_list
+    integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
+    integer, intent(out), allocatable     :: counts(:,:)  ! Target count
+    logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
-    type(Cell),        pointer :: c => null()         ! pointer to cell
-    type(Cell),        pointer :: c2 => null()      ! pointer to cell
-    type(Lattice),     pointer :: lat => null()       ! pointer to lattice
-    type(Universe),    pointer :: u => null()         ! pointer to universe
-    type(Material),    pointer :: mat => null()       ! pointer to material
-    type(TallyObject), pointer :: t => null()         ! pointer to tally
-    type(TallyFilter), pointer :: tf => null()        ! pointer to filter
-
-    call write_message("Allocating distribcell offsets...", 7)
-
+    integer :: i, j, k, l, m                    ! Loop counters
+    type(SetInt)               :: cell_list     ! distribells to track    
+    type(Universe),    pointer :: univ          ! pointer to universe
+    class(Lattice),    pointer :: lat           ! pointer to lattice
+    type(TallyObject), pointer :: tally         ! pointer to tally
+    type(TallyFilter), pointer :: filter        ! pointer to filter
+    
     ! Begin gathering list of cells in distribcell tallies
-    maps = 0
-
-    ! Loop over all tallies    
+    n_maps = 0
+    
+    ! Populate list of distribcells to track
     do i = 1, n_tallies
+      tally => tallies(i)
 
-      t => tallies(i)
+      do j = 1, tally % n_filters
+        filter => tally % filters(j)        
 
-      do j = 1, t % n_filters
-
-        tf => t % filters(j)
-
-        ! Loop over only distribcell filters
-        if (tf % type == FILTER_DISTRIBCELL) then
-
-          ! Add new targets to the list
-          if (.not. cell_list % has_key(tf % int_bins(1))) then
-
-            call cell_list % add_key(tf % int_bins(1),0)
-
+        if (filter % type == FILTER_DISTRIBCELL) then
+          if (.not. cell_list % contains(filter % int_bins(1))) then
+            call cell_list % add(filter % int_bins(1))
           end if
-
         end if 
 
       end do
-
     end do
-
-    ! Assign cell to distributed materials    
-    do i = 1, n_materials
-
-      mat => materials(i)
-
-      ! Only need to assign cell for distributed materials
-      if (mat % distrib_dens .or. mat % distrib_comp) then
-
-        do j = 1, n_cells
-
-          c => cells(j)
-          if (.not. (c % type == CELL_NORMAL)) cycle
-          if (c % material == material_dict % get_key(mat % id)) then
-
-            ! Enforce that two cells do not share a distributed material
-            if (mat % cell == 0) then             
-              mat % cell = c % id
-            else
-              call fatal_error("Two cells share the same distributed material. &
-                  &This is forbidden.")
-            end if
-
-          end if
-
-        end do
-        if (mat % cell < 1) then        
-          if (master) call warning("No cell found for distributed material: " // &
-              to_str(mat % id))
-        end if        
-
-      end if
-
-    end do
-
-    do i = 1, n_cells - 1
-      c => cells(i)
-      do j = i + 1, n_cells
-        c2 => cells(j)
-
-        if (c % material == c2 % material  &
-                & .and. (c % distributed .or. c2 % distributed)) then
-
-          call fatal_error("Two cells share the same distributed material. &
-                    &This is forbidden.")
-
-        end if
-
-      end do
-    end do
-
-    ! Add targets from distributed materials
-    do i = 1, n_materials
-
-      mat => materials(i)
-
-      if (mat % distrib_dens .or. mat % distrib_comp) then
-        
-        ! Skip unused mats
-        if (mat % cell < 1) cycle
-
-        ! Add any cells which contain distributed materials. This will cause 
-        ! a map to be created for them
-        if (.not. cell_list % has_key(cell_dict % get_key(mat % cell))) then
-
-            call cell_list % add_key(cell_dict % get_key(mat % cell),0)
-
-        end if
-
-      end if  
-
-    end do
-
-    ! Determine the number of unique universes containing these cells
+    
+    ! Compute the number of unique universes containing these distribcells
+    ! to determine the number of offset tables to allocate
     do i = 1, n_universes
-
-      u => universes(i)
-
-      do j = 1, u % n_cells
-
-        if (cell_list % has_key(u % cells(j))) then
-          maps = maps + 1
-          cycle
-        end if          
-
+      univ => universes(i)
+      do j = 1, univ % n_cells
+        if (cell_list % contains(univ % cells(j))) then
+          n_maps = n_maps + 1
+        end if
       end do
+    end do
+    
+    ! Allocate the list of offset tables for each unique universe
+    allocate(univ_list(n_maps))
 
-    end do    
+    ! Allocate list to accumulate target distribccell counts in each universe
+    allocate(counts(n_universes, n_maps))
 
-    ! We create an extra map for non-distributed materials
-    maps = maps + 1
+    ! Allocate list to track if target distribcells are found in each universe
+    allocate(found(n_universes, n_maps))
 
-    ! Build the list of unique universes
-    allocate(univ_list(maps))    
+    counts(:,:) = 0
+    found(:,:) = .false.
     k = 1
+
     do i = 1, n_universes
+      univ => universes(i)
 
-      u => universes(i)
-
-      ! Allocate search + kount
-      allocate(u % kount(maps))
-      allocate(u % search(maps))
-      do j = 1, maps
-        u % kount(j) = 0
-        u % search(j) = .false.
-      end do
-      do j = 1, u % n_cells
-
-        if (cell_list % has_key(u % cells(j))) then
-
+      do j = 1, univ % n_cells
+      
+        if (cell_list % contains(univ % cells(j))) then
+          
             ! Loop over all tallies    
             do l = 1, n_tallies
-
-              t => tallies(l)
-
-              do m = 1, t % n_filters
-
-                tf => t % filters(m)
-
+              tally => tallies(l)
+              
+              do m = 1, tally % n_filters
+                filter => tally % filters(m)
+                
                 ! Loop over only distribcell filters
-                if (tf % type == FILTER_DISTRIBCELL) then
-
-                  ! If this filter points to the cell we just found, set the 
-                  ! offset index
-                  if (tf % int_bins(1) == u % cells(j)) then
-                    tf % offset = k
+                ! If filter points to cell we just found, set offset index
+                if (filter % type == FILTER_DISTRIBCELL) then                  
+                  if (filter % int_bins(1) == univ % cells(j)) then
+                    filter % offset = k
                   end if
-
-                end if 
+                end if
 
               end do
-
             end do          
-
-            ! Loop over all materials
-            do l = 1, n_materials
-
-              mat => materials(l)
-
-              ! Skip unused mats
-              if (mat % cell < 1) cycle
-
-              ! If this material is in the current cell, store its corresponding
-              ! map index
-              if (cell_dict % get_key(mat % cell) == u % cells(j)) then
-                mat % map = k
-              end if
-
-            end do
-          univ_list(k) = u % id
+          
+          univ_list(k) = univ % id
           k = k + 1
-          cycle
-        end if          
-
+        end if
       end do
-
     end do
-
-    ! Allocate the offset array on all fill cells and lattices
-
+    
+    ! Allocate the offset tables for lattices    
     do i = 1, n_lattices
+      lat => lattices(i) % obj
 
-      lat => lattices(i)
-      if (lat % n_dimension == 3) then
-        allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), &
-                 & lat % dimension(3)))
-      else
-        allocate(lat % offset(maps, lat % dimension(1), lat % dimension(2), 1))
-      end if
+      select type(lat)
+
+      type is (RectLattice)
+        allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
+                 lat % n_cells(3)))
+      type is (HexLattice)
+        allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
+             2 * lat % n_rings - 1, lat % n_axial))
+      end select
+
+      lat % offset(:, :, :, :) = 0
 
     end do
 
+    ! Allocate offset table for fill cells
     do i = 1, n_cells
-
-      c => cells(i)
-      if (c % material == NONE) then
-        allocate(c % offset(maps))
+      if (cells(i) % material == NONE) then
+        allocate(cells(i) % offset(n_maps))
       end if
-
     end do
-
-    ! Store the number of maps to global
-    n_maps = maps
 
   end subroutine allocate_offsets
-
-!===============================================================================
-! VERIFY_DISTRIBMATS verifies that all inputs are correct and then initializes
-! the mappings for distributed materials
-!===============================================================================
-
-  subroutine verify_distribmats()
-
-    integer :: i                                    ! Primary loop index
-    integer :: j                                    ! Additional loop index
-    integer :: num                                  ! size storage
-    real(8) :: density                              ! density to use
-    real(8),allocatable  :: atom_density(:)         ! composition to use
-    type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Material), pointer, save :: mat => null()  ! pointer to material
-
-    call write_message("Verifying distributed materials...", 7)
-
-    ! Verify that all distributed materials have a composition / density length
-    ! equal to either 1 or the number of instance
-    do i = 1, n_materials
-
-      mat => materials(i)
-      call write_message("Verifying mat "//trim(to_str(mat%id))//"...", 9)
-
-      if (mat % distrib_dens) then
-
-        ! Skip unused mats
-        if (mat % cell < 1) cycle
-
-        c => cells(cell_dict % get_key(mat % cell))
-
-        num = mat % density % num
-        ! Ensure that there are a sensible number of densities specified
-        if (.not.(num == 1 .or. num == c % instances)) then  
-
-          call fatal_error("Invalid number of densities specified for " // &
-                           "material " // to_str(mat % id))
-
-        end if
-
-        ! If num == 1, set all densities equal to the one given
-        if (num == 1) then
-
-          density = mat % density % density(1)
-          deallocate(mat % density % density)
-          allocate(mat % density % density(c % instances))
-          do j = 1, c % instances
-            mat % density % density(j) = density          
-          end do          
-          mat % density % num = c % instances
-
-        end if
-
-        ! Distribute the density by creating a fake composition distribution
-        ! of the composition provided. Later the normalize_ao function will
-        ! distribute the densities on the composition
-        mat % distrib_comp = .true.
-        mat % n_comp = c % instances
-        allocate(atom_density(mat % n_nuclides))
-        atom_density = mat % comp(1) % atom_density
-        deallocate(mat % comp(1) % atom_density)
-        deallocate(mat % comp)
-        allocate(mat % comp(c % instances))
-        do j = 1, c % instances
-          allocate(mat % comp(j) % atom_density(mat % n_nuclides))
-          mat % comp(j) % atom_density = atom_density          
-        end do
-        deallocate(atom_density)
-
-      else if (mat % distrib_comp) then
-
-        ! Skip unused mats
-        if (mat % cell < 1) cycle
-
-        c => cells(cell_dict % get_key(mat % cell))
-
-        num = mat % n_comp
-
-        ! Ensure that there are a sensible number of compositions specified
-        if (.not.(num == 1 .or. num == c % instances)) then 
-
-          call fatal_error("Invalid number of compositions specified for " // &
-                           "material " // to_str(mat % id))
-
-        end if
-
-        ! If num == 1, set all compositions equal to the one given
-        if (num == 1 .and. .not. mat % otf_compositions) then
-
-          mat % n_comp = c % instances
-          allocate(atom_density(mat % n_nuclides))
-          atom_density = mat % comp(1) % atom_density
-          deallocate(mat % comp(1) % atom_density)
-          deallocate(mat % comp)
-          allocate(mat % comp(c % instances))
-          do j = 1, c % instances          
-            allocate(mat % comp(j) % atom_density(mat % n_nuclides))
-            mat % comp(j) % atom_density = atom_density          
-          end do
-          deallocate(atom_density)
-
-        end if
-
-      else 
-        mat % map = n_maps  
-      end if
-
-    end do
-
-end subroutine verify_distribmats
-
-!===============================================================================
-! DISTRIBUTION_HELP prints the set of human readable paths for all distributed
-! materials.
-!===============================================================================
-
-  subroutine distribution_help()
-
-    integer :: i      ! materials loop
-    integer :: j      ! instances loop
-    integer :: offset ! offset parameter for path generation
-    type(Material), pointer :: mat   ! pointer to material
-    type(Cell),     pointer :: c     ! pointer to cell
-    type(Universe), pointer :: univ  ! pointer to universe
-    character(MAX_FILE_LEN) :: path  ! path of summary file
-    character(100)          :: label ! user-specified identifier
-
-    ! Create filename for log file
-    path = trim(path_output) // "distribution.out"
-
-    ! Open log file for writing
-    open(UNIT=UNIT_HELP, FILE=path, STATUS='replace', ACTION='write')
-
-    do i = 1, n_materials
-
-      mat => materials(i)
-
-      if (mat % distrib_dens .or. mat % distrib_comp) then
-
-        ! Skip unused mats
-        if (mat % cell < 1) cycle
-
-        c => cells(cell_dict % get_key(mat % cell))
-
-        write(UNIT_HELP,*) 'Distributed Material:', mat % id
-        write(UNIT_HELP,*) 'Number of Instances:', c % instances
-
-        do j = 1, c % instances
-
-          offset = 0
-          label = ''
-          univ => universes(BASE_UNIVERSE)
-          call find_offset(mat % map, material_dict % get_key(mat % id), univ, j - 1, offset, label, .true.)
-          write(UNIT_HELP,*) label
-
-        end do
-
-      end if
-
-    end do      
-
-  end subroutine distribution_help
 
 end module initialize

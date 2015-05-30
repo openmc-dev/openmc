@@ -38,7 +38,6 @@ module output_interface
                                       write_integer_4Darray, &
                                       write_long, &
                                       write_string, &
-                                      write_tallyresult_1Darray
     generic, public :: read_data => read_double, &
                                     read_double_1Darray, &
                                     read_double_2Darray, &
@@ -63,7 +62,6 @@ module output_interface
     procedure :: write_integer_4Darray => write_integer_4Darray
     procedure :: write_long => write_long
     procedure :: write_string => write_string
-    procedure :: write_tallyresult_1Darray => write_tallyresult_1Darray
     procedure :: read_double => read_double
     procedure :: read_double_1Darray => read_double_1Darray
     procedure :: read_double_2Darray => read_double_2Darray
@@ -360,7 +358,7 @@ contains
 
   subroutine read_double(self, buffer, name, group, collect, record)
 
-    real(8),      intent(inout)        :: buffer  ! read data to here 
+    real(8),      intent(inout)        :: buffer  ! read data to here
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -396,7 +394,7 @@ contains
 # ifdef MPI
     if (self % serial) then
       call hdf5_read_double(self % hdf5_grp, name_, buffer)
-    else 
+    else
       call hdf5_read_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
 # else
@@ -792,7 +790,7 @@ contains
                                   record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
+    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -865,7 +863,7 @@ contains
                                  record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1163,7 +1161,7 @@ contains
 
   subroutine read_integer(self, buffer, name, group, collect, record)
 
-    integer,      intent(inout)        :: buffer  ! read data to here 
+    integer,      intent(inout)        :: buffer  ! read data to here
     character(*), intent(in)           :: name    ! name for data
     character(*), intent(in), optional :: group   ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1528,7 +1526,7 @@ contains
                                    record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    integer,      intent(in)           :: buffer(length(1),length(2),length(3))        
+    integer,      intent(in)           :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O
@@ -1601,7 +1599,7 @@ contains
                                   record)
 
     integer,      intent(in)           :: length(3) ! length of each dimension
-    integer,      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    integer,      intent(inout)        :: buffer(length(1),length(2),length(3))
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
     logical,      intent(in), optional :: collect ! collective I/O

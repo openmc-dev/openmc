@@ -3,19 +3,24 @@ element settings {
 
   (
     element eigenvalue {
-      (element batches { xsd:positiveInteger } | 
+      (element batches { xsd:positiveInteger } |
         attribute batches { xsd:positiveInteger }) &
-      (element inactive { xsd:nonNegativeInteger } | 
+      (element inactive { xsd:nonNegativeInteger } |
         attribute inactive { xsd:nonNegativeInteger }) &
-      (element particles { xsd:positiveInteger } | 
+      (element particles { xsd:positiveInteger } |
         attribute particles { xsd:positiveInteger }) &
-      (element generations_per_batch { xsd:positiveInteger } | 
-        attribute generations_per_batch { xsd:positiveInteger })?
+      (element generations_per_batch { xsd:positiveInteger } |
+        attribute generations_per_batch { xsd:positiveInteger })? &
+      (element keff_trigger {
+        (element type { xsd:string } | attribute type { xsd:string }) &
+        (element threshold { xsd:double} | attribute threshold { xsd:double })
+        }
+      )?
     } |
     element fixed_source {
-      (element batches { xsd:positiveInteger } | 
+      (element batches { xsd:positiveInteger } |
         attribute batches { xsd:positiveInteger }) &
-      (element particles { xsd:positiveInteger } | 
+      (element particles { xsd:positiveInteger } |
         attribute particles { xsd:positiveInteger })
     }
   ) &
@@ -27,16 +32,18 @@ element settings {
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
   }? &
 
-  element energy_grid { ( "nuclide" | "union" | "lethargy" ) }? &
+  element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
 
   element entropy {
-    (element dimension { list { xsd:int+ } } | 
+    (element dimension { list { xsd:int+ } } |
       attribute dimension { list { xsd:int+ } })? &
-    (element lower_left { list { xsd:double+ } } | 
+    (element lower_left { list { xsd:double+ } } |
       attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } | 
+    (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }? &
+
+  element log_grid_bins { xsd:positiveInteger }? &
 
   element natural_elements { xsd:string { maxLength = "20" } }? &
 
@@ -94,7 +101,7 @@ element settings {
     (
       (element batches { list { xsd:positiveInteger+ } } |
         attribute batches { list { xsd:positiveInteger+ } }) |
-      (element interval { xsd:positiveInteger } | 
+      (element interval { xsd:positiveInteger } |
         attribute interval { xsd:positiveInteger })
     )
   }? &
@@ -103,12 +110,12 @@ element settings {
     (
       (element batches { list { xsd:positiveInteger+ } } |
         attribute batches { list { xsd:positiveInteger+ } }) |
-      (element interval { xsd:positiveInteger } | 
+      (element interval { xsd:positiveInteger } |
         attribute interval { xsd:positiveInteger })
     )? &
-    (element separate { xsd:boolean } | 
+    (element separate { xsd:boolean } |
       attribute separate { xsd:boolean })? &
-    (element write { xsd:boolean } | 
+    (element write { xsd:boolean } |
       attribute write { xsd:boolean })? &
     (element overwrite_latest { xsd:boolean} |
       attribute overwrite_latest {xsd:boolean})?
@@ -122,14 +129,20 @@ element settings {
 
   element track { list { xsd:positiveInteger+ } }? &
 
+  element trigger {
+    (element active { xsd:boolean } | attribute active { xsd:boolean }) &
+    (element max_batches { xsd:positiveInteger } | attribute max_batches { xsd:positiveInteger }) &
+    (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
+  }? &
+
   element verbosity { xsd:positiveInteger }? &
 
   element uniform_fs{
-    (element dimension { list { xsd:positiveInteger+ } } | 
+    (element dimension { list { xsd:positiveInteger+ } } |
       attribute dimension { list { xsd:positiveInteger+ } }) &
-    (element lower_left { list { xsd:double+ } } | 
+    (element lower_left { list { xsd:double+ } } |
       attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } | 
+    (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }? &
 

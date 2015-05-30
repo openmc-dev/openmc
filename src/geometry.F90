@@ -129,7 +129,6 @@ contains
     type(Particle), intent(inout) :: p
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
-
     integer :: i                    ! index over cells
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
@@ -583,7 +582,6 @@ contains
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_translation(3)
-
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
     class(Lattice),   pointer :: lat

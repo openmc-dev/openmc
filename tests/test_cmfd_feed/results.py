@@ -18,15 +18,15 @@ else:
 sp.read_results()
 
 # extract tally results and convert to vector
-tally1 = sp.get_tally('flux', [openmc.Filter('mesh', [1])], \
-                      [-1], estimator='tracklength')
-tally2 = sp.get_tally('flux', [openmc.Filter('mesh', [2])], \
-                      [-1], estimator='analog')
-tally3 = sp.get_tally('nu-fission', [openmc.Filter('mesh', [2])], \
-                      [-1], estimator='analog')
-tally4 = sp.get_tally('current', [openmc.Filter('mesh', [2]), \
+tally1 = sp.get_tally(scores=['flux'], filters=[openmc.Filter('mesh', [1])], \
+                      estimator='tracklength')
+tally2 = sp.get_tally(scores=['flux'], filters=[openmc.Filter('mesh', [2])], \
+                      estimator='analog')
+tally3 = sp.get_tally(scores=['nu-fission'], \
+                     filters=[openmc.Filter('mesh', [2])], estimator='analog')
+tally4 = sp.get_tally(scores=['current'], filters=[openmc.Filter('mesh', [2]), \
                       openmc.Filter('surface', [1,2,3,4,5,6])], \
-                      [-1], estimator='analog')
+                      estimator='analog')
 
 results1 = np.zeros((tally1.sum.size + tally1.sum.size, ))
 results1[0::2] = tally1.sum.ravel()

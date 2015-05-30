@@ -56,6 +56,8 @@ contains
     integer                       :: i, j, k
     integer, allocatable          :: id_array(:)
     integer, allocatable          :: key_array(:)
+    integer, allocatable          :: filter_map_array(:)
+    integer                       :: otf_size_results_filters
     type(StructuredMesh), pointer :: mesh
     type(TallyObject), pointer    :: tally
     type(ElemKeyValueII), pointer :: current
@@ -280,18 +282,19 @@ contains
 
           ! Write on-the-fly allocation tally info
           if (tally % on_the_fly_allocation) then
-            n = tally % next_filter_idx - 1
-            call sp % write_data(n, "otf_size_results_filters", &
-                 group="tallies/tally" // trim(to_str(tally % id)))
+            otf_size_results_filters = tally % next_filter_idx - 1
+            call sp % write_data(otf_size_results_filters, &
+                 "otf_size_results_filters", group="tallies/tally" // &
+                  trim(to_str(tally % id)))
             ! Write otf filter bin mapping
-            allocate(temp_array(n))
-            do j = 1, n
-              temp_array(j) = tally % reverse_filter_index_map % get_key(j)
+            allocate(filter_map_array(otf_size_results_filters))
+            do j = 1, otf_size_results_filters
+              filter_map_array(j) = tally % reverse_filter_index_map % get_key(j)
             end do
-            call sp % write_data(temp_array, "otf_filter_bin_map", &
+            call sp % write_data(filter_map_array, "otf_filter_bin_map", &
                  group="tallies/tally" // trim(to_str(tally % id)), &
-                 length=n)
-            deallocate(temp_array)
+                 length=otf_size_results_filters)
+            deallocate(filter_map_array)
           else
             call sp % write_data(NONE, "otf_size_results_filters", &
                  group="tallies/tally" // trim(to_str(tally % id)))
@@ -431,16 +434,17 @@ contains
           ! Write sum and sum_sq for each bin
           if (tally % on_the_fly_allocation) then
 
-            n = tally % next_filter_idx - 1
-            call write_tally_result(sp, tally % results(:,1:n), "results", &
-                 group="tallies/tally" // trim(to_str(tally % id)), &
-                 n1=size(tally % results, 1), n2=n)
+            otf_size_results_filters = tally % next_filter_idx - 1
+            call write_tally_result(sp, &
+                tally % results(:,1:otf_size_results_filters), "results", &
+                group="tallies/tally" // trim(to_str(tally % id)), &
+                n1=size(tally % results, 1), n2=otf_size_results_filters)
 
           else
 
             call write_tally_result(sp, tally % results, "results", &
-                 group="tallies/tally" // trim(to_str(tally % id)), &
-                 n1=size(tally % results, 1), n2=size(tally % results, 2))
+                group="tallies/tally" // trim(to_str(tally % id)), &
+                n1=size(tally % results, 1), n2=size(tally % results, 2))
 
           endif
 
@@ -873,7 +877,7 @@ contains
          tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
 
          ! Write reduced tally results to file
-          call write_tally_result(sp, t % results, "results", &
+          call write_tally_result(sp, tally % results, "results", &
                group="tallies/tally" // trim(to_str(tally % id)), n1=m, n2=n)
 
           ! Deallocate temporary tally result
@@ -914,6 +918,9 @@ contains
     integer                    :: int_array(3)
     integer, allocatable       :: id_array(:)
     integer, allocatable       :: key_array(:)
+    integer, allocatable       :: filter_map_array(:)
+    integer                    :: otf_size_results_filters
+    integer                    :: dummy_filter_index
     integer                    :: curr_key
     integer, allocatable       :: temp_array(:)
     logical                    :: source_present
@@ -1022,242 +1029,6 @@ contains
       end if
     end if
 
-    ! Begin reading geometry information
-    ! Set all values to temp variables. We already reread the geometry
-    call sp % read_data(n_cell, "n_cells", group="geometry")
-    call sp % read_data(n_univ, "n_universes", group="geometry")
-    call sp % read_data(n_lat, "n_lattices", group="geometry")
-    call sp % read_data(n_surf, "n_surfaces", group="geometry")
-    call sp % read_data(n_mat, "n_materials", group="geometry")
-
-    if (n_lat > 0) then
-      ! Read list of lattice IDs
-      allocate(temp_array(n_lat))
-      call sp % read_data(temp_array, "lattice_ids", &
-           group="geometry", length=n_lat)
-      deallocate(temp_array)
-    end if
-
-    ! Read list of universe IDs
-    allocate(temp_array(n_univ))
-    call sp % read_data(temp_array, "universe_ids", &
-         group="geometry", length=n_univ)
-    deallocate(temp_array)
-
-    ! Read list of surface IDs
-    allocate(temp_array(n_surf))
-    call sp % read_data(temp_array, "surface_keys", &
-         group="geometry", length=n_surf)
-    call sp % read_data(temp_array, "surface_ids", &
-         group="geometry", length=n_surf)
-    deallocate(temp_array)
-
-    ! Read list of material IDs
-    allocate(temp_array(n_mat))
-    call sp % read_data(temp_array, "material_ids", &
-         group="geometry", length=n_mat)
-    deallocate(temp_array)
-
-    ! Read list of cell keys-> IDs
-    allocate(temp_array(n_cell))
-    call sp % read_data(temp_array, "cell_keys", &
-         group="geometry", length=n_cell)
-    call sp % read_data(temp_array, "cell_ids", &
-         group="geometry", length=n_cell)
-    deallocate(temp_array)
-
-    ! =========================================================================
-    ! READ INFORMATION ON CELLS
-
-    ! Read information on each cell
-    CELL_LOOP: do i = 1, n_cell 
-      ! Write information on what fills this cell
-      call sp % read_data(j, "fill_type", &
-             group="geometry/cells/cell ")
-
-      call sp % read_data(k, "n_surfaces", &
-             group="geometry/cells/cell ")
-      if (k > 0) then
-        allocate(temp_array(k))
-        call sp % read_data(temp_array, "surfaces", &
-               group="geometry/cells/cell ", length=k)
-        deallocate(temp_array)
-      endif
-
-      select case (j)
-      case (CELL_NORMAL)          
-          call sp % read_data(k, "material", &
-               group="geometry/cells/cell ")
-      case (CELL_FILL)
-        call sp % read_data(k, "fill", &
-             group="geometry/cells/cell ") 
-        call sp % read_data(k, "maps", &
-             group="geometry/cells/cell ")
-        if (k > 0) then
-          allocate(temp_array(k))
-          call sp % read_data(temp_array, "offset", length=k, &
-               group="geometry/cells/cell ")
-          deallocate(temp_array)
-        end if
-      case (CELL_LATTICE)
-        call sp % read_data(j, "lattice", &
-             group="geometry/cells/cell ") 
-      end select
-
-    end do CELL_LOOP
-
-    ! =========================================================================
-    ! Read INFORMATION ON UNIVERSES
-
-    ! Read information on each universe
-    UNIVERSE_LOOP: do i = 1, n_univ
-      call sp % read_data(j, "n_cells", &
-           group="geometry/universes/universe ")
-
-      ! Read list of cells in this universe
-      if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "cells", length=j, &
-             group="geometry/universes/universe ")
-        deallocate(temp_array)
-      end if
-  
-
-    end do UNIVERSE_LOOP
-
-    ! =========================================================================
-    ! READ INFORMATION ON LATTICES
-
-    ! Read information on each lattice
-    LATTICE_LOOP: do i = 1, n_lat
-
-      ! Read lattice type
-      call sp % read_data(j, "type", &
-           group="geometry/lattices/lattice ")
-      
-      ! Read lattice dimensions, number of offset maps, and offsets
-
-      call sp % read_data(int_array, "dimension", &
-           length=3, &
-           group="geometry/lattices/lattice ")
-
-      call sp % read_data(j, "maps", &
-           group="geometry/lattices/lattice ")
-
-      call sp % read_data(j, "offset_size", &
-           group="geometry/lattices/lattice ")
-      if (j > 0) then
-          allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3)))
-          call sp % read_data(temp_array4D, "offset", &
-               length=(/j,int_array(1),int_array(2),int_array(3)/), &
-               group="geometry/lattices/lattice ")
-          deallocate(temp_array4D)
-      end if
-
-      ! Determine dimensions of lattice
-
-      ! Read lattice universes
-      allocate(temp_array3D(int_array(1), int_array(2), int_array(3)))
-      call sp % read_data(temp_array3D, "universes", &
-           length=(/int_array(1),int_array(2),int_array(3)/), &
-           group="geometry/lattices/lattice ")
-      deallocate(temp_array3D)
-
-    end do LATTICE_LOOP   
-    
-    ! =========================================================================
-    ! READ INFORMATION ON SURFACES
-    
-    ! Read information on each surface
-    SURFACE_LOOP: do i = 1, n_surf
-      call sp % read_data(j, "type", &
-           group="geometry/surfaces/surface ")
-      call sp % read_data(j, "bc", &
-           group="geometry/surfaces/surface ")
-
-      call sp % read_data(j, "n_coeffs", &
-           group="geometry/surfaces/surface ")
-      if (j > 0) then
-        allocate(temp_real_array(j))
-        call sp % read_data(temp_real_array, "coeffs", length=j, &
-             group="geometry/surfaces/surface ")
-        deallocate(temp_real_array)
-      end if
-
-      call sp % read_data(j, "n_neighbor_pos", &
-           group="geometry/surfaces/surface ")
-      if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "neighbor_pos", length=j, &
-             group="geometry/surfaces/surface ")
-        deallocate(temp_array)
-      end if
-
-      call sp % read_data(j, "n_neighbor_neg", &
-           group="geometry/surfaces/surface ")
-      if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "neighbor_neg", length=j, &
-             group="geometry/surfaces/surface ")
-        deallocate(temp_array)
-      end if
-
-    end do SURFACE_LOOP
-
-    ! =========================================================================
-    ! READ INFORMATION ON MATERIALS
-
-    ! Read information on each material
-    MATERIAL_LOOP: do i = 1, n_mat
-      call sp % read_data(k, "n_nuclides", &
-           group="geometry/materials/material ")
-      allocate(temp_array(k))
-      call sp % read_data(temp_array, "nuclide", length=k, &
-           group="geometry/materials/material ")
-      deallocate(temp_array)
-
-      call sp % read_data(dist_dens, "distrib_dens", &
-           group="geometry/materials/material ")
-      call sp % read_data(dist_comp, "distrib_comp", &
-           group="geometry/materials/material ")
-
-      call sp % read_data(j, "n_density", &
-           group="geometry/materials/material ")
-      allocate(temp_real_array(j))
-      call sp % read_data(temp_real_array, "density", length=j, &
-           group="geometry/materials/material ")
-      deallocate(temp_real_array)
-
-      call sp % read_data(k, "n_comp", &
-             group="geometry/materials/material ")
-
-      call sp % read_data(j, "otf_compositions", &
-           group="geometry/materials/material " // &
-                 trim(to_str(materials(i) % id)))
-      
-      if (j == 0) then
-        allocate(temp_real_array(k))
-        COMPOSITION_LOOP: do j = 1, k
-          call sp % read_data(temp_real_array, "atom_density ", &
-               length=size(temp_real_array), & 
-               group="geometry/materials/material ")
-        end do COMPOSITION_LOOP
-        deallocate(temp_real_array)
-      end if
-
-      call sp % read_data(j, "n_sab", &
-           group="geometry/materials/material ")
-      if (j > 0) then
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "i_sab_nuclides", length=j, &
-             group="geometry/materials/material ")
-        call sp % read_data(temp_array, "i_sab_tables", length=j, &
-             group="geometry/materials/material ")
-        deallocate(temp_array)
-      end if
-
-    end do MATERIAL_LOOP
-
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies/meshes")
 
@@ -1334,17 +1105,17 @@ contains
              group="tallies/tally" // trim(to_str(tally % id)))
         
         ! Read otf filter bin mapping
-        allocate(temp_array(otf_size_results_filters))
-        call sp % read_data(temp_array, "otf_filter_bin_map", &
+        allocate(filter_map_array(otf_size_results_filters))
+        call sp % read_data(filter_map_array, "otf_filter_bin_map", &
              group="tallies/tally" // trim(to_str(tally % id)), &
              length=otf_size_results_filters)
 
         ! Reset the filter map on the tally object
         do j = 1, otf_size_results_filters
-          dummy_filter_index = tally % otf_filter_index(temp_array(j))
+          dummy_filter_index = tally % otf_filter_index(filter_map_array(j))
         end do
 
-        deallocate(temp_array)
+        deallocate(filter_map_array)
 
       else
         call sp % read_data(otf_size_results_filters, "otf_size_results_filters", &

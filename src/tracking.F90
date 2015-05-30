@@ -36,7 +36,6 @@ contains
     integer :: lattice_translation(3) ! in-lattice translation vector
     integer :: last_cell              ! most recent cell particle was in
     integer :: n_event                ! number of collisions/crossings
-    integer :: meshbin                ! Current DD meshbin
     real(8) :: d_boundary             ! distance to nearest boundary
     real(8) :: d_collision            ! sampled distance to collision
     real(8) :: d_dd_mesh              ! distance to boundary on the DD mesh
@@ -45,6 +44,8 @@ contains
     logical :: found_cell             ! found cell which particle is in?
     type(LocalCoord), pointer :: coord
 
+    ! DD debugging vars
+    integer :: meshbin
     integer(8) :: starting_seed
     integer(8) :: debug1 = 0_8
     integer(8) :: debug2 = 0_8

@@ -322,9 +322,6 @@ module global
   ! Write out initial source
   logical :: write_initial_source = .false.
 
-  ! Number of distribution maps
-  integer :: n_maps
-
   ! OTF materials HDF5 file handle
   logical :: otf_matfile_open = .false.
 

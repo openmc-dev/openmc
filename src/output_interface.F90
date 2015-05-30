@@ -37,7 +37,7 @@ module output_interface
                                       write_integer_3Darray, &
                                       write_integer_4Darray, &
                                       write_long, &
-                                      write_string, &
+                                      write_string
     generic, public :: read_data => read_double, &
                                     read_double_1Darray, &
                                     read_double_2Darray, &

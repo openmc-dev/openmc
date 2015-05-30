@@ -181,7 +181,7 @@ contains
 
 !===============================================================================
 ! DD_SIMPLE_FOUR_DOMAIN_TALLIES initializes a fake set of tallies designed to
-! test on-the-fly memory loading with the simple four-domain test case
+! test on-the-fly memory loading with the simple four-domain test case.
 ! We'll have two scores and a cell filter with 4 cells.  Tests can simulate
 ! scoring events to this tally where the cells overlap domains in any way.
 !===============================================================================
@@ -201,7 +201,7 @@ contains
     call add_tallies("user", n_user_tallies)
 
     tallies(1) % id = 1
-    tallies(1) % label = 'DD test tally for simple four-domain test case'
+    tallies(1) % name = 'DD test tally for simple four-domain test case'
     tallies(1) %  on_the_fly_allocation = .true.
     tallies(1) %  type = TALLY_VOLUME
     tallies(1) % estimator = ESTIMATOR_ANALOG

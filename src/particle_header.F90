@@ -332,7 +332,7 @@ contains
     coord => this % coord0
 
     do while(associated(coord))    
-      if (allocated(coord % mapping)) then       
+      if (associated(coord % mapping)) then       
         ! The last map should always be 1, so we don't touch it here 
         do i = 1, n_maps - 1
          this % mapping(i) = this % mapping(i) + coord % mapping(i)

@@ -397,8 +397,8 @@ contains
     type(BinaryOutput), intent(inout) :: sp
 
 #ifdef MPI
-    integer                  :: mpiio_err
 # ifndef HDF5
+    integer                  :: mpiio_err
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to write
@@ -523,8 +523,8 @@ contains
     type(BinaryOutput), intent(inout) :: sp
 
 #ifdef MPI
-    integer                  :: mpiio_err
 # ifndef HDF5
+    integer                  :: mpiio_err
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_bank        ! size of bank to read
 # endif

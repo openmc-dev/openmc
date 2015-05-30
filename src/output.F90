@@ -2330,14 +2330,15 @@ contains
 ! with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(map, goal, univ, final, offset, path)
+  recursive subroutine find_offset(map, goal, univ, final, offset, path, is_mat)
 
     integer, intent(in) :: map                   ! Index in maps vector
-    integer, intent(in) :: goal                  ! The target cell ID
+    integer, intent(in) :: goal                  ! The target cell or mat ID
     type(Universe), pointer, intent(in) :: univ  ! Universe to begin search
     integer, intent(in) :: final                 ! Target offset
     integer, intent(inout) :: offset             ! Current offset
-    character(100) :: path                       ! Path to offset
+    character(100), intent(out) :: path          ! Path to offset
+    logical, intent(in), optional :: is_mat      ! goal id is a material?
     
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
@@ -2349,9 +2350,12 @@ contains
     integer :: temp_offset          ! Looped sum of offsets
     logical :: this_cell = .false.  ! Advance in this cell?
     logical :: later_cell = .false. ! Fill cells after this one?
+    logical :: goal_is_material = .false. ! material instead of cell 
     type(Cell),     pointer:: c           ! Pointer to current cell
     type(Universe), pointer :: next_univ  ! Next universe to loop through
     class(Lattice), pointer :: lat        ! Pointer to current lattice
+
+    if (present(is_mat)) goal_is_material = is_mat
 
     n = univ % n_cells
     
@@ -2368,13 +2372,22 @@ contains
       cell_index = univ % cells(i)        
       c => cells(cell_index)
       
-      ! If the cell ID matches the goal and the offset matches final,
-      ! write to the geometry stack
-      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-        path = trim(path) // "->" // to_str(c%id)
-        return
+      if (goal_is_material) then
+        ! If the material matches the goal and the offset matches final, we're done
+        if (c % material == goal .AND. offset == final) then
+          ! write to the geometry stack
+          path = trim(path) // "->" // to_str(c%id)
+          return
+        end if
+      else 
+        ! If the cell ID matches the goal and the offset matches final,
+        ! write to the geometry stack
+        if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
+          path = trim(path) // "->" // to_str(c%id)
+          return
+        end if
       end if
-      
+
     end do
     
     ! Find the fill cell or lattice cell that we need to enter
@@ -2568,218 +2581,6 @@ contains
             end do
 
           end select
-
-        end if
-      end if
-    end do              
-  end subroutine find_offset
-
-!===============================================================================
-! FIND_OFFSET uses a given map number, a target cell ID, and a target offset 
-! to build a string which is the path from the base universe to the target cell
-! with the given offset
-!===============================================================================
-
-  recursive subroutine find_offset(map, goal, univ, final, offset, path, mat)
-
-    integer, intent(in) :: map                   ! index of the map in the
-                                                 ! vector of maps
-    integer, intent(in) :: goal                  ! The target cell / material ID
-    type(Universe), pointer, intent(in) :: univ  ! universe to begin searching
-    integer, intent(in) :: final                 ! target offset
-    integer, intent(inout) :: offset             ! current offset, starts at 0
-    character(100) :: path                       ! path to offset
-    logical, intent(in), optional :: mat         ! material instead of cell?
-    
-    integer :: i,j                  ! index over cells
-    integer :: i_x, i_y, i_z        ! indices in lattice
-    integer :: n_x, n_y, n_z        ! size of lattice
-    integer :: n                    ! number of cells to search
-    integer :: index_cell           ! index in cells array
-    integer :: latoffset = 0        ! offset from lattice
-    integer :: temp_offset = 0      ! looped sum of offsets
-    logical :: this_cell = .false.  ! advance in this cell?
-    logical :: later_cell = .false. ! non-normal cells after this one?
-    logical :: material = .false.   ! material instead of cell         
-    type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
-    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
-!$omp threadprivate(c, lat, univ_next)
-
-    if (present(mat)) material = mat
-
-    n = univ % n_cells
-
-    ! write to the geometry stack
-    if (univ%id == 0) then
-      path = trim(path) // to_str(univ%id)
-    else
-      path = trim(path) // "->" // to_str(univ%id)
-    end if
-    ! Look through all cells in this universe
-    ! Just check if the final target is right here
-    do i = 1, n
-      ! get cell index
-      index_cell = univ % cells(i)        
-      ! get pointer to cell
-      c => cells(index_cell)
-
-      if (material) then
-        ! If the material matches the goal and the offset matches final, we're done
-        if (c % material == goal .AND. offset == final) then
-          ! write to the geometry stack
-          path = trim(path) // "->" // to_str(c%id)
-          return
-        end if
-      else 
-        ! If the cell ID matches the goal and the offset matches final, we're done
-        if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-          ! write to the geometry stack
-          path = trim(path) // "->" // to_str(c%id)
-          return
-        end if
-      end if
-
-    end do
-
-    ! Loop over all cells
-    ! Find the fill cell or lattice cell that we need to enter
-    do i = 1, n
-
-      later_cell = .false.
-
-      ! get cell index
-      index_cell = univ % cells(i)        
-      ! get pointer to cell
-      c => cells(index_cell)
-
-      this_cell = .false.  
-      ! If we got here, we still think the target is in this universe
-      ! or further down, but it's not this exact cell. 
-      ! Compare offset to next cell to see if we should enter this cell  
-      if (i /= n) then
-
-        do j = i+1, n
-          ! get cell index to NEXT cell
-          index_cell = univ % cells(j)        
-          ! get pointer to cell
-          c => cells(index_cell)
-          ! no offsets for normal cells, so skip
-          if (c % type == CELL_NORMAL) then
-            cycle
-          end if
-          ! break loop once we've found the next cell with an offset    
-          exit   
-        end do
-        ! lets make sure we didn't just end the loop by iteration
-        if (c % type /= CELL_NORMAL) then
-          ! There are more cells in this universe that it could be in
-          later_cell = .true.
-          ! Two cases, lattice or fill cell
-          if (c % type == CELL_FILL) then
-            temp_offset = c % offset(map)
-          else
-            lat => lattices(c % fill)            
-            ! Get the offset of the last lattice location
-            temp_offset = lat % offset(map,1,1,1)
-          end if   
-          ! If the final offset is in the range of offset - temp_offset+offset
-          ! then the goal is in this cell
-          if (final < temp_offset + offset) then
-            this_cell = .true.
-          end if  
-        end if
-      end if
-      if (n == 1 .and. c % type /= CELL_NORMAL) then
-        this_cell = .true.
-      end if
-      if (.not. later_cell) then
-        this_cell = .true.
-      end if
-      if (this_cell) then
-        ! get pointer to THIS cell because we
-        ! know that the target is in this cell
-        index_cell = univ % cells(i)
-        c => cells(index_cell)
-        path = trim(path) // "->" // to_str(c%id)
-
-        if (c % type == CELL_NORMAL) then      
-          ! ====================================================================
-          ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-          ! NOTE: THIS SHOULD NOT HAPPEN
-          return
-          !call fatal_error("Unexpected end of search with normal cell: " // &
-          !                 path)
-
-        elseif (c % type == CELL_FILL) then
-          ! ====================================================================
-          ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-
-          ! if we got here, we are going into this cell
-          ! update the current offset
-          offset = c % offset(map) + offset
-
-          univ_next => universes(c % fill)
-          call find_offset(map, goal, univ_next, final, offset, path, material)
-          return
-
-        elseif (c % type == CELL_LATTICE) then
-          ! ====================================================================
-          ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-
-          ! Set current lattice
-          lat => lattices(c % fill)
-
-          ! write to the geometry stack
-          path = trim(path) // "->" // to_str(lat%id)
-
-          n_x = lat % dimension(1)
-          n_y = lat % dimension(2)
-          if (lat % n_dimension == 3) then
-            n_z = lat % dimension(3)
-          else
-            n_z = 1
-          end if
-          ! Loop over lattice coordinates
-          do i_x = 1, n_x
-            do i_y = 1, n_y
-              do i_z = 1, n_z
-                if (i_z == n_z .AND. i_y == n_y .AND. i_x == n_x) then
-                  univ_next => universes(lat % universes(i_x,i_y,i_z))                          
-                else
-                  if (i_z + 1 <= n_z) then
-                    latoffset = lat % offset(map,i_x,i_y,i_z+1)
-
-                  elseif (i_y + 1 <= n_y) then
-                    latoffset = lat % offset(map,i_x,i_y+1,1)
-
-                  elseif (i_x + 1 <= n_x) then
-                    latoffset = lat % offset(map,i_x+1,1,1)
-
-                  end if
-                  if (final >= latoffset + offset) then
-                    cycle
-                  end if      
-
-                end if
-                if (latoffset == offset .and. (i_x /= n_x .or. i_y /= n_y .or. i_z /= n_z)) then
-                  cycle
-                end if
-
-                ! target is at this lattice position
-                latoffset = lat % offset(map,i_x,i_y,i_z)
-                offset = offset + latoffset
-
-                univ_next => universes(lat % universes(i_x,i_y,i_z))  
-                path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
-
-                call find_offset(map, goal, univ_next, final, offset, path, material)
-
-                return
-
-              end do
-            end do
-          end do
 
         end if
       end if

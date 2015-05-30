@@ -381,7 +381,7 @@ contains
               mat => materials(p % material)
               do l = 1, mat % n_nuclides
                 ! Get atom density
-                atom_density_ = mat % atom_density(l)
+                atom_density_ = mat % get_density(p % mapping(mat % map), l)
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
                 ! TODO: The following search for the matching reaction could

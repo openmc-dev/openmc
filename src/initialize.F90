@@ -107,26 +107,21 @@ contains
 
     ! Initialize distribcell_filters
     call prepare_distribcell()
-    
+
+    ! If distribution help mode is on, call the method to write the file
+    ! and then exit the run
+    if (run_mode == MODE_DISTRIBUTION) then
+      call distribution_help()
+      call time_initialize % stop()
+      return
+    end if
+
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
 
     if (run_mode /= MODE_PLOTTING) then
-
-      ! Initialize distributed materials and cells
-      call prepare_distribution()
     
-      ! If distribution help mode is on, call the method to write the file
-      ! and then exit the run
-      if (run_mode == MODE_DISTRIBUTION) then
-        call distribution_help()
-        ! Stop initialization timer
-        call time_initialize % stop()
-        ! exit
-        return
-      end if
-
       ! With the AWRs from the xs_listings, change all material specifications
       ! so that they contain atom percents summing to 1
       call normalize_ao()
@@ -1249,5 +1244,57 @@ contains
     end do
 
   end subroutine allocate_offsets
+
+!===============================================================================
+! DISTRIBUTION_HELP prints the set of human readable paths for all distributed
+! materials.  This assists in building/debugging a model with distribcells.
+!===============================================================================
+
+  subroutine distribution_help()
+
+    integer :: i      ! materials loop
+    integer :: j      ! instances loop
+    integer :: offset ! offset parameter for path generation
+    type(Material), pointer :: mat   ! pointer to material
+    type(Cell),     pointer :: c     ! pointer to cell
+    type(Universe), pointer :: univ  ! pointer to universe
+    character(MAX_FILE_LEN) :: path  ! path of summary file
+    character(100)          :: label ! user-specified identifier
+
+    ! Create filename for log file
+    path = trim(path_output) // "distribution.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_HELP, FILE=path, STATUS='replace', ACTION='write')
+
+    do i = 1, n_materials
+
+      mat => materials(i)
+
+      if (mat % distrib_dens .or. mat % distrib_comp) then
+
+        ! Skip unused mats
+        if (mat % cell < 1) cycle
+
+        c => cells(cell_dict % get_key(mat % cell))
+
+        write(UNIT_HELP,*) 'Distributed Material:', mat % id
+        write(UNIT_HELP,*) 'Number of Instances:', c % instances
+
+        do j = 1, c % instances
+
+          offset = 0
+          label = ''
+          univ => universes(BASE_UNIVERSE)
+          call find_offset(mat % map, material_dict % get_key(mat % id), univ, j - 1, offset, label, .true.)
+          write(UNIT_HELP,*) label
+
+        end do
+
+      end if
+
+    end do
+
+  end subroutine distribution_help
 
 end module initialize

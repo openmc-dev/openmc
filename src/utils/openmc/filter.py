@@ -104,7 +104,7 @@ class Filter(object):
             self._type = type
 
         elif not type in FILTER_TYPES.values():
-            msg = 'Unable to set Filter type to {0} since it is not one ' \
+            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
 
@@ -118,7 +118,7 @@ class Filter(object):
             self.num_bins = 0
 
         elif self._type is None:
-            msg = 'Unable to set bins for Filter to {0} since ' \
+            msg = 'Unable to set bins for Filter to "{0}" since ' \
                   'the Filter type has not yet been set'.format(bins)
             raise ValueError(msg)
 
@@ -136,12 +136,12 @@ class Filter(object):
             for edge in bins:
 
                 if not is_integer(edge):
-                    msg = 'Unable to add bin {0} to a {1} Filter since ' \
+                    msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
                           'it is a non-integer'.format(edge, self._type)
                     raise ValueError(msg)
 
                 elif edge < 0:
-                    msg = 'Unable to add bin  {0} to a {1} Filter since ' \
+                    msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
                           'it is a negative integer'.format(edge, self._type)
                     raise ValueError(msg)
 
@@ -151,22 +151,22 @@ class Filter(object):
             for edge in bins:
 
                 if not is_integer(edge) and not is_float(edge):
-                    msg = 'Unable to add bin edge {0} to {1} Filter since ' \
-                          'it is a non-integer or floating point ' \
+                    msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
+                          'since it is a non-integer or floating point ' \
                           'value'.format(edge, self._type)
                     raise ValueError(msg)
 
                 elif edge < 0.:
-                    msg = 'Unable to add bin edge {0} to {1} Filter since it ' \
-                          'is a negative value'.format(edge, self._type)
+                    msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
+                          'since it is a negative value'.format(edge, self._type)
                     raise ValueError(msg)
 
             # Check that bin edges are monotonically increasing
             for index in range(len(bins)):
 
                 if index > 0 and bins[index] < bins[index-1]:
-                    msg = 'Unable to add bin edges {0} to {1} Filter since ' \
-                          'they are not monotonically ' \
+                    msg = 'Unable to add bin edges "{0}" to a {1} Filter ' \
+                          'since they are not monotonically ' \
                           'increasing'.format(bins, self._type)
                     raise ValueError(msg)
 
@@ -175,17 +175,17 @@ class Filter(object):
         elif self._type == 'mesh':
 
             if not len(bins) == 1:
-                msg = 'Unable to add bins {0} to a mesh Filter since ' \
+                msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
 
             elif not is_integer(bins[0]):
-                msg = 'Unable to add bin {0} to mesh Filter since it ' \
+                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
 
             elif bins[0] < 0:
-                msg = 'Unable to add bin {0} to mesh Filter since it ' \
+                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a negative integer'.format(bins[0])
                 raise ValueError(msg)
 
@@ -198,7 +198,7 @@ class Filter(object):
     def num_bins(self, num_bins):
 
         if not is_integer(num_bins) or num_bins < 0:
-            msg = 'Unable to set the number of bins {0} for a {1} Filter ' \
+            msg = 'Unable to set the number of bins "{0}" for a {1} Filter ' \
                   'since it is not a positive ' \
                   'integer'.format(num_bins, self._type)
             raise ValueError(msg)
@@ -210,7 +210,7 @@ class Filter(object):
     def mesh(self, mesh):
 
         if not isinstance(mesh, Mesh):
-            msg = 'Unable to set Mesh to {0} for Filter since it is not a ' \
+            msg = 'Unable to set Mesh to "{0}" for Filter since it is not a ' \
                   'Mesh object'.format(mesh)
             raise ValueError(msg)
 
@@ -223,7 +223,7 @@ class Filter(object):
     def offset(self, offset):
 
         if not is_integer(offset):
-            msg = 'Unable to set offset {0} for a {1} Filter since it is a ' \
+            msg = 'Unable to set offset "{0}" for a {1} Filter since it is a ' \
                   'non-integer value'.format(offset, self._type)
             raise ValueError(msg)
 
@@ -234,12 +234,12 @@ class Filter(object):
     def stride(self, stride):
 
         if not is_integer(stride):
-            msg = 'Unable to set stride {0} for a {1} Filter since it is a ' \
+            msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
                   'non-integer value'.format(stride, self._type)
             raise ValueError(msg)
 
         if stride < 0:
-            msg = 'Unable to set stride {0} for a {1} Filter since it is a ' \
+            msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
                   'negative value'.format(stride, self._type)
             raise ValueError(msg)
 
@@ -288,17 +288,67 @@ class Filter(object):
         return merged_filter
 
 
-    def get_bin_index(self, bin):
+    def get_bin_index(self, filter_bin):
+        """Returns the index in the Filter for some bin.
+
+        Parameters
+        ----------
+        filter_bin : int, tuple
+                The bin is the integer ID for 'material', 'surface', 'cell',
+                'cellborn', and 'universe' Filters. The bin is an integer for
+                the cell instance ID for 'distribcell' Filters. The bin is
+                a 2-tuple of floats for 'energy' and 'energyout' filters
+                corresponding to the energy boundaries of the bin of interest.
+                The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding to
+                the mesh cell of interest.
+        
+        Returns
+        -------
+             The index in the Tally data array for this filter bin.
+        """
+
+
+        # FIXME: This does not work for distribcells!!!
 
         try:
-            index = self._bins.index(bin)
+            # Filter bins for a mesh are an (x,y,z) tuple
+            if self.type == 'mesh':
+
+                # Convert (x,y,z) to a single bin -- this is similar to
+                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
+                if (len(self.mesh.dimension) == 3):
+                    nx, ny, nz = self.mesh.dimension
+                    val = (filter_bin[0] - 1) * ny * nz + \
+                          (filter_bin[1] - 1) * nz + \
+                          (filter_bin[2] - 1)
+                else:
+                    nx, ny = self.mesh.dimension
+                    val = (filter_bin[0] - 1) * ny + \
+                          (filter_bin[1] - 1)
+
+                filter_index = val
+
+            # Use lower energy bound to find index for energy Filters
+            elif self.type in ['energy', 'energyout']:
+                val = self.bins.index(filter_bin[0])
+                filter_index = val
+
+            # Filter bins for distribcell are the "IDs" of each unique placement
+            # of the Cell in the Geometry (integers starting at 0)
+            elif self._type == 'distribcell':
+                filter_index = filter_bin
+
+            # Use ID for all other Filters (e.g., material, cell, etc.)
+            else:
+                val = self.bins.index(filter_bin)
+                filter_index = val
 
         except ValueError:
-            msg = 'Unable to get the bin index for Filter since {0} ' \
-                  'is not one of the bins'.format(bin)
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                      'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
 
-        return index
+        return filter_index
 
 
     def __repr__(self):

@@ -2560,7 +2560,6 @@ contains
             ! Search through nuclides
             pair_list => nuclide_dict % keys()
             do while (associated(pair_list))
-              call write_message(pair_list % key)
               if (starts_with(pair_list % key, word)) then
                 word = pair_list % key(1:150)
                 exit

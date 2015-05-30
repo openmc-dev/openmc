@@ -491,6 +491,10 @@ class Summary(object):
         self.tallies = {}
 
         # Read the number of tallies
+        if not 'tallies' in self._f.keys():
+            self.n_tallies = 0
+            return
+
         self.n_tallies = self._f['tallies/n_tallies'][0]
 
         # OpenMC Tally keys
@@ -532,15 +536,16 @@ class Summary(object):
 
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
-                # Read filter type (e.g., "cell", "energy", etc.) integer code
-                filter_type = self._f['{0}/type'.format(subsubbase)][0]
+                # Read filter type (e.g., "cell", "energy", etc.)
+                filter_type_code = self._f['{0}/type'.format(subsubbase)][0]
+                filter_type = openmc.FILTER_TYPES[filter_type_code]
 
                 # Read the filter bins
                 num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(openmc.FILTER_TYPES[filter_type], bins)
+                filter = openmc.Filter(filter_type, bins)
                 filter.num_bins = num_bins
 
                 # Add Filter to the Tally

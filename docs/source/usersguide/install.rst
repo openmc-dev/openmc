@@ -362,12 +362,12 @@ the following steps must be taken:
 2. In the root directory, a file named ``xsdir``, or some variant thereof,
    should be present. This file contains a listing of all the cross sections and
    is used by MCNP. This file should be converted to a ``cross_sections.xml``
-   file for use with OpenMC. A Python script is provided in the OpenMC
-   distribution for this purpose:
+   file for use with OpenMC. A utility is provided in the OpenMC distribution
+   for this purpose:
 
    .. code-block:: sh
 
-       openmc/scripts/convert_xsdir.py xsdir31 cross_sections.xml
+       openmc/scripts/openmc-xsdir-to-xml xsdir31 cross_sections.xml
 
 3. In the converted ``cross_sections.xml`` file, change the contents of the
    <directory> element to the absolute path of the directory containing the

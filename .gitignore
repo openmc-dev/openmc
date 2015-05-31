@@ -8,6 +8,10 @@
 # Compiler python objects
 *.pyc
 
+# Python distribution
+dist/
+openmc.egg-info/
+
 # Inputs generated from Python API
 examples/python/**/*.xml
 

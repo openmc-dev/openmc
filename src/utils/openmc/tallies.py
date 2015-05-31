@@ -128,7 +128,10 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need new CrossFilter class
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
 
             data = self._align_tally_data(other)
 
@@ -230,7 +233,10 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need new CrossFilter class
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
 
             data = self._align_tally_data(other)
 
@@ -332,6 +338,11 @@ class Tally(object):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
 
             data = self._align_tally_data(other)
 
@@ -436,7 +447,10 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need new CrossFilter class
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
 
             data = self._align_tally_data(other)
 
@@ -541,7 +555,10 @@ class Tally(object):
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
 
-            # FIXME: Need new CrossFilter class
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
 
             data = self._align_tally_data(power)
 
@@ -624,6 +641,21 @@ class Tally(object):
 
         return new_tally
 
+
+    def __pos__(self):
+
+        new_tally = copy.deepcopy(self)
+        new_tally._mean = np.abs(new_tally.mean)
+        return new_tally
+
+
+    def __neg__(self):
+
+        new_tally = copy.deepcopy(self)
+        new_tally._mean *= -1
+        return new_tally
+
+
     '''
     def sum(self, axis=None):
 
@@ -649,19 +681,19 @@ class Tally(object):
             clone._mean = copy.deepcopy(self.mean, memo)
             clone._std_dev = copy.deepcopy(self.std_dev, memo)
 
-            clone.filters = []
+            clone._filters = []
             for filter in self.filters:
               clone.add_filter(copy.deepcopy(filter, memo))
 
-            clone.nuclides = []
+            clone._nuclides = []
             for nuclide in self.nuclides:
               clone.add_nuclide(copy.deepcopy(nuclide, memo))
 
-            clone.scores = []
+            clone._scores = []
             for score in self.scores:
               clone.add_score(score)
 
-            clone.triggers = []
+            clone._triggers = []
             for trigger in self.triggers:
               clone.add_trigger(trigger)
 

@@ -110,15 +110,21 @@ class Tally(object):
 
     def __add__(self, other):
 
-        # FIXME: Check that results have been read
-        if not (self.mean and other.mean):
-            msg = 'Unable to add Tally ID={0} to {1} since they do not ' \
-                  'contain any results.'.format(self.id, other.id)
+        # Check that results have been read
+        if not (self.mean):
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
 
         if isinstance(other, Tally):
+
+            # Check that results have been read
+            if not (other.mean):
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(other.id)
+                raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
@@ -160,21 +166,197 @@ class Tally(object):
 
 
     def __radd__(self, other):
-        return other + self
+        return self + other
 
-    '''
+
     def __sub__(self, other):
 
+        # Check that results have been read
+        if not (self.mean):
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if not (self.mean):
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(self.id)
+                raise ValueError(msg)
+
+            # FIXME: Need new CrossFilter class
+            # FIXME: Need way to cross-product Nuclides
+            # FIXME: Need cross-product scores - just mix/match strings?
+
+            data = self._align_tally_data(other)
+
+            new_tally._mean = data['self']['mean'] - data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+                                         data['other']['std. dev.']**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+        elif is_integer(other) or is_float(other):
+
+            new_tally._mean = self._mean - other
+            new_tally._std_dev = self._std_dev
+
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+
     def __rsub__(self, other):
+        return -1. * self + other
+
 
     def __mul__(self, other):
 
+        # Check that results have been read
+        if not (self.mean):
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if not (self.mean):
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(self.id)
+                raise ValueError(msg)
+
+            # FIXME: Need new CrossFilter class
+            # FIXME: Need way to cross-product Nuclides
+            # FIXME: Need cross-product scores - just mix/match strings?
+
+            data = self._align_tally_data(other)
+
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] * data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+        elif is_integer(other) or is_float(other):
+
+            new_tally._mean = self._mean * other
+            new_tally._std_dev = self._std_dev * np.abs(other)
+
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+
     def __rmul__(self, other):
+        return self * other
+
 
     def __div__(self, other):
 
-    def __rdiv__(self, other):
+        # Check that results have been read
+        if not (self.mean):
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
 
+        new_tally = Tally(name='derived')
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if not (self.mean):
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(self.id)
+                raise ValueError(msg)
+
+            # FIXME: Need new CrossFilter class
+            # FIXME: Need way to cross-product Nuclides
+            # FIXME: Need cross-product scores - just mix/match strings?
+
+            data = self._align_tally_data(other)
+
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+        elif is_integer(other) or is_float(other):
+
+            new_tally._mean = self._mean / other
+            new_tally._std_dev = self._std_dev * np.abs(1. / other)
+
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+
+    def __rdiv__(self, other):
+        return self * (1. / other)
+
+
+    '''
     def __pow__(self, power):
 
     def sum(self, axis=None):

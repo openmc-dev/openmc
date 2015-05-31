@@ -203,7 +203,7 @@ set_target_properties(${program} PROPERTIES
 #===============================================================================
 
 install(TARGETS ${program} RUNTIME DESTINATION bin)
-install(DIRECTORY relaxng DESTINATION share)
+install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}/copyright")
 

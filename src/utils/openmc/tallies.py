@@ -154,7 +154,7 @@ class Tally(object):
             else:
                 for self_score in self.scores:
                     for other_score in other.scores:
-                        new_score = '({0} + {1})'.format(self_score, other_score)
+                        new_score = _CrossScore(self_score, other_score, '+')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
@@ -251,7 +251,7 @@ class Tally(object):
             else:
                 for self_score in self.scores:
                     for other_score in other.scores:
-                        new_score = '({0} - {1})'.format(self_score, other_score)
+                        new_score = _CrossScore(self_score, other_score, '-')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
@@ -350,7 +350,7 @@ class Tally(object):
             else:
                 for self_score in self.scores:
                     for other_score in other.scores:
-                        new_score = '({0} * {1})'.format(self_score, other_score)
+                        new_score = _CrossScore(self_score, other_score, '*')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
@@ -449,11 +449,11 @@ class Tally(object):
             else:
                 for self_score in self.scores:
                     for other_score in other.scores:
-                        new_score = '({0} / {1})'.format(self_score, other_score)
+                        new_score = _CrossScore(self_score, other_score, '/')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == power.nuclides:
+            if self.nuclides == other.nuclides:
                 for nuclide in self.nuclides:
                     new_tally.add_nuclide(nuclide)
 
@@ -548,8 +548,8 @@ class Tally(object):
             # Generate score "cross product"
             else:
                 for self_score in self.scores:
-                    for other_score in power.scores:
-                        new_score = '({0} ^ {1})'.format(self_score, other_score)
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '^')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
@@ -879,7 +879,7 @@ class Tally(object):
 
     def add_score(self, score):
 
-        if not is_string(score):
+        if not is_string(score) and not isinstance(score, _CrossScore):
             msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
@@ -2017,3 +2017,74 @@ class TalliesFile(object):
         tree = ET.ElementTree(self._tallies_file)
         tree.write("tallies.xml", xml_declaration=True,
                              encoding='utf-8', method="xml")
+
+
+class _CrossScore(object):
+
+    def __init__(self, left_score=None, right_score=None, binary_op=None):
+
+        self._left_score = None
+        self._right_score = None
+        self._binary_op = None
+
+        if left_score is not None:
+            self.left_score = left_score
+
+        if right_score is not None:
+            self.right_score = right_score
+
+        if binary_op is not None:
+            self.binary_op = binary_op
+
+
+    @property
+    def left_score(self):
+        return self._left_score
+
+
+    @property
+    def right_score(self):
+        return self._right_score
+
+
+    @property
+    def binary_op(self):
+        return self._binary_op
+
+
+    @left_score.setter
+    def left_score(self, left_score):
+
+        if not is_string(left_score):
+            msg = 'Unable to set CrossScore left score to {0} which ' \
+                  'is not a string'.format(left_score)
+            raise ValueError(msg)
+
+        self._left_score = left_score
+
+    @right_score.setter
+    def right_score(self, right_score):
+
+        if not is_string(right_score):
+            msg = 'Unable to set CrossScore right score to {0} which ' \
+                  'is not a string'.format(right_score)
+            raise ValueError(msg)
+
+        self._right_score = right_score
+
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+
+        if not is_string(binary_op):
+            msg = 'Unable to set CrossScore binary op to {0} which ' \
+                  'is not a string'.format(binary_op)
+            raise ValueError(msg)
+
+        self._binary_op = binary_op
+
+
+    def __repr__(self):
+        string = '({0} {1} {2})'.format(self.left_score,
+                                        self.binary_op, self.right_score)
+        return string

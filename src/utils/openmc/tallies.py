@@ -182,9 +182,9 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (self.mean):
+            if not (other.mean):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(self.id)
+                      'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
@@ -220,7 +220,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            msg = 'Unable to subtract {0} from Tally ' \
+                  'ID={1}'.format(other, self.id)
             raise ValueError(msg)
 
         return new_tally
@@ -243,9 +244,9 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (self.mean):
+            if not (other.mean):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(self.id)
+                      'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
@@ -283,7 +284,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            msg = 'Unable to multiply Tally ID={1} ' \
+                  'by {0}'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -306,9 +308,9 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (self.mean):
+            if not (other.mean):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(self.id)
+                      'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
@@ -346,7 +348,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to subtract {0} from Tally ID={1}'.format(other, self.id)
+            msg = 'Unable to divide Tally ID={0} ' \
+                  'by {1}'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -356,10 +359,71 @@ class Tally(object):
         return self * (1. / other)
 
 
-    '''
     def __pow__(self, power):
 
+        # Check that results have been read
+        if not (self.mean):
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+
+        if isinstance(power, Tally):
+
+            # Check that results have been read
+            if not (power.mean):
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(power.id)
+                raise ValueError(msg)
+
+            # FIXME: Need new CrossFilter class
+            # FIXME: Need way to cross-product Nuclides
+            # FIXME: Need cross-product scores - just mix/match strings?
+
+            data = self._align_tally_data(power)
+
+            mean_ratio = data['other']['mean'] / data['self']['mean']
+            first_term = mean_ratio * data['self']['std. dev.']
+            second_term = np.log(data['self']['mean']) * data['other']['std. dev.']
+            new_tally._mean = data['self']['mean'] ** data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(first_term**2 + second_term**2)
+
+            if self.estimator == power.estimator:
+                new_tally.estimator = self.estimator
+
+            if self.with_summary and power.with_summary:
+                new_tally.with_summary = self.with_summary
+
+            if self.num_realizations == power.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+        elif is_integer(power) or is_float(power):
+
+            new_tally._mean = self._mean ** power
+            self_rel_err = self.std_dev / self.mean
+            new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
+
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to raise Tally ID={0} to ' \
+                  'power {1}'.format(self.id, power)
+            raise ValueError(msg)
+
+        return new_tally
+
+    '''
     def sum(self, axis=None):
+
+    def slice(self, filters=[], nuclides=[], scores=[])
     '''
 
 

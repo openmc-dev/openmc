@@ -63,9 +63,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=0)
-                other_mean = np.tile(other_mean, other_new_bins)
+                other_mean = np.tile(other_mean, (other_new_bins, 1, 1))
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
-                other_std_dev = np.tile(other_std_dev, other_new_bins)
+                other_std_dev = np.tile(other_std_dev, (other_new_bins, 1, 1))
 
             if self.nuclides != other.nuclides:
 
@@ -79,9 +79,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=1)
-                other_mean = np.tile(other_mean, other_new_bins)
+                other_mean = np.tile(other_mean, (1, other_new_bins, 1))
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
-                other_std_dev = np.tile(other_std_dev, other_new_bins)
+                other_std_dev = np.tile(other_std_dev, (1, other_new_bins, 1))
 
             if self.scores != other.scores:
 
@@ -95,9 +95,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=2)
-                other_mean = np.tile(other_mean, other_new_bins)
+                other_mean = np.tile(other_mean, (1, 1, other_new_bins))
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
-                other_std_dev = np.tile(other_std_dev, other_new_bins)
+                other_std_dev = np.tile(other_std_dev, (1, 1, other_new_bins))
 
             data = {}
             data['self'] = {}
@@ -129,7 +129,6 @@ class Tally(object):
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
-            # FIXME: Need way to cross-product Nuclides
 
             data = self._align_tally_data(other)
 
@@ -146,20 +145,46 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # Generate "cross" scores
-            # NOTE: This only needs to cross the scores if the
-            if self.scores != other.scores:
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_score = '({0} + {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
+            # Generate score "cross product"
+            else:
                 for self_score in self.scores:
                     for other_score in other.scores:
                         new_score = '({0} + {1})'.format(self_score, other_score)
                         new_tally.add_score(new_score)
 
-            else:
+            # If the two Tallies have same nuclides, replicate them in new Tally
+            if self.nuclides == other.nuclides:
+                for nuclide in self.nuclides:
 
-                for score in self.scores:
-                    new_score = '({0} + {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    if isinstance(nuclide, Nuclide):
+                        name = nuclide.name
+                        new_nuclide = '({0} + {1})'.format(name, name)
+                    else:
+                        new_nuclide = '({0} + {1})'.format(nuclide, nuclide)
+
+                    new_tally.add_nuclide(new_nuclide)
+
+            # Generate nuclide "cross product"
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        if isinstance(self_nuclide, Nuclide):
+                            self_name = self_nuclide.name
+                        else:
+                            self_name = self_nuclide
+                        if isinstance(other_nuclide, Nuclide):
+                            other_name = other_nuclide.name
+                        else:
+                            other_name = other_nuclide
+
+                        new_nuclide = '({0} + {1})'.format(self_name, other_name)
+                        new_tally.add_nuclide(new_nuclide)
 
 
         elif is_integer(other) or is_float(other):
@@ -174,6 +199,9 @@ class Tally(object):
 
             for score in self.scores:
                 new_tally.add_score(score)
+
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
 
         else:
             msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
@@ -206,7 +234,6 @@ class Tally(object):
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
-            # FIXME: Need way to cross-product Nuclides
 
             data = self._align_tally_data(other)
 
@@ -223,20 +250,46 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # Generate "cross" scores
-            # NOTE: This only needs to cross the scores if the
-            if self.scores != other.scores:
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_score = '({0} - {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
+            # Generate score "cross product"
+            else:
                 for self_score in self.scores:
                     for other_score in other.scores:
                         new_score = '({0} - {1})'.format(self_score, other_score)
                         new_tally.add_score(new_score)
 
-            else:
+            # If the two Tallies have same nuclides, replicate them in new Tally
+            if self.nuclides == other.nuclides:
+                for nuclide in self.nuclides:
 
-                for score in self.scores:
-                    new_score = '({0} - {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    if isinstance(nuclide, Nuclide):
+                        name = nuclide.name
+                        new_nuclide = '({0} - {1})'.format(name, name)
+                    else:
+                        new_nuclide = '({0} - {1})'.format(nuclide, nuclide)
+
+                    new_tally.add_nuclide(new_nuclide)
+
+            # Generate nuclide "cross product"
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        if isinstance(self_nuclide, Nuclide):
+                            self_name = self_nuclide.name
+                        else:
+                            self_name = self_nuclide
+                        if isinstance(other_nuclide, Nuclide):
+                            other_name = other_nuclide.name
+                        else:
+                            other_name = other_nuclide
+
+                        new_nuclide = '({0} - {1})'.format(self_name, other_name)
+                        new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(other) or is_float(other):
 
@@ -250,6 +303,9 @@ class Tally(object):
 
             for score in self.scores:
                 new_tally.add_score(score)
+
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
 
         else:
             msg = 'Unable to subtract {0} from Tally ' \
@@ -283,7 +339,6 @@ class Tally(object):
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
-            # FIXME: Need way to cross-product Nuclides
 
             data = self._align_tally_data(other)
 
@@ -302,20 +357,46 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # Generate "cross" scores
-            # NOTE: This only needs to cross the scores if the
-            if self.scores != other.scores:
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_score = '({0} * {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
+            # Generate score "cross product"
+            else:
                 for self_score in self.scores:
                     for other_score in other.scores:
                         new_score = '({0} * {1})'.format(self_score, other_score)
                         new_tally.add_score(new_score)
 
-            else:
+            # If the two Tallies have same nuclides, replicate them in new Tally
+            if self.nuclides == other.nuclides:
+                for nuclide in self.nuclides:
 
-                for score in self.scores:
-                    new_score = '({0} * {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    if isinstance(nuclide, Nuclide):
+                        name = nuclide.name
+                        new_nuclide = '({0} * {1})'.format(name, name)
+                    else:
+                        new_nuclide = '({0} * {1})'.format(nuclide, nuclide)
+
+                    new_tally.add_nuclide(new_nuclide)
+
+            # Generate nuclide "cross product"
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        if isinstance(self_nuclide, Nuclide):
+                            self_name = self_nuclide.name
+                        else:
+                            self_name = self_nuclide
+                        if isinstance(other_nuclide, Nuclide):
+                            other_name = other_nuclide.name
+                        else:
+                            other_name = other_nuclide
+
+                        new_nuclide = '({0} * {1})'.format(self_name, other_name)
+                        new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(other) or is_float(other):
 
@@ -329,6 +410,9 @@ class Tally(object):
 
             for score in self.scores:
                 new_tally.add_score(score)
+
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
 
         else:
             msg = 'Unable to multiply Tally ID={1} ' \
@@ -363,7 +447,6 @@ class Tally(object):
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
-            # FIXME: Need way to cross-product Nuclides
 
             data = self._align_tally_data(other)
 
@@ -382,20 +465,47 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # Generate "cross" scores
-            # NOTE: This only needs to cross the scores if the
-            if self.scores != other.scores:
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_score = '({0} / {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
+            # Generate score "cross product"
+            else:
                 for self_score in self.scores:
                     for other_score in other.scores:
                         new_score = '({0} / {1})'.format(self_score, other_score)
                         new_tally.add_score(new_score)
 
-            else:
 
-                for score in self.scores:
-                    new_score = '({0} / {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+            # If the two Tallies have same nuclides, replicate them in new Tally
+            if self.nuclides == other.nuclides:
+                for nuclide in self.nuclides:
+
+                    if isinstance(nuclide, Nuclide):
+                        name = nuclide.name
+                        new_nuclide = '({0} / {1})'.format(name, name)
+                    else:
+                        new_nuclide = '({0} / {1})'.format(nuclide, nuclide)
+
+                    new_tally.add_nuclide(new_nuclide)
+
+            # Generate nuclide "cross product"
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        if isinstance(self_nuclide, Nuclide):
+                            self_name = self_nuclide.name
+                        else:
+                            self_name = self_nuclide
+                        if isinstance(other_nuclide, Nuclide):
+                            other_name = other_nuclide.name
+                        else:
+                            other_name = other_nuclide
+
+                        new_nuclide = '({0} / {1})'.format(self_name, other_name)
+                        new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(other) or is_float(other):
 
@@ -409,6 +519,9 @@ class Tally(object):
 
             for score in self.scores:
                 new_tally.add_score(score)
+
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
 
         else:
             msg = 'Unable to divide Tally ID={0} ' \
@@ -442,7 +555,6 @@ class Tally(object):
                 raise ValueError(msg)
 
             # FIXME: Need new CrossFilter class
-            # FIXME: Need way to cross-product Nuclides
 
             data = self._align_tally_data(power)
 
@@ -462,20 +574,46 @@ class Tally(object):
             if self.num_realizations == power.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # Generate "cross" scores
-            # NOTE: This only needs to cross the scores if the
-            if self.scores != power.scores:
-
-                for self_score in self.scores:
-                    for power_score in power.scores:
-                        new_score = '({0} ^ {1})'.format(self_score, power_score)
-                        new_tally.add_score(new_score)
-
-            else:
-
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == power.scores:
                 for score in self.scores:
                     new_score = '({0} ^ {1})'.format(score, score)
                     new_tally.add_score(new_score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for other_score in power.scores:
+                        new_score = '({0} ^ {1})'.format(self_score, other_score)
+                        new_tally.add_score(new_score)
+
+            # If the two Tallies have same nuclides, replicate them in new Tally
+            if self.nuclides == power.nuclides:
+                for nuclide in self.nuclides:
+
+                    if isinstance(nuclide, Nuclide):
+                        name = nuclide.name
+                        new_nuclide = '({0} ^ {1})'.format(name, name)
+                    else:
+                        new_nuclide = '({0} ^ {1})'.format(nuclide, nuclide)
+
+                    new_tally.add_nuclide(new_nuclide)
+
+            # Generate nuclide "cross product"
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in power.nuclides:
+                        if isinstance(self_nuclide, Nuclide):
+                            self_name = self_nuclide.name
+                        else:
+                            self_name = self_nuclide
+                        if isinstance(other_nuclide, Nuclide):
+                            other_name = other_nuclide.name
+                        else:
+                            other_name = other_nuclide
+
+                        new_nuclide = '({0} + {1})'.format(self_name, other_name)
+                        new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(power) or is_float(power):
 
@@ -490,6 +628,9 @@ class Tally(object):
 
             for score in self.scores:
                 new_tally.add_score(score)
+
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
 
         else:
             msg = 'Unable to raise Tally ID={0} to ' \

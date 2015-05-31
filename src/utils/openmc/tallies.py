@@ -166,18 +166,8 @@ class Tally(object):
             else:
                 for self_nuclide in self.nuclides:
                     for other_nuclide in other.nuclides:
-                        if isinstance(self_nuclide, Nuclide):
-                            self_name = self_nuclide.name
-                        else:
-                            self_name = self_nuclide
-                        if isinstance(other_nuclide, Nuclide):
-                            other_name = other_nuclide.name
-                        else:
-                            other_name = other_nuclide
-
-                        new_nuclide = '({0} + {1})'.format(self_name, other_name)
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '+')
                         new_tally.add_nuclide(new_nuclide)
-
 
         elif is_integer(other) or is_float(other):
 
@@ -263,16 +253,7 @@ class Tally(object):
             else:
                 for self_nuclide in self.nuclides:
                     for other_nuclide in other.nuclides:
-                        if isinstance(self_nuclide, Nuclide):
-                            self_name = self_nuclide.name
-                        else:
-                            self_name = self_nuclide
-                        if isinstance(other_nuclide, Nuclide):
-                            other_name = other_nuclide.name
-                        else:
-                            other_name = other_nuclide
-
-                        new_nuclide = '({0} - {1})'.format(self_name, other_name)
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '-')
                         new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(other) or is_float(other):
@@ -362,16 +343,7 @@ class Tally(object):
             else:
                 for self_nuclide in self.nuclides:
                     for other_nuclide in other.nuclides:
-                        if isinstance(self_nuclide, Nuclide):
-                            self_name = self_nuclide.name
-                        else:
-                            self_name = self_nuclide
-                        if isinstance(other_nuclide, Nuclide):
-                            other_name = other_nuclide.name
-                        else:
-                            other_name = other_nuclide
-
-                        new_nuclide = '({0} * {1})'.format(self_name, other_name)
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '*')
                         new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(other) or is_float(other):
@@ -461,17 +433,9 @@ class Tally(object):
             else:
                 for self_nuclide in self.nuclides:
                     for other_nuclide in other.nuclides:
-                        if isinstance(self_nuclide, Nuclide):
-                            self_name = self_nuclide.name
-                        else:
-                            self_name = self_nuclide
-                        if isinstance(other_nuclide, Nuclide):
-                            other_name = other_nuclide.name
-                        else:
-                            other_name = other_nuclide
-
-                        new_nuclide = '({0} / {1})'.format(self_name, other_name)
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '/')
                         new_tally.add_nuclide(new_nuclide)
+
 
         elif is_integer(other) or is_float(other):
 
@@ -548,8 +512,8 @@ class Tally(object):
             # Generate score "cross product"
             else:
                 for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '^')
+                    for power_score in power.scores:
+                        new_score = _CrossScore(self_score, power_score, '^')
                         new_tally.add_score(new_score)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
@@ -560,17 +524,8 @@ class Tally(object):
             # Generate nuclide "cross product"
             else:
                 for self_nuclide in self.nuclides:
-                    for other_nuclide in power.nuclides:
-                        if isinstance(self_nuclide, Nuclide):
-                            self_name = self_nuclide.name
-                        else:
-                            self_name = self_nuclide
-                        if isinstance(other_nuclide, Nuclide):
-                            other_name = other_nuclide.name
-                        else:
-                            other_name = other_nuclide
-
-                        new_nuclide = '({0} + {1})'.format(self_name, other_name)
+                    for power_nuclide in power.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, power_nuclide, '^')
                         new_tally.add_nuclide(new_nuclide)
 
         elif is_integer(power) or is_float(power):
@@ -2062,6 +2017,7 @@ class _CrossScore(object):
 
         self._left_score = left_score
 
+
     @right_score.setter
     def right_score(self, right_score):
 
@@ -2087,4 +2043,93 @@ class _CrossScore(object):
     def __repr__(self):
         string = '({0} {1} {2})'.format(self.left_score,
                                         self.binary_op, self.right_score)
+        return string
+
+
+class _CrossNuclide(object):
+
+    def __init__(self, left_nuclide=None, right_nuclide=None, binary_op=None):
+
+        self._left_nuclide = None
+        self._right_nuclide = None
+        self._binary_op = None
+
+        if left_nuclide is not None:
+            self.left_nuclide = left_nuclide
+
+        if right_nuclide is not None:
+            self.right_nuclide = right_nuclide
+
+        if binary_op is not None:
+            self.binary_op = binary_op
+
+
+    @property
+    def left_nuclide(self):
+        return self._left_nuclide
+
+
+    @property
+    def right_nuclide(self):
+        return self._right_nuclide
+
+
+    @property
+    def binary_op(self):
+        return self._binary_op
+
+
+    @left_nuclide.setter
+    def left_nuclide(self, left_nuclide):
+
+        if not isinstance(left_nuclide, Nuclide) or is_integer(left_nuclide):
+            msg = 'Unable to set CrossNuclide left nuclide to {0} which ' \
+                  'is not an integer or Nuclide'.format(left_nuclide)
+            raise ValueError(msg)
+
+        self._left_nuclide = left_nuclide
+
+
+    @right_nuclide.setter
+    def right_nuclide(self, right_nuclide):
+
+        if not isinstance(right_nuclide, Nuclide) or is_integer(right_nuclide):
+            msg = 'Unable to set CrossNuclide right nuclide to {0} which ' \
+                  'is not an integer or Nuclide'.format(right_nuclide)
+            raise ValueError(msg)
+
+        self._right_nuclide = right_nuclide
+
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+
+        if not is_string(binary_op):
+            msg = 'Unable to set CrossNuclide binary op to {0} which ' \
+                  'is not a string'.format(binary_op)
+            raise ValueError(msg)
+
+        self._binary_op = binary_op
+
+
+    def __repr__(self):
+
+        string = ''
+
+        # If the Summary was linked, the left nuclide is a Nuclide object
+        if isinstance(self.left_nuclide, Nuclide):
+            string += '(' + self.left_nuclide.name
+        # If the Summary was not linked, the left nuclide is the ZAID
+        else:
+            string += '(' + str(self.left_nuclide)
+
+        string += ' ' + self.binary_op + ' '
+
+        # If the Summary was linked, the right nuclide is a Nuclide object
+        if isinstance(self.right_nuclide, Nuclide):
+            string += self.right_nuclide.name + ')'
+        # If the Summary was not linked, the right nuclide is the ZAID
+        else:
+            string += str(self.right_nuclide) + ')'
+
         return string

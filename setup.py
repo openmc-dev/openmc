@@ -14,8 +14,9 @@ setup(name='openmc',
 
       # Optional dependencies
       extras_require={
+          'pandas': ['pandas'],
           'vtk': ['vtk', 'silomesh'],
-          'validate': ['lxml'],
+          'validate': ['lxml']
       },
 
       # Metadata

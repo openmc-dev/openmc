@@ -145,17 +145,17 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
+            # If the two Tallies have same filters, replicate them in new Tally
+            if self.filters == other.filters:
+                for filter in self.filters:
+                    new_tally.add_filter(filter)
 
-            # Generate score "cross product"
+            # Generate filter "cross product"
             else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '+')
-                        new_tally.add_score(new_score)
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '+')
+                        new_tally.add_filter(new_filter)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
@@ -169,6 +169,18 @@ class Tally(object):
                         new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '+')
                         new_tally.add_nuclide(new_nuclide)
 
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_tally.add_score(score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '+')
+                        new_tally.add_score(new_score)
+
         elif is_integer(other) or is_float(other):
 
             new_tally._mean = self._mean + other
@@ -179,11 +191,14 @@ class Tally(object):
             new_tally.num_realization = self.num_realizations
             new_tally.num_score_bins = self.num_score_bins
 
-            for score in self.scores:
-                new_tally.add_score(score)
+            for filter in self.filters:
+                new_tally.add_filter(filter)
 
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
+
+            for score in self.scores:
+                new_tally.add_score(score)
 
         else:
             msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
@@ -232,17 +247,17 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
+            # If the two Tallies have same filters, replicate them in new Tally
+            if self.filters == other.filters:
+                for filter in self.filters:
+                    new_tally.add_filter(filter)
 
-            # Generate score "cross product"
+            # Generate filter "cross product"
             else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '-')
-                        new_tally.add_score(new_score)
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '-')
+                        new_tally.add_filter(new_filter)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
@@ -256,6 +271,18 @@ class Tally(object):
                         new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '-')
                         new_tally.add_nuclide(new_nuclide)
 
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_tally.add_score(score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '-')
+                        new_tally.add_score(new_score)
+
         elif is_integer(other) or is_float(other):
 
             new_tally._mean = self._mean - other
@@ -266,11 +293,14 @@ class Tally(object):
             new_tally.num_realization = self.num_realizations
             new_tally.num_score_bins = self.num_score_bins
 
-            for score in self.scores:
-                new_tally.add_score(score)
+            for filter in self.filters:
+                new_tally.add_filter(filter)
 
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
+
+            for score in self.scores:
+                new_tally.add_score(score)
 
         else:
             msg = 'Unable to subtract {0} from Tally ' \
@@ -303,8 +333,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need new CrossFilter class
-
             data = self._align_tally_data(other)
 
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
@@ -322,17 +350,17 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
+            # If the two Tallies have same filters, replicate them in new Tally
+            if self.filters == other.filters:
+                for filter in self.filters:
+                    new_tally.add_filter(filter)
 
-            # Generate score "cross product"
+            # Generate filter "cross product"
             else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '*')
-                        new_tally.add_score(new_score)
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '*')
+                        new_tally.add_filter(new_filter)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
@@ -346,6 +374,18 @@ class Tally(object):
                         new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '*')
                         new_tally.add_nuclide(new_nuclide)
 
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_tally.add_score(score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '*')
+                        new_tally.add_score(new_score)
+
         elif is_integer(other) or is_float(other):
 
             new_tally._mean = self._mean * other
@@ -356,11 +396,14 @@ class Tally(object):
             new_tally.num_realization = self.num_realizations
             new_tally.num_score_bins = self.num_score_bins
 
-            for score in self.scores:
-                new_tally.add_score(score)
+            for filter in self.filters:
+                new_tally.add_filter(filter)
 
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
+
+            for score in self.scores:
+                new_tally.add_score(score)
 
         else:
             msg = 'Unable to multiply Tally ID={1} ' \
@@ -412,17 +455,17 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
+            # If the two Tallies have same filters, replicate them in new Tally
+            if self.filters == other.filters:
+                for filter in self.filters:
+                    new_tally.add_filter(filter)
 
-            # Generate score "cross product"
+            # Generate filter "cross product"
             else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '/')
-                        new_tally.add_score(new_score)
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '/')
+                        new_tally.add_filter(new_filter)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
@@ -436,6 +479,17 @@ class Tally(object):
                         new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '/')
                         new_tally.add_nuclide(new_nuclide)
 
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == other.scores:
+                for score in self.scores:
+                    new_tally.add_score(score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '/')
+                        new_tally.add_score(new_score)
 
         elif is_integer(other) or is_float(other):
 
@@ -447,11 +501,14 @@ class Tally(object):
             new_tally.num_realization = self.num_realizations
             new_tally.num_score_bins = self.num_score_bins
 
-            for score in self.scores:
-                new_tally.add_score(score)
+            for filter in self.filters:
+                new_tally.add_filter(filter)
 
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
+
+            for score in self.scores:
+                new_tally.add_score(score)
 
         else:
             msg = 'Unable to divide Tally ID={0} ' \
@@ -504,17 +561,17 @@ class Tally(object):
             if self.num_realizations == power.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == power.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
+            # If the two Tallies have same filters, replicate them in new Tally
+            if self.filters == power.filters:
+                for filter in self.filters:
+                    new_tally.add_filter(filter)
 
-            # Generate score "cross product"
+            # Generate filter "cross product"
             else:
-                for self_score in self.scores:
-                    for power_score in power.scores:
-                        new_score = _CrossScore(self_score, power_score, '^')
-                        new_tally.add_score(new_score)
+                for self_filter in self.filters:
+                    for power_filter in power.filters:
+                        new_filter = _CrossFilter(self_filter, power_filter, '^')
+                        new_tally.add_filter(new_filter)
 
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == power.nuclides:
@@ -528,6 +585,18 @@ class Tally(object):
                         new_nuclide = _CrossNuclide(self_nuclide, power_nuclide, '^')
                         new_tally.add_nuclide(new_nuclide)
 
+            # If the two Tallies have same scores, replicate them in new Tally
+            if self.scores == power.scores:
+                for score in self.scores:
+                    new_tally.add_score(score)
+
+            # Generate score "cross product"
+            else:
+                for self_score in self.scores:
+                    for power_score in power.scores:
+                        new_score = _CrossScore(self_score, power_score, '^')
+                        new_tally.add_score(new_score)
+
         elif is_integer(power) or is_float(power):
 
             new_tally._mean = self._mean ** power
@@ -539,11 +608,14 @@ class Tally(object):
             new_tally.num_realization = self.num_realizations
             new_tally.num_score_bins = self.num_score_bins
 
-            for score in self.scores:
-                new_tally.add_score(score)
+            for filter in self.filters:
+                new_tally.add_filter(filter)
 
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
+
+            for score in self.scores:
+                new_tally.add_score(score)
 
         else:
             msg = 'Unable to raise Tally ID={0} to ' \
@@ -820,7 +892,7 @@ class Tally(object):
 
         global filters
 
-        if not isinstance(filter, Filter):
+        if not isinstance(filter, (Filter, _CrossFilter)):
             msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
                   'not a Filter object'.format(filter, self.id)
             raise ValueError(msg)
@@ -2132,4 +2204,102 @@ class _CrossNuclide(object):
         else:
             string += str(self.right_nuclide) + ')'
 
+        return string
+
+
+class _CrossFilter(object):
+
+    def __init__(self, left_filter=None, right_filter=None, binary_op=None):
+
+        self._left_filter = None
+        self._right_filter = None
+        self._binary_op = None
+
+        if left_filter is not None:
+            self.left_filter = left_filter
+
+        if right_filter is not None:
+            self.right_filter = right_filter
+
+        if binary_op is not None:
+            self.binary_op = binary_op
+
+
+    @property
+    def left_filter(self):
+        return self._left_filter
+
+
+    @property
+    def right_filter(self):
+        return self._right_filter
+
+
+    @property
+    def binary_op(self):
+        return self._binary_op
+
+
+    @property
+    def type(self):
+        return (self.right_filter.type, self.left_filter.type)
+
+
+    @property
+    def bins(self):
+        return (self.right_filter.bins, self.left_filter.bins)
+
+
+    @property
+    def stride(self):
+        return self.left_filter.stride * self.right_filter.stride
+
+
+    @left_filter.setter
+    def left_filter(self, left_filter):
+
+        if not isinstance(left_filter, Filter):
+            msg = 'Unable to set CrossFilter left filter to {0} which ' \
+                  'is not a Filter'.format(left_filter)
+            raise ValueError(msg)
+
+        self._left_filter = left_filter
+
+
+    @right_filter.setter
+    def right_filter(self, right_filter):
+
+        if not isinstance(right_filter, Filter):
+            msg = 'Unable to set CrossFilter right filter to {0} which ' \
+                  'is not a Filter'.format(right_filter)
+            raise ValueError(msg)
+
+        self._right_filter = right_filter
+
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+
+        if not is_string(binary_op):
+            msg = 'Unable to set CrossFilter binary op to {0} which ' \
+                  'is not a string'.format(binary_op)
+            raise ValueError(msg)
+
+        self._binary_op = binary_op
+
+
+    def __repr__(self):
+
+        string = '_CrossFilter\n'
+
+        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
+                                             self.binary_op,
+                                             self.right_filter.type)
+
+        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
+                                             self.binary_op,
+                                             self.right_filter.bins)
+
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
         return string

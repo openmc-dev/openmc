@@ -145,6 +145,22 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
+            # Generate "cross" scores
+            # NOTE: This only needs to cross the scores if the
+            if self.scores != other.scores:
+
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = '({0} + {1})'.format(self_score, other_score)
+                        new_tally.add_score(new_score)
+
+            else:
+
+                for score in self.scores:
+                    new_score = '({0} + {1})'.format(score, score)
+                    new_tally.add_score(new_score)
+
+
         elif is_integer(other) or is_float(other):
 
             new_tally._mean = self._mean + other
@@ -205,6 +221,21 @@ class Tally(object):
 
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
+
+            # Generate "cross" scores
+            # NOTE: This only needs to cross the scores if the
+            if self.scores != other.scores:
+
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = '({0} - {1})'.format(self_score, other_score)
+                        new_tally.add_score(new_score)
+
+            else:
+
+                for score in self.scores:
+                    new_score = '({0} - {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
         elif is_integer(other) or is_float(other):
 
@@ -270,6 +301,21 @@ class Tally(object):
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
+            # Generate "cross" scores
+            # NOTE: This only needs to cross the scores if the
+            if self.scores != other.scores:
+
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = '({0} * {1})'.format(self_score, other_score)
+                        new_tally.add_score(new_score)
+
+            else:
+
+                for score in self.scores:
+                    new_score = '({0} * {1})'.format(score, score)
+                    new_tally.add_score(new_score)
+
         elif is_integer(other) or is_float(other):
 
             new_tally._mean = self._mean * other
@@ -333,6 +379,21 @@ class Tally(object):
 
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
+
+            # Generate "cross" scores
+            # NOTE: This only needs to cross the scores if the
+            if self.scores != other.scores:
+
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = '({0} / {1})'.format(self_score, other_score)
+                        new_tally.add_score(new_score)
+
+            else:
+
+                for score in self.scores:
+                    new_score = '({0} / {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
         elif is_integer(other) or is_float(other):
 
@@ -398,6 +459,21 @@ class Tally(object):
 
             if self.num_realizations == power.num_realizations:
                 new_tally.num_realizations = self.num_realizations
+
+            # Generate "cross" scores
+            # NOTE: This only needs to cross the scores if the
+            if self.scores != power.scores:
+
+                for self_score in self.scores:
+                    for power_score in power.scores:
+                        new_score = '({0} ^ {1})'.format(self_score, power_score)
+                        new_tally.add_score(new_score)
+
+            else:
+
+                for score in self.scores:
+                    new_score = '({0} ^ {1})'.format(score, score)
+                    new_tally.add_score(new_score)
 
         elif is_integer(power) or is_float(power):
 

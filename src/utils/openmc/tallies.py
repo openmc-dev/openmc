@@ -63,9 +63,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=0)
-                other_mean = np.repeat(other_mean, other_new_bins, axis=0)
+                other_mean = np.tile(other_mean, other_new_bins)
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
-                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=0)
+                other_std_dev = np.tile(other_std_dev, other_new_bins)
 
             if self.nuclides != other.nuclides:
 
@@ -79,9 +79,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=1)
-                other_mean = np.repeat(other_mean, other_new_bins, axis=1)
+                other_mean = np.tile(other_mean, other_new_bins)
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
-                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=1)
+                other_std_dev = np.tile(other_std_dev, other_new_bins)
 
             if self.scores != other.scores:
 
@@ -95,9 +95,9 @@ class Tally(object):
 
                 # Replicate the data
                 self_mean = np.repeat(self_mean, self_new_bins, axis=2)
-                other_mean = np.repeat(other_mean, other_new_bins, axis=2)
+                other_mean = np.tile(other_mean, other_new_bins)
                 self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
-                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=2)
+                other_std_dev = np.tile(other_std_dev, other_new_bins)
 
             data = {}
             data['self'] = {}
@@ -112,7 +112,7 @@ class Tally(object):
     def __add__(self, other):
 
         # Check that results have been read
-        if not (self.mean):
+        if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -123,7 +123,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (other.mean):
+            if other.mean is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -189,7 +189,7 @@ class Tally(object):
     def __sub__(self, other):
 
         # Check that results have been read
-        if not (self.mean):
+        if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -200,7 +200,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (other.mean):
+            if other.mean is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -266,7 +266,7 @@ class Tally(object):
     def __mul__(self, other):
 
         # Check that results have been read
-        if not (self.mean):
+        if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -277,7 +277,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (other.mean):
+            if other.mean is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -345,9 +345,10 @@ class Tally(object):
     def __div__(self, other):
 
         # Check that results have been read
-        if not (self.mean):
+        if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
+            print self.mean
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
@@ -356,7 +357,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if not (other.mean):
+            if other.mean is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -424,7 +425,7 @@ class Tally(object):
     def __pow__(self, power):
 
         # Check that results have been read
-        if not (self.mean):
+        if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -435,7 +436,7 @@ class Tally(object):
         if isinstance(power, Tally):
 
             # Check that results have been read
-            if not (power.mean):
+            if power.mean is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)

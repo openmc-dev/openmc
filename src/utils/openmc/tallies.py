@@ -41,6 +41,7 @@ class Tally(object):
         self._sum_sq = None
         self._mean = None
         self._std_dev = None
+        self._with_batch_statistics = False
 
 
     def _align_tally_data(self, other):
@@ -117,6 +118,7 @@ class Tally(object):
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
 
@@ -128,7 +130,6 @@ class Tally(object):
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
-            # FIXME: Need cross-product scores - just mix/match strings?
 
             data = self._align_tally_data(other)
 
@@ -194,6 +195,7 @@ class Tally(object):
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
 
@@ -205,7 +207,6 @@ class Tally(object):
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
-            # FIXME: Need cross-product scores - just mix/match strings?
 
             data = self._align_tally_data(other)
 
@@ -271,6 +272,7 @@ class Tally(object):
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
 
@@ -282,7 +284,6 @@ class Tally(object):
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
-            # FIXME: Need cross-product scores - just mix/match strings?
 
             data = self._align_tally_data(other)
 
@@ -350,6 +351,7 @@ class Tally(object):
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
 
@@ -361,7 +363,6 @@ class Tally(object):
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
-            # FIXME: Need cross-product scores - just mix/match strings?
 
             data = self._align_tally_data(other)
 
@@ -429,6 +430,7 @@ class Tally(object):
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
 
         if isinstance(power, Tally):
 
@@ -440,7 +442,6 @@ class Tally(object):
 
             # FIXME: Need new CrossFilter class
             # FIXME: Need way to cross-product Nuclides
-            # FIXME: Need cross-product scores - just mix/match strings?
 
             data = self._align_tally_data(power)
 
@@ -700,6 +701,11 @@ class Tally(object):
         return self._std_dev
 
 
+    @property
+    def with_batch_statistics(self):
+        return self._with_batch_statistics
+
+
     @estimator.setter
     def estimator(self, estimator):
 
@@ -819,6 +825,17 @@ class Tally(object):
         self._with_summary = with_summary
 
 
+    @with_batch_statistics.setter
+    def with_batch_statistics(self, with_batch_statistics):
+
+        if not isinstance(with_batch_statistics, bool):
+            msg = 'Unable to set with_batch_statistics to a non-boolean ' \
+                  'value "{0}"'.format(with_batch_statistics)
+            raise ValueError(msg)
+
+        self._with_batch_statistics = with_batch_statistics
+
+
     def set_results(self, sum, sum_sq):
 
         if not isinstance(sum, (tuple, list, np.ndarray)):
@@ -874,6 +891,7 @@ class Tally(object):
         self._std_dev = np.sqrt((self.sum_sq / self.num_realizations - \
                                  self.mean**2) / (self.num_realizations - 1))
         self._std_dev *= t_value
+        self.with_batch_statistics = True
 
 
     def __repr__(self):
@@ -1209,7 +1227,11 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if self._sum is None or self._sum_sq is None:
+        if (value == 'mean' and self.mean is None) or \
+           (value == 'std_dev' and self.std_dev is None) or \
+           (value == 'rel_err' and self.mean is None) or \
+           (value == 'sum' and self.sum is None) or \
+           (value == 'sum_sq' and self.sum_sq is None):
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_values(...)'.format(self.id)
@@ -1217,7 +1239,8 @@ class Tally(object):
 
 
         # Compute batch statistics if not yet computed
-        self.compute_std_dev()
+        if not self.with_batch_statistics:
+            self.compute_std_dev()
 
         ############################      FILTERS      #########################
         # Determine the score indices from any of the requested scores
@@ -1358,7 +1381,7 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if self._sum is None or self._sum_sq is None:
+        if self.mean is None or self.std_dev is None:
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
@@ -1380,13 +1403,14 @@ class Tally(object):
             raise ImportError(msg)
 
         # Compute batch statistics if not yet computed
-        self.compute_std_dev()
+        if not self.with_batch_statistics:
+            self.compute_std_dev()
 
         # Initialize a pandas dataframe for the tally data
         df = pd.DataFrame()
 
         # Find the total length of the tally data array
-        data_size = self.sum.size
+        data_size = self.mean.size
 
         # Build DataFrame columns for filters if user requested them
         if filters:

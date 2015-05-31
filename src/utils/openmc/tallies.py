@@ -43,6 +43,144 @@ class Tally(object):
         self._std_dev = None
 
 
+    def _align_tally_data(self, other):
+
+            self_mean = copy.deepcopy(self.mean)
+            self_std_dev = copy.deepcopy(self.std_dev)
+            other_mean = copy.deepcopy(other.mean)
+            other_std_dev = copy.deepcopy(other.std_dev)
+
+            if self.filters != other.filters:
+
+                # Determine the number of paired combinations of filter bins
+                # between the two tallies and repeat arrays along filter axes
+                self_num_filter_bins = self.mean.shape[0]
+                other_num_filter_bins = other.mean.shape[0]
+                num_filter_bins = self_num_filter_bins * other_num_filter_bins
+                self_new_bins = max(num_filter_bins - self_num_filter_bins, 1)
+                other_new_bins = max(num_filter_bins - other_num_filter_bins, 1)
+
+                # Replicate the data
+                self_mean = np.repeat(self_mean, self_new_bins, axis=0)
+                other_mean = np.repeat(other_mean, other_new_bins, axis=0)
+                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
+                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=0)
+
+            if self.nuclides != other.nuclides:
+
+                # Determine the number of paired combinations of nuclides
+                # between the two tallies and repeat arrays along nuclide axes
+                self_num_nuclide_bins = self.mean.shape[1]
+                other_num_nuclide_bins = other.mean.shape[1]
+                num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
+                self_new_bins = max(num_nuclide_bins - self_num_nuclide_bins, 1)
+                other_new_bins = max(num_nuclide_bins - other_num_nuclide_bins, 1)
+
+                # Replicate the data
+                self_mean = np.repeat(self_mean, self_new_bins, axis=1)
+                other_mean = np.repeat(other_mean, other_new_bins, axis=1)
+                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
+                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=1)
+
+            if self.scores != other.scores:
+
+                # Determine the number of paired combinations of score bins
+                # between the two tallies and repeat arrays along score axes
+                self_num_score_bins = self.mean.shape[2]
+                other_num_score_bins = other.mean.shape[2]
+                num_score_bins = self_num_score_bins * other_num_score_bins
+                self_new_bins = max(num_score_bins - self_num_score_bins, 1)
+                other_new_bins = max(num_score_bins - other_num_score_bins, 1)
+
+                # Replicate the data
+                self_mean = np.repeat(self_mean, self_new_bins, axis=2)
+                other_mean = np.repeat(other_mean, other_new_bins, axis=2)
+                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
+                other_std_dev = np.repeat(other_std_dev, other_new_bins, axis=2)
+
+            data = {}
+            data['self'] = {}
+            data['other'] = {}
+            data['self']['mean'] = self_mean
+            data['other']['mean'] = other_mean
+            data['self']['std. dev.'] = self_std_dev
+            data['other']['std. dev.'] = other_std_dev
+            return data
+
+
+    def __add__(self, other):
+
+        # FIXME: Check that results have been read
+        if not (self.mean and other.mean):
+            msg = 'Unable to add Tally ID={0} to {1} since they do not ' \
+                  'contain any results.'.format(self.id, other.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+
+        if isinstance(other, Tally):
+
+            # FIXME: Need new CrossFilter class
+            # FIXME: Need way to cross-product Nuclides
+            # FIXME: Need cross-product scores - just mix/match strings?
+
+            data = self._align_tally_data(other)
+
+            new_tally._mean = data['self']['mean'] + data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+                                         data['other']['std. dev.']**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+        elif is_integer(other) or is_float(other):
+
+            new_tally._mean = self._mean + other
+            new_tally._std_dev = self._std_dev
+
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+
+    def __radd__(self, other):
+        return other + self
+
+    '''
+    def __sub__(self, other):
+
+    def __rsub__(self, other):
+
+    def __mul__(self, other):
+
+    def __rmul__(self, other):
+
+    def __div__(self, other):
+
+    def __rdiv__(self, other):
+
+    def __pow__(self, power):
+
+    def sum(self, axis=None):
+    '''
+
+
     def __deepcopy__(self, memo):
 
         existing = memo.get(id(self))
@@ -134,16 +272,6 @@ class Tally(object):
         hashable.append(self.name)
 
         return hash(tuple(hashable))
-
-
-    def __add__(self, other):
-
-        # FIXME: Error checking: must check that results has been
-        # set and that # bins is the same
-
-        new_tally = Tally()
-        new_tally._mean = self._mean + other._mean
-        new_tally._std_dev = np.sqrt(self.std_dev**2 + other.std_dev**2)
 
 
     @property

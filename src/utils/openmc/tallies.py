@@ -46,67 +46,67 @@ class Tally(object):
 
     def _align_tally_data(self, other):
 
-            self_mean = copy.deepcopy(self.mean)
-            self_std_dev = copy.deepcopy(self.std_dev)
-            other_mean = copy.deepcopy(other.mean)
-            other_std_dev = copy.deepcopy(other.std_dev)
+        self_mean = copy.deepcopy(self.mean)
+        self_std_dev = copy.deepcopy(self.std_dev)
+        other_mean = copy.deepcopy(other.mean)
+        other_std_dev = copy.deepcopy(other.std_dev)
 
-            if self.filters != other.filters:
+        if self.filters != other.filters:
 
-                # Determine the number of paired combinations of filter bins
-                # between the two tallies and repeat arrays along filter axes
-                self_num_filter_bins = self.mean.shape[0]
-                other_num_filter_bins = other.mean.shape[0]
-                num_filter_bins = self_num_filter_bins * other_num_filter_bins
-                self_new_bins = max(num_filter_bins - self_num_filter_bins, 1)
-                other_new_bins = max(num_filter_bins - other_num_filter_bins, 1)
+            # Determine the number of paired combinations of filter bins
+            # between the two tallies and repeat arrays along filter axes
+            self_num_filter_bins = self.mean.shape[0]
+            other_num_filter_bins = other.mean.shape[0]
+            num_filter_bins = self_num_filter_bins * other_num_filter_bins
+            self_new_bins = max(num_filter_bins - self_num_filter_bins, 1)
+            other_new_bins = max(num_filter_bins - other_num_filter_bins, 1)
 
-                # Replicate the data
-                self_mean = np.repeat(self_mean, self_new_bins, axis=0)
-                other_mean = np.tile(other_mean, (other_new_bins, 1, 1))
-                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
-                other_std_dev = np.tile(other_std_dev, (other_new_bins, 1, 1))
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_new_bins, axis=0)
+            other_mean = np.tile(other_mean, (other_new_bins, 1, 1))
+            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
+            other_std_dev = np.tile(other_std_dev, (other_new_bins, 1, 1))
 
-            if self.nuclides != other.nuclides:
+        if self.nuclides != other.nuclides:
 
-                # Determine the number of paired combinations of nuclides
-                # between the two tallies and repeat arrays along nuclide axes
-                self_num_nuclide_bins = self.mean.shape[1]
-                other_num_nuclide_bins = other.mean.shape[1]
-                num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
-                self_new_bins = max(num_nuclide_bins - self_num_nuclide_bins, 1)
-                other_new_bins = max(num_nuclide_bins - other_num_nuclide_bins, 1)
+            # Determine the number of paired combinations of nuclides
+            # between the two tallies and repeat arrays along nuclide axes
+            self_num_nuclide_bins = self.mean.shape[1]
+            other_num_nuclide_bins = other.mean.shape[1]
+            num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
+            self_new_bins = max(num_nuclide_bins - self_num_nuclide_bins, 1)
+            other_new_bins = max(num_nuclide_bins - other_num_nuclide_bins, 1)
 
-                # Replicate the data
-                self_mean = np.repeat(self_mean, self_new_bins, axis=1)
-                other_mean = np.tile(other_mean, (1, other_new_bins, 1))
-                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
-                other_std_dev = np.tile(other_std_dev, (1, other_new_bins, 1))
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_new_bins, axis=1)
+            other_mean = np.tile(other_mean, (1, other_new_bins, 1))
+            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
+            other_std_dev = np.tile(other_std_dev, (1, other_new_bins, 1))
 
-            if self.scores != other.scores:
+        if self.scores != other.scores:
 
-                # Determine the number of paired combinations of score bins
-                # between the two tallies and repeat arrays along score axes
-                self_num_score_bins = self.mean.shape[2]
-                other_num_score_bins = other.mean.shape[2]
-                num_score_bins = self_num_score_bins * other_num_score_bins
-                self_new_bins = max(num_score_bins - self_num_score_bins, 1)
-                other_new_bins = max(num_score_bins - other_num_score_bins, 1)
+            # Determine the number of paired combinations of score bins
+            # between the two tallies and repeat arrays along score axes
+            self_num_score_bins = self.mean.shape[2]
+            other_num_score_bins = other.mean.shape[2]
+            num_score_bins = self_num_score_bins * other_num_score_bins
+            self_new_bins = max(num_score_bins - self_num_score_bins, 1)
+            other_new_bins = max(num_score_bins - other_num_score_bins, 1)
 
-                # Replicate the data
-                self_mean = np.repeat(self_mean, self_new_bins, axis=2)
-                other_mean = np.tile(other_mean, (1, 1, other_new_bins))
-                self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
-                other_std_dev = np.tile(other_std_dev, (1, 1, other_new_bins))
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_new_bins, axis=2)
+            other_mean = np.tile(other_mean, (1, 1, other_new_bins))
+            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
+            other_std_dev = np.tile(other_std_dev, (1, 1, other_new_bins))
 
-            data = {}
-            data['self'] = {}
-            data['other'] = {}
-            data['self']['mean'] = self_mean
-            data['other']['mean'] = other_mean
-            data['self']['std. dev.'] = self_std_dev
-            data['other']['std. dev.'] = other_std_dev
-            return data
+        data = {}
+        data['self'] = {}
+        data['other'] = {}
+        data['self']['mean'] = self_mean
+        data['other']['mean'] = other_mean
+        data['self']['std. dev.'] = self_std_dev
+        data['other']['std. dev.'] = other_std_dev
+        return data
 
 
     def __add__(self, other):
@@ -148,8 +148,7 @@ class Tally(object):
             # If the two Tallies have same scores, replicate them in new Tally
             if self.scores == other.scores:
                 for score in self.scores:
-                    new_score = '({0} + {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    new_tally.add_score(score)
 
             # Generate score "cross product"
             else:
@@ -161,14 +160,7 @@ class Tally(object):
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
                 for nuclide in self.nuclides:
-
-                    if isinstance(nuclide, Nuclide):
-                        name = nuclide.name
-                        new_nuclide = '({0} + {1})'.format(name, name)
-                    else:
-                        new_nuclide = '({0} + {1})'.format(nuclide, nuclide)
-
-                    new_tally.add_nuclide(new_nuclide)
+                    new_tally.add_nuclide(nuclide)
 
             # Generate nuclide "cross product"
             else:
@@ -253,8 +245,7 @@ class Tally(object):
             # If the two Tallies have same scores, replicate them in new Tally
             if self.scores == other.scores:
                 for score in self.scores:
-                    new_score = '({0} - {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    new_tally.add_score(score)
 
             # Generate score "cross product"
             else:
@@ -266,14 +257,7 @@ class Tally(object):
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
                 for nuclide in self.nuclides:
-
-                    if isinstance(nuclide, Nuclide):
-                        name = nuclide.name
-                        new_nuclide = '({0} - {1})'.format(name, name)
-                    else:
-                        new_nuclide = '({0} - {1})'.format(nuclide, nuclide)
-
-                    new_tally.add_nuclide(new_nuclide)
+                    new_tally.add_nuclide(nuclide)
 
             # Generate nuclide "cross product"
             else:
@@ -360,8 +344,7 @@ class Tally(object):
             # If the two Tallies have same scores, replicate them in new Tally
             if self.scores == other.scores:
                 for score in self.scores:
-                    new_score = '({0} * {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    new_tally.add_score(score)
 
             # Generate score "cross product"
             else:
@@ -373,14 +356,7 @@ class Tally(object):
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == other.nuclides:
                 for nuclide in self.nuclides:
-
-                    if isinstance(nuclide, Nuclide):
-                        name = nuclide.name
-                        new_nuclide = '({0} * {1})'.format(name, name)
-                    else:
-                        new_nuclide = '({0} * {1})'.format(nuclide, nuclide)
-
-                    new_tally.add_nuclide(new_nuclide)
+                    new_tally.add_nuclide(nuclide)
 
             # Generate nuclide "cross product"
             else:
@@ -432,7 +408,6 @@ class Tally(object):
         if self.mean is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
-            print self.mean
             raise ValueError(msg)
 
         new_tally = Tally(name='derived')
@@ -468,8 +443,7 @@ class Tally(object):
             # If the two Tallies have same scores, replicate them in new Tally
             if self.scores == other.scores:
                 for score in self.scores:
-                    new_score = '({0} / {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    new_tally.add_score(score)
 
             # Generate score "cross product"
             else:
@@ -478,18 +452,10 @@ class Tally(object):
                         new_score = '({0} / {1})'.format(self_score, other_score)
                         new_tally.add_score(new_score)
 
-
             # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == other.nuclides:
+            if self.nuclides == power.nuclides:
                 for nuclide in self.nuclides:
-
-                    if isinstance(nuclide, Nuclide):
-                        name = nuclide.name
-                        new_nuclide = '({0} / {1})'.format(name, name)
-                    else:
-                        new_nuclide = '({0} / {1})'.format(nuclide, nuclide)
-
-                    new_tally.add_nuclide(new_nuclide)
+                    new_tally.add_nuclide(nuclide)
 
             # Generate nuclide "cross product"
             else:
@@ -577,8 +543,7 @@ class Tally(object):
             # If the two Tallies have same scores, replicate them in new Tally
             if self.scores == power.scores:
                 for score in self.scores:
-                    new_score = '({0} ^ {1})'.format(score, score)
-                    new_tally.add_score(new_score)
+                    new_tally.add_score(score)
 
             # Generate score "cross product"
             else:
@@ -590,14 +555,7 @@ class Tally(object):
             # If the two Tallies have same nuclides, replicate them in new Tally
             if self.nuclides == power.nuclides:
                 for nuclide in self.nuclides:
-
-                    if isinstance(nuclide, Nuclide):
-                        name = nuclide.name
-                        new_nuclide = '({0} ^ {1})'.format(name, name)
-                    else:
-                        new_nuclide = '({0} ^ {1})'.format(nuclide, nuclide)
-
-                    new_tally.add_nuclide(new_nuclide)
+                    new_tally.add_nuclide(nuclide)
 
             # Generate nuclide "cross product"
             else:

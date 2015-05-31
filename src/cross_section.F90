@@ -103,7 +103,7 @@ contains
       ! ADD TO MACROSCOPIC CROSS SECTION
 
       ! Copy atom density of nuclide in material
-      atom_density = mat % get_density(p % mapping(mat % map), i)
+      atom_density = mat % get_density(p % inst, i)
 
       ! Add contributions to material macroscopic total cross section
       material_xs % total = material_xs % total + &

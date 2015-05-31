@@ -381,7 +381,7 @@ contains
               mat => materials(p % material)
               do l = 1, mat % n_nuclides
                 ! Get atom density
-                atom_density_ = mat % get_density(p % mapping(mat % map), l)
+                atom_density_ = mat % get_density(p % inst, l)
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
                 ! TODO: The following search for the matching reaction could
@@ -768,7 +768,7 @@ contains
                   cycle NUCLIDE_BIN_LOOP
                 end if
               end do NUCLIDE_MAT_LOOP
-              atom_density = mat % get_density(p % mapping(mat % map), j)
+              atom_density = mat % get_density(p % inst, j)
             else
               atom_density = ZERO
             end if
@@ -829,7 +829,7 @@ contains
       ! current material
       i_nuclide = mat % nuclide(i)    
 
-      atom_density = mat % get_density(p % mapping(mat % map), i)
+      atom_density = mat % get_density(p % inst, i)
 
       ! Determine score for each bin
       call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
@@ -1078,7 +1078,7 @@ contains
                     cycle NUCLIDE_BIN_LOOP
                   end if
                 end do NUCLIDE_MAT_LOOP
-                atom_density = mat % get_density(p % mapping(mat % map), j)
+                atom_density = mat % get_density(p % inst, j)
               else
                 atom_density = ZERO
               end if

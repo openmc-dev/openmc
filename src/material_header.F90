@@ -66,16 +66,15 @@ module material_header
 !===============================================================================
 
   type Material
-    integer                        :: id         ! unique identifier
-    character(len=52)              :: name = ""  ! User-defined name
-    integer                        :: n_nuclides ! number of nuclides
-    integer                        :: n_comp     ! number of compositions
-    integer                        :: cell       ! assigned cell 
-                                                 ! only for distributed material
-    integer                        :: map        ! map number for this material
-    integer, allocatable           :: nuclide(:) ! index in nuclides array
-    type(Density)                  :: density    ! material density in atom/b-cm
-    type(Composition), allocatable :: comp(:)    ! atom densities in atom/b-cm
+    integer                        :: id          ! unique identifier
+    character(len=52)              :: name = ""   ! User-defined name
+    integer                        :: n_nuclides  ! number of nuclides
+    integer                        :: n_comp      ! number of compositions
+    integer                        :: distribcell ! 1-to-1 distributed cell id
+    integer                        :: distribmap  ! map number for this material
+    integer, allocatable           :: nuclide(:)  ! index in nuclides array
+    type(Density)                  :: density     ! material density in atom/b-cm
+    type(Composition), allocatable :: comp(:)     ! atom densities in atom/b-cm
 
     ! Energy grid information
     integer              :: n_grid    ! # of union material grid points

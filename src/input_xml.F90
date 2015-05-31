@@ -1885,8 +1885,8 @@ contains
       mat => materials(i)
 
       ! set default values
-      mat % cell = 0
-      mat % map = 0
+      mat % distribcell = NONE
+      mat % distribmap = NONE
       n_nuclide = 0
       n_element = 0
 

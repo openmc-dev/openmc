@@ -5,6 +5,7 @@ module geometry
   use geometry_header,        only: Cell, Surface, Universe, Lattice, &
                                     &RectLattice, HexLattice
   use global
+  use material_header,        only: Material
   use mesh,                   only: get_mesh_bin, bin_to_mesh_indices, &
                                     distance_to_mesh_intersection_3d, &
                                     distance_to_mesh_intersection_2d
@@ -140,6 +141,7 @@ contains
     type(Cell),     pointer :: c    ! pointer to cell
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
+    type(Material), pointer :: mat  ! pointer to material
 
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
@@ -274,6 +276,16 @@ contains
         if (.not. found) exit
 
       end if CELL_TYPE
+
+      ! Store the distribcell instance index
+      call p % sum_maps(n_maps)
+      if (p % material /= NONE) then
+        mat => materials(p % material)
+        p % last_inst = p % inst
+        p % inst = p % mapping(mat % distribmap)
+      else
+        p % inst = NONE
+      end if
 
       ! Found cell so we can return
       found = .true.

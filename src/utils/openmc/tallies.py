@@ -132,6 +132,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
             # FIXME: Modularize
+            # FIXME: Redundant filters
 
             data = self._align_tally_data(other)
 
@@ -656,9 +657,135 @@ class Tally(object):
         return new_tally
 
 
-    '''
-    def sum(self, axis=None):
+    def min(self, scores=[], filters=[], filter_bins=[],
+            nuclides=[], value='mean'):
+        """Returns the minimum of a slice of the Tally's data.
 
+        Parameters
+        ----------
+        scores : list
+             A list of one or more score strings
+             (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+             A list of filter type strings
+             (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+             A list of the filter bins corresponding to the filter_types
+             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
+             in the list is the integer ID for 'material', 'surface', 'cell',
+             'cellborn', and 'universe' Filters. Each bin is an integer for
+             the cell instance ID for 'distribcell Filters. Each bin is
+             a 2-tuple of floats for 'energy' and 'energyout' filters
+             corresponding to the energy boundaries of the bin of interest.
+             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
+             to the mesh cell of interest. The order of the bins in the list
+             must correspond of the filter_types parameter.
+
+        nuclides : list
+             A list of nuclide name strings
+             (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+             A string for the type of value to return  - 'mean' (default),
+             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+             The minimum value of the requested slice of Tally data.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.min(data)
+
+
+    def max(self, scores=[], filters=[], filter_bins=[],
+            nuclides=[], value='mean'):
+        """Returns the maximum of a slice of the Tally's data.
+
+        Parameters
+        ----------
+        scores : list
+             A list of one or more score strings
+             (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+             A list of filter type strings
+             (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+             A list of the filter bins corresponding to the filter_types
+             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
+             in the list is the integer ID for 'material', 'surface', 'cell',
+             'cellborn', and 'universe' Filters. Each bin is an integer for
+             the cell instance ID for 'distribcell Filters. Each bin is
+             a 2-tuple of floats for 'energy' and 'energyout' filters
+             corresponding to the energy boundaries of the bin of interest.
+             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
+             to the mesh cell of interest. The order of the bins in the list
+             must correspond of the filter_types parameter.
+
+        nuclides : list
+             A list of nuclide name strings
+             (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+             A string for the type of value to return  - 'mean' (default),
+             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+             The maximum value of the requested slice of Tally data.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.max(data)
+
+
+    def summation(self, scores=[], filters=[], filter_bins=[],
+                  nuclides=[], value='mean'):
+        """Returns the sum of a slice of the Tally's data.
+
+        Parameters
+        ----------
+        scores : list
+             A list of one or more score strings
+             (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+             A list of filter type strings
+             (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+             A list of the filter bins corresponding to the filter_types
+             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
+             in the list is the integer ID for 'material', 'surface', 'cell',
+             'cellborn', and 'universe' Filters. Each bin is an integer for
+             the cell instance ID for 'distribcell Filters. Each bin is
+             a 2-tuple of floats for 'energy' and 'energyout' filters
+             corresponding to the energy boundaries of the bin of interest.
+             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
+             to the mesh cell of interest. The order of the bins in the list
+             must correspond of the filter_types parameter.
+
+        nuclides : list
+             A list of nuclide name strings
+             (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+             A string for the type of value to return  - 'mean' (default),
+             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+             The sum of the requested slice of Tally data.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.sum(data)
+
+    '''
     def slice(self, filters=[], nuclides=[], scores=[])
     '''
 
@@ -1235,12 +1362,12 @@ class Tally(object):
 
 
     def get_filter_index(self, filter_type, filter_bin):
-        """Returns the index in the Tally's results array for a Filter bin
+        """Returns the index in the Tally's results array for a Filter bin.
 
         Parameters
         ----------
         filter_type : str
-             The type of Filter (e.g., 'cell', 'energy', etc.)
+             The type of Filter (e.g., 'cell', 'energy', etc.).
 
         filter_bin : int, list
               The bin is an integer ID for 'material', 'surface', 'cell',
@@ -1265,12 +1392,12 @@ class Tally(object):
 
 
     def get_nuclide_index(self, nuclide):
-        """Returns the index in the Tally's results array for a Nuclide bin
+        """Returns the index in the Tally's results array for a Nuclide bin.
 
         Parameters
         ----------
         nuclide : str
-             The name of the Nuclide (e.g., 'H-1', 'U-238')
+             The name of the Nuclide (e.g., 'H-1', 'U-238').
 
         Returns
         -------
@@ -1308,12 +1435,12 @@ class Tally(object):
 
 
     def get_score_index(self, score):
-        """Returns the index in the Tally's results array for a score bin
+        """Returns the index in the Tally's results array for a score bin.
 
         Parameters
         ----------
         score : str
-             The score string (e.g., 'absorption', 'nu-fission')
+             The score string (e.g., 'absorption', 'nu-fission').
 
         Returns
         -------
@@ -1342,17 +1469,17 @@ class Tally(object):
 
         This routine constructs a 3D NumPy array for the requested Tally data
         indexed by filter bin, nuclide bin, and score index. The routine will
-        order the data in the array
+        order the data in the array as specified in the parameter lists.
 
         Parameters
         ----------
         scores : list
              A list of one or more score strings
-             (e.g., ['absorption', 'nu-fission']; default is [])
+             (e.g., ['absorption', 'nu-fission']; default is []).
 
         filters : list
              A list of filter type strings
-             (e.g., ['mesh', 'energy']; default is [])
+             (e.g., ['mesh', 'energy']; default is []).
 
         filter_bins : list
              A list of the filter bins corresponding to the filter_types
@@ -1368,11 +1495,11 @@ class Tally(object):
 
         nuclides : list
              A list of nuclide name strings
-             (e.g., ['U-235', 'U-238']; default is [])
+             (e.g., ['U-235', 'U-238']; default is []).
 
         value : str
              A string for the type of value to return  - 'mean' (default),
-             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted.
 
         Returns
         -------
@@ -1505,8 +1632,8 @@ class Tally(object):
 
         This routine constructs a Pandas DataFrame object for the Tally data
         with columns annotated by filter, nuclide and score bin information.
-        This capability has been tested for Pandas >=v0.13.1. However, if p
-        possible, it is recommended to use the v0.16 or newer versions of 
+        This capability has been tested for Pandas >=v0.13.1. However, if
+        possible, it is recommended to use the v0.16 or newer versions of
         Pandas since this this routine uses the Multi-index Pandas feature.
 
         Parameters
@@ -1577,8 +1704,7 @@ class Tally(object):
         for filter in self.filters:
 
             if isinstance(filter, _CrossFilter):
-                split_filters.append(filter.left_filter)
-                split_filters.append(filter.right_filter)
+                split_filters.extend(filter.split_filters())
             else:
                 split_filters.append(filter)
 
@@ -1773,13 +1899,16 @@ class Tally(object):
 
                 # energy, energyout filters
                 elif 'energy' in filter.type:
+
+                    print filter
+
                     bins = filter.bins
                     num_bins = filter.num_bins
 
                     # Create strings for 
                     template = '{0:.1e} - {1:.1e}'
                     filter_bins = []
-                    for i in range(num_bins):
+                    for i in range(num_bins-1):
                         filter_bins.append(template.format(bins[i], bins[i+1]))
 
                     # Tile the energy bins into a DataFrame column
@@ -1832,17 +1961,17 @@ class Tally(object):
         Parameters
         ----------
         filename : str
-             The name of the file for the results (default is 'tally-results')
+             The name of the file for the results (default is 'tally-results').
 
         directory : str
-             The name of the directory for the results (default is '.')
+             The name of the directory for the results (default is '.').
 
         format : str
              The format for the exported file - HDF5 ('hdf5', default) and
-             Python pickle ('pkl') files are supported
+             Python pickle ('pkl') files are supported.
 
         append : bool
-             Whether or not to append the results to the file (default is True)
+             Whether or not to append the results to the file (default is True).
 
         Raises
         ------
@@ -2294,6 +2423,11 @@ class _CrossFilter(object):
 
 
     @property
+    def num_bins(self):
+        return self.left_filter.num_bins * self.right_filter.num_bins
+
+
+    @property
     def stride(self):
         return self.left_filter.stride * self.right_filter.stride
 
@@ -2346,3 +2480,24 @@ class _CrossFilter(object):
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
         return string
+
+
+    def split_filters(self):
+
+        split_filters = []
+
+        # If left Filter is not a CrossFilter, simply append to list
+        if isinstance(self.left_filter, Filter):
+            split_filters.append(self.left_filter)
+        # Recursively descend CrossFilter tree to collect all Filters
+        else:
+            split_filters.extend(self.left_filter.split_filters())
+
+        # If right Filter is not a CrossFilter, simply append to list
+        if isinstance(self.right_filter, Filter):
+            split_filters.append(self.right_filter)
+        # Recursively descend CrossFilter tree to collect all Filters
+        else:
+            split_filters.extend(self.right_filter.split_filters())
+
+        return split_filters

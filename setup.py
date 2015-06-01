@@ -2,35 +2,43 @@
 
 import glob
 import os
-from setuptools import setup, find_packages
+try:
+    from setuptools import setup
+    have_setuptools = True
+except ImportError:
+    from distutils.core import setup
+    have_setuptools = False
 
-setup(name='openmc',
-      version='0.6.2',
-      packages=find_packages(),
-      scripts=glob.glob('scripts/openmc-*'),
+kwargs = {'name': 'openmc',
+          'version': '0.6.2',
+          'packages': ['openmc'],
+          'scripts': glob.glob('scripts/openmc-*'),
 
-      # Required dependencies
-      install_requires=['numpy', 'scipy', 'h5py', 'matplotlib'],
+          # Metadata
+          'author': 'Will Boyd',
+          'author_email': 'wbinventor@gmail.com',
+          'description': 'OpenMC Python API',
+          'url': 'https://github.com/mit-crpg/openmc',
+          'classifiers': [
+              'Intended Audience :: Developers',
+              'Intended Audience :: End Users/Desktop',
+              'Intended Audience :: Science/Research',
+              'License :: OSI Approved :: MIT License',
+              'Natural Language :: English',
+              'Programming Language :: Python',
+              'Topic :: Scientific/Engineering'
+          ]}
 
-      # Optional dependencies
-      extras_require={
-          'pandas': ['pandas'],
-          'vtk': ['vtk', 'silomesh'],
-          'validate': ['lxml']
-      },
+if have_setuptools:
+    kwargs.update({
+        # Required dependencies
+        'install_requires': ['numpy', 'scipy', 'h5py', 'matplotlib'],
 
-      # Metadata
-      author='Will Boyd',
-      author_email='wbinventor@gmail.com',
-      description='OpenMC Python API',
-      url='https://github.com/mit-crpg/openmc',
-      classifiers=[
-          'Intended Audience :: Developers',
-          'Intended Audience :: End Users/Desktop',
-          'Intended Audience :: Science/Research',
-          'License :: OSI Approved :: MIT License',
-          'Natural Language :: English',
-          'Programming Language :: Python',
-          'Topic :: Scientific/Engineering'
-      ]
-)
+        # Optional dependencies
+        'extras_require': {
+            'pandas': ['pandas'],
+            'vtk': ['vtk', 'silomesh'],
+            'validate': ['lxml']
+        }})
+
+setup(**kwargs)

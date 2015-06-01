@@ -1666,6 +1666,15 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
   *Default*: 1
 
+``<dhat_reset>`` Element
+------------------------
+
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
+It can be turned on with "true" and off with "false".
+
+  *Default*: false
+
 ``<display>`` Element
 ---------------------
 
@@ -1681,15 +1690,6 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
   fission source.
 
   *Default*: balance
-
-``<dhat_reset>`` Element
-------------------------
-
-The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
-CMFD parameters should be reset to zero before solving CMFD eigenproblem.
-It can be turned on with "true" and off with "false".
-
-  *Default*: false
 
 ``<downscatter>`` Element
 -------------------------

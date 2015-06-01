@@ -121,7 +121,7 @@ class Test(object):
         self.skipped = False
         self.valgrind_cmd = ""
         self.gcov_cmd = ""
-        self.cmake = ['cmake', '-H../src', '-Bbuild']
+        self.cmake = ['cmake', '-H..', '-Bbuild']
 
         # Check for MPI/HDF5
         if self.mpi and not self.hdf5:
@@ -345,15 +345,15 @@ else:
     script_mode = False
 
 # Setup CTest script vars. Not used in non-script mode
-pwd = os.environ['PWD']
+pwd = os.getcwd()
 ctest_vars = {
-'source_dir' : pwd + '/../src',
-'build_dir' :  pwd + '/build',
-'host_name' : socket.gethostname(),
-'dashboard' : dash,
-'submit'    : submit,
-'update'    : update,
-'n_procs'   : options.n_procs
+    'source_dir': os.path.join(pwd, '..'),
+    'build_dir': os.path.join(pwd, 'build'),
+    'host_name': socket.gethostname(),
+    'dashboard': dash,
+    'submit': submit,
+    'update': update,
+    'n_procs': options.n_procs
 }
 
 # Check project name

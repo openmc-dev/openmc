@@ -7,6 +7,51 @@ from openmc.clean_xml import *
 
 
 class CMFDMesh(object):
+    """A structured Cartesian mesh used for coarse mesh finite difference
+    acceleration.
+
+    Attributes
+    ----------
+    lower_left : tuple or list or ndarray
+        The lower-left corner of the structured mesh. If only two coordinate are
+        given, it is assumed that the mesh is an x-y mesh.
+    upper_right : tuple or list or ndarray
+        The upper-right corner of the structrued mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    dimension : tuple or list or ndarray
+        The number of mesh cells in each direction.
+    width : tuple or list or ndarray
+        The width of mesh cells in each direction.
+    energy : tuple or list or ndarray
+        Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
+        20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
+        OpenMC automatically assumes a one energy group calculation over the
+        entire energy range.
+    albedo : tuple or list or ndarray
+        Surface ratio of incoming to outgoing partial currents on global
+        boundary conditions. They are listed in the following order: -x +x -y +y
+        -z +z.
+    map : tuple or list or ndarray
+
+        An optional acceleration map can be specified to overlay on the coarse
+        mesh spatial grid. If this option is used, a ``1`` is used for a
+        non-accelerated region and a ``2`` is used for an accelerated region.
+        For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
+        reflector, the map is:
+
+        ::
+
+            [1, 1, 1, 1,
+             1, 2, 2, 1,
+             1, 2, 2, 1,
+             1, 1, 1, 1]
+
+        Therefore a 2x2 system of equations is solved rather than a 4x4. This is
+        extremely important to use in reflectors as neutrons will not contribute
+        to any tallies far away from fission source neutron regions.  A ``2``
+        must be used to identify any fission source region.
+
+    """
 
     def __init__(self):
 
@@ -18,41 +63,33 @@ class CMFDMesh(object):
         self._albedo = None
         self._map = None
 
-
     @property
     def lower_left(self):
         return self._lower_left
-
 
     @property
     def upper_right(self):
         return self._upper_right
 
-
     @property
     def dimension(self):
         return self._dimension
-
 
     @property
     def width(self):
         return self._width
 
-
     @property
     def energy(self):
         return self._energy
-
 
     @property
     def albedo(self):
         return self._albedo
 
-
     @property
     def map(self):
         return self._mape
-
 
     @lower_left.setter
     def lower_left(self, lower_left):
@@ -64,7 +101,7 @@ class CMFDMesh(object):
 
         elif len(lower_left) != 2 and len(lower_left) != 3:
             msg = 'Unable to set CMFD Mesh with lower_left {0} since it ' \
-                   'must include 2 or 3 dimensions'.format(lower_left)
+                  'must include 2 or 3 dimensions'.format(lower_left)
             raise ValueError(msg)
 
         for coord in lower_left:
@@ -75,7 +112,6 @@ class CMFDMesh(object):
                 raise ValueError(msg)
 
         self._lower_left = lower_left
-
 
     @upper_right.setter
     def upper_right(self, upper_right):
@@ -99,7 +135,6 @@ class CMFDMesh(object):
 
         self._upper_right = upper_right
 
-
     @dimension.setter
     def dimension(self, dimension):
 
@@ -121,7 +156,6 @@ class CMFDMesh(object):
                 raise ValueError(msg)
 
         self._dimension = dimension
-
 
     @width.setter
     def width(self, width):
@@ -147,7 +181,6 @@ class CMFDMesh(object):
 
         self._width = width
 
-
     @energy.setter
     def energy(self, energy):
 
@@ -169,7 +202,6 @@ class CMFDMesh(object):
                 raise ValueError(msg)
 
         self._energy = energy
-
 
     @albedo.setter
     def albedo(self, albedo):
@@ -198,7 +230,6 @@ class CMFDMesh(object):
 
         self._albedo = albedo
 
-
     @map.setter
     def map(self, map):
 
@@ -216,9 +247,7 @@ class CMFDMesh(object):
 
         self._map = map
 
-
-    def get_mesh_xml(self):
-
+    def _get_xml_element(self):
         element = ET.Element("mesh")
 
         if len(self._lower_left) == 2:
@@ -297,18 +326,47 @@ class CMFDMesh(object):
 
 
 class CMFDFile(object):
+    """Parameters that control the use of coarse-mesh finite difference acceleration
+    in OpenMC. This corresponds directly to the cmfd.xml input file.
+
+    Attributes
+    ----------
+    begin : int
+        Batch number at which CMFD calculations should begin
+    display : {'balance', 'dominance', 'entropy', 'source'}
+        Set one additional CMFD output column. Options are:
+
+          * "balance" - prints the RMS [%] of the resdiual from the neutron balance
+             equation on CMFD tallies.
+          * "dominance" - prints the estimated dominance ratio from the CMFD
+            iterations.
+          * "entropy" - prints the *entropy* of the CMFD predicted fission source.
+          * "source" - prints the RMS [%] between the OpenMC fission source and
+            CMFD fission source.
+    feedback : bool
+        Indicate or not the CMFD diffusion result is used to adjust the weight
+        of fission source neutrons on the next OpenMC batch. Defaults to False.
+    cmfd_mesh : CMFDMesh
+        Structured mesh to be used for acceleration
+    norm : float
+        Normalization factor applied to the CMFD fission source distribution
+    power_monitor : bool
+        View convergence of power iteration during CMFD acceleration
+    run_adjoint : bool
+        Perform adjoint calculation on the last batch
+    write_matrices : bool
+        Write sparse matrices that are used during CMFD acceleration (loss,
+        production) to file
+
+    """
 
     def __init__(self):
 
-        self._active_flush = None
         self._begin = None
         self._display = None
         self._feedback = None
-        self._inactive = None
-        self._inactive_flush = None
         self._cmfd_mesh = None
         self._norm = None
-        self._num_flushes = None
         self._power_monitor = None
         self._run_adjoint = None
         self._write_matrices = None
@@ -316,87 +374,41 @@ class CMFDFile(object):
         self._cmfd_file = ET.Element("cmfd")
         self._cmfd_mesh_element = None
 
-
-    @property
-    def active_flush(self):
-        return self._active_flush
-
-
     @property
     def begin(self):
         return self._begin
-
 
     @property
     def display(self):
         return self._display
 
-
     @property
     def feedback(self):
         return self._feedback
-
-
-    @property
-    def inactive(self):
-        return self._inactive
-
-
-    @property
-    def inactive_flush(self):
-        return self._inactive_flush
-
 
     @property
     def cmfd_mesh(self):
         return self._cmfd_mesh
 
-
     @property
     def norm(self):
         return self._norm
-
-
-    @property
-    def num_flushes(self):
-        return self._num_flushes
-
 
     @property
     def power_monitor(self):
         return self._power_monitor
 
-
     @property
     def run_adjoint(self):
         return self._run_adjoint
-
 
     @property
     def solver(self):
         return self._solver
 
-
     @property
     def write_matrices(self):
         return self._write_matrices
-
-
-    @active_flush.setter
-    def active_flush(self, active_flush):
-
-        if not is_integer(active_flush):
-            msg = 'Unable to set CMFD active flush batch to a non-integer ' \
-                  'value {0}'.format(active_flush)
-            raise ValueError(msg)
-
-        if active_flush < 0:
-            msg = 'Unable to set CMFD active flush batch to a negative ' \
-                  'value {0}'.format(active_flush)
-            raise ValueError(msg)
-
-        self._active_flush = active_flush
-
 
     @begin.setter
     def begin(self, begin):
@@ -413,7 +425,6 @@ class CMFDFile(object):
 
         self._begin = begin
 
-
     @display.setter
     def display(self, display):
 
@@ -429,7 +440,6 @@ class CMFDFile(object):
 
         self._display = display
 
-
     @feedback.setter
     def feedback(self, feedback):
 
@@ -439,34 +449,6 @@ class CMFDFile(object):
             raise ValueError(msg)
 
         self._feedback = feedback
-
-
-    @inactive.setter
-    def inactive(self, inactive):
-
-        if not isinstance(inactive, bool):
-            msg = 'Unable to set CMFD inactive batch to {0} which is ' \
-                  ' a non-boolean value'.format(inactive)
-            raise ValueError(msg)
-
-        self._inactive = inactive
-
-
-    @inactive_flush.setter
-    def inactive_flush(self, inactive_flush):
-
-        if not is_integer(inactive_flush):
-            msg = 'Unable to set CMFD inactive flush batch to {0} which is ' \
-                  'a non-integer value'.format(inactive_flush)
-            raise ValueError(msg)
-
-        if inactive_flush <= 0:
-            msg = 'Unable to set CMFD inactive flush batch to {0} which is ' \
-                  'a negative value {0}'.format(inactive_flush)
-            raise ValueError(msg)
-
-        self._inactive_flush = inactive_flush
-
 
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
@@ -478,7 +460,6 @@ class CMFDFile(object):
 
         self._mesh = mesh
 
-
     @norm.setter
     def norm(self, norm):
 
@@ -488,23 +469,6 @@ class CMFDFile(object):
             raise ValueError(msg)
 
         self._norm = norm
-
-
-    @num_flushes.setter
-    def num_flushes(self, num_flushes):
-
-        if not is_integer(num_flushes):
-            msg = 'Unable to set the CMFD number of flushes to {0} ' \
-                  'which is not an integer value'.format(num_flushes)
-            raise ValueError(msg)
-
-        if num_flushes < 0:
-            msg = 'Unable to set CMFD number of flushes to a negative ' \
-                  'value {0}'.format(num_flushes)
-            raise ValueError(msg)
-
-        self._num_flushes = num_flushes
-
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
@@ -516,7 +480,6 @@ class CMFDFile(object):
 
         self._power_monitor = power_monitor
 
-
     @run_adjoint.setter
     def run_adjoint(self, run_adjoint):
 
@@ -526,7 +489,6 @@ class CMFDFile(object):
             raise ValueError(msg)
 
         self._run_adjoint = run_adjoint
-
 
     @write_matrices.setter
     def write_matrices(self, write_matrices):
@@ -538,105 +500,68 @@ class CMFDFile(object):
 
         self._write_matrices = write_matrices
 
-
-    def create_active_flush_subelement(self):
-
-        if not self._active_flush is None:
-            element = ET.SubElement(self._cmfd_file, "active_flush")
-            element.text = '{0}'.format(str(self._active_flush))
-
-
-    def create_begin_subelement(self):
+    def _create_begin_subelement(self):
 
         if not self._begin is None:
             element = ET.SubElement(self._cmfd_file, "begin")
             element.text = '{0}'.format(str(self._begin))
 
-
-    def create_display_subelement(self):
+    def _create_display_subelement(self):
 
         if not self._display is None:
             element = ET.SubElement(self._cmfd_file, "display")
             element.text = '{0}'.format(str(self._display))
 
-
-    def create_feedback_subelement(self):
+    def _create_feedback_subelement(self):
 
         if not self._feedback is None:
             element = ET.SubElement(self._cmfd_file, "feeback")
             element.text = '{0}'.format(str(self._feedback).lower())
 
-
-    def create_inactive_subelement(self):
-
-        if not self._inactive is None:
-            element = ET.SubElement(self._cmfd_file, "inactive")
-            element.text = '{0}'.format(str(self._inactive).lower())
-
-
-    def create_inactive_flush_subelement(self):
-
-        if not self._inactive_flush is None:
-            element = ET.SubElement(self._cmfd_file, "inactive_flush")
-            element.text = '{0}'.format(str(self._inactive_flush))
-
-
-    def create_mesh_subelement(self):
+    def _create_mesh_subelement(self):
 
         if not self._mesh is None:
-            xml_element = self._mesh.get_mesh_xml()
+            xml_element = self._mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
 
+    def _create_norm_subelement(self):
 
-    def create_norm_subelement(self):
-
-        if not self._num_flushes is None:
+        if not self._norm is None:
             element = ET.SubElement(self._cmfd_file, "norm")
             element.text = '{0}'.format(str(self._norm))
 
-
-    def create_num_flushes_subelement(self):
-
-        if not self._num_flushes is None:
-            element = ET.SubElement(self._cmfd_file, "num_flushes")
-            element.text = '{0}'.format(str(self._num_flushes))
-
-
-    def create_power_monitor_subelement(self):
+    def _create_power_monitor_subelement(self):
 
         if not self._power_monitor is None:
             element = ET.SubElement(self._cmfd_file, "power_monitor")
             element.text = '{0}'.format(str(self._power_monitor).lower())
 
-
-    def create_run_adjoint_subelement(self):
+    def _create_run_adjoint_subelement(self):
 
         if not self._run_adjoint is None:
             element = ET.SubElement(self._cmfd_file, "run_adjoint")
             element.text = '{0}'.format(str(self._run_adjoint).lower())
 
-
-    def create_write_matrices_subelement(self):
+    def _create_write_matrices_subelement(self):
 
         if not self._write_matrices is None:
             element = ET.SubElement(self._cmfd_file, "write_matrices")
             element.text = '{0}'.format(str(self._write_matrices).lower())
 
-
     def export_to_xml(self):
+        """Create a cmfd.xml file using the class data that can be used for an OpenMC
+        simulation.
 
-        self.create_active_flush_subelement()
-        self.create_begin_subelement()
-        self.create_display_subelement()
-        self.create_feedback_subelement()
-        self.create_inactive_subelement()
-        self.create_inactive_flush_subelement()
-        self.create_mesh_subelement()
-        self.create_norm_subelement()
-        self.create_num_flushes_subelement()
-        self.create_power_monitor_subelement()
-        self.create_run_adjoint_subelement()
-        self.create_write_matrices_subelement()
+        """
+
+        self._create_begin_subelement()
+        self._create_display_subelement()
+        self._create_feedback_subelement()
+        self._create_mesh_subelement()
+        self._create_norm_subelement()
+        self._create_power_monitor_subelement()
+        self._create_run_adjoint_subelement()
+        self._create_write_matrices_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._cmfd_file)

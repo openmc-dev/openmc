@@ -4,8 +4,6 @@ import sys
 import numpy as np
 
 sys.path.insert(0, '../..')
-
-# import statepoint
 from openmc.statepoint import StatePoint
 
 # read in statepoint file

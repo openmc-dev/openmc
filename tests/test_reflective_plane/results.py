@@ -3,8 +3,6 @@
 import sys
 
 sys.path.insert(0, '../..')
-
-# import statepoint
 import openmc.statepoint as statepoint
 
 # read in statepoint file

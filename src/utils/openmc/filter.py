@@ -21,15 +21,15 @@ class Filter(object):
     def __eq__(self, filter2):
 
         # Check type
-        if self._type != filter2._type:
+        if self.type != filter2.type:
             return False
 
         # Check number of bins
-        elif len(self._bins) != len(filter2._bins):
+        elif len(self.bins) != len(filter2.bins):
             return False
 
         # Check bin edges
-        elif not np.allclose(self._bins, filter2._bins):
+        elif not np.allclose(self.bins, filter2.bins):
             return False
 
         else:
@@ -38,8 +38,8 @@ class Filter(object):
 
     def __hash__(self):
         hashable = []
-        hashable.append(self._type)
-        hashable.append(self._bins)
+        hashable.append(self.type)
+        hashable.append(self.bins)
         return hash(tuple(hashable))
 
 
@@ -51,12 +51,12 @@ class Filter(object):
         if existing is None:
 
             clone = type(self).__new__(type(self))
-            clone._type = self._type
-            clone._bins = copy.deepcopy(self._bins, memo)
-            clone._num_bins = self._num_bins
-            clone._mesh = copy.deepcopy(self._mesh, memo)
-            clone._offset = self._offset
-            clone._stride = self._stride
+            clone._type = self.type
+            clone._bins = copy.deepcopy(self.bins, memo)
+            clone._num_bins = self.num_bins
+            clone._mesh = copy.deepcopy(self.mesh, memo)
+            clone._offset = self.offset
+            clone._stride = self.stride
 
             memo[id(self)] = clone
 
@@ -117,7 +117,7 @@ class Filter(object):
         if bins is None:
             self.num_bins = 0
 
-        elif self._type is None:
+        elif self.type is None:
             msg = 'Unable to set bins for Filter to "{0}" since ' \
                   'the Filter type has not yet been set'.format(bins)
             raise ValueError(msg)
@@ -130,35 +130,35 @@ class Filter(object):
         else:
             bins = list(bins)
 
-        if self._type in ['cell', 'cellborn', 'surface', 'material',
+        if self.type in ['cell', 'cellborn', 'surface', 'material',
                           'universe', 'distribcell']:
 
             for edge in bins:
 
                 if not is_integer(edge):
                     msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
-                          'it is a non-integer'.format(edge, self._type)
+                          'it is a non-integer'.format(edge, self.type)
                     raise ValueError(msg)
 
                 elif edge < 0:
                     msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
-                          'it is a negative integer'.format(edge, self._type)
+                          'it is a negative integer'.format(edge, self.type)
                     raise ValueError(msg)
 
 
-        elif self._type in ['energy', 'energyout']:
+        elif self.type in ['energy', 'energyout']:
 
             for edge in bins:
 
                 if not is_integer(edge) and not is_float(edge):
                     msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
                           'since it is a non-integer or floating point ' \
-                          'value'.format(edge, self._type)
+                          'value'.format(edge, self.type)
                     raise ValueError(msg)
 
                 elif edge < 0.:
                     msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
-                          'since it is a negative value'.format(edge, self._type)
+                          'since it is a negative value'.format(edge, self.type)
                     raise ValueError(msg)
 
             # Check that bin edges are monotonically increasing
@@ -167,12 +167,12 @@ class Filter(object):
                 if index > 0 and bins[index] < bins[index-1]:
                     msg = 'Unable to add bin edges "{0}" to a {1} Filter ' \
                           'since they are not monotonically ' \
-                          'increasing'.format(bins, self._type)
+                          'increasing'.format(bins, self.type)
                     raise ValueError(msg)
 
 
         # mesh filters
-        elif self._type == 'mesh':
+        elif self.type == 'mesh':
 
             if not len(bins) == 1:
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
@@ -193,14 +193,13 @@ class Filter(object):
         self._bins = bins
 
 
-    # FIXME
     @num_bins.setter
     def num_bins(self, num_bins):
 
         if not is_integer(num_bins) or num_bins < 0:
             msg = 'Unable to set the number of bins "{0}" for a {1} Filter ' \
                   'since it is not a positive ' \
-                  'integer'.format(num_bins, self._type)
+                  'integer'.format(num_bins, self.type)
             raise ValueError(msg)
 
         self._num_bins = num_bins
@@ -216,7 +215,7 @@ class Filter(object):
 
         self._mesh = mesh
         self.type = 'mesh'
-        self.bins = self._mesh._id
+        self.bins = self.mesh.id
 
 
     @offset.setter
@@ -224,7 +223,7 @@ class Filter(object):
 
         if not is_integer(offset):
             msg = 'Unable to set offset "{0}" for a {1} Filter since it is a ' \
-                  'non-integer value'.format(offset, self._type)
+                  'non-integer value'.format(offset, self.type)
             raise ValueError(msg)
 
         self._offset = offset
@@ -235,12 +234,12 @@ class Filter(object):
 
         if not is_integer(stride):
             msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
-                  'non-integer value'.format(stride, self._type)
+                  'non-integer value'.format(stride, self.type)
             raise ValueError(msg)
 
         if stride < 0:
             msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
-                  'negative value'.format(stride, self._type)
+                  'negative value'.format(stride, self.type)
             raise ValueError(msg)
 
         self._stride = stride
@@ -274,14 +273,14 @@ class Filter(object):
     def merge(self, filter):
 
         if not self.can_merge(filter):
-            msg = 'Unable to merge {0} with {1} filters'.format(self._type, filter._type)
+            msg = 'Unable to merge {0} with {1} filters'.format(self.type, filter.type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(self._bins + filter._bins))
+        merged_bins = list(set(self.bins + filter.bins))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 
@@ -335,7 +334,7 @@ class Filter(object):
 
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
-            elif self._type == 'distribcell':
+            elif self.type == 'distribcell':
                 filter_index = filter_bin
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
@@ -354,7 +353,7 @@ class Filter(object):
     def __repr__(self):
 
         string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self._bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offset)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
         return string

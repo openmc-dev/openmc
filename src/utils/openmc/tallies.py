@@ -657,8 +657,8 @@ class Tally(object):
         return new_tally
 
 
-    def min(self, scores=[], filters=[], filter_bins=[],
-            nuclides=[], value='mean'):
+    def minimum(self, scores=[], filters=[], filter_bins=[],
+                nuclides=[], value='mean'):
         """Returns the minimum of a slice of the Tally's data.
 
         Parameters
@@ -700,8 +700,8 @@ class Tally(object):
         return np.min(data)
 
 
-    def max(self, scores=[], filters=[], filter_bins=[],
-            nuclides=[], value='mean'):
+    def maximum(self, scores=[], filters=[], filter_bins=[],
+                nuclides=[], value='mean'):
         """Returns the maximum of a slice of the Tally's data.
 
         Parameters
@@ -785,9 +785,106 @@ class Tally(object):
         data = self.get_values(scores, filters, filter_bins, nuclides, value)
         return np.sum(data)
 
-    '''
-    def slice(self, filters=[], nuclides=[], scores=[])
-    '''
+
+
+
+    def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
+        """
+        """
+
+        # Ensure that StatePoint.read_results() was called first
+        if (self.mean is None) or (self.std_dev is None):
+            msg = 'The Tally ID={0} has no data to slice. Call the ' \
+                  'StatePoint.read_results() routine before using ' \
+                  'Tally.slice(...)'.format(self.id)
+            raise ValueError(msg)
+
+        # Compute batch statistics if not yet computed
+        if not self.with_batch_statistics:
+            self.compute_std_dev()
+
+        new_tally = copy.deepcopy(self)
+        new_sum = self.get_values(scores, filters, filter_bins,
+                                  nuclides, 'sum')
+        new_sum_sq = self.get_values(scores, filters, filter_bins,
+                                     nuclides, 'sum_sq')
+        new_tally.set_results(new_sum, new_sum_sq)
+
+        ############################      FILTERS      #########################
+        # Determine the score indices from any of the requested scores
+        if filters:
+
+            # Initialize list of indices to Filters to exclude from slice
+            filter_indices = []
+
+            # Loop over all of the Tally's Filters
+            for i, filter in enumerate(self.filters):
+
+                # FIXME: sum over unused filter bins
+                # FIXME: neglect bins not selected for selected filters
+                # NOTE: We must store filter indices here since they are strings
+
+                if filter.type not in filters:
+                    filter_index = self.get_filter_index(filters[i], filter_bins[i])
+                    filter_indices.append(filter_index)
+
+                # Loop over indices in reverse to remove excluded Filters
+                for filter_index in filter_indices[::-1]:
+                    new_tally.remove_filter(self.filters[filter_index])
+
+                for i, filter_type in enumerate(filters):
+
+                    if 'energy' in filter_type:
+                        # Create a list of the first energy edge
+                        bins = [filter_bin[0] for filter_bin in filter_bins]
+
+
+
+        ############################      NUCLIDES      ########################
+        # Determine the score indices from any of the requested scores
+        if nuclides:
+
+            # Initialize list of indices to Nuclides to exclude from slice
+            nuclide_indices = []
+
+            for nuclide in self.nuclides:
+
+                if isinstance(nuclide, Nuclide):
+                    if nuclide.name not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+                else:
+                    if nuclide not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+
+            # Loop over indices in reverse to remove excluded Nuclides
+            for nuclide_index in nuclide_indices[::-1]:
+                new_tally.remove_nuclide(self.nuclides[nuclide_index])
+
+        #############################      SCORES      #########################
+        # Determine the score indices from any of the requested scores
+        if scores:
+
+            # Initialize list of indices to Nuclides to exclude from slice
+            score_indices = []
+
+            for score in self.scores:
+
+                if score not in scores:
+                    score_index = self.get_score_index(score)
+                    score_indices.append(score_index)
+
+            # Loop over indices in reverse to remove excluded scores
+            for score_index in score_indices[::-1]:
+                new_tally.remove_score(self.scores[score_index])
+                new_tally.num_score_bins -= 1
+
+
+
+        return new_tally
+
+
 
 
     def __deepcopy__(self, memo):
@@ -807,6 +904,8 @@ class Tally(object):
             clone._sum_sq = copy.deepcopy(self.sum_sq, memo)
             clone._mean = copy.deepcopy(self.mean, memo)
             clone._std_dev = copy.deepcopy(self.std_dev, memo)
+            clone._with_summary = self.with_summary
+            clone._with_batch_statistics = self.with_batch_statistics
 
             clone._filters = []
             for filter in self.filters:

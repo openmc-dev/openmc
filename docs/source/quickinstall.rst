@@ -43,8 +43,7 @@ the following commands in a terminal:
     git clone https://github.com/mit-crpg/openmc.git
     cd openmc
     git checkout -b master origin/master
-    mkdir src/build
-    cd src/build
+    mkdir build && cd build
     cmake ..
     make
     sudo make install

@@ -8,8 +8,9 @@
 # Compiler python objects
 *.pyc
 
-# OpenMC executable
-src/openmc
+# Python distribution
+dist/
+openmc.egg-info/
 
 # Inputs generated from Python API
 examples/python/**/*.xml
@@ -25,16 +26,13 @@ docs/build
 docs/source/_images/*.pdf
 
 # Source build
-src/build
+build
 
 # build from src/utils/setup.py
 src/utils/build
 
 # xml-fortran reader
 src/xml-fortran/xmlreader
-
-# Modules built from XML templates
-src/templates/*.f90
 
 # Test results error file
 results_error.dat

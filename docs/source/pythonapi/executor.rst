@@ -6,4 +6,3 @@ Executor
 
 .. automodule:: openmc.executor
     :members:
-    :undoc-members:

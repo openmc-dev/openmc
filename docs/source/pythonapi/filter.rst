@@ -6,4 +6,3 @@ Filter
 
 .. automodule:: openmc.filter
     :members:
-    :undoc-members:

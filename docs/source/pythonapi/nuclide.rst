@@ -6,4 +6,3 @@ Nuclide
 
 .. automodule:: openmc.nuclide
     :members:
-    :undoc-members:

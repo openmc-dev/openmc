@@ -6,4 +6,3 @@ Materials
 
 .. automodule:: openmc.material
     :members:
-    :undoc-members:

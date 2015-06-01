@@ -6,4 +6,3 @@ Mesh
 
 .. automodule:: openmc.mesh
     :members:
-    :undoc-members:

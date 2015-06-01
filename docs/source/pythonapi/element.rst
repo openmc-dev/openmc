@@ -6,4 +6,3 @@ Element
 
 .. automodule:: openmc.element
     :members:
-    :undoc-members:

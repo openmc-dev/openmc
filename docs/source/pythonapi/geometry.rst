@@ -6,4 +6,3 @@ Geometry
 
 .. automodule:: openmc.geometry
     :members:
-    :undoc-members:

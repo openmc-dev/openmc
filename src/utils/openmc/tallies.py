@@ -58,14 +58,14 @@ class Tally(object):
             self_num_filter_bins = self.mean.shape[0]
             other_num_filter_bins = other.mean.shape[0]
             num_filter_bins = self_num_filter_bins * other_num_filter_bins
-            self_new_bins = max(num_filter_bins - self_num_filter_bins, 1)
-            other_new_bins = max(num_filter_bins - other_num_filter_bins, 1)
+            self_repeat_factor = num_filter_bins / self_num_filter_bins
+            other_tile_factor = num_filter_bins / other_num_filter_bins
 
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_new_bins, axis=0)
-            other_mean = np.tile(other_mean, (other_new_bins, 1, 1))
-            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=0)
-            other_std_dev = np.tile(other_std_dev, (other_new_bins, 1, 1))
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
+            other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=0)
+            other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
 
         if self.nuclides != other.nuclides:
 
@@ -74,14 +74,14 @@ class Tally(object):
             self_num_nuclide_bins = self.mean.shape[1]
             other_num_nuclide_bins = other.mean.shape[1]
             num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
-            self_new_bins = max(num_nuclide_bins - self_num_nuclide_bins, 1)
-            other_new_bins = max(num_nuclide_bins - other_num_nuclide_bins, 1)
+            self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
+            other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
 
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_new_bins, axis=1)
-            other_mean = np.tile(other_mean, (1, other_new_bins, 1))
-            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=1)
-            other_std_dev = np.tile(other_std_dev, (1, other_new_bins, 1))
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
+            other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
+            other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
 
         if self.scores != other.scores:
 
@@ -90,14 +90,14 @@ class Tally(object):
             self_num_score_bins = self.mean.shape[2]
             other_num_score_bins = other.mean.shape[2]
             num_score_bins = self_num_score_bins * other_num_score_bins
-            self_new_bins = max(num_score_bins - self_num_score_bins, 1)
-            other_new_bins = max(num_score_bins - other_num_score_bins, 1)
+            self_repeat_factor = num_score_bins / self_num_score_bins
+            other_tile_factor = num_score_bins / other_num_score_bins
 
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_new_bins, axis=2)
-            other_mean = np.tile(other_mean, (1, 1, other_new_bins))
-            self_std_dev = np.repeat(self_std_dev, self_new_bins, axis=2)
-            other_std_dev = np.tile(other_std_dev, (1, 1, other_new_bins))
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
+            other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
+            other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
 
         data = {}
         data['self'] = {}
@@ -1571,10 +1571,21 @@ class Tally(object):
         # Find the total length of the tally data array
         data_size = self.mean.size
 
+        # Split CrossFilters into separate filters
+        split_filters = []
+
+        for filter in self.filters:
+
+            if isinstance(filter, _CrossFilter):
+                split_filters.append(filter.left_filter)
+                split_filters.append(filter.right_filter)
+            else:
+                split_filters.append(filter)
+
         # Build DataFrame columns for filters if user requested them
         if filters:
 
-            for filter in self.filters:
+            for filter in split_filters:
 
                 # mesh filters
                 if filter.type == 'mesh':
@@ -2114,7 +2125,7 @@ class _CrossScore(object):
     @left_score.setter
     def left_score(self, left_score):
 
-        if not is_string(left_score):
+        if not isinstance(left_score, (_CrossScore, str)):
             msg = 'Unable to set CrossScore left score to {0} which ' \
                   'is not a string'.format(left_score)
             raise ValueError(msg)
@@ -2125,7 +2136,7 @@ class _CrossScore(object):
     @right_score.setter
     def right_score(self, right_score):
 
-        if not is_string(right_score):
+        if not isinstance(right_score, (_CrossScore, str)):
             msg = 'Unable to set CrossScore right score to {0} which ' \
                   'is not a string'.format(right_score)
             raise ValueError(msg)
@@ -2186,7 +2197,7 @@ class _CrossNuclide(object):
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
 
-        if not isinstance(left_nuclide, Nuclide) or is_integer(left_nuclide):
+        if not isinstance(left_nuclide, (Nuclide, _CrossNuclide, int)):
             msg = 'Unable to set CrossNuclide left nuclide to {0} which ' \
                   'is not an integer or Nuclide'.format(left_nuclide)
             raise ValueError(msg)
@@ -2197,7 +2208,7 @@ class _CrossNuclide(object):
     @right_nuclide.setter
     def right_nuclide(self, right_nuclide):
 
-        if not isinstance(right_nuclide, Nuclide) or is_integer(right_nuclide):
+        if not isinstance(right_nuclide, (Nuclide, _CrossNuclide, int)):
             msg = 'Unable to set CrossNuclide right nuclide to {0} which ' \
                   'is not an integer or Nuclide'.format(right_nuclide)
             raise ValueError(msg)
@@ -2290,7 +2301,7 @@ class _CrossFilter(object):
     @left_filter.setter
     def left_filter(self, left_filter):
 
-        if not isinstance(left_filter, Filter):
+        if not isinstance(left_filter, (Filter, _CrossFilter)):
             msg = 'Unable to set CrossFilter left filter to {0} which ' \
                   'is not a Filter'.format(left_filter)
             raise ValueError(msg)
@@ -2301,7 +2312,7 @@ class _CrossFilter(object):
     @right_filter.setter
     def right_filter(self, right_filter):
 
-        if not isinstance(right_filter, Filter):
+        if not isinstance(right_filter, (Filter, _CrossFilter)):
             msg = 'Unable to set CrossFilter right filter to {0} which ' \
                   'is not a Filter'.format(right_filter)
             raise ValueError(msg)

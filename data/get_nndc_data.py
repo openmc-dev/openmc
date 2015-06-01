@@ -21,8 +21,8 @@ except ImportError:
     from urllib2 import urlopen
 
 cwd = os.getcwd()
-sys.path.append(os.path.join(cwd, '..', 'src', 'utils'))
-from convert_binary import ascii_to_binary
+sys.path.insert(0, os.path.join(cwd, '..'))
+from openmc.ace import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',

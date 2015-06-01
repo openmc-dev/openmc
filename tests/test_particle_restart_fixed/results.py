@@ -3,8 +3,6 @@
 import sys
 
 sys.path.insert(0, '../..')
-
-# import particle restart
 import openmc.particle_restart as pr
 
 # read in particle restart file

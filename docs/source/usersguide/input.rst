@@ -481,7 +481,7 @@ attributes/sub-elements:
 
     :parameters:
       For an "isotropic" angular distribution, ``parameters`` should not be
-      specified
+      specified.
 
       For a "monodirectional" angular distribution, ``parameters`` should be
       given as three real numbers which specify the angular cosines with respect
@@ -605,8 +605,6 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
-.. _trace:
-
 ``<threads>`` Element
 ---------------------
 
@@ -614,6 +612,8 @@ The ``<threads>`` element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.
 
   *Default*: None (Determined by environment variable :envvar:`OMP_NUM_THREADS`)
+
+.. _trace:
 
 ``<trace>`` Element
 -------------------
@@ -631,9 +631,9 @@ integers: the batch number, generation number, and particle number.
 
 The ``<track>`` element specifies particles for which OpenMC will output binary
 files describing particle position at every step of its transport. This element
-should be followed by triplets of integers.  Each triplet describes one particle
-. The integers in each triplet specify the batch number, generation number, and
-particle number, respectively.
+should be followed by triplets of integers.  Each triplet describes one
+particle. The integers in each triplet specify the batch number, generation
+number, and particle number, respectively.
 
   *Default*: None
 

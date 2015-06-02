@@ -6,4 +6,3 @@ Plots
 
 .. automodule:: openmc.plots
     :members:
-    :undoc-members:

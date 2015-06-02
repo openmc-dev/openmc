@@ -6,4 +6,3 @@ Statepoint
 
 .. automodule:: openmc.statepoint
     :members:
-    :undoc-members:

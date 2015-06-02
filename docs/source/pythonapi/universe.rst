@@ -6,4 +6,3 @@ Universe
 
 .. automodule:: openmc.universe
     :members:
-    :undoc-members:

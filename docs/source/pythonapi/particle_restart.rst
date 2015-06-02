@@ -6,4 +6,3 @@ Particle Restart
 
 .. automodule:: openmc.particle_restart
     :members:
-    :undoc-members:

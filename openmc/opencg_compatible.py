@@ -62,8 +62,20 @@ OPENMC_LATTICES = {}
 OPENCG_LATTICES = {}
 
 
-
 def get_opencg_material(openmc_material):
+    """Return an OpenCG material corresponding to an OpenMC material.
+
+    Parameters
+    ----------
+    openmc_material : openmc.material.Material
+        OpenMC material
+
+    Returns
+    -------
+    opencg_material : opencg.Material
+        Equivalent OpenCG material
+
+    """
 
     if not isinstance(openmc_material, openmc.Material):
         msg = 'Unable to create an OpenCG Material from {0} ' \
@@ -91,6 +103,19 @@ def get_opencg_material(openmc_material):
 
 
 def get_openmc_material(opencg_material):
+    """Return an OpenMC material corresponding to an OpenCG material.
+
+    Parameters
+    ----------
+    opencg_material : opencg.Material
+        OpenCG material
+
+    Returns
+    -------
+    openmc_material : openmc.material.Material
+        Equivalent OpenMC material
+
+    """
 
     if not isinstance(opencg_material, opencg.Material):
         msg = 'Unable to create an OpenMC Material from {0} ' \
@@ -118,6 +143,19 @@ def get_openmc_material(opencg_material):
 
 
 def is_opencg_surface_compatible(opencg_surface):
+    """Determine whether OpenCG surface is compatible with OpenMC geometry
+
+    Parameters
+    ----------
+    opencg_surface : opencg.Surface
+        OpenCG surface
+
+    Returns
+    -------
+    bool
+        Whether OpenCG surface is compatible with OpenMC
+
+    """
 
     if not isinstance(opencg_surface, opencg.Surface):
         msg = 'Unable to check if OpenCG Surface is compatible' \
@@ -132,6 +170,19 @@ def is_opencg_surface_compatible(opencg_surface):
 
 
 def get_opencg_surface(openmc_surface):
+    """Return an OpenCG surface corresponding to an OpenMC surface.
+
+    Parameters
+    ----------
+    openmc_surface : openmc.surface.Surface
+        OpenMC surface
+
+    Returns
+    -------
+    opencg_surface : opencg.Surface
+        Equivalent OpenCG surface
+
+    """
 
     if not isinstance(openmc_surface, openmc.Surface):
         msg = 'Unable to create an OpenCG Surface from {0} ' \
@@ -205,6 +256,19 @@ def get_opencg_surface(openmc_surface):
 
 
 def get_openmc_surface(opencg_surface):
+    """Return an OpenMC surface corresponding to an OpenCG surface.
+
+    Parameters
+    ----------
+    opencg_surface : opencg.Surface
+        OpenCG surface
+
+    Returns
+    -------
+    openmc_surface : openmc.surface.Surface
+        Equivalent OpenMC surface
+
+    """
 
     if not isinstance(opencg_surface, opencg.Surface):
         msg = 'Unable to create an OpenMC Surface from {0} which ' \
@@ -280,6 +344,21 @@ def get_openmc_surface(opencg_surface):
 
 
 def get_compatible_opencg_surfaces(opencg_surface):
+    """Generate OpenCG surfaces that are compatible with OpenMC equivalent to an
+    OpenCG surface that is not compatible.
+
+    Parameters
+    ----------
+    opencg_surface : opencg.Surface
+        OpenCG surface that is incompatible with OpenMC
+
+    Returns
+    -------
+    surfaces : list of opencg.Surface
+        Collection of surfaces equivalent to the original one but compatible
+        with OpenMC
+
+    """
 
     if not isinstance(opencg_surface, opencg.Surface):
         msg = 'Unable to create an OpenMC Surface from {0} which ' \
@@ -349,6 +428,19 @@ def get_compatible_opencg_surfaces(opencg_surface):
 
 
 def get_opencg_cell(openmc_cell):
+    """Return an OpenCG cell corresponding to an OpenMC cell.
+
+    Parameters
+    ----------
+    openmc_cell : openmc.universe.Cell
+        OpenMC cell
+
+    Returns
+    -------
+    opencg_cell : opencg.Cell
+        Equivalent OpenCG cell
+
+    """
 
     if not isinstance(openmc_cell, openmc.Cell):
         msg = 'Unable to create an OpenCG Cell from {0} which ' \
@@ -398,7 +490,26 @@ def get_opencg_cell(openmc_cell):
 
 
 def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
+    """Generate OpenCG cells that are compatible with OpenMC equivalent to an OpenCG
+    cell that is not compatible.
 
+    Parameters
+    ----------
+    opencg_cell : opencg.Cell
+        OpenCG cell
+    opencg_surface : opencg.Surface
+        OpenCG surface that causes the incompatibility, e.g. an x-squareprism
+        surface
+    halfspace : {-1, 1}
+        Which halfspace defined by the surface is contained in the cell
+
+    Returns
+    -------
+    compatible_cells : list of opencg.Cell
+        Collection of cells equivalent to the original one but compatible with
+        OpenMC
+
+    """
     if not isinstance(opencg_cell, opencg.Cell):
         msg = 'Unable to create compatible OpenMC Cell from {0} which ' \
               'is not an OpenCG Cell'.format(opencg_cell)
@@ -418,8 +529,8 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
     compatible_cells = []
 
     # SquarePrism Surfaces
-    if opencg_surface._type in ['x-squareprism',
-                                 'y-squareprism', 'z-squareprism']:
+    if opencg_surface._type in ['x-squareprism', 'y-squareprism',
+                                'z-squareprism']:
 
         # Get the compatible Surfaces (XPlanes and YPlanes)
         compatible_surfaces = get_compatible_opencg_surfaces(opencg_surface)
@@ -436,13 +547,11 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
         # If Cell is outside SquarePrism, add "outside" of Surface halfspaces
         else:
-
             # Create 8 Cell clones to represent each of the disjoint planar
             # Surface halfspace intersections
             num_clones = 8
 
             for clone_id in range(num_clones):
-
                 # Create a cloned OpenCG Cell with Surfaces compatible with OpenMC
                 clone = opencg_cell.clone()
                 compatible_cells.append(clone)
@@ -500,6 +609,14 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
 
 def make_opencg_cells_compatible(opencg_universe):
+    """Make all cells in an OpenCG universe compatible with OpenMC.
+
+    Parameters
+    ----------
+    opencg_universe : opencg.Universe
+        Universe to check
+
+    """
 
     if not isinstance(opencg_universe, opencg.Universe):
         msg = 'Unable to make compatible OpenCG Cells for {0} which ' \
@@ -545,8 +662,20 @@ def make_opencg_cells_compatible(opencg_universe):
     return
 
 
-
 def get_openmc_cell(opencg_cell):
+    """Return an OpenMC cell corresponding to an OpenCG cell.
+
+    Parameters
+    ----------
+    opencg_cell : opencg.Cell
+        OpenCG cell
+
+    Returns
+    -------
+    openmc_cell : openmc.universe.Cell
+        Equivalent OpenMC cell
+
+    """
 
     if not isinstance(opencg_cell, opencg.Cell):
         msg = 'Unable to create an OpenMC Cell from {0} which ' \
@@ -597,8 +726,20 @@ def get_openmc_cell(opencg_cell):
     return openmc_cell
 
 
-
 def get_opencg_universe(openmc_universe):
+    """Return an OpenCG universe corresponding to an OpenMC universe.
+
+    Parameters
+    ----------
+    openmc_universe : openmc.universe.Universe
+        OpenMC universe
+
+    Returns
+    -------
+    opencg_universe : opencg.Universe
+        Equivalent OpenCG universe
+
+    """
 
     if not isinstance(openmc_universe, openmc.Universe):
         msg = 'Unable to create an OpenCG Universe from {0} which ' \
@@ -633,6 +774,19 @@ def get_opencg_universe(openmc_universe):
 
 
 def get_openmc_universe(opencg_universe):
+    """Return an OpenMC universe corresponding to an OpenCG universe.
+
+    Parameters
+    ----------
+    opencg_universe : opencg.Universe
+        OpenCG universe
+
+    Returns
+    -------
+    openmc_universe : openmc.universe.Universe
+        Equivalent OpenMC universe
+
+    """
 
     if not isinstance(opencg_universe, opencg.Universe):
         msg = 'Unable to create an OpenMC Universe from {0} which ' \
@@ -670,6 +824,19 @@ def get_openmc_universe(opencg_universe):
 
 
 def get_opencg_lattice(openmc_lattice):
+    """Return an OpenCG lattice corresponding to an OpenMC lattice.
+
+    Parameters
+    ----------
+    openmc_lattice : openmc.universe.Lattice
+        OpenMC lattice
+
+    Returns
+    -------
+    opencg_lattice : opencg.Lattice
+        Equivalent OpenCG lattice
+
+    """
 
     if not isinstance(openmc_lattice, openmc.Lattice):
         msg = 'Unable to create an OpenCG Lattice from {0} which ' \
@@ -737,6 +904,19 @@ def get_opencg_lattice(openmc_lattice):
 
 
 def get_openmc_lattice(opencg_lattice):
+    """Return an OpenMC lattice corresponding to an OpenCG lattice.
+
+    Parameters
+    ----------
+    opencg_lattice : opencg.Lattice
+        OpenCG lattice
+
+    Returns
+    -------
+    openmc_lattice : openmc.universe.Lattice
+        Equivalent OpenMC lattice
+
+    """
 
     if not isinstance(opencg_lattice, opencg.Lattice):
         msg = 'Unable to create an OpenMC Lattice from {0} which ' \
@@ -822,6 +1002,19 @@ def get_opencg_geometry(openmc_geometry):
 
 
 def get_openmc_geometry(opencg_geometry):
+    """Return an OpenMC geometry corresponding to an OpenCG geometry.
+
+    Parameters
+    ----------
+    opencg_geometry : opencg.Geometry
+        OpenCG geometry
+
+    Returns
+    -------
+    openmc_geometry : openmc.universe.Geometry
+        Equivalent OpenMC geometry
+
+    """
 
     if not isinstance(opencg_geometry, opencg.Geometry):
         msg = 'Unable to get OpenMC geometry from {0} which is ' \

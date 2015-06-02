@@ -6,4 +6,3 @@ Tallies
 
 .. automodule:: openmc.tallies
     :members:
-    :undoc-members:

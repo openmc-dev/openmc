@@ -13,17 +13,28 @@ if sys.version > '3':
 
 
 class SourceSite(object):
+    """A single source site, usually resulting from fission.
+
+    Attributes
+    ----------
+    weight : float
+        Weight of the particle arising from the site
+    xyz : list of float
+        Cartesian coordinates of the site
+    uvw : list of float
+        Directional cosines for particles emerging from the site
+    E : float
+        Energy of the emerging particle in MeV
+
+    """
 
     def __init__(self):
-
         self._weight = None
         self._xyz = None
         self._uvw = None
         self._E = None
 
-
     def __repr__(self):
-
         string = 'SourceSite\n'
         string += '{0: <16}{1}{2}\n'.format('\tweight', '=\t', self._weight)
         string += '{0: <16}{1}{2}\n'.format('\tE', '=\t', self._E)
@@ -31,32 +42,56 @@ class SourceSite(object):
         string += '{0: <16}{1}{2}\n'.format('\t(u,v,w)', '=\t', self._uvw)
         return string
 
-
     @property
     def weight(self):
         return self._weight
-
 
     @property
     def xyz(self):
         return self._xyz
 
-
     @property
     def uvw(self):
         return self._uvw
-
 
     @property
     def E(self):
         return self._E
 
 
-
 class StatePoint(object):
+    """State information on a simulation at a certain point in time (at the end of a
+    given batch). Statepoints can be used to analyze tally results as well as
+    restart a simulation.
+
+    Attributes
+    ----------
+    k_combined : list
+        Combined estimator for k-effective and its uncertainty
+    n_particles : int
+        Number of particles per generation
+    n_batches : int
+        Number of batches
+    current_batch :
+        Number of batches simulated
+    results : bool
+        Indicate whether tally results have been read
+    source : ndarray of SourceSite
+        Array of source sites
+    with_summary : bool
+        Indicate whether statepoint data has been linked against a summary file
+    tallies : dict
+        Dictionary whose keys are tally IDs and whose values are Tally objects
+    tallies_present : bool
+        Indicate whether user-defined tallies are present
+    global_tallies : ndarray
+        Global tallies and their uncertainties
+    n_realizations : int
+        Number of tally realizations
+
+    """
 
     def __init__(self, filename):
-
         if filename.endswith('.h5'):
             import h5py
             self._f = h5py.File(filename, 'r')
@@ -78,7 +113,6 @@ class StatePoint(object):
 
         # Read tally metadata
         self._read_tallies()
-
 
     def close(self):
         self._f.close()
@@ -128,7 +162,6 @@ class StatePoint(object):
         return self._n_realizations
 
     def _read_metadata(self):
-
         # Read filetype
         self._filetype = self._get_int(path='filetype')[0]
 
@@ -169,9 +202,7 @@ class StatePoint(object):
         if self._run_mode == 2:
             self._read_criticality()
 
-
     def _read_criticality(self):
-
         # Read criticality information
         if self._run_mode == 2:
 
@@ -191,9 +222,7 @@ class StatePoint(object):
             # Read CMFD information (if used)
             self._read_cmfd()
 
-
     def _read_cmfd(self):
-
         base = 'cmfd'
 
         # Read CMFD information
@@ -217,9 +246,7 @@ class StatePoint(object):
             self._cmfd_srccmp = self._get_double(self._current_batch,
                   path='{0}/cmfd_srccmp'.format(base))
 
-
     def _read_meshes(self):
-
         # Initialize dictionaries for the Meshes
         # Keys     - Mesh IDs
         # Values - Mesh objects
@@ -284,7 +311,6 @@ class StatePoint(object):
 
 
     def _read_tallies(self):
-
         # Initialize dictionaries for the Tallies
         # Keys     - Tally IDs
         # Values   - Tally objects
@@ -423,7 +449,6 @@ class StatePoint(object):
 
             # Add the scores to the Tally
             for j, score in enumerate(scores):
-
                 # If this is a scattering moment, insert the scattering order
                 if '-n' in score:
                     score = score.replace('-n', '-' + str(moments[j]))
@@ -437,8 +462,11 @@ class StatePoint(object):
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_key] = tally
 
-
     def read_results(self):
+        """Read tally results and store them in the ``tallies`` attribute. By default,
+        when the statepoint is first loaded, no results are read.
+
+        """
 
          # Number of realizations for global Tallies
         self._n_realizations = self._get_int(path='n_realizations')[0]
@@ -499,8 +527,11 @@ class StatePoint(object):
         # Indicate that Tally results have been read
         self._results = True
 
-
     def read_source(self):
+        """Read and store source sites from the statepoint file. By default, source
+        sites are not loaded upon initialization.
+
+        """
 
         # Check whether Tally results have been read
         if not self._results:
@@ -520,7 +551,6 @@ class StatePoint(object):
 
         # Initialize SourceSite object for each particle
         for i in range(self._n_particles):
-
             # Initialize new source site
             site = SourceSite()
 
@@ -536,9 +566,15 @@ class StatePoint(object):
             # Store the source site in the NumPy array
             self._source[i] = site
 
-
     def compute_ci(self, confidence=0.95):
-        """Computes confidence intervals for each Tally bin."""
+        """Computes confidence intervals for each Tally bin.
+
+        Parameters
+        ----------
+        confidence : float, optional
+            Confidence level. Defaults to 0.95.
+
+        """
 
         # Determine significance level and percentile for two-sided CI
         alpha = 1 - confidence
@@ -548,11 +584,16 @@ class StatePoint(object):
         t_value = scipy.stats.t.ppf(percentile, self._n_realizations - 1)
         self.compute_stdev(t_value)
 
-
     def compute_stdev(self, t_value=1.0):
-        """
-        Computes the sample mean and the standard deviation of the mean
+        """Computes the sample mean and the standard deviation of the mean
         for each Tally bin.
+
+        Parameters
+        ----------
+        t_value : float, optional
+            Student's t-value applied to the uncertainty. Defaults to 1.0,
+            meaning the reported value is the sample standard deviation.
+
         """
 
         # Determine number of realizations
@@ -572,11 +613,9 @@ class StatePoint(object):
             if s != 0.0:
                 self._global_tallies[i, 1] = t_value * np.sqrt((s2 / n - s**2) / (n-1))
 
-
         # Calculate sample mean and standard deviation for user-defined Tallies
         for tally_id, tally in self.tallies.items():
             tally.compute_std_dev(t_value)
-
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):
@@ -589,32 +628,30 @@ class StatePoint(object):
 
         Parameters
         ----------
-        scores : list
-             A list of one or more score strings (default is []).
-
-        filters : list
-             A list of Filter objects (default is []).
-
-        nuclides : list
-             A list of Nuclide objects (default is []).
-
-        name : str
-             The name specified for the Tally (default is None).
-
-        id : int
-             The id specified for the Tally (default is None).
-
-        estimator: str
-             The type of estimator ('tracklength', 'analog'; default is None).
+        scores : list, optional
+            A list of one or more score strings (default is []).
+        filters : list, optional
+            A list of Filter objects (default is []).
+        nuclides : list, optional
+            A list of Nuclide objects (default is []).
+        name : str, optional
+            The name specified for the Tally (default is None).
+        id : int, optional
+            The id specified for the Tally (default is None).
+        estimator: str, optional
+            The type of estimator ('tracklength', 'analog'; default is None).
 
         Returns
         -------
-             A Tally object.
+        tally : Tally
+            A tally matching the specified criteria
 
         Raises
         ------
-             LookupError : An error when a Tally meeting all of the input 
-             parameters cannot be found in the statepoint.
+        LookupError
+            If a Tally meeting all of the input parameters cannot be found in
+            the statepoint.
+
         """
 
         tally = None
@@ -683,7 +720,6 @@ class StatePoint(object):
 
         return tally
 
-
     def link_with_summary(self, summary):
         """Links Tallies and Filters with Summary model information.
 
@@ -699,8 +735,10 @@ class StatePoint(object):
 
         Raises
         ------
-             ValueError : An error when the argument passed to the 'summary' 
-             parameter is not an openmc.Summary object.
+        ValueError
+            An error when the argument passed to the 'summary' parameter is not
+            an openmc.Summary object.
+
         """
 
         if not isinstance(summary, openmc.summary.Summary):
@@ -709,7 +747,6 @@ class StatePoint(object):
             raise ValueError(msg)
 
         for tally_id, tally in self.tallies.items():
-
             # Get the Tally name from the summary file
             tally.name = summary.tallies[tally_id].name
             tally.with_summary = True
@@ -717,7 +754,6 @@ class StatePoint(object):
             nuclide_zaids = copy.deepcopy(tally.nuclides)
 
             for nuclide_zaid in nuclide_zaids:
-
                 tally.remove_nuclide(nuclide_zaid)
                 if nuclide_zaid == -1:
                     tally.add_nuclide(openmc.Nuclide('total'))
@@ -725,7 +761,6 @@ class StatePoint(object):
                     tally.add_nuclide(summary.nuclides[nuclide_zaid])
 
             for filter in tally.filters:
-
                 if filter.type == 'surface':
                     surface_ids = []
                     for bin in filter.bins:
@@ -749,9 +784,8 @@ class StatePoint(object):
                     for bin in filter.bins:
                         material_ids.append(summary.materials[bin].id)
                     filter.bins = material_ids
- 
-        self._with_summary = True
 
+        self._with_summary = True
 
     def _get_data(self, n, typeCode, size):
         return list(struct.unpack('={0}{1}'.format(n,typeCode),

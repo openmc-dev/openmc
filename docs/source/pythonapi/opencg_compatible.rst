@@ -6,4 +6,3 @@ OpenCG Compatibility
 
 .. automodule:: openmc.opencg_compatible
     :members:
-    :undoc-members:

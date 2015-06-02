@@ -6,4 +6,3 @@ Settings
 
 .. automodule:: openmc.settings
     :members:
-    :undoc-members:

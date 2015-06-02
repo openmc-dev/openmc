@@ -6,4 +6,3 @@ Summary
 
 .. automodule:: openmc.summary
     :members:
-    :undoc-members:

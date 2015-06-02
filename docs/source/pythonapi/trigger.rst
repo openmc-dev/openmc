@@ -6,4 +6,3 @@ Trigger
 
 .. automodule:: openmc.trigger
     :members:
-    :undoc-members:

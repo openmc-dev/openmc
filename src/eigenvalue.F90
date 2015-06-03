@@ -75,7 +75,11 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p)
+!$omp parallel do schedule(static) firstprivate(p) &
+!$omp   reduction(+:tally_tracklength) &
+!$omp   reduction(+:tally_collision) &
+!$omp   reduction(+:tally_leakage) &
+!$omp   reduction(+:tally_absorption)
         PARTICLE_LOOP: do i_work = 1, work
           current_work = i_work
 
@@ -171,6 +175,22 @@ contains
 
   subroutine finalize_generation()
 
+    ! Update global tallies with the omp private accumulation variables
+    global_tallies(K_TRACKLENGTH) % value = &
+         global_tallies(K_TRACKLENGTH) % value + tally_tracklength
+    global_tallies(K_COLLISION) % value   = &
+         global_tallies(K_COLLISION) % value + tally_collision
+    global_tallies(LEAKAGE) % value   = &
+         global_tallies(LEAKAGE) % value + tally_leakage
+    global_tallies(K_ABSORPTION) % value   = &
+         global_tallies(K_ABSORPTION) % value + tally_absorption
+
+    ! reset private tallies
+    tally_tracklength = 0
+    tally_collision   = 0
+    tally_leakage     = 0
+    tally_absorption  = 0
+
 #ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()
@@ -210,6 +230,10 @@ contains
     if (.not. active_batches) then
       call reset_result(global_tallies)
       n_realizations = 0
+      tally_tracklength = 0
+      tally_collision   = 0
+      tally_leakage     = 0
+      tally_absorption  = 0
     end if
 
     ! Perform CMFD calculation if on

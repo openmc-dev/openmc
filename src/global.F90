@@ -116,6 +116,10 @@ module global
   !   3) leakage fraction
 
   type(TallyResult), allocatable, target :: global_tallies(:)
+  real(8) :: tally_tracklength = 0
+  real(8) :: tally_collision   = 0
+  real(8) :: tally_leakage     = 0
+  real(8) :: tally_absorption  = 0
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)

@@ -121,7 +121,8 @@ class Test(object):
         self.skipped = False
         self.valgrind_cmd = ""
         self.gcov_cmd = ""
-        self.cmake = ['cmake', '-H..', '-Bbuild']
+        self.cmake = ['cmake', '-H..', '-Bbuild',
+                      '-DPYTHON_EXECUTABLE=' + sys.executable]
 
         # Check for MPI/HDF5
         if self.mpi and not self.hdf5:

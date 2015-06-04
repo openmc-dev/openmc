@@ -1160,8 +1160,13 @@ contains
         coord => p % coord0
         offset = 0
         do while(associated(coord))
-          if (associated(coord % mapping)) then
-            offset = offset + coord % mapping(t % filters(i) % offset)
+          if (cells(coord % cell) % type == CELL_FILL) then
+            offset = offset + cells(coord % cell) % &
+                 offset(t % filters(i) % offset)
+          elseif(cells(coord % cell) % type == CELL_LATTICE) then
+            offset = offset + lattices(coord % next % lattice) % obj % &
+                 offset(t % filters(i) % offset, coord % next % lattice_x, &
+                 coord % next % lattice_y, coord % next % lattice_z)
           end if
           if (t % filters(i) % int_bins(1) == coord % cell) then
             matching_bins(i) = offset + 1
@@ -1170,7 +1175,7 @@ contains
           coord => coord % next
         end do
         nullify(coord)
-        
+
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
         matching_bins(i) = get_next_bin(FILTER_CELLBORN, &

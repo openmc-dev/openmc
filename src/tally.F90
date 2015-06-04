@@ -1163,10 +1163,10 @@ contains
           if (cells(coord % cell) % type == CELL_FILL) then
             offset = offset + cells(coord % cell) % &
                  offset(t % filters(i) % offset)
-          elseif(cells(coord%cell) % type == CELL_LATTICE) then
+          elseif(cells(coord % cell) % type == CELL_LATTICE) then
             offset = offset + lattices(coord % next % lattice) % obj % &
-                 offset(t % filters(i) % offset, coord%next%lattice_x, &
-                 coord%next%lattice_y, coord%next%lattice_z)
+                 offset(t % filters(i) % offset, coord % next % lattice_x, &
+                 coord % next % lattice_y, coord % next % lattice_z)
           end if
           if (t % filters(i) % int_bins(1) == coord % cell) then
             matching_bins(i) = offset + 1

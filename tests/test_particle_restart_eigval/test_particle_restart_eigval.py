@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -31,7 +32,7 @@ def test_created_restart():
 
 def test_results():
     particle = glob.glob(os.path.join(cwd, 'particle_12_616.*'))
-    call(['python', 'results.py', particle[0]])
+    call([sys.executable, 'results.py', particle[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

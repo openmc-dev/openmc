@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -32,7 +33,7 @@ def test_created_outputs():
         'Track files not a binary or hdf5 file'
 
 def test_outputs():
-    call(['python', 'results.py'])
+    call([sys.executable, 'results.py'])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
         os.rename('results_test.dat', 'results_error.dat')

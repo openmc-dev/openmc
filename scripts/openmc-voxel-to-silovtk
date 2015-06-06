@@ -62,7 +62,7 @@ def main(file_, o):
     grid.GetCellData().AddArray(data)
 
     writer = vtk.vtkXMLImageDataWriter()
-    writer.SetInput(grid)
+    writer.SetInputData(grid)
     if not o.output[-4:] == ".vti": o.output += ".vti"
     writer.SetFileName(o.output)
     writer.Write()

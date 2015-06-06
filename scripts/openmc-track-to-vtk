@@ -49,7 +49,7 @@ def main():
     if not args.out:
         args.out = 'tracks.pvtp'
     elif os.path.splitext(args.out)[1] != '.pvtp':
-        args.out = ''.join([args.out, '.pvtp'])
+        args.out += '.pvtp'
 
     # Import HDF library if HDF files are present
     for fname in args.input:
@@ -65,7 +65,7 @@ def main():
         # Write coordinate values to points array.
         if fname.endswith('.binary'):
             track = open(fname, 'rb').read()
-            coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
+            coords = [struct.unpack("ddd", track[24*i:24*(i+1)])
                       for i in range(len(track)/24)]
             n_points = len(coords)
             for triplet in coords:
@@ -74,7 +74,7 @@ def main():
             coords = h5py.File(fname).get('coordinates')
             n_points = coords.shape[0]
             for i in range(n_points):
-                points.InsertNextPoint(coords[i,:])
+                points.InsertNextPoint(coords[i, :])
 
         # Create VTK line and assign points to line.
         line = vtk.vtkPolyLine()
@@ -92,7 +92,6 @@ def main():
     writer.SetInputData(data)
     writer.SetFileName(args.out)
     writer.Write()
-
 
 
 if __name__ == '__main__':

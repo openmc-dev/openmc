@@ -48,7 +48,7 @@ def main():
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = 'tracks.pvtp'
-    elif os.path.splitext(args.out)[1] != '.pvtp':
+    elif not args.out.endswith('.pvtp'):
         args.out += '.pvtp'
 
     # Import HDF library if HDF files are present

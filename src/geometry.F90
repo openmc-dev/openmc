@@ -220,7 +220,6 @@ contains
         i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
 
         ! Create new level of coordinates
-        call p % coord(j + 1) % reset()
         p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)
         p % coord(j + 1) % uvw = p % coord(j) % uvw
 
@@ -486,15 +485,13 @@ contains
       ! boundary, it is necessary to redetermine the particle's coordinates in
       ! the lower universes.
 
-      if (p % n_coord > 1) then
-        p % n_coord = 1
-        call p % coord(2:) % reset()
-        call find_cell(p, found)
-        if (.not. found) then
-          call handle_lost_particle(p, "Couldn't find particle after reflecting&
-               & from surface.")
-          return
-        end if
+      p % n_coord = 1
+      call p % coord(2:) % reset()
+      call find_cell(p, found)
+      if (.not. found) then
+        call handle_lost_particle(p, "Couldn't find particle after reflecting&
+             & from surface.")
+        return
       end if
 
       ! Set previous coordinate going slightly past surface crossing

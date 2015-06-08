@@ -46,7 +46,7 @@ contains
     end if
 
     ! Write current coordinates into the newest column.
-    coords(:, n_tracks) = p % coord0 % xyz
+    coords(:, n_tracks) = p % coord(1) % xyz
   end subroutine write_particle_track
 
 !===============================================================================

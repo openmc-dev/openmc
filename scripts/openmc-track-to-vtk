@@ -65,7 +65,7 @@ def main():
         # Write coordinate values to points array.
         if fname.endswith('.binary'):
             track = open(fname, 'rb').read()
-            coords = [struct.unpack("ddd", track[24*i:24*(i+1)])
+            coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
                       for i in range(len(track)/24)]
             n_points = len(coords)
             for triplet in coords:

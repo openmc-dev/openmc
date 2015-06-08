@@ -89,7 +89,10 @@ def main():
     data.SetLines(cells)
 
     writer = vtk.vtkXMLPPolyDataWriter()
-    writer.SetInputData(data)
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(data)
+    else:
+        writer.SetInput(data)
     writer.SetFileName(args.out)
     writer.Write()
 

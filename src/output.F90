@@ -296,8 +296,8 @@ contains
         l => lattices(coord % lattice) % obj
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
-             p % coord % lattice_x)) // ',' // trim(to_str(&
-             p % coord % lattice_y)) // ')'
+             coord % lattice_x)) // ',' // trim(to_str(&
+             coord % lattice_y)) // ')'
       end if
 
       ! Print local coordinates
@@ -2181,9 +2181,9 @@ contains
     end select
 
   end function get_label
-  
+
 !===============================================================================
-! FIND_OFFSET uses a given map number, a target cell ID, and a target offset 
+! FIND_OFFSET uses a given map number, a target cell ID, and a target offset
 ! to build a string which is the path from the base universe to the target cell
 ! with the given offset
 !===============================================================================
@@ -2196,7 +2196,7 @@ contains
     integer, intent(in) :: final                 ! Target offset
     integer, intent(inout) :: offset             ! Current offset
     character(100) :: path                       ! Path to offset
-    
+
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
     integer :: old_k, old_l, old_m  ! Previous indices in lattice
@@ -2212,7 +2212,7 @@ contains
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 
     n = univ % n_cells
-    
+
     ! Write to the geometry stack
     if (univ%id == 0) then
       path = trim(path) // to_str(univ%id)
@@ -2223,31 +2223,31 @@ contains
     ! Look through all cells in this universe
     do i = 1, n
 
-      cell_index = univ % cells(i)        
+      cell_index = univ % cells(i)
       c => cells(cell_index)
-      
+
       ! If the cell ID matches the goal and the offset matches final,
       ! write to the geometry stack
       if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
         path = trim(path) // "->" // to_str(c%id)
         return
       end if
-      
+
     end do
-    
+
     ! Find the fill cell or lattice cell that we need to enter
     do i = 1, n
 
       later_cell = .false.
 
-      cell_index = univ % cells(i)        
+      cell_index = univ % cells(i)
       c => cells(cell_index)
 
-      this_cell = .false.  
+      this_cell = .false.
 
       ! If we got here, we still think the target is in this universe
-      ! or further down, but it's not this exact cell. 
-      ! Compare offset to next cell to see if we should enter this cell  
+      ! or further down, but it's not this exact cell.
+      ! Compare offset to next cell to see if we should enter this cell
       if (i /= n) then
 
         do j = i+1, n
@@ -2260,8 +2260,8 @@ contains
             cycle
           end if
 
-          ! Break loop once we've found the next cell with an offset    
-          exit   
+          ! Break loop once we've found the next cell with an offset
+          exit
         end do
 
         ! Ensure we didn't just end the loop by iteration
@@ -2278,13 +2278,13 @@ contains
           else
             lat => lattices(c % fill) % obj
             temp_offset = lat % offset(map, 1, 1, 1)
-          end if   
+          end if
 
           ! If the final offset is in the range of offset - temp_offset+offset
           ! then the goal is in this cell
           if (final < temp_offset + offset) then
             this_cell = .true.
-          end if  
+          end if
         end if
       end if
 
@@ -2341,7 +2341,7 @@ contains
             ! Loop over lattice coordinates
             do k = 1, n_x
              do l = 1, n_y
-               do m = 1, n_z 
+               do m = 1, n_z
 
                   if (final >= lat % offset(map, k, l, m) + offset) then
                     if (k == n_x .and. l == n_y .and. m == n_z) then
@@ -2364,14 +2364,14 @@ contains
                     ! Target is at this lattice position
                     lat_offset = lat % offset(map, old_k, old_l, old_m)
                     offset = offset + lat_offset
-                    next_univ => universes(lat % universes(old_k, old_l, old_m))  
+                    next_univ => universes(lat % universes(old_k, old_l, old_m))
                     path = trim(path) // "(" // trim(to_str(old_k)) // &
                          "," // trim(to_str(old_l)) // "," // &
                          trim(to_str(old_m)) // ")"
                     call find_offset(map, goal, next_univ, final, offset, path)
                     return
                   end if
-               
+
                 end do
               end do
             end do
@@ -2429,7 +2429,7 @@ contains
 
         end if
       end if
-    end do              
+    end do
   end subroutine find_offset
 
 end module output

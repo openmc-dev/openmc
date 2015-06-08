@@ -133,6 +133,9 @@ module constants
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10
 
+  ! Maximum levels of nested universes
+  integer, parameter :: MAX_COORD = 5
+
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 
@@ -317,13 +320,13 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-  
+
   ! Tally trigger types and threshold
   integer, parameter :: &
        VARIANCE           = 1, &
        RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3 
-       
+       STANDARD_DEVIATION = 3
+
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

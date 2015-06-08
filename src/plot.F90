@@ -7,7 +7,7 @@ module plot
   use global
   use mesh,            only: get_mesh_indices
   use output,          only: write_message
-  use particle_header, only: deallocate_coord, Particle, LocalCoord
+  use particle_header, only: Particle, LocalCoord
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
@@ -46,7 +46,7 @@ contains
   end subroutine run_plot
 
 !===============================================================================
-! POSITION_RGB computes the red/green/blue values for a given plot with the 
+! POSITION_RGB computes the red/green/blue values for a given plot with the
 ! current particle's position
 !===============================================================================
 
@@ -56,28 +56,21 @@ contains
     type(ObjectPlot), pointer, intent(in) :: pl
     integer, intent(out)                  :: rgb(3)
     integer, intent(out)                  :: id
-    
+
+    integer :: j
     logical :: found_cell
-    integer :: level
-    type(Cell),       pointer :: c => null()
-    type(LocalCoord), pointer :: coord => null()
-    
-    call deallocate_coord(p % coord0 % next)
-    p % coord => p % coord0
+    type(Cell), pointer :: c
+
+    p % n_coord = 1
+    call p % coord(2:) % reset()
 
     call find_cell(p, found_cell)
+    j = p % n_coord
     if (check_overlaps) call check_cell_overlap(p)
 
-    ! Loop through universes and stop on any specified level
-    level = 0
-    coord => p % coord0
-    do
-      if (level == pl % level) exit
-      if (.not. associated(coord % next)) exit
-      coord => coord % next
-      level = level + 1
-    end do
-    
+    ! Set coordinate level if specified
+    if (pl % level >= 0) j = pl % level + 1
+
     if (.not. found_cell) then
       ! If no cell, revert to default color
       rgb = pl % not_found % rgb
@@ -85,7 +78,7 @@ contains
     else
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
-        c => cells(coord % cell)
+        c => cells(p % coord(j) % cell)
         if (c % material == MATERIAL_VOID) then
           ! By default, color void cells white
           rgb = 255
@@ -100,14 +93,14 @@ contains
         end if
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
-        rgb = pl % colors(coord % cell) % rgb
-        id = cells(coord % cell) % id
+        rgb = pl % colors(p % coord(j) % cell) % rgb
+        id = cells(p % coord(j) % cell) % id
       else
         rgb = 0
         id = -1
       end if
     end if
-    
+
   end subroutine position_rgb
 
 !===============================================================================
@@ -160,9 +153,9 @@ contains
 
     ! allocate and initialize particle
     call p % initialize()
-    p % coord % xyz = xyz
-    p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
-    p % coord % universe = BASE_UNIVERSE
+    p % coord(1) % xyz = xyz
+    p % coord(1) % uvw = (/ 0.5, 0.5, 0.5 /)
+    p % coord(1) % universe = BASE_UNIVERSE
 
     do y = 1, img % height
       call progress % set_value(dble(y)/dble(img % height)*100.)
@@ -175,12 +168,12 @@ contains
         call set_pixel(img, x-1, y-1, rgb(1), rgb(2), rgb(3))
 
         ! Advance pixel in first direction
-        p % coord0 % xyz(in_i) = p % coord0 % xyz(in_i) + in_pixel
+        p % coord(1) % xyz(in_i) = p % coord(1) % xyz(in_i) + in_pixel
       end do
 
       ! Advance pixel in second direction
-      p % coord0 % xyz(in_i)  = xyz(in_i)
-      p % coord0 % xyz(out_i) = p % coord0 % xyz(out_i) - out_pixel
+      p % coord(1) % xyz(in_i)  = xyz(in_i)
+      p % coord(1) % xyz(out_i) = p % coord(1) % xyz(out_i) - out_pixel
     end do
 
     ! Draw tally mesh boundaries on the image if requested
@@ -201,10 +194,10 @@ contains
 ! DRAW_MESH_LINES draws mesh line boundaries on an image
 !===============================================================================
   subroutine draw_mesh_lines(pl, img)
-  
+
     type(ObjectPlot), pointer, intent(in)    :: pl
     type(Image),               intent(inout) :: img
-    
+
     logical :: in_mesh
     integer :: out_, in_  ! pixel location
     integer :: r, g, b    ! RGB color for meshlines pixels
@@ -221,13 +214,13 @@ contains
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
     type(StructuredMesh), pointer :: m => null()
-  
+
     m => pl % meshlines_mesh
-    
+
     r = pl % meshlines_color % rgb(1)
     g = pl % meshlines_color % rgb(2)
     b = pl % meshlines_color % rgb(3)
-    
+
     select case (pl % basis)
       case(PLOT_BASIS_XY)
         outer = 1
@@ -259,15 +252,15 @@ contains
         ! check if we're in the mesh for this ijk
         if (i > 0 .and. i <= m % dimension(outer) .and. &
             j > 0 .and. j <= m % dimension(inner)) then
-          
+
           ! get xyz's of lower left and upper right of this mesh cell
           xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
           xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
           xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
           xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
-          
+
           ! map the xyz ranges to pixel ranges
-          
+
           frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
           outrange(1) = int(frac * real(img % width, 8))
           frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
@@ -295,11 +288,11 @@ contains
               call set_pixel(img, outrange(2) - plus, in_, r, g, b)
             end do
           end do
-          
+
         end if
       end do
     end do
-    
+
   end subroutine draw_mesh_lines
 
 !===============================================================================
@@ -350,7 +343,7 @@ contains
   subroutine create_3d_dump(pl)
 
     type(ObjectPlot), pointer :: pl
-    
+
     integer :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255
     integer :: id           ! id of cell or material
@@ -361,15 +354,15 @@ contains
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)
-    
+
     ! initial particle position
     ll = pl % origin - pl % width / 2.0
 
     ! allocate and initialize particle
     call p % initialize()
-    p % coord0 % xyz = ll
-    p % coord0 % uvw = (/ 0.5, 0.5, 0.5 /)
-    p % coord0 % universe = BASE_UNIVERSE
+    p % coord(1) % xyz = ll
+    p % coord(1) % uvw = (/ 0.5, 0.5, 0.5 /)
+    p % coord(1) % universe = BASE_UNIVERSE
 
     ! Open binary plot file for writing
     open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
@@ -378,7 +371,7 @@ contains
     ! write plot header info
     write(UNIT_PLOT) pl % pixels, vox, ll
 
-    ! move to center of voxels    
+    ! move to center of voxels
     ll = ll + vox / 2.0
 
     do x = 1, pl % pixels(1)
@@ -393,21 +386,21 @@ contains
           write(UNIT_PLOT) id
 
           ! advance particle in z direction
-          p % coord0 % xyz(3) = p % coord0 % xyz(3) + vox(3)
-          
+          p % coord(1) % xyz(3) = p % coord(1) % xyz(3) + vox(3)
+
         end do
-        
+
         ! advance particle in y direction
-        p % coord0 % xyz(2) = p % coord0 % xyz(2) + vox(2)
-        p % coord0 % xyz(3) = ll(3)
-        
+        p % coord(1) % xyz(2) = p % coord(1) % xyz(2) + vox(2)
+        p % coord(1) % xyz(3) = ll(3)
+
       end do
-      
+
       ! advance particle in y direction
-      p % coord0 % xyz(1) = p % coord0 % xyz(1) + vox(1)
-      p % coord0 % xyz(2) = ll(2)
-      p % coord0 % xyz(3) = ll(3)
-      
+      p % coord(1) % xyz(1) = p % coord(1) % xyz(1) + vox(1)
+      p % coord(1) % xyz(2) = ll(2)
+      p % coord(1) % xyz(3) = ll(3)
+
     end do
 
     close(UNIT_PLOT)

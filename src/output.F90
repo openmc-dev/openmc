@@ -258,7 +258,6 @@ contains
     type(Surface),    pointer :: s => null()
     type(Universe),   pointer :: u => null()
     class(Lattice),   pointer :: l => null()
-    type(LocalCoord), pointer :: coord => null()
 
     ! display type of particle
     select case (p % type)
@@ -273,39 +272,34 @@ contains
     end select
 
     ! loop through each level of universes
-    coord => p % coord0
-    i = 0
-    do while(associated(coord))
+    do i = 1, p % n_coord
       ! Print level
-      write(ou,*) '  Level ' // trim(to_str(i))
+      write(ou,*) '  Level ' // trim(to_str(i - 1))
 
       ! Print cell for this level
-      if (coord % cell /= NONE) then
-        c => cells(coord % cell)
+      if (p % coord(i) % cell /= NONE) then
+        c => cells(p % coord(i) % cell)
         write(ou,*) '    Cell             = ' // trim(to_str(c % id))
       end if
 
       ! Print universe for this level
-      if (coord % universe /= NONE) then
-        u => universes(coord % universe)
+      if (p % coord(i) % universe /= NONE) then
+        u => universes(p % coord(i) % universe)
         write(ou,*) '    Universe         = ' // trim(to_str(u % id))
       end if
 
       ! Print information on lattice
-      if (coord % lattice /= NONE) then
-        l => lattices(coord % lattice) % obj
+      if (p % coord(i) % lattice /= NONE) then
+        l => lattices(p % coord(i) % lattice) % obj
         write(ou,*) '    Lattice          = ' // trim(to_str(l % id))
         write(ou,*) '    Lattice position = (' // trim(to_str(&
-             coord % lattice_x)) // ',' // trim(to_str(&
-             coord % lattice_y)) // ')'
+             p % coord(i) % lattice_x)) // ',' // trim(to_str(&
+             p % coord(i) % lattice_y)) // ')'
       end if
 
       ! Print local coordinates
-      write(ou,'(1X,A,3ES12.4)') '    xyz = ', coord % xyz
-      write(ou,'(1X,A,3ES12.4)') '    uvw = ', coord % uvw
-
-      coord => coord % next
-      i = i + 1
+      write(ou,'(1X,A,3ES12.4)') '    xyz = ', p % coord(i) % xyz
+      write(ou,'(1X,A,3ES12.4)') '    uvw = ', p % coord(i) % uvw
     end do
 
     ! Print surface

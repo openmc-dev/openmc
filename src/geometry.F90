@@ -6,7 +6,7 @@ module geometry
                                     &RectLattice, HexLattice
   use global
   use output,                 only: write_message
-  use particle_header,        only: LocalCoord, deallocate_coord, Particle
+  use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
   use string,                 only: to_str
   use tally,                  only: score_surface_current
@@ -76,20 +76,18 @@ contains
     type(Particle), intent(inout) :: p
 
     integer :: i                       ! cell loop index on a level
+    integer :: j
+    integer :: n_coord
     integer :: n                       ! number of cells to search on a level
     integer :: index_cell              ! index in cells array
     type(Cell),       pointer :: c     ! pointer to cell
     type(Universe),   pointer :: univ  ! universe to search in
-    type(LocalCoord), pointer :: coord ! particle coordinate to search on
-
-    coord => p % coord0
 
     ! loop through each coordinate level
-    do while (associated(coord))
-
-      p % coord => coord
-
-      univ => universes(coord % universe)
+    n_coord = p % n_coord
+    do j = 1, n_coord
+      p % n_coord = j
+      univ => universes(p % coord(j) % universe)
       n = univ % n_cells
 
       ! loop through each cell on this level
@@ -99,10 +97,10 @@ contains
 
         if (simple_cell_contains(c, p)) then
           ! the particle should only be contained in one cell per level
-          if (index_cell /= coord % cell) then
+          if (index_cell /= p % coord(j) % cell) then
             call fatal_error("Overlapping cells detected: " &
                  &// trim(to_str(cells(index_cell) % id)) // ", " &
-                 &// trim(to_str(cells(coord % cell) % id)) &
+                 &// trim(to_str(cells(p % coord(j) % cell) % id)) &
                  &// " on universe " // trim(to_str(univ % id)))
           end if
 
@@ -111,9 +109,6 @@ contains
         end if
 
       end do
-
-      coord => coord % next
-
     end do
 
   end subroutine check_cell_overlap
@@ -130,6 +125,7 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
     integer :: i                    ! index over cells
+    integer :: j
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -138,8 +134,8 @@ contains
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
 
-    ! Remove coordinates for any lower levels
-    call deallocate_coord(p % coord % next)
+    j = p % n_coord
+    call p % coord(j+1:) % reset()
 
     ! set size of list to search
     if (present(search_cells)) then
@@ -147,7 +143,7 @@ contains
       n = size(search_cells)
     else
       use_search_cells = .false.
-      univ => universes(p % coord % universe)
+      univ => universes(p % coord(j) % universe)
       n = univ % n_cells
     end if
 
@@ -157,7 +153,7 @@ contains
       if (use_search_cells) then
         index_cell = search_cells(i)
         ! check to make sure search cell is in same universe
-        if (cells(index_cell) % universe /= p % coord % universe) cycle
+        if (cells(index_cell) % universe /= p % coord(j) % universe) cycle
       else
         index_cell = univ % cells(i)
       end if
@@ -169,7 +165,7 @@ contains
       if (.not. simple_cell_contains(c, p)) cycle
 
       ! Set cell on this level
-      p % coord % cell = index_cell
+      p % coord(j) % cell = index_cell
 
       ! Show cell information on trace
       if (verbosity >= 10 .or. trace) then
@@ -189,27 +185,28 @@ contains
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         ! Create new level of coordinates
-        allocate(p % coord % next)
-        p % coord % next % xyz = p % coord % xyz
-        p % coord % next % uvw = p % coord % uvw
+        p % coord(j + 1) % xyz = p % coord(j) % xyz
+        p % coord(j + 1) % uvw = p % coord(j) % uvw
 
         ! Move particle to next level and set universe
-        p % coord => p % coord % next
-        p % coord % universe = c % fill
+        j = j + 1
+        p % n_coord = j
+        p % coord(j) % universe = c % fill
 
         ! Apply translation
         if (allocated(c % translation)) then
-          p % coord % xyz = p % coord % xyz - c % translation
+          p % coord(j) % xyz = p % coord(j) % xyz - c % translation
         end if
 
         ! Apply rotation
         if (allocated(c % rotation_matrix)) then
-          p % coord % xyz = matmul(c % rotation_matrix, p % coord % xyz)
-          p % coord % uvw = matmul(c % rotation_matrix, p % coord % uvw)
-          p % coord % rotated = .true.
+          p % coord(j) % xyz = matmul(c % rotation_matrix, p % coord(j) % xyz)
+          p % coord(j) % uvw = matmul(c % rotation_matrix, p % coord(j) % uvw)
+          p % coord(j) % rotated = .true.
         end if
 
         call find_cell(p, found)
+        j = p % n_coord
         if (.not. found) exit
 
       elseif (c % type == CELL_LATTICE) then CELL_TYPE
@@ -220,40 +217,42 @@ contains
         lat => lattices(c % fill) % obj
 
         ! Determine lattice indices
-        i_xyz = lat % get_indices(p % coord % xyz + TINY_BIT * p % coord % uvw)
+        i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
 
         ! Create new level of coordinates
-        allocate(p % coord % next)
-        p % coord % next % xyz = lat % get_local_xyz(p % coord % xyz, i_xyz)
-        p % coord % next % uvw = p % coord % uvw
+        call p % coord(j + 1) % reset()
+        p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)
+        p % coord(j + 1) % uvw = p % coord(j) % uvw
 
         ! set particle lattice indices
-        p % coord % next% lattice   = c % fill
-        p % coord % next% lattice_x = i_xyz(1)
-        p % coord % next% lattice_y = i_xyz(2)
-        p % coord % next% lattice_z = i_xyz(3)
+        p % coord(j + 1) % lattice   = c % fill
+        p % coord(j + 1) % lattice_x = i_xyz(1)
+        p % coord(j + 1) % lattice_y = i_xyz(2)
+        p % coord(j + 1) % lattice_z = i_xyz(3)
 
         ! Set the next lowest coordinate level.
         if (lat % are_valid_indices(i_xyz)) then
           ! Particle is inside the lattice.
-          p % coord % next % universe = &
-               &lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+          p % coord(j + 1) % universe = &
+               lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
         else
           ! Particle is outside the lattice.
           if (lat % outer == NO_OUTER_UNIVERSE) then
             call fatal_error("A particle is outside latttice " &
-                 &// trim(to_str(lat % id)) // " but the lattice has no &
+                 // trim(to_str(lat % id)) // " but the lattice has no &
                  &defined outer universe.")
           else
-            p % coord % next % universe = lat % outer
+            p % coord(j + 1) % universe = lat % outer
           end if
         end if
 
         ! Move particle to next level and search for the lower cells.
-        p % coord => p % coord % next
+        j = j + 1
+        p % n_coord = j
 
         call find_cell(p, found)
+        j = p % n_coord
         if (.not. found) exit
 
       end if CELL_TYPE
@@ -314,7 +313,7 @@ contains
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
-        p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
         call score_surface_current(p)
       end if
 
@@ -337,7 +336,7 @@ contains
       ! PARTICLE REFLECTS FROM SURFACE
 
       ! Do not handle reflective boundary conditions on lower universes
-      if (.not. associated(p % coord, p % coord0)) then
+      if (p % n_coord /= 1) then
         call handle_lost_particle(p, "Cannot reflect particle " &
              &// trim(to_str(p % id)) // " off surface in a lower universe.")
         return
@@ -348,15 +347,15 @@ contains
       ! case the surface crossing in coincident with a mesh boundary
 
       if (active_current_tallies % size() > 0) then
-        p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
+        p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
         call score_surface_current(p)
-        p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
       end if
 
       ! Copy particle's direction cosines
-      u = p % coord0 % uvw(1)
-      v = p % coord0 % uvw(2)
-      w = p % coord0 % uvw(3)
+      u = p % coord(1) % uvw(1)
+      v = p % coord(1) % uvw(2)
+      w = p % coord(1) % uvw(3)
 
       select case (surf%type)
       case (SURF_PX)
@@ -383,8 +382,8 @@ contains
 
       case (SURF_CYL_X)
         ! Find y-y0, z-z0 and dot product of direction and surface normal
-        y = p % coord0 % xyz(2) - surf % coeffs(1)
-        z = p % coord0 % xyz(3) - surf % coeffs(2)
+        y = p % coord(1) % xyz(2) - surf % coeffs(1)
+        z = p % coord(1) % xyz(3) - surf % coeffs(2)
         R = surf % coeffs(3)
         dot_prod = v*y + w*z
 
@@ -394,8 +393,8 @@ contains
 
       case (SURF_CYL_Y)
         ! Find x-x0, z-z0 and dot product of direction and surface normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        z = p % coord0 % xyz(3) - surf % coeffs(2)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        z = p % coord(1) % xyz(3) - surf % coeffs(2)
         R = surf % coeffs(3)
         dot_prod = u*x + w*z
 
@@ -405,8 +404,8 @@ contains
 
       case (SURF_CYL_Z)
         ! Find x-x0, y-y0 and dot product of direction and surface normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        y = p % coord(1) % xyz(2) - surf % coeffs(2)
         R = surf % coeffs(3)
         dot_prod = u*x + v*y
 
@@ -417,9 +416,9 @@ contains
       case (SURF_SPHERE)
         ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
         ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        y = p % coord(1) % xyz(2) - surf % coeffs(2)
+        z = p % coord(1) % xyz(3) - surf % coeffs(3)
         R = surf % coeffs(4)
         dot_prod = u*x + v*y + w*z
 
@@ -431,9 +430,9 @@ contains
       case (SURF_CONE_X)
         ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
         ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        y = p % coord(1) % xyz(2) - surf % coeffs(2)
+        z = p % coord(1) % xyz(3) - surf % coeffs(3)
         R = surf % coeffs(4)
         dot_prod = (v*y + w*z - R*u*x)/((R + ONE)*R*x*x)
 
@@ -445,9 +444,9 @@ contains
       case (SURF_CONE_Y)
         ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
         ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        y = p % coord(1) % xyz(2) - surf % coeffs(2)
+        z = p % coord(1) % xyz(3) - surf % coeffs(3)
         R = surf % coeffs(4)
         dot_prod = (u*x + w*z - R*v*y)/((R + ONE)*R*y*y)
 
@@ -459,9 +458,9 @@ contains
       case (SURF_CONE_Z)
         ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
         ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
+        x = p % coord(1) % xyz(1) - surf % coeffs(1)
+        y = p % coord(1) % xyz(2) - surf % coeffs(2)
+        z = p % coord(1) % xyz(3) - surf % coeffs(3)
         R = surf % coeffs(4)
         dot_prod = (u*x + v*y - R*w*z)/((R + ONE)*R*z*z)
 
@@ -477,18 +476,19 @@ contains
 
       ! Set new particle direction
       norm = sqrt(u*u + v*v + w*w)
-      p % coord0 % uvw = [u, v, w] / norm
+      p % coord(1) % uvw = [u, v, w] / norm
 
       ! Reassign particle's cell and surface
-      p % coord0 % cell = last_cell
+      p % coord(1) % cell = last_cell
       p % surface = -p % surface
 
       ! If a reflective surface is coincident with a lattice or universe
       ! boundary, it is necessary to redetermine the particle's coordinates in
       ! the lower universes.
 
-      if (associated(p % coord0 % next)) then
-        call deallocate_coord(p % coord0 % next)
+      if (p % n_coord > 1) then
+        p % n_coord = 1
+        call p % coord(2:) % reset()
         call find_cell(p, found)
         if (.not. found) then
           call handle_lost_particle(p, "Couldn't find particle after reflecting&
@@ -498,7 +498,7 @@ contains
       end if
 
       ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+      p % last_xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
@@ -532,8 +532,8 @@ contains
 
     ! Remove lower coordinate levels and assignment of surface
     p % surface = NONE
-    p % coord => p % coord0
-    call deallocate_coord(p % coord % next)
+    p % n_coord = 1
+    call p % coord(2:) % reset()
     call find_cell(p, found)
 
     if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
@@ -542,9 +542,9 @@ contains
       ! the particle is really traveling tangent to a surface, if we move it
       ! forward a tiny bit it should fix the problem.
 
-      p % coord => p % coord0
-      call deallocate_coord(p % coord % next)
-      p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+      p % n_coord = 1
+      call p % coord(2:) % reset()
+      p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
       call find_cell(p, found)
 
       ! Couldn't find next cell anywhere! This probably means there is an actual
@@ -568,52 +568,47 @@ contains
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_translation(3)
+    integer :: j
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
     class(Lattice),   pointer :: lat
-    type(LocalCoord), pointer :: parent_coord
 
-    lat => lattices(p % coord % lattice) % obj
+    j = p % n_coord
+    lat => lattices(p % coord(j) % lattice) % obj
 
     if (verbosity >= 10 .or. trace) then
       call write_message("    Crossing lattice " // trim(to_str(lat % id)) &
-           &// ". Current position (" // trim(to_str(p % coord % lattice_x)) &
-           &// "," // trim(to_str(p % coord % lattice_y)) // "," &
-           &// trim(to_str(p % coord % lattice_z)) // ")")
+           &// ". Current position (" // trim(to_str(p % coord(j) % lattice_x)) &
+           &// "," // trim(to_str(p % coord(j) % lattice_y)) // "," &
+           &// trim(to_str(p % coord(j) % lattice_z)) // ")")
     end if
 
-    ! Find the coordiante level just above the current one.
-    parent_coord => p % coord0
-    do while(.not. associated(parent_coord % next, p % coord))
-      parent_coord => parent_coord % next
-    end do
-
     ! Set the lattice indices.
-    p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
-    p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
-    p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
-    i_xyz(1) = p % coord % lattice_x
-    i_xyz(2) = p % coord % lattice_y
-    i_xyz(3) = p % coord % lattice_z
+    p % coord(j) % lattice_x = p % coord(j) % lattice_x + lattice_translation(1)
+    p % coord(j) % lattice_y = p % coord(j) % lattice_y + lattice_translation(2)
+    p % coord(j) % lattice_z = p % coord(j) % lattice_z + lattice_translation(3)
+    i_xyz(1) = p % coord(j) % lattice_x
+    i_xyz(2) = p % coord(j) % lattice_y
+    i_xyz(3) = p % coord(j) % lattice_z
 
     ! Set the new coordinate position.
-    p % coord % xyz = lat % get_local_xyz(parent_coord % xyz, i_xyz)
+    p % coord(j) % xyz = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz)
 
     OUTSIDE_LAT: if (.not. lat % are_valid_indices(i_xyz)) then
-      ! The particle is outside the lattice.  Search for it from coord0.
-      call deallocate_coord(p % coord0 % next)
-      p % coord => p % coord0
+      ! The particle is outside the lattice.  Search for it from base coord
+      p % n_coord = 1
+      call p % coord(2:) % reset()
       call find_cell(p, found)
       if (.not. found) then
         call handle_lost_particle(p, "Could not locate particle " &
-             &// trim(to_str(p % id)) // " after crossing a lattice boundary.")
+             // trim(to_str(p % id)) // " after crossing a lattice boundary.")
         return
       end if
 
     else OUTSIDE_LAT
 
       ! Find cell in next lattice element
-      p % coord % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
+      p % coord(j) % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
       call find_cell(p, found)
       if (.not. found) then
@@ -622,15 +617,15 @@ contains
         ! off all lower-level coordinates and search from universe zero
 
         ! Remove lower coordinates
-        call deallocate_coord(p % coord0 % next)
-        p % coord => p % coord0
+        p % n_coord = 1
+        call p % coord(2:) % reset()
 
         ! Search for particle
         call find_cell(p, found)
         if (.not. found) then
           call handle_lost_particle(p, "Could not locate particle " &
-               &// trim(to_str(p % id)) &
-               &// " after crossing a lattice boundary.")
+               // trim(to_str(p % id)) &
+               // " after crossing a lattice boundary.")
           return
         end if
       end if
@@ -644,14 +639,17 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation)
+  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation, &
+       next_level)
 
     type(Particle), intent(inout) :: p
     real(8),        intent(out)   :: dist
     integer,        intent(out)   :: surface_crossed
     integer,        intent(out)   :: lattice_translation(3)
+    integer,        intent(out)   :: next_level
 
     integer :: i                  ! index for surface in cell
+    integer :: j
     integer :: index_surf         ! index in surfaces array (with sign)
     integer :: i_xyz(3)           ! lattice indices
     integer :: level_surf_cross   ! surface crossed on current level
@@ -675,30 +673,25 @@ contains
     type(Cell),       pointer :: cl
     type(Surface),    pointer :: surf
     class(Lattice),   pointer :: lat
-    type(LocalCoord), pointer :: coord
-    type(LocalCoord), pointer :: final_coord
-    type(LocalCoord), pointer :: parent_coord
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
     d_lat = INFINITY
     d_surf = INFINITY
     lattice_translation(:) = [0, 0, 0]
-    nullify(final_coord)
 
-    ! Get pointer to top-level coordinates
-    coord => p % coord0
+    next_level = 0
 
     ! Loop over each universe level
-    LEVEL_LOOP: do while(associated(coord))
+    LEVEL_LOOP: do j = 1, p % n_coord
 
       ! get pointer to cell on this level
-      cl => cells(coord % cell)
+      cl => cells(p % coord(j) % cell)
 
       ! copy directional cosines
-      u = coord % uvw(1)
-      v = coord % uvw(2)
-      w = coord % uvw(3)
+      u = p % coord(j) % uvw(1)
+      v = p % coord(j) % uvw(2)
+      w = p % coord(j) % uvw(3)
 
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
@@ -706,9 +699,9 @@ contains
       SURFACE_LOOP: do i = 1, cl % n_surfaces
 
         ! copy local coordinates of particle
-        x = coord % xyz(1)
-        y = coord % xyz(2)
-        z = coord % xyz(3)
+        x = p % coord(j) % xyz(1)
+        y = p % coord(j) % xyz(2)
+        z = p % coord(j) % xyz(3)
 
         ! check for coincident surface -- note that we can't skip the
         ! calculation in general because a particle could be on one side of a
@@ -1129,16 +1122,16 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
 
-      LAT_COORD: if (coord % lattice /= NONE) then
-        lat => lattices(coord % lattice) % obj
+      LAT_COORD: if (p % coord(j) % lattice /= NONE) then
+        lat => lattices(p % coord(j) % lattice) % obj
 
         LAT_TYPE: select type(lat)
 
         type is (RectLattice)
           ! copy local coordinates
-          x = coord % xyz(1)
-          y = coord % xyz(2)
-          z = coord % xyz(3)
+          x = p % coord(j) % xyz(1)
+          y = p % coord(j) % xyz(2)
+          z = p % coord(j) % xyz(3)
 
           ! determine oncoming edge
           x0 = sign(lat % pitch(1) * 0.5_8, u)
@@ -1202,14 +1195,10 @@ contains
 
         type is (HexLattice) LAT_TYPE
           ! Copy local coordinates.
-          z = coord % xyz(3)
-          i_xyz(1) = coord % lattice_x
-          i_xyz(2) = coord % lattice_y
-          i_xyz(3) = coord % lattice_z
-          parent_coord => p % coord0
-          do while(.not. associated(parent_coord % next, coord))
-            parent_coord => parent_coord % next
-          end do
+          z = p % coord(j) % xyz(3)
+          i_xyz(1) = p % coord(j) % lattice_x
+          i_xyz(2) = p % coord(j) % lattice_y
+          i_xyz(3) = p % coord(j) % lattice_z
 
           ! Compute velocities along the hexagonal axes.
           beta_dir = u*sqrt(3.0_8)/2.0_8 + v/2.0_8
@@ -1225,9 +1214,9 @@ contains
           ! Upper right and lower left sides.
           edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
           if (beta_dir > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, 0, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, 0, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 0, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 0, 0])
           end if
           beta = xyz_t(1)*sqrt(3.0_8)/2.0_8 + xyz_t(2)/2.0_8
           if (abs(beta - edge) < FP_PRECISION) then
@@ -1248,9 +1237,9 @@ contains
           ! Lower right and upper left sides.
           edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
           if (gama_dir > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, -1, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, -1, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 1, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 1, 0])
           end if
           gama = xyz_t(1)*sqrt(3.0_8)/2.0_8 - xyz_t(2)/2.0_8
           if (abs(gama - edge) < FP_PRECISION) then
@@ -1273,9 +1262,9 @@ contains
           ! Upper and lower sides.
           edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
           if (v > 0.0) then
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, 1, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, 1, 0])
           else
-            xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, -1, 0])
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, -1, 0])
           end if
           if (abs(xyz_t(2) - edge) < FP_PRECISION) then
             d = INFINITY
@@ -1333,23 +1322,18 @@ contains
           dist = d_surf
           surface_crossed = level_surf_cross
           lattice_translation(:) = [0, 0, 0]
-          final_coord => coord
+          next_level = j
         end if
       else
         if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
           dist = d_lat
           surface_crossed = None
           lattice_translation(:) = level_lat_trans
-          final_coord => coord
+          next_level = j
         end if
       end if
 
-      coord => coord % next
-
     end do LEVEL_LOOP
-
-    ! Move particle to appropriate coordinate level
-    if (associated(final_coord)) p % coord => final_coord
 
   end subroutine distance_to_boundary
 
@@ -1365,6 +1349,7 @@ contains
     type(Surface),  pointer       :: surf   ! surface
     logical                       :: s      ! sense of particle
 
+    integer :: j
     real(8) :: x,y,z    ! coordinates of particle
     real(8) :: func     ! surface function evaluated at point
     real(8) :: A        ! coefficient on x for plane
@@ -1374,9 +1359,10 @@ contains
     real(8) :: x0,y0,z0 ! coefficients for quadratic surfaces / box
     real(8) :: r        ! radius for quadratic surfaces
 
-    x = p % coord % xyz(1)
-    y = p % coord % xyz(2)
-    z = p % coord % xyz(3)
+    j = p % n_coord
+    x = p % coord(j) % xyz(1)
+    y = p % coord(j) % xyz(2)
+    z = p % coord(j) % xyz(3)
 
     select case (surf % type)
     case (SURF_PX)
@@ -1468,7 +1454,7 @@ contains
     if (abs(func) < FP_COINCIDENT) then
       ! Particle may be coincident with this surface. Artifically move the
       ! particle forward a tiny bit.
-      p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+      p % coord(j) % xyz = p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw
       s = sense(p, surf)
     elseif (func > 0) then
       s = .true.

@@ -134,8 +134,10 @@ contains
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
 
+    do j = p % n_coord + 1, MAX_COORD
+      call p % coord(j) % reset()
+    end do
     j = p % n_coord
-    call p % coord(j+1:) % reset()
 
     ! set size of list to search
     if (present(search_cells)) then
@@ -486,7 +488,6 @@ contains
       ! the lower universes.
 
       p % n_coord = 1
-      call p % coord(2:) % reset()
       call find_cell(p, found)
       if (.not. found) then
         call handle_lost_particle(p, "Couldn't find particle after reflecting&
@@ -530,7 +531,6 @@ contains
     ! Remove lower coordinate levels and assignment of surface
     p % surface = NONE
     p % n_coord = 1
-    call p % coord(2:) % reset()
     call find_cell(p, found)
 
     if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
@@ -540,7 +540,6 @@ contains
       ! forward a tiny bit it should fix the problem.
 
       p % n_coord = 1
-      call p % coord(2:) % reset()
       p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
       call find_cell(p, found)
 
@@ -594,7 +593,6 @@ contains
     OUTSIDE_LAT: if (.not. lat % are_valid_indices(i_xyz)) then
       ! The particle is outside the lattice.  Search for it from base coord
       p % n_coord = 1
-      call p % coord(2:) % reset()
       call find_cell(p, found)
       if (.not. found) then
         call handle_lost_particle(p, "Could not locate particle " &
@@ -615,7 +613,6 @@ contains
 
         ! Remove lower coordinates
         p % n_coord = 1
-        call p % coord(2:) % reset()
 
         ! Search for particle
         call find_cell(p, found)

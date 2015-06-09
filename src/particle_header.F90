@@ -128,9 +128,12 @@ contains
   subroutine clear_particle(this)
 
     class(Particle) :: this
+    integer :: i
 
     ! remove any coordinate levels
-    call this % coord(:) % reset()
+    do i = 1, MAX_COORD
+      call this % coord(i) % reset()
+    end do
 
   end subroutine clear_particle
 

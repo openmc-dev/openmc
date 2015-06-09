@@ -126,7 +126,7 @@ contains
     if (master) call check_triggers()
 #ifdef MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         MPI_COMM_WORLD, mpi_err)              
+         MPI_COMM_WORLD, mpi_err)
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then
@@ -156,6 +156,9 @@ contains
 
     ! Copy source attributes to the particle
     call copy_source_attributes(p, source_site)
+
+    ! Determine whether to create track file
+    if (write_all_tracks) p % write_track = .true.
 
   end subroutine sample_source_particle
 

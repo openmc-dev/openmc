@@ -62,7 +62,6 @@ contains
     type(Cell), pointer :: c
 
     p % n_coord = 1
-    call p % coord(2:) % reset()
 
     call find_cell(p, found_cell)
     j = p % n_coord

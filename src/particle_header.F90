@@ -27,9 +27,6 @@ module particle_header
     ! Is this level rotated?
     logical :: rotated = .false.
 
-    ! Distributed Mapping Info
-    integer, pointer :: mapping(:) => null()
-
     ! Pointer to next (more local) set of coordinates
     type(LocalCoord), pointer :: next => null()
   end type LocalCoord
@@ -103,9 +100,6 @@ contains
     if (associated(coord)) then
       ! recursively deallocate lower coordinates
       if (associated(coord % next)) call deallocate_coord(coord%next)
-
-      ! deallocate original coordinate
-      if (associated(coord % mapping)) deallocate(coord % mapping)
 
       ! deallocate this coord
       deallocate(coord)

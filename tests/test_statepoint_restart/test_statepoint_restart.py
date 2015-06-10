@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -31,7 +32,7 @@ def test_created_statepoint():
 
 def test_results():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.07.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')
@@ -56,7 +57,7 @@ def test_created_statepoint_form1():
 
 def test_results_form1():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.07.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')
@@ -81,7 +82,7 @@ def test_created_statepoint_form2():
 
 def test_results_form2():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.07.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')
@@ -102,7 +103,7 @@ def test_created_statepoint_serial():
 
 def test_results_serial():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.07.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

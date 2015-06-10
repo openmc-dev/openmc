@@ -1504,7 +1504,7 @@ class Tally(object):
 
         Raises
         ------
-             KeyError : An error when the argument passed to the 'nuclide' 
+             KeyError : An error when the argument passed to the 'nuclide'
              parameter cannot be found in the Tally.
         """
 
@@ -1547,7 +1547,7 @@ class Tally(object):
 
         Raises
         ------
-             ValueError: An error when the argument passed to the 'score' 
+             ValueError: An error when the argument passed to the 'score'
              parameter cannot be found in the Tally.
         """
 
@@ -1674,7 +1674,7 @@ class Tally(object):
                         self.get_filter_index(filter.type, bin))
 
             # Apply cross-product sum between all filter bin indices
-            filter_indices = map(sum, itertools.product(*filter_indices))
+            filter_indices = list(map(sum, itertools.product(*filter_indices)))
 
         # If user did not specify any specific Filters, use them all
         else:
@@ -1820,7 +1820,7 @@ class Tally(object):
 
                     # Append Mesh ID as outermost index of mult-index
                     mesh_id = filter.mesh.id
-                    mesh_key = 'mesh {0}'.format(mesh_id) 
+                    mesh_key = 'mesh {0}'.format(mesh_id)
 
                     # Find mesh dimensions - use 3D indices for simplicity
                     if (len(filter.mesh.dimension) == 3):
@@ -1882,8 +1882,8 @@ class Tally(object):
                         # offsets to OpenCG LocalCoords linked lists
                         offsets_to_coords = {}
 
-                        # Use OpenCG to compute LocalCoords linked list for 
-                        # each region and store in dictionary 
+                        # Use OpenCG to compute LocalCoords linked list for
+                        # each region and store in dictionary
                         for region in range(num_regions):
                             coords = opencg_geometry.findRegion(region)
                             path = opencg.get_path(coords)
@@ -1892,7 +1892,7 @@ class Tally(object):
                             # If this region is in Cell corresponding to the
                             # distribcell filter bin, store it in dictionary
                             if cell_id == filter.bins[0]:
-                                offset = openmc_geometry.get_offset(path, 
+                                offset = openmc_geometry.get_offset(path,
                                      filter.offset)
                                 offsets_to_coords[offset] = coords
 
@@ -1922,7 +1922,7 @@ class Tally(object):
                             lat_y_key = (level_key, 'lat', 'y')
                             lat_z_key = (level_key, 'lat', 'z')
 
-                            # Allocate NumPy arrays for each CSG level and 
+                            # Allocate NumPy arrays for each CSG level and
                             # each Multi-index column in the DataFrame
                             level_dict[univ_key] = np.empty(num_offsets)
                             level_dict[cell_key] = np.empty(num_offsets)
@@ -1982,9 +1982,9 @@ class Tally(object):
                                 tile_factor = data_size / len(level_bins)
                                 level_bins = np.tile(level_bins, tile_factor)
                                 level_dict[level_key] = level_bins
-           
+
                             # Append the multi-index column to the DataFrame
-                            df = pd.concat([df, pd.DataFrame(level_dict)], 
+                            df = pd.concat([df, pd.DataFrame(level_dict)],
                                            axis=1)
 
                     # Create DataFrame column for distribcell instances IDs
@@ -2004,7 +2004,7 @@ class Tally(object):
                     bins = filter.bins
                     num_bins = filter.num_bins
 
-                    # Create strings for 
+                    # Create strings for
                     template = '{0:.1e} - {1:.1e}'
                     filter_bins = []
                     for i in range(num_bins-1):

@@ -44,12 +44,12 @@ def main():
         if not (fname.endswith('.h5') or fname.endswith('.binary')):
             raise ValueError("Input file names must either end with '.h5' or"
                              "'.binary'.")
-    
+
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = 'tracks.pvtp'
-    elif os.path.splitext(args.out)[1] != '.pvtp':
-        args.out = ''.join([args.out, '.pvtp'])
+    elif not args.out.endswith('.pvtp'):
+        args.out += '.pvtp'
 
     # Import HDF library if HDF files are present
     for fname in args.input:
@@ -74,25 +74,27 @@ def main():
             coords = h5py.File(fname).get('coordinates')
             n_points = coords.shape[0]
             for i in range(n_points):
-                points.InsertNextPoint(coords[i,:])
-                
+                points.InsertNextPoint(coords[i, :])
+
         # Create VTK line and assign points to line.
         line = vtk.vtkPolyLine()
         line.GetPointIds().SetNumberOfIds(n_points)
         for i in range(n_points):
             line.GetPointIds().SetId(i, point_offset+i)
-        
+
         cells.InsertNextCell(line)
         point_offset += n_points
     data = vtk.vtkPolyData()
     data.SetPoints(points)
     data.SetLines(cells)
-    
+
     writer = vtk.vtkXMLPPolyDataWriter()
-    writer.SetInput(data)
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(data)
+    else:
+        writer.SetInput(data)
     writer.SetFileName(args.out)
     writer.Write()
-
 
 
 if __name__ == '__main__':

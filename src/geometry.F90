@@ -1591,8 +1591,8 @@ contains
 
   subroutine calc_offsets(goal, map, univ, counts, found)
 
-    integer, intent(inout) :: goal             ! target universe ID
-    integer, intent(inout) :: map              ! map index in vector of maps
+    integer, intent(in)        :: goal         ! target universe ID
+    integer, intent(in)        :: map          ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
     integer, intent(inout)     :: counts(:,:)  ! target count
     logical, intent(inout)     :: found(:,:)   ! target found
@@ -1692,11 +1692,11 @@ contains
 
   recursive function count_target(univ, counts, found, goal, map) result(count)
 
-    type(Universe), intent(inout) :: univ         ! universe to search through
-    integer, intent(inout)        :: counts(:,:)  ! target count
-    logical, intent(inout)        :: found(:,:)   ! target found
-    integer, intent(inout)        :: goal         ! target universe ID
-    integer, intent(inout)        :: map          ! current map
+    type(Universe), intent(in) :: univ         ! universe to search through
+    integer, intent(inout)     :: counts(:,:)  ! target count
+    logical, intent(inout)     :: found(:,:)   ! target found
+    integer, intent(in)        :: goal         ! target universe ID
+    integer, intent(in)        :: map          ! current map
 
     integer :: i                           ! index over cells
     integer :: j, k, m                     ! indices in lattice

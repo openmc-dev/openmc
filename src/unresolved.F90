@@ -2420,8 +2420,14 @@ contains
 
     if (tope % E == tope % E_last) then
       ! Energy hasn't changed since last realization, so use the same one
-      this % E_lam &
-           = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
+
+      if (this % i_res == 0) then
+        this % E_lam &
+             = tope % local_realization(i_l, i_J) % E_lam(1)
+      else
+        this % E_lam &
+          = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
+      end if
     else
       ! sample a level spacing from the Wigner distribution
       this % D_lJ = wigner_dist(tope % D)
@@ -2516,7 +2522,8 @@ contains
     ! tabulated values. Look at the third Monte Carlo Sampler?
 
     if (tope % E == tope % E_last) then
-      ! Energy hasn't changed since last realization, so use the same one
+      if (this % i_res == 0) return
+	  ! Energy hasn't changed since last realization, so use the same one
       this % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(this % i_res)
       this % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(this % i_res)
       this % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(this % i_res)
@@ -5055,12 +5062,12 @@ contains
     if (allocated(this % urr_E)) call this % dealloc_pointwise()
 
     ! deallocate averaged, infinite-dilute URR cross sections
-    deallocate(this % Eavg)
-    deallocate(this % avg_urr_t)
-    deallocate(this % avg_urr_n)
-    deallocate(this % avg_urr_f)
-    deallocate(this % avg_urr_g)
-    deallocate(this % avg_urr_x)
+    if (allocated(this % Eavg)) deallocate(this % Eavg)
+    if (allocated(this % avg_urr_t)) deallocate(this % avg_urr_t)
+    if (allocated(this % avg_urr_n)) deallocate(this % avg_urr_n)
+    if (allocated(this % avg_urr_f)) deallocate(this % avg_urr_f)
+    if (allocated(this % avg_urr_g)) deallocate(this % avg_urr_g)
+    if (allocated(this % avg_urr_x)) deallocate(this % avg_urr_x)
 
     ! deallocate ENDF-6 File 3 cross sections
     call this % dealloc_MF3()

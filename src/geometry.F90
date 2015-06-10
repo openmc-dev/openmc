@@ -197,12 +197,6 @@ contains
         p % coord => p % coord % next
         p % coord % universe = c % fill
 
-        ! Determine all distribcell offsets for this cell level
-        if (.not. associated(p % coord % mapping)) then
-          allocate(p % coord % mapping(n_maps))
-        end if
-        p % coord % mapping(:) = c % offset(:)
-
         ! Apply translation
         if (allocated(c % translation)) then
           p % coord % xyz = p % coord % xyz - c % translation
@@ -258,14 +252,6 @@ contains
 
         ! Move particle to next level and search for the lower cells.
         p % coord => p % coord % next
-
-        ! Determine all distribcell offsets for this cell level
-        if (lat % are_valid_indices(i_xyz)) then
-          if (.not. associated(p % coord % mapping)) then
-            allocate(p % coord % mapping(n_maps))
-          end if
-          p % coord % mapping(:) = lat % offset(:, i_xyz(1), i_xyz(2), i_xyz(3))
-        end if
 
         call find_cell(p, found)
         if (.not. found) exit
@@ -629,12 +615,6 @@ contains
       ! Find cell in next lattice element
       p % coord % universe = lat % universes(i_xyz(1), i_xyz(2), i_xyz(3))
 
-      ! Determine all distribcell offsets for this lattice cell
-      if (.not. associated(p % coord % mapping)) then
-        allocate(p % coord % mapping(n_maps))
-      end if
-      p % coord % mapping(:) = lat % offset(:, i_xyz(1), i_xyz(2), i_xyz(3))
-   
       call find_cell(p, found)
       if (.not. found) then
         ! In some circumstances, a particle crossing the corner of a cell may
@@ -1603,7 +1583,7 @@ contains
     end if
 
   end subroutine handle_lost_particle
-  
+
 !===============================================================================
 ! CALC_OFFSETS calculates and stores the offsets in all fill cells. This
 ! routine is called once upon initialization.
@@ -1630,12 +1610,12 @@ contains
     offset = 0
 
     do i = 1, n
-      
+
       cell_index = univ % cells(i)
 
       ! get pointer to cell
       c => cells(cell_index)
-      
+
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
       if (c % type == CELL_NORMAL) then
@@ -1664,7 +1644,7 @@ contains
         select type (lat)
 
         type is (RectLattice)
-        
+
           ! Loop over lattice coordinates
           do j = 1, lat % n_cells(1)
             do k = 1, lat % n_cells(2)
@@ -1702,9 +1682,9 @@ contains
 
       end if
     end do
-    
+
   end subroutine calc_offsets
-  
+
 !===============================================================================
 ! COUNT_TARGET recursively totals the numbers of occurances of a given
 ! universe ID beginning with the universe given.
@@ -1744,18 +1724,18 @@ contains
 
     count = 0
     n = univ % n_cells
-      
+
     do i = 1, n
-      
+
       cell_index = univ % cells(i)
 
       ! get pointer to cell
       c => cells(cell_index)
-      
+
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
       if (c % type == CELL_NORMAL) then
-               
+
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
       elseif (c % type == CELL_FILL) then
@@ -1767,7 +1747,7 @@ contains
           count = count + 1
           return
         end if
-        
+
         count = count + count_target(next_univ, counts, found, goal, map)
         c => cells(cell_index)
 
@@ -1781,11 +1761,11 @@ contains
         select type (lat)
 
         type is (RectLattice)
-        
+
           ! Loop over lattice coordinates
           do j = 1, lat % n_cells(1)
             do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)            
+              do m = 1, lat % n_cells(3)
                 next_univ => universes(lat % universes(j, k, m))
 
                 ! Found target - stop since target cannot contain itself
@@ -1793,7 +1773,7 @@ contains
                   count = count + 1
                   cycle
                 end if
-              
+
                 count = count + &
                      count_target(next_univ, counts, found, goal, map)
 
@@ -1836,7 +1816,7 @@ contains
 
     counts(universe_dict % get_key(univ % id), map) = count
     found(universe_dict % get_key(univ % id), map) = .true.
-             
+
   end function count_target
 
 !===============================================================================
@@ -1859,7 +1839,7 @@ contains
     n = univ % n_cells
 
     do i = 1, n
-    
+
       cell_index = univ % cells(i)
 
       ! get pointer to cell
@@ -1869,13 +1849,13 @@ contains
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
       if (c % type == CELL_NORMAL) then
-               
+
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
       elseif (c % type == CELL_FILL) then
 
         next_univ => universes(c % fill)
-        
+
         call count_instance(next_univ)
         c => cells(cell_index)
 
@@ -1924,7 +1904,7 @@ contains
 
       end if
     end do
-             
+
   end subroutine count_instance
 
 

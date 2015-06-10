@@ -74,8 +74,8 @@ contains
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
-    type(Node), pointer :: node_trigger   => null() 
-    type(Node), pointer :: node_keff_trigger => null()   
+    type(Node), pointer :: node_trigger   => null()
+    type(Node), pointer :: node_keff_trigger => null()
     type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
@@ -2394,9 +2394,9 @@ contains
 
             ! Set type of filter
             t % filters(j) % type = FILTER_DISTRIBCELL
-            
+
             ! Going to add new filters to this tally if n_words > 1
-            
+
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
@@ -2580,7 +2580,7 @@ contains
 
             ! Append default_xs specifier to nuclide if needed
             if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
-              word = word // "." // default_xs
+              word = trim(word) // "." // default_xs
             end if
 
             ! Search through nuclides
@@ -2963,7 +2963,7 @@ contains
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
       end if
-      
+
       ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then
 

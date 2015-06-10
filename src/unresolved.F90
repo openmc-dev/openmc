@@ -1733,7 +1733,8 @@ contains
                   i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_f(i_grid) > XS_CUTOFF) then
+                       .or. (tope % MF3_f(i_grid) > XS_CUTOFF &
+                       .and. tope % MF3_f(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_f_e(i_grid), &
                       & tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1753,7 +1754,8 @@ contains
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
                     & size(nuc % energy), E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. nuc % fission(i_grid) > XS_CUTOFF) then
+                       .or. (nuc % fission(i_grid) > XS_CUTOFF &
+                       .and. nuc % fission(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
                       & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1781,7 +1783,8 @@ contains
                   i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_x(i_grid) > XS_CUTOFF) then
+                       .or. (tope % MF3_x(i_grid) > XS_CUTOFF &
+                       .and. tope % MF3_x(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_x_e(i_grid), &
                       & tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
@@ -4181,8 +4184,9 @@ contains
         call fatal_error('Energy is above File 3 elastic energy grid')
       else
         i_grid = binary_search(tope % MF3_n_e, size(tope % MF3_n_e),tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_n_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_n(i_grid) > ZERO &
+             .and. tope % MF3_n(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
             & tope % MF3_n_e(i_grid + 1), tope % INT)
           micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid),&
@@ -4200,8 +4204,9 @@ contains
         call fatal_error('Energy is above File 3 inelastic energy grid')
       else
         i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e), tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_x_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_x(i_grid) > ZERO &
+             .and. tope % MF3_x(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
             & tope % MF3_x_e(i_grid + 1), tope % INT)
           inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
@@ -4220,8 +4225,9 @@ contains
         call fatal_error('Energy is above File 3 capture energy grid')
       else
         i_grid = binary_search(tope % MF3_g_e, size(tope % MF3_g_e), tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_g_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_g(i_grid) > ZERO &
+             .and. tope % MF3_g(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
             & tope % MF3_g_e(i_grid + 1), tope % INT)
           capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
@@ -4241,8 +4247,9 @@ contains
           call fatal_error('Energy is above File 3 fission energy grid')
         else
           i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope%E)
-          if (tope % INT == LINEAR_LINEAR .or. &
-            & tope % MF3_f_e(i_grid) > ZERO) then
+          if (tope % INT == LINEAR_LINEAR &
+               .or. (tope % MF3_f(i_grid) > ZERO &
+               .and. tope % MF3_f(i_grid + 1) > ZERO)) then
             fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
               & tope % MF3_f_e(i_grid + 1), tope % INT)
             micro_xs(i_nuc) % fission = interpolator(fact, tope%MF3_f(i_grid),&

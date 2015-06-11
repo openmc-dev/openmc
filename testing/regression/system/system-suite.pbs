@@ -1,0 +1,24 @@
+#!/bin/sh
+
+###########################################
+#
+# script for running batch jobs on Kilkenny
+#
+###########################################
+
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=23:59:00
+#PBS -j oe
+#PBS -V
+
+export TEST_DIR=/home/walshjon/shutmc/testing/regression/system
+cd $TEST_DIR
+
+export LD_LIBRARY_PATH=/opt/gcc/4.9.0/lib64:/opt/mpich/3.1.2-gnu/lib
+
+export SHUTXS=/home/walshjon/shutmc/src/build/bin/openmc
+
+cd $TEST_DIR/case-1
+mpiexec -rmk pbs $SHUTXS $TEST_DIR/case-1
+cd $TEST_DIR/case-2
+mpiexec -rmk pbs $SHUTXS $TEST_DIR/case-2

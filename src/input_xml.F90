@@ -3431,6 +3431,11 @@ contains
         else
           call fatal_error('No URR realization index given in urr.xml')
         end if
+      else
+        if (check_for_node(otf_xs_node, 'realizations')&
+             .or. check_for_node(otf_xs_node, 'realization_index'))&
+             call fatal_error('a new local URR realization is being generated&
+             & at each event; do not specify number or index of realizations')
       end if
     end if
 

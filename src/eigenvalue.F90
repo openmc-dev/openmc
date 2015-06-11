@@ -75,11 +75,7 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p) &
-!$omp   reduction(+:tally_tracklength) &
-!$omp   reduction(+:tally_collision) &
-!$omp   reduction(+:tally_leakage) &
-!$omp   reduction(+:tally_absorption)
+!$omp parallel do schedule(static) firstprivate(p)
         PARTICLE_LOOP: do i_work = 1, work
           current_work = i_work
 
@@ -100,7 +96,7 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-      
+
       if (satisfy_triggers) exit BATCH_LOOP
 
     end do BATCH_LOOP
@@ -176,6 +172,8 @@ contains
   subroutine finalize_generation()
 
     ! Update global tallies with the omp private accumulation variables
+!$omp parallel
+!$omp critical
     global_tallies(K_TRACKLENGTH) % value = &
          global_tallies(K_TRACKLENGTH) % value + tally_tracklength
     global_tallies(K_COLLISION) % value   = &
@@ -184,12 +182,14 @@ contains
          global_tallies(LEAKAGE) % value + tally_leakage
     global_tallies(K_ABSORPTION) % value   = &
          global_tallies(K_ABSORPTION) % value + tally_absorption
+!$omp end critical
 
     ! reset private tallies
     tally_tracklength = 0
     tally_collision   = 0
     tally_leakage     = 0
     tally_absorption  = 0
+!$omp end parallel
 
 #ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
@@ -230,10 +230,6 @@ contains
     if (.not. active_batches) then
       call reset_result(global_tallies)
       n_realizations = 0
-      tally_tracklength = 0
-      tally_collision   = 0
-      tally_leakage     = 0
-      tally_absorption  = 0
     end if
 
     ! Perform CMFD calculation if on
@@ -244,12 +240,12 @@ contains
 
     ! Calculate combined estimate of k-effective
     if (master) call calculate_combined_keff()
-    
+
     ! Check_triggers
     if (master) call check_triggers()
 #ifdef MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         MPI_COMM_WORLD, mpi_err)              
+         MPI_COMM_WORLD, mpi_err)
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then

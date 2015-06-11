@@ -120,6 +120,8 @@ module global
   real(8) :: tally_collision   = 0
   real(8) :: tally_leakage     = 0
   real(8) :: tally_absorption  = 0
+!$omp threadprivate(tally_tracklength, tally_collision, tally_leakage, &
+!$omp&              tally_absorption)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)

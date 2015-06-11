@@ -21,6 +21,7 @@ contains
     integer :: i ! iteration index
     real(8) :: D_mean    ! average level spacing in eV
     real(8) :: D_vals(n) ! sampled level spacings
+    character(80) :: temp_str
 
     D_mean = 20.0_8
 
@@ -28,7 +29,8 @@ contains
       D_vals(i) = wigner_dist(D_mean)
     end do
 
-    call write_coords(99, 'wigner-dist-samples.dat', n, n, dble([(i,i=1,n)]),&
+    temp_str = 'wigner-dist-samples.dat'
+    call write_coords(99, temp_str, n, n, dble([(i,i=1,n)]),&
       D_vals(:)/D_mean)
 
   end subroutine sampleWignerDist

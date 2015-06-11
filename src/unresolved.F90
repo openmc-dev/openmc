@@ -1731,7 +1731,8 @@ contains
                   i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_f(i_grid) > XS_CUTOFF) then
+                       .or. (tope % MF3_f(i_grid) > XS_CUTOFF &
+                       .and. tope % MF3_f(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_f_e(i_grid), &
                       & tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1751,7 +1752,8 @@ contains
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
                     & size(nuc % energy), E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. nuc % fission(i_grid) > XS_CUTOFF) then
+                       .or. (nuc % fission(i_grid) > XS_CUTOFF &
+                       .and. nuc % fission(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
                       & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
@@ -1779,7 +1781,8 @@ contains
                   i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e),&
                     & E)
                   if (tope % INT == LINEAR_LINEAR &
-                    & .or. tope % MF3_x(i_grid) > XS_CUTOFF) then
+                       .or. (tope % MF3_x(i_grid) > XS_CUTOFF &
+                       .and. tope % MF3_x(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_x_e(i_grid), &
                       & tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
@@ -2415,8 +2418,14 @@ contains
 
     if (tope % E == tope % E_last) then
       ! Energy hasn't changed since last realization, so use the same one
-      this % E_lam &
-           = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
+
+      if (this % i_res == 0) then
+        this % E_lam &
+             = tope % local_realization(i_l, i_J) % E_lam(1)
+      else
+        this % E_lam &
+          = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
+      end if
     else
       ! sample a level spacing from the Wigner distribution
       this % D_lJ = wigner_dist(tope % D)
@@ -2511,7 +2520,8 @@ contains
     ! tabulated values. Look at the third Monte Carlo Sampler?
 
     if (tope % E == tope % E_last) then
-      ! Energy hasn't changed since last realization, so use the same one
+      if (this % i_res == 0) return
+	  ! Energy hasn't changed since last realization, so use the same one
       this % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(this % i_res)
       this % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(this % i_res)
       this % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(this % i_res)
@@ -4300,8 +4310,9 @@ contains
         call fatal_error('Energy is above File 3 elastic energy grid')
       else
         i_grid = binary_search(tope % MF3_n_e, size(tope % MF3_n_e),tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_n_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_n(i_grid) > ZERO &
+             .and. tope % MF3_n(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
             & tope % MF3_n_e(i_grid + 1), tope % INT)
           micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid),&
@@ -4319,8 +4330,9 @@ contains
         call fatal_error('Energy is above File 3 inelastic energy grid')
       else
         i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e), tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_x_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_x(i_grid) > ZERO &
+             .and. tope % MF3_x(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
             & tope % MF3_x_e(i_grid + 1), tope % INT)
           inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
@@ -4339,8 +4351,9 @@ contains
         call fatal_error('Energy is above File 3 capture energy grid')
       else
         i_grid = binary_search(tope % MF3_g_e, size(tope % MF3_g_e), tope % E)
-        if (tope % INT == LINEAR_LINEAR .or. &
-          & tope % MF3_g_e(i_grid) > ZERO) then
+        if (tope % INT == LINEAR_LINEAR &
+             .or. (tope % MF3_g(i_grid) > ZERO &
+             .and. tope % MF3_g(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
             & tope % MF3_g_e(i_grid + 1), tope % INT)
           capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
@@ -4360,8 +4373,9 @@ contains
           call fatal_error('Energy is above File 3 fission energy grid')
         else
           i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e), tope%E)
-          if (tope % INT == LINEAR_LINEAR .or. &
-            & tope % MF3_f_e(i_grid) > ZERO) then
+          if (tope % INT == LINEAR_LINEAR &
+               .or. (tope % MF3_f(i_grid) > ZERO &
+               .and. tope % MF3_f(i_grid + 1) > ZERO)) then
             fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
               & tope % MF3_f_e(i_grid + 1), tope % INT)
             micro_xs(i_nuc) % fission = interpolator(fact, tope%MF3_f(i_grid),&
@@ -5167,12 +5181,12 @@ contains
     if (allocated(this % urr_E)) call this % dealloc_pointwise()
 
     ! deallocate averaged, infinite-dilute URR cross sections
-    deallocate(this % Eavg)
-    deallocate(this % avg_urr_t)
-    deallocate(this % avg_urr_n)
-    deallocate(this % avg_urr_f)
-    deallocate(this % avg_urr_g)
-    deallocate(this % avg_urr_x)
+    if (allocated(this % Eavg)) deallocate(this % Eavg)
+    if (allocated(this % avg_urr_t)) deallocate(this % avg_urr_t)
+    if (allocated(this % avg_urr_n)) deallocate(this % avg_urr_n)
+    if (allocated(this % avg_urr_f)) deallocate(this % avg_urr_f)
+    if (allocated(this % avg_urr_g)) deallocate(this % avg_urr_g)
+    if (allocated(this % avg_urr_x)) deallocate(this % avg_urr_x)
 
     ! deallocate ENDF-6 File 3 cross sections
     call this % dealloc_MF3()

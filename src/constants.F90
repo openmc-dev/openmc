@@ -114,8 +114,7 @@ module constants
        K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
        HBAR_C       = 197.3269718E6_8,   & ! [eV-fm]
        INFINITY     = huge(1.0_8),       & ! largest positive non-infinite dble
-       INF          = huge(1.0_8)&
-                    + huge(1.0_8),       & ! positive infinity
+       INF          = huge(1.0_8),       & ! largest positive non-infinite dble
        ZERO         = 0.0_8,             &
        HALF         = 0.5_8,             &
        ONE          = 1.0_8,             &

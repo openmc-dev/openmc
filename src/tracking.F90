@@ -1,5 +1,6 @@
 module tracking
 
+  use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
@@ -110,8 +111,10 @@ contains
            call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
-      tally_tracklength = tally_tracklength + p % wgt * distance * &
-           material_xs % nu_fission
+      if (run_mode == MODE_EIGENVALUE) then
+        tally_tracklength = tally_tracklength + p % wgt * distance * &
+             material_xs % nu_fission
+      end if
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -136,8 +139,10 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-        tally_collision = tally_collision + p % wgt * &
-             material_xs % nu_fission / material_xs % total
+        if (run_mode == MODE_EIGENVALUE) then
+          tally_collision = tally_collision + p % wgt * &
+               material_xs % nu_fission / material_xs % total
+        end if
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the

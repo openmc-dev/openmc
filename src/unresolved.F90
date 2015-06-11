@@ -303,8 +303,8 @@ module unresolved
 ! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
     integer :: LRX     ! competitive inelastic width flag
     integer :: NE      ! number of URR tabulated data energies
-    real(8) :: E_ex1   ! first level inelastic scattering excitation energy
-    real(8) :: E_ex2   ! second level inelastic scattering excitation energy
+    real(8) :: E_ex1 = INF ! first level inelastic scattering excitation energy
+    real(8) :: E_ex2 = INF ! second level inelastic scattering excitation energy
     real(8), allocatable :: EL(:)  ! lower energy bound of energy region
     real(8), allocatable :: EH(:)  ! upper energy bound of energy region
     real(8), allocatable :: AP(:)  ! scattering radius

@@ -2,9 +2,9 @@
 <settings>
 
   <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>100</particles>
+    <batches>5</batches>
+    <inactive>2</inactive>
+    <particles>500</particles>
   </eigenvalue>
 
   <source>

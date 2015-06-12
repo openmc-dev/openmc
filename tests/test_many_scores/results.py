@@ -10,7 +10,7 @@ from openmc.statepoint import StatePoint
 if len(sys.argv) > 1:
     sp = StatePoint(sys.argv[1])
 else:
-    sp = StatePoint('statepoint.10.binary')
+    sp = StatePoint('statepoint.5.binary')
 
 sp.read_results()
 

@@ -975,6 +975,19 @@ def get_openmc_lattice(opencg_lattice):
 
 
 def get_opencg_geometry(openmc_geometry):
+    """Return an OpenCG geometry corresponding to an OpenMC geometry.
+
+    Parameters
+    ----------
+    openmc_geometry : openmc.universe.Geometry
+        OpenMC geometry
+
+    Returns
+    -------
+    opencg_geometry : opencg.Geometry
+        Equivalent OpenCG geometry
+
+    """
 
     if not isinstance(openmc_geometry, openmc.Geometry):
         msg = 'Unable to get OpenCG geometry from {0} which is ' \

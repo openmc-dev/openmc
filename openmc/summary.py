@@ -529,6 +529,11 @@ class Summary(object):
             self.tallies[tally_id] = tally
 
     def make_opencg_geometry(self):
+        """Create OpenCG geometry based on the information contained in the summary
+        file. The geometry is stored as the 'opencg_geometry' attribute.
+
+        """
+
         try:
             from openmc.opencg_compatible import get_opencg_geometry
         except ImportError:
@@ -540,6 +545,22 @@ class Summary(object):
             self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
 
     def get_nuclide_by_zaid(self, zaid):
+        """Return a Nuclide object given the 'zaid' identifier for the nuclide.
+
+        Parameters
+        ----------
+        zaid : int
+            1000*Z + A, where Z is the atomic number of the nuclide and A is the
+            mass number. For example, the zaid for U-235 is 92235.
+
+        Returns
+        -------
+        nuclide : openmc.nuclide.Nuclide
+            Nuclide matching the specified zaid
+
+        """
+
+
         for index, nuclide in self.nuclides.items():
             if nuclide._zaid == zaid:
                 return nuclide
@@ -547,6 +568,20 @@ class Summary(object):
         return None
 
     def get_material_by_id(self, material_id):
+        """Return a Material object given the material id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the material
+
+        Returns
+        -------
+        material : openmc.material.Material
+            Material with given id
+
+        """
+
         for index, material in self.materials.items():
             if material._id == material_id:
                 return material
@@ -554,6 +589,20 @@ class Summary(object):
         return None
 
     def get_surface_by_id(self, surface_id):
+        """Return a Surface object given the surface id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the surface
+
+        Returns
+        -------
+        surface : openmc.surface.Surface
+            Surface with given id
+
+        """
+
         for index, surface in self.surfaces.items():
             if surface._id == surface_id:
                 return surface
@@ -561,6 +610,20 @@ class Summary(object):
         return None
 
     def get_cell_by_id(self, cell_id):
+        """Return a Cell object given the cell id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the cell
+
+        Returns
+        -------
+        cell : openmc.universe.Cell
+            Cell with given id
+
+        """
+
         for index, cell in self.cells.items():
             if cell._id == cell_id:
                 return cell
@@ -568,6 +631,20 @@ class Summary(object):
         return None
 
     def get_universe_by_id(self, universe_id):
+        """Return a Universe object given the universe id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the universe
+
+        Returns
+        -------
+        universe : openmc.universe.Universe
+            Universe with given id
+
+        """
+
         for index, universe in self.universes.items():
             if universe._id == universe_id:
                 return universe
@@ -575,6 +652,20 @@ class Summary(object):
         return None
 
     def get_lattice_by_id(self, lattice_id):
+        """Return a Lattice object given the lattice id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the lattice
+
+        Returns
+        -------
+        lattice : openmc.universe.Lattice
+            Lattice with given id
+
+        """
+
         for index, lattice in self.lattices.items():
             if lattice._id == lattice_id:
                 return lattice

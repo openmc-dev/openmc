@@ -140,11 +140,24 @@ contains
         end if
 
 
-      case (SCORE_SCATTER_PN, SCORE_SCATTER_YN)
+      case (SCORE_SCATTER_PN)
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
           i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! Since only scattering events make it here, again we can use
+        ! the weight entering the collision as the estimator for the
+        ! reaction rate
+        score = p % last_wgt
+
+
+      case (SCORE_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
         ! Since only scattering events make it here, again we can use
@@ -163,11 +176,24 @@ contains
         score = p % wgt
 
 
-      case (SCORE_NU_SCATTER_PN, SCORE_NU_SCATTER_YN)
+      case (SCORE_NU_SCATTER_PN)
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
           i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! For scattering production, we need to use the post-collision
+        ! weight as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
+        score = p % wgt
+
+
+      case (SCORE_NU_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the post-collision

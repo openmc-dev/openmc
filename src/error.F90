@@ -88,7 +88,6 @@ contains
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
 
-
     ! set default error code
     if (present(error_code)) then
       code = error_code
@@ -135,6 +134,9 @@ contains
         if (i_start > length) exit
       end if
     end do
+
+    open(unit=99, file='error.log')
+    write(99,*) message
 
     ! Write information on current batch, generation, and particle
     if (current_batch > 0) then

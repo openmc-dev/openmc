@@ -522,7 +522,8 @@ class StatePoint(object):
                 sum_sq = np.reshape(sum_sq, new_shape)
 
                 # Set the data for this Tally
-                tally.set_results(sum=sum, sum_sq=sum_sq)
+                tally.sum = sum
+                tally.sum_sq = sum_sq
 
         # Indicate that Tally results have been read
         self._results = True

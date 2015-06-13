@@ -22,4 +22,6 @@ for i in range(1,ndirs+1):
 files = glob('system-suite.pbs.*')
 for file in files:
   os.remove('./'+file)
-os.remove('testSystemResults.dat')
+files = glob('testSystemResults.dat')
+for fole in files:
+  os.remove('./'+file)

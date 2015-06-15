@@ -285,8 +285,14 @@ module unresolved
     logical :: fissionable ! is isotope fissionable?
 
     ! Current quantum mechanical variables
-    real(8) :: k_n   ! wavenumber for neutron energy
-    real(8) :: k_lam ! wavenumber for resonance energy
+    real(8) :: k_n       ! wavenumber for neutron energy
+    real(8) :: k_lam     ! wavenumber for resonance energy
+    real(8) :: P_l_n     ! penetration for neutron energy
+    real(8) :: P_l_lam   ! penetration for resonance energy
+    real(8) :: S_l_n     ! shift for neutron energy
+    real(8) :: S_l_lam   ! shift for resonance energy
+    real(8) :: phi_l_n   ! phase shift for neutron energy
+    real(8) :: phi_l_lam ! phase shift for resonance energy
 
     ! ENDF-6 nuclear data
     logical :: been_read = .false. ! has ENDF-6 data already been read in?
@@ -645,6 +651,10 @@ contains
             tope % E = E_res
             tope % k_n   = wavenumber(tope % AWR, abs(tope % E))
             tope % k_lam = wavenumber(tope % AWR, abs(tope % E))
+            tope % P_l_n = penetration(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+            tope % P_l_lam = penetration(tope % L,&
+                 tope % k_lam * tope % ac(tope % i_urr))
             call res % channel_width(iso, i_l, i_J)
             call add_parameters(res, iso, i_ens, i_res, i_l, i_J)
 
@@ -772,6 +782,7 @@ contains
 
       dE_trial = max_dE_point_urr
       tope % E = tope % E + dE_trial
+      tope % k_n = wavenumber(tope % AWR, abs(tope % E))
       if (tope % E &
            > min(tope % EH(tope % i_urr), max_E_point_urr) + dE_trial)&
            exit
@@ -809,10 +820,12 @@ contains
             if (tope % E &
                  < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
               i_low = 1
+            
             else
               i_low = binary_search(&
                    tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
                    tope % n_lam(i_real, i_l, i_J), tope % E)
+
             end if
 
             res % i_res = 0
@@ -861,6 +874,17 @@ contains
           ! set current orbital angular momentum quantum number
           tope % L = i_l - 1
 
+          ! penetration
+          tope % P_l_n = penetration(tope % L,&
+               tope % k_n * tope % ac(tope % i_urr))
+          
+          ! resonance energy shift factor
+          tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
+          
+          ! hard-sphere phase shift
+          tope % phi_l_n = phase_shift(tope % L,&
+               tope % k_n * tope % AP(tope % i_urr))
+
           ! get the number of contributing l-wave resonances for this l
           n_res = n_res_contrib(tope % L)
 
@@ -874,7 +898,7 @@ contains
             tope % g_J = (TWO * tope % J + ONE) &
                  / (FOUR * tope % SPI(tope % i_urr) + TWO)
 
-            ! loop over resonances localized about e_n
+            ! loop over resonances localized about E_n
             RESONANCES_LOOP: do i_res = 1, n_res
 
               res % i_res = i_res
@@ -1617,6 +1641,10 @@ contains
             ! set current orbital angular momentum quantum number
             tope % L = i_l - 1
 
+            ! penetration
+            tope % P_l_n = penetration(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+
             ! get the number of contributing l-wave resonances for this l
             n_res = n_res_contrib(tope % L)
 
@@ -1649,6 +1677,8 @@ contains
                   ! interpolate mean URR parameters to current resonance energy
                   call set_mean_parameters(iso, res % E_lam, i_l, i_J)
                   tope % k_lam = wavenumber(tope % AWR, abs(res % E_lam))
+                  tope % P_l_lam = penetration(tope % L,&
+                       tope % k_lam * tope % ac(tope % i_urr))
                 end if
 
                 res % i_res = i_r
@@ -2037,6 +2067,10 @@ contains
       ! set current orbital angular momentum quantum number
       tope % L = i_l - 1
 
+      ! penetration
+      tope % P_l_n = penetration(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+
       ! get the number of contributing l-wave resonances for this l
       n_res = n_res_contrib(tope % L)
 
@@ -2069,6 +2103,8 @@ contains
             ! interpolate mean URR parameters to current resonance energy
             call set_mean_parameters(iso, res % E_lam, i_l, i_J)
             tope % k_lam = wavenumber(tope % AWR, abs(res % E_lam))
+            tope % P_l_lam = penetration(tope % L,&
+                 tope % k_lam * tope % ac(tope % i_urr))
           end if
 
           res % i_res = i_r
@@ -2554,12 +2590,12 @@ contains
         ! negative resonance energies - this is an ENDF-6 convention, not theory)
         if (represent_params == E_NEUTRON) then
           rho = tope % k_n * tope % ac(tope % i_urr)
-          nu  = penetration(tope % L, rho) / rho
+          nu  = tope % P_l_n / rho
           this % Gam_n = tope % GN0 * sqrt(abs(tope % E)) * nu &
                * chi2(i_tabn, tope % AMUN)
         else if (represent_params == E_RESONANCE) then
           rho = tope % k_lam * tope % ac(tope % i_urr)
-          nu  = penetration(tope % L, rho) / rho
+          nu  = tope % P_l_lam / rho
           this % Gam_n = tope % GN0 * sqrt(abs(this % E_lam)) * nu &
                * chi2(i_tabn, tope % AMUN)
         end if
@@ -2638,9 +2674,7 @@ contains
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
     type(Isotope), pointer :: tope => null() ! nuclide pointer
     integer :: iso ! isotope index
-    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
     real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
-    real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
     real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
     real(8) :: E_shift ! shifted resonance energy in the lab system
     real(8) :: theta   ! total width / Doppler width
@@ -2653,20 +2687,18 @@ contains
 
     tope => isotopes(iso)
 
-    k_n = tope % k_n
-    k_lam = tope % k_lam
-
     ! if URR parameters have resonance energy dependence
     if (represent_params == E_RESONANCE) then
 
+      tope % k_lam = wavenumber(tope % AWR, abs(this % E_lam))
+      tope % P_l_lam = penetration(tope % L,&
+           tope % k_lam * tope % ac(tope % i_urr))
+      tope % S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
       E_shift = this % E_lam &
-           + this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
-           - shift(tope % L, k_n * tope % ac(tope % i_urr))) &
-           / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
+           + this % Gam_n * (tope % S_l_lam - tope % S_l_n) &
+           / (TWO * tope % P_l_lam)
 
-      Gam_n_n = this % Gam_n &
-           * penetration(tope % L, k_n * tope % ac(tope % i_urr)) &
-           / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+      Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
       if (tope % E >= tope % E_ex2) then
         ! two competitive reactions possible, can't calculate an energy-dependent
@@ -2700,15 +2732,14 @@ contains
 
     x = (TWO * (tope % E - E_shift)) / Gam_t_n
 
-    sig_lam = FOUR * PI / (k_n * k_n) * tope % g_J &
+    sig_lam = FOUR * PI / (tope % k_n * tope % k_n) * tope % g_J &
          * Gam_n_n / Gam_t_n
 
     ! this particular form comes from the NJOY2012 manual
     this % dxs_n = sig_lam * &
-         ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-         - (ONE - Gam_n_n / Gam_t_n)) * psi(tope%T, theta, x) &
-         + sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr))) &
-         * chi(tope%T, theta, x))
+         ((cos(TWO * tope % phi_l_n) &
+         - (ONE - Gam_n_n / Gam_t_n)) * psi(tope % T, theta, x) &
+         + sin(TWO * tope % phi_l_n) * chi(tope % T, theta, x))
 
     sig_lam_Gam_t_n_psi = sig_lam * psi(tope%T, theta, x) / Gam_t_n
 
@@ -2731,10 +2762,7 @@ contains
       this % dxs_x = ZERO
     end if
 
-    this % dxs_t = this % dxs_n &
-               & + this % dxs_g &
-               & + this % dxs_f &
-               & + this % dxs_x
+    this % dxs_t = this % dxs_n + this % dxs_g + this % dxs_f + this % dxs_x
 
   end subroutine slbw_xs
 
@@ -2751,9 +2779,7 @@ contains
     class(Resonance), intent(inout) :: this ! pseudo-resonance object
     type(Isotope), pointer :: tope => null() ! nuclide pointer
     integer :: iso ! isotope index
-    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
     real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
-    real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
     real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
     real(8) :: E_shift ! shifted resonance energy in the lab system
     real(8) :: theta   ! total width / Doppler width
@@ -2772,20 +2798,18 @@ contains
            & number, J, equal to the nuclear spin, I')
     end if
 
-    k_n = tope % k_n
-    k_lam = tope % k_lam
-
     ! if URR parameters have resonance energy dependence
     if (represent_params == E_RESONANCE) then
 
+      tope % k_lam = wavenumber(tope % AWR, abs(this % E_lam))
+      tope % P_l_lam = penetration(tope % L,&
+           tope % k_lam * tope % ac(tope % i_urr))
+      tope % S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
       E_shift = this % E_lam &
-           + this % Gam_n * (shift(tope % L, k_lam * tope % ac(tope % i_urr)) &
-           - shift(tope % L, k_n * tope % ac(tope % i_urr))) &
-           / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
+           + this % Gam_n * (tope % S_l_lam - tope % S_l_n) &
+           / (TWO * tope % P_l_lam)
 
-      Gam_n_n = this % Gam_n &
-           * penetration(tope % L, k_n   * tope % ac(tope % i_urr)) &
-           / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+      Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
       if (tope % E >= tope % E_ex2) then
         ! two competitive reactions possible, can't calculate an energy-dependent
@@ -2819,16 +2843,16 @@ contains
 
     x = (TWO * (tope % E - E_shift)) / Gam_t_n
 
-    sig_lam = FOUR * PI / (k_n * k_n) * tope % g_J &
+    sig_lam = FOUR * PI / (tope % k_n * tope % k_n) * tope % g_J &
          * Gam_n_n / Gam_t_n
 
     ! this particular form comes from the NJOY2012 manual
     this % dxs_n = sig_lam *&
-         ((cos(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr)))&
+         ((cos(TWO * tope % phi_l_n)&
          - (ONE - Gam_n_n / Gam_t_n)&
          + HALF * G_func(iso, E_shift, Gam_n_n, Gam_t_n, this % i_res)&
          / Gam_n_n) * psi(tope % T, theta, x)&
-         + (sin(TWO * phase_shift(tope % L, k_n * tope % AP(tope % i_urr)))&
+         + (sin(TWO * tope % phi_l_n)&
          + H_func(iso, E_shift, Gam_n_n, Gam_t_n, this % i_res)&
          / Gam_n_n) * chi(tope % T, theta, x))
 
@@ -2879,7 +2903,6 @@ contains
     real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
     real(8) :: G_n   ! neutron width of the resonance at E_res
     real(8) :: G_t   ! total width of the resonance at E_res
-    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
     real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
     real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
     real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
@@ -2887,6 +2910,8 @@ contains
     real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
     real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
     real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
+    real(8) :: P_l_lam ! penetration at resonance energy
+    real(8) :: S_l_lam ! resonance energy shift factor
 
     tope => isotopes(iso)
 
@@ -2894,29 +2919,25 @@ contains
 
     i_l = tope % L + 1
 
-    k_n = tope % k_n
-
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
         if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
 
-        ! absolute value of energy in order to handle bound levels which have
-        ! negative resonance energies
-        k_lam = wavenumber(tope % AWR,&
-             abs(tope % local_realization(i_l, i_J) % E_lam(i_r)))
-
         ! if URR parameters have resonance energy dependence
         if (represent_params == E_RESONANCE) then
+          ! absolute value of energy in order to handle bound levels which have
+          ! negative resonance energies
+          k_lam = wavenumber(tope % AWR,&
+               abs(tope % local_realization(i_l, i_J) % E_lam(i_r)))
+          P_l_lam = penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+          S_l_lam = shift(tope % L, k_lam * tope % ac(tope % i_urr))
 
           E_shift = tope % local_realization(i_l, i_J) % E_lam(i_r)&
                + tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-               * (shift(tope % L, k_lam * tope % ac(tope % i_urr))&
-               -  shift(tope % L, k_n * tope % ac(tope % i_urr)))&
-               / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
+               * (S_l_lam - tope % S_l_n) / (TWO * P_l_lam)
 
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-               * penetration(tope % L, k_n   * tope % ac(tope % i_urr))&
-               / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+               * tope % P_l_n / P_l_lam
 
           if (tope % E >= tope % E_ex2) then
             ! two competitive reactions possible;
@@ -2980,7 +3001,6 @@ contains
     real(8) :: E_res ! energy of the resonance contributing to the xs at E_n
     real(8) :: G_n   ! neutron width of the resonance at E_res
     real(8) :: G_t   ! total width of the resonance at E_res
-    real(8) :: k_n     ! center-of-mass neutron wavenumber at E_n
     real(8) :: k_n_x   ! center-of-mass neutron wavenumber at E_n - QI
     real(8) :: k_lam   ! center-of-mass neutron wavenumber at E_lam
     real(8) :: k_lam_x ! center-of-mass neutron wavenumber at |E_lam - QI|
@@ -2988,6 +3008,8 @@ contains
     real(8) :: Gam_t_n ! sampled energy-dependent total width at E_n
     real(8) :: Gam_n_n ! sampled energy-dependent neutron width at E_n
     real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
+    real(8) :: P_l_lam ! penetration at resonance energy
+    real(8) :: S_l_lam ! resonance energy shift factor
 
     tope => isotopes(iso)
 
@@ -2995,29 +3017,25 @@ contains
 
     i_l = tope % L + 1
 
-    k_n = tope % k_n
-
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
         if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
 
-        ! absolute value of energy in order to handle bound levels which have
-        ! negative resonance energies
-        k_lam = wavenumber(tope % AWR,&
-             abs(tope % local_realization(i_l, i_J) % E_lam(i_r)))
-
         ! if URR parameters have resonance energy dependence
         if (represent_params == E_RESONANCE) then
+          ! absolute value of energy in order to handle bound levels which have
+          ! negative resonance energies
+          k_lam = wavenumber(tope % AWR,&
+               abs(tope % local_realization(i_l, i_J) % E_lam(i_r)))
+          P_l_lam = penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+          S_l_lam = shift(tope % L, k_lam * tope % ac(tope % i_urr))
 
           E_shift = tope % local_realization(i_l, i_J) % E_lam(i_r)&
                + tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-               * (shift(tope % L, k_lam * tope % ac(tope % i_urr))&
-               - shift(tope % L, k_n * tope % ac(tope % i_urr)))&
-               / (TWO * penetration(tope % L, k_lam * tope % ac(tope % i_urr)))
+               * (S_l_lam - tope % S_l_n) / (TWO * P_l_lam)
 
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
-               * penetration(tope % L, k_n   * tope % ac(tope % i_urr))&
-               / penetration(tope % L, k_lam * tope % ac(tope % i_urr))
+               * tope % P_l_n / P_l_lam
 
           if (tope % E >= tope % E_ex2) then
             ! two competitive reactions possible;
@@ -3329,21 +3347,18 @@ contains
     integer :: iso ! isotope index
     integer :: i_l ! orbital quantum number index
     real(8) :: sig_pot ! potential scattering cross section
-    real(8) :: k_n     ! center-of-mass neutron wavenumber
+    real(8) :: phi_l_n ! hard-sphere phase shift
 
     ! set nuclide variables
     tope => isotopes(iso)
 
-    ! compute neutron COM wavenumber
-    k_n = tope % k_n
-
     ! compute potential scattering xs by adding contribution from each l-wave
     sig_pot = ZERO
     do i_l = 0, tope % NLS(tope % i_urr) - 1
+      phi_l_n = phase_shift(i_l, tope % k_n * tope % AP(tope % i_urr)) 
       sig_pot = sig_pot&
-           + FOUR * PI / (k_n * k_n) * (TWO * dble(i_l) + ONE)&
-           * (sin(phase_shift(i_l, k_n * tope % AP(tope % i_urr))))&
-           * (sin(phase_shift(i_l, k_n * tope % AP(tope % i_urr))))
+           + FOUR * PI / (tope % k_n * tope % k_n) * (TWO * dble(i_l) + ONE)&
+           * sin(phi_l_n) * sin(phi_l_n)
     end do
 
     ! add the potential scattering xs to this xs

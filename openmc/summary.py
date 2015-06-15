@@ -362,7 +362,6 @@ class Summary(object):
                 lattice.lower_left = lower_left
                 lattice.pitch = pitch
 
-
                 # If the Universe specified outer the Lattice is not void (-22)
                 if outer != -22:
                     lattice.outer = self.universes[outer]
@@ -374,14 +373,14 @@ class Summary(object):
                 for x in range(universe_ids.shape[0]):
                     for y in range(universe_ids.shape[1]):
                         for z in range(universe_ids.shape[2]):
-                            universes[x,y,z] = \
-                                 self.get_universe_by_id(universe_ids[x,y,z])
+                            universes[x, y, z] = \
+                                 self.get_universe_by_id(universe_ids[x, y, z])
 
                 # Transpose, reverse y-dimension for appropriate ordering
                 shape = universes.shape
-                universes = np.transpose(universes, (1,0,2))
+                universes = np.transpose(universes, (1, 0, 2))
                 universes.shape = shape
-                universes = universes[:,::-1,:]
+                universes = universes[:, ::-1, :]
                 lattice.universes = universes
 
                 if offset_size > 0:
@@ -399,8 +398,8 @@ class Summary(object):
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
 
-                universe_ids = \
-                     self._f['geometry/lattices'][key]['universes'][...]
+                universe_ids = self._f[
+                    'geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
                 lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
@@ -420,9 +419,9 @@ class Summary(object):
                 for i in range(universe_ids.shape[0]):
                     for j in range(universe_ids.shape[1]):
                         for k in range(universe_ids.shape[2]):
-                            if universe_ids[i,j,k] != -1:
-                              universes[i,j,k] = \
-                                   self.get_universe_by_id(universe_ids[i,j,k])
+                            if universe_ids[i, j, k] != -1:
+                                universes[i, j, k] = self.get_universe_by_id(
+                                    universe_ids[i, j, k])
 
                 if offset_size > 0:
                     lattice.offsets = offsets
@@ -465,7 +464,7 @@ class Summary(object):
         self.tallies = {}
 
         # Read the number of tallies
-        if not 'tallies' in self._f.keys():
+        if 'tallies' not in self._f:
             self.n_tallies = 0
             return
 
@@ -559,7 +558,6 @@ class Summary(object):
             Nuclide matching the specified zaid
 
         """
-
 
         for index, nuclide in self.nuclides.items():
             if nuclide._zaid == zaid:

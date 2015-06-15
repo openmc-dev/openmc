@@ -333,7 +333,6 @@ def get_openmc_surface(opencg_surface):
               'Surface type in OpenMC'.format(opencg_surface._type)
         raise ValueError(msg)
 
-
     # Add the OpenMC Surface to the global collection of all OpenMC Surfaces
     OPENMC_SURFACES[surface_id] = openmc_surface
 
@@ -520,7 +519,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
               'not an OpenCG Surface'.format(opencg_surface)
         raise ValueError(msg)
 
-    elif not halfspace in [-1, +1]:
+    elif halfspace not in [-1, +1]:
         msg = 'Unable to create compatible Cell since {0}' \
               'is not a +/-1 halfspace'.format(halfspace)
         raise ValueError(msg)
@@ -868,7 +867,7 @@ def get_opencg_lattice(openmc_lattice):
         lower_left = new_lower_left
 
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]), \
+    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
                                 dtype=opencg.Universe)
 
     # Create OpenCG Universes for each unique nested Universe in this Lattice
@@ -890,8 +889,8 @@ def get_opencg_lattice(openmc_lattice):
     opencg_lattice.setUniverses(universe_array)
 
     offset = np.array(lower_left, dtype=np.float64) - \
-                     ((np.array(pitch, dtype=np.float64) * \
-                       np.array(dimension, dtype=np.float64))) / -2.0
+             ((np.array(pitch, dtype=np.float64) *
+               np.array(dimension, dtype=np.float64))) / -2.0
     opencg_lattice.setOffset(offset)
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
@@ -936,7 +935,7 @@ def get_openmc_lattice(opencg_lattice):
     universes = opencg_lattice._universes
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)), \
+    universe_array = np.ndarray(tuple(np.array(dimension)),
                                 dtype=openmc.Universe)
 
     # Create OpenMC Universes for each unique nested Universe in this Lattice
@@ -953,11 +952,11 @@ def get_openmc_lattice(opencg_lattice):
                 universe_array[x][y][z] = unique_universes[universe_id]
 
     # Reverse y-dimension in array to match ordering in OpenCG
-    universe_array = universe_array[:,::-1,:]
+    universe_array = universe_array[:, ::-1, :]
 
     lower_left = np.array(offset, dtype=np.float64) + \
-                             ((np.array(width, dtype=np.float64) * \
-                               np.array(dimension, dtype=np.float64))) / -2.0
+                 ((np.array(width, dtype=np.float64) *
+                   np.array(dimension, dtype=np.float64))) / -2.0
 
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
     openmc_lattice.dimension = dimension
@@ -1055,8 +1054,8 @@ def get_openmc_geometry(opencg_geometry):
     # Make the entire geometry "compatible" before assigning auto IDs
     universes = opencg_geometry.getAllUniverses()
     for universe_id, universe in universes.items():
-      if not isinstance(universe, opencg.Lattice):
-        make_opencg_cells_compatible(universe)
+        if not isinstance(universe, opencg.Lattice):
+            make_opencg_cells_compatible(universe)
 
     opencg_geometry.assignAutoIds()
 

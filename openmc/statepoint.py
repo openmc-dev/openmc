@@ -309,7 +309,6 @@ class StatePoint(object):
             # Add mesh to the global dictionary of all Meshes
             self._meshes[mesh_id] = mesh
 
-
     def _read_tallies(self):
         # Initialize dictionaries for the Tallies
         # Keys     - Tally IDs
@@ -468,7 +467,7 @@ class StatePoint(object):
 
         """
 
-         # Number of realizations for global Tallies
+        # Number of realizations for global Tallies
         self._n_realizations = self._get_int(path='n_realizations')[0]
 
         # Read global Tallies
@@ -511,7 +510,8 @@ class StatePoint(object):
                     sum_sq = results[1::2]
 
                 # Define a routine to convert 0 to 1
-                nonzero = lambda val: 1 if not val else val
+                def nonzero(val):
+                    return 1 if not val else val
 
                 # Reshape the results arrays
                 new_shape = (nonzero(tally.num_filter_bins),
@@ -678,7 +678,7 @@ class StatePoint(object):
 
                 # Iterate over the scores requested by the user
                 for score in scores:
-                    if not score in test_tally.scores:
+                    if score not in test_tally.scores:
                         contains_scores = False
                         break
 
@@ -691,7 +691,7 @@ class StatePoint(object):
 
                 # Iterate over the Filters requested by the user
                 for filter in filters:
-                    if not filter in test_tally.filters:
+                    if filter not in test_tally.filters:
                         contains_filters = False
                         break
 
@@ -704,7 +704,7 @@ class StatePoint(object):
 
                 # Iterate over the Nuclides requested by the user
                 for nuclide in nuclides:
-                    if not nuclide in test_tally.nuclides:
+                    if nuclide not in test_tally.nuclides:
                         contains_nuclides = False
                         break
 
@@ -789,7 +789,7 @@ class StatePoint(object):
         self._with_summary = True
 
     def _get_data(self, n, typeCode, size):
-        return list(struct.unpack('={0}{1}'.format(n,typeCode),
+        return list(struct.unpack('={0}{1}'.format(n, typeCode),
                     self._f.read(n*size)))
 
     def _get_int(self, n=1, path=None):

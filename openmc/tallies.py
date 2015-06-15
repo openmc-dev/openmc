@@ -138,7 +138,7 @@ class Tally(object):
             return False
 
         for filter in self.filters:
-            if not filter in tally2.filters:
+            if filter not in tally2.filters:
                 return False
 
         # Check all nuclides
@@ -146,7 +146,7 @@ class Tally(object):
             return False
 
         for nuclide in self.nuclides:
-            if not nuclide in tally2.nuclides:
+            if nuclide not in tally2.nuclides:
                 return False
 
         # Check all scores
@@ -154,7 +154,7 @@ class Tally(object):
             return False
 
         for score in self.scores:
-            if not score in tally2.scores:
+            if score not in tally2.scores:
                 return False
 
         if self.estimator != tally2.estimator:
@@ -269,7 +269,7 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        if not estimator in ['analog', 'tracklength']:
+        if estimator not in ['analog', 'tracklength']:
             msg = 'Unable to set the estimator for Tally ID={0} to {1} since ' \
                   'it is not a valid estimator type'.format(self.id, estimator)
             raise ValueError(msg)
@@ -486,7 +486,7 @@ class Tally(object):
 
         # Calculate sample mean and standard deviation
         self._mean = self.sum / self.num_realizations
-        self._std_dev = np.sqrt((self.sum_sq / self.num_realizations - \
+        self._std_dev = np.sqrt((self.sum_sq / self.num_realizations -
                                  self.mean**2) / (self.num_realizations - 1))
         self._std_dev *= t_value
 
@@ -538,7 +538,7 @@ class Tally(object):
             return False
 
         for nuclide in self.nuclides:
-            if not nuclide in tally.nuclides:
+            if nuclide not in tally.nuclides:
                 return False
 
         # Must have same or mergeable filters
@@ -628,7 +628,7 @@ class Tally(object):
             subelement = ET.SubElement(element, "filter")
             subelement.set("type", str(filter.type))
 
-            if not filter.bins is None:
+            if filter.bins is not None:
                 bins = ''
                 for bin in filter.bins:
                     bins += '{0} '.format(bin)
@@ -662,7 +662,7 @@ class Tally(object):
             subelement.text = scores.rstrip(' ')
 
         # Tally estimator type
-        if not self.estimator is None:
+        if self.estimator is not None:
             subelement = ET.SubElement(element, "estimator")
             subelement.text = self.estimator
 
@@ -868,7 +868,6 @@ class Tally(object):
                   'Tally.get_values(...)'.format(self.id)
             raise ValueError(msg)
 
-
         # Compute batch statistics if not yet computed
         self.compute_std_dev()
 
@@ -897,7 +896,7 @@ class Tally(object):
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
                     if filter.type == 'mesh':
                         dimension = filter.mesh.dimension
-                        xyz = map(lambda x: np.arange(1,x+1), dimension)
+                        xyz = map(lambda x: np.arange(1, x+1), dimension)
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
@@ -1176,7 +1175,7 @@ class Tally(object):
 
                                 # If entire LocalCoords has been unraveled into
                                 # Multi-index columns already, continue
-                                if coords == None:
+                                if coords is None:
                                     continue
 
                                 # Assign entry to Universe Multi-index column
@@ -1198,7 +1197,7 @@ class Tally(object):
                                     level_dict[lat_z_key][offset] = lat_z
 
                                 # Move to next node in LocalCoords linked list
-                                if coords._next == None:
+                                if coords._next is None:
                                     offsets_to_coords[offset] = None
                                 else:
                                     offsets_to_coords[offset] = coords._next
@@ -1324,7 +1323,7 @@ class Tally(object):
                   'string'.format(self.id, directory)
             raise ValueError(msg)
 
-        elif not format in ['hdf5', 'pkl', 'csv']:
+        elif format not in ['hdf5', 'pkl', 'csv']:
             msg = 'Unable to export the results for Tally ID={0} to format ' \
                   '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
@@ -1407,7 +1406,7 @@ class Tally(object):
             for nuclide in self.nuclides:
                 nuclides.append(nuclide.name)
 
-            tally_group['nuclides']= np.array(nuclides)
+            tally_group['nuclides'] = np.array(nuclides)
 
             # Create a nested dictionary for the Filters
             tally_group['filters'] = {}

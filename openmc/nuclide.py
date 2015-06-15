@@ -32,7 +32,7 @@ class Nuclide(object):
         # Set the Material class attributes
         self.name = name
 
-        if not xs is None:
+        if xs is not None:
             self.xs = xs
 
     def __eq__(self, nuclide2):
@@ -97,5 +97,5 @@ class Nuclide(object):
         string = 'Nuclide    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         if self._zaid is not None:
-          string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
         return string

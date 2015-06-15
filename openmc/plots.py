@@ -9,6 +9,7 @@ from openmc.clean_xml import *
 # A static variable for auto-generated Plot IDs
 AUTO_PLOT_ID = 10000
 
+
 def reset_auto_plot_id():
     global AUTO_PLOT_ID
     AUTO_PLOT_ID = 10000
@@ -243,7 +244,7 @@ class Plot(object):
                   'a string'.format(self._id, color)
             raise ValueError(msg)
 
-        elif not color in ['cell', 'mat']:
+        elif color not in ['cell', 'mat']:
             msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
                   'a cell or mat'.format(self._id, color)
             raise ValueError(msg)
@@ -257,7 +258,7 @@ class Plot(object):
                   'a string'.format(self._id, type)
             raise ValueError(msg)
 
-        elif not type in ['slice', 'voxel']:
+        elif type not in ['slice', 'voxel']:
             msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
                   'slice or voxel'.format(self._id, type)
             raise ValueError(msg)
@@ -271,7 +272,7 @@ class Plot(object):
                   'a string'.format(self._id, basis)
             raise ValueError(msg)
 
-        elif not basis in ['xy', 'xz', 'yz']:
+        elif basis not in ['xy', 'xz', 'yz']:
             msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
                   'xy, xz, or yz'.format(self._id, basis)
             raise ValueError(msg)
@@ -308,9 +309,9 @@ class Plot(object):
     @col_spec.setter
     def col_spec(self, col_spec):
         if not isinstance(col_spec, dict):
-            msg= 'Unable to create Plot ID={0} with col_spec parameter {1} ' \
-                 'which is not a Python dictionary of IDs to ' \
-                 'pixels'.format(self._id, col_spec)
+            msg = 'Unable to create Plot ID={0} with col_spec parameter {1} ' \
+                  'which is not a Python dictionary of IDs to ' \
+                  'pixels'.format(self._id, col_spec)
             raise ValueError(msg)
 
         for key in col_spec:
@@ -434,18 +435,18 @@ class Plot(object):
         subelement = ET.SubElement(element, "pixels")
         subelement.text = ' '.join(map(str, self._pixels))
 
-        if not self._mask_background is None:
+        if self._mask_background is not None:
             subelement = ET.SubElement(element, "background")
             subelement.text = ' '.join(map(str, self._background))
 
-        if not self._col_spec is None:
+        if self._col_spec is not None:
             for key in self._col_spec:
                 subelement = ET.SubElement(element, "col_spec")
                 subelement.set("id", str(key))
                 subelement.set("rgb", ' '.join(map(
                     str, self._col_spec[key])))
 
-        if not self._mask_components is None:
+        if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
             subelement.set("components", ' '.join(map(
                 str, self._mask_components)))

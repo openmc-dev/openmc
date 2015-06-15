@@ -164,7 +164,7 @@ class Mesh(object):
             msg = 'Unable to set Mesh ID={0} for type {1} which is not ' \
                   'a string'.format(self._id, type)
             raise ValueError(msg)
-        elif not type in ['rectangular', 'hexagonal']:
+        elif type not in ['rectangular', 'hexagonal']:
             msg = 'Unable to set Mesh ID={0} for type {1} which since ' \
                   'only rectangular and hexagonal meshes are ' \
                   'supported '.format(self._id, type)
@@ -238,7 +238,7 @@ class Mesh(object):
 
     @width.setter
     def width(self, width):
-        if not width is None:
+        if width is not None:
             if not isinstance(width, (tuple, list, np.ndarray)):
                 msg = 'Unable to set Mesh ID={0} with width {1} which ' \
                       'is not a Python list, tuple or NumPy ' \
@@ -290,11 +290,11 @@ class Mesh(object):
         subelement = ET.SubElement(element, "lower_left")
         subelement.text = ' '.join(map(str, self._lower_left))
 
-        if not self._upper_right is None:
+        if self._upper_right is not None:
             subelement = ET.SubElement(element, "upper_right")
             subelement.text = ' '.join(map(str, self._upper_right))
 
-        if not self._width is None:
+        if self._width is not None:
             subelement = ET.SubElement(element, "width")
             subelement.text = ' '.join(map(str, self._width))
 

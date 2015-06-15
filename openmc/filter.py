@@ -53,10 +53,8 @@ class Filter(object):
         else:
             return True
 
-
     def __hash__(self):
         return hash((self._type, self._bins))
-
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -107,7 +105,7 @@ class Filter(object):
     def type(self, type):
         if type is None:
             self._type = type
-        elif not type in FILTER_TYPES.values():
+        elif type not in FILTER_TYPES.values():
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
@@ -225,7 +223,6 @@ class Filter(object):
             raise ValueError(msg)
 
         self._stride = stride
-
 
     def can_merge(self, filter):
         """Determine if filter can be merged with another.

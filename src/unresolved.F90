@@ -290,7 +290,6 @@ module unresolved
     real(8) :: P_l_n     ! penetration for neutron energy
     real(8) :: P_l_lam   ! penetration for resonance energy
     real(8) :: S_l_n     ! shift for neutron energy
-    real(8) :: S_l_lam   ! shift for resonance energy
     real(8) :: phi_l_n   ! phase shift for neutron energy
 
     ! ENDF-6 nuclear data
@@ -656,8 +655,6 @@ contains
                  tope % k_lam * tope % ac(tope % i_urr))
             tope % S_l_n = shift(tope % L,&
                  tope % k_n * tope % ac(tope % i_urr))
-            tope % S_l_lam = shift(tope % L,&
-                 tope % k_lam * tope % ac(tope % i_urr))
             tope % phi_l_n = phase_shift(tope % L,&
                  tope % k_n * tope % AP(tope % i_urr))
             call res % channel_width(iso, i_l, i_J)
@@ -2777,6 +2774,7 @@ contains
     real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
     real(8) :: sig_lam ! peak resonance cross section
     real(8) :: sig_lam_Gam_t_n_psi ! compound variable
+    real(8) :: S_l_lam ! resonance energy shift factor at E_lam
 
     tope => isotopes(iso)
 
@@ -2786,9 +2784,9 @@ contains
       tope % k_lam = wavenumber(tope % AWR, abs(this % E_lam))
       tope % P_l_lam = penetration(tope % L,&
            tope % k_lam * tope % ac(tope % i_urr))
-      tope % S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
+      S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
       E_shift = this % E_lam &
-           + this % Gam_n * (tope % S_l_lam - tope % S_l_n) &
+           + this % Gam_n * (S_l_lam - tope % S_l_n) &
            / (TWO * tope % P_l_lam)
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
@@ -2882,6 +2880,7 @@ contains
     real(8) :: Gam_x_n ! sampled energy-dependent competitive width at E_n
     real(8) :: sig_lam ! peak resonance cross section
     real(8) :: sig_lam_Gam_t_n_psi ! compound variable
+    real(8) :: S_l_lam ! resonance energy shift factor at E_lam
 
     tope => isotopes(iso)
 
@@ -2897,9 +2896,9 @@ contains
       tope % k_lam = wavenumber(tope % AWR, abs(this % E_lam))
       tope % P_l_lam = penetration(tope % L,&
            tope % k_lam * tope % ac(tope % i_urr))
-      tope % S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
+      S_l_lam = shift(tope % L, tope % k_lam * tope % ac(tope % i_urr))
       E_shift = this % E_lam &
-           + this % Gam_n * (tope % S_l_lam - tope % S_l_n) &
+           + this % Gam_n * (S_l_lam - tope % S_l_n) &
            / (TWO * tope % P_l_lam)
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam

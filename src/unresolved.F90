@@ -284,6 +284,10 @@ module unresolved
     integer :: nT = 0 ! number of temperatures isotope has ACE data at
     logical :: fissionable ! is isotope fissionable?
 
+    ! Current quantum mechanical variables
+    real(8) :: k_n   ! wavenumber for neutron energy
+    real(8) :: k_lam ! wavenumber for resonance energy
+
     ! ENDF-6 nuclear data
     logical :: been_read = .false. ! has ENDF-6 data already been read in?
     integer, allocatable :: NLS(:)  ! number of l values in each energy region
@@ -639,6 +643,8 @@ contains
             ! sequence, at this energy
             res % E_lam = E_res
             tope % E = E_res
+            tope % k_n   = wavenumber(tope % AWR, abs(tope % E))
+            tope % k_lam = wavenumber(tope % AWR, abs(tope % E))
             call res % channel_width(iso, i_l, i_J)
             call add_parameters(res, iso, i_ens, i_res, i_l, i_J)
 
@@ -885,7 +891,7 @@ contains
             end do RESONANCES_LOOP
           end do TOTAL_ANG_MOM_LOOP
         end do ORBITAL_ANG_MOM_LOOP
-        
+
         ! add potential scattering contribution
         call n % potential_xs(iso)
         call t % potential_xs(iso)
@@ -1125,7 +1131,7 @@ contains
       ! add energy point to grid
       tope % E = tope % E + dE_trial
       tope % E_tmp(n_pts) = tope % E
-      
+
       ! reset xs accumulators
       call flush_sigmas(t, n, g, f, x)
 
@@ -1584,6 +1590,7 @@ contains
 
       tope % E = tope % Etabs(i_E)
       E = tope % E
+      tope % k_n = wavenumber(tope % AWR, abs(tope % E))
 
       ! reset accumulator of statistics
       call tope % flush_ptable_stats(i_E)
@@ -1641,6 +1648,7 @@ contains
                 if (represent_params == E_RESONANCE) then
                   ! interpolate mean URR parameters to current resonance energy
                   call set_mean_parameters(iso, res % E_lam, i_l, i_J)
+                  tope % k_lam = wavenumber(tope % AWR, abs(res % E_lam))
                 end if
 
                 res % i_res = i_r
@@ -2018,6 +2026,7 @@ contains
     ! set current temperature and neutron energy
     tope % T = T_K
     tope % E = E
+    tope % k_n = wavenumber(tope % AWR, abs(tope % E))
 
     ! reset xs accumulators
     call flush_sigmas(t, n, g, f, x)
@@ -2059,6 +2068,7 @@ contains
           if (represent_params == E_RESONANCE) then
             ! interpolate mean URR parameters to current resonance energy
             call set_mean_parameters(iso, res % E_lam, i_l, i_J)
+            tope % k_lam = wavenumber(tope % AWR, abs(res % E_lam))
           end if
 
           res % i_res = i_r
@@ -2543,15 +2553,15 @@ contains
         ! (use absolute value of energy in order to handle bound levels which have
         ! negative resonance energies - this is an ENDF-6 convention, not theory)
         if (represent_params == E_NEUTRON) then
-          rho = wavenumber(tope % AWR, abs(tope % E)) * tope % ac(tope % i_urr)
+          rho = tope % k_n * tope % ac(tope % i_urr)
           nu  = penetration(tope % L, rho) / rho
           this % Gam_n = tope % GN0 * sqrt(abs(tope % E)) * nu &
-            & * chi2(i_tabn, tope % AMUN)
+               * chi2(i_tabn, tope % AMUN)
         else if (represent_params == E_RESONANCE) then
-          rho = wavenumber(tope % AWR, abs(this % E_lam)) * tope % ac(tope % i_urr)
+          rho = tope % k_lam * tope % ac(tope % i_urr)
           nu  = penetration(tope % L, rho) / rho
           this % Gam_n = tope % GN0 * sqrt(abs(this % E_lam)) * nu &
-            & * chi2(i_tabn, tope % AMUN)          
+               * chi2(i_tabn, tope % AMUN)
         end if
       else
         call fatal_error('Non-positive neutron width sampled')
@@ -2643,11 +2653,8 @@ contains
 
     tope => isotopes(iso)
 
-    k_n = wavenumber(tope % AWR, tope % E)
-
-    ! (use absolute value of energy in order to handle bound levels which have
-    ! negative resonance energies)
-    k_lam = wavenumber(tope % AWR, abs(this % E_lam))
+    k_n = tope % k_n
+    k_lam = tope % k_lam
 
     ! if URR parameters have resonance energy dependence
     if (represent_params == E_RESONANCE) then
@@ -2765,11 +2772,8 @@ contains
            & number, J, equal to the nuclear spin, I')
     end if
 
-    k_n = wavenumber(tope % AWR, tope % E)
-
-    ! (use absolute value of energy in order to handle bound levels which have
-    ! negative resonance energies)
-    k_lam = wavenumber(tope % AWR, abs(this % E_lam))
+    k_n = tope % k_n
+    k_lam = tope % k_lam
 
     ! if URR parameters have resonance energy dependence
     if (represent_params == E_RESONANCE) then
@@ -2890,11 +2894,11 @@ contains
 
     i_l = tope % L + 1
 
+    k_n = tope % k_n
+
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
         if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
-
-        k_n = wavenumber(tope % AWR, tope % E)
 
         ! absolute value of energy in order to handle bound levels which have
         ! negative resonance energies
@@ -2933,7 +2937,7 @@ contains
           end if
 
         else
-          
+
           ! assume all URR parameters already have neutron energy dependence
           E_shift = tope % local_realization(i_l, i_J) % E_lam(i_r)
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)
@@ -2991,11 +2995,11 @@ contains
 
     i_l = tope % L + 1
 
+    k_n = tope % k_n
+
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
         if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
-
-        k_n = wavenumber(tope % AWR, tope % E)
 
         ! absolute value of energy in order to handle bound levels which have
         ! negative resonance energies
@@ -3331,7 +3335,7 @@ contains
     tope => isotopes(iso)
 
     ! compute neutron COM wavenumber
-    k_n = wavenumber(tope % AWR, tope % E)
+    k_n = tope % k_n
 
     ! compute potential scattering xs by adding contribution from each l-wave
     sig_pot = ZERO

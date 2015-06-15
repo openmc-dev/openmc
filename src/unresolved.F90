@@ -292,7 +292,6 @@ module unresolved
     real(8) :: S_l_n     ! shift for neutron energy
     real(8) :: S_l_lam   ! shift for resonance energy
     real(8) :: phi_l_n   ! phase shift for neutron energy
-    real(8) :: phi_l_lam ! phase shift for resonance energy
 
     ! ENDF-6 nuclear data
     logical :: been_read = .false. ! has ENDF-6 data already been read in?
@@ -655,6 +654,12 @@ contains
                  tope % k_n * tope % ac(tope % i_urr))
             tope % P_l_lam = penetration(tope % L,&
                  tope % k_lam * tope % ac(tope % i_urr))
+            tope % S_l_n = shift(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+            tope % S_l_lam = shift(tope % L,&
+                 tope % k_lam * tope % ac(tope % i_urr))
+            tope % phi_l_n = phase_shift(tope % L,&
+                 tope % k_n * tope % AP(tope % i_urr))
             call res % channel_width(iso, i_l, i_J)
             call add_parameters(res, iso, i_ens, i_res, i_l, i_J)
 
@@ -879,7 +884,8 @@ contains
                tope % k_n * tope % ac(tope % i_urr))
           
           ! resonance energy shift factor
-          tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
+          tope % S_l_n = shift(tope % L,&
+               tope % k_n * tope % ac(tope % i_urr))
           
           ! hard-sphere phase shift
           tope % phi_l_n = phase_shift(tope % L,&
@@ -1012,6 +1018,7 @@ contains
           & * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
         dE_trial = HALF * dE_trial
         tope % E  = tope % E - dE_trial
+        tope % k_n = wavenumber(tope % AWR, abs(tope % E))
 
         ! reset xs accumulators
         call flush_sigmas(t, n, g, f, x)
@@ -1021,6 +1028,18 @@ contains
 
           ! set current orbital angular momentum quantum number
           tope % L = i_l - 1
+
+          ! penetration
+          tope % P_l_n = penetration(tope % L,&
+               tope % k_n * tope % ac(tope % i_urr))
+          
+          ! resonance energy shift factor
+          tope % S_l_n = shift(tope % L,&
+               tope % k_n * tope % ac(tope % i_urr))
+          
+          ! hard-sphere phase shift
+          tope % phi_l_n = phase_shift(tope % L,&
+               tope % k_n * tope % AP(tope % i_urr))
 
           ! get the number of contributing l-wave resonances for this l
           n_res = n_res_contrib(tope % L)
@@ -1154,6 +1173,7 @@ contains
 
       ! add energy point to grid
       tope % E = tope % E + dE_trial
+      tope % k_n = wavenumber(tope % AWR, abs(tope % E))
       tope % E_tmp(n_pts) = tope % E
 
       ! reset xs accumulators
@@ -1164,6 +1184,18 @@ contains
 
         ! set current orbital angular momentum quantum number
         tope % L = i_l - 1
+
+        ! penetration
+        tope % P_l_n = penetration(tope % L,&
+             tope % k_n * tope % ac(tope % i_urr))
+          
+        ! resonance energy shift factor
+        tope % S_l_n = shift(tope % L,&
+             tope % k_n * tope % ac(tope % i_urr))
+          
+        ! hard-sphere phase shift
+        tope % phi_l_n = phase_shift(tope % L,&
+             tope % k_n * tope % AP(tope % i_urr))
 
         ! get the number of contributing l-wave resonances for this l
         n_res = n_res_contrib(tope % L)
@@ -1346,8 +1378,9 @@ contains
     ! set current temperature
     tope % T = T_K
 
-    ! set current energy and interpolation factor
+    ! set current energy and wavenumber
     tope % E = E
+    tope % k_n = wavenumber(tope % AWR, abs(tope % E))
 
     ! reset xs accumulators
     call flush_sigmas(t, n, g, f, x)
@@ -1434,6 +1467,18 @@ contains
 
       ! set current orbital angular momentum quantum number
       tope % L = i_l - 1
+
+      ! penetration
+      tope % P_l_n = penetration(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+      
+      ! resonance energy shift factor
+      tope % S_l_n = shift(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+      
+      ! hard-sphere phase shift
+      tope % phi_l_n = phase_shift(tope % L,&
+           tope % k_n * tope % AP(tope % i_urr))
 
       ! get the number of contributing l-wave resonances for this l
       n_res = n_res_contrib(tope % L)
@@ -1615,7 +1660,8 @@ contains
       tope % E = tope % Etabs(i_E)
       E = tope % E
       tope % k_n = wavenumber(tope % AWR, abs(tope % E))
-
+      tope % k_lam = tope % k_n 
+ 
       ! reset accumulator of statistics
       call tope % flush_ptable_stats(i_E)
 
@@ -1629,7 +1675,7 @@ contains
         ! reset batch accumulators
         call tope % flush_batches()
 
-        ! loop over realizations
+         ! loop over realizations
         HISTORY_LOOP: do i_h = 1, histories_avg_urr
 
           ! reset accumulator of histories
@@ -1645,7 +1691,15 @@ contains
             tope % P_l_n = penetration(tope % L,&
                  tope % k_n * tope % ac(tope % i_urr))
 
-            ! get the number of contributing l-wave resonances for this l
+            ! resonance energy shift factor
+            tope % S_l_n = shift(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+            
+            ! hard-sphere phase shift
+            tope % phi_l_n = phase_shift(tope % L,&
+                 tope % k_n * tope % AP(tope % i_urr))
+
+           ! get the number of contributing l-wave resonances for this l
             n_res = n_res_contrib(tope % L)
 
             ! loop over total angular momentum quantum numbers
@@ -1668,6 +1722,9 @@ contains
 
               ! sample unresolved resonance parameters for this spin
               ! sequence, at this energy
+              tope % k_lam = tope % k_n
+              tope % P_l_lam = penetration(tope % L,&
+                   tope % k_lam * tope % ac(tope % i_urr)) 
               call res % sample_parameters(iso, i_l, i_J)
 
               ! loop over the addition of resonances to this ladder
@@ -1696,6 +1753,18 @@ contains
 
             ! set current orbital angular momentum quantum number
             tope % L = i_l - 1
+
+            ! penetration
+            tope % P_l_n = penetration(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+      
+            ! resonance energy shift factor
+            tope % S_l_n = shift(tope % L,&
+                 tope % k_n * tope % ac(tope % i_urr))
+      
+            ! hard-sphere phase shift
+            tope % phi_l_n = phase_shift(tope % L,&
+                 tope % k_n * tope % AP(tope % i_urr))
 
             ! get the number of contributing l-wave resonances for this l
             n_res = n_res_contrib(tope % L)
@@ -2057,6 +2126,7 @@ contains
     tope % T = T_K
     tope % E = E
     tope % k_n = wavenumber(tope % AWR, abs(tope % E))
+    tope % k_lam = tope % k_n
 
     ! reset xs accumulators
     call flush_sigmas(t, n, g, f, x)
@@ -2070,6 +2140,14 @@ contains
       ! penetration
       tope % P_l_n = penetration(tope % L,&
            tope % k_n * tope % ac(tope % i_urr))
+      
+      ! resonance energy shift factor
+      tope % S_l_n = shift(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+          
+      ! hard-sphere phase shift
+      tope % phi_l_n = phase_shift(tope % L,&
+           tope % k_n * tope % AP(tope % i_urr))
 
       ! get the number of contributing l-wave resonances for this l
       n_res = n_res_contrib(tope % L)
@@ -2094,6 +2172,9 @@ contains
 
         ! sample unresolved resonance parameters for this spin
         ! sequence, at this energy
+        tope % k_lam = tope % k_n
+        tope % P_l_lam = penetration(tope % L,&
+             tope % k_lam * tope % ac(tope % i_urr)) 
         call res % sample_parameters(iso, i_l, i_J)
 
         ! loop over the addition of resonances to this ladder
@@ -2122,6 +2203,18 @@ contains
 
       ! set current orbital angular momentum quantum number
       tope % L = i_l - 1
+
+      ! penetration
+      tope % P_l_n = penetration(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+      
+      ! resonance energy shift factor
+      tope % S_l_n = shift(tope % L,&
+           tope % k_n * tope % ac(tope % i_urr))
+      
+      ! hard-sphere phase shift
+      tope % phi_l_n = phase_shift(tope % L,&
+           tope % k_n * tope % AP(tope % i_urr))
 
       ! get the number of contributing l-wave resonances for this l
       n_res = n_res_contrib(tope % L)

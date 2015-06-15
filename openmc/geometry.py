@@ -39,13 +39,12 @@ class Geometry(object):
             raise ValueError(msg)
 
         elif root_universe._id != 0:
-            msg  = 'Unable to add root Universe {0} to Geometry since ' \
+            msg = 'Unable to add root Universe {0} to Geometry since ' \
                   'it has ID={1} instead of ' \
                   'ID=0'.format(root_universe, root_universe._id)
             raise ValueError(msg)
 
         self._root_universe = root_universe
-
 
     def get_offset(self, path, filter_offset):
         """Returns the corresponding location in the results array for a given
@@ -59,7 +58,6 @@ class Geometry(object):
             lattice passed through. For the case of the lattice, a tuple should
             be provided to indicate which coordinates in the lattice should be
             entered. This should be in the form: (lat_id, i_x, i_y, i_z)
-
         filter_offset : int
             An integer that specifies which offset map the filter is using
 

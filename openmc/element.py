@@ -1,5 +1,6 @@
 from openmc.checkvalue import *
 
+
 class Element(object):
     """A natural element used in a material via <element>. Internally, OpenMC will
     expand the natural element into isotopes based on the known natural
@@ -29,7 +30,7 @@ class Element(object):
         # Set class attributes
         self.name = name
 
-        if not xs is None:
+        if xs is not None:
             self.xs = xs
 
     def __eq__(self, element2):

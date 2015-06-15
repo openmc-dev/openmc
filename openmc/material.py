@@ -14,6 +14,7 @@ MATERIAL_IDS = []
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
 
+
 def reset_auto_material_id():
     global AUTO_MATERIAL_ID, MATERIAL_IDS
     AUTO_MATERIAL_ID = 10000
@@ -105,7 +106,7 @@ class Material(object):
         global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         # If the Material already has an ID, remove it from global list
-        if hasattr(self, '_id') and not self._id is None:
+        if hasattr(self, '_id') and self._id is not None:
             MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
@@ -159,7 +160,7 @@ class Material(object):
                   'non-floating point value {1}'.format(self._id, density)
             raise ValueError(msg)
 
-        elif not units in DENSITY_UNITS:
+        elif units not in DENSITY_UNITS:
             msg = 'Unable to set the density for Material ID={0} with ' \
                   'units {1}'.format(self._id, units)
             raise ValueError(msg)
@@ -176,10 +177,10 @@ class Material(object):
     @distrib_otf_file.setter
     def distrib_otf_file(self, filename):
         # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not is_string(filename) and not filename is None:
+        if not is_string(filename) and filename is not None:
             msg = 'Unable to add OTF material file to Material ID={0} with a ' \
                   'non-string name {1}'.format(self._id, filename)
             raise ValueError(msg)
@@ -189,11 +190,10 @@ class Material(object):
     @convert_to_distrib_comps.setter
     def convert_to_distrib_comps(self):
         # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         self._convert_to_distrib_comps = True
-
 
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
         """Add a nuclide to the material
@@ -219,7 +219,7 @@ class Material(object):
                   'non-floating point value {1}'.format(self._id, percent)
             raise ValueError(msg)
 
-        elif not percent_type in ['ao', 'wo', 'at/g-cm']:
+        elif percent_type not in ['ao', 'wo', 'at/g-cm']:
             msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
                   'percent type {1}'.format(self._id, percent_type)
             raise ValueError(msg)
@@ -232,7 +232,6 @@ class Material(object):
             nuclide = openmc.Nuclide(nuclide)
 
         self._nuclides[nuclide._name] = (nuclide, percent, percent_type)
-
 
     def remove_nuclide(self, nuclide):
         """Remove a nuclide from the material
@@ -277,7 +276,7 @@ class Material(object):
                   'non-floating point value {1}'.format(self._id, percent)
             raise ValueError(msg)
 
-        if not percent_type in ['ao', 'wo']:
+        if percent_type not in ['ao', 'wo']:
             msg = 'Unable to add an Element to Material ID={0} with a ' \
                   'percent type {1}'.format(self._id, percent_type)
             raise ValueError(msg)
@@ -286,7 +285,6 @@ class Material(object):
         element = deepcopy(element)
 
         self._elements[element._name] = (element, percent, percent_type)
-
 
     def remove_element(self, element):
         """Remove a natural element from the material
@@ -301,7 +299,6 @@ class Material(object):
         # If the Material contains the Element, delete it
         if element._name in self._elements:
             del self._elements[element._name]
-
 
     def add_s_alpha_beta(self, name, xs):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
@@ -326,7 +323,6 @@ class Material(object):
             raise ValueError(msg)
 
         self._sab.append((name, xs))
-
 
     def get_all_nuclides(self):
         """Returns all nuclides in the material
@@ -390,7 +386,7 @@ class Material(object):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if not nuclide[0]._xs is None:
+        if nuclide[0]._xs is not None:
             xml_element.set("xs", nuclide[0]._xs)
 
         return xml_element
@@ -547,7 +543,6 @@ class MaterialsFile(object):
 
         self._materials.append(material)
 
-
     def add_materials(self, materials):
         """Add multiple materials to the file.
 
@@ -586,7 +581,7 @@ class MaterialsFile(object):
     def _create_material_subelements(self):
         subelement = ET.SubElement(self._materials_file, "default_xs")
 
-        if not self._default_xs is None:
+        if self._default_xs is not None:
             subelement.text = self._default_xs
 
         for material in self._materials:

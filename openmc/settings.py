@@ -456,17 +456,17 @@ class SettingsFile(object):
                   'is not a Python dictionary'.format(keff_trigger)
             raise ValueError(msg)
 
-        elif not 'type' in keff_trigger:
+        elif 'type' not in keff_trigger:
             msg = 'Unable to set a trigger on keff from {0} which ' \
                   'does not have a "type" key'.format(keff_trigger)
             raise ValueError(msg)
 
-        elif not keff_trigger['type'] in ['variance', 'std_dev', 'rel_err']:
+        elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
             msg = 'Unable to set a trigger on keff with ' \
                   'type {0}'.format(keff_trigger['type'])
             raise ValueError(msg)
 
-        elif not 'threshold' in keff_trigger:
+        elif 'threshold' not in keff_trigger:
             msg = 'Unable to set a trigger on keff from {0} which ' \
                   'does not have a "threshold" key'.format(keff_trigger)
             raise ValueError(msg)
@@ -522,7 +522,7 @@ class SettingsFile(object):
                   'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not stype in ['box', 'point']:
+        elif stype not in ['box', 'point']:
             msg = 'Unable to set source space type to {0} since it is not ' \
                   'box or point'.format(stype)
             raise ValueError(msg)
@@ -577,7 +577,7 @@ class SettingsFile(object):
                   'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not stype in ['isotropic', 'monodirectional']:
+        elif stype not in ['isotropic', 'monodirectional']:
             msg = 'Unable to set source angle type to {0} since it is not ' \
                   'isotropic or monodirectional'.format(stype)
             raise ValueError(msg)
@@ -587,7 +587,7 @@ class SettingsFile(object):
                   'not a Python list/tuple or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif stype == 'isotropic' and not params is None:
+        elif stype == 'isotropic' and params is not None:
             msg = 'Unable to set source angle parameters since they are not ' \
                   'it is not supported for isotropic type sources'
             raise ValueError(msg)
@@ -638,7 +638,7 @@ class SettingsFile(object):
                    'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif not stype in ['monoenergetic', 'watt', 'maxwell']:
+        elif stype not in ['monoenergetic', 'watt', 'maxwell']:
             msg = 'Unable to set source energy type to {0} since it is not ' \
                   'monoenergetic, watt or maxwell'.format(stype)
             raise ValueError(msg)
@@ -684,7 +684,7 @@ class SettingsFile(object):
 
         for element in output:
             keys = ['summary', 'cross_sections', 'tallies', 'distribmats']
-            if not element in keys:
+            if element not in keys:
                 msg = 'Unable to set output to {0} which is unsupported by ' \
                       'OpenMC'.format(element)
                 raise ValueError(msg)
@@ -824,7 +824,7 @@ class SettingsFile(object):
 
     @energy_grid.setter
     def energy_grid(self, energy_grid):
-        if not energy_grid in ['nuclide', 'logarithm', 'material-union']:
+        if energy_grid not in ['nuclide', 'logarithm', 'material-union']:
             msg = 'Unable to set energy grid to {0} which is neither ' \
                   'nuclide, logarithm, nor material-union'.format(energy_grid)
             raise ValueError(msg)
@@ -1010,7 +1010,7 @@ class SettingsFile(object):
                   'value {0}'.format(threads)
             raise ValueError(msg)
 
-        elif threads <=0:
+        elif threads <= 0:
             msg = 'Unable to set the threads to a negative ' \
                   'value {0}'.format(threads)
             raise ValueError(msg)
@@ -1130,7 +1130,7 @@ class SettingsFile(object):
     @dd_mesh_dimension.setter
     def dd_mesh_dimension(self, dimension):
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         if not isinstance(dimension, (tuple, list)):
@@ -1148,7 +1148,7 @@ class SettingsFile(object):
     @dd_mesh_lower_left.setter
     def dd_mesh_lower_left(self, lower_left):
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         if not isinstance(lower_left, (tuple, list, np.ndarray)):
@@ -1166,7 +1166,7 @@ class SettingsFile(object):
     @dd_mesh_upper_right.setter
     def dd_mesh_upper_right(self, upper_right):
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         if not isinstance(upper_right, tuple) and \
@@ -1185,11 +1185,10 @@ class SettingsFile(object):
     @dd_nodemap.setter
     def dd_nodemap(self, nodemap):
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(nodemap, tuple) and \
-          not isinstance(nodemap, list):
+        if not isinstance(nodemap, (tuple, list)):
             msg = 'Unable to set DD nodemap {0} which is ' \
                   'not a Python tuple or list'.format(nodemap)
             raise ValueError(msg)
@@ -1214,7 +1213,7 @@ class SettingsFile(object):
     def dd_allow_leakage(self, allow):
 
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         if not isinstance(allow, bool):
@@ -1228,7 +1227,7 @@ class SettingsFile(object):
     def dd_count_interactions(self, interactions):
 
         # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release ' \
+        warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
         if not isinstance(interactions, bool):
@@ -1246,7 +1245,7 @@ class SettingsFile(object):
         self._create_keff_trigger_subelement()
 
     def _create_batches_subelement(self):
-        if not self._batches is None:
+        if self._batches is not None:
             if self._eigenvalue_subelement is None:
                 self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
@@ -1255,7 +1254,7 @@ class SettingsFile(object):
             element.text = str(self._batches)
 
     def _create_generations_per_batch_subelement(self):
-        if not self._generations_per_batch is None:
+        if self._generations_per_batch is not None:
             if self._eigenvalue_subelement is None:
                 self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
@@ -1265,7 +1264,7 @@ class SettingsFile(object):
             element.text = str(self._generations_per_batch)
 
     def _create_inactive_subelement(self):
-        if not self._inactive is None:
+        if self._inactive is not None:
             if self._eigenvalue_subelement is None:
                 self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
@@ -1274,7 +1273,7 @@ class SettingsFile(object):
             element.text = str(self._inactive)
 
     def _create_particles_subelement(self):
-        if not self._particles is None:
+        if self._particles is not None:
             if self._eigenvalue_subelement is None:
                 self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
@@ -1283,7 +1282,7 @@ class SettingsFile(object):
             element.text = str(self._particles)
 
     def _create_keff_trigger_subelement(self):
-        if not self._keff_trigger is None:
+        if self._keff_trigger is not None:
             if self._eigenvalue_subelement is None:
                 self._eigenvalue_subelement = ET.SubElement(self._settings_file,
                                                          "eigenvalue")
@@ -1300,7 +1299,7 @@ class SettingsFile(object):
         self._create_source_angle_subelement()
 
     def _create_source_space_subelement(self):
-        if not self._source_space_params is None:
+        if self._source_space_params is not None:
             if self._source_subelement is None:
                 self._source_subelement = ET.SubElement(self._settings_file,
                                                         "source")
@@ -1312,7 +1311,7 @@ class SettingsFile(object):
             subelement.text = ' '.join(map(str, self._source_space_params))
 
     def _create_source_angle_subelement(self):
-        if not self._source_angle_params is None:
+        if self._source_angle_params is not None:
             if self._source_subelement is None:
                 self._source_subelement = ET.SubElement(self._settings_file,
                                                         "source")
@@ -1324,7 +1323,7 @@ class SettingsFile(object):
             subelement.text = ' '.join(map(str, self._source_angle_params))
 
     def _create_source_energy_subelement(self):
-        if not self._source_energy_params is None:
+        if self._source_energy_params is not None:
             if self._source_subelement is None:
                 self._source_subelement = ET.SubElement(self._settings_file,
                                                         "source")
@@ -1336,7 +1335,7 @@ class SettingsFile(object):
             subelement.text = ' '.join(map(str, self._source_energy_params))
 
     def _create_output_subelement(self):
-        if not self._output is None:
+        if self._output is not None:
             element = ET.SubElement(self._settings_file, "output")
 
             for key in self._output:
@@ -1346,93 +1345,93 @@ class SettingsFile(object):
             self._create_output_path_subelement()
 
     def _create_output_path_subelement(self):
-        if not self._output_path is None:
+        if self._output_path is not None:
             element = ET.SubElement(self._settings_file, "output_path")
             element.text = self._output_path
 
     def _create_verbosity_subelement(self):
-        if not self._verbosity is None:
+        if self._verbosity is not None:
             element = ET.SubElement(self._settings_file, "verbosity")
             element.text = str(self._verbosity)
 
     def _create_statepoint_subelement(self):
         # Batches subelement
-        if not self._statepoint_batches is None:
+        if self._statepoint_batches is not None:
             element = ET.SubElement(self._settings_file, "state_point")
             subelement = ET.SubElement(element, "batches")
             subelement.text = ' '.join(map(str, self._statepoint_batches))
 
         # Interval subelement
-        elif not self._statepoint_interval is None:
+        elif self._statepoint_interval is not None:
             element = ET.SubElement(self._settings_file, "state_point")
             subelement = ET.SubElement(element, "interval")
             subelement.text = str(self._statepoint_interval)
 
     def _create_sourcepoint_subelement(self):
         # Batches subelement
-        if not self._sourcepoint_batches is None:
+        if self._sourcepoint_batches is not None:
             element = ET.SubElement(self._settings_file, "source_point")
             subelement = ET.SubElement(element, "batches")
             subelement.text = ' '.join(map(str, self._sourcepoint_batches))
 
         # Interval subelement
-        elif not self._sourcepoint_interval is None:
+        elif self._sourcepoint_interval is not None:
             element = ET.SubElement(self._settings_file, "source_point")
             subelement = ET.SubElement(element, "interval")
             subelement.text = str(self._sourcepoint_interval)
 
         # Separate subelement
-        if not self._sourcepoint_separate is None:
+        if self._sourcepoint_separate is not None:
             subelement = ET.SubElement(element, "separate")
             subelement.text = str(self._sourcepoint_separate).lower()
 
         # Write subelement
-        if not self._sourcepoint_write is None:
+        if self._sourcepoint_write is not None:
             subelement = ET.SubElement(element, "write")
             subelement.text = str(self._sourcepoint_write).lower()
 
         # Overwrite latest subelement
-        if not self._sourcepoint_overwrite is None:
+        if self._sourcepoint_overwrite is not None:
             subelement = ET.SubElement(element, "overwrite_latest")
             subelement.text = str(self._sourcepoint_overwrite).lower()
 
     def _create_confidence_intervals(self):
-        if not self._confidence_intervals is None:
+        if self._confidence_intervals is not None:
             element = ET.SubElement(self._settings_file, "confidence_intervals")
             element.text = str(self._confidence_intervals).lower()
 
     def _create_cross_sections_subelement(self):
-        if not self._cross_sections is None:
+        if self._cross_sections is not None:
             element = ET.SubElement(self._settings_file, "cross_sections")
             element.text = str(self._cross_sections)
 
     def _create_energy_grid_subelement(self):
-        if not self._energy_grid is None:
+        if self._energy_grid is not None:
             element = ET.SubElement(self._settings_file, "energy_grid")
             element.text = str(self._energy_grid)
 
     def _create_ptables_subelement(self):
-        if not self._ptables is None:
+        if self._ptables is not None:
             element = ET.SubElement(self._settings_file, "ptables")
             element.text = str(self._ptables).lower()
 
     def _create_run_cmfd_subelement(self):
-        if not self._run_cmfd is None:
+        if self._run_cmfd is not None:
             element = ET.SubElement(self._settings_file, "run_cmfd")
             element.text = str(self._run_cmfd).lower()
 
     def _create_seed_subelement(self):
-        if not self._seed is None:
+        if self._seed is not None:
             element = ET.SubElement(self._settings_file, "seed")
             element.text = str(self._seed)
 
     def _create_survival_biasing_subelement(self):
-        if not self._survival_biasing is None:
+        if self._survival_biasing is not None:
             element = ET.SubElement(self._settings_file, "survival_biasing")
             element.text = str(self._survival_biasing).lower()
 
     def _create_cutoff_subelement(self):
-        if not self._weight is None:
+        if self._weight is not None:
             element = ET.SubElement(self._settings_file, "cutoff")
 
             subelement = ET.SubElement(element, "weight")
@@ -1442,8 +1441,8 @@ class SettingsFile(object):
             subelement.text = str(self._weight_avg)
 
     def _create_entropy_subelement(self):
-        if not self._entropy_lower_left is None and \
-            not self._entropy_upper_right is None:
+        if self._entropy_lower_left is not None and \
+           self._entropy_upper_right is not None:
 
             element = ET.SubElement(self._settings_file, "entropy")
 
@@ -1462,7 +1461,7 @@ class SettingsFile(object):
         self._create_trigger_batch_interval_subelement()
 
     def _create_trigger_active_subelement(self):
-        if not self._trigger_active is None:
+        if self._trigger_active is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
                                                       "trigger")
@@ -1471,7 +1470,7 @@ class SettingsFile(object):
             element.text = str(self._trigger_active).lower()
 
     def _create_trigger_max_batches_subelement(self):
-        if not self._trigger_max_batches is None:
+        if self._trigger_max_batches is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
                                                       "trigger")
@@ -1480,7 +1479,7 @@ class SettingsFile(object):
             element.text = str(self._trigger_max_batches)
 
     def _create_trigger_batch_interval_subelement(self):
-        if not self._trigger_batch_interval is None:
+        if self._trigger_batch_interval is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
                                                       "trigger")
@@ -1489,28 +1488,28 @@ class SettingsFile(object):
             element.text = str(self._trigger_batch_interval)
 
     def _create_no_reduce_subelement(self):
-        if not self._no_reduce is None:
+        if self._no_reduce is not None:
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
     def _create_threads_subelement(self):
-        if not self._threads is None:
+        if self._threads is not None:
             element = ET.SubElement(self._settings_file, "threads")
             element.text = str(self._threads)
 
     def _create_trace_subelement(self):
-        if not self._trace is None:
+        if self._trace is not None:
             element = ET.SubElement(self._settings_file, "trace")
             element.text = ' '.join(map(str, self._trace))
 
     def _create_track_subelement(self):
-        if not self._track is None:
+        if self._track is not None:
             element = ET.SubElement(self._settings_file, "track")
             element.text = ' '.join(map(str, self._track))
 
     def _create_ufs_subelement(self):
-        if not self._ufs_lower_left is None and \
-            not self._ufs_upper_right is None:
+        if self._ufs_lower_left is not None and \
+           self._ufs_upper_right is not None:
 
             element = ET.SubElement(self._settings_file, "uniform_fs")
 
@@ -1524,9 +1523,9 @@ class SettingsFile(object):
             subelement.text = ' '.join(map(str, self._ufs_upper_right))
 
     def _create_dd_subelement(self):
-        if not self._dd_mesh_lower_left is None and \
-            not self._dd_mesh_upper_right is None and \
-            not self._dd_mesh_dimension is None:
+        if self._dd_mesh_lower_left is not None and \
+           self._dd_mesh_upper_right is not None and \
+           self._dd_mesh_dimension is not None:
 
             element = ET.SubElement(self._settings_file, "domain_decomposition")
 
@@ -1540,7 +1539,7 @@ class SettingsFile(object):
             subsubelement = ET.SubElement(subelement, "upper_right")
             subsubelement.text = ' '.join(map(str, self._dd_mesh_upper_right))
 
-            if not self._dd_nodemap is None:
+            if self._dd_nodemap is not None:
                 subelement = ET.SubElement(element, "nodemap")
                 subelement.text = ' '.join(map(str, self._dd_nodemap))
 

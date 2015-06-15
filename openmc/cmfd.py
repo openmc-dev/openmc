@@ -153,7 +153,7 @@ class CMFDMesh(object):
 
     @width.setter
     def width(self, width):
-        if not width is None:
+        if width is not None:
             if not isinstance(width, (tuple, list, np.ndarray)):
                 msg = 'Unable to set CMFD Mesh with width {0} which ' \
                       'is not a Python list, tuple or NumPy array'.format(width)
@@ -237,26 +237,26 @@ class CMFDMesh(object):
         subelement = ET.SubElement(element, "lower_left")
         subelement.text = ' '.join(map(str, self._lower_left))
 
-        if not self._upper_right is None:
+        if self._upper_right is not None:
             subelement = ET.SubElement(element, "upper_right")
             subelement.text = ' '.join(map(str, self._upper_right))
 
         subelement = ET.SubElement(element, "dimension")
         subelement.text = ' '.join(map(str, self._dimension))
 
-        if not self._width is None:
+        if self._width is not None:
             subelement = ET.SubElement(element, "width")
             subelement.text = ' '.join(map(str, self._width))
 
-        if not self._energy is None:
+        if self._energy is not None:
             subelement = ET.SubElement(element, "energy")
             subelement.text = ' '.join(map(str, self._energy))
 
-        if not self._albedo is None:
+        if self._albedo is not None:
             subelement = ET.SubElement(element, "albedo")
             subelement.text = ' '.join(map(str, self._albedo))
 
-        if not self._map is None:
+        if self._map is not None:
             subelement = ET.SubElement(element, "map")
             subelement.text = ' '.join(map(str, self._map))
 
@@ -578,82 +578,82 @@ class CMFDFile(object):
         self._write_matrices = write_matrices
 
     def _create_begin_subelement(self):
-        if not self._begin is None:
+        if self._begin is not None:
             element = ET.SubElement(self._cmfd_file, "begin")
             element.text = str(self._begin)
 
     def _create_dhat_reset_subelement(self):
-        if not self._dhat_reset is None:
+        if self._dhat_reset is not None:
             element = ET.SubElement(self._cmfd_file, "dhat_reset")
             element.text = str(self._dhat_reset).lower()
 
     def _create_display_subelement(self):
-        if not self._display is None:
+        if self._display is not None:
             element = ET.SubElement(self._cmfd_file, "display")
             element.text = str(self._display)
 
     def _create_downscatter_subelement(self):
-        if not self._downscatter is None:
+        if self._downscatter is not None:
             element = ET.SubElement(self._cmfd_file, "downscatter")
             element.text = str(self._downscatter).lower()
 
     def _create_feedback_subelement(self):
-        if not self._feedback is None:
+        if self._feedback is not None:
             element = ET.SubElement(self._cmfd_file, "feeback")
             element.text = str(self._feedback).lower()
 
     def _create_gauss_seidel_tolerance_subelement(self):
-        if not self._gauss_seidel_tolerance is None:
+        if self._gauss_seidel_tolerance is not None:
             element = ET.SubElement(self._cmfd_file, "gauss_seidel_tolerance")
             element.text = ' '.join(map(str, self._gauss_seidel_tolerance))
 
     def _create_ktol_subelement(self):
-        if not self._ktol is None:
+        if self._ktol is not None:
             element = ET.SubElement(self._ktol, "ktol")
             element.text = str(self._ktol)
 
     def _create_mesh_subelement(self):
-        if not self._mesh is None:
+        if self._mesh is not None:
             xml_element = self._mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
 
     def _create_norm_subelement(self):
-        if not self._norm is None:
+        if self._norm is not None:
             element = ET.SubElement(self._cmfd_file, "norm")
             element.text = str(self._norm)
 
     def _create_power_monitor_subelement(self):
-        if not self._power_monitor is None:
+        if self._power_monitor is not None:
             element = ET.SubElement(self._cmfd_file, "power_monitor")
             element.text = str(self._power_monitor).lower()
 
     def _create_run_adjoint_subelement(self):
-        if not self._run_adjoint is None:
+        if self._run_adjoint is not None:
             element = ET.SubElement(self._cmfd_file, "run_adjoint")
             element.text = str(self._run_adjoint).lower()
 
     def _create_shift_subelement(self):
-        if not self._shift is None:
+        if self._shift is not None:
             element = ET.SubElement(self._shift, "shift")
             element.text = str(self._shift)
 
     def _create_spectral_subelement(self):
-        if not self._spectral is None:
+        if self._spectral is not None:
             element = ET.SubElement(self._spectral, "spectral")
             element.text = str(self._spectral)
 
     def _create_stol_subelement(self):
-        if not self._stol is None:
+        if self._stol is not None:
             element = ET.SubElement(self._stol, "stol")
             element.text = str(self._stol)
 
     def _create_tally_reset_subelement(self):
-        if not self._tally_reset is None:
+        if self._tally_reset is not None:
             element = ET.SubElement(self._tally_reset, "tally_reset")
             element.text = ' '.join(map(str, self._tally_reset))
 
     def _create_write_matrices_subelement(self):
-        if not self._write_matrices is None:
+        if self._write_matrices is not None:
             element = ET.SubElement(self._cmfd_file, "write_matrices")
             element.text = str(self._write_matrices).lower()
 

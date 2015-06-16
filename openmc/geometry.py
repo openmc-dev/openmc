@@ -47,8 +47,9 @@ class Geometry(object):
         self._root_universe = root_universe
 
     def get_offset(self, path, filter_offset):
-        """Returns the corresponding location in the results array for a given
-        path and filter number.
+        """Returns the corresponding location in the results array for a given path and
+        filter number. This is primarily intended to post-processing result when
+        a distribcell filter is used.
 
         Parameters
         ----------

@@ -1,3 +1,15 @@
+"""This module can be used to specify parameters used for coarse mesh finite
+difference (CMFD) acceleration in OpenMC. CMFD was first proposed by [Smith]_
+and is widely used in accelerating neutron transport problems.
+
+References
+----------
+
+.. [Smith] K. Smith, "Nodal method storage reduction by non-linear
+   iteration", *Trans. Am. Nucl. Soc.*, **44**, 265 (1983).
+
+"""
+
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -7,16 +19,16 @@ from openmc.clean_xml import *
 
 
 class CMFDMesh(object):
-    """A structured Cartesian mesh used for coarse mesh finite difference
+    """A structured Cartesian mesh used for Coarse Mesh Finite Difference (CMFD)
     acceleration.
 
     Attributes
     ----------
     lower_left : tuple or list or ndarray
-        The lower-left corner of the structured mesh. If only two coordinate are
+        The lower-left corner of the structured mesh. If only two coordinates are
         given, it is assumed that the mesh is an x-y mesh.
     upper_right : tuple or list or ndarray
-        The upper-right corner of the structrued mesh. If only two coordinate
+        The upper-right corner of the structrued mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
     dimension : tuple or list or ndarray
         The number of mesh cells in each direction.
@@ -32,7 +44,6 @@ class CMFDMesh(object):
         boundary conditions. They are listed in the following order: -x +x -y +y
         -z +z.
     map : tuple or list or ndarray
-
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``1`` is used for a
         non-accelerated region and a ``2`` is used for an accelerated region.
@@ -51,7 +62,7 @@ class CMFDMesh(object):
         to any tallies far away from fission source neutron regions.  A ``2``
         must be used to identify any fission source region.
 
-    """
+"""
 
     def __init__(self):
         self._lower_left = None
@@ -88,7 +99,7 @@ class CMFDMesh(object):
 
     @property
     def map(self):
-        return self._mape
+        return self._map
 
     @lower_left.setter
     def lower_left(self, lower_left):
@@ -237,28 +248,28 @@ class CMFDMesh(object):
         subelement = ET.SubElement(element, "lower_left")
         subelement.text = ' '.join(map(str, self._lower_left))
 
-        if self._upper_right is not None:
+        if self.upper_right is not None:
             subelement = ET.SubElement(element, "upper_right")
-            subelement.text = ' '.join(map(str, self._upper_right))
+            subelement.text = ' '.join(map(str, self.upper_right))
 
         subelement = ET.SubElement(element, "dimension")
-        subelement.text = ' '.join(map(str, self._dimension))
+        subelement.text = ' '.join(map(str, self.dimension))
 
-        if self._width is not None:
+        if self.width is not None:
             subelement = ET.SubElement(element, "width")
-            subelement.text = ' '.join(map(str, self._width))
+            subelement.text = ' '.join(map(str, self.width))
 
-        if self._energy is not None:
+        if self.energy is not None:
             subelement = ET.SubElement(element, "energy")
-            subelement.text = ' '.join(map(str, self._energy))
+            subelement.text = ' '.join(map(str, self.energy))
 
-        if self._albedo is not None:
+        if self.albedo is not None:
             subelement = ET.SubElement(element, "albedo")
-            subelement.text = ' '.join(map(str, self._albedo))
+            subelement.text = ' '.join(map(str, self.albedo))
 
-        if self._map is not None:
+        if self.map is not None:
             subelement = ET.SubElement(element, "map")
-            subelement.text = ' '.join(map(str, self._map))
+            subelement.text = ' '.join(map(str, self.map))
 
         return element
 

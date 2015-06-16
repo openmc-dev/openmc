@@ -311,8 +311,6 @@ class Filter(object):
 
         """
 
-        # FIXME: This does not work for distribcells!!!
-
         try:
             # Filter bins for a mesh are an (x,y,z) tuple
             if self.type == 'mesh':

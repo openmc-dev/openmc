@@ -1734,11 +1734,11 @@ The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
 
   :lower_left:
-    The lower-left corner of the structured mesh. If only two coordinate are
+    The lower-left corner of the structured mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :upper_right:
-    The upper-right corner of the structrued mesh. If only two coordinate are
+    The upper-right corner of the structrued mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :dimension:

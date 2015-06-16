@@ -1672,7 +1672,7 @@ contains
         ! reset batch accumulators
         call tope % flush_batches()
 
-         ! loop over realizations
+        ! loop over realizations
         HISTORY_LOOP: do i_h = 1, histories_avg_urr
 
           ! reset accumulator of histories

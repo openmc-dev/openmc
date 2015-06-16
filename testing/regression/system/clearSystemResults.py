@@ -23,5 +23,5 @@ files = glob('system-suite.pbs.*')
 for file in files:
   os.remove('./'+file)
 files = glob('testSystemResults.dat')
-for fole in files:
+for file in files:
   os.remove('./'+file)

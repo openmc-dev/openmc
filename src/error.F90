@@ -137,6 +137,7 @@ contains
 
     open(unit=99, file='error.log')
     write(99,*) message
+    close(99)
 
     ! Write information on current batch, generation, and particle
     if (current_batch > 0) then

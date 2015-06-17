@@ -2000,6 +2000,23 @@ contains
           xs_samples(i_mag) % f = tope % prob_tables(i_E, 1) % avg_f % xs
           xs_samples(i_mag) % x = tope % prob_tables(i_E, 1) % avg_x % xs
 
+          ! find index where this sample belongs based on total cross section
+          if (i_b == 1 .and. i_h == 1) then
+            i_mag = histories_avg_urr
+          else
+            i_mag = binary_search(xs_samples(:) % t,&
+                 i_b * histories_avg_urr,&
+                 tope % prob_tables(i_E, 1) % avg_t % xs)
+          end if
+
+          ! insert total and conditional partial cross sections
+          xs_samples(1 : i_mag - 1) = xs_samples(2 : i_mag)
+          xs_samples(i_mag) % t = tope % prob_tables(i_E, 1) % avg_t % xs
+          xs_samples(i_mag) % n = tope % prob_tables(i_E, 1) % avg_n % xs
+          xs_samples(i_mag) % g = tope % prob_tables(i_E, 1) % avg_g % xs
+          xs_samples(i_mag) % f = tope % prob_tables(i_E, 1) % avg_f % xs
+          xs_samples(i_mag) % x = tope % prob_tables(i_E, 1) % avg_x % xs
+
         end do HISTORY_LOOP
 
         allocate(xs_samples_tmp(i_b * histories_avg_urr))

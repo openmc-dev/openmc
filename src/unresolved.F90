@@ -1,10 +1,12 @@
 module unresolved
 
+  use doppler,       only: broaden
   use error,         only: fatal_error
   use faddeeva,      only: quickw, faddeeva_w
   use fission,       only: nu_total
   use global
   use list_header,   only: ListInt, ListReal
+  use output,        only: write_coords
   use random_lcg,    only: prn
   use search,        only: binary_search
   use vector_header, only: Vector, JaggedArray
@@ -492,7 +494,19 @@ module unresolved
 
   end type Isotope
 
+  type xsSample
+
+    real(8) :: t
+    real(8) :: n
+    real(8) :: g
+    real(8) :: f
+    real(8) :: x
+
+  end type xsSample
+  
   type(Isotope), allocatable, target :: isotopes(:)
+  type(xsSample), allocatable :: xs_samples(:)
+  type(xsSample), allocatable :: xs_samples_tmp(:)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -1611,6 +1625,7 @@ contains
     type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
     type(Resonance) :: res ! resonance object
     character(6) :: zaid_str ! ENDF-6 MAT number as a string
+    character(80) :: temp_str
     integer :: i_b    ! batch index
     integer :: i_band ! probability band index
     integer :: i_E    ! energy grid index
@@ -1624,12 +1639,16 @@ contains
     integer :: i_temp ! temperature index
     integer :: iso    ! isotope index
     integer :: n_res  ! number of resonances to include for a given l-wave
+    integer :: i_mag  ! index in array of xs samples based on total xs magnitude
+    integer :: hits_per_band ! number of hits in each equiprobable band
     integer :: avg_unit = 98 ! avg xs output file unit
     integer :: tab_unit = 99 ! tables output file unit
     real(8) :: E        ! neutron lab energy [eV]
     real(8) :: fact     ! File 3 energy grid interpolation factor
     real(8) :: xs_t_min ! min realized total xs
     real(8) :: xs_t_max ! max realized total xs
+    real(8), allocatable :: hot_xs(:)
+    real(8), allocatable :: cold_xs(:)
 
     xs_t_min = 1.0e6_8
     xs_t_max = ZERO
@@ -1663,6 +1682,13 @@ contains
       call tope % flush_ptable_stats(i_E)
 
       i_b = 0
+
+      allocate(xs_samples(histories_avg_urr))
+      xs_samples(:) % t = ZERO
+      xs_samples(:) % n = ZERO
+      xs_samples(:) % g = ZERO
+      xs_samples(:) % f = ZERO
+      xs_samples(:) % x = ZERO
 
       ! loop over batches until convergence
       BATCH_LOOP: do
@@ -1951,9 +1977,44 @@ contains
             ! accumulate the result of this history
             call tope % accum_history(i_E, i_T)
           end do
+          
+          ! find index where this sample belongs based on total cross section
+          if (i_b == 1 .and. i_h == 1) then
+            i_mag = histories_avg_urr
+          else
+            if (tope % prob_tables(i_E, 1) % avg_t % xs&
+                 > xs_samples(i_b * histories_avg_urr) % t) then
+              i_mag = i_b * histories_avg_urr
+            else
+              i_mag = binary_search(xs_samples(:) % t,&
+                   i_b * histories_avg_urr,&
+                   tope % prob_tables(i_E, 1) % avg_t % xs)
+            end if
+          end if
+
+          ! insert total and conditional partial cross sections
+          xs_samples(1 : i_mag - 1) = xs_samples(2 : i_mag)
+          xs_samples(i_mag) % t = tope % prob_tables(i_E, 1) % avg_t % xs
+          xs_samples(i_mag) % n = tope % prob_tables(i_E, 1) % avg_n % xs
+          xs_samples(i_mag) % g = tope % prob_tables(i_E, 1) % avg_g % xs
+          xs_samples(i_mag) % f = tope % prob_tables(i_E, 1) % avg_f % xs
+          xs_samples(i_mag) % x = tope % prob_tables(i_E, 1) % avg_x % xs
 
         end do HISTORY_LOOP
 
+        allocate(xs_samples_tmp(i_b * histories_avg_urr))
+        xs_samples_tmp = xs_samples
+        deallocate(xs_samples)
+        allocate(xs_samples((i_b + 1) * histories_avg_urr))
+        xs_samples(:) % t = ZERO
+        xs_samples(:) % n = ZERO
+        xs_samples(:) % g = ZERO
+        xs_samples(:) % f = ZERO
+        xs_samples(:) % x = ZERO
+        xs_samples(histories_avg_urr + 1 : (i_b + 1) * histories_avg_urr)&
+             = xs_samples_tmp
+        deallocate(xs_samples_tmp)
+        
         ! accumulate the result of this batch
         call tope % accum_batch(i_E)
 
@@ -1970,6 +2031,52 @@ contains
           & < tol_avg_urr) &
           & .or. i_b == max_batches_avg_urr) exit
       end do BATCH_LOOP
+
+      hits_per_band = nint(i_b * histories_avg_urr / dble(n_bands))
+      do i_band = 1, n_bands - 1
+        tope % prob_tables(i_E, 1) % t(i_band) % cnt_mean&
+             = dble(hits_per_band) / dble(i_b * histories_avg_urr)
+        tope % prob_tables(i_E, 1) % t(i_band) % xs_mean&
+             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
+             : i_band * hits_per_band) % t) / dble(hits_per_band)
+        tope % prob_tables(i_E, 1) % n(i_band) % xs_mean&
+             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
+             : i_band * hits_per_band) % n) / dble(hits_per_band)
+        tope % prob_tables(i_E, 1) % g(i_band) % xs_mean&
+             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
+             : i_band * hits_per_band) % g) / dble(hits_per_band)
+        tope % prob_tables(i_E, 1) % f(i_band) % xs_mean&
+             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
+             : i_band * hits_per_band) % f) / dble(hits_per_band)
+        tope % prob_tables(i_E, 1) % x(i_band) % xs_mean&
+             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
+             : i_band * hits_per_band) % x) / dble(hits_per_band)
+      end do
+      tope % prob_tables(i_E, 1) % t(n_bands) % cnt_mean&
+           = dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band)&
+           / dble(i_b * histories_avg_urr)
+      tope % prob_tables(i_E, 1) % t(n_bands) % xs_mean&
+           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
+           : i_b * histories_avg_urr) % t)&
+           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+      tope % prob_tables(i_E, 1) % n(n_bands) % xs_mean&
+           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
+           : i_b * histories_avg_urr) % n)&
+           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+      tope % prob_tables(i_E, 1) % g(n_bands) % xs_mean&
+           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
+           : i_b * histories_avg_urr) % g)&
+           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+      tope % prob_tables(i_E, 1) % f(n_bands) % xs_mean&
+           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
+           : i_b * histories_avg_urr) % f)&
+           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+      tope % prob_tables(i_E, 1) % x(n_bands) % xs_mean&
+           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
+           : i_b * histories_avg_urr) % x)&
+           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+
+      deallocate(xs_samples)
 
       ! write probability tables out to a file
       if (write_urr_tables) then
@@ -2043,6 +2150,38 @@ contains
       end if
 
     end do ENERGY_LOOP
+
+    ! Doppler broaden equiprobable bands
+    allocate(hot_xs(tope % ntabs))
+    allocate(cold_xs(tope % ntabs))
+    do i_b = 1, n_bands
+      do i_E = 1, tope % ntabs
+        if (i_E == 1) then
+          cold_xs(i_E) = tope % prob_tables(i_E,1) % g(i_b) % xs_mean
+        else
+          cold_xs(i_E) = tope % prob_tables(i_E,1) % avg_g % xs_mean
+        end if
+      end do
+      call broaden(tope % Etabs(:), cold_xs,&
+           nint(tope % AWR * MASS_NEUTRON), 1900.0_8, hot_xs)
+      do i_E = 1, tope % ntabs
+        tope % prob_tables(i_E,1) % g(i_b) % xs_mean = hot_xs(i_E)
+      end do
+      write(temp_str, '(I2)') i_b
+      temp_str = 'broadened-xs-'//trim(adjustl(temp_str))//'.dat'
+      call write_coords(97, temp_str, tope % ntabs, tope % ntabs,&
+           tope % Etabs(:), hot_xs)
+    end do
+    deallocate(hot_xs)
+    deallocate(cold_xs)
+
+    allocate(cold_xs(4))
+    allocate(hot_xs(4))
+    cold_xs(:) = [10.0, 12.0, 16.0, 24.0]
+    call broaden([2.0e4_8, 2.000000001e4_8, 2.000000002e4_8, 2.000000003e4_8],cold_xs,nint(tope % AWR * MASS_NEUTRON),&
+         3000.0_8, hot_xs)
+    print*,cold_xs
+    print*,hot_xs
 
     if (write_urr_tables) close(tab_unit)
     if (write_avg_urr_xs) close(avg_unit)

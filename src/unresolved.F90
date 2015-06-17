@@ -2064,6 +2064,9 @@ contains
       open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-urr-tables.dat')
     if (write_avg_urr_xs) then
       open(unit = avg_unit, file = trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
+#ifdef GIT_SHA1
+      write(UNIT=avg_unit, '(6X,"Git SHA1:",7X,A)') GIT_SHA1
+#endif
       write(avg_unit, '(I6)') tope % ZAI
       write(avg_unit, '(I1)') represent_params
       write(avg_unit, '(ES13.6)') tol_avg_urr

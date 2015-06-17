@@ -1,5 +1,6 @@
 module avg_urr_xs_values
 
+  use constants,  only: N_AVG_URR_GRID
   use error,      only: fatal_error
   use global
   use unresolved, only: Isotope, &
@@ -27,8 +28,9 @@ contains
 !$omp threadprivate(tope)
 
     tope => isotopes(i)
-
     write(zaid_str, '(I6)') tope % ZAI
+
+    ! check that file exists and is readable
     inquire(file = trim(path_avg_urr_xs)&
       //trim(adjustl(zaid_str))//'-avg-urr-xs.dat',&
       exist = file_exists, read = readable)
@@ -41,29 +43,47 @@ contains
         //' is not readable.  Change file permissions with chmod command.')
     end if
 
+    ! open file with average xs values
     open(unit = in, file = &
       trim(path_avg_urr_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
-    read(in, 10) rec
+    
 10  format(A80)
+    ! SHA1
+    read(in, 10) rec
+
+    ! ZAID
+    read(in, 10) rec
     read(rec(1:6), '(I6)') ZAI
+
+    ! parameter energy dependence
     read(in, 10) rec
     read(rec(1:1), '(I1)') E_depend
+
+    ! tolerance on average partial xs max relative uncertainty (1sigma/mean)
     read(in, 10) rec
     read(rec(1:13), '(ES13.6)') tol
-    read(in, 10) rec
     if (ZAI /= tope % ZAI)&
       call fatal_error('ZAID number disagreement')
     if (master)&
       write(*, '(A56,ES13.6)') trim(adjustl(zaid_str))//'-avg-urr-xs.dat'&
       //' was generated with a tolerance of ',tol
+
+    ! read column labels
+    read(in, 10) rec
+
+    ! allocate average xs grids
+    tope % nEavg = N_AVG_URR_GRID
+    allocate(tope % Eavg(N_AVG_URR_GRID))
+    allocate(tope % avg_urr_t(N_AVG_URR_GRID))
+    allocate(tope % avg_urr_n(N_AVG_URR_GRID))
+    allocate(tope % avg_urr_g(N_AVG_URR_GRID))
+    allocate(tope % avg_urr_f(N_AVG_URR_GRID))
+    allocate(tope % avg_urr_x(N_AVG_URR_GRID))
+
+
 20  format(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)
-    allocate(tope % Eavg(50))
-    allocate(tope % avg_urr_t(50))
-    allocate(tope % avg_urr_n(50))
-    allocate(tope % avg_urr_g(50))
-    allocate(tope % avg_urr_f(50))
-    allocate(tope % avg_urr_x(50))
-    do ir = 1, 50
+    ! read in average xs values
+    do ir = 1, N_AVG_URR_GRID
       read(in, 20)&
         tope % Eavg(ir),&
         tope % avg_urr_t(ir),&
@@ -72,8 +92,6 @@ contains
         tope % avg_urr_f(ir),&
         tope % avg_urr_x(ir)
     end do
-
-    tope % nEavg = size(tope % Eavg)
 
     close(in)
 

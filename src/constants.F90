@@ -2,6 +2,9 @@ module constants
 
   implicit none
 
+  ! Number of gridpoints for the average URR cross section grids
+  integer, parameter :: N_AVG_URR_GRID = 50
+
   ! Lower cross section cutoff threshold value [b]
   real(8), parameter :: XS_CUTOFF = 1.0e-14_8
 

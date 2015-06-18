@@ -2,6 +2,8 @@ module constants
 
   implicit none
 
+  integer, parameter :: FALSE = 0
+
   ! Number of gridpoints for the average URR cross section grids
   integer, parameter :: N_AVG_URR_GRID = 50
 

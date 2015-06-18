@@ -367,19 +367,17 @@ contains
       if (associated(tope)) then
         if (p % E >= tope % EL(tope % i_urr) / 1.0E6_8 &
           & .and. p % E <= tope % EH(tope % i_urr) / 1.0E6_8 &
-          & .and. p % E < tope % E_ex2) then
+          & .and. p % E <= (ONE + ENDF_PRECISION) * tope % E_ex2) then
           i_rxn = 1
           do
-!            if (i > nuc % n_reaction) then
-!              call write_particle_restart(p)
-!              call fatal_error("Did not sample any reaction for nuclide " // &
-!                trim(nuc % name))
-!            end if
-            if (nuc % reactions(i_rxn) % MT == 51) exit
+            if (i_rxn > nuc % n_reaction) exit
+            if (nuc % reactions(i_rxn) % MT == 51) then
+              find_rxn = .false.
+              rxn => nuc % reactions(i_rxn)
+              exit
+            end if
             i_rxn = i_rxn + 1
           end do
-          rxn => nuc % reactions(i_rxn)
-          find_rxn = .false.
         end if
       end if
 

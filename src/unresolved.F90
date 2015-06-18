@@ -1389,7 +1389,9 @@ contains
                avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
-          if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
+          if (avg_urr_x_xs > ZERO&
+               .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+               .and. competitive)&
                tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
           ! elastic scattering xs
@@ -1522,7 +1524,9 @@ contains
             & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
-          if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
+          if (avg_urr_x_xs > ZERO&
+               .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+               .and. competitive)&
                tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
           ! elastic scattering xs
@@ -1659,7 +1663,9 @@ contains
           & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
         ! competitive xs
-        if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
+        if (avg_urr_x_xs > ZERO&
+             .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+             .and. competitive)&
              tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
         ! elastic scattering xs
@@ -1909,9 +1915,11 @@ contains
       inelastic_xs = micro_xs(i_nuc) % total &
            - micro_xs(i_nuc) % absorption &
            - micro_xs(i_nuc) % elastic
-      if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
-          ! self-shielded treatment of competitive inelastic xs
-          inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
+           ! self-shielded treatment of competitive inelastic xs
+           inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
 
       ! elastic scattering xs
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
@@ -1963,7 +1971,8 @@ contains
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
     type(Resonance) :: res ! resonance object
-    character(6) :: zaid_str ! ENDF-6 MAT number as a string
+    character(80) :: sha1     ! Git SHA1
+    character(6)  :: zaid_str ! ENDF-6 MAT number as a string
     integer :: i_b    ! batch index
     integer :: i_band ! probability band index
     integer :: i_E    ! energy grid index
@@ -1997,9 +2006,8 @@ contains
       open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-urr-tables.dat')
     if (write_avg_urr_xs) then
       open(unit = avg_unit, file = trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
-#ifdef GIT_SHA1
-      write(UNIT=avg_unit, '(6X,"Git SHA1:",7X,A)') GIT_SHA1
-#endif
+      call get_environment_variable("GIT_SHA1", sha1)
+      write(avg_unit, '("Git SHA1:",1X,A70)') trim(adjustl(sha1))
       write(avg_unit, '(I6)') tope % ZAI
       write(avg_unit, '(I1)') represent_params
       write(avg_unit, '(ES13.6)') tol_avg_urr
@@ -2619,9 +2627,11 @@ contains
       inelastic_xs = micro_xs(i_nuc) % total &
            - micro_xs(i_nuc) % absorption &
            - micro_xs(i_nuc) % elastic
-      if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
-          ! self-shielded treatment of competitive inelastic cross section
-          inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
+           ! self-shielded treatment of competitive inelastic cross section
+           inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
 
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
            * micro_xs(i_nuc) % elastic
@@ -2808,7 +2818,9 @@ contains
 
       ! competitive xs
       ! infinite-dilute treatment of competitive xs
-      if (avg_urr_x_xs > ZERO .and. tope%E < tope%E_ex2 .and. competitive)&
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
            ! self-shielded treatment of competitive inelastic xs
            inelast = xs_x / avg_urr_x_xs * inelast
 
@@ -3121,7 +3133,7 @@ contains
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
-      if (tope % E >= tope % E_ex2) then
+      if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
         ! two competitive reactions possible, can't calculate an energy-dependent
         ! width because it depends on the two (unprovided) reaction partial widths
         Gam_x_n = this % Gam_x
@@ -3177,7 +3189,7 @@ contains
     end if
 
     ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+    if (Gam_x_n > ZERO .and. tope % E <= (ONE+ENDF_PRECISION) * tope % E_ex2) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
@@ -3233,7 +3245,7 @@ contains
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
-      if (tope % E >= tope % E_ex2) then
+      if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
         ! two competitive reactions possible, can't calculate an energy-dependent
         ! width because it depends on the two (unprovided) reaction partial widths
         Gam_x_n = this % Gam_x
@@ -3293,7 +3305,7 @@ contains
     end if
 
     ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+    if (Gam_x_n > ZERO .and. tope % E <= (ONE+ENDF_PRECISION) * tope % E_ex2) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
@@ -3358,7 +3370,7 @@ contains
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
                * tope % P_l_n / P_l_lam
 
-          if (tope % E >= tope % E_ex2) then
+          if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths
@@ -3456,7 +3468,7 @@ contains
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
                * tope % P_l_n / P_l_lam
 
-          if (tope % E >= tope % E_ex2) then
+          if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths

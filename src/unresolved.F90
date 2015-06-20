@@ -1373,7 +1373,7 @@ contains
           ! add resonance xs component to background
           call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
-        ! multipy the self-shielding factors by the infinite-dilute xs
+        ! multiply the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
 
           if (tope % E > tope % Eavg(tope % nEavg)) then
@@ -2786,7 +2786,8 @@ contains
 
     ! competitive xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-         tope % prob_tables(i_E, iT) % x(i_low) % xs_mean > ZERO) then
+         (tope % prob_tables(i_E, iT) % x(i_low) % xs_mean > ZERO&
+         .and. tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean > ZERO)) then
       xs_x = interpolator(f, &
            tope % prob_tables(i_E, iT) % x(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean, tope % INT)
@@ -3188,8 +3189,7 @@ contains
       this % dxs_f = ZERO
     end if
 
-    ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E <= (ONE+ENDF_PRECISION) * tope % E_ex2) then
+    if (Gam_x_n > ZERO) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
@@ -3304,8 +3304,7 @@ contains
       this % dxs_f = ZERO
     end if
 
-    ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E <= (ONE+ENDF_PRECISION) * tope % E_ex2) then
+    if (Gam_x_n > ZERO) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
@@ -4613,7 +4612,8 @@ contains
     tope => isotopes(iso)
 
     ! infinite-dilute elastic scattering
-    if (tope % avg_urr_n(iavg) > ZERO) then
+    if (tope % avg_urr_n(iavg) > ZERO&
+         .and. tope % avg_urr_n(iavg + 1) > ZERO) then
       n_xs = interpolator(f, &
         & tope % avg_urr_n(iavg), tope % avg_urr_n(iavg + 1), tope % INT)
     else
@@ -4621,7 +4621,9 @@ contains
     end if
 
     ! infinite-dilute fission
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_f(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_f(iavg) > ZERO&
+         .and. tope % avg_urr_f(i_avg + 1) > ZERO)) then
       f_xs = interpolator(f, &
         & tope % avg_urr_f(iavg), tope % avg_urr_f(iavg + 1), tope % INT)
     else
@@ -4629,7 +4631,9 @@ contains
     end if
 
     ! infinite-dilute capture
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_g(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_g(iavg) > ZERO&
+         .and. tope % avg_urr_g(i_avg + 1) > ZERO)) then
       g_xs = interpolator(f, &
         & tope % avg_urr_g(iavg), tope % avg_urr_g(iavg + 1), tope % INT)
     else
@@ -4637,7 +4641,9 @@ contains
     end if
 
     ! infinite-dilute competitive reaction xs
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_x(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_x(iavg) > ZERO&
+         .and. tope % avg_urr_x(i_avg + 1) > ZERO)) then
       x_xs = interpolator(f, &
         & tope % avg_urr_x(iavg), tope % avg_urr_x(iavg + 1), tope % INT)
     else
@@ -4732,24 +4738,19 @@ contains
     if (tope % point_urr_xs) then
 
       ! elastic scattering xs
-      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) &
-        & + n % xs
+      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) + n % xs
 
       ! radiative capture xs
-      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) &
-        & + g % xs
+      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) + g % xs
 
       ! fission xs
-      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) &
-        & + f % xs
+      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) + f % xs
 
       ! competitive first level inelastic scattering xs
-      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) &
-        & + x % xs
+      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) + x % xs
 
       ! total xs
-      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) &
-        & + t % xs
+      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) + t % xs
 
     else
 

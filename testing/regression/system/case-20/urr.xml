@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <urr>
- 
+
   <ENDF-6_filepath>
     /home/walshjon/data/evaluations/endf-7.1/neutrons/
   </ENDF-6_filepath>
   <avg_xs_filepath>
-    /home/walshjon/data/avg-urr-xs/endf-7.1/
+    /home/walshjon/data/avg-urr-xs/endf-7.1/slbw/
   </avg_xs_filepath>
   <formalism>slbw</formalism>
   <w_function>quick_w</w_function>

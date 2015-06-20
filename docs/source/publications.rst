@@ -10,9 +10,8 @@ Overviews
 
 - Paul K. Romano, Nicholas E. Horelik, Bryan R. Herman, Adam G. Nelson, Benoit
   Forget, and Kord Smith, "OpenMC: A State-of-the-Art Monte Carlo Code for
-  Research and Development," *Proc. Joint International Conference on
-  Supercomputing in Nuclear Applications and Monte Carlo*, Paris, France,
-  Oct. 27--31 (2013). `<http://dx.doi.org/10.1051/snamc/201406016>`_
+  Research and Development," *Ann. Nucl. Energy*, **82**, 90--97
+  (2015). `<http://dx.doi.org/10.1016/j.anucene.2014.07.048>`_
 
 - Paul K. Romano, Bryan R. Herman, Nicholas E. Horelik, Benoit Forget, Kord
   Smith, and Andrew R. Siegel, "Progress and Status of the OpenMC Monte Carlo

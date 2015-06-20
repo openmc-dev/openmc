@@ -3,6 +3,7 @@ module tally
   use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
+  use distribcell,      only: get_distribcell_instance
   use geometry_header
   use global
   use math,             only: t_percentile, calc_pn, calc_rn
@@ -143,11 +144,24 @@ contains
         end if
 
 
-      case (SCORE_SCATTER_PN, SCORE_SCATTER_YN)
+      case (SCORE_SCATTER_PN)
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
           i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! Since only scattering events make it here, again we can use
+        ! the weight entering the collision as the estimator for the
+        ! reaction rate
+        score = p % last_wgt
+
+
+      case (SCORE_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
         ! Since only scattering events make it here, again we can use
@@ -166,11 +180,24 @@ contains
         score = p % wgt
 
 
-      case (SCORE_NU_SCATTER_PN, SCORE_NU_SCATTER_YN)
+      case (SCORE_NU_SCATTER_PN)
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
           i = i + t % moment_order(i)
+          cycle SCORE_LOOP
+        end if
+        ! For scattering production, we need to use the post-collision
+        ! weight as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
+        score = p % wgt
+
+
+      case (SCORE_NU_SCATTER_YN)
+        ! Only analog estimators are available.
+        ! Skip any event where the particle didn't scatter
+        if (p % event /= EVENT_SCATTER) then
+          i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the post-collision
@@ -1112,7 +1139,6 @@ contains
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
-    integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
@@ -1158,21 +1184,9 @@ contains
 
       case (FILTER_DISTRIBCELL)
         ! determine next distribcell bin
-        matching_bins(i) = NO_BIN_FOUND
-        coord => p % coord0
-        offset = 0
-        do while(associated(coord))
-          if (associated(coord % mapping)) then
-            offset = offset + coord % mapping(t % filters(i) % offset)
-          end if
-          if (t % filters(i) % int_bins(1) == coord % cell) then
-            matching_bins(i) = offset + 1
-            exit
-          end if
-          coord => coord % next
-        end do
-        nullify(coord)
-        
+        matching_bins(i) = get_distribcell_instance(p, &
+            t % filters(i) % offset, t % filters(i) % int_bins(1))
+
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
         matching_bins(i) = get_next_bin(FILTER_CELLBORN, &

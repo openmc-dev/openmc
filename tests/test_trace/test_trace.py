@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -23,7 +24,7 @@ def test_run():
     print(stdout)
     returncode = proc.returncode
     assert returncode == 0, 'OpenMC did not exit successfully.'
-    assert stdout.find('Simulating Particle 453') != -1
+    assert stdout.find(b'Simulating Particle 453') != -1
 
 def test_created_statepoint():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
@@ -33,7 +34,7 @@ def test_created_statepoint():
 
 def test_results():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

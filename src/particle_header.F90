@@ -28,9 +28,6 @@ module particle_header
     ! Is this level rotated?
     logical :: rotated = .false.
 
-    ! Distributed Mapping Info
-    integer, pointer :: mapping(:) => null()
-
     ! Pointer to next (more local) set of coordinates
     type(LocalCoord), pointer :: next => null()
   end type LocalCoord
@@ -106,7 +103,6 @@ module particle_header
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
-    procedure :: sum_maps => sum_maps
   end type Particle
 
 !===============================================================================
@@ -162,9 +158,6 @@ contains
     if (associated(coord)) then
       ! recursively deallocate lower coordinates
       if (associated(coord % next)) call deallocate_coord(coord%next)
-
-      ! deallocate original coordinate
-      if (associated(coord % mapping)) deallocate(coord % mapping)
 
       ! deallocate this coord
       deallocate(coord)
@@ -307,41 +300,5 @@ contains
     nullify(this % coord)
 
   end subroutine clear_particle  
- 
-!===============================================================================
-! SUM_MAPS Sums up the offsets for all levels to determine the instance
-! of the current material
-!===============================================================================
-
-  subroutine sum_maps(this, n_maps)
-
-    class(Particle) :: this
-    integer, intent(in) :: n_maps
-
-    integer :: i
-    type(LocalCoord), pointer, save :: coord => null()
-
-    if (.not. allocated(this % mapping)) then
-      allocate(this % mapping(n_maps))
-    end if
-
-    do i = 1, n_maps    
-      this % mapping(i) = 1      
-    end do
-
-    coord => this % coord0
-
-    do while(associated(coord))    
-      if (associated(coord % mapping)) then       
-        ! The last map should always be 1, so we don't touch it here 
-        do i = 1, n_maps - 1
-         this % mapping(i) = this % mapping(i) + coord % mapping(i)
-        end do
-      end if
-      coord => coord % next
-    end do
-    nullify(coord)
-
-  end subroutine sum_maps
 
 end module particle_header

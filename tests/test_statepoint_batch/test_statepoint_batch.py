@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -39,7 +40,7 @@ def test_statepoints_exist():
 
 def test_results():
     statepoint = glob.glob(os.path.join(cwd, 'statepoint.09.*'))
-    call(['python', 'results.py', statepoint[0]])
+    call([sys.executable, 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

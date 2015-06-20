@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 import glob
@@ -79,7 +80,7 @@ def test_results():
     statepoint.append(glob.glob(cwd + '/case-1/statepoint.1.*'))
     statepoint.append(glob.glob(cwd + '/case-2/statepoint.1.*'))
     statepoint.append(glob.glob(cwd + '/case-3/statepoint.3.*'))
-    call(['python', 'results.py', statepoint.pop()[0], statepoint.pop()[0], statepoint.pop()[0]])
+    call([sys.executable, 'results.py', statepoint.pop()[0], statepoint.pop()[0], statepoint.pop()[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

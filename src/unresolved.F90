@@ -4623,7 +4623,7 @@ contains
     ! infinite-dilute fission
     if (tope % INT == LINEAR_LINEAR&
          .or. (tope % avg_urr_f(iavg) > ZERO&
-         .and. tope % avg_urr_f(i_avg + 1) > ZERO)) then
+         .and. tope % avg_urr_f(iavg + 1) > ZERO)) then
       f_xs = interpolator(f, &
         & tope % avg_urr_f(iavg), tope % avg_urr_f(iavg + 1), tope % INT)
     else
@@ -4633,7 +4633,7 @@ contains
     ! infinite-dilute capture
     if (tope % INT == LINEAR_LINEAR&
          .or. (tope % avg_urr_g(iavg) > ZERO&
-         .and. tope % avg_urr_g(i_avg + 1) > ZERO)) then
+         .and. tope % avg_urr_g(iavg + 1) > ZERO)) then
       g_xs = interpolator(f, &
         & tope % avg_urr_g(iavg), tope % avg_urr_g(iavg + 1), tope % INT)
     else
@@ -4643,7 +4643,7 @@ contains
     ! infinite-dilute competitive reaction xs
     if (tope % INT == LINEAR_LINEAR&
          .or. (tope % avg_urr_x(iavg) > ZERO&
-         .and. tope % avg_urr_x(i_avg + 1) > ZERO)) then
+         .and. tope % avg_urr_x(iavg + 1) > ZERO)) then
       x_xs = interpolator(f, &
         & tope % avg_urr_x(iavg), tope % avg_urr_x(iavg + 1), tope % INT)
     else

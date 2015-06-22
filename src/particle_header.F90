@@ -140,6 +140,7 @@ module particle_header
     integer    :: material
     integer    :: last_material
     integer    :: last_inst
+    integer    :: inst
 
   end type ParticleBuffer
 
@@ -186,6 +187,7 @@ contains
     this % cell_born       = NONE
     this % material        = NONE
     this % last_material   = NONE
+    this % inst            = NONE
     this % last_inst       = NONE
     this % wgt             = ONE
     this % last_wgt        = ONE
@@ -237,6 +239,7 @@ contains
     buf % material        = part % material
     buf % last_material   = part % last_material
     buf % last_inst       = part % last_inst
+    buf % inst            = part % inst
     buf % prn_seed        = part % prn_seed
     buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
@@ -279,6 +282,7 @@ contains
     part % material        = buf % material
     part % last_material   = buf % last_material
     part % last_inst       = buf % last_inst
+    part % inst            = buf % inst
     part % prn_seed        = buf % prn_seed
     part % xs_seed         = buf % xs_seed
     part % stored_distance = buf % stored_distance

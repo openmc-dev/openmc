@@ -216,9 +216,9 @@ contains
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
     integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
     integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
-    integer                   :: part_blocks(25) ! ParticleBuffer counts
-    integer                   :: part_types(25)  ! ParticleBuffer datatypes
-    integer(MPI_ADDRESS_KIND) :: part_disp(25)   ! ParticleBuffer displacements
+    integer                   :: part_blocks(26) ! ParticleBuffer counts
+    integer                   :: part_types(26)  ! ParticleBuffer datatypes
+    integer(MPI_ADDRESS_KIND) :: part_disp(26)   ! ParticleBuffer displacements
     type(Bank)           :: b
     type(TallyResult)    :: tr
     type(ParticleBuffer) :: ptmp
@@ -316,19 +316,20 @@ contains
     call MPI_GET_ADDRESS(ptmp % material,        part_disp(23), mpi_err)
     call MPI_GET_ADDRESS(ptmp % last_material,   part_disp(24), mpi_err)
     call MPI_GET_ADDRESS(ptmp % last_inst,       part_disp(25), mpi_err)
+    call MPI_GET_ADDRESS(ptmp % inst,            part_disp(26), mpi_err)
 
     ! Adjust displacements 
     part_disp = part_disp - part_disp(1)
 
     ! Define particle type
     part_blocks = (/ 1, N_STREAMS, N_STREAMS, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, &
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
     part_types = (/ MPI_INTEGER8, MPI_INTEGER8, MPI_INTEGER8, MPI_REAL8, &
         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, &
         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER, MPI_INTEGER, &
         MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
-        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
-    call MPI_TYPE_CREATE_STRUCT(25, part_blocks, part_disp, part_types, &
+        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
+    call MPI_TYPE_CREATE_STRUCT(26, part_blocks, part_disp, part_types, &
         MPI_PARTICLEBUFFER, mpi_err)
 
     ! Commit derived type for particles

@@ -944,7 +944,6 @@ contains
     integer :: i_l  ! orbital quantum number index
     integer :: L    ! orbital quantum number
     integer :: i_J  ! total angular momentum quantum number index
-    integer :: i_E  ! energy region index
     integer :: i_ES ! tabulated fission width energy grid index
     real(8) :: A    ! isotope/neutron mass ratio
 !$omp threadprivate(tope)
@@ -1053,11 +1052,17 @@ contains
         call check_l_number(L, i_l)
         read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % data(i_J)
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % data(i_J) % data(:)
+        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % data(i_J) % data(1)
+        tope % D_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % D_mean(i_l + 1) % data(i_J) % data(1)
         read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % data(i_J)
         read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % data(i_J)
-        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % data(i_J) % data(:)
-        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % data(i_J) % data(:)
+        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % data(i_J) % data(1)
+        tope % GN0_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % GN0_mean(i_l + 1) % data(i_J) % data(1)
+        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % data(i_J) % data(1)
+        tope % GG_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % GG_mean(i_l + 1) % data(i_J) % data(1)
         tope % GX_mean(i_l + 1) % data(i_J) % data(:) = ZERO
         tope % DOFG(i_l + 1) % data(i_J) = ZERO
         tope % DOFX(i_l + 1) % data(i_J) = ZERO

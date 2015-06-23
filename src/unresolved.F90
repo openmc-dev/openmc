@@ -1268,9 +1268,17 @@ contains
                 ! loop over contributing resolved resonance region resonances
                 LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
                   i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
+                  
+                  ! fewer RRR resonances w/ this J value then needed;
+                  ! just generate URR resonances instead
+!TODO: take however many RRR resonances there actually are, even if too few
+                  if (i_rrr_res == 0) exit
+                  
+                  ! add this resolved resonance
                   res % i_res = res % i_res + 1
                   call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                        tope % i_urr - 1)
+                
                 end do LOC_RRR_RESONANCES_LOOP
               end if
 
@@ -1768,7 +1776,7 @@ contains
       ! user-specified realization
       i_real = i_real_user
     end if
-
+    
     ! Get resonance parameters for a local realization about E_n
     ! loop over orbital quantum numbers
     LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
@@ -1799,7 +1807,7 @@ contains
         end if
 
         ! loop over the addition of resonances to this ladder
-        if (i_low - n_res/2 < 1) then
+        if (i_low - n_res/2 + 1 < 1) then
           ! if we're near the lower end of the URR, need to incorporate
           ! resolved resonance region resonances in order to fix-up
           ! (i.e. smooth out) cross sections at the RRR-URR crossover
@@ -1809,14 +1817,22 @@ contains
           if (i_l <= tope % NLS(tope % i_urr - 1)) then
 
             ! how many RRR resonances are contributing
-            n_rrr_res = abs(i_low - n_res/2) + 1
+            n_rrr_res = abs(i_low - n_res/2)
 
             ! loop over contributing resolved resonance region resonances
             LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
               i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
+                  
+              ! fewer RRR resonances w/ this J value then needed;
+              ! just generate URR resonances instead
+!TODO: take however many RRR resonances there actually are, even if too few
+              if (i_rrr_res == 0) exit
+                  
+              ! add this resolved resonance
               res % i_res = res % i_res + 1
               call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                    tope % i_urr - 1)
+            
             end do LOC_RRR_RESONANCES_LOOP
           end if
 
@@ -1829,7 +1845,7 @@ contains
         else
           ! we're firmly in the URR and can ignore anything going on in
           ! the upper resolved resonance region energies
-          LOC_URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+          LOC_URR_LOOP: do i_res = i_low - n_res/2 + 1, i_low + n_res/2
             res % i_res = res % i_res + 1
             call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
           end do LOC_URR_LOOP
@@ -4307,6 +4323,9 @@ contains
       call fatal_error('Unrecognized/unsupported RRR formalism')
     end select
 
+    ! if there aren't enough contributing RRR resonances
+    if (cnt_res < n_rrr_res) i_res = 0
+
   end function rrr_res
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -4486,7 +4505,15 @@ contains
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (MLBW)
-        res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+        if (i_res > size(tope % mlbw_resonances(i_l) % E_lam(:))) then
+          i_res = size(tope % mlbw_resonances(i_l) % E_lam(:))
+          res % E_lam = res % E_lam&
+               + (tope % mlbw_resonances(i_l) % E_lam(i_res)&
+               -  tope % mlbw_resonances(i_l) % E_lam(i_res - 1))
+        else
+          res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+        end if
+        
         res % Gam_n = tope % mlbw_resonances(i_l) % GN(i_res)
         res % Gam_g = tope % mlbw_resonances(i_l) % GG(i_res)
         res % Gam_f = tope % mlbw_resonances(i_l) % GF(i_res)
@@ -4494,7 +4521,15 @@ contains
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (REICH_MOORE)
-        res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+        if (i_res > size(tope % rm_resonances(i_l) % E_lam(:))) then
+          i_res = size(tope % rm_resonances(i_l) % E_lam(:))
+          res % E_lam = res % E_lam&
+               + (tope % rm_resonances(i_l) % E_lam(i_res)&
+               -  tope % rm_resonances(i_l) % E_lam(i_res - 1))
+        else
+          res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+        end if
+
         res % Gam_n = tope % rm_resonances(i_l) % GN(i_res)
         res % Gam_g = tope % rm_resonances(i_l) % GG(i_res)
         res % Gam_f = tope % rm_resonances(i_l) % GFA(i_res)&

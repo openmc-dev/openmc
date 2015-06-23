@@ -4851,7 +4851,7 @@ contains
 
       ! fission xs
       if (.not. (allocated(tope % MF3_f_e))) then
-        micro_xs(i_nuc) % fission = ZERO
+        micro_xs(i_nuc) % fission = f % xs
       else
         if (tope % E < tope % MF3_f_e(1)) then
           micro_xs(i_nuc) % fission = ZERO

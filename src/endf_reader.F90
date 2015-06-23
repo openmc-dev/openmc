@@ -192,7 +192,7 @@ contains
 
       ! read energy range and formalism-dependent resonance subsection data
       call read_resonance_subsection(i, i_ER, &
-        & tope % LRU(i_ER), tope % LRF(i_ER))
+        & tope % LRU(i_ER), tope % LRF(i_ER), LFW)
 
     end do
 
@@ -577,12 +577,13 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_resonance_subsection(i, i_ER, LRU, LRF)
+  subroutine read_resonance_subsection(i, i_ER, LRU, LRF, LFW)
 
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: LRU  ! resolved (1) or unresolved (2) parameters
     integer :: LRF  ! ENDF-6 resonance formalism flag
+    integer :: LFW  ! ENDF-6 fission widths flag
 
     ! select energy range
     select case(LRU)
@@ -590,7 +591,7 @@ contains
     ! only the scattering radius is given (LRF=0; NLS=0; LFW=0)
     case(0)
 
-      call fatal_error('Only scattering radius given (LRU = 0) in &
+      call fatal_error('Scattering radius only (LRU = 0) not supported in &
         &'//trim(filename))
 
     ! resolved parameters
@@ -634,12 +635,14 @@ contains
 
       ! only fission widths are energy-dependent
       case(1)
-        call fatal_error('LRF values other than 2 are not supported in '&
-          & //trim(filename))
+        if (LFW == 0) call fatal_error('Energy-independent parameters&
+             & w/o fission widths (LRF = 1, LFW = 0) in '//trim(filename)//&
+             &' not yet supported')
+        call read_urr_slbw_parameters_lrf1(i, i_ER)
 
       ! all parameters are energy-dependent
       case(2)
-        call read_urr_slbw_parameters(i, i_ER)
+        call read_urr_slbw_parameters_lrf2(i, i_ER)
 
       ! default case
       case default
@@ -927,11 +930,179 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_URR_SLBW_PARAMETERS reads in unresolved resonance region parameters
+! READ_URR_SLBW_PARAMETERS_LRF1 reads in unresolved resonance region parameters
+! for the LRF = 1 option (only fission widths are energy-dependent)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_urr_slbw_parameters(i, i_ER)
+  subroutine read_urr_slbw_parameters_lrf1(i, i_ER)
+
+    type(Isotope), pointer :: tope => null() ! isotope pointer
+    character(80) :: rec ! ENDF-6 file record
+    integer :: i    ! index in global isotopes array
+    integer :: i_ER ! energy range index
+    integer :: i_l  ! orbital quantum number index
+    integer :: L    ! orbital quantum number
+    integer :: i_J  ! total angular momentum quantum number index
+    integer :: i_ES ! tabulated fission width energy grid index
+    real(8) :: A    ! isotope/neutron mass ratio
+!$omp threadprivate(tope)
+
+    tope => isotopes(i)
+
+    ! this is forced by the ENDF-6 format when LRF = 1 and LFW = 1
+    tope % INT = LINEAR_LINEAR
+
+    ! read first line of energy range subsection
+    read(in, 10) rec
+10  format(A80)
+    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+! TODO: don't overwrite the resolved value
+    call tope % channel_radius(i_ER)
+    read(rec(23:33), '(I11)')   tope % LSSF
+    read(rec(45:55), '(I11)')   tope % NE
+    read(rec(56:66), '(I11)')   tope % NLS(i_ER)
+    if (tope % NLS(i_ER) > 3) &
+         call fatal_error('URR parameters given for a spin sequence higher than&
+         & d-wave')
+
+    ! allocate number of total angular momenta values for each l
+    allocate(tope % NJS(tope % NLS(i_ER)))
+
+    ! allocate total angular momentua
+    allocate(tope % AJ(tope % NLS(i_ER)))
+
+    ! allocate degrees of freedom for partial widths
+    allocate(tope % DOFX(tope % NLS(i_ER)))
+    allocate(tope % DOFN(tope % NLS(i_ER)))
+    allocate(tope % DOFG(tope % NLS(i_ER)))
+    allocate(tope % DOFF(tope % NLS(i_ER)))
+
+    ! allocate fission width energies
+    allocate(tope % ES(tope % NE))
+    allocate(tope % D_mean  (tope % NLS(i_ER)))
+    allocate(tope % GN0_mean(tope % NLS(i_ER)))
+    allocate(tope % GG_mean (tope % NLS(i_ER)))
+    allocate(tope % GF_mean (tope % NLS(i_ER)))
+    allocate(tope % GX_mean (tope % NLS(i_ER)))
+    if (tope % LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
+
+    i_ES = 1
+    do
+      read(in, 10) rec
+      read(rec( 1:11), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+      read(rec(12:22), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+      read(rec(23:33), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+      read(rec(34:44), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+      read(rec(45:55), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+      read(rec(56:66), '(E11.0)') tope % ES(i_ES)
+      if (i_ES == tope % NE) exit
+      i_ES = i_ES + 1
+    end do
+
+    ! loop over orbital quantum numbers
+    do i_l = 0, tope % NLS(i_ER) - 1
+      read(in, 10) rec
+      read(rec(1:11),  '(E11.0)') A
+      read(rec(23:33),   '(I11)') L
+      read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
+
+      ! check mass ratios
+      call check_mass(A, tope % AWR)
+
+      ! check orbital quantum number
+      call check_l_number(L, i_l)
+
+      ! allocate total angular momenta
+      allocate(tope % AJ(i_l + 1) % data(tope % NJS(i_l + 1)))
+      
+      ! allocate degress of freedom for partial widths
+      allocate(tope % DOFX(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFN(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFG(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFF(i_l + 1) % data(tope % NJS(i_l + 1)))
+
+      allocate(tope % D_mean  (i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % GN0_mean(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % GG_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % GF_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % GX_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+
+      ! loop over total angular momenta
+      do i_J = 1, tope % NJS(i_l + 1)
+        allocate(tope % D_mean  (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GN0_mean(i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GG_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GF_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % GX_mean (i_l + 1) % data(i_J) % data(tope % NE))
+
+        read(in, 10) rec
+        read(rec(23:33), '(I11)') L
+        call check_l_number(L, i_l)
+        read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % data(i_J)
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % data(i_J) % data(1)
+        tope % D_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % D_mean(i_l + 1) % data(i_J) % data(1)
+        read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % data(i_J)
+        read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % data(i_J)
+        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % data(i_J) % data(1)
+        tope % GN0_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % GN0_mean(i_l + 1) % data(i_J) % data(1)
+        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % data(i_J) % data(1)
+        tope % GG_mean(i_l + 1) % data(i_J) % data(:)&
+             = tope % GG_mean(i_l + 1) % data(i_J) % data(1)
+        tope % GX_mean(i_l + 1) % data(i_J) % data(:) = ZERO
+        tope % DOFG(i_l + 1) % data(i_J) = ZERO
+        tope % DOFX(i_l + 1) % data(i_J) = ZERO
+
+        ! loop over energies for which data are tabulated
+        i_ES = 1
+        do
+          read(in, 10) rec
+          read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+          read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+          read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+          read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+          read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+          read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          if (i_ES == tope % NE) exit
+          i_ES = i_ES + 1
+        end do
+      end do
+    end do
+
+  end subroutine read_urr_slbw_parameters_lrf1
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! READ_URR_SLBW_PARAMETERS_LRF2 reads in unresolved resonance region parameters
+! for the LRF = 2 option (allow energy-dependence for all parameters)
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine read_urr_slbw_parameters_lrf2(i, i_ER)
 
     type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
@@ -1047,7 +1218,7 @@ contains
       end do
     end do
 
-  end subroutine read_urr_slbw_parameters
+  end subroutine read_urr_slbw_parameters_lrf2
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -1177,8 +1348,7 @@ contains
     select case(LFW)
     ! average URR fission widths are not given
     case(0)
-      if (master) call warning('Average URR fission widths are not given &
-        &(LFW = 0) in '//trim(filename))
+      continue
     ! average URR fission widths are given
     case(1)
       continue
@@ -1234,12 +1404,12 @@ contains
       case(1)
         continue
       case default
-        if (master) call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO &
-          &is 0 in '//trim(filename))
+        if (master) call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO&
+             & is 0 in '//trim(filename))
       end select
     case(1)
-      if (master) call fatal_error('ENDF-6 NRO flag value 1 not supported in '&
-        &//trim(filename))
+      if (master) call fatal_error('Energy-dependent scattering radius in '&
+           &//trim(filename)//' not yet supported')
       select case(naps_val)
       case(0)
         continue
@@ -1248,12 +1418,12 @@ contains
       case(2)
         continue
       case default
-        if (master) call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when &
-          &NRO is 1 in '//trim(filename))
+        if (master) call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when&
+             & NRO is 1 in '//trim(filename))
       end select
     case default
       if (master) call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '&
-        &//trim(filename))
+           &//trim(filename))
     end select
 
   end subroutine check_radius_flags

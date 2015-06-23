@@ -3589,7 +3589,9 @@ contains
 
       if (check_for_node(prob_table_node, "background")) then
         call get_node_value(prob_table_node, "background", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+        if (trim(adjustl(to_lower(temp_str))) == 'false') then
+          background = FALSE
+        else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
           background = ENDFFILE
         else if (trim(adjustl(to_lower(temp_str))) == 'ace') then
           background = ACEFILE

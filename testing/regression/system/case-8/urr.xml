@@ -5,7 +5,7 @@
     /home/walshjon/data/evaluations/endf-7.1/neutrons/
   </ENDF-6_filepath>
   <avg_xs_filepath>
-    /home/walshjon/data/avg-urr-xs/endf-7.1/
+    /home/walshjon/data/avg-urr-xs/endf-7.1/mlbw/
   </avg_xs_filepath>
   <formalism>mlbw</formalism>
   <w_function>quick_w</w_function>
@@ -19,7 +19,7 @@
   <nuclide zaid="92235" endf="n-092_U_235.endf" />
   <nuclide zaid="92238" endf="n-092_U_238.endf" />
   <nuclide zaid="92234" endf="n-092_U_234.endf" />
-  <nuclide zaid="92236" endf="n-092_U_236.endf" />  
+  <nuclide zaid="92236" endf="n-092_U_236.endf" />
 
   <on_the_fly>
     <frequency>event</frequency>

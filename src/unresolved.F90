@@ -45,7 +45,6 @@ module unresolved
   real(8), allocatable :: xs_bands(:) ! probability table xs band boundaries
   character(MAX_FILE_LEN) :: path_avg_urr_xs ! path to averaged URR xs files
   character(80), allocatable :: endf_files(:) ! list of ENDF-6 filenames
-!$omp threadprivate(i_real)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -272,6 +271,23 @@ module unresolved
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
+! XSSAMPLE is an object containing a single cross section value for the elastic,
+! capture, fission, competitive, and total reactions
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+ 
+  type xsSample
+
+    real(8) :: t
+    real(8) :: n
+    real(8) :: g
+    real(8) :: f
+    real(8) :: x
+
+  end type xsSample
+  
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
 ! ISOTOPE is an object containing data for a single isotope with a URR that is
 ! to be processed
 !
@@ -379,6 +395,7 @@ module unresolved
     integer :: ntabs                 ! number of probability tables (energies)
     real(8), allocatable :: Etabs(:) ! probability table energies
     type(ProbabilityTable), allocatable :: prob_tables(:,:)
+    type(xsSample), allocatable :: xs_samples(:,:)
 
     ! vectors of URR resonances for a given (realization, L, J)
     type(SLBWResonances), allocatable :: urr_resonances_tmp(:,:,:)
@@ -494,19 +511,8 @@ module unresolved
 
   end type Isotope
 
-  type xsSample
-
-    real(8) :: t
-    real(8) :: n
-    real(8) :: g
-    real(8) :: f
-    real(8) :: x
-
-  end type xsSample
-  
   type(Isotope), allocatable, target :: isotopes(:)
-  type(xsSample), allocatable :: xs_samples(:)
-  type(xsSample), allocatable :: xs_samples_tmp(:)
+  type(xsSample), allocatable :: xs_samples_tmp(:,:)
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -514,31 +520,451 @@ module unresolved
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-! TODO: extend tabulated values beyond Mathematica's precision
-  ! tabulated chi-square distribution for 1-4 degrees of freedom with values
-  ! taken to preserve integral probabilities for equiprobable bins
-  real(8), dimension(20,4), parameter :: chi2 = reshape((/&
-     & 1.31003e-3_8,  9.19501e-3_8, 0.0250905e0_8, 0.049254e0_8, &
-     & 0.0820892e0_8, 0.124169e0_8, 0.176268e0_8,  0.239417e0_8, &
-     & 0.314977e0_8,  0.404749e0_8, 0.511145e0_8,  0.637461e0_8, &
-     & 0.788315e0_8,  0.970419e0_8, 1.194e0_8,     1.47573e0_8,  &
-     & 1.84547e0_8,   2.36522e0_8,  3.20371e0_8,   5.58201e0_8,  &
-     & 0.0508548e0_8, 0.156167e0_8, 0.267335e0_8,  0.38505e0_8,  &
-     & 0.510131e0_8,  0.643564e0_8, 0.786543e0_8,  0.940541e0_8, &
-     & 1.1074e0_8,    1.28947e0_8,  1.48981e0_8,   1.71249e0_8,  &
-     & 1.96314e0_8,   2.24984e0_8,  2.58473e0_8,   2.98744e0_8,  &
-     & 3.49278e0_8,   4.17238e0_8,  5.21888e0_8,   7.99146e0_8,  &
-     & 0.206832e0_8,  0.470719e0_8, 0.691933e0_8,  0.901674e0_8, &
-     & 1.10868e0_8,   1.31765e0_8,  1.53193e0_8,   1.75444e0_8,  &
-     & 1.98812e0_8,   2.23621e0_8,  2.50257e0_8,   2.79213e0_8,  &
-     & 3.11143e0_8,   3.46967e0_8,  3.88053e0_8,   4.36586e0_8,  &
-     & 4.96417e0_8,   5.75423e0_8,  6.94646e0_8,   10.0048e0_8,  &
-     & 0.459462e0_8,  0.893735e0_8, 1.21753e0_8,   1.50872e0_8,  &
-     & 1.78605e0_8,   2.05854e0_8,  2.33194e0_8,   2.61069e0_8,  &
-     & 2.89878e0_8,   3.20032e0_8,  3.51995e0_8,   3.86331e0_8,  &
-     & 4.23776e0_8,   4.65345e0_8,  5.12533e0_8,   5.67712e0_8,  &
-     & 6.35044e0_8,   7.22996e0_8,  8.541e0_8,     11.8359e0_8   &
-                                                              &/),(/20,4/))
+  ! tabulated chi-squared distribution for 1-4 degrees of freedom with expected
+  ! bin values taken while preserving equiprobable bins
+  real(8), dimension(100,4), parameter :: chi2 = reshape((/&
+       5.2361522573878303e-05_8,&
+       3.6657014603380927e-04_8,&
+       9.9518491948712953e-04_8,&
+       1.9386012997931335e-03_8,&
+       3.1974134834564794e-03_8,&
+       4.7724156249104943e-03_8,&
+       6.6646034689871562e-03_8,&
+       8.8751764045787822e-03_8,&
+       1.1405539948348784e-02_8,&
+       1.4257308669262333e-02_8,&
+       1.7432309566699937e-02_8,&
+       2.0932585917008924e-02_8,&
+       2.4760401605548443e-02_8,&
+       2.8918245963614714e-02_8,&
+       3.3408839132121698e-02_8,&
+       3.8235137976558628e-02_8,&
+       4.3400342580600923e-02_8,&
+       4.8907903348823251e-02_8,&
+       5.4761528752270645e-02_8,&
+       6.0965193754262480e-02_8,&
+       6.7523148957703075e-02_8,&
+       7.4439930519469649e-02_8,&
+       8.1720370882077772e-02_8,&
+       8.9369610378026390e-02_8,&
+       9.7393109767770936e-02_8,&
+       1.0579666377851940e-01_8,&
+       1.1458641571792876e-01_8,&
+       1.2376887324425483e-01_8,&
+       1.3335092538298998e-01_8,&
+       1.4333986088928199e-01_8,&
+       1.5374338806581933e-01_8,&
+       1.6456965615734245e-01_8,&
+       1.7582727845596630e-01_8,&
+       1.8752535726568245e-01_8,&
+       1.9967351089080942e-01_8,&
+       2.1228190283110535e-01_8,&
+       2.2536127338660603e-01_8,&
+       2.3892297389851302e-01_8,&
+       2.5297900387789557e-01_8,&
+       2.6754205130376008e-01_8,&
+       2.8262553640506494e-01_8,&
+       2.9824365927889102e-01_8,&
+       3.1441145174029650e-01_8,&
+       3.3114483384809063e-01_8,&
+       3.4846067560687466e-01_8,&
+       3.6637686441014672e-01_8,&
+       3.8491237886273233e-01_8,&
+       4.0408736970584419e-01_8,&
+       4.2392324866638764e-01_8,&
+       4.4444278616514943e-01_8,&
+       4.6567021895116673e-01_8,&
+       4.8763136888124214e-01_8,&
+       5.1035377424519790e-01_8,&
+       5.3386683524416667e-01_8,&
+       5.5820197547795081e-01_8,&
+       5.8339282158625361e-01_8,&
+       6.0947540353240148e-01_8,&
+       6.3648837842569905e-01_8,&
+       6.6447328126331806e-01_8,&
+       6.9347480655435001e-01_8,&
+       7.2354112548443750e-01_8,&
+       7.5472424412145056e-01_8,&
+       7.8708040918100841e-01_8,&
+       8.2067056911047287e-01_8,&
+       8.5556089976799887e-01_8,&
+       8.9182340583782349e-01_8,&
+       9.2953661143024902e-01_8,&
+       9.6878635618287412e-01_8,&
+       1.0096667167701208e+00_8,&
+       1.0522810782469578e+00_8,&
+       1.0967433853865443e+00_8,&
+       1.1431796114924373e+00_8,&
+       1.1917294915911445e+00_8,&
+       1.2425485791436743e+00_8,&
+       1.2958107014323266e+00_8,&
+       1.3517109099512452e+00_8,&
+       1.4104690504006043e+00_8,&
+       1.4723341150469957e+00_8,&
+       1.5375895923398502e+00_8,&
+       1.6065601007852524e+00_8,&
+       1.6796196952261095e+00_8,&
+       1.7572023777114727e+00_8,&
+       1.8398155536525733e+00_8,&
+       1.9280574813581017e+00_8,&
+       2.0226402253972973e+00_8,&
+       2.1244203353453672e+00_8,&
+       2.2344405927812980e+00_8,&
+       2.3539879879111569e+00_8,&
+       2.4846761319111303e+00_8,&
+       2.6285655985359493e+00_8,&
+       2.7883452676527738e+00_8,&
+       2.9676159813222007e+00_8,&
+       3.1713546653829661e+00_8,&
+       3.4067170514840428e+00_8,&
+       3.6845270836767279e+00_8,&
+       4.0223076143802530e+00_8,&
+       4.4512871914763084e+00_8,&
+       5.0360207017734400e+00_8,&
+       5.9512649086256326e+00_8,&
+       8.4491659621504542e+00_8,&
+       1.0033501006713585e-02_8,&
+       3.0235864759474755e-02_8,&
+       5.0644382200351203e-02_8,&
+       7.1263304144476777e-02_8,&
+       9.2097014254383214e-02_8,&
+       1.1315003463415688e-01_8,&
+       1.3442703172104936e-01_8,&
+       1.5593282249399767e-01_8,&
+       1.7767238101947350e-01_8,&
+       1.9965084535718647e-01_8,&
+       2.2187352484936035e-01_8,&
+       2.4434590781962723e-01_8,&
+       2.6707366970940932e-01_8,&
+       2.9006268168195443e-01_8,&
+       3.1331901972664644e-01_8,&
+       3.3684897429907912e-01_8,&
+       3.6065906053472679e-01_8,&
+       3.8475602907845413e-01_8,&
+       4.0914687757374879e-01_8,&
+       4.3383886286217227e-01_8,&
+       4.5883951394450606e-01_8,&
+       4.8415664576310247e-01_8,&
+       5.0979837386716853e-01_8,&
+       5.3577313003122440e-01_8,&
+       5.6208967890041917e-01_8,&
+       5.8875713574674671e-01_8,&
+       6.1578498542415216e-01_8,&
+       6.4318310262303713e-01_8,&
+       6.7096177353100350e-01_8,&
+       6.9913171901966831e-01_8,&
+       7.2770411948771163e-01_8,&
+       7.5669064150490140e-01_8,&
+       7.8610346641513551e-01_8,&
+       8.1595532107502389e-01_8,&
+       8.4625951092071139e-01_8,&
+       8.7702995558135655e-01_8,&
+       9.0828122727129657e-01_8,&
+       9.4002859223442736e-01_8,&
+       9.7228805552877706e-01_8,&
+       1.0050764094843230e+00_8,&
+       1.0384112861988468e+00_8,&
+       1.0723112144860729e+00_8,&
+       1.1067956817302635e+00_8,&
+       1.1418852011741760e+00_8,&
+       1.1776013852112666e+00_8,&
+       1.2139670253460237e+00_8,&
+       1.2510061795594358e+00_8,&
+       1.2887442679197412e+00_8,&
+       1.3272081773889526e+00_8,&
+       1.3664263769095955e+00_8,&
+       1.4064290440029588e+00_8,&
+       1.4472482042923114e+00_8,&
+       1.4889178855641574e+00_8,&
+       1.5314742882274328e+00_8,&
+       1.5749559743082053e+00_8,&
+       1.6194040774542930e+00_8,&
+       1.6648625368154983e+00_8,&
+       1.7113783581329287e+00_8,&
+       1.7590019059264674e+00_8,&
+       1.8077872313378793e+00_8,&
+       1.8577924409736915e+00_8,&
+       1.9090801130691049e+00_8,&
+       1.9617177684434415e+00_8,&
+       2.0157784051434957e+00_8,&
+       2.0713411073952446e+00_8,&
+       2.1284917416161937e+00_8,&
+       2.1873237548648219e+00_8,&
+       2.2479390943710857e+00_8,&
+       2.3104492708727187e+00_8,&
+       2.3749765936265970e+00_8,&
+       2.4416556114623531e+00_8,&
+       2.5106348025719853e+00_8,&
+       2.5820785663985397e+00_8,&
+       2.6561695848594633e+00_8,&
+       2.7331116382691767e+00_8,&
+       2.8131329852675315e+00_8,&
+       2.8964904480156624e+00_8,&
+       2.9834743870013902e+00_8,&
+       3.0744148085940641e+00_8,&
+       3.1696889297520667e+00_8,&
+       3.2697306381410751e+00_8,&
+       3.3750424479133900e+00_8,&
+       3.4862107856258033e+00_8,&
+       3.6039257857375073e+00_8,&
+       3.7290072933696399e+00_8,&
+       3.8624395681371251e+00_8,&
+       4.0054184367488785e+00_8,&
+       4.1594166728882609e+00_8,&
+       4.3262767786284364e+00_8,&
+       4.5083462302929407e+00_8,&
+       4.7086809041471618e+00_8,&
+       4.9313626468018068e+00_8,&
+       5.1820177918730055e+00_8,&
+       5.4687119159383473e+00_8,&
+       5.8036058655805505e+00_8,&
+       6.2063161365943529e+00_8,&
+       6.7116592150256986e+00_8,&
+       7.3912553622073647e+00_8,&
+       8.4377516497364073e+00_8,&
+       1.1210340370973686e+01_8,&
+       6.8445840470308383e-02_8,&
+       1.5100034771915843e-01_8,&
+       2.1551987807422432e-01_8,&
+       2.7296268032709492e-01_8,&
+       3.2622940327935962e-01_8,&
+       3.7667790160175518e-01_8,&
+       4.2508370358766145e-01_8,&
+       4.7194279239893744e-01_8,&
+       5.1759698373925178e-01_8,&
+       5.6229485133305723e-01_8,&
+       6.0622470846289511e-01_8,&
+       6.4953392303497304e-01_8,&
+       6.9234093087234361e-01_8,&
+       7.3474307291383112e-01_8,&
+       7.7682191088101582e-01_8,&
+       8.1864695147378741e-01_8,&
+       8.6027832833757922e-01_8,&
+       9.0176877983612724e-01_8,&
+       9.4316513811993008e-01_8,&
+       9.8450947108920839e-01_8,&
+       1.0258399727912586e+00_8,&
+       1.0671916682347822e+00_8,&
+       1.1085969791461903e+00_8,&
+       1.1500861840892049e+00_8,&
+       1.1916877973642679e+00_8,&
+       1.2334288848024455e+00_8,&
+       1.2753353300859189e+00_8,&
+       1.3174320619909312e+00_8,&
+       1.3597432505811178e+00_8,&
+       1.4022924786272399e+00_8,&
+       1.4451028932156729e+00_8,&
+       1.4881973415202965e+00_8,&
+       1.5315984939545633e+00_8,&
+       1.5753289573465672e+00_8,&
+       1.6194113803319028e+00_8,&
+       1.6638685528185568e+00_8,&
+       1.7087235011125861e+00_8,&
+       1.7539995800922088e+00_8,&
+       1.7997205636636548e+00_8,&
+       1.8459107346190737e+00_8,&
+       1.8925949749385853e+00_8,&
+       1.9397988575227763e+00_8,&
+       1.9875487403178107e+00_8,&
+       2.0358718637868938e+00_8,&
+       2.0847964526978844e+00_8,&
+       2.1343518232300300e+00_8,&
+       2.1845684964574215e+00_8,&
+       2.2354783193401633e+00_8,&
+       2.2871145944518232e+00_8,&
+       2.3395122197887064e+00_8,&
+       2.3927078401548001e+00_8,&
+       2.4467400117919293e+00_8,&
+       2.5016493821335106e+00_8,&
+       2.5574788868147769e+00_8,&
+       2.6142739663679690e+00_8,&
+       2.6720828053882273e+00_8,&
+       2.7309565973775838e+00_8,&
+       2.7909498389794463e+00_8,&
+       2.8521206579161578e+00_8,&
+       2.9145311796652655e+00_8,&
+       2.9782479387776153e+00_8,&
+       3.0433423417829970e+00_8,&
+       3.1098911899031334e+00_8,&
+       3.1779772713287335e+00_8,&
+       3.2476900347077642e+00_8,&
+       3.3191263578080776e+00_8,&
+       3.3923914281841236e+00_8,&
+       3.4675997562325906e+00_8,&
+       3.5448763454753069e+00_8,&
+       3.6243580505004620e+00_8,&
+       3.7061951600825447e+00_8,&
+       3.7905532520487486e+00_8,&
+       3.8776153780842386e+00_8,&
+       3.9675846517429401e+00_8,&
+       4.0606873326438402e+00_8,&
+       4.1571765258515283e+00_8,&
+       4.2573366501392140e+00_8,&
+       4.3614888756036256e+00_8,&
+       4.4699977948979086e+00_8,&
+       4.5832796804675722e+00_8,&
+       4.7018128035906628e+00_8,&
+       4.8261504664869381e+00_8,&
+       4.9569376523570625e+00_8,&
+       5.0949325714431399e+00_8,&
+       5.2410349415867721e+00_8,&
+       5.3963237020682318e+00_8,&
+       5.5621082135126638e+00_8,&
+       5.7399991881525931e+00_8,&
+       5.9320092563219085e+00_8,&
+       6.1406994197980982e+00_8,&
+       6.3693991105142747e+00_8,&
+       6.6225493533220510e+00_8,&
+       6.9062624129574450e+00_8,&
+       7.2292862961073432e+00_8,&
+       7.6047873656073781e+00_8,&
+       8.0539619114173657e+00_8,&
+       8.6143443538629256e+00_8,&
+       9.3629335234829068e+00_8,&
+       1.0506089294536801e+01_8,&
+       1.3486550432895573e+01_8,&
+       1.9559695720196493e-01_8,&
+       3.6654661317972215e-01_8,&
+       4.8369150691127061e-01_8,&
+       5.8196287845694095e-01_8,&
+       6.6951354752681236e-01_8,&
+       7.4996729294063158e-01_8,&
+       8.2531974682625786e-01_8,&
+       8.9681085396225890e-01_8,&
+       9.6527447379825393e-01_8,&
+       1.0313039645081317e+00_8,&
+       1.0953399453660284e+00_8,&
+       1.1577207743428419e+00_8,&
+       1.2187134520889087e+00_8,&
+       1.2785335015626327e+00_8,&
+       1.3373582809681861e+00_8,&
+       1.3953362022539313e+00_8,&
+       1.4525932975404519e+00_8,&
+       1.5092380114338664e+00_8,&
+       1.5653647732450024e+00_8,&
+       1.6210567097541417e+00_8,&
+       1.6763877397217370e+00_8,&
+       1.7314242153557968e+00_8,&
+       1.7862262263145512e+00_8,&
+       1.8408486486482984e+00_8,&
+       1.8953419984428517e+00_8,&
+       1.9497531341834025e+00_8,&
+       2.0041258407262728e+00_8,&
+       2.0585013197703494e+00_8,&
+       2.1129186059035727e+00_8,&
+       2.1674149230066977e+00_8,&
+       2.2220259925977954e+00_8,&
+       2.2767863032911895e+00_8,&
+       2.3317293487084729e+00_8,&
+       2.3868878397761839e+00_8,&
+       2.4422938962570533e+00_8,&
+       2.4979792215205392e+00_8,&
+       2.5539752639006177e+00_8,&
+       2.6103133674763810e+00_8,&
+       2.6670249147094554e+00_8,&
+       2.7241414630623040e+00_8,&
+       2.7816948774816499e+00_8,&
+       2.8397174604512325e+00_8,&
+       2.8982420811839344e+00_8,&
+       2.9573023054391534e+00_8,&
+       3.0169325273909999e+00_8,&
+       3.0771681049573041e+00_8,&
+       3.1380455000074954e+00_8,&
+       3.1996024249084458e+00_8,&
+       3.2618779969343259e+00_8,&
+       3.3249129021703441e+00_8,&
+       3.3887495706703041e+00_8,&
+       3.4534323647957055e+00_8,&
+       3.5190077828775581e+00_8,&
+       3.5855246805903294e+00_8,&
+       3.6530345127414847e+00_8,&
+       3.7215915985445833e+00_8,&
+       3.7912534138916278e+00_8,&
+       3.8620809146701407e+00_8,&
+       3.9341388958097676e+00_8,&
+       4.0074963915081963e+00_8,&
+       4.0822271230123546e+00_8,&
+       4.1584100014434586e+00_8,&
+       4.2361296945114582e+00_8,&
+       4.3154772676087871e+00_8,&
+       4.3965509117920645e+00_8,&
+       4.4794567736368460e+00_8,&
+       4.5643099050101883e+00_8,&
+       4.6512353546132843e+00_8,&
+       4.7403694278956019e+00_8,&
+       4.8318611479259577e+00_8,&
+       4.9258739573759858e+00_8,&
+       5.0225877114340918e+00_8,&
+       5.1222010238797715e+00_8,&
+       5.2249340446443524e+00_8,&
+       5.3310317682151434e+00_8,&
+       5.4407680000031222e+00_8,&
+       5.5544501448001302e+00_8,&
+       5.6724250313187019e+00_8,&
+       5.7950860547996710e+00_8,&
+       5.9228820135617131e+00_8,&
+       6.0563281468068970e+00_8,&
+       6.1960200678016255e+00_8,&
+       6.3426515564370485e+00_8,&
+       6.4970375722046603e+00_8,&
+       6.6601444445014435e+00_8,&
+       6.8331301115602772e+00_8,&
+       7.0173987177487653e+00_8,&
+       7.2146762060187619e+00_8,&
+       7.4271174283417203e+00_8,&
+       7.6574620270035592e+00_8,&
+       7.9092684969487443e+00_8,&
+       8.1872789146451925e+00_8,&
+       8.4980132789380303e+00_8,&
+       8.8507929093144444e+00_8,&
+       9.2596300868203301e+00_8,&
+       9.7470523027115679e+00_8,&
+       1.0352888667619078e+01_8,&
+       1.1158690088753749e+01_8,&
+       1.2382461545773161e+01_8,&
+       1.5538540717378252e+01_8/),(/100,4/))
+
+  real(8), dimension(20,4), parameter :: chi2old = reshape((/&
+       0.0013100262742689916_8, 0.00919500882320421_8,&
+       0.025090476436998736_8,  0.04925402128250318_8,&
+       0.08208923410100957_8,   0.12416854780259498_8,&
+       0.17626783816712402_8,   0.23941744105957596_8,&
+       0.31497723137584355_8,   0.4047485295620521_8, &
+       0.5111448345599447_8,    0.6374609382724045_8, &
+       0.7883154495330736_8,    0.9704188336936049_8, &
+       1.1940023538092253_8,    1.4757327537047895_8, &
+       1.8454670666691106_8,    2.3652181292969803_8, &
+       3.203712009903742_8,     5.582009275678107_8,  &
+       0.0508548132730799_8,    0.15616662304517276_8,&
+       0.2673349607573996_8,    0.3850499608696362_8, &
+       0.5101314685012841_8,    0.6435637432689214_8, &
+       0.7865426118806967_8,    0.9405408480200361_8, &
+       1.107400953760125_8,     1.2894704054247497_8, &
+       1.489805079279013_8,     1.7124868219334135_8, &
+       1.9631419670049954_8,    2.2498360910702835_8, &
+       2.5847300407123037_8,    2.987440311726143_8,  &
+       3.4927833901574834_8,    4.172379537339127_8,  &
+       5.2188758248681735_8,    7.991464546831889_8,  &
+       0.20683162970884522_8,   0.47071924653213254_8,&
+       0.6919329092330118_8,    0.9016737337713265_8, &
+       1.1086805203251409_8,    1.3176464012175306_8, &
+       1.5319278132738008_8,    1.7544445864612157_8, &
+       1.98812217785279_8,      2.236205090653629_8,  &
+       2.502570017452597_8,     2.7921282158653367_8, &
+       3.1114297553000485_8,    3.469670387640112_8,  &
+       3.8805271549204616_8,    4.36585590539197_8,   &
+       4.964173687092916_8,     5.754227955970698_8,  &
+       6.946456907701698_8,     10.00477398469088_8,  &
+       0.45946230065534227_8,   0.8937352664071069_8, &
+       1.2175331908657197_8,    1.508717798845479_8,  &
+       1.7860457656966469_8,    2.0585427647180587_8, &
+       2.3319446761261395_8,    2.61068684613386_8,   &
+       2.898777850389394_8,     3.2003213857955832_8, &
+       3.5199497823350763_8,    3.863312242884864_8,  &
+       4.237758999673624_8,     4.6534465218163765_8, &
+       5.125325701109869_8,     5.677122248896667_8,  &
+       6.350436357550334_8,     7.229956898134616_8,  &
+       8.540996737333352_8,     11.835926663601912_8 /),(/20,4/))
 
 contains
 
@@ -563,7 +989,6 @@ contains
     integer :: n_above_urr ! number of resonances abover upper URR energy
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
     real(8) :: m     ! energy interpolation factor
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
@@ -571,7 +996,7 @@ contains
     call tope % alloc_ensemble_tmp(n_reals)
 
     allocate(tope % n_lam(n_reals, tope % NLS(tope % i_urr),&
-      & maxval(tope % NJS(:))))
+         maxval(tope % NJS(:))))
 
     res % i_res = 0
 
@@ -605,7 +1030,7 @@ contains
             ! the URR has more l-states than the RRR; place resonance energy
             ! randomly about lower URR energy bound
             E_res = tope % EL(tope % i_urr) &
-              & + (ONE - TWO * prn()) * wigner_dist(tope % D)
+                 + (ONE - TWO * prn()) * wigner_dist(tope % D)
           else
             ! offset first URR resonance energy from the highest-energy RRR
             ! resonance with the same (l,J) spin sequence
@@ -628,31 +1053,31 @@ contains
             end if
 
             m = interp_factor(E_res, tope % ES(i_E), tope % ES(i_E + 1),&
-              & tope % INT)
+                 tope % INT)
 
             ! set current mean unresolved resonance parameters
             tope % D = interpolator(m, &
-              & tope % D_mean(i_l) % data(i_J) % data(i_E), &
-              & tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % D_mean(i_l) % data(i_J) % data(i_E), &
+                 tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             tope % GN0 = interpolator(m, &
-              & tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
-              & tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
+                 tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             tope % GG = interpolator(m, &
-              & tope % GG_mean(i_l) % data(i_J) % data(i_E), &
-              & tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % GG_mean(i_l) % data(i_J) % data(i_E), &
+                 tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             if (tope % INT == LINEAR_LINEAR &
-              & .or. tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+                 .or. tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
               tope % GF = interpolator(m, &
-                & tope % GF_mean(i_l) % data(i_J) % data(i_E), &
-                & tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                   tope % GF_mean(i_l) % data(i_J) % data(i_E), &
+                   tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             else
               tope % GF = ZERO
             end if
             if (tope % INT == LINEAR_LINEAR &
               .or. tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
               tope % GX = interpolator(m, &
-                & tope % GX_mean(i_l) % data(i_J) % data(i_E), &
-                & tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                   tope % GX_mean(i_l) % data(i_J) % data(i_E), &
+                   tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
             else
               tope % GX = ZERO
             end if
@@ -696,17 +1121,17 @@ contains
         do i_J = 1, tope % NJS(i_l)
           do i_res = 1, tope % n_lam(i_ens, i_l, i_J)
             tope % urr_resonances(i_ens, i_l, i_J) % E_lam(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % E_lam(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % E_lam(i_res)
             tope % urr_resonances(i_ens, i_l, i_J) % GN(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GN(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GN(i_res)
             tope % urr_resonances(i_ens, i_l, i_J) % GG(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GG(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GG(i_res)
             tope % urr_resonances(i_ens, i_l, i_J) % GF(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GF(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GF(i_res)
             tope % urr_resonances(i_ens, i_l, i_J) % GX(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GX(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GX(i_res)
             tope % urr_resonances(i_ens, i_l, i_J) % GT(i_res) &
-              & = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GT(i_res)
+                 = tope % urr_resonances_tmp(i_ens, i_l, i_J) % GT(i_res)
           end do
         end do
       end do
@@ -757,7 +1182,6 @@ contains
     real(8) :: xs_trial     ! trial xs via interpolation between gridpoints
     real(8) :: rel_err      ! relative error between interpolated and exact xs
     logical :: enhance ! refine energy-xs grid?
-!$omp threadprivate(tope)
 
     ! only one realization allowed when using a pointwise representation
     i_real = 1
@@ -812,11 +1236,12 @@ contains
       n_pts = n_pts + 1
       enhance  = .true.
 
-      do while(enhance)
+      CONVERGE_XS: do while(enhance)
 
         ! reset xs accumulators
         call flush_sigmas(t, n, g, f, x)
 
+        ! Get resonance parameters for a local realization about E_n
         ! loop over orbital quantum numbers
         LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
@@ -861,9 +1286,17 @@ contains
                 ! loop over contributing resolved resonance region resonances
                 LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
                   i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
+                  
+                  ! fewer RRR resonances w/ this J value then needed;
+                  ! just generate URR resonances instead
+!TODO: take however many RRR resonances there actually are, even if too few
+                  if (i_rrr_res == 0) exit
+                  
+                  ! add this resolved resonance
                   res % i_res = res % i_res + 1
                   call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                        tope % i_urr - 1)
+                
                 end do LOC_RRR_RESONANCES_LOOP
               end if
 
@@ -966,7 +1399,7 @@ contains
           ! add resonance xs component to background
           call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
-        ! multipy the self-shielding factors by the infinite-dilute xs
+        ! multiply the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
 
           if (tope % E > tope % Eavg(tope % nEavg)) then
@@ -982,19 +1415,10 @@ contains
                avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
-          if (avg_urr_x_xs > ZERO) then
-            if (tope % E < tope % E_ex2 .and. competitive) then
-              ! self-shielded treatment of competitive inelastic xs
-              tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
-                   * tope % x_tmp(n_pts)
-            else
-              ! infinite-dilute treatment of competitive inelastic xs
-              tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-            end if
-          else
-            ! use background competitive inelastic cross section, as is
-            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-          end if
+          if (avg_urr_x_xs > ZERO&
+               .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+               .and. competitive)&
+               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
@@ -1004,29 +1428,23 @@ contains
           if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
           ! radiative capture xs
-          if (avg_urr_g_xs > ZERO) then
-            tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
-          else
-            ! use background capture cross section, as is
-            tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
-          end if
+          if (avg_urr_g_xs > ZERO)&
+               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
 
           ! fission xs
-          if (avg_urr_f_xs > ZERO) then
-            tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
-          else
-            tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
-          end if
+          if (avg_urr_f_xs > ZERO)&
+               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
 
+          ! total xs
           tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-            & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
+
         end if
 
-        xs_trial = HALF &
-          & * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
+        xs_trial = HALF * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
         dE_trial = HALF * dE_trial
         tope % E  = tope % E - dE_trial
         tope % k_n = wavenumber(tope % AWR, abs(tope % E))
@@ -1095,16 +1513,16 @@ contains
             & data')
         else
           i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, &
-            & tope % E)
+               tope % E)
         end if
 
         ! check for rare case where two energy points are the same
         if (nuc % energy(i_grid) == nuc % energy(i_grid + 1)) &
-          & i_grid = i_grid + 1
+             i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
         fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
-          & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
+             1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
         call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
@@ -1126,25 +1544,16 @@ contains
           end if
 
           favg = interp_factor(tope % E, &
-            & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
+               tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
           call interp_avg_urr_xs(favg, iso, iavg, &
-            & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+               avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
-          if (avg_urr_x_xs > ZERO) then
-            if (tope % E < tope % E_ex2 .and. competitive) then
-              ! self-shielded treatment of competitive inelastic xs
-              tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
-                & * tope % x_tmp(n_pts)
-            else
-              ! infinite-dilute treatment of competitive inelastic xs
-              tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-            end if
-          else
-            ! use background competitive inelastic cross section, as is
-            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-          end if
+          if (avg_urr_x_xs > ZERO&
+               .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+               .and. competitive)&
+               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
           ! elastic scattering xs
           tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
@@ -1154,33 +1563,26 @@ contains
           if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
           ! radiative capture xs
-          if (avg_urr_g_xs > ZERO) then
-            tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
-          else
-            ! use background capture cross section, as is
-            tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
-          end if
+          if (avg_urr_g_xs > ZERO)&
+               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
 
           ! fission xs
-          if (avg_urr_f_xs > ZERO) then
-            tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
-          else
-            tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
-          end if
+          if (avg_urr_f_xs > ZERO)&
+               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
 
           tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-            & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
+
         end if
 
-        rel_err = abs(xs_trial - tope % t_tmp(n_pts)) &
-          & / tope % t_tmp(n_pts)
-        if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr) then
-          enhance = .false.
-        end if
-      end do
+        rel_err = abs(xs_trial - tope % t_tmp(n_pts)) / tope % t_tmp(n_pts)
+        if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr)&
+             enhance = .false.
+      
+      end do CONVERGE_XS
 
       ! add energy point to grid
       tope % E = tope % E + dE_trial
@@ -1258,7 +1660,7 @@ contains
 
       ! calculate xs energy grid interpolation factor
       fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
-        & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
+           1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
       ! calculate evaluator-supplied backgrounds at the current energy
       call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
@@ -1270,7 +1672,7 @@ contains
         ! add resonance xs component to background
         call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
 
-      elseif (tope % LSSF == 1) then
+      else if (tope % LSSF == 1) then
         ! multipy the self-shielding factors by the average (infinite-dilute)
         ! cross sections
 
@@ -1281,25 +1683,16 @@ contains
         end if
 
         favg = interp_factor(tope % E, &
-          & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
+             tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
         call interp_avg_urr_xs(favg, iso, iavg, &
-          & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+             avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
         ! competitive xs
-        if (avg_urr_x_xs > ZERO) then
-          if (tope % E < tope % E_ex2 .and. competitive) then
-            ! self-shielded treatment of competitive inelastic xs
-            tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs &
-              & * tope % x_tmp(n_pts)
-          else
-            ! infinite-dilute treatment of competitive inelastic xs
-            tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-          end if
-        else
-          ! use background competitive inelastic cross section, as is
-          tope % x_tmp(n_pts) = tope % x_tmp(n_pts)
-        end if
+        if (avg_urr_x_xs > ZERO&
+             .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+             .and. competitive)&
+             tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
 
         ! elastic scattering xs
         tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
@@ -1309,26 +1702,20 @@ contains
         if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
 
         ! radiative capture xs
-        if (avg_urr_g_xs > ZERO) then
-          tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
-        else
-          ! use background capture cross section, as is
-          tope % g_tmp(n_pts) = tope % g_tmp(n_pts)
-        end if
+        if (avg_urr_g_xs > ZERO)&
+             tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
 
         ! fission xs
-        if (avg_urr_f_xs > ZERO) then
-          tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
-        else
-          tope % f_tmp(n_pts) = tope % f_tmp(n_pts)
-        end if
+        if (avg_urr_f_xs > ZERO)&
+             tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
 
         tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-          & + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+             + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
 
       else
         call fatal_error('Self-shielding flag (LSSF) not allowed -&
           & must be 0 or 1.')
+
       end if
     end do ENERGY_LOOP
 
@@ -1381,7 +1768,6 @@ contains
     real(8) :: avg_urr_x_xs ! averaged competitive reaction cross section
     real(8) :: capture_xs   ! radiative capture cross section
     real(8) :: inelastic_xs ! competitive inelastic scattering cross section
-!$omp threadprivate(tope, nuc)
 
     tope => isotopes(iso)
     nuc  => nuclides(i_nuc)
@@ -1396,16 +1782,19 @@ contains
     ! reset xs accumulators
     call flush_sigmas(t, n, g, f, x)
 
+    ! select which resonance structure realization to use
     if (i_real_user == 0) then
-      ! randomly select which realization to use
+      ! random realization
       i_real = ceiling(prn() * n_reals)
       if (i_real == 0) call fatal_error('i_real is sampled to be 0')
-      if (i_real == n_reals + 1) &
-        & call fatal_error('i_real is sampled to be > n_reals')
+      if (i_real == n_reals + 1)&
+           call fatal_error('i_real is sampled to be > n_reals')
     else
+      ! user-specified realization
       i_real = i_real_user
     end if
-
+    
+    ! Get resonance parameters for a local realization about E_n
     ! loop over orbital quantum numbers
     LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
@@ -1426,16 +1815,16 @@ contains
 
         ! find the nearest lower resonance
         if (tope % E &
-          & < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
+             < tope % urr_resonances(i_real, i_l, i_J) % E_lam(1)) then
           i_low = 1
         else
           i_low = binary_search(&
-            & tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
-            & tope % n_lam(i_real, i_l, i_J), tope % E)
+               tope % urr_resonances(i_real, i_l, i_J) % E_lam(:),&
+               tope % n_lam(i_real, i_l, i_J), tope % E)
         end if
 
         ! loop over the addition of resonances to this ladder
-        if (i_low - n_res/2 < 1) then
+        if (i_low - n_res/2 + 1 < 1) then
           ! if we're near the lower end of the URR, need to incorporate
           ! resolved resonance region resonances in order to fix-up
           ! (i.e. smooth out) cross sections at the RRR-URR crossover
@@ -1445,14 +1834,22 @@ contains
           if (i_l <= tope % NLS(tope % i_urr - 1)) then
 
             ! how many RRR resonances are contributing
-            n_rrr_res = abs(i_low - n_res/2) + 1
+            n_rrr_res = abs(i_low - n_res/2)
 
             ! loop over contributing resolved resonance region resonances
             LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
               i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
+                  
+              ! fewer RRR resonances w/ this J value then needed;
+              ! just generate URR resonances instead
+!TODO: take however many RRR resonances there actually are, even if too few
+              if (i_rrr_res == 0) exit
+                  
+              ! add this resolved resonance
               res % i_res = res % i_res + 1
               call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                    tope % i_urr - 1)
+            
             end do LOC_RRR_RESONANCES_LOOP
           end if
 
@@ -1465,7 +1862,7 @@ contains
         else
           ! we're firmly in the URR and can ignore anything going on in
           ! the upper resolved resonance region energies
-          LOC_URR_LOOP: do i_res = i_low - n_res/2, i_low + n_res/2 - 1
+          LOC_URR_LOOP: do i_res = i_low - n_res/2 + 1, i_low + n_res/2
             res % i_res = res % i_res + 1
             call set_parameters(res, iso, i_res, i_l, i_J, tope % i_urr)
           end do LOC_URR_LOOP
@@ -1540,75 +1937,58 @@ contains
       iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
 
       favg = interp_factor(tope % E, &
-        & tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
+           tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
       ! interpolate averaged, infinite-dilute URR cross sections
       call interp_avg_urr_xs(favg, iso, iavg, &
-        & avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+           avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
       ! competitive xs
-      if (avg_urr_x_xs > ZERO) then
-        if (tope % E < tope % E_ex2 .and. competitive) then
-          ! self-shielded treatment of competitive inelastic xs
-          inelastic_xs = x % xs / avg_urr_x_xs &
-            & * (micro_xs(i_nuc) % total &
-            & -  micro_xs(i_nuc) % absorption &
-            & -  micro_xs(i_nuc) % elastic)
-        else
-          ! infinite-dilute treatment of competitive inelastic xs
-          inelastic_xs = micro_xs(i_nuc) % total &
-            & - micro_xs(i_nuc) % absorption &
-            & - micro_xs(i_nuc) % elastic
-        end if
-      else
-        ! use background competitive inelastic cross section, as is
-        inelastic_xs = micro_xs(i_nuc) % total &
-          & - micro_xs(i_nuc) % absorption &
-          & - micro_xs(i_nuc) % elastic
-      end if
+      ! infinite-dilute treatment of competitive xs
+      inelastic_xs = micro_xs(i_nuc) % total &
+           - micro_xs(i_nuc) % absorption &
+           - micro_xs(i_nuc) % elastic
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
+           ! self-shielded treatment of competitive inelastic xs
+           inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
 
       ! elastic scattering xs
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
-        & * micro_xs(i_nuc) % elastic
+           * micro_xs(i_nuc) % elastic
 
       ! set negative elastic xs and competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
       if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
       ! radiative capture xs
-      if (avg_urr_g_xs > ZERO) then
-        capture_xs = g % xs / avg_urr_g_xs &
-          & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
-      else
-        ! use background capture cross section, as is
-        capture_xs = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-      end if
+      ! background capture cross section
+      capture_xs = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+      if (avg_urr_g_xs > ZERO)&
+           capture_xs = g % xs / avg_urr_g_xs * capture_xs
 
       ! fission xs
-      if (avg_urr_f_xs > ZERO) then
-        micro_xs(i_nuc) % fission = f % xs / avg_urr_f_xs &
-          & * micro_xs(i_nuc) % fission
-      else
-        ! use background fission cross section, as is
-        micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
-      end if
+      if (avg_urr_f_xs > ZERO)&
+           micro_xs(i_nuc) % fission = f % xs / avg_urr_f_xs&
+           * micro_xs(i_nuc) % fission
 
       ! absorption xs
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
 
       ! total xs
-      micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
-        & + micro_xs(i_nuc) % absorption + inelastic_xs
+      micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic&
+           + micro_xs(i_nuc) % absorption + inelastic_xs
 
     else
       call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
+
     end if
 
     ! Determine nu-fission cross section
-    if (tope % fissionable) then
-      micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0e6_8) &
-        & * micro_xs(i_nuc) % fission
-    end if
+    if (tope % fissionable)&
+      micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0e6_8)&
+           * micro_xs(i_nuc) % fission
 
   end subroutine calc_urr_xs_otf
 
@@ -1624,8 +2004,8 @@ contains
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
     type(Resonance) :: res ! resonance object
-    character(6) :: zaid_str ! ENDF-6 MAT number as a string
-    character(80) :: temp_str
+    character(80) :: sha1     ! Git SHA1
+    character(6)  :: zaid_str ! ZAID number as a string
     integer :: i_b    ! batch index
     integer :: i_band ! probability band index
     integer :: i_E    ! energy grid index
@@ -1636,6 +2016,7 @@ contains
     integer :: i_nuc  ! nuclide index
     integer :: i_r    ! resonance index
     integer :: i_T    ! temperature index
+    integer :: iT     ! alternate temperature index
     integer :: i_temp ! temperature index
     integer :: iso    ! isotope index
     integer :: n_res  ! number of resonances to include for a given l-wave
@@ -1651,7 +2032,7 @@ contains
     real(8), allocatable :: cold_xs(:)
 
     xs_t_min = 1.0e6_8
-    xs_t_max = ZERO
+    xs_t_max = XS_CUTOFF
 
     tope => isotopes(iso)
 
@@ -1663,11 +2044,13 @@ contains
       open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-urr-tables.dat')
     if (write_avg_urr_xs) then
       open(unit = avg_unit, file = trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
+      call get_environment_variable("GIT_SHA1", sha1)
+      write(avg_unit, '("Git SHA1:",1X,A70)') trim(adjustl(sha1))
       write(avg_unit, '(I6)') tope % ZAI
       write(avg_unit, '(I1)') represent_params
       write(avg_unit, '(ES13.6)') tol_avg_urr
       write(avg_unit, '(A13,A13,A13,A13,A13,A13)') &
-        & 'energy [eV]', 'total', 'elastic', 'capture', 'fission', 'competitive'
+           'energy [eV]', 'total', 'elastic', 'capture', 'fission','competitive'
     end if
 
     ! loop over energy mesh
@@ -1683,12 +2066,12 @@ contains
 
       i_b = 0
 
-      allocate(xs_samples(histories_avg_urr))
-      xs_samples(:) % t = ZERO
-      xs_samples(:) % n = ZERO
-      xs_samples(:) % g = ZERO
-      xs_samples(:) % f = ZERO
-      xs_samples(:) % x = ZERO
+      allocate(tope % xs_samples(histories_avg_urr, tope % nT))
+      tope % xs_samples(:,:) % t = ZERO
+      tope % xs_samples(:,:) % n = ZERO
+      tope % xs_samples(:,:) % g = ZERO
+      tope % xs_samples(:,:) % f = ZERO
+      tope % xs_samples(:,:) % x = ZERO
 
       ! loop over batches until convergence
       BATCH_LOOP: do
@@ -1704,6 +2087,7 @@ contains
           ! reset accumulator of histories
           call tope % flush_histories()
 
+          ! Get resonance parameters for a local realization about E_n
           ! loop over orbital quantum numbers
           LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
@@ -1824,7 +2208,7 @@ contains
 
                   ! add this contribution to the accumulated partial cross
                   ! section values built up from all resonances
-                  ! TODO: move t outside of loop
+! TODO: move t outside of loop
                   call tope % res_contrib(res, i_E, i_T)
 
                 end do TEMPERATURES_LOOP
@@ -1832,7 +2216,7 @@ contains
             end do TOTAL_ANG_MOM_LOOP
           end do ORBITAL_ANG_MOM_LOOP
 
-          do i_T = 1, tope % nT
+          TEMPERATURES_LOOPb: do i_T = 1, tope % nT
 
             i_nuc = tope % inuclist % get_item(i_T)
             nuc  => nuclides(i_nuc)
@@ -1844,191 +2228,156 @@ contains
             ! set negative elastic xs to zero
             if (tope % prob_tables(i_E, i_T) % avg_n % xs < ZERO) then
               tope % prob_tables(i_E, i_T) % avg_t % xs &
-                & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                & + abs(tope % prob_tables(i_E, i_T) % avg_n % xs)
+                   = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   + abs(tope % prob_tables(i_E, i_T) % avg_n % xs)
               tope % prob_tables(i_E, i_T) % avg_n % xs = ZERO
             end if
 
-            ! add File 3 fission reaction contribution
-            if (tope % prob_tables(i_E, i_T) % avg_f % xs > ZERO) then
+            ! use MF3 fission cross section if requested
+            if (background == FALSE) then
               continue
             else
+              tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   - tope % prob_tables(i_E, i_T) % avg_f % xs
               tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
               if (background == ENDFFILE .and. allocated(tope % MF3_f_e)) then
-                if (E < tope % MF3_f_e(1)) then
-                  tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
-                else
-                  i_grid = binary_search(tope % MF3_f_e, size(tope % MF3_f_e),&
-                    & E)
+                if (E >= tope % MF3_f_e(1)) then
+                  i_grid = binary_search(tope % MF3_f_e,size(tope % MF3_f_e),E)
                   if (tope % INT == LINEAR_LINEAR &
                        .or. (tope % MF3_f(i_grid) > XS_CUTOFF &
                        .and. tope % MF3_f(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_f_e(i_grid), &
-                      & tope % MF3_f_e(i_grid + 1), tope % INT)
+                         tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
-                      & = interpolator(fact, tope % MF3_f(i_grid), &
-                      & tope % MF3_f(i_grid + 1), tope % INT)
+                         = interpolator(fact, tope % MF3_f(i_grid), &
+                         tope % MF3_f(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & + tope % prob_tables(i_E, i_T) % avg_f % xs
-                  else
-                    tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
+                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                         + tope % prob_tables(i_E, i_T) % avg_f % xs
                   end if
                 end if
               else if (background == ACEFILE) then
-                if (E < 1.0e6_8 * nuc % energy(1)) then
-                  tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
-                else
+                if (E >= 1.0e6_8 * nuc % energy(1)) then
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
-                    & size(nuc % energy), E)
+                       size(nuc % energy), E)
                   if (tope % INT == LINEAR_LINEAR &
                        .or. (nuc % fission(i_grid) > XS_CUTOFF &
                        .and. nuc % fission(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                      & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
+                         1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
-                      & = interpolator(fact, nuc % fission(i_grid), &
-                      & nuc % fission(i_grid + 1), tope % INT)
+                         = interpolator(fact, nuc % fission(i_grid), &
+                         nuc % fission(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & + tope % prob_tables(i_E, i_T) % avg_f % xs
-                  else
-                    tope % prob_tables(i_E, i_T) % avg_f % xs = ZERO
+                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                         + tope % prob_tables(i_E, i_T) % avg_f % xs
                   end if
                 end if
               end if
             end if
+            if (tope % prob_tables(i_E, i_T) % avg_f % xs < ZERO)&
+                 call fatal_error('Negative fission xs encountered')
 
-            ! add File 3 infinite-dilute competitive reaction contribution
-            if (tope % E < tope % E_ex2 .and. competitive) then
+            ! use MF3 competitive cross section if requested
+            if (background == FALSE) then
               continue
             else
+              tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   - tope % prob_tables(i_E, i_T) % avg_x % xs
               tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
               if (background == ENDFFILE .and. allocated(tope % MF3_x_e)) then
-                if (E < tope % MF3_x_e(1)) then
-                  tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
-                else
-                  i_grid = binary_search(tope % MF3_x_e, size(tope % MF3_x_e),&
-                    & E)
+                if (E >= tope % MF3_x_e(1)) then
+                  i_grid = binary_search(tope % MF3_x_e,size(tope % MF3_x_e),E)
                   if (tope % INT == LINEAR_LINEAR &
                        .or. (tope % MF3_x(i_grid) > XS_CUTOFF &
                        .and. tope % MF3_x(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, tope % MF3_x_e(i_grid), &
-                      & tope % MF3_x_e(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
+                         tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_x % xs &
-                      & = interpolator(fact, tope % MF3_x(i_grid), &
-                      & tope % MF3_x(i_grid + 1), tope % INT)
+                         = interpolator(fact, tope % MF3_x(i_grid), &
+                         tope % MF3_x(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & + tope % prob_tables(i_E, i_T) % avg_x % xs
-                  else
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
+                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                         + tope % prob_tables(i_E, i_T) % avg_x % xs
                   end if
                 end if
               else if (background == ACEFILE) then
-                if (E < 1.0e6_8 * nuc % energy(1)) then
-                  tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
-                else
+                if (E >= 1.0e6_8 * nuc % energy(1)) then
                   i_grid = binary_search(1.0e6_8 * nuc % energy, &
-                    & size(nuc % energy), E)
-                  if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
-                    & - nuc % elastic(i_grid) &
-                    & - nuc % absorption(i_grid) > XS_CUTOFF) then
+                       size(nuc % energy), E)
+                  if (tope % INT == LINEAR_LINEAR .or. (nuc % total(i_grid) &
+                       - nuc % elastic(i_grid) &
+                       - nuc % absorption(i_grid) > XS_CUTOFF&
+                       .and. nuc % total(i_grid + 1) - nuc % elastic(i_grid+1)&
+                       - nuc % absorption(i_grid + 1) > XS_CUTOFF)) then
                     fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                      & 1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
+                         1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_x % xs &
-                      & = interpolator(fact, nuc % total(i_grid) &
-                      & - nuc % elastic(i_grid) - nuc % absorption(i_grid), &
-                      & nuc % total(i_grid + 1) - nuc % elastic(i_grid + 1) &
-                      & - nuc % absorption(i_grid + 1), tope % INT)
+                         = interpolator(fact, nuc % total(i_grid) &
+                         - nuc % elastic(i_grid) - nuc % absorption(i_grid), &
+                         nuc % total(i_grid + 1) - nuc % elastic(i_grid + 1) &
+                         - nuc % absorption(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & + tope % prob_tables(i_E, i_T) % avg_x % xs
-                  else
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                      & - tope % prob_tables(i_E, i_T) % avg_x % xs
+                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                         + tope % prob_tables(i_E, i_T) % avg_x % xs
                   end if
                 end if
               end if
             end if
-
+    
             ! set negative competitive xs to zero
             if (tope % prob_tables(i_E, i_T) % avg_x % xs < ZERO) then
+              call fatal_error('Negative competitive xs encountered')
               tope % prob_tables(i_E, i_T) % avg_t % xs &
-                & = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                & + abs(tope % prob_tables(i_E, i_T) % avg_x % xs)
+                   = tope % prob_tables(i_E, i_T) % avg_t % xs &
+                   + abs(tope % prob_tables(i_E, i_T) % avg_x % xs)
               tope % prob_tables(i_E, i_T) % avg_x % xs = ZERO
             end if
 
+            ! Set min and max xs values encountered
             if (tope % prob_tables(i_E, i_T) % avg_t % xs < xs_t_min)&
-              & xs_t_min = tope % prob_tables(i_E, i_T) % avg_t % xs
+                 xs_t_min = tope % prob_tables(i_E, i_T) % avg_t % xs
             if (tope % prob_tables(i_E, i_T) % avg_t % xs > xs_t_max)&
-              & xs_t_max = tope % prob_tables(i_E, i_T) % avg_t % xs
+                 xs_t_max = tope % prob_tables(i_E, i_T) % avg_t % xs
 
             ! accumulate the result of this history
             call tope % accum_history(i_E, i_T)
-          end do
-          
-          ! find index where this sample belongs based on total cross section
-          if (i_b == 1 .and. i_h == 1) then
-            i_mag = histories_avg_urr
-          else
-            if (tope % prob_tables(i_E, 1) % avg_t % xs&
-                 > xs_samples(i_b * histories_avg_urr) % t) then
-              i_mag = i_b * histories_avg_urr
+
+            ! find index where this sample belongs based on total cross section
+            if (i_b == 1 .and. i_h == 1) then
+              i_mag = histories_avg_urr
             else
-              i_mag = binary_search(xs_samples(:) % t,&
-                   i_b * histories_avg_urr,&
-                   tope % prob_tables(i_E, 1) % avg_t % xs)
+              if (tope % prob_tables(i_E, i_T) % avg_t % xs&
+                   > tope % xs_samples(i_b * histories_avg_urr, i_T) % t) then
+                i_mag = i_b * histories_avg_urr
+              else
+               i_mag = binary_search(tope % xs_samples(:, i_T) % t,&
+                     i_b * histories_avg_urr,&
+                     tope % prob_tables(i_E, i_T) % avg_t % xs)
+              end if
             end if
-          end if
 
-          ! insert total and conditional partial cross sections
-          xs_samples(1 : i_mag - 1) = xs_samples(2 : i_mag)
-          xs_samples(i_mag) % t = tope % prob_tables(i_E, 1) % avg_t % xs
-          xs_samples(i_mag) % n = tope % prob_tables(i_E, 1) % avg_n % xs
-          xs_samples(i_mag) % g = tope % prob_tables(i_E, 1) % avg_g % xs
-          xs_samples(i_mag) % f = tope % prob_tables(i_E, 1) % avg_f % xs
-          xs_samples(i_mag) % x = tope % prob_tables(i_E, 1) % avg_x % xs
-
-          ! find index where this sample belongs based on total cross section
-          if (i_b == 1 .and. i_h == 1) then
-            i_mag = histories_avg_urr
-          else
-            i_mag = binary_search(xs_samples(:) % t,&
-                 i_b * histories_avg_urr,&
-                 tope % prob_tables(i_E, 1) % avg_t % xs)
-          end if
-
-          ! insert total and conditional partial cross sections
-          xs_samples(1 : i_mag - 1) = xs_samples(2 : i_mag)
-          xs_samples(i_mag) % t = tope % prob_tables(i_E, 1) % avg_t % xs
-          xs_samples(i_mag) % n = tope % prob_tables(i_E, 1) % avg_n % xs
-          xs_samples(i_mag) % g = tope % prob_tables(i_E, 1) % avg_g % xs
-          xs_samples(i_mag) % f = tope % prob_tables(i_E, 1) % avg_f % xs
-          xs_samples(i_mag) % x = tope % prob_tables(i_E, 1) % avg_x % xs
-
+            ! insert total and conditional partial cross sections
+            tope%xs_samples(1 : i_mag - 1, i_T) = tope % xs_samples(2:i_mag,i_T)
+            tope%xs_samples(i_mag,i_T) % t = tope%prob_tables(i_E,i_T)% avg_t%xs
+            tope%xs_samples(i_mag,i_T) % n = tope%prob_tables(i_E,i_T)% avg_n%xs
+            tope%xs_samples(i_mag,i_T) % g = tope%prob_tables(i_E,i_T)% avg_g%xs
+            tope%xs_samples(i_mag,i_T) % f = tope%prob_tables(i_E,i_T)% avg_f%xs
+            tope%xs_samples(i_mag,i_T) % x = tope%prob_tables(i_E,i_T)% avg_x%xs
+          
+          end do TEMPERATURES_LOOPb
         end do HISTORY_LOOP
 
-        allocate(xs_samples_tmp(i_b * histories_avg_urr))
-        xs_samples_tmp = xs_samples
-        deallocate(xs_samples)
-        allocate(xs_samples((i_b + 1) * histories_avg_urr))
-        xs_samples(:) % t = ZERO
-        xs_samples(:) % n = ZERO
-        xs_samples(:) % g = ZERO
-        xs_samples(:) % f = ZERO
-        xs_samples(:) % x = ZERO
-        xs_samples(histories_avg_urr + 1 : (i_b + 1) * histories_avg_urr)&
+        call move_alloc(tope % xs_samples, xs_samples_tmp)
+        allocate(tope % xs_samples((i_b + 1) * histories_avg_urr, tope % nT))
+        tope % xs_samples(:,:) % t = ZERO
+        tope % xs_samples(:,:) % n = ZERO
+        tope % xs_samples(:,:) % g = ZERO
+        tope % xs_samples(:,:) % f = ZERO
+        tope % xs_samples(:,:) % x = ZERO
+        tope % xs_samples(histories_avg_urr+1 : (i_b+1)*histories_avg_urr, :)&
              = xs_samples_tmp
         deallocate(xs_samples_tmp)
         
@@ -2038,62 +2387,65 @@ contains
         ! calculate statistics for this batch
         call tope % calc_stats(i_b)
 
-        ! TODO: pick the temperature used for cutoff criterion more thoughtfully
+! TODO: pick the temperature used for cutoff criterion more thoughtfully
         if ((i_b > min_batches_avg_urr &
-          & .and. max(tope % prob_tables(i_E, 1) % avg_t % rel_unc, &
-          &           tope % prob_tables(i_E, 1) % avg_n % rel_unc, &
-          &           tope % prob_tables(i_E, 1) % avg_g % rel_unc, &
-          &           tope % prob_tables(i_E, 1) % avg_f % rel_unc, &
-          &           tope % prob_tables(i_E, 1) % avg_x % rel_unc) &
-          & < tol_avg_urr) &
-          & .or. i_b == max_batches_avg_urr) exit
+             .and. max(maxval(tope % prob_tables(i_E, :) % avg_t % rel_unc), &
+                       maxval(tope % prob_tables(i_E, :) % avg_n % rel_unc), &
+                       maxval(tope % prob_tables(i_E, :) % avg_g % rel_unc), &
+                       maxval(tope % prob_tables(i_E, :) % avg_f % rel_unc), &
+                       maxval(tope % prob_tables(i_E, :) % avg_x % rel_unc)) &
+             < tol_avg_urr) &
+             .or. i_b == max_batches_avg_urr) exit
+
       end do BATCH_LOOP
 
-      hits_per_band = nint(i_b * histories_avg_urr / dble(n_bands))
-      do i_band = 1, n_bands - 1
-        tope % prob_tables(i_E, 1) % t(i_band) % cnt_mean&
-             = dble(hits_per_band) / dble(i_b * histories_avg_urr)
-        tope % prob_tables(i_E, 1) % t(i_band) % xs_mean&
-             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
-             : i_band * hits_per_band) % t) / dble(hits_per_band)
-        tope % prob_tables(i_E, 1) % n(i_band) % xs_mean&
-             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
-             : i_band * hits_per_band) % n) / dble(hits_per_band)
-        tope % prob_tables(i_E, 1) % g(i_band) % xs_mean&
-             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
-             : i_band * hits_per_band) % g) / dble(hits_per_band)
-        tope % prob_tables(i_E, 1) % f(i_band) % xs_mean&
-             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
-             : i_band * hits_per_band) % f) / dble(hits_per_band)
-        tope % prob_tables(i_E, 1) % x(i_band) % xs_mean&
-             = sum(xs_samples((i_band - 1) * hits_per_band + 1&
-             : i_band * hits_per_band) % x) / dble(hits_per_band)
+      do iT = 1, tope % nT
+        hits_per_band = nint(i_b * histories_avg_urr / dble(n_bands))
+        do i_band = 1, n_bands - 1
+          tope % prob_tables(i_E, iT) % t(i_band) % cnt_mean&
+               = dble(hits_per_band) / dble(i_b * histories_avg_urr)
+          tope % prob_tables(i_E, iT) % t(i_band) % xs_mean&
+               = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
+               : i_band * hits_per_band, iT) % t) / dble(hits_per_band)
+          tope % prob_tables(i_E, iT) % n(i_band) % xs_mean&
+               = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
+               : i_band * hits_per_band, iT) % n) / dble(hits_per_band)
+          tope % prob_tables(i_E, iT) % g(i_band) % xs_mean&
+               = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
+               : i_band * hits_per_band, iT) % g) / dble(hits_per_band)
+          tope % prob_tables(i_E, iT) % f(i_band) % xs_mean&
+               = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
+               : i_band * hits_per_band, iT) % f) / dble(hits_per_band)
+          tope % prob_tables(i_E, iT) % x(i_band) % xs_mean&
+               = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
+               : i_band * hits_per_band, iT) % x) / dble(hits_per_band)
+        end do
+        tope % prob_tables(i_E, iT) % t(n_bands) % cnt_mean&
+             = dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band)&
+             / dble(i_b * histories_avg_urr)
+        tope % prob_tables(i_E, iT) % t(n_bands) % xs_mean&
+             = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
+             : i_b * histories_avg_urr, iT) % t)&
+             /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+        tope % prob_tables(i_E, iT) % n(n_bands) % xs_mean&
+             = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
+             : i_b * histories_avg_urr, iT) % n)&
+             /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+        tope % prob_tables(i_E, iT) % g(n_bands) % xs_mean&
+             = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
+             : i_b * histories_avg_urr, iT) % g)&
+             /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+        tope % prob_tables(i_E, iT) % f(n_bands) % xs_mean&
+             = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
+             : i_b * histories_avg_urr, iT) % f)&
+             /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
+        tope % prob_tables(i_E, iT) % x(n_bands) % xs_mean&
+             = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
+             : i_b * histories_avg_urr, iT) % x)&
+             /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
       end do
-      tope % prob_tables(i_E, 1) % t(n_bands) % cnt_mean&
-           = dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band)&
-           / dble(i_b * histories_avg_urr)
-      tope % prob_tables(i_E, 1) % t(n_bands) % xs_mean&
-           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
-           : i_b * histories_avg_urr) % t)&
-           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-      tope % prob_tables(i_E, 1) % n(n_bands) % xs_mean&
-           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
-           : i_b * histories_avg_urr) % n)&
-           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-      tope % prob_tables(i_E, 1) % g(n_bands) % xs_mean&
-           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
-           : i_b * histories_avg_urr) % g)&
-           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-      tope % prob_tables(i_E, 1) % f(n_bands) % xs_mean&
-           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
-           : i_b * histories_avg_urr) % f)&
-           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-      tope % prob_tables(i_E, 1) % x(n_bands) % xs_mean&
-           = sum(xs_samples((n_bands - 1) * hits_per_band + 1&
-           : i_b * histories_avg_urr) % x)&
-           /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
 
-      deallocate(xs_samples)
+      deallocate(tope % xs_samples)
 
       ! write probability tables out to a file
       if (write_urr_tables) then
@@ -2102,103 +2454,74 @@ contains
           write(tab_unit, '(A13,ES13.6)') 'E [eV]', tope % Etabs(i_E)
           write(tab_unit, '(A13,ES13.6)') 'T [K]', tope % T
           write(tab_unit, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
-            & 'lower [b]', 'upper [b]', &
-            & 'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
+               'lower [b]', 'upper [b]', &
+               'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
 
           if (master) then
             write(*, '(A32,ES10.3,A3)') 'Generated probability tables at ', &
-              & tope % Etabs(i_E), ' eV'
+                 tope % Etabs(i_E), ' eV'
           end if
           ptable => tope % prob_tables(i_E, i_temp)
           do i_band = 1, n_bands
             if (i_band == 1) then
-              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                & xs_t_min, xs_bands(1), &
-                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-                & ptable % n(i_band) % xs_mean, &
-                & ptable % g(i_band) % xs_mean, &
-                & ptable % f(i_band) % xs_mean, &
-                & ptable % x(i_band) % xs_mean
+              write(tab_unit,&
+                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   xs_t_min, xs_bands(1),&
+                   ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
+                   ptable % n(i_band) % xs_mean,&
+                   ptable % g(i_band) % xs_mean,&
+                   ptable % f(i_band) % xs_mean,&
+                   ptable % x(i_band) % xs_mean
             else if (i_band == n_bands) then
-              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                & xs_bands(i_band - 1), xs_t_max, &
-                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-                & ptable % n(i_band) % xs_mean, &
-                & ptable % g(i_band) % xs_mean, &
-                & ptable % f(i_band) % xs_mean, &
-                & ptable % x(i_band) % xs_mean
+              write(tab_unit,&
+                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   xs_bands(i_band - 1), xs_t_max,&
+                   ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
+                   ptable % n(i_band) % xs_mean,&
+                   ptable % g(i_band) % xs_mean,&
+                   ptable % f(i_band) % xs_mean,&
+                   ptable % x(i_band) % xs_mean
             else
-              write(tab_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                & xs_bands(i_band - 1), xs_bands(i_band), &
-                & ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean, &
-                & ptable % n(i_band) % xs_mean, &
-                & ptable % g(i_band) % xs_mean, &
-                & ptable % f(i_band) % xs_mean, &
-                & ptable % x(i_band) % xs_mean
+              write(tab_unit,&
+                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   xs_bands(i_band - 1), xs_bands(i_band),&
+                   ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
+                   ptable % n(i_band) % xs_mean,&
+                   ptable % g(i_band) % xs_mean,&
+                   ptable % f(i_band) % xs_mean,&
+                   ptable % x(i_band) % xs_mean
             end if
           end do
-          write(tab_unit, '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-            & 'batch', 'averaged xs', &
-            & ONE, ptable % avg_t % xs_mean, &
-            & ptable % avg_n % xs_mean, &
-            & ptable % avg_g % xs_mean, &
-            & ptable % avg_f % xs_mean, &
-            & ptable % avg_x % xs_mean
-          write(tab_unit, '(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-            & i_b, '1sigma', &
-            & ZERO, ptable % avg_t % xs_sem, &
-            & ptable % avg_n % xs_sem, &
-            & ptable % avg_g % xs_sem, &
-            & ptable % avg_f % xs_sem, &
-            & ptable % avg_x % xs_sem
+          write(tab_unit,'(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+               'batch', 'averaged xs',&
+               ONE, ptable % avg_t % xs_mean,&
+               ptable % avg_n % xs_mean,&
+               ptable % avg_g % xs_mean,&
+               ptable % avg_f % xs_mean,&
+               ptable % avg_x % xs_mean
+          write(tab_unit,'(I13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+               i_b, '1sigma',&
+               ZERO, ptable % avg_t % xs_sem,&
+               ptable % avg_n % xs_sem,&
+               ptable % avg_g % xs_sem,&
+               ptable % avg_f % xs_sem,&
+               ptable % avg_x % xs_sem
         end do
       end if
 
       ! write averaged URR cross sections out to a file
       if (write_avg_urr_xs) then
         ptable => tope % prob_tables(i_E, 1)
-        write(avg_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)') &
-          & tope % Etabs(i_E), &
-          & ptable % avg_t % xs_mean, &
-          & ptable % avg_n % xs_mean, &
-          & ptable % avg_g % xs_mean, &
-          & ptable % avg_f % xs_mean, &
-          & ptable % avg_x % xs_mean
+        write(avg_unit, '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+             tope % Etabs(i_E),&
+             ptable % avg_t % xs_mean,&
+             ptable % avg_n % xs_mean,&
+             ptable % avg_g % xs_mean,&
+             ptable % avg_f % xs_mean,&
+             ptable % avg_x % xs_mean
       end if
 
     end do ENERGY_LOOP
-
-    ! Doppler broaden equiprobable bands
-    allocate(hot_xs(tope % ntabs))
-    allocate(cold_xs(tope % ntabs))
-    do i_b = 1, n_bands
-      do i_E = 1, tope % ntabs
-        if (i_E == 1) then
-          cold_xs(i_E) = tope % prob_tables(i_E,1) % g(i_b) % xs_mean
-        else
-          cold_xs(i_E) = tope % prob_tables(i_E,1) % avg_g % xs_mean
-        end if
-      end do
-      call broaden(tope % Etabs(:), cold_xs,&
-           nint(tope % AWR * MASS_NEUTRON), 1900.0_8, hot_xs)
-      do i_E = 1, tope % ntabs
-        tope % prob_tables(i_E,1) % g(i_b) % xs_mean = hot_xs(i_E)
-      end do
-      write(temp_str, '(I2)') i_b
-      temp_str = 'broadened-xs-'//trim(adjustl(temp_str))//'.dat'
-      call write_coords(97, temp_str, tope % ntabs, tope % ntabs,&
-           tope % Etabs(:), hot_xs)
-    end do
-    deallocate(hot_xs)
-    deallocate(cold_xs)
-
-    allocate(cold_xs(4))
-    allocate(hot_xs(4))
-    cold_xs(:) = [10.0, 12.0, 16.0, 24.0]
-    call broaden([2.0e4_8, 2.000000001e4_8, 2.000000002e4_8, 2.000000003e4_8],cold_xs,nint(tope % AWR * MASS_NEUTRON),&
-         3000.0_8, hot_xs)
-    print*,cold_xs
-    print*,hot_xs
 
     if (write_urr_tables) close(tab_unit)
     if (write_avg_urr_xs) close(avg_unit)
@@ -2245,7 +2568,6 @@ contains
     real(8) :: m            ! pointwise xs energy interpolation factor
     real(8) :: favg         ! average cross section interpolation factor
     real(8) :: T_K          ! isotope temperature [K]
-!$omp threadprivate(tope, nuc)
 
     tope => isotopes(iso)
     nuc  => nuclides(i_nuc)
@@ -2253,25 +2575,23 @@ contains
     if (tope % point_urr_xs) then
       i_E = binary_search(tope % urr_E, size(tope % urr_E), E)
       m = interp_factor(E, tope % urr_E(i_E), tope % urr_E(i_E + 1), &
-        & LINEAR_LINEAR)
+           LINEAR_LINEAR)
       micro_xs(i_nuc) % elastic = interpolator(m, &
-        & tope % urr_n(i_E), tope % urr_n(i_E + 1), LINEAR_LINEAR)
+           tope % urr_n(i_E), tope % urr_n(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % fission = interpolator(m, &
-        & tope % urr_f(i_E), tope % urr_f(i_E + 1), LINEAR_LINEAR)
+           tope % urr_f(i_E), tope % urr_f(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % absorption = interpolator(m, &
-        & tope % urr_g(i_E) + tope % urr_f(i_E), &
-        & tope % urr_g(i_E + 1) + tope % urr_f(i_E + 1), LINEAR_LINEAR)
+           tope % urr_g(i_E) + tope % urr_f(i_E), &
+           tope % urr_g(i_E + 1) + tope % urr_f(i_E + 1), LINEAR_LINEAR)
       inelastic_xs = interpolator(m, &
-        & tope % urr_x(i_E), tope % urr_x(i_E + 1), LINEAR_LINEAR)
+           tope % urr_x(i_E), tope % urr_x(i_E + 1), LINEAR_LINEAR)
       micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
-                            & + micro_xs(i_nuc) % absorption &
-                            & + inelastic_xs
+           + micro_xs(i_nuc) % absorption &
+           + inelastic_xs
 
       ! Determine nu-fission cross section
-      if (tope % fissionable) then
-        micro_xs(i_nuc) % nu_fission = nu_total(nuc, E/1.0e6_8) * &
-          micro_xs(i_nuc) % fission
-      end if
+      if (tope % fissionable) micro_xs(i_nuc) % nu_fission&
+           = nu_total(nuc, E / 1.0e6_8) * micro_xs(i_nuc) % fission
       return
     end if
 
@@ -2284,6 +2604,7 @@ contains
     ! reset xs accumulators
     call flush_sigmas(t, n, g, f, x)
 
+    ! Get resonance parameters for a local realization about E_n
     ! loop over orbital quantum numbers
     LOC_ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
 
@@ -2399,7 +2720,7 @@ contains
 
           ! add this contribution to the accumulated partial cross
           ! section values built up from all resonances
-          ! TODO: move t outside of loop
+! TODO: move t outside of loop
           call accum_resonances(res, t, n, g, f, x)
 
         end do RESONANCES_LOOP
@@ -2426,67 +2747,48 @@ contains
 
       ! tabulated unresolved resonance parameters interpolation factor
       favg = interp_factor(E, tope % Eavg(iavg), tope % Eavg(iavg + 1), &
-        & tope % INT)
+           tope % INT)
 
       ! interpolate infinite-dilute URR xs
       call interp_avg_urr_xs(favg, iso, iavg, &
-        avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+           avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
-      if (avg_urr_x_xs > ZERO) then
-        if (tope % E < tope % E_ex2 .and. competitive) then
-          ! self-shielded treatment of competitive inelastic cross section
-          inelastic_xs = x % xs / avg_urr_x_xs &
-            & * (micro_xs(i_nuc) % total &
-            & -  micro_xs(i_nuc) % absorption &
-            & -  micro_xs(i_nuc) % elastic)
-        else
-          ! infinite-dilute treatment of competitive inelastic cross section
-          inelastic_xs = micro_xs(i_nuc) % total &
-            & - micro_xs(i_nuc) % absorption &
-            & - micro_xs(i_nuc) % elastic
-        end if
-      else
-        inelastic_xs = micro_xs(i_nuc) % total &
-          & - micro_xs(i_nuc) % absorption &
-          & - micro_xs(i_nuc) % elastic
-      end if
+      inelastic_xs = micro_xs(i_nuc) % total &
+           - micro_xs(i_nuc) % absorption &
+           - micro_xs(i_nuc) % elastic
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
+           ! self-shielded treatment of competitive inelastic cross section
+           inelastic_xs = x % xs / avg_urr_x_xs * inelastic_xs
 
       micro_xs(i_nuc) % elastic = n % xs / avg_urr_n_xs &
-        & * micro_xs(i_nuc) % elastic
+           * micro_xs(i_nuc) % elastic
 
       ! set negative elastic xs and competitive xs to zero
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
       if (inelastic_xs < ZERO) inelastic_xs = ZERO
 
-      if (avg_urr_g_xs > ZERO) then
-        capture_xs = g % xs / avg_urr_g_xs &
-          & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
-      else
-        capture_xs = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-      end if
+      capture_xs = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+      if (avg_urr_g_xs > ZERO)&
+           capture_xs = g % xs / avg_urr_g_xs * capture_xs
 
-      if (avg_urr_f_xs > ZERO) then
-        micro_xs(i_nuc) % fission = f % xs / avg_urr_f_xs &
-          & * micro_xs(i_nuc) % fission
-      else
-        micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
-      end if
+      if (avg_urr_f_xs > ZERO) micro_xs(i_nuc) % fission&
+           = f % xs / avg_urr_f_xs * micro_xs(i_nuc) % fission
 
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
 
       micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
-        & + micro_xs(i_nuc) % absorption &
-        & + inelastic_xs
+           + micro_xs(i_nuc) % absorption + inelastic_xs
 
     else
-      call fatal_error('Self-shielding flag (LSSF) not allowed - must be 0 or 1.')
+      call fatal_error('Self-shielding flag (LSSF) must be 0 or 1')
+
     end if
 
     ! Determine nu-fission cross section
-    if (tope % fissionable) then
-      micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0e6_8) &
-        & * micro_xs(i_nuc) % fission
-    end if
+    if (tope % fissionable) micro_xs(i_nuc) % nu_fission&
+         = nu_total(nuc, E / 1.0e6_8) * micro_xs(i_nuc) % fission
 
     ! set last neutron energy
     tope % E_last = tope % E
@@ -2513,17 +2815,22 @@ contains
     integer :: i_low        ! band index at lower bounding energy
     integer :: i_up         ! band index at upper bounding energy
     integer :: same_nuc_idx ! index of same nuclide
-    real(8) :: f        ! interpolation factor
-    real(8) :: r        ! pseudo-random number
-    real(8) :: xs_n     ! elastic cross section
-    real(8) :: xs_g     ! capture cross section
-    real(8) :: capture  ! temporary capture cross section
-    real(8) :: xs_f     ! fission cross section
-    real(8) :: xs_x     ! inelastic cross section
-    real(8) :: inelast  ! temporary inelastic cross section
-    real(8) :: cum_prob ! cumulative band probability
+    integer :: iavg         ! average cross section index
+    real(8) :: f            ! interpolation factor
+    real(8) :: r            ! pseudo-random number
+    real(8) :: xs_n         ! elastic resonance cross section
+    real(8) :: xs_g         ! capture resonance cross section
+    real(8) :: capture      ! temporary capture cross section
+    real(8) :: xs_f         ! fission resonance cross section
+    real(8) :: xs_x         ! competitive resonance cross section
+    real(8) :: inelast      ! temporary inelastic cross section
+    real(8) :: cum_prob     ! cumulative band probability
+    real(8) :: avg_urr_n_xs ! infinite-dilute n xs
+    real(8) :: avg_urr_f_xs ! infinite-dilute f xs
+    real(8) :: avg_urr_g_xs ! infinite-dilute g xs
+    real(8) :: avg_urr_x_xs ! infinite-dilute x xs
+    real(8) :: favg         ! average cross section interpolation factor
     logical :: same_nuc ! do we know the xs for this nuclide at this energy?
-!$omp threadprivate(tope, nuc)
 
     tope => isotopes(i_so)
     nuc  => nuclides(i_nuc)
@@ -2547,9 +2854,8 @@ contains
     ! to preserve correlation of temperature in probability tables
     same_nuc = .false.
     do i = 1, nuc % nuc_list % size()
-      if (E /= ZERO &
-        & .and. E / 1.0E6_8 &
-        & == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
+      if (E /= ZERO .and. E / 1.0E6_8&
+           == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
         same_nuc = .true.
         same_nuc_idx = i
         exit
@@ -2570,7 +2876,7 @@ contains
       if (cum_prob > r) exit
       i_low = i_low + 1
       cum_prob = cum_prob &
-        & + tope % prob_tables(i_E, iT) % t(i_low) % cnt_mean
+           + tope % prob_tables(i_E, iT) % t(i_low) % cnt_mean
     end do
     i_up = 1
     cum_prob = tope % prob_tables(i_E + 1, iT) % t(i_up) % cnt_mean
@@ -2578,94 +2884,103 @@ contains
       if (cum_prob > r) exit
       i_up = i_up + 1
       cum_prob = cum_prob &
-        & + tope % prob_tables(i_E + 1, iT) % t(i_up) % cnt_mean
+           + tope % prob_tables(i_E + 1, iT) % t(i_up) % cnt_mean
     end do
 
     ! elastic xs from probability bands
     xs_n = interpolator(f, &
-      & tope % prob_tables(i_E, iT) % n(i_low) % xs_mean, &
-      & tope % prob_tables(i_E + 1, iT) % n(i_up) % xs_mean, tope % INT)
+         tope % prob_tables(i_E, iT) % n(i_low) % xs_mean, &
+         tope % prob_tables(i_E + 1, iT) % n(i_up) % xs_mean, tope % INT)
 
     ! fission xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, iT) % f(i_low) % xs_mean > ZERO) then
+         tope % prob_tables(i_E, iT) % f(i_low) % xs_mean > ZERO) then
       xs_f = interpolator(f, &
-        & tope % prob_tables(i_E, iT) % f(i_low) % xs_mean, &
-        & tope % prob_tables(i_E + 1, iT) % f(i_up) % xs_mean, tope % INT)
+           tope % prob_tables(i_E, iT) % f(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, iT) % f(i_up) % xs_mean, tope % INT)
     else
       xs_f = ZERO
     end if
 
     ! capture xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, iT) % g(i_low) % xs_mean > ZERO) then
+         tope % prob_tables(i_E, iT) % g(i_low) % xs_mean > ZERO) then
       xs_g = interpolator(f, &
-        & tope % prob_tables(i_E, iT) % g(i_low) % xs_mean, &
-        & tope % prob_tables(i_E + 1, iT) % g(i_up) % xs_mean, tope % INT)
+           tope % prob_tables(i_E, iT) % g(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, iT) % g(i_up) % xs_mean, tope % INT)
     else
       xs_g = ZERO
     end if
 
     ! competitive xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-      & tope % prob_tables(i_E, iT) % x(i_low) % xs_mean > ZERO) then
+         (tope % prob_tables(i_E, iT) % x(i_low) % xs_mean > ZERO&
+         .and. tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean > ZERO)) then
       xs_x = interpolator(f, &
-        & tope % prob_tables(i_E, iT) % x(i_low) % xs_mean, &
-        & tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean, tope % INT)
+           tope % prob_tables(i_E, iT) % x(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean, tope % INT)
     else
       xs_x = ZERO
     end if
 
+    inelast = micro_xs(i_nuc) % total - micro_xs(i_nuc) % elastic&
+         - micro_xs(i_nuc) % absorption
     if (tope % LSSF == 0) then
-! TODO: move adding to ACE File 3 background to prob band calculation
-      call fatal_error('LSSF=0 probability tables not yet supported for transport')
-      micro_xs(i_nuc) % elastic = xs_n
-      capture = xs_g
-      micro_xs(i_nuc) % fission = xs_f
-      inelast = xs_x
+! TODO: consider moving addition of File 3 background to prob band calculation
+      if (competitive) inelast = inelast + xs_x
+      capture = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission + xs_g
+      micro_xs(i_nuc) % elastic = micro_xs(i_nuc) % elastic + xs_n
+      micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission + xs_f
+    
     else if (tope % LSSF == 1) then
-! TODO: use stored background ACE cross sections for URR reactions
-      if (xs_x > ZERO .and. competitive) then
-        inelast = xs_x / interpolator(f, &
-          & tope % prob_tables(i_E, iT) % avg_x % xs_mean, &
-          & tope % prob_tables(i_E + 1, iT) % avg_x % xs_mean, tope % INT)&
-          & * (micro_xs(i_nuc) % total - micro_xs(i_nuc) % absorption &
-          & - micro_xs(i_nuc) % elastic)
-      else
-        inelast = xs_x
-      end if
-! TODO: move this division to prob table calculation
-      micro_xs(i_nuc) % elastic = xs_n / interpolator(f, &
-        & tope % prob_tables(i_E, iT) % avg_n % xs_mean, &
-        & tope % prob_tables(i_E + 1, iT) % avg_n % xs_mean, tope % INT)&
-        & * micro_xs(i_nuc) % elastic
-      if (xs_g > ZERO) then
-        capture = xs_g / interpolator(f, &
-          & tope % prob_tables(i_E, iT) % avg_g % xs_mean, &
-          & tope % prob_tables(i_E + 1, iT) % avg_g % xs_mean, tope % INT)&
-          & * (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission)
-      else
-        capture = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-      end if
-      if (xs_f > ZERO) then
-        micro_xs(i_nuc) % fission = xs_f / interpolator(f, &
-          & tope % prob_tables(i_E, iT) % avg_f % xs_mean, &
-          & tope % prob_tables(i_E + 1, iT) % avg_f % xs_mean, tope % INT)&
-          & * micro_xs(i_nuc) % fission
-      else
-        micro_xs(i_nuc) % fission = micro_xs(i_nuc) % fission
-      end if
+      ! multipy the self-shielding factors by the infinite-dilute xs
+      
+      ! tabulated unresolved resonance parameters interpolation factor
+      iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+
+      favg = interp_factor(tope % E, &
+           tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
+
+      ! interpolate averaged, infinite-dilute URR cross sections
+      call interp_avg_urr_xs(favg, i_so, iavg, &
+           avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
+
+      ! competitive xs
+      ! infinite-dilute treatment of competitive xs
+      if (avg_urr_x_xs > ZERO&
+           .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
+           .and. competitive)&
+           ! self-shielded treatment of competitive inelastic xs
+           inelast = xs_x / avg_urr_x_xs * inelast
+
+      ! elastic scattering xs
+      micro_xs(i_nuc) % elastic = xs_n / avg_urr_n_xs &
+           * micro_xs(i_nuc) % elastic
+
+      ! set negative elastic xs and competitive xs to zero
+      if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
+      if (inelast < ZERO) inelast = ZERO
+
+      ! radiative capture xs
+      ! background capture cross section
+      capture = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
+      if (avg_urr_g_xs > ZERO)&
+           capture = xs_g / avg_urr_g_xs * capture
+
+      ! fission xs
+      if (avg_urr_f_xs > ZERO)&
+           micro_xs(i_nuc) % fission = xs_f / avg_urr_f_xs&
+           * micro_xs(i_nuc) % fission
+
     end if
 
     micro_xs(i_nuc) % absorption = capture + micro_xs(i_nuc) % fission
     micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
-      & + micro_xs(i_nuc) % absorption + inelast
+         + micro_xs(i_nuc) % absorption + inelast
 
     ! Determine nu-fission cross section
-    if (nuc % fissionable) then
-      micro_xs(i_nuc) % nu_fission = nu_total(nuc, E / 1.0E6_8) * &
-           micro_xs(i_nuc) % fission
-    end if
+    if (nuc % fissionable) micro_xs(i_nuc) % nu_fission&
+         = nu_total(nuc, E / 1.0E6_8) * micro_xs(i_nuc) % fission
 
     tope % E_last = E
 
@@ -2722,9 +3037,8 @@ contains
       ! sample a level spacing from the Wigner distribution
       this % D_lJ = wigner_dist(tope % D)
       if (this % i_res == 0) then
-        ! set lowest energy (i.e. the first) resonance for this ladder well below
-        ! the energy grid point such that the ladder spans a sufficient energy
-        ! range
+        ! set lowest-energy resonance for this ladder well below the energy grid
+        ! point such that the ladder spans a sufficient energy range
         n_res = n_res_contrib(tope % L)
         this % E_lam = (tope % E - n_res/2 * tope % D) &
              + (ONE - TWO * prn()) * this % D_lJ
@@ -2813,7 +3127,7 @@ contains
 
     if (tope % E == tope % E_last) then
       if (this % i_res == 0) return
-	  ! Energy hasn't changed since last realization, so use the same one
+      ! Energy hasn't changed since last realization, so use the same one
       this % Gam_n = tope % local_realization(i_l, i_J) % Gam_n(this % i_res)
       this % Gam_f = tope % local_realization(i_l, i_J) % Gam_f(this % i_res)
       this % Gam_g = tope % local_realization(i_l, i_J) % Gam_g(this % i_res)
@@ -2822,18 +3136,18 @@ contains
 
     else
       ! sample indices into table of equiprobable chi-squared function values
-      i_tabn = ceiling(prn() * 20.0_8)
-      i_tabf = ceiling(prn() * 20.0_8)
-      i_tabg = ceiling(prn() * 20.0_8)
-      i_tabx = ceiling(prn() * 20.0_8)
+      i_tabn = ceiling(prn() * 100.0_8)
+      i_tabf = ceiling(prn() * 100.0_8)
+      i_tabg = ceiling(prn() * 100.0_8)
+      i_tabx = ceiling(prn() * 100.0_8)
 
       ! use the sampled tabulated chi-squared values to calculate sample widths
       ! neutron width
       if (tope % AMUN > 0) then
         ! compute factors needed to go from the mean reduced width that is
-        ! provided by ENDF for elastic scattering to what we want - a partial width
-        ! (use absolute value of energy in order to handle bound levels which have
-        ! negative resonance energies - this is an ENDF-6 convention, not theory)
+        ! provided by ENDF for elastic scattering to a partial width
+        ! (use absolute value energies when handling  bound levels which have
+        ! negative resonance energies - this is ENDF-6 convention, not theory)
         if (represent_params == E_NEUTRON) then
           rho = tope % k_n * tope % ac(tope % i_urr)
           nu  = tope % P_l_n / rho
@@ -2947,9 +3261,9 @@ contains
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
-      if (tope % E >= tope % E_ex2) then
-        ! two competitive reactions possible, can't calculate an energy-dependent
-        ! width because it depends on the two (unprovided) reaction partial widths
+      if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
+        ! two competitive rxns possible, can't calculate an energy-dependent
+        ! width because it depends on the two (unprovided) rxn partial widths
         Gam_x_n = this % Gam_x
       else if (tope % E >= tope % E_ex1) then
         ! can compute an energy-dependent width for the one competitive reaction
@@ -3002,8 +3316,7 @@ contains
       this % dxs_f = ZERO
     end if
 
-    ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+    if (Gam_x_n > ZERO) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
@@ -3059,9 +3372,9 @@ contains
 
       Gam_n_n = this % Gam_n * tope % P_l_n / tope % P_l_lam
 
-      if (tope % E >= tope % E_ex2) then
-        ! two competitive reactions possible, can't calculate an energy-dependent
-        ! width because it depends on the two (unprovided) reaction partial widths
+      if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
+        ! two competitive rxns possible, can't calculate an energy-dependent
+        ! width because it depends on the two (unprovided) rxn partial widths
         Gam_x_n = this % Gam_x
       else if (tope % E >= tope % E_ex1) then
         ! can compute an energy-dependent width for the one competitive reaction
@@ -3118,17 +3431,13 @@ contains
       this % dxs_f = ZERO
     end if
 
-    ! can only have a competitive resonance component w/ a single open channel
-    if (Gam_x_n > ZERO .and. tope % E < tope % E_ex2) then
+    if (Gam_x_n > ZERO) then
       this % dxs_x = sig_lam_Gam_t_n_psi * Gam_x_n
     else
       this % dxs_x = ZERO
     end if
 
-    this % dxs_t = this % dxs_n &
-         + this % dxs_g &
-         + this % dxs_f &
-         + this % dxs_x
+    this % dxs_t = this % dxs_n + this % dxs_g + this % dxs_f + this % dxs_x
 
   end subroutine mlbw_xs
 
@@ -3187,7 +3496,7 @@ contains
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
                * tope % P_l_n / P_l_lam
 
-          if (tope % E >= tope % E_ex2) then
+          if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths
@@ -3285,7 +3594,7 @@ contains
           Gam_n_n = tope % local_realization(i_l, i_J) % Gam_n(i_r)&
                * tope % P_l_n / P_l_lam
 
-          if (tope % E >= tope % E_ex2) then
+          if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths
@@ -3357,15 +3666,16 @@ contains
 
     case(3)
       P = rho * rho2 * rho2 * rho2 &
-        & / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
+           / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
 
     case(4)
       P = rho * rho2 * rho2 * rho2 * rho2 &
-        & / (11025.0_8 + rho2 * (1575.0_8 + rho2 &
-        & * (135.0_8 + rho2 * (10.0_8 + rho2))))
+           / (11025.0_8 + rho2 * (1575.0_8 + rho2 &
+           * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
     case default
       call fatal_error('Orbital quantum number not allowed')
+
     end select
 
   end function penetration
@@ -3407,10 +3717,11 @@ contains
 
     case(4)
       phi = rho - atan((105.0_8 * rho - 10.0_8 * rho3) &
-        & / (105.0_8 - 45.0_8 * rho2 + rho4))
+           / (105.0_8 - 45.0_8 * rho2 + rho4))
 
     case default
       call fatal_error('Orbital quantum number not allowed')
+
     end select
 
   end function phase_shift
@@ -3445,15 +3756,16 @@ contains
 
     case(3)
       S = -(675.0_8 + rho2 * (90.0_8 + 6.0_8 * rho2)) &
-        & / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
+           / (225.0_8 + rho2 * (45.0_8 + rho2 * (6.0_8 + rho2)))
 
     case(4)
       S = -(44100.0_8 + rho2 * (4725.0_8 + rho2 * (270.0_8 + 10.0_8 * rho2)))&
-        & / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 &
-        & + rho2 * (10.0_8 + rho2))))
+           / (11025.0_8 + rho2 * (1575.0_8 + rho2 * (135.0_8 &
+           + rho2 * (10.0_8 + rho2))))
 
     case default
       call fatal_error('Orbital quantum number not allowed')
+
     end select
 
   end function shift
@@ -3474,9 +3786,9 @@ contains
     complex(8) :: w_val   ! complex return value of the Faddeeva evaluation
 
     if (T > ZERO) then
-
       ! evaluate the W (Faddeeva) function
       select case (w_eval)
+
       case (MIT_W)
         ! call S.G. Johnson's Faddeeva evaluation
         relerr = 1.0e-6
@@ -3495,7 +3807,6 @@ contains
       end select
 
     else
-
       psi_val = ONE / (ONE + x*x)
 
     end if
@@ -3518,7 +3829,6 @@ contains
     real(8)    :: relerr  ! relative error of the Faddeeva evaluation
 
     if (T > ZERO) then
-
       ! evaluate the W (Faddeeva) function
       select case (w_eval)
 
@@ -3540,7 +3850,6 @@ contains
       end select
 
     else
-
       chi_val = x / (ONE + x*x)
 
     end if
@@ -3630,20 +3939,20 @@ contains
 
     ! accumulate infinite-dilute xs values for this realization
     this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_t % xs
+         = this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_t % xs
     this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_n % xs
+         = this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_n % xs
     this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_g % xs
+         = this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_g % xs
     this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_f % xs
+         = this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_f % xs
     this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_x % xs
+         = this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_x % xs
 
     ! determine band number
     i_b = 1
@@ -3655,22 +3964,22 @@ contains
 
     ! add partial xs values to the band's single-batch sums
     this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum + 1
+         = this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum + 1
     this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_t % xs
+         = this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_t % xs
     this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_n % xs
+         = this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_n % xs
     this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_g % xs
+         = this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_g % xs
     this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_f % xs
+         = this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_f % xs
     this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
-      & = this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
-      & + this % prob_tables(i_E, i_T) % avg_x % xs
+         = this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
+         + this % prob_tables(i_E, i_T) % avg_x % xs
 
   end subroutine accum_history
 
@@ -3718,107 +4027,107 @@ contains
         ! accumulate single-batch band means and squared band means
         if (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum /= 0) then
           this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
-            & = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
-            & + this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum
+               = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
+               + this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum
           this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
-            & = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
-            & + (this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum)
+               = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
+               + (this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum)
           this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
-            & = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
-            & + this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum
+               = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
+               + this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum
           this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
-            & = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
-            & + (this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum)
+               = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
+               + (this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum)
           this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
-            & = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
-            & + this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum
+               = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
+               + this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum
           this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
-            & = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
-            & + (this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum)
+               = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
+               + (this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum)
           this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
-            & = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
-            & + this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum
+               = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
+               + this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum
           this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
-            & = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
-            & + (this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum)
+               = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
+               + (this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum)
           this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
-            & = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
-            & + this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum
+               = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
+               + this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum
           this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
-            & = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
-            & + (this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum)
+               = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
+               + (this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum)
 
           ! accumulate single-batch band counts
           this % prob_tables(i_E, i_T) % t(i_b) % cnt &
-            & = this % prob_tables(i_E, i_T) % t(i_b) % cnt &
-            & + this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum
+               = this % prob_tables(i_E, i_T) % t(i_b) % cnt &
+               + this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum
 
           ! accumulate squared single-batch band counts
           this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
-            & = this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
-            & + (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
-            & *  this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum)
+               = this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
+               + (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
+               *  this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum)
         end if
       end do
 
       ! accumulate single-batch infinite-dilute means
       this % prob_tables(i_E, i_T) % avg_t % xs_sum &
-        & = this % prob_tables(i_E, i_T) % avg_t % xs_sum &
-        & + this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
-        & / dble(histories_avg_urr)
+           = this % prob_tables(i_E, i_T) % avg_t % xs_sum &
+           + this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+           / dble(histories_avg_urr)
       this % prob_tables(i_E, i_T) % avg_n % xs_sum &
-        & = this % prob_tables(i_E, i_T) % avg_n % xs_sum &
-        & + this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
-        & / dble(histories_avg_urr)
+           = this % prob_tables(i_E, i_T) % avg_n % xs_sum &
+           + this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+           / dble(histories_avg_urr)
       this % prob_tables(i_E, i_T) % avg_g % xs_sum &
-        & = this % prob_tables(i_E, i_T) % avg_g % xs_sum &
-        & + this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
-        & / dble(histories_avg_urr)
+           = this % prob_tables(i_E, i_T) % avg_g % xs_sum &
+           + this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+           / dble(histories_avg_urr)
       this % prob_tables(i_E, i_T) % avg_f % xs_sum &
-        & = this % prob_tables(i_E, i_T) % avg_f % xs_sum &
-        & + this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
-        & / dble(histories_avg_urr)
+           = this % prob_tables(i_E, i_T) % avg_f % xs_sum &
+           + this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+           / dble(histories_avg_urr)
       this % prob_tables(i_E, i_T) % avg_x % xs_sum &
-        & = this % prob_tables(i_E, i_T) % avg_x % xs_sum &
-        & + this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-        & / dble(histories_avg_urr)
+           = this % prob_tables(i_E, i_T) % avg_x % xs_sum &
+           + this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+           / dble(histories_avg_urr)
 
       ! accumulate squared single-batch infinite-dilute means
       this % prob_tables(i_E, i_T) % avg_t % xs_sum2 &
-        & = this % prob_tables(i_E, i_T) % avg_t % xs_sum2 &
-        & + (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
-        & / dble(histories_avg_urr))&
-        & * (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
-        & / dble(histories_avg_urr))
+           = this % prob_tables(i_E, i_T) % avg_t % xs_sum2 &
+           + (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+           / dble(histories_avg_urr))&
+           * (this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
+           / dble(histories_avg_urr))
       this % prob_tables(i_E, i_T) % avg_n % xs_sum2 &
-        & = this % prob_tables(i_E, i_T) % avg_n % xs_sum2 &
-        & + (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
-        & / dble(histories_avg_urr))&
-        & * (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
-        & / dble(histories_avg_urr))
+           = this % prob_tables(i_E, i_T) % avg_n % xs_sum2 &
+           + (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+           / dble(histories_avg_urr))&
+           * (this % prob_tables(i_E, i_T) % avg_n % xs_tmp_sum &
+           / dble(histories_avg_urr))
       this % prob_tables(i_E, i_T) % avg_g % xs_sum2 &
-        & = this % prob_tables(i_E, i_T) % avg_g % xs_sum2 &
-        & + (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
-        & / dble(histories_avg_urr))&
-        & * (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
-        & / dble(histories_avg_urr))
+           = this % prob_tables(i_E, i_T) % avg_g % xs_sum2 &
+           + (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+           / dble(histories_avg_urr))&
+           * (this % prob_tables(i_E, i_T) % avg_g % xs_tmp_sum &
+           / dble(histories_avg_urr))
       this % prob_tables(i_E, i_T) % avg_f % xs_sum2 &
-        & = this % prob_tables(i_E, i_T) % avg_f % xs_sum2 &
-        & + (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
-        & / dble(histories_avg_urr))&
-        & * (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
-        & / dble(histories_avg_urr))
+           = this % prob_tables(i_E, i_T) % avg_f % xs_sum2 &
+           + (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+           / dble(histories_avg_urr))&
+           * (this % prob_tables(i_E, i_T) % avg_f % xs_tmp_sum &
+           / dble(histories_avg_urr))
       this % prob_tables(i_E, i_T) % avg_x % xs_sum2 &
-        & = this % prob_tables(i_E, i_T) % avg_x % xs_sum2 &
-        & + (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-        & / dble(histories_avg_urr))&
-        & * (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-        & / dble(histories_avg_urr))
+           = this % prob_tables(i_E, i_T) % avg_x % xs_sum2 &
+           + (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+           / dble(histories_avg_urr))&
+           * (this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
+           / dble(histories_avg_urr))
 
     end do
 
@@ -3849,109 +4158,86 @@ contains
         do i_b = 1, n_bands
           if (ptable % t(i_b) % cnt > 0) then
             ptable % t(i_b) % xs_mean &
-              & = ptable % t(i_b) % xs_sum / ptable % t(i_b) % cnt
+                 = ptable % t(i_b) % xs_sum / ptable % t(i_b) % cnt
             ptable % n(i_b) % xs_mean &
-              & = ptable % n(i_b) % xs_sum / ptable % t(i_b) % cnt
+                 = ptable % n(i_b) % xs_sum / ptable % t(i_b) % cnt
             ptable % g(i_b) % xs_mean &
-              & = ptable % g(i_b) % xs_sum / ptable % t(i_b) % cnt
+                 = ptable % g(i_b) % xs_sum / ptable % t(i_b) % cnt
             ptable % f(i_b) % xs_mean &
-              & = ptable % f(i_b) % xs_sum / ptable % t(i_b) % cnt
+                 = ptable % f(i_b) % xs_sum / ptable % t(i_b) % cnt
             ptable % x(i_b) % xs_mean &
-              & = ptable % x(i_b) % xs_sum / ptable % t(i_b) % cnt
+                 = ptable % x(i_b) % xs_sum / ptable % t(i_b) % cnt
           end if
           ptable % t(i_b) % cnt_mean &
-            & = ptable % t(i_b) % cnt / (i_bat * histories_avg_urr)
+               = ptable % t(i_b) % cnt / (i_bat * histories_avg_urr)
           ptable % n(i_b) % cnt_mean &
-            & = ptable % n(i_b) % cnt / (i_bat * histories_avg_urr)
+               = ptable % n(i_b) % cnt / (i_bat * histories_avg_urr)
           ptable % g(i_b) % cnt_mean &
-            & = ptable % g(i_b) % cnt / (i_bat * histories_avg_urr)
+               = ptable % g(i_b) % cnt / (i_bat * histories_avg_urr)
           ptable % f(i_b) % cnt_mean &
-            & = ptable % f(i_b) % cnt / (i_bat * histories_avg_urr)
+               = ptable % f(i_b) % cnt / (i_bat * histories_avg_urr)
           ptable % x(i_b) % cnt_mean &
-            & = ptable % x(i_b) % cnt / (i_bat * histories_avg_urr)
+               = ptable % x(i_b) % cnt / (i_bat * histories_avg_urr)
         end do
 
-        ptable % avg_t % xs_mean &
-          & = ptable % avg_t % xs_sum / i_bat
-        ptable % avg_n % xs_mean &
-          & = ptable % avg_n % xs_sum / i_bat
-        ptable % avg_g % xs_mean &
-          & = ptable % avg_g % xs_sum / i_bat
-        ptable % avg_f % xs_mean &
-          & = ptable % avg_f % xs_sum / i_bat
-        ptable % avg_x % xs_mean &
-          & = ptable % avg_x % xs_sum / i_bat
+        ptable % avg_t % xs_mean = ptable % avg_t % xs_sum / i_bat
+        ptable % avg_n % xs_mean = ptable % avg_n % xs_sum / i_bat
+        ptable % avg_g % xs_mean = ptable % avg_g % xs_sum / i_bat
+        ptable % avg_f % xs_mean = ptable % avg_f % xs_sum / i_bat
+        ptable % avg_x % xs_mean = ptable % avg_x % xs_sum / i_bat
 
-        if (ptable % avg_t % xs_mean /= ZERO &
-          & .and. i_bat_int > 1) then
+        if (ptable % avg_t % xs_mean /= ZERO .and. i_bat_int > 1) then
           ! compute standard errors of mean xs values
-          ptable % avg_t % xs_sem &
-            & = sqrt((ONE / (i_bat - ONE)) &
-            & * (ptable % avg_t % xs_sum2 / i_bat &
-            & - (ptable % avg_t % xs_mean) &
-            & * (ptable % avg_t % xs_mean)))
+          ptable % avg_t % xs_sem&
+               = sqrt((ONE / (i_bat - ONE)) * (ptable % avg_t % xs_sum2 / i_bat&
+               - (ptable % avg_t % xs_mean) * (ptable % avg_t % xs_mean)))
 
           ! compute relative uncertainties in xs values
           ptable % avg_t % rel_unc &
-            & = ptable % avg_t % xs_sem &
-            & / ptable % avg_t % xs_mean
+               = ptable % avg_t % xs_sem / ptable % avg_t % xs_mean
         end if
-        if (ptable % avg_n % xs_mean /= ZERO &
-          & .and. i_bat_int > 1) then
+        if (ptable % avg_n % xs_mean /= ZERO .and. i_bat_int > 1) then
           ! compute standard errors of mean xs values
           ptable % avg_n % xs_sem &
-            & = sqrt((ONE / (i_bat - ONE)) &
-            & * (ptable % avg_n % xs_sum2 / i_bat &
-            & - (ptable % avg_n % xs_mean) &
-            & * (ptable % avg_n % xs_mean)))
+               = sqrt((ONE / (i_bat - ONE)) * (ptable % avg_n % xs_sum2 / i_bat&
+               - (ptable % avg_n % xs_mean) * (ptable % avg_n % xs_mean)))
 
           ! compute relative uncertainties in xs values
           ptable % avg_n % rel_unc &
-            & = ptable % avg_n % xs_sem &
-            & / ptable % avg_n % xs_mean
+               = ptable % avg_n % xs_sem / ptable % avg_n % xs_mean
         end if
-        if (ptable % avg_g % xs_mean /= ZERO &
-          & .and. i_bat_int > 1) then
+        if (ptable % avg_g % xs_mean /= ZERO .and. i_bat_int > 1) then
           ! compute standard errors of mean xs values
           ptable % avg_g % xs_sem &
-            & = sqrt((ONE / (i_bat - ONE)) &
-            & * (ptable % avg_g % xs_sum2 / i_bat &
-            & - (ptable % avg_g % xs_mean) &
-            & * (ptable % avg_g % xs_mean)))
+               = sqrt((ONE / (i_bat - ONE)) * (ptable % avg_g % xs_sum2 / i_bat&
+               - (ptable % avg_g % xs_mean) * (ptable % avg_g % xs_mean)))
 
           ! compute relative uncertainties in xs values
           ptable % avg_g % rel_unc &
-            & = ptable % avg_g % xs_sem &
-            & / ptable % avg_g % xs_mean
+               = ptable % avg_g % xs_sem / ptable % avg_g % xs_mean
         end if
-        if (ptable % avg_f % xs_mean > ZERO &
-          & .and. i_bat_int > 1 .and. ptable % avg_f % xs_sum2 / i_bat &
-          & - ptable % avg_f % xs_mean * ptable % avg_f % xs_mean > ZERO) then
+        if (ptable % avg_f % xs_mean > ZERO .and. i_bat_int > 1&
+             .and. (ptable % avg_f % xs_sum2 / i_bat &
+             - ptable % avg_f % xs_mean * ptable % avg_f % xs_mean) > ZERO) then
           ! compute standard errors of mean xs values
           ptable % avg_f % xs_sem &
-            & = sqrt((ONE / (i_bat - ONE)) &
-            & * (ptable % avg_f % xs_sum2 / i_bat &
-            & - (ptable % avg_f % xs_mean) &
-            & * (ptable % avg_f % xs_mean)))
+               = sqrt((ONE / (i_bat - ONE)) * (ptable % avg_f % xs_sum2 / i_bat&
+               - (ptable % avg_f % xs_mean) * (ptable % avg_f % xs_mean)))
 
           ! compute relative uncertainties in xs values
           ptable % avg_f % rel_unc &
-            & = ptable % avg_f % xs_sem &
-            & / ptable % avg_f % xs_mean
+               = ptable % avg_f % xs_sem / ptable % avg_f % xs_mean
         end if
         if (ptable % avg_x % xs_mean /= ZERO &
-          & .and. i_bat_int > 1 .and. competitive) then
+             .and. i_bat_int > 1 .and. competitive) then
           ! compute standard errors of mean xs values
           ptable % avg_x % xs_sem &
-            & = sqrt((ONE / (i_bat - ONE)) &
-            & * (ptable % avg_x % xs_sum2 / i_bat &
-            & - (ptable % avg_x % xs_mean) &
-            & * (ptable % avg_x % xs_mean)))
+               = sqrt((ONE / (i_bat - ONE)) * (ptable % avg_x % xs_sum2 / i_bat&
+               - (ptable % avg_x % xs_mean) * (ptable % avg_x % xs_mean)))
 
           ! compute relative uncertainties in xs values
           ptable % avg_x % rel_unc &
-            & = ptable % avg_x % xs_sem &
-            & / ptable % avg_x % xs_mean
+               = ptable % avg_x % xs_sem / ptable % avg_x % xs_mean
         end if
       end do
     end do
@@ -3973,18 +4259,14 @@ contains
     real(8) :: factor  ! interpolation factor
 
     select case(scheme)
-    case(LINEAR_LINEAR)
 
+    case(LINEAR_LINEAR)
       factor = (val - val_low) / (val_up - val_low)
 
     case(LOG_LOG)
-
-      if (min(val, val_low, val_up) <= ZERO) &
-        & call fatal_error('Argument of log() non-positive')
       factor = log(val / val_low) / log(val_up / val_low)
 
     case default
-
       call fatal_error('Interpolations other than lin-lin or log-log currently &
         &not supported in OTF URR treatments')
 
@@ -4007,16 +4289,14 @@ contains
     real(8) :: val     ! interpolated value
 
     select case(scheme)
+    
     case (LINEAR_LINEAR)
-
       val = val_low + factor * (val_up - val_low)
 
     case (LOG_LOG)
-
       val = exp((ONE - factor) * log(val_low) + factor * log(val_up))
 
     case default
-
       call fatal_error('Interpolations other than lin-lin or log-log currently &
         &not supported in OTF URR treatments')
 
@@ -4039,37 +4319,44 @@ contains
     integer :: l_val ! orbital quantum number
     real(8) :: J_val ! total angular momentum quantum number
     real(8) :: E_val ! highest-energy RRR resonance energy for (l,J)
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
     select case (tope % LRF(tope % i_urr - 1))
+    
     case (SLBW)
       do i_res = size(tope % slbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % slbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
+        if (tope % slbw_resonances(l_val + 1) % AJ(i_res) == J_val&
+             .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) then
           E_val = tope % slbw_resonances(l_val + 1) % E_lam(i_res)
           exit
         end if
       end do
+    
     case (MLBW)
       do i_res = size(tope % mlbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % mlbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
+        if (tope % mlbw_resonances(l_val + 1) % AJ(i_res) == J_val&
+             .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) then
           E_val = tope % mlbw_resonances(l_val + 1) % E_lam(i_res)
           exit
         end if
       end do
+    
     case (REICH_MOORE)
       do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % rm_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
+        if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val&
+             .and. tope % rm_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) then
           E_val = tope % rm_resonances(l_val + 1) % E_lam(i_res)
           exit
         end if
       end do
+    
     case default
       call fatal_error('Unrecognized/unsupported RRR formalism')
+    
     end select
 
   end function E_last_rrr
@@ -4090,40 +4377,44 @@ contains
     integer :: i_res     ! index of the RRR resonance cnt_res resonances back
     integer :: l_val     ! orbital quantum number
     real(8) :: J_val ! total angular momentum quantum number
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
     cnt_res   = 0
 
     select case (tope % LRF(tope % i_urr - 1))
+
     case (SLBW)
       do i_res = size(tope % slbw_resonances(l_val + 1) % E_lam), 1, -1
         if (tope % slbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
-          cnt_res = cnt_res + 1
-        end if
+             .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
+
     case (MLBW)
       do i_res = size(tope % mlbw_resonances(l_val + 1) % E_lam), 1, -1
         if (tope % mlbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
-          cnt_res = cnt_res + 1
-        end if
+             .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
+    
     case (REICH_MOORE)
       do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
         if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
-          .and. tope % rm_resonances(l_val + 1) % E_lam(i_res) < tope % EL(tope % i_urr)) then
-          cnt_res = cnt_res + 1
-        end if
+             .and. tope % rm_resonances(l_val + 1) % E_lam(i_res)&
+             < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
+    
     case default
       call fatal_error('Unrecognized/unsupported RRR formalism')
+    
     end select
+
+    ! if there aren't enough contributing RRR resonances
+    if (cnt_res < n_rrr_res) i_res = 0
 
   end function rrr_res
 
@@ -4251,7 +4542,6 @@ contains
     integer :: i_res ! resonance counter
     integer :: i_l   ! orbital quantum number index
     integer :: i_J   ! total angular momentum quantum number
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
@@ -4279,11 +4569,11 @@ contains
     integer :: i_l   ! orbital quantum number index
     integer :: i_J   ! total angular momentum quantum number
     integer :: i_ER  ! resonance energy region index
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
     select case (tope % LRU(i_ER))
+
     ! resolved parameters
     case (1)
       select case (tope % LRF(i_ER))
@@ -4304,7 +4594,15 @@ contains
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (MLBW)
-        res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+        if (i_res > size(tope % mlbw_resonances(i_l) % E_lam(:))) then
+          i_res = size(tope % mlbw_resonances(i_l) % E_lam(:))
+          res % E_lam = res % E_lam&
+               + (tope % mlbw_resonances(i_l) % E_lam(i_res)&
+               -  tope % mlbw_resonances(i_l) % E_lam(i_res - 1))
+        else
+          res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+        end if
+        
         res % Gam_n = tope % mlbw_resonances(i_l) % GN(i_res)
         res % Gam_g = tope % mlbw_resonances(i_l) % GG(i_res)
         res % Gam_f = tope % mlbw_resonances(i_l) % GF(i_res)
@@ -4312,7 +4610,15 @@ contains
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (REICH_MOORE)
-        res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+        if (i_res > size(tope % rm_resonances(i_l) % E_lam(:))) then
+          i_res = size(tope % rm_resonances(i_l) % E_lam(:))
+          res % E_lam = res % E_lam&
+               + (tope % rm_resonances(i_l) % E_lam(i_res)&
+               -  tope % rm_resonances(i_l) % E_lam(i_res - 1))
+        else
+          res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+        end if
+
         res % Gam_n = tope % rm_resonances(i_l) % GN(i_res)
         res % Gam_g = tope % rm_resonances(i_l) % GG(i_res)
         res % Gam_f = tope % rm_resonances(i_l) % GFA(i_res)&
@@ -4363,7 +4669,6 @@ contains
     integer :: i_J ! total angular momentum quantum number
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
     real(8) :: fendf ! ENDF6 URR parameters energy interpolation factor
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
@@ -4425,38 +4730,44 @@ contains
     real(8) :: f_xs
     real(8) :: g_xs
     real(8) :: x_xs
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
     ! infinite-dilute elastic scattering
-    if (tope % avg_urr_n(iavg) > ZERO) then
+    if (tope % avg_urr_n(iavg) > ZERO&
+         .and. tope % avg_urr_n(iavg + 1) > ZERO) then
       n_xs = interpolator(f, &
-        & tope % avg_urr_n(iavg), tope % avg_urr_n(iavg + 1), tope % INT)
+           tope % avg_urr_n(iavg), tope % avg_urr_n(iavg + 1), tope % INT)
     else
       call fatal_error('Non-positive (n,n) infinite-dilute cross section')
     end if
 
     ! infinite-dilute fission
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_f(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_f(iavg) > ZERO&
+         .and. tope % avg_urr_f(iavg + 1) > ZERO)) then
       f_xs = interpolator(f, &
-        & tope % avg_urr_f(iavg), tope % avg_urr_f(iavg + 1), tope % INT)
+           tope % avg_urr_f(iavg), tope % avg_urr_f(iavg + 1), tope % INT)
     else
       f_xs = ZERO
     end if
 
     ! infinite-dilute capture
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_g(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_g(iavg) > ZERO&
+         .and. tope % avg_urr_g(iavg + 1) > ZERO)) then
       g_xs = interpolator(f, &
-        & tope % avg_urr_g(iavg), tope % avg_urr_g(iavg + 1), tope % INT)
+           tope % avg_urr_g(iavg), tope % avg_urr_g(iavg + 1), tope % INT)
     else
       g_xs = ZERO
     end if
 
     ! infinite-dilute competitive reaction xs
-    if (tope % INT == LINEAR_LINEAR .or. tope % avg_urr_x(iavg) > ZERO) then
+    if (tope % INT == LINEAR_LINEAR&
+         .or. (tope % avg_urr_x(iavg) > ZERO&
+         .and. tope % avg_urr_x(iavg + 1) > ZERO)) then
       x_xs = interpolator(f, &
-        & tope % avg_urr_x(iavg), tope % avg_urr_x(iavg + 1), tope % INT)
+           tope % avg_urr_x(iavg), tope % avg_urr_x(iavg + 1), tope % INT)
     else
       x_xs = ZERO
     end if
@@ -4479,44 +4790,43 @@ contains
     integer :: n_pts
     integer :: i_grid
     real(8) :: f
-!$omp threadprivate(tope, nuc)
 
     tope => isotopes(iso)
     nuc  => nuclides(i_nuc)
 
     ! elastic scattering xs
     tope % n_tmp(n_pts) = interpolator(f, &
-      & nuc % elastic(i_grid), nuc % elastic(i_grid + 1), tope % INT)
+         nuc % elastic(i_grid), nuc % elastic(i_grid + 1), tope % INT)
 
     ! radiative capture xs
     tope % g_tmp(n_pts) = interpolator(f, &
-      & nuc % absorption(i_grid) - nuc % fission(i_grid), &
-      & nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), tope % INT)
+         nuc % absorption(i_grid) - nuc % fission(i_grid), &
+         nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), tope % INT)
 
     ! fission xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % fission(i_grid) > ZERO) then
       tope % f_tmp(n_pts) = interpolator(f, nuc % fission(i_grid), &
-        & nuc % fission(i_grid + 1), tope % INT)
+           nuc % fission(i_grid + 1), tope % INT)
     else
       tope % f_tmp(n_pts) = ZERO
     end if
 
-    ! competitive first level inelastic scattering xs
+    ! competitive reaction xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
-      & - nuc % absorption(i_grid) - nuc % elastic(i_grid) > ZERO) then
+         - nuc % absorption(i_grid) - nuc % elastic(i_grid) > ZERO) then
       tope % x_tmp(n_pts) = interpolator(f, &
-        &   nuc % total(i_grid) - nuc % absorption(i_grid) &
-        & - nuc % elastic(i_grid), &
-        &   nuc % total(i_grid + 1) - nuc % absorption(i_grid + 1) &
-        & - nuc % elastic(i_grid + 1), tope % INT)
+             nuc % total(i_grid) - nuc % absorption(i_grid) &
+           - nuc % elastic(i_grid), &
+             nuc % total(i_grid + 1) - nuc % absorption(i_grid + 1) &
+           - nuc % elastic(i_grid + 1), tope % INT)
     else
       tope % x_tmp(n_pts) = ZERO
     end if
 
     ! total xs
     tope % t_tmp(n_pts) = tope % n_tmp(n_pts) &
-      & + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
-      & + tope % x_tmp(n_pts)
+         + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
+         + tope % x_tmp(n_pts)
 
   end subroutine interp_ace_background
 
@@ -4542,31 +4852,16 @@ contains
     real(8) :: fact         ! File 3 interpolation factor
     real(8) :: capture_xs   ! radiative capture xs
     real(8) :: inelastic_xs ! first level inelastic scattering xs
-!$omp threadprivate(tope)
 
     tope => isotopes(iso)
 
     if (tope % point_urr_xs) then
 
-      ! elastic scattering xs
-      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) &
-        & + n % xs
-
-      ! radiative capture xs
-      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) &
-        & + g % xs
-
-      ! fission xs
-      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) &
-        & + f % xs
-
-      ! competitive first level inelastic scattering xs
-      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) &
-        & + x % xs
-
-      ! total xs
-      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) &
-        & + t % xs
+      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) + n % xs
+      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) + g % xs
+      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) + f % xs
+      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) + x % xs
+      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) + t % xs
 
     else
 
@@ -4581,11 +4876,11 @@ contains
              .or. (tope % MF3_n(i_grid) > ZERO &
              .and. tope % MF3_n(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
-            & tope % MF3_n_e(i_grid + 1), tope % INT)
+               tope % MF3_n_e(i_grid + 1), tope % INT)
           micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid),&
-            & tope % MF3_n(i_grid + 1), tope % INT) + n % xs
+               tope % MF3_n(i_grid + 1), tope % INT) + n % xs
         else
-          micro_xs(i_nuc) % elastic = ZERO
+          micro_xs(i_nuc) % elastic = n % xs
         end if
       end if
       if (micro_xs(i_nuc) % elastic < ZERO) micro_xs(i_nuc) % elastic = ZERO
@@ -4601,9 +4896,9 @@ contains
              .or. (tope % MF3_x(i_grid) > ZERO &
              .and. tope % MF3_x(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
-            & tope % MF3_x_e(i_grid + 1), tope % INT)
+               tope % MF3_x_e(i_grid + 1), tope % INT)
           inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
-            & tope % MF3_x(i_grid + 1), tope % INT)
+               tope % MF3_x(i_grid + 1), tope % INT)
         else
           inelastic_xs = ZERO
         end if
@@ -4622,9 +4917,9 @@ contains
              .or. (tope % MF3_g(i_grid) > ZERO &
              .and. tope % MF3_g(i_grid + 1) > ZERO)) then
           fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
-            & tope % MF3_g_e(i_grid + 1), tope % INT)
+               tope % MF3_g_e(i_grid + 1), tope % INT)
           capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
-            & tope % MF3_g(i_grid + 1), tope % INT) + g % xs
+               tope % MF3_g(i_grid + 1), tope % INT) + g % xs
         else
           capture_xs = g % xs
         end if
@@ -4632,7 +4927,7 @@ contains
 
       ! fission xs
       if (.not. (allocated(tope % MF3_f_e))) then
-        micro_xs(i_nuc) % fission = ZERO
+        micro_xs(i_nuc) % fission = f % xs
       else
         if (tope % E < tope % MF3_f_e(1)) then
           micro_xs(i_nuc) % fission = ZERO
@@ -4644,19 +4939,16 @@ contains
                .or. (tope % MF3_f(i_grid) > ZERO &
                .and. tope % MF3_f(i_grid + 1) > ZERO)) then
             fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
-              & tope % MF3_f_e(i_grid + 1), tope % INT)
+                 tope % MF3_f_e(i_grid + 1), tope % INT)
             micro_xs(i_nuc) % fission = interpolator(fact, tope%MF3_f(i_grid),&
-              & tope % MF3_f(i_grid + 1), tope % INT) + f % xs
+                 tope % MF3_f(i_grid + 1), tope % INT) + f % xs
           else
             micro_xs(i_nuc) % fission = f % xs
           end if
         end if
       end if
 
-      ! absorption xs
       micro_xs(i_nuc) % absorption = micro_xs(i_nuc) % fission + capture_xs
-
-      ! total xs
       micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
            + micro_xs(i_nuc) % absorption + inelastic_xs
     end if
@@ -4747,7 +5039,7 @@ contains
 
     ! allocate temporary URR resonances
     allocate(this % urr_resonances_tmp(n_reals, this % NLS(this % i_urr),&
-      & maxval(this % NJS(:))))
+         maxval(this % NJS(:))))
 
     ! loop over realizations
     do i_ens = 1, n_reals
@@ -4760,7 +5052,7 @@ contains
 
           ! allocate resonance parameters
           call this % urr_resonances_tmp(i_ens, i_l, i_J) &
-            & % alloc_slbw_resonances(this % n_lam_tmp)
+               % alloc_slbw_resonances(this % n_lam_tmp)
         end do
       end do
     end do
@@ -4793,7 +5085,7 @@ contains
 ! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
           ! allocate resonance parameters
           call this % urr_resonances_tmp(i_ens, i_l, i_J) &
-            & % dealloc_slbw_resonances()
+               % dealloc_slbw_resonances()
         end do
       end do
     end do
@@ -4819,7 +5111,7 @@ contains
 
     ! allocate URR resonance realizations
     allocate(this % urr_resonances(n_reals, this % NLS(this % i_urr),&
-      & maxval(this % NJS(:))))
+         maxval(this % NJS(:))))
 
     ! loop over realizations
     do i_ens = 1, n_reals
@@ -4832,7 +5124,7 @@ contains
 
           ! allocate URR resonances
           call this % urr_resonances(i_ens, i_l, i_J) &
-            & % alloc_slbw_resonances(this % n_lam(i_ens, i_l, i_J))
+               % alloc_slbw_resonances(this % n_lam(i_ens, i_l, i_J))
         end do
       end do
     end do
@@ -4865,7 +5157,7 @@ contains
 ! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
           ! deallocate resonance parameters
           call this % urr_resonances(i_ens, i_l, i_J) &
-            & % dealloc_slbw_resonances()
+               % dealloc_slbw_resonances()
         end do
       end do
     end do
@@ -5200,8 +5492,8 @@ contains
       this % ntabs = n_tables
       allocate(this % Etabs(this % ntabs))
       this % Etabs(:) = (/(this % EL(this % i_urr) &
-        & * exp(i_E * log(this % EH(this % i_urr) / this % EL(this % i_urr)) &
-        & / (this % ntabs - 1)), i_E = 0, this % ntabs - 1)/)
+           * exp(i_E * log(this % EH(this % i_urr) / this % EL(this % i_urr)) &
+           / (this % ntabs - 1)), i_E = 0, this % ntabs - 1)/)
     else if (E_spacing == USER) then
       this % ntabs = n_tables
       allocate(this % Etabs(this % ntabs))
@@ -5337,6 +5629,7 @@ contains
       ! invalid scattering radius treatment flag
       case default
         call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO is 0')
+      
       end select
 
     ! scattering radius is energy dependent
@@ -5364,11 +5657,13 @@ contains
       ! invalid scattering radius treatment flag
       case default
         call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1')
+      
       end select
 
     ! invalid energy dependence of scattering radius flag
     case default
       call fatal_error('ENDF-6 NRO flag must be 0 or 1')
+    
     end select
 
   end subroutine channel_radius

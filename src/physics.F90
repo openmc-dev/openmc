@@ -142,7 +142,7 @@ contains
     case ('total')
       cutoff = prn() * material_xs % total
     case ('scatter')
-      cutoff = prn() * material_xs % total - material_xs % absorption
+      cutoff = prn() * (material_xs % total - material_xs % absorption)
     case ('fission')
       cutoff = prn() * material_xs % fission
     end select

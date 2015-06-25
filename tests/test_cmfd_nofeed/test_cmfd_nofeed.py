@@ -1,69 +1,61 @@
 #!/usr/bin/env python
 
-import os
 import sys
-from subprocess import Popen, STDOUT, PIPE, call
-import filecmp
-import glob
-from optparse import OptionParser
-
-parser = OptionParser()
-parser.add_option('--mpi_exec', dest='mpi_exec', default='')
-parser.add_option('--mpi_np', dest='mpi_np', default='3')
-parser.add_option('--exe', dest='exe')
-(opts, args) = parser.parse_args()
-cwd = os.getcwd()
-
-def test_run():
-    if opts.mpi_exec != '':
-        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
-               stderr=STDOUT, stdout=PIPE)
-    else:
-        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
-    print(proc.communicate()[0])
-    returncode = proc.returncode
-    assert returncode == 0, 'OpenMC did not exit successfully.'
+sys.path.insert(0, '..')
+from testing_harness import *
 
 
-def test_created_statepoint():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.20.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint files exist.'
-    assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
-        'Statepoint file is not a binary or hdf5 file.'
+class CMFDTestHarness(TestHarness):
+    def _get_results(self):
+        """Digest info in the statepoint and create a simpler ASCII file."""
+        # Read the statepoint file.
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
+        sp = StatePoint(statepoint)
+        sp.read_results()
 
+        # Write out k-combined.
+        outstr = 'k-combined:\n'
+        form = '{0:12.6E} {1:12.6E}\n'
+        outstr += form.format(sp.k_combined[0], sp.k_combined[1])
 
-def test_output_exists():
-    assert os.path.exists(os.path.join(cwd, 'tallies.out')), 'Tally output file does not exist.'
+        # Write out tally data.
+        if self._tallies:
+            tally_num = 1
+            for tally_ind in sp._tallies:
+                tally = sp._tallies[tally_ind]
+                results = np.zeros((tally._sum.size*2, ))
+                results[0::2] = tally._sum.ravel()
+                results[1::2] = tally._sum_sq.ravel()
+                results = ['{0:12.6E}'.format(x) for x in results]
 
+                outstr += 'tally ' + str(tally_num) + ':\n'
+                outstr += '\n'.join(results) + '\n'
+                tally_num += 1
 
-def test_results():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.20.*'))
-    call([sys.executable, 'results.py', statepoint[0]])
-    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
-    if not compare:
-        os.rename('results_test.dat', 'results_error.dat')
-    assert compare, 'Results do not agree.'
+        # Write out CMFD data.
+        outstr += 'cmfd indices\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_indices])
+        outstr += '\nk cmfd\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._k_cmfd])
+        outstr += '\ncmfd entropy\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_entropy])
+        outstr += '\ncmfd balance\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_balance])
+        outstr += '\ncmfd dominance ratio\n'
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp._cmfd_dominance])
+        outstr += '\ncmfd openmc source comparison\n'
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_srccmp])
+        outstr += '\ncmfd source\n'
+        cmfdsrc = np.reshape(sp._cmfd_src, np.product(sp._cmfd_indices),
+                             order='F')
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+        outstr += '\n'
 
+        # Write results to a file.
+        with open('results_test.dat','w') as fh:
+            fh.write(outstr)
 
-def teardown():
-    output = glob.glob(os.path.join(cwd, 'statepoint.20.*'))
-    output.append(os.path.join(cwd, 'tallies.out'))
-    output.append(os.path.join(cwd, 'results_test.dat'))
-    for f in output:
-        if os.path.exists(f):
-            os.remove(f)
 
 if __name__ == '__main__':
-
-    # test for openmc executable
-    if opts.exe is None:
-        raise Exception('Must specify OpenMC executable from command line with --exe.')
-
-    # run tests
-    try:
-        test_run()
-        test_created_statepoint()
-        test_output_exists()
-        test_results()
-    finally:
-        teardown()
+    harness = CMFDTestHarness('statepoint.20.*', True)
+    harness.execute_test()

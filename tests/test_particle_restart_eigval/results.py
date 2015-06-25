@@ -2,9 +2,8 @@
 
 import sys
 
-# import particle restart
-sys.path.insert(0, '../../src/utils')
-import particle_restart as pr
+sys.path.insert(0, '../..')
+import openmc.particle_restart as pr
 
 # read in particle restart file
 if len(sys.argv) > 1:

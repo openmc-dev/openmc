@@ -17,7 +17,7 @@ except ImportError:
     exit()
 
 # Run track processing script
-call(['../../src/utils/track.py', '-o', 'poly'] +
+call(['../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
      glob.glob(''.join((cwd, '/track*'))))
 poly = ''.join((cwd, '/poly.pvtp'))
 assert os.path.isfile(poly), 'poly.pvtp file not found.'

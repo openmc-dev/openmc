@@ -3,37 +3,39 @@
 import sys
 import numpy as np
 
-# import statepoint
-sys.path.insert(0, '../../src/utils')
-import statepoint
+sys.path.insert(0, '../..')
+from openmc.statepoint import StatePoint
 
 # read in statepoint file
 if len(sys.argv) > 1:
-    sp = statepoint.StatePoint(sys.argv[1])
+    sp = StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.10.binary')
+    sp = StatePoint('statepoint.10.binary')
+
 sp.read_results()
 
 # extract tally results and convert to vector
-results1 = sp.tallies[0].results
-shape1 = results1.shape
-size1 = (np.product(shape1))
-results1 = np.reshape(results1, size1)
-results2 = sp.tallies[1].results
-shape2 = results2.shape
-size2 = (np.product(shape2))
-results2 = np.reshape(results2, size2)
-results3 = sp.tallies[2].results
-shape3 = results3.shape
-size3 = (np.product(shape3))
-results3 = np.reshape(results3, size3)
+tally1 = sp._tallies[1]
+results1 = np.zeros((tally1._sum.size + tally1._sum.size, ))
+results1[0::2] = tally1._sum.ravel()
+results1[1::2] = tally1._sum_sq.ravel()
+
+tally2 = sp._tallies[2]
+results2 = np.zeros((tally2._sum.size + tally2._sum.size, ))
+results2[0::2] = tally2._sum.ravel()
+results2[1::2] = tally2._sum_sq.ravel()
+
+tally3 = sp._tallies[3]
+results3 = np.zeros((tally3._sum.size + tally3._sum.size, ))
+results3[0::2] = tally3._sum.ravel()
+results3[1::2] = tally3._sum_sq.ravel()
 
 # set up output string
 outstr = ''
- 
+
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:12.6E} {1:12.6E}\n".format(sp._k_combined[0], sp._k_combined[1])
 
 # write out tally results
 outstr += 'tally 1:\n'

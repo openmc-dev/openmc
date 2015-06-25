@@ -8,10 +8,18 @@ module material_header
 
   type Material
     integer              :: id              ! unique identifier
+    character(len=52) :: name = ""         ! User-defined name
     integer              :: n_nuclides      ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
+
+    ! Energy grid information
+    integer              :: n_grid    ! # of union material grid points
+    real(8), allocatable :: e_grid(:) ! union material grid energies
+
+    ! Unionized energy grid information
+    integer, allocatable :: nuclide_grid_index(:,:) ! nuclide e_grid pointers
 
     ! S(a,b) data references
     integer              :: n_sab = 0         ! number of S(a,b) tables

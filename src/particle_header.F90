@@ -101,7 +101,7 @@ contains
       ! recursively deallocate lower coordinates
       if (associated(coord % next)) call deallocate_coord(coord%next)
 
-      ! deallocate original coordinate
+      ! deallocate this coord
       deallocate(coord)
     end if
 

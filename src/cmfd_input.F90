@@ -2,10 +2,6 @@ module cmfd_input
 
   use global
 
-#ifdef PETSC
-  use petscsys
-#endif
-
   implicit none
   private
   public :: configure_cmfd
@@ -13,7 +9,7 @@ module cmfd_input
 contains
 
 !===============================================================================
-! CONFIGURE_CMFD initializes PETSc and CMFD parameters
+! CONFIGURE_CMFD initializes CMFD parameters
 !===============================================================================
 
   subroutine configure_cmfd()
@@ -31,17 +27,6 @@ contains
     else
       color = 2
     end if
-
-    ! Split up procs
-#ifdef PETSC
-    call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, 0, cmfd_comm, mpi_err)
-
-    ! assign to PETSc
-    PETSC_COMM_WORLD = cmfd_comm
-
-    ! Initialize PETSc on all procs
-    call PetscInitialize(PETSC_NULL_CHARACTER, mpi_err)
-#endif
 
     ! Initialize timers
     call time_cmfd % reset()
@@ -165,7 +150,7 @@ contains
            cmfd_downscatter = .true.
     end if
 
-    ! Reset dhat parameters 
+    ! Reset dhat parameters
     if (check_for_node(doc, "dhat_reset")) then
       call get_node_value(doc, "dhat_reset", temp_str)
       temp_str = to_lower(temp_str)
@@ -173,23 +158,7 @@ contains
         dhat_reset = .true.
     end if
 
-    ! Set the solver type
-    if (check_for_node(doc, "solver")) &
-         call get_node_value(doc, "solver", cmfd_solver_type)
-
     ! Set monitoring
-    if (check_for_node(doc, "snes_monitor")) then
-      call get_node_value(doc, "snes_monitor", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_snes_monitor = .true.
-    end if
-    if (check_for_node(doc, "ksp_monitor")) then
-      call get_node_value(doc, "ksp_monitor", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_ksp_monitor = .true.
-    end if
     if (check_for_node(doc, "power_monitor")) then
       call get_node_value(doc, "power_monitor", temp_str)
       temp_str = to_lower(temp_str)
@@ -210,9 +179,6 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-#ifndef PETSC
-        call fatal_error('Must use PETSc when running adjoint option.')
-#endif
         cmfd_run_adjoint = .true.
     end if
 
@@ -238,12 +204,6 @@ contains
     ! Get display
     if (check_for_node(doc, "display")) &
          call get_node_value(doc, "display", cmfd_display)
-    if (trim(cmfd_display) == 'dominance' .and. &
-         trim(cmfd_solver_type) /= 'power') then
-      if (master) call warning('Dominance Ratio only aviable with power &
-           &iteration solver')
-      cmfd_display = ''
-    end if
 
     ! Read in spectral radius estimate and tolerances
     if (check_for_node(doc, "spectral")) &
@@ -460,8 +420,8 @@ contains
 
       if (i == 1) then
 
-        ! Set label
-        t % label = "CMFD flux, total, scatter-1"
+        ! Set name
+        t % name = "CMFD flux, total, scatter-1"
 
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -491,8 +451,8 @@ contains
 
       else if (i == 2) then
 
-        ! Set label
-        t % label = "CMFD neutron production"
+        ! Set name
+        t % name = "CMFD neutron production"
 
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -536,8 +496,8 @@ contains
 
       else if (i == 3) then
 
-        ! Set label
-        t % label = "CMFD surface currents"
+        ! Set name
+        t % name = "CMFD surface currents"
 
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG

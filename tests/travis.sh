@@ -4,7 +4,7 @@ set -ev
 
 # Run all debug tests
 if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-  ./run_tests.py -C "^basic-debug$|^hdf5-debug$|^mpi-omp-debug$|^phdf5-omp-debug$|^omp-phdf5-petsc-debug$" -j 4 -s
+  ./run_tests.py -C "^basic-debug$|^hdf5-debug$|^mpi-omp-debug$|^phdf5-omp-debug$" -j 2 -s
 else
-  ./run_tests.py -C "^basic-debug$" -j 4
+  ./run_tests.py -C "^basic-debug$" -j 2
 fi

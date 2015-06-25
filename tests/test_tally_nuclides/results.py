@@ -3,28 +3,36 @@
 import sys
 import numpy as np
 
-# import statepoint
-sys.path.insert(0, '../../src/utils')
-import statepoint
+sys.path.insert(0, '../..')
+from openmc.statepoint import StatePoint
 
 # read in statepoint file
 if len(sys.argv) > 1:
-    sp = statepoint.StatePoint(sys.argv[1])
+    sp = StatePoint(sys.argv[1])
 else:
-    sp = statepoint.StatePoint('statepoint.10.binary')
+    sp = StatePoint('statepoint.10.binary')
+
 sp.read_results()
 
 # extract tally results and convert to vector
-results0 = sp.tallies[0].results
-results1 = sp.tallies[1].results
-results = np.concatenate((results0.flatten(), results1.flatten()))
+tally1 = sp._tallies[1]
+results1 = np.zeros((tally1._sum.size + tally1._sum.size, ))
+results1[0::2] = tally1._sum.ravel()
+results1[1::2] = tally1._sum_sq.ravel()
+
+tally2 = sp._tallies[2]
+results2 = np.zeros((tally2._sum.size + tally2._sum.size, ))
+results2[0::2] = tally2._sum.ravel()
+results2[1::2] = tally2._sum_sq.ravel()
+
+results = np.concatenate((results1.flatten(), results2.flatten()))
 
 # set up output string
 outstr = ''
- 
+
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:12.6E} {1:12.6E}\n".format(sp._k_combined[0], sp._k_combined[1])
 
 # write out tally results
 outstr += 'tallies:\n'

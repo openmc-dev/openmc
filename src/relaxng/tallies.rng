@@ -108,12 +108,12 @@
           </choice>
           <optional>
             <choice>
-              <element name="label">
+              <element name="name">
                 <data type="string">
                   <param name="maxLength">52</param>
                 </data>
               </element>
-              <attribute name="label">
+              <attribute name="name">
                 <data type="string">
                   <param name="maxLength">52</param>
                 </data>
@@ -147,6 +147,7 @@
                       <value>material</value>
                       <value>universe</value>
                       <value>surface</value>
+                      <value>distribcell</value>
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
@@ -159,6 +160,7 @@
                       <value>material</value>
                       <value>universe</value>
                       <value>surface</value>
+                      <value>distribcell</value>
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
@@ -204,6 +206,50 @@
               </oneOrMore>
             </list>
           </element>
+          <optional>
+            <element name="trigger">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="type">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="threshold">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="threshold">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="scores">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="scores">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
         </interleave>
       </element>
     </zeroOrMore>

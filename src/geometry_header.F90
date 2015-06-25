@@ -7,13 +7,13 @@ module geometry_header
 !===============================================================================
 
   type Universe
-     integer :: id                    ! Unique ID
-     integer :: type                  ! Type
-     integer :: n_cells               ! # of cells within
-     integer, allocatable :: cells(:) ! List of cells within
-     real(8) :: x0                    ! Translation in x-coordinate
-     real(8) :: y0                    ! Translation in y-coordinate
-     real(8) :: z0                    ! Translation in z-coordinate
+     integer :: id                     ! Unique ID
+     integer :: type                   ! Type
+     integer :: n_cells                ! # of cells within
+     integer, allocatable :: cells(:)  ! List of cells within
+     real(8) :: x0                     ! Translation in x-coordinate
+     real(8) :: y0                     ! Translation in y-coordinate
+     real(8) :: z0                     ! Translation in z-coordinate
   end type Universe
 
 !===============================================================================
@@ -22,11 +22,13 @@ module geometry_header
 
   type, abstract :: Lattice
     integer              :: id               ! Universe number for lattice
+    character(len=52) :: name = ""          ! User-defined name
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
     integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
+    integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
     
     contains
 
@@ -116,6 +118,7 @@ module geometry_header
 
   type Surface
      integer :: id                     ! Unique ID
+     character(len=52) :: name = ""   ! User-defined name
      integer :: type                   ! Type of surface
      real(8), allocatable :: coeffs(:) ! Definition of surface
      integer, allocatable :: & 
@@ -129,20 +132,24 @@ module geometry_header
 !===============================================================================
 
   type Cell
-     integer :: id         ! Unique ID
-     integer :: type       ! Type of cell (normal, universe, lattice)
-     integer :: universe   ! universe # this cell is in
-     integer :: fill       ! universe # filling this cell
-     integer :: material   ! Material within cell (0 for universe)
-     integer :: n_surfaces ! Number of surfaces within
+     integer :: id                          ! Unique ID
+     character(len=52) :: name = ""          ! User-defined name
+     integer :: type                        ! Type of cell (normal, universe, lattice)
+     integer :: universe                    ! universe # this cell is in
+     integer :: fill                        ! universe # filling this cell
+     integer :: instances                   ! number of instances of this cell in the geom
+     integer :: material                    ! Material within cell (0 for universe)
+     integer :: n_surfaces                  ! Number of surfaces within
+     integer, allocatable :: offset (:)     ! Distribcell offset for tally counter
      integer, allocatable :: & 
-          & surfaces(:)    ! List of surfaces bounding cell -- note that
-                           ! parentheses, union, etc operators will be listed
-                           ! here too
+          & surfaces(:)                     ! List of surfaces bounding cell -- note that
+                                            ! parentheses, union, etc operators will be listed
+                                            ! here too
 
      ! Rotation matrix and translation vector
-     real(8), allocatable :: rotation(:,:)
      real(8), allocatable :: translation(:)
+     real(8), allocatable :: rotation(:)
+     real(8), allocatable :: rotation_matrix(:,:)
   end type Cell
 
   ! array index of universe 0

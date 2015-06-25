@@ -74,6 +74,8 @@ contains
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
+    type(Node), pointer :: node_trigger   => null()
+    type(Node), pointer :: node_keff_trigger => null()
     type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
@@ -125,6 +127,43 @@ contains
            path_output = trim(path_output) // "/"
     end if
 
+    ! Check for a trigger node and get trigger information
+    if (check_for_node(doc, "trigger")) then
+      call get_node_ptr(doc, "trigger", node_trigger)
+
+      ! Check if trigger(s) are to be turned on
+      call get_node_value(node_trigger, "active", temp_str)
+      temp_str = trim(to_lower(temp_str))
+
+      if (temp_str == 'true' .or. temp_str == '1') then
+        trigger_on = .true.
+      elseif (temp_str == 'false' .or. temp_str == '0') then
+        trigger_on = .false.
+      else
+        call fatal_error("Unrecognized trigger active: " // temp_str)
+      end if
+
+      if (trigger_on) then
+
+        if (check_for_node(node_trigger, "max_batches") )then
+          call get_node_value(node_trigger, "max_batches", n_max_batches)
+        else
+          call fatal_error("The max_batches must be specified with triggers")
+        end if
+
+        ! Get the batch interval to check triggers
+        if (.not. check_for_node(node_trigger, "batch_interval"))then
+          pred_batches = .true.
+        else
+          call get_node_value(node_trigger, "batch_interval", temp_int)
+          n_batch_interval = temp_int
+          if (n_batch_interval <= 0) then
+            call fatal_error("The batch interval must be greater than zero")
+          end if
+        end if
+      end if
+    end if
+
     ! Make sure that either eigenvalue or fixed source was specified
     if (.not.check_for_node(doc, "eigenvalue") .and. &
          .not.check_for_node(doc, "fixed_source")) then
@@ -151,8 +190,13 @@ contains
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
 
-      ! Copy batch and generation information
+      ! Get number of basic batches
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
+
+      ! Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
@@ -160,9 +204,40 @@ contains
       end if
 
       ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_batches*gen_per_batch))
-      allocate(entropy(n_batches*gen_per_batch))
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
       entropy = ZERO
+
+      ! Get the trigger information for keff
+      if (check_for_node(node_mode, "keff_trigger")) then
+        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
+
+        if (check_for_node(node_keff_trigger, "type")) then
+          call get_node_value(node_keff_trigger, "type", temp_str)
+          temp_str = trim(to_lower(temp_str))
+
+          select case (temp_str)
+          case ('std_dev')
+            keff_trigger % trigger_type = STANDARD_DEVIATION
+          case ('variance')
+            keff_trigger % trigger_type = VARIANCE
+          case ('rel_err')
+            keff_trigger % trigger_type = RELATIVE_ERROR
+          case default
+            call fatal_error("Unrecognized keff trigger type " // temp_str)
+          end select
+
+        else
+          call fatal_error("Specify keff trigger type in settings XML")
+        end if
+
+        if (check_for_node(node_keff_trigger, "threshold")) then
+          call get_node_value(node_keff_trigger, "threshold", &
+               keff_trigger % threshold)
+        else
+          call fatal_error("Specify keff trigger threshold in settings XML")
+        end if
+      end if
     end if
 
     ! Fixed source calculation information
@@ -187,6 +262,9 @@ contains
 
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
       n_active = n_batches
       n_inactive    = 0
       gen_per_batch = 1
@@ -213,8 +291,11 @@ contains
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('union')
-      call fatal_error("Union energy grid is no longer supported.")
+    case ('material-union', 'union')
+      grid_method = GRID_MAT_UNION
+      if (trim(temp_str) == 'union') &
+           call warning('Energy grids will be unionized by material.  Global&
+           & energy grid unionization is no longer an allowed option.')
     case ('logarithm', 'logarithmic', 'log')
       grid_method = GRID_LOGARITHM
     case default
@@ -905,7 +986,6 @@ contains
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
     integer, allocatable :: temp_int_array(:)
-    real(8) :: temp_double_array3(3)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
@@ -963,6 +1043,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
+      ! Initialize the number of cell instances - this is a base case for distribcells
+      c % instances = 0
+
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)
 
@@ -972,6 +1055,12 @@ contains
       else
         call fatal_error("Must specify id of cell in geometry XML file.")
       end if
+
+      ! Copy cell name
+      if (check_for_node(node_cell, "name")) then
+        call get_node_value(node_cell, "name", c % name)
+      end if
+
       if (check_for_node(node_cell, "universe")) then
         call get_node_value(node_cell, "universe", c % universe)
       else
@@ -1053,14 +1142,15 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_double_array3)
-        phi   = -temp_double_array3(1) * PI/180.0_8
-        theta = -temp_double_array3(2) * PI/180.0_8
-        psi   = -temp_double_array3(3) * PI/180.0_8
+        allocate(c % rotation(3))
+        call get_node_array(node_cell, "rotation", c % rotation)
+        phi   = -c % rotation(1) * PI/180.0_8
+        theta = -c % rotation(2) * PI/180.0_8
+        psi   = -c % rotation(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
-        allocate(c % rotation(3,3))
-        c % rotation = reshape((/ &
+        allocate(c % rotation_matrix(3,3))
+        c % rotation_matrix = reshape((/ &
              cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
              -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
              cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
@@ -1148,6 +1238,11 @@ contains
       if (surface_dict % has_key(s % id)) then
         call fatal_error("Two or more surfaces use the same unique ID: " &
              &// to_str(s % id))
+      end if
+
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s % name)
       end if
 
       ! Copy and interpret surface type
@@ -1272,6 +1367,11 @@ contains
              &// to_str(lat % id))
       end if
 
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
+      end if
+
       ! Read number of lattice cells in each dimension
       n = get_arraysize_integer(node_lat, "dimension")
       if (n == 2) then
@@ -1393,6 +1493,11 @@ contains
       if (lattice_dict % has_key(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
              &// to_str(lat % id))
+      end if
+
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
       end if
 
       ! Read number of lattice cells in each dimension
@@ -1638,6 +1743,11 @@ contains
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
              &// to_str(mat % id))
+      end if
+
+      ! Copy material name
+      if (check_for_node(node_mat, "name")) then
+        call get_node_value(node_mat, "name", mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -1963,9 +2073,13 @@ contains
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Yn/Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
-    integer :: n_bins        ! Total new bins for this score
-    integer :: n_order       ! Moment order requested
-    integer :: n_order_pos   ! Position of Scattering order in score name string
+    integer :: n_bins        ! total new bins for this score
+    integer :: n_user_trig   ! number of user-specified tally triggers
+    integer :: trig_ind      ! index of triggers array for each tally
+    integer :: user_trig_ind ! index of user-specified triggers for each tally
+    real(8) :: threshold     ! trigger convergence threshold
+    integer :: n_order       ! moment order requested
+    integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
@@ -1976,6 +2090,7 @@ contains
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
+    type(DictCharInt) :: trigger_scores
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -1984,9 +2099,13 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
+    type(Node), pointer :: node_trigger=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
+    type(NodeList), pointer :: node_trigger_list => null()
+    type(ElemKeyValueCI), pointer :: scores
+    type(ElemKeyValueCI), pointer :: next
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -2209,10 +2328,9 @@ contains
              &// to_str(t % id))
       end if
 
-      ! Copy tally label
-      t % label = ''
-      if (check_for_node(node_tal, "label")) &
-        call get_node_value(node_tal, "label", t % label)
+      ! Copy tally name
+      if (check_for_node(node_tal, "name")) &
+        call get_node_value(node_tal, "name", t % name)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
@@ -2252,6 +2370,18 @@ contains
 
           ! Determine type of filter
           select case (temp_str)
+
+          case ('distribcell')
+
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DISTRIBCELL
+
+            ! Going to add new filters to this tally if n_words > 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL
@@ -2419,52 +2549,43 @@ contains
           n_words = get_arraysize_string(node_tal, "nuclides")
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
+
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
               t % nuclide_bins(j) = -1
               cycle
             end if
 
-            ! Check if xs specifier was given
-            if (ends_with(sarray(j), 'c')) then
-              word = sarray(j)
-            else
-              if (default_xs == '') then
-                ! No default cross section specified, search through nuclides
-                pair_list => nuclide_dict % keys()
-                do while (associated(pair_list))
-                  if (starts_with(pair_list % key, &
-                       sarray(j))) then
-                    word = pair_list % key(1:150)
-                    exit
-                  end if
+            ! If a specific nuclide was specified
+            word = to_lower(sarray(j))
 
-                  ! Advance to next
-                  pair_list => pair_list % next
-                end do
+            ! Append default_xs specifier to nuclide if needed
+            if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
+              word = trim(word) // "." // default_xs
+            end if
 
-                ! Check if no nuclide was found
-                if (.not. associated(pair_list)) then
-                  call fatal_error("Could not find the nuclide " &
-                       &// trim(sarray(j)) // " specified in tally " &
-                       &// trim(to_str(t % id)) // " in any material.")
-                end if
-                deallocate(pair_list)
-              else
-                ! Set nuclide to default xs
-                word = trim(sarray(j)) // "." // default_xs
+            ! Search through nuclides
+            pair_list => nuclide_dict % keys()
+            do while (associated(pair_list))
+              if (starts_with(pair_list % key, word)) then
+                word = pair_list % key(1:150)
+                exit
               end if
-            end if
 
-            ! Check to make sure nuclide specified is in problem
-            if (.not. nuclide_dict % has_key(to_lower(word))) then
-              call fatal_error("The nuclide " // trim(word) // " from tally " &
-                   &// trim(to_str(t % id)) &
-                   &// " is not present in any material.")
+              ! Advance to next
+              pair_list => pair_list % next
+            end do
+
+            ! Check if no nuclide was found
+            if (.not. associated(pair_list)) then
+              call fatal_error("Could not find the nuclide " &
+                   &// trim(word) // " specified in tally " &
+                   &// trim(to_str(t % id)) // " in any material.")
             end if
+            deallocate(pair_list)
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get_key(to_lower(word))
+            t % nuclide_bins(j) = nuclide_dict % get_key(word)
           end do
 
           ! Set number of nuclide bins
@@ -2973,9 +3094,8 @@ contains
             ! Check to make sure that current is the only desired response
             ! for this tally
             if (n_words > 1) then
-              call fatal_error("Cannot tally other scoring functions in the &
-                   &same tally as surface currents. Separate other scoring &
-                   &functions into a distinct tally.")
+              call fatal_error("Cannot tally other scores in the &
+                   &same tally as surface currents")
             end if
 
             ! Since the number of bins for the mesh filter was already set
@@ -3045,6 +3165,10 @@ contains
             end if
 
           end select
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
+
         end do
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
@@ -3054,6 +3178,184 @@ contains
       else
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
+      end if
+
+      ! If settings.xml trigger is turned on, create tally triggers
+      if (trigger_on) then
+
+        ! Get list of trigger nodes for this tally
+        call get_node_list(node_tal, "trigger", node_trigger_list)
+
+        ! Initialize the number of triggers
+        n_user_trig = get_list_size(node_trigger_list)
+
+        ! Count the number of triggers needed for all scores including "all"
+        t % n_triggers = 0
+        COUNT_TRIGGERS: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Count the number of scores for this trigger
+          do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              do while (associated(scores))
+                next => scores % next
+                deallocate(scores)
+                scores => next
+                t % n_triggers = t % n_triggers + 1
+              end do
+
+            else
+              t % n_triggers = t % n_triggers + 1
+            end if
+
+          end do
+
+          deallocate(sarray)
+
+        end do COUNT_TRIGGERS
+
+        ! Allocate array of triggers for this tally
+        if (t % n_triggers > 0) then
+          allocate(t % triggers(t % n_triggers))
+        end if
+
+        ! Initialize overall trigger index for this tally to zero
+        trig_ind = 1
+
+        ! Create triggers for all scores specified on each trigger
+        TRIGGER_LOOP: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get the trigger type - "variance", "std_dev" or "rel_err"
+          if (check_for_node(node_trigger, "type")) then
+            call get_node_value(node_trigger, "type", temp_str)
+                 temp_str = to_lower(temp_str)
+          else
+            call fatal_error("Must specify trigger type for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get the convergence threshold for the trigger
+          if (check_for_node(node_trigger, "threshold")) then
+            call get_node_value(node_trigger, "threshold", threshold)
+          else
+            call fatal_error("Must specify trigger threshold for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get list scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Create a trigger for each score
+          SCORE_LOOP: do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            ! Expand "all" to include TriggerObjects for each score in tally
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              ! Loop over all tally scores
+              do while (associated(scores))
+                score_name = trim(scores % key)
+
+                ! Store the score name and index in the trigger
+                t % triggers(trig_ind) % score_name = trim(score_name)
+                t % triggers(trig_ind) % score_index = &
+                     trigger_scores % get_key(trim(score_name))
+
+                ! Set the trigger convergence threshold type
+                select case (temp_str)
+                case ('std_dev')
+                  t % triggers(trig_ind) % type = STANDARD_DEVIATION
+                case ('variance')
+                  t % triggers(trig_ind) % type = VARIANCE
+                case ('rel_err')
+                  t % triggers(trig_ind) % type = RELATIVE_ERROR
+                case default
+                  call fatal_error("Unknown trigger type " // &
+                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
+                end select
+
+                ! Store the trigger convergence threshold
+                t % triggers(trig_ind) % threshold = threshold
+
+                ! Move to next score
+                next => scores % next
+                deallocate(scores)
+                scores => next
+
+                ! Increment the overall trigger index
+                trig_ind = trig_ind + 1
+              end do
+
+            ! Scores other than the "all" placeholder
+            else
+
+              ! Store the score name and index
+              t % triggers(trig_ind) % score_name = trim(score_name)
+              t % triggers(trig_ind) % score_index = &
+                   trigger_scores % get_key(trim(score_name))
+
+              ! Check if an invalid score was set for the trigger
+              if (t % triggers(trig_ind) % score_index == 0) then
+                call fatal_error("The trigger score " // trim(score_name) // &
+                     " is not set for tally " // trim(to_str(t % id)))
+              end if
+
+              ! Store the trigger convergence threshold
+              t % triggers(trig_ind) % threshold = threshold
+
+              ! Set the trigger convergence threshold type
+              select case (temp_str)
+              case ('std_dev')
+                t % triggers(trig_ind) % type = STANDARD_DEVIATION
+              case ('variance')
+                t % triggers(trig_ind) % type = VARIANCE
+              case ('rel_err')
+                t % triggers(trig_ind) % type = RELATIVE_ERROR
+              case default
+                call fatal_error("Unknown trigger type " // trim(temp_str) // &
+                     " in tally " // trim(to_str(t % id)))
+              end select
+
+              ! Increment the overall trigger index
+              trig_ind = trig_ind + 1
+           end if
+          end do SCORE_LOOP
+
+          ! Deallocate the list of tally scores used to create triggers
+          deallocate(sarray)
+        end do TRIGGER_LOOP
+
+        ! Deallocate dictionary of scores/indices used to populate triggers
+        call trigger_scores % clear()
       end if
 
       ! =======================================================================

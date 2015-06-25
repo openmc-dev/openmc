@@ -8,8 +8,12 @@
 # Compiler python objects
 *.pyc
 
-# OpenMC executable
-src/openmc
+# Python distribution
+dist/
+openmc.egg-info/
+
+# Inputs generated from Python API
+examples/python/**/*.xml
 
 # emacs backups
 *~
@@ -22,7 +26,7 @@ docs/build
 docs/source/_images/*.pdf
 
 # Source build
-src/build
+build
 
 # build from src/utils/setup.py
 src/utils/build
@@ -30,14 +34,29 @@ src/utils/build
 # xml-fortran reader
 src/xml-fortran/xmlreader
 
-# Modules built from XML templates
-src/templates/*.f90
-
 # Test results error file
 results_error.dat
+
+# Test build files
+tests/build/
+tests/ctestscript.run
 
 # HDF5 files
 *.h5
 
+# Build files
+src/CMakeCache.txt
+src/CMakeFiles/
+src/bin/
+src/cmake_install.cmake
+src/install_manifest.txt
+
 # Data downloaded from NNDC
 data/nndc
+
+#Images
+*.ppm
+
+# PyCharm project configuration files
+.idea
+.idea/*

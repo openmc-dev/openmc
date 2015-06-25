@@ -1,6 +1,7 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES
+  use constants,          only: NONE, N_FILTER_TYPES
+  use trigger_header,     only: TriggerObject
 
   implicit none
 
@@ -53,6 +54,7 @@ module tally_header
   type TallyFilter
     integer :: type = NONE
     integer :: n_bins = 0
+    integer :: offset = 0 ! Only used for distribcell filters
     integer, allocatable :: int_bins(:)
     real(8), allocatable :: real_bins(:) ! Only used for energy filters
 
@@ -71,7 +73,7 @@ module tally_header
     ! Basic data
 
     integer :: id                   ! user-defined identifier
-    character(len=52) :: label = "" ! user-defined label
+    character(len=52) :: name = "" ! user-defined name
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
@@ -122,6 +124,10 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
+    
+    ! Tally precision triggers
+    integer                           :: n_triggers = 0  ! # of triggers
+    type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
     ! Type-Bound procedures
     contains
@@ -159,7 +165,7 @@ module tally_header
 
       ! This routine will go through each item in TallyObject and set the value
       ! to its default, as-initialized values, including deallocations.
-      this % label = ""
+      this % name = ""
 
       if (allocated(this % filters)) then
         do i = 1, size(this % filters)
@@ -191,6 +197,11 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
+      
+      if (allocated(this % triggers)) &
+           deallocate (this % triggers)
+      
+      this % n_triggers = 0
 
     end subroutine tallyobject_clear
 

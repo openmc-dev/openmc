@@ -1,5 +1,9 @@
 module fixed_source
 
+#ifdef MPI
+  use mpi
+#endif
+
   use constants,       only: ZERO, MAX_LINE_LEN
   use global
   use output,          only: write_message, header
@@ -9,6 +13,7 @@ module fixed_source
   use state_point,     only: write_state_point
   use string,          only: to_str
   use tally,           only: synchronize_tallies, setup_active_usertallies
+  use trigger,         only: check_triggers
   use tracking,        only: transport
 
   implicit none
@@ -36,7 +41,7 @@ contains
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, n_batches
+    BATCH_LOOP: do current_batch = 1, n_max_batches
 
       ! In a restart run, skip any batches that have already been simulated
       if (restart_run .and. current_batch <= restart_batch) then
@@ -79,6 +84,8 @@ contains
 
       call finalize_batch()
 
+      if (satisfy_triggers) exit BATCH_LOOP
+
     end do BATCH_LOOP
 
     call time_active % stop()
@@ -115,6 +122,17 @@ contains
     call synchronize_tallies()
     call time_tallies % stop()
 
+    ! Check_triggers
+    if (master) call check_triggers()
+#ifdef MPI
+    call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
+         MPI_COMM_WORLD, mpi_err)
+#endif
+    if (satisfy_triggers .or. &
+         (trigger_on .and. current_batch == n_max_batches)) then
+      call statepoint_batch % add(current_batch)
+    end if
+
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
       call write_state_point()
@@ -138,6 +156,9 @@ contains
 
     ! Copy source attributes to the particle
     call copy_source_attributes(p, source_site)
+
+    ! Determine whether to create track file
+    if (write_all_tracks) p % write_track = .true.
 
   end subroutine sample_source_particle
 

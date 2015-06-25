@@ -55,23 +55,20 @@ files are called:
 Validating XML Files
 --------------------
 
-Input files can be checked before executing OpenMC using the ``xml_validate``
-script. It is located in ``src/utils/xml_validate.py`` in the source code or in
-``bin/xml_validate`` in the install directory.
-
-Two command line arguments can be set when running ``xml_validate``:
+Input files can be checked before executing OpenMC using the
+``openmc-validate-xml`` script which is installed alongside the Python API. Two
+command line arguments can be set when running ``openmc-validate-xml``:
 
 * ``-i``, ``--input-path`` - Location of OpenMC input files.
   *Default*: current working directory
 * ``-r``, ``--relaxng-path`` - Location of OpenMC RelaxNG files.
   *Default*: None
 
-If the RelaxNG path is not set, ``xml_validate`` will search for these files
-because it expects that the user is either running the script located in the
-install directory ``bin`` folder or in ``src/utils``. Once executed, it will
-match OpenMC XML files with their RelaxNG schema and check if they are valid.
-Below is a table of the messages that will be printed after each file is
-checked.
+If the RelaxNG path is not set, the script will search for these files because
+it expects that the user is either running the script located in the install
+directory ``bin`` folder or in ``src/utils``. Once executed, it will match
+OpenMC XML files with their RelaxNG schema and check if they are valid.  Below
+is a table of the messages that will be printed after each file is checked.
 
 ========================  ===================================
 Message                   Description
@@ -139,6 +136,8 @@ default. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
+.. _eigenvalue:
+
 ``<eigenvalue>`` Element
 ------------------------
 
@@ -170,15 +169,47 @@ should be performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
+  :keff_trigger:
+    This tag specifies a precision trigger on the combined :math:`k_{eff}`. The
+    trigger is a convergence criterion on the uncertainty of the estimated
+    eigenvalue. It has the following attributes/sub-elements:
+
+    :type:
+      The type of precision trigger. Accepted options are "variance", "std_dev",
+      and "rel_err".
+
+      :variance:
+       Variance of the batch mean :math:`\sigma^2`
+
+      :std_dev:
+        Standard deviation of the batch mean :math:`\sigma`
+
+      :rel_err:
+        Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
+
+      *Default*: None
+
+    :threshold:
+      The precision trigger's convergence criterion for the
+      combined :math:`k_{eff}`.
+
+      *Default*: None
+
+  .. note:: See section on the :ref:`trigger` for more information.
+
 ``<energy_grid>`` Element
 -------------------------
 
 The ``<energy_grid>`` element determines the treatment of the energy grid during
-a simulation. The valid options are "nuclide" and "logarithm". Setting this
-element to "nuclide" will cause OpenMC to use a nuclide's energy grid when
-determining what points to interpolate between for determining cross sections
-(i.e. non-unionized energy grid). Setting this element to "logarithm" causes
-OpenMC to use a logarithmic mapping technique described in LA-UR-14-24530_.
+a simulation. The valid options are "nuclide", "logarithm", and
+"material-union". Setting this element to "nuclide" will cause OpenMC to use a
+nuclide's energy grid when determining what points to interpolate between for
+determining cross sections (i.e. non-unionized energy grid). Setting this
+element to "logarithm" causes OpenMC to use a logarithmic mapping technique
+described in LA-UR-14-24530_. Setting this element to "material-union" will
+cause OpenMC to create energy grids that are unionized material-by-material and
+use these grids when determining the energy-cross section pairs to interpolate
+cross section values between.
 
   *Default*: logarithm
 
@@ -210,8 +241,8 @@ problem. It has the following attributes/sub-elements:
 ``<fixed_source>`` Element
 --------------------------
 
-The ``<fixed_source>`` element indicates that a fixed source calculation should be
-performed. It has the following attributes/sub-elements:
+The ``<fixed_source>`` element indicates that a fixed source calculation should
+be performed. It has the following attributes/sub-elements:
 
   :batches:
     The total number of batches. For fixed source calculations, each batch
@@ -292,7 +323,8 @@ out the file and "false" will not.
 
     *Default*: true
 
-  .. note:: The tally results will always be written to a binary/HDF5 state point file.
+  .. note:: The tally results will always be written to a binary/HDF5 state
+            point file.
 
 ``<output_path>`` Element
 -------------------------
@@ -541,8 +573,8 @@ attributes/sub-elements:
     *Default*: None
 
   :separate:
-    If this element is set to "true", a separate binary source point file will be
-    written. Otherwise, the source sites will be written in the state point
+    If this element is set to "true", a separate binary source point file will
+    be written. Otherwise, the source sites will be written in the state point
     directly.
 
     *Default*: false
@@ -597,9 +629,55 @@ integers: the batch number, generation number, and particle number.
 ``<track>`` Element
 -------------------
 
-The ``<track>`` element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.
+The ``<track>`` element specifies particles for which OpenMC will output binary
+files describing particle position at every step of its transport. This element
+should be followed by triplets of integers.  Each triplet describes one particle
+. The integers in each triplet specify the batch number, generation number, and
+particle number, respectively.
 
   *Default*: None
+
+.. _trigger:
+
+``<trigger>`` Element
+-------------------------
+
+OpenMC includes tally precision triggers which allow the user to define
+uncertainty thresholds on :math:`k_{eff}` in the ``<eigenvalue>`` subelement of
+``settings.xml``, and/or tallies in ``tallies.xml``. When using triggers,
+OpenMC will run until it completes as many batches as defined by ``<batches>``.
+At this point, the uncertainties on all tallied values are computed and
+compared with their corresponding trigger thresholds. If any triggers have not
+been met, OpenMC will continue until either all trigger thresholds have been
+satisfied or ``<max_batches>`` has been reached.
+
+The ``<trigger>`` element provides an active "toggle switch" for tally
+precision trigger(s), the maximum number of batches and the batch interval. It
+has the following attributes/sub-elements:
+
+  :active:
+    This determines whether or not to use trigger(s). Trigger(s) are used when
+    this tag is set to "true".
+
+  :max_batches:
+    This describes the maximum number of batches allowed when using trigger(s).
+
+    .. note:: When max_batches is set, the number of ``batches`` shown in
+              ``<eigenvalue>`` element represents minimum number of batches to
+              simulate when using the trigger(s).
+
+  :batch_interval:
+    This tag describes the number of  batches in between convergence checks.
+    OpenMC will check if the trigger has been reached at each batch defined
+    by ``batch_interval`` after the minimum number of batches is reached.
+
+    .. note:: If this tag is not present, the ``batch_interval`` is predicted
+              dynamically by OpenMC for each convergence check. The predictive
+              model assumes no correlation between fission sources
+              distributions from batch-to-batch. This assumption is reasonable
+              for fixed source and small criticality calculations, but is very
+              optimistic for highly coupled full-core reactor problems.
+
 
 ``<uniform_fs>`` Element
 ------------------------
@@ -704,6 +782,12 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :name:
+    An optional string name to identify the surface in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", or "sphere".
@@ -780,9 +864,15 @@ The following quadratic surfaces can be modeled:
 Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :id:
-    A unique integer that can be used to identify the surface.
+    A unique integer that can be used to identify the cell.
 
     *Default*: None
+
+  :name:
+    An optional string name to identify the cell in summary output files.
+    This string is limmited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :universe:
     The ``id`` of the universe that this cell is contained in.
@@ -849,6 +939,12 @@ the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the lattice.
 
+  :name:
+    An optional string name to identify the lattice in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :dimension:
     Two or three integers representing the number of lattice cells in the x- and
     y- (and z-) directions, respectively.
@@ -908,6 +1004,12 @@ the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the lattice.
 
+  :name:
+    An optional string name to identify the hex_lattice in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
   :n_rings:
     An integer representing the number of radial ring positions in the xy-plane.
     Note that this number includes the degenerate center ring which only has one
@@ -956,7 +1058,7 @@ Here is an example of a properly defined 2d hexagonal lattice:
         <pitch> 1.0 </pitch>
         <universes>
                   202
-               202   202 
+               202   202
             202   202   202
                202   202
             202   101   202
@@ -984,6 +1086,12 @@ Each ``material`` element can have the following attributes or sub-elements:
 
   :id:
     A unique integer that can be used to identify the material.
+
+  :name:
+    An optional string name to identify the material in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
@@ -1082,15 +1190,18 @@ post-collision energy, and an arbitrary structured mesh.
 The three valid elements in the tallies.xml file are ``<tally>``, ``<mesh>``,
 and ``<assume_separate>``.
 
+.. _tally:
+
 ``<tally>`` Element
 -------------------
 
 The ``<tally>`` element accepts the following sub-elements:
 
-  :label:
-    This is an optional sub-element specifying the name of this tally to be used
-    for output purposes. This string is limited to 52 characters for formatting
-    purposes.
+  :name:
+    An optional string name to identify the tally in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
 
   :filter:
     Specify a filter that restricts contributions to the tally to particles
@@ -1104,11 +1215,13 @@ The ``<tally>`` element accepts the following sub-elements:
     The ``filter`` element has the following attributes/sub-elements:
 
       :type:
-        The type of the filter. Accepted options are "cell", "cellborn", "material",
-        "universe", "energy", "energyout", and "mesh".
+        The type of the filter. Accepted options are "cell", "cellborn", 
+        "material", "universe", "energy", "energyout", "mesh", and 
+        "distribcell".
 
       :bins:
-        For each filter type, the corresponding ``bins`` entry is given as follows:
+        For each filter type, the corresponding ``bins`` entry is given as
+        follows:
 
         :cell:
           A list of cells in which the tally should be accumulated.
@@ -1142,6 +1255,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
         :mesh:
           The ``id`` of a structured mesh to be tallied over.
+
+        :distribcell:
+          The single cell which should be tallied uniquely for all instances.
+
+          .. note::
+              The distribcell filter will take a single cell ID and will tally
+              each unique occurrence of that cell separately. This filter will
+              not accept more than one cell ID. It is not recommended to combine
+              this filter with a cell or mesh filter.
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
@@ -1224,11 +1346,11 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
-      Legendre expansion order of the change in particle angle :math:`\left(\mu\right)`.
-      That is, ``scatter-P1`` is equivalent to requesting tallies of
-      ``scatter-0`` and ``scatter-1``.  Like for ``scatter-N``,
-      N must be between 0 and 10. As an example, tallying up to the
-      2\ :sup:`nd` \ scattering moment would be specified as
+      Legendre expansion order of the change in particle angle
+      :math:`\left(\mu\right)`. That is, ``scatter-P1`` is equivalent to
+      requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
+      ``scatter-N``, N must be between 0 and 10. As an example, tallying up
+      to the 2\ :sup:`nd` \ scattering moment would be specified as
       ``<scores> scatter-P2 </scores>``.  This score can only be used with an
       ``analog`` estimator.
 
@@ -1309,6 +1431,40 @@ The ``<tally>`` element accepts the following sub-elements:
     :events:
       Number of scoring events.
 
+  :trigger:
+    Precision trigger applied to all filter bins and nuclides for this tally.
+    It must specify the trigger's type, threshold and scores to which it will
+    be applied. It has the following attributes/sub-elements:
+
+   :type:
+     The type of the trigger. Accepted options are "variance", "std_dev",
+     and "rel_err".
+
+     :variance:
+       Variance of the batch mean :math:`\sigma^2`
+
+     :std_dev:
+       Standard deviation of the batch mean :math:`\sigma`
+
+     :rel_err:
+       Relative error of the batch mean :math:`\frac{\sigma}{\mu}`
+
+     *Default*: None
+
+   :threshold:
+     The precision trigger's convergence criterion for tallied values.
+
+     *Default*: None
+
+   :scores:
+     The score(s) in this tally to which the trigger should be applied.
+
+     .. note:: The ``scores`` in ``trigger`` must have been defined in
+               ``scores`` in ``tally``. An optional "all" may be used to
+               select all scores in this tally.
+
+     *Default*: "all"
+
 ``<mesh>`` Element
 ------------------
 
@@ -1347,8 +1503,8 @@ overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
 tallies. This element should be followed by "true" or "false".
 
-  .. warning:: If used incorrectly, the assumption that all tallies are spatially
-    separate can lead to incorrect results.
+  .. warning:: If used incorrectly, the assumption that all tallies are
+               spatially separate can lead to incorrect results.
 
   *Default*: false
 
@@ -1375,8 +1531,10 @@ element of the plots.xml is simply ``<plots>`` and any number output plots can
 be defined with ``<plot>`` sub-elements.  Two plot types are currently
 implemented in openMC:
 
-* ``slice``  2D pixel plot along one of the major axes. Produces a PPM image file.
-* ``voxel``  3D voxel data dump. Produces a binary file containing voxel xyz position and cell or material id.
+* ``slice``  2D pixel plot along one of the major axes. Produces a PPM image
+  file.
+* ``voxel``  3D voxel data dump. Produces a binary file containing voxel xyz
+  position and cell or material id.
 
 
 ``<plot>`` Element
@@ -1560,9 +1718,9 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 CMFD Specification -- cmfd.xml
 ------------------------------
 
-Coarse mesh finite difference acceleration method has been implemented in OpenMC.
-Currently, it allows users to accelerate fission source convergence during
-inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
+Coarse mesh finite difference acceleration method has been implemented in
+OpenMC. Currently, it allows users to accelerate fission source convergence
+during inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in
 ``settings.xml`` should be set to "true".
 
 ``<begin>`` Element
@@ -1577,8 +1735,8 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
 The ``<display>`` element sets one additional CMFD output column. Options are:
 
-* "balance" - prints the RMS [%] of the resdiual from the neutron balance equation
-  on CMFD tallies.
+* "balance" - prints the RMS [%] of the resdiual from the neutron balance
+  equation on CMFD tallies.
 * "dominance" - prints the estimated dominance ratio from the CMFD iterations.
   **This will only work for power iteration eigensolver**.
 * "entropy" - prints the *entropy* of the CMFD predicted fission source.
@@ -1621,19 +1779,9 @@ It can be turned on with "true" and off with "false".
 The ``<gauss_seidel_tolerance>`` element specifies two parameters. The first is
 the absolute inner tolerance for Gauss-Seidel iterations when performing CMFD
 and the second is the relative inner tolerance for Gauss-Seidel iterations
-for CMFD calculations. It is only used in the standalone CMFD power iteration
-solver and not when PETSc is active.
+for CMFD calculations.
 
   *Default*: 1.e-10 1.e-5
-
-``<ksp_monitor>`` Element
--------------------------
-
-The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES
-iterations in PETSc. This option can be turned on with "true" and turned off
-with "false".
-
-  *Default*: false
 
 ``<ktol>`` Element
 --------------------
@@ -1714,8 +1862,8 @@ not impact the calculation.
 ``<power_monitor>`` Element
 ---------------------------
 
-The ``<power_monitor>`` element is used to view the convergence of power iteration.
-This option can be turned on with "true" and turned off with "false".
+The ``<power_monitor>`` element is used to view the convergence of power
+iteration. This option can be turned on with "true" and turned off with "false".
 
   *Default*: false
 
@@ -1723,26 +1871,16 @@ This option can be turned on with "true" and turned off with "false".
 -------------------------
 
 The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
-calculation be performed on the last batch when CMFD is active. OpenMC should be
-compiled with PETSc when using this option.
+calculation be performed on the last batch when CMFD is active.
 
   *Default*: false
-
-``<solver>`` Element
---------------------
-
-The ``<solver>`` element controls whether the CMFD eigenproblem is solved with
-standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
-By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
-
-  *Default*: power
 
 ``<shift>`` Element
 --------------------
 
-The ``<shfit>`` element specifies an optional Wielandt shift parameter for
-accelerating power iterations. It can only be used when PETSc is not active.
-It is by default very large so the impact of the shift is effectively zero.
+The ``<shift>`` element specifies an optional Wielandt shift parameter for
+accelerating power iterations. It is by default very large so the impact of the
+shift is effectively zero.
 
   *Default*: 1e6
 
@@ -1751,10 +1889,9 @@ It is by default very large so the impact of the shift is effectively zero.
 
 The ``<spectral>`` element specifies an optional spectral radius that can be set to
 accelerate the convergence of Gauss-Seidel iterations during CMFD power iteration
-solve. Note this is only used in the standalone CMFD solver and does not affect
-the calculation when PETSc is active.
+solve.
 
-  *Default*: power
+  *Default*: 0.0
 
 ``<stol>`` Element
 ------------------
@@ -1775,10 +1912,9 @@ should be reset.
 ``<write_matrices>`` Element
 ----------------------------
 
-The ``<write_matrices>`` element is used to view the PETSc sparse matrices
-created when solving CMFD equations. These binary output files can be imported
-into MATLAB using PETSc-MATLAB utilities. This option can be
-turned on with "true" and off with "false".
+The ``<write_matrices>`` element is used to write the sparse matrices created
+when solving CMFD equations. This option can be turned on with "true" and off
+with "false".
 
   *Default*: false
 

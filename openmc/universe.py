@@ -25,10 +25,10 @@ class Cell(object):
 
     Parameters
     ----------
-    cell_id : int
+    cell_id : int, optional
         Unique identifier for the cell. If not specified, an identifier will
         automatically be assigned.
-    name : str
+    name : str, optional
         Name of the cell. If not specified, the name is the empty string.
 
     Attributes
@@ -427,10 +427,11 @@ class Universe(object):
 
     Parameters
     ----------
-    universe_id : int
-        Unique identifier of the universe
-    name : str
-        Name of the universe
+    universe_id : int, optional
+        Unique identifier of the universe. If not specified, an identifier will
+        automatically be assigned
+    name : str, optional
+        Name of the universe. If not specified, the name is the empty string.
 
     Attributes
     ----------
@@ -670,10 +671,11 @@ class Lattice(object):
 
     Parameters
     ----------
-    lattice_id : int
-        Unique identifier for the lattice
-    name : str
-        Name of the lattice
+    lattice_id : int, optional
+        Unique identifier for the lattice. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the lattice. If not specified, the name is the empty string.
 
     Attributes
     ----------
@@ -863,10 +865,11 @@ class RectLattice(Lattice):
 
     Parameters
     ----------
-    lattice_id : int
-        Unique identifier for the lattice
-    name : str
-        Name of the lattice
+    lattice_id : int, optional
+        Unique identifier for the lattice. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the lattice. If not specified, the name is the empty string.
 
     Attributes
     ----------
@@ -1137,10 +1140,11 @@ class HexLattice(Lattice):
 
     Parameters
     ----------
-    lattice_id : int
-        Unique identifier for the lattice
-    name : str
-        Name of the lattice
+    lattice_id : int, optional
+        Unique identifier for the lattice. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the lattice. If not specified, the name is the empty string.
 
     Attributes
     ----------

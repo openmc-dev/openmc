@@ -20,14 +20,16 @@ class Surface(object):
 
     Parameters
     ----------
-    surface_id : int
-        Unique identifier for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    name : str
-        Name of the surface
+    name : str, optional
+        Name of the surface. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -165,7 +167,8 @@ class Plane(Surface):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -179,7 +182,7 @@ class Plane(Surface):
     D : float
         The 'D' parameter for the plane
     name : str
-        Name of the plane
+        Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -274,7 +277,8 @@ class XPlane(Plane):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -282,7 +286,7 @@ class XPlane(Plane):
     x0 : float
         Location of the plane
     name : str
-        Name of the plane
+        Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -323,7 +327,8 @@ class YPlane(Plane):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -331,7 +336,7 @@ class YPlane(Plane):
     y0 : float
         Location of the plane
     name : str
-        Name of the plane
+        Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -372,7 +377,8 @@ class ZPlane(Plane):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -380,7 +386,7 @@ class ZPlane(Plane):
     z0 : float
         Location of the plane
     name : str
-        Name of the plane
+        Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -420,7 +426,8 @@ class Cylinder(Surface):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -428,7 +435,8 @@ class Cylinder(Surface):
     R : float
         Radius of the cylinder
     name : str
-        Name of the cylinder
+        Name of the cylinder. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -470,7 +478,8 @@ class XCylinder(Cylinder):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -482,7 +491,8 @@ class XCylinder(Cylinder):
     R : float
         Radius of the cylinder
     name : str
-        Name of the cylinder
+        Name of the cylinder. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -541,7 +551,8 @@ class YCylinder(Cylinder):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -553,7 +564,8 @@ class YCylinder(Cylinder):
     R : float
         Radius of the cylinder
     name : str
-        Name of the cylinder
+        Name of the cylinder. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -612,7 +624,8 @@ class ZCylinder(Cylinder):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -624,7 +637,8 @@ class ZCylinder(Cylinder):
     R : float
         Radius of the cylinder
     name : str
-        Name of the cylinder
+        Name of the cylinder. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -682,7 +696,8 @@ class Sphere(Surface):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -696,7 +711,7 @@ class Sphere(Surface):
     R : float
         Radius of the sphere
     name : str
-        Name of the sphere
+        Name of the sphere. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -790,7 +805,8 @@ class Cone(Surface):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -804,7 +820,7 @@ class Cone(Surface):
     R2 : float
         Parameter related to the aperature
     name : str
-        Name of the cone
+        Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -900,7 +916,8 @@ class XCone(Cone):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -914,7 +931,7 @@ class XCone(Cone):
     R2 : float
         Parameter related to the aperature
     name : str
-        Name of the cone
+        Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -945,7 +962,8 @@ class YCone(Cone):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -959,7 +977,7 @@ class YCone(Cone):
     R2 : float
         Parameter related to the aperature
     name : str
-        Name of the cone
+        Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
     ----------
@@ -990,7 +1008,8 @@ class ZCone(Cone):
     Parameters
     ----------
     surface_id : int
-        Unique identifier for the surface
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1004,7 +1023,7 @@ class ZCone(Cone):
     R2 : float
         Parameter related to the aperature
     name : str
-        Name of the cone
+        Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
     ----------

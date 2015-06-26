@@ -34,10 +34,12 @@ class Material(object):
 
     Parameters
     ----------
-    material_id : int
-        Unique identifier for the material
-    name : str
-        Name of the material
+    material_id : int, optional
+        Unique identifier for the material. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the material. If not specified, the name will be the empty
+        string.
 
     Attributes
     ----------
@@ -151,7 +153,8 @@ class Material(object):
         units : str
             Physical units of density
         density : float, optional
-            Value of the density
+            Value of the density. Must be specified unless units is given as
+            'sum'.
 
         """
 

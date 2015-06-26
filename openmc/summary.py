@@ -2,16 +2,21 @@ import numpy as np
 
 import openmc
 
-try:
-    import h5py
-except ImportError:
-    msg = 'Unable to import h5py which is needed by openmc.summary'
-    raise ImportError(msg)
+
+_h5_imported = False
 
 
 class Summary(object):
 
     def __init__(self, filename):
+
+        if not _h5_imported:
+            try:
+                import h5py
+                _h5_imported = True
+            except ImportError:
+                msg = 'Unable to import h5py which is needed by openmc.summary'
+                raise ImportError(msg)
 
         openmc.reset_auto_ids()
 

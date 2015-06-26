@@ -93,7 +93,7 @@ class DistribcellTestHarness(TestHarness):
 
             if i == 2:
                 sha512 = hashlib.sha512()
-                sha512.update(outstr)
+                sha512.update(outstr.encode('utf-8'))
                 outstr = sha512.hexdigest()
 
             # Write results to a file.

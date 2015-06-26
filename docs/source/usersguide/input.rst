@@ -441,24 +441,22 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-      The type of spatial distribution. Valid options are "box" and "point". A
-      "box" spatial distribution has coordinates sampled uniformly in a
-      parallelepiped. A "point" spatial distribution has coordinates specified
-      by a triplet.
+
+      The type of spatial distribution. Valid options are "box", "fission", and
+      "point". A "box" spatial distribution has coordinates sampled uniformly in
+      a parallelepiped. A "fission" spatial distribution samples locations from
+      a "box" distribution but only locations in fissionable materials are
+      accepted. A "point" spatial distribution has coordinates specified by a
+      triplet.
 
       *Default*: None
 
     :parameters:
-      For a "box" spatial distribution, ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
-
-      To filter a "box" spatial distribution by fissionable material, specify
-      "fission" tag instead of "box". The ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
+      For a "box" or "fission" spatial distribution, ``parameters`` should be
+      given as six real numbers, the first three of which specify the lower-left
+      corner of a parallelepiped and the last three of which specify the
+      upper-right corner. Source sites are sampled uniformly through that
+      parallelepiped.
 
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
@@ -499,7 +497,7 @@ attributes/sub-elements:
       "watt", and "maxwell". The "monoenergetic" option produces source sites at
       a single energy. The "watt" option produces source sites whose energy is
       sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum
+      sites whose energy is sampled from a Maxwell fission spectrum.
 
       *Default*: watt
 

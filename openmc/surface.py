@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from xml.etree import ElementTree as ET
 
 from openmc.checkvalue import *
@@ -152,7 +153,8 @@ class Surface(object):
 
         element.set("type", self._type)
         element.set("boundary", self._boundary_type)
-        element.set("coeffs", ' '.join(map(str, self._coeffs)))
+        element.set("coeffs", ' '.join([str(self._coeffs[key])
+                                        for key in self._coeff_keys]))
 
         return element
 
@@ -169,26 +171,26 @@ class Plane(Surface):
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
     A : float
-        The 'A' parameter for the surface
+        The 'A' parameter for the plane
     B : float
-        The 'B' parameter for the surface
+        The 'B' parameter for the plane
     C : float
-        The 'C' parameter for the surface
+        The 'C' parameter for the plane
     D : float
-        The 'D' parameter for the surface
+        The 'D' parameter for the plane
     name : str
         Name of the plane
 
     Attributes
     ----------
     a : float
-        The 'A' parameter for the surface
+        The 'A' parameter for the plane
     b : float
-        The 'B' parameter for the surface
+        The 'B' parameter for the plane
     c : float
-        The 'C' parameter for the surface
+        The 'C' parameter for the plane
     d : float
-        The 'D' parameter for the surface
+        The 'D' parameter for the plane
 
     """
 
@@ -434,6 +436,8 @@ class Cylinder(Surface):
         Radius of the cylinder
 
     """
+
+    __metaclass__ = ABCMeta
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  R=None, name=''):
@@ -814,6 +818,8 @@ class Cone(Surface):
         Parameter related to the aperature
 
     """
+
+    __metaclass__ = ABCMeta
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=None, y0=None, z0=None, R2=None, name=''):

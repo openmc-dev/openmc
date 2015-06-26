@@ -554,8 +554,9 @@ class Summary(object):
 
         Returns
         -------
-        nuclide : openmc.nuclide.Nuclide
-            Nuclide matching the specified zaid
+        nuclide : openmc.nuclide.Nuclide or None
+            Nuclide matching the specified zaid, or None if no matching object
+            is found.
 
         """
 

@@ -143,7 +143,13 @@ def get_openmc_material(opencg_material):
 
 
 def is_opencg_surface_compatible(opencg_surface):
-    """Determine whether OpenCG surface is compatible with OpenMC geometry
+    """Determine whether OpenCG surface is compatible with OpenMC geometry.
+
+    A surface is considered compatible if there is a one-to-one correspondence
+    between OpenMC and OpenCG surface types. Note that some OpenCG surfaces,
+    e.g. SquarePrism, do not have a one-to-one correspondence with OpenMC
+    surfaces but can still be converted into an equivalent collection of OpenMC
+    surfaces.
 
     Parameters
     ----------
@@ -344,7 +350,9 @@ def get_openmc_surface(opencg_surface):
 
 def get_compatible_opencg_surfaces(opencg_surface):
     """Generate OpenCG surfaces that are compatible with OpenMC equivalent to an
-    OpenCG surface that is not compatible.
+    OpenCG surface that is not compatible. For example, this method may be used
+    to convert a ZSquarePrism OpenCG surface into a collection of equivalent
+    XPlane and YPlane OpenCG surfaces.
 
     Parameters
     ----------
@@ -497,8 +505,8 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
     opencg_cell : opencg.Cell
         OpenCG cell
     opencg_surface : opencg.Surface
-        OpenCG surface that causes the incompatibility, e.g. an x-squareprism
-        surface
+        OpenCG surface that causes the incompatibility, e.g. an instance of
+        XSquarePrism
     halfspace : {-1, 1}
         Which halfspace defined by the surface is contained in the cell
 

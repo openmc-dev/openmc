@@ -26,9 +26,10 @@ class Cell(object):
     Parameters
     ----------
     cell_id : int
-        Unique identifier for the cell
+        Unique identifier for the cell. If not specified, an identifier will
+        automatically be assigned.
     name : str
-        Name of the cell
+        Name of the cell. If not specified, the name is the empty string.
 
     Attributes
     ----------
@@ -310,8 +311,8 @@ class Cell(object):
         return cells
 
     def get_all_universes(self):
-        """Return all universes that are contained within this one if it is filled with
-        a universe or lattice.
+        """Return all universes that are contained within this one if any of
+        its cells are filled with a universe or lattice.
 
         Returns
         -------

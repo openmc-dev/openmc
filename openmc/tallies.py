@@ -27,10 +27,11 @@ class Tally(object):
 
     Parameters
     ----------
-    tally_id : int
-        Unique identifier for the tally
-    name : str
-        Name of the taly
+    tally_id : int, optional
+        Unique identifier for the tally. If none is specified, an identifier
+        will automatically be assigned
+    name : str, optional
+        Name of the tally. If not specified, the name is the empty string.
 
     Attributes
     ----------
@@ -50,7 +51,8 @@ class Tally(object):
         List of tally triggers
     num_score_bins : int
         Total number of scores, accounting for the fact that a single
-        user-specified score might have multiple bins
+        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
+        bins
     num_scores : int
         Total number of user-specified scores
     num_filter_bins : int
@@ -554,7 +556,7 @@ class Tally(object):
                     mergeable_filter = True
                     break
 
-            # If no mergeable filter was found, the tallies are not mergable
+            # If no mergeable filter was found, the tallies are not mergeable
             if not mergeable_filter:
                 return False
 
@@ -683,7 +685,13 @@ class Tally(object):
         Returns
         -------
         filter : openmc.filter.Filter
-            Filter from this tally with matching type
+            Filter from this tally with matching type, or None if no matching
+            Filter is found
+
+        Raises
+        ------
+        ValueError
+            If no matching Filter is found
 
         """
 
@@ -857,7 +865,9 @@ class Tally(object):
         ------
         ValueError
             When this routine is called before the Tally is populated with data
-            by the StatePoint.read_results() routine.
+            by the StatePoint.read_results() routine. ValueError is also thrown
+            if the input parameters do not correspond to the Tally's attributes,
+            e.g., if the score(s) do not match those in the Tally.
 
         """
 
@@ -987,7 +997,7 @@ class Tally(object):
             Include columns with score bin information (default is True).
 
         summary : None or Summary
-            An optional Summary object to be used to construct columns for for
+            An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell intance.  NOTE:
@@ -1488,7 +1498,7 @@ class TalliesFile(object):
         self._tallies.remove(tally)
 
     def merge_tallies(self):
-        """Merge any mergable tallies together. Note that n-way merges are
+        """Merge any mergeable tallies together. Note that n-way merges are
         possible.
 
         """

@@ -493,19 +493,14 @@ class SettingsFile(object):
         Parameters
         ----------
         stype : str
-            The type of spatial distribution. Valid options are "box" and
-            "point". A "box" spatial distribution has coordinates sampled
-            uniformly in a parallelepiped. A "point" spatial distribution has
-            coordinates specified by a triplet.
+            The type of spatial distribution. Valid options are "box",
+            "fission", and "point". A "box" spatial distribution has coordinates
+            sampled uniformly in a parallelepiped. A "fission" spatial
+            distribution samples locations from a "box" distribution but only
+            locations in fissionable materials are accepted. A "point" spatial
+            distribution has coordinates specified by a triplet.
         params : tuple or list or ndarray
-            For a "box" spatial distribution, ``params`` should be given as six
-            real numbers, the first three of which specify the lower-left corner
-            of a parallelepiped and the last three of which specify the
-            upper-right corner. Source sites are sampled uniformly through that
-            parallelepiped.
-
-            To filter a "box" spatial distribution by fissionable material,
-            specify "fission" tag instead of "box". The ``params`` should be
+            For a "box" or "fission" spatial distribution, ``params`` should be
             given as six real numbers, the first three of which specify the
             lower-left corner of a parallelepiped and the last three of which
             specify the upper-right corner. Source sites are sampled uniformly
@@ -522,7 +517,7 @@ class SettingsFile(object):
                   'value {0}'.format(stype)
             raise ValueError(msg)
 
-        elif stype not in ['box', 'point']:
+        elif stype not in ['box', 'fission', 'point']:
             msg = 'Unable to set source space type to {0} since it is not ' \
                   'box or point'.format(stype)
             raise ValueError(msg)
@@ -532,9 +527,10 @@ class SettingsFile(object):
                   'not a Python tuple, list or NumPy array'.format(params)
             raise ValueError(msg)
 
-        elif stype == 'box' and len(params) != 6:
-            msg = 'Unable to set source space parameters for a box to {0} ' \
-                  'since it does not contain 6 values'.format(params)
+        elif stype in ['box', 'fission'] and len(params) != 6:
+            msg = 'Unable to set source space parameters for a box/fission ' \
+                  'distribution to {0} since it does not contain 6 values'\
+                      .format(params)
             raise ValueError(msg)
 
         elif stype == 'point' and len(params) != 3:
@@ -618,7 +614,7 @@ class SettingsFile(object):
             sites at a single energy. The "watt" option produces source sites
             whose energy is sampled from a Watt fission spectrum. The "maxwell"
             option produce source sites whose energy is sampled from a Maxwell
-            fission spectrum
+            fission spectrum.
         params : tuple or list or ndarray
             For a "monoenergetic" energy distribution, ``params`` should be
             given as the energy in MeV of the source sites.
@@ -904,7 +900,7 @@ class SettingsFile(object):
                   'not a Python tuple or list'.format(dimension)
             raise ValueError(msg)
 
-        elif len(dimension) == 3:
+        elif len(dimension) != 3:
             msg = 'Unable to set entropy mesh dimension to {0} which is ' \
                   'not a set of 3 integer dimensions'.format(dimension)
             raise ValueError(msg)
@@ -924,7 +920,7 @@ class SettingsFile(object):
                   'is not a Python tuple or list'.format(lower_left)
             raise ValueError(msg)
 
-        elif len(lower_left) < 3 or len(lower_left) > 3:
+        elif len(lower_left) != 3:
             msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
                   'is not a 3D point'.format(lower_left)
             raise ValueError(msg)
@@ -1082,7 +1078,7 @@ class SettingsFile(object):
                   'not a Python tuple or list'.format(dimension)
             raise ValueError(msg)
 
-        elif len(dimension) == 3:
+        elif len(dimension) != 3:
             msg = 'Unable to set UFS mesh dimension to {0} which is ' \
                   'not a set of 3 integer dimensions'.format(dimension)
             raise ValueError(msg)
@@ -1106,7 +1102,7 @@ class SettingsFile(object):
                   'not a Python tuple or list'.format(lower_left)
             raise ValueError(msg)
 
-        elif len(lower_left) == 3:
+        elif len(lower_left) != 3:
             msg = 'Unable to set UFS mesh lower left corner to {0} which ' \
                   'is not a 3D point'.format(lower_left)
             raise ValueError(msg)
@@ -1120,7 +1116,7 @@ class SettingsFile(object):
                   'not a Python tuple or list'.format(upper_right)
             raise ValueError(msg)
 
-        if len(upper_right) == 3:
+        if len(upper_right) != 3:
             msg = 'Unable to set UFS mesh upper right corner to {0} which ' \
                   'is not a 3D point'.format(upper_right)
             raise ValueError(msg)
@@ -1138,7 +1134,7 @@ class SettingsFile(object):
                   'not a Python tuple or list'.format(dimension)
             raise ValueError(msg)
 
-        if len(dimension) == 3:
+        if len(dimension) != 3:
             msg = 'Unable to set DD mesh upper right corner to {0} which ' \
                   'is not a 3D point'.format(dimension)
             raise ValueError(msg)

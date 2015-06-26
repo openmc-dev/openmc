@@ -13,7 +13,7 @@ if sys.version > '3':
 
 
 class SourceSite(object):
-    """A single source site, usually resulting from fission.
+    """A single source site produced from fission.
 
     Attributes
     ----------
@@ -462,8 +462,8 @@ class StatePoint(object):
             self.tallies[tally_key] = tally
 
     def read_results(self):
-        """Read tally results and store them in the ``tallies`` attribute. By default,
-        when the statepoint is first loaded, no results are read.
+        """Read tally results and store them in the ``tallies`` attribute. No results
+        are read when the statepoint is instantiated.
 
         """
 
@@ -570,6 +570,9 @@ class StatePoint(object):
     def compute_ci(self, confidence=0.95):
         """Computes confidence intervals for each Tally bin.
 
+        This method is equivalent to calling compute_stdev(...) when the
+        confidence is known as opposed to its corresponding t value.
+
         Parameters
         ----------
         confidence : float, optional
@@ -623,9 +626,9 @@ class StatePoint(object):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
-        found it finds which satisfieds all of the input parameters.
+        found it finds which satisfies all of the input parameters.
         NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tallies properties.
+        specification and may only represent a subset of the Tally's properties.
 
         Parameters
         ----------
@@ -725,9 +728,11 @@ class StatePoint(object):
         """Links Tallies and Filters with Summary model information.
 
         This routine retrieves model information (materials, geometry) from a
-        Summary object populated with an HDF5 'summary.h5' file and inserts
-        it into the Tally objects. This can be helpful when viewing and
-        manipulating large scale Tally data.
+        Summary object populated with an HDF5 'summary.h5' file and inserts it
+        into the Tally objects. This can be helpful when viewing and
+        manipulating large scale Tally data. Note that it is necessary to link
+        against a summary to populate the Tallies with any user-specified "name"
+        XML tags.
 
         Parameters
         ----------

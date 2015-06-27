@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <settings>
-  
+
   <seed>100000000</seed>
   <ptables>true</ptables>
-  <cross_sections>/home/walshjon/data/cross_sections.xml</cross_sections>
-  
+  <cross_sections>/home/walshjon/data/cross_sections_endf71x.xml</cross_sections>
+
   <verbosity>
     <value>7</value>
   </verbosity>
- 
+
   <eigenvalue>
     <batches>6</batches>
     <inactive>1</inactive>

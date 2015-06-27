@@ -447,7 +447,6 @@ contains
       read(in, 10) rec
       read(rec(12:22), '(E11.0)') QI
       tope % E_ex2 = (A + ONE) / A * (-QI)
-      tope % E_ex2 = tope % EH(tope % i_urr)
     end if
 
     read_MT = .false.

@@ -1,6 +1,5 @@
 module unresolved
 
-  use doppler,       only: broaden
   use error,         only: fatal_error
   use faddeeva,      only: quickw, faddeeva_w
   use fission,       only: nu_total

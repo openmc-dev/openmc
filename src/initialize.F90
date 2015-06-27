@@ -13,7 +13,7 @@ module initialize
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml, &
-                              cells_in_univ_dict, read_plots_xml, n_fasturr
+                              cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version, &
                               print_usage, write_xs_summary, print_plot, &
@@ -27,7 +27,7 @@ module initialize
   use tally_initialize, only: configure_tallies
   use unresolved,       only: endf_files, &
                               isotopes, &
-                              n_fasturr, &
+                              n_isotopes, &
                               pointwise_urr, &
                               prob_tables, &
                               real_freq, &
@@ -64,7 +64,7 @@ contains
   subroutine initialize_run()
 
     integer :: i_nuc
-    integer :: i_sotope
+    integer :: i
 
     ! Start total and initialization timer
     call time_total % start()
@@ -128,28 +128,27 @@ contains
         call tabulate_w()
 
         ! allocate space for a realization of parameters localized about E_n
-        do i_sotope = 1, n_fasturr
-          call isotopes(i_sotope) % alloc_local_realization()
+        do i = 1, n_isotopes
+          call isotopes(i) % alloc_local_realization()
         end do
 
         select case (represent_urr)
         case (PROB_BANDS)
-          do i_sotope = 1, n_fasturr
+          do i = 1, n_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
-                call isotopes(i_sotope) % Tlist &
+              if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                call isotopes(i) % ace_T_list &
                   % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
-                call isotopes(i_sotope) % inuclist % append(i_nuc)
+                call isotopes(i) % ace_index_list % append(i_nuc)
                 micro_xs(i_nuc) % use_ptable = .true.
               end if
             end do
-            isotopes(i_sotope) % nT = isotopes(i_sotope) % Tlist % size()
-            call isotopes(i_sotope) % alloc_prob_tables()
-            call prob_tables(i_sotope)
+            call isotopes(i) % alloc_prob_tables()
+            call prob_tables(i)
           end do
           if (write_avg_urr_xs)&
-            call fatal_error('Average URR cross sections file generated, no&
-            & transport simulation performed')
+               call fatal_error('Average URR cross sections file generated, no&
+               & transport simulation performed')
 
         case (ON_THE_FLY)
           select case (real_freq)
@@ -162,12 +161,12 @@ contains
             continue
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
-            if (represent_params /= E_RESONANCE) call fatal_error('Generating&
-              & a resonance ensemble with neutron energy-dependent parameters')
-            do i_sotope = 1, n_fasturr
+            if (represent_params /= E_RESONANCE) call fatal_error('Generating &
+                 &a resonance ensemble with E_n-dependent parameters')
+            do i = 1, n_isotopes
               do i_nuc = 1, n_nuclides_total
-                if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
-                  call resonance_ensemble(i_sotope)
+                if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                  call resonance_ensemble(i)
                 end if
               end do
             end do
@@ -176,13 +175,13 @@ contains
           end select
 
         case (POINTWISE)
-          if (represent_params /= E_RESONANCE) call fatal_error('Generating&
-            & a resonance ensemble with neutron energy-dependent parameters')
-          do i_sotope = 1, n_fasturr
+          if (represent_params /= E_RESONANCE) call fatal_error('Generating &
+               &a resonance ensemble with E_n-dependent parameters')
+          do i = 1, n_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (isotopes(i_sotope) % ZAI == nuclides(i_nuc) % zaid) then
-                call resonance_ensemble(i_sotope)
-                call pointwise_urr(i_sotope, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
+              if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                call resonance_ensemble(i)
+                call pointwise_urr(i, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if
             end do
           end do
@@ -265,10 +264,10 @@ contains
 
   subroutine initialize_endf()
 
-    integer :: i ! fasturr nuclide index
-    integer :: i_nuc    ! global nuclide index
+    integer :: i     ! isotope index
+    integer :: i_nuc ! ACE data index
 
-    do i = 1, n_fasturr
+    do i = 1, n_isotopes
       do i_nuc = 1, n_nuclides_total
         if (nuclides(i_nuc) % zaid == isotopes(i) % ZAI) then
           nuclides(i_nuc) % i_sotope = i

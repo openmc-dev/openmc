@@ -18,7 +18,6 @@ module unresolved
   logical :: write_avg_urr_xs ! write averaged xs values to a file?
   logical :: write_urr_tables ! write probability tables to a file?
   integer :: background          ! where to get background cross sections
-  integer :: band_spacing        ! cross section band spacing scheme
   integer :: E_spacing           ! probability table energy spacing scheme
   integer :: formalism           ! URR resonance formalism
   integer :: histories_avg_urr   ! histories for averaged cross section calc
@@ -28,22 +27,21 @@ module unresolved
   integer :: max_batches_avg_urr ! max batches for averaged cross section calc
   integer :: min_batches_avg_urr ! min batches for averaged cross section calc
   integer :: n_bands             ! number of probability table xs bands
-  integer :: n_fasturr           ! number of URR isotopes being processed
+  integer :: n_temperatures      ! number of probability table temperatures
+  integer :: n_isotopes          ! number of URR isotopes being processed
   integer :: n_tables            ! number of probability tables (energies)
   integer :: n_reals             ! number of independent URR realizations
   integer :: real_freq           ! frequency of URR realizations
   integer :: represent_params    ! representation of URR parameters
   integer :: represent_urr       ! representation of URR xs
-  real(8) :: first_bound         ! xs boundary between first two bands
-  real(8) :: last_bound          ! xs boundary between last two bands
   real(8) :: max_dE_point_urr    ! max diff between reconstructed energies [eV]
   real(8) :: max_E_point_urr     ! max energy for pointwise xs recon [eV]
   real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
   real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
   real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
-  real(8), allocatable :: Etables(:)  ! probability table energies
-  real(8), allocatable :: xs_bands(:) ! probability table xs band boundaries
-  character(MAX_FILE_LEN) :: path_avg_urr_xs ! path to averaged URR xs files
+  real(8), allocatable :: Etables(:)      ! probability table energies
+  real(8), allocatable :: temperatures(:) ! probability table temperatures
+  character(MAX_FILE_LEN) :: path_avg_urr_xs  ! path to averaged URR xs files
   character(80), allocatable :: endf_files(:) ! list of ENDF-6 filenames
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -297,9 +295,9 @@ module unresolved
 
     real(8) :: AWR ! weight of nucleus in neutron masses
     real(8) :: T   ! current isotope temperature [K]
-    type(ListReal) :: Tlist ! list of temperatures isotope has ACE data at
-    type(ListInt) :: inuclist ! list of indices for different temperatures
-    integer :: nT = 0 ! number of temperatures isotope has ACE data at
+    integer :: nT  ! number of temperatures w/ probability tables
+    type(ListReal) :: ace_T_list ! list of temperatures isotope has ACE data at
+    type(ListInt) :: ace_index_list ! list of indices for different temperatures
     logical :: fissionable ! is isotope fissionable?
 
     ! Current quantum mechanical variables
@@ -924,48 +922,6 @@ module unresolved
        1.2382461545773161e+01_8,&
        1.5538540717378252e+01_8/),(/100,4/))
 
-  real(8), dimension(20,4), parameter :: chi2old = reshape((/&
-       0.0013100262742689916_8, 0.00919500882320421_8,&
-       0.025090476436998736_8,  0.04925402128250318_8,&
-       0.08208923410100957_8,   0.12416854780259498_8,&
-       0.17626783816712402_8,   0.23941744105957596_8,&
-       0.31497723137584355_8,   0.4047485295620521_8, &
-       0.5111448345599447_8,    0.6374609382724045_8, &
-       0.7883154495330736_8,    0.9704188336936049_8, &
-       1.1940023538092253_8,    1.4757327537047895_8, &
-       1.8454670666691106_8,    2.3652181292969803_8, &
-       3.203712009903742_8,     5.582009275678107_8,  &
-       0.0508548132730799_8,    0.15616662304517276_8,&
-       0.2673349607573996_8,    0.3850499608696362_8, &
-       0.5101314685012841_8,    0.6435637432689214_8, &
-       0.7865426118806967_8,    0.9405408480200361_8, &
-       1.107400953760125_8,     1.2894704054247497_8, &
-       1.489805079279013_8,     1.7124868219334135_8, &
-       1.9631419670049954_8,    2.2498360910702835_8, &
-       2.5847300407123037_8,    2.987440311726143_8,  &
-       3.4927833901574834_8,    4.172379537339127_8,  &
-       5.2188758248681735_8,    7.991464546831889_8,  &
-       0.20683162970884522_8,   0.47071924653213254_8,&
-       0.6919329092330118_8,    0.9016737337713265_8, &
-       1.1086805203251409_8,    1.3176464012175306_8, &
-       1.5319278132738008_8,    1.7544445864612157_8, &
-       1.98812217785279_8,      2.236205090653629_8,  &
-       2.502570017452597_8,     2.7921282158653367_8, &
-       3.1114297553000485_8,    3.469670387640112_8,  &
-       3.8805271549204616_8,    4.36585590539197_8,   &
-       4.964173687092916_8,     5.754227955970698_8,  &
-       6.946456907701698_8,     10.00477398469088_8,  &
-       0.45946230065534227_8,   0.8937352664071069_8, &
-       1.2175331908657197_8,    1.508717798845479_8,  &
-       1.7860457656966469_8,    2.0585427647180587_8, &
-       2.3319446761261395_8,    2.61068684613386_8,   &
-       2.898777850389394_8,     3.2003213857955832_8, &
-       3.5199497823350763_8,    3.863312242884864_8,  &
-       4.237758999673624_8,     4.6534465218163765_8, &
-       5.125325701109869_8,     5.677122248896667_8,  &
-       6.350436357550334_8,     7.229956898134616_8,  &
-       8.540996737333352_8,     11.835926663601912_8 /),(/20,4/))
-
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1173,7 +1129,7 @@ contains
     integer :: iavg      ! index in average cross section
     real(8) :: T_K          ! isotope temperature [K]
     real(8) :: favg         ! average cross section interpolation factor
-    real(8) :: fact         ! cross section energy grid interpolation factor
+    real(8) :: face         ! cross section energy grid interpolation factor
     real(8) :: avg_urr_n_xs ! averaged elastic cross section
     real(8) :: avg_urr_f_xs ! averaged fission cross section
     real(8) :: avg_urr_g_xs ! averaged capture cross section
@@ -1386,11 +1342,11 @@ contains
              i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
-        fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
+        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
@@ -1521,11 +1477,11 @@ contains
              i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
-        fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
+        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
@@ -1659,11 +1615,11 @@ contains
       if (nuc % energy(i_grid) == nuc % energy(i_grid + 1)) i_grid = i_grid + 1
 
       ! calculate xs energy grid interpolation factor
-      fact = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+      face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
            1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
       ! calculate evaluator-supplied backgrounds at the current energy
-      call interp_ace_background(iso, i_nuc, n_pts, fact, i_grid)
+      call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
 
       ! interpret MF3 data according to ENDF-6 LSSF flag:
       ! MF3 contains background xs values, add to MF2 resonance contributions
@@ -2001,7 +1957,6 @@ contains
   subroutine prob_tables(iso)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
-    type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     type(ProbabilityTable), pointer :: ptable => null() ! prob. table pointer
     type(Resonance) :: res ! resonance object
     character(80) :: sha1     ! Git SHA1
@@ -2013,11 +1968,8 @@ contains
     integer :: i_h    ! history index
     integer :: i_J    ! total angular momentum quantum number index
     integer :: i_l    ! orbital quantum number index
-    integer :: i_nuc  ! nuclide index
     integer :: i_r    ! resonance index
     integer :: i_T    ! temperature index
-    integer :: iT     ! alternate temperature index
-    integer :: i_temp ! temperature index
     integer :: iso    ! isotope index
     integer :: n_res  ! number of resonances to include for a given l-wave
     integer :: i_mag  ! index in array of xs samples based on total xs magnitude
@@ -2025,11 +1977,9 @@ contains
     integer :: avg_unit = 98 ! avg xs output file unit
     integer :: tab_unit = 99 ! tables output file unit
     real(8) :: E        ! neutron lab energy [eV]
-    real(8) :: fact     ! File 3 energy grid interpolation factor
+    real(8) :: fmf3     ! File 3 energy grid interpolation factor
     real(8) :: xs_t_min ! min realized total xs
     real(8) :: xs_t_max ! max realized total xs
-    real(8), allocatable :: hot_xs(:)
-    real(8), allocatable :: cold_xs(:)
 
     xs_t_min = 1.0e6_8
     xs_t_max = XS_CUTOFF
@@ -2200,7 +2150,7 @@ contains
                 TEMPERATURES_LOOP: do i_T = 1, tope % nT
 
                   ! set current temperature
-                  tope % T = tope % Tlist % get_item(i_T)
+                  tope % T = temperatures(i_T)
 
                   ! calculate the contribution to the partial cross sections,
                   ! at this energy, from an additional resonance
@@ -2208,7 +2158,7 @@ contains
 
                   ! add this contribution to the accumulated partial cross
                   ! section values built up from all resonances
-! TODO: move t outside of loop
+! TODO: consider moving t outside of loop
                   call tope % res_contrib(res, i_E, i_T)
 
                 end do TEMPERATURES_LOOP
@@ -2217,9 +2167,6 @@ contains
           end do ORBITAL_ANG_MOM_LOOP
 
           TEMPERATURES_LOOPb: do i_T = 1, tope % nT
-
-            i_nuc = tope % inuclist % get_item(i_T)
-            nuc  => nuclides(i_nuc)
 
             ! add potential scattering contribution
             call tope % prob_tables(i_E, i_T) % avg_n % potential_xs(iso)
@@ -2247,28 +2194,11 @@ contains
                   if (tope % INT == LINEAR_LINEAR &
                        .or. (tope % MF3_f(i_grid) > XS_CUTOFF &
                        .and. tope % MF3_f(i_grid + 1) > XS_CUTOFF)) then
-                    fact = interp_factor(E, tope % MF3_f_e(i_grid), &
+                    fmf3 = interp_factor(E, tope % MF3_f_e(i_grid), &
                          tope % MF3_f_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_f % xs &
-                         = interpolator(fact, tope % MF3_f(i_grid), &
+                         = interpolator(fmf3, tope % MF3_f(i_grid), &
                          tope % MF3_f(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                         + tope % prob_tables(i_E, i_T) % avg_f % xs
-                  end if
-                end if
-              else if (background == ACEFILE) then
-                if (E >= 1.0e6_8 * nuc % energy(1)) then
-                  i_grid = binary_search(1.0e6_8 * nuc % energy, &
-                       size(nuc % energy), E)
-                  if (tope % INT == LINEAR_LINEAR &
-                       .or. (nuc % fission(i_grid) > XS_CUTOFF &
-                       .and. nuc % fission(i_grid + 1) > XS_CUTOFF)) then
-                    fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                         1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_f % xs &
-                         = interpolator(fact, nuc % fission(i_grid), &
-                         nuc % fission(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                          = tope % prob_tables(i_E, i_T) % avg_t % xs &
                          + tope % prob_tables(i_E, i_T) % avg_f % xs
@@ -2293,32 +2223,11 @@ contains
                   if (tope % INT == LINEAR_LINEAR &
                        .or. (tope % MF3_x(i_grid) > XS_CUTOFF &
                        .and. tope % MF3_x(i_grid + 1) > XS_CUTOFF)) then
-                    fact = interp_factor(E, tope % MF3_x_e(i_grid), &
+                    fmf3 = interp_factor(E, tope % MF3_x_e(i_grid), &
                          tope % MF3_x_e(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_x % xs &
-                         = interpolator(fact, tope % MF3_x(i_grid), &
+                         = interpolator(fmf3, tope % MF3_x(i_grid), &
                          tope % MF3_x(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_t % xs &
-                         = tope % prob_tables(i_E, i_T) % avg_t % xs &
-                         + tope % prob_tables(i_E, i_T) % avg_x % xs
-                  end if
-                end if
-              else if (background == ACEFILE) then
-                if (E >= 1.0e6_8 * nuc % energy(1)) then
-                  i_grid = binary_search(1.0e6_8 * nuc % energy, &
-                       size(nuc % energy), E)
-                  if (tope % INT == LINEAR_LINEAR .or. (nuc % total(i_grid) &
-                       - nuc % elastic(i_grid) &
-                       - nuc % absorption(i_grid) > XS_CUTOFF&
-                       .and. nuc % total(i_grid + 1) - nuc % elastic(i_grid+1)&
-                       - nuc % absorption(i_grid + 1) > XS_CUTOFF)) then
-                    fact = interp_factor(E, 1.0e6_8 * nuc % energy(i_grid), &
-                         1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
-                    tope % prob_tables(i_E, i_T) % avg_x % xs &
-                         = interpolator(fact, nuc % total(i_grid) &
-                         - nuc % elastic(i_grid) - nuc % absorption(i_grid), &
-                         nuc % total(i_grid + 1) - nuc % elastic(i_grid + 1) &
-                         - nuc % absorption(i_grid + 1), tope % INT)
                     tope % prob_tables(i_E, i_T) % avg_t % xs &
                          = tope % prob_tables(i_E, i_T) % avg_t % xs &
                          + tope % prob_tables(i_E, i_T) % avg_x % xs
@@ -2387,61 +2296,64 @@ contains
         ! calculate statistics for this batch
         call tope % calc_stats(i_b)
 
-! TODO: pick the temperature used for cutoff criterion more thoughtfully
         if ((i_b > min_batches_avg_urr &
              .and. max(maxval(tope % prob_tables(i_E, :) % avg_t % rel_unc), &
                        maxval(tope % prob_tables(i_E, :) % avg_n % rel_unc), &
                        maxval(tope % prob_tables(i_E, :) % avg_g % rel_unc), &
                        maxval(tope % prob_tables(i_E, :) % avg_f % rel_unc), &
                        maxval(tope % prob_tables(i_E, :) % avg_x % rel_unc)) &
-             < tol_avg_urr) &
-             .or. i_b == max_batches_avg_urr) exit
+             < tol_avg_urr) .or. i_b == max_batches_avg_urr) exit
 
       end do BATCH_LOOP
 
-      do iT = 1, tope % nT
+      call move_alloc(tope % xs_samples, xs_samples_tmp)
+      allocate(tope % xs_samples((i_b) * histories_avg_urr, tope % nT))
+      tope % xs_samples(:,:)&
+           = xs_samples_tmp(histories_avg_urr+1:(i_b+1)*histories_avg_urr,:)
+      deallocate(xs_samples_tmp)
+      do i_T = 1, tope % nT
         hits_per_band = nint(i_b * histories_avg_urr / dble(n_bands))
         do i_band = 1, n_bands - 1
-          tope % prob_tables(i_E, iT) % t(i_band) % cnt_mean&
+          tope % prob_tables(i_E, i_T) % t(i_band) % cnt_mean&
                = dble(hits_per_band) / dble(i_b * histories_avg_urr)
-          tope % prob_tables(i_E, iT) % t(i_band) % xs_mean&
+          tope % prob_tables(i_E, i_T) % t(i_band) % xs_mean&
                = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
-               : i_band * hits_per_band, iT) % t) / dble(hits_per_band)
-          tope % prob_tables(i_E, iT) % n(i_band) % xs_mean&
+               : i_band * hits_per_band, i_T) % t) / dble(hits_per_band)
+          tope % prob_tables(i_E, i_T) % n(i_band) % xs_mean&
                = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
-               : i_band * hits_per_band, iT) % n) / dble(hits_per_band)
-          tope % prob_tables(i_E, iT) % g(i_band) % xs_mean&
+               : i_band * hits_per_band, i_T) % n) / dble(hits_per_band)
+          tope % prob_tables(i_E, i_T) % g(i_band) % xs_mean&
                = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
-               : i_band * hits_per_band, iT) % g) / dble(hits_per_band)
-          tope % prob_tables(i_E, iT) % f(i_band) % xs_mean&
+               : i_band * hits_per_band, i_T) % g) / dble(hits_per_band)
+          tope % prob_tables(i_E, i_T) % f(i_band) % xs_mean&
                = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
-               : i_band * hits_per_band, iT) % f) / dble(hits_per_band)
-          tope % prob_tables(i_E, iT) % x(i_band) % xs_mean&
+               : i_band * hits_per_band, i_T) % f) / dble(hits_per_band)
+          tope % prob_tables(i_E, i_T) % x(i_band) % xs_mean&
                = sum(tope % xs_samples((i_band - 1) * hits_per_band + 1&
-               : i_band * hits_per_band, iT) % x) / dble(hits_per_band)
+               : i_band * hits_per_band, i_T) % x) / dble(hits_per_band)
         end do
-        tope % prob_tables(i_E, iT) % t(n_bands) % cnt_mean&
+        tope % prob_tables(i_E, i_T) % t(n_bands) % cnt_mean&
              = dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band)&
              / dble(i_b * histories_avg_urr)
-        tope % prob_tables(i_E, iT) % t(n_bands) % xs_mean&
+        tope % prob_tables(i_E, i_T) % t(n_bands) % xs_mean&
              = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
-             : i_b * histories_avg_urr, iT) % t)&
+             : i_b * histories_avg_urr, i_T) % t)&
              /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-        tope % prob_tables(i_E, iT) % n(n_bands) % xs_mean&
+        tope % prob_tables(i_E, i_T) % n(n_bands) % xs_mean&
              = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
-             : i_b * histories_avg_urr, iT) % n)&
+             : i_b * histories_avg_urr, i_T) % n)&
              /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-        tope % prob_tables(i_E, iT) % g(n_bands) % xs_mean&
+        tope % prob_tables(i_E, i_T) % g(n_bands) % xs_mean&
              = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
-             : i_b * histories_avg_urr, iT) % g)&
+             : i_b * histories_avg_urr, i_T) % g)&
              /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-        tope % prob_tables(i_E, iT) % f(n_bands) % xs_mean&
+        tope % prob_tables(i_E, i_T) % f(n_bands) % xs_mean&
              = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
-             : i_b * histories_avg_urr, iT) % f)&
+             : i_b * histories_avg_urr, i_T) % f)&
              /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
-        tope % prob_tables(i_E, iT) % x(n_bands) % xs_mean&
+        tope % prob_tables(i_E, i_T) % x(n_bands) % xs_mean&
              = sum(tope % xs_samples((n_bands - 1) * hits_per_band + 1&
-             : i_b * histories_avg_urr, iT) % x)&
+             : i_b * histories_avg_urr, i_T) % x)&
              /dble(i_b * histories_avg_urr - (n_bands - 1) * hits_per_band) 
       end do
 
@@ -2449,8 +2361,8 @@ contains
 
       ! write probability tables out to a file
       if (write_urr_tables) then
-        do i_temp = 1, tope % nT
-          tope % T = tope % Tlist % get_item(i_temp)
+        do i_T = 1, tope % nT
+          tope % T = temperatures(i_T)
           write(tab_unit, '(A13,ES13.6)') 'E [eV]', tope % Etabs(i_E)
           write(tab_unit, '(A13,ES13.6)') 'T [K]', tope % T
           write(tab_unit, '(A13,A13,A13,A13,A13,A13,A13,A13)') &
@@ -2461,12 +2373,12 @@ contains
             write(*, '(A32,ES10.3,A3)') 'Generated probability tables at ', &
                  tope % Etabs(i_E), ' eV'
           end if
-          ptable => tope % prob_tables(i_E, i_temp)
+          ptable => tope % prob_tables(i_E, i_T)
           do i_band = 1, n_bands
             if (i_band == 1) then
               write(tab_unit,&
-                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                   xs_t_min, xs_bands(1),&
+                   '(ES13.6,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   xs_t_min, '',&
                    ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
                    ptable % n(i_band) % xs_mean,&
                    ptable % g(i_band) % xs_mean,&
@@ -2474,8 +2386,8 @@ contains
                    ptable % x(i_band) % xs_mean
             else if (i_band == n_bands) then
               write(tab_unit,&
-                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                   xs_bands(i_band - 1), xs_t_max,&
+                   '(A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   '', xs_t_max,&
                    ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
                    ptable % n(i_band) % xs_mean,&
                    ptable % g(i_band) % xs_mean,&
@@ -2483,8 +2395,8 @@ contains
                    ptable % x(i_band) % xs_mean
             else
               write(tab_unit,&
-                   '(ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
-                   xs_bands(i_band - 1), xs_bands(i_band),&
+                   '(A13,A13,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6,ES13.6)')&
+                   '', '',&
                    ptable % t(i_band) % cnt_mean, ptable % t(i_band) % xs_mean,&
                    ptable % n(i_band) % xs_mean,&
                    ptable % g(i_band) % xs_mean,&
@@ -2802,21 +2714,24 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine calculate_prob_band_xs(i_so, i_nuc, E)
+  subroutine calculate_prob_band_xs(i_so, i_nuc, E, T)
 
     type(Isotope),  pointer, save :: tope => null()
     type(Nuclide),  pointer, save :: nuc  => null()
     integer, intent(in) :: i_so  ! index into isotopes array
     integer, intent(in) :: i_nuc ! index into nuclides array
     real(8), intent(in) :: E     ! energy
+    real(8), intent(in) :: T     ! temperature [K]
     integer :: i            ! loop index
     integer :: i_E          ! index for energy
-    integer :: iT           ! index for temperature
+    integer :: i_Tlow       ! index for lower temperature bound
+    integer :: i_Tup        ! index for upper temperature bound
     integer :: i_low        ! band index at lower bounding energy
     integer :: i_up         ! band index at upper bounding energy
     integer :: same_nuc_idx ! index of same nuclide
     integer :: iavg         ! average cross section index
-    real(8) :: f            ! interpolation factor
+    real(8) :: fE           ! energy interpolation factor
+    real(8) :: fT           ! temperature interpolation factor
     real(8) :: r            ! pseudo-random number
     real(8) :: xs_n         ! elastic resonance cross section
     real(8) :: xs_g         ! capture resonance cross section
@@ -2824,18 +2739,20 @@ contains
     real(8) :: xs_f         ! fission resonance cross section
     real(8) :: xs_x         ! competitive resonance cross section
     real(8) :: inelast      ! temporary inelastic cross section
-    real(8) :: cum_prob     ! cumulative band probability
     real(8) :: avg_urr_n_xs ! infinite-dilute n xs
     real(8) :: avg_urr_f_xs ! infinite-dilute f xs
     real(8) :: avg_urr_g_xs ! infinite-dilute g xs
     real(8) :: avg_urr_x_xs ! infinite-dilute x xs
     real(8) :: favg         ! average cross section interpolation factor
+    real(8) :: xsTlow       ! energy-interpolated xs at lower temperature
+    real(8) :: xsTup        ! energy-interpolated xs at upper temperature
     logical :: same_nuc ! do we know the xs for this nuclide at this energy?
 
     tope => isotopes(i_so)
     nuc  => nuclides(i_nuc)
 
-    tope % T = nuc % kT / K_BOLTZMANN
+    tope % E = E
+    tope % T = T
 
     micro_xs(i_nuc) % use_ptable = .true.
 
@@ -2847,8 +2764,18 @@ contains
     end do
 
     ! tabulated unresolved resonance parameters interpolation factor
-    f = interp_factor(E, tope % Etabs(i_E), tope % Etabs(i_E + 1), tope % INT)
+    fE = interp_factor(E, tope % Etabs(i_E), tope % Etabs(i_E + 1), tope % INT)
 
+    if (tope % nT == 1) then
+      i_Tlow = 1
+      i_Tup  = 1
+    else
+      i_Tlow = binary_search(temperatures, tope % nT, T)
+      i_Tup  = i_Tlow + 1
+    end if
+
+    fT = interp_factor(T, temperatures(i_Tlow), temperatures(i_Tup), tope % INT)
+    
     ! if we're dealing with a nuclide that we've previously encountered at
     ! this energy but a different temperature, use the original random number
     ! to preserve correlation of temperature in probability tables
@@ -2869,56 +2796,57 @@ contains
       micro_xs(i_nuc) % last_prn = r
     end if
 
-    iT = tope % Tlist % index(tope % T)
-    i_low = 1
-    cum_prob = tope % prob_tables(i_E, iT) % t(i_low) % cnt_mean
-    do
-      if (cum_prob > r) exit
-      i_low = i_low + 1
-      cum_prob = cum_prob &
-           + tope % prob_tables(i_E, iT) % t(i_low) % cnt_mean
-    end do
-    i_up = 1
-    cum_prob = tope % prob_tables(i_E + 1, iT) % t(i_up) % cnt_mean
-    do
-      if (cum_prob > r) exit
-      i_up = i_up + 1
-      cum_prob = cum_prob &
-           + tope % prob_tables(i_E + 1, iT) % t(i_up) % cnt_mean
-    end do
-
+    i_low = ceiling(r * n_bands)
+    i_up  = i_low
+!TODO: account for possibility of last band not being exactly equiprobable
     ! elastic xs from probability bands
-    xs_n = interpolator(f, &
-         tope % prob_tables(i_E, iT) % n(i_low) % xs_mean, &
-         tope % prob_tables(i_E + 1, iT) % n(i_up) % xs_mean, tope % INT)
+    xsTlow = interpolator(fE, &
+         tope % prob_tables(i_E, i_Tlow) % n(i_low) % xs_mean, &
+         tope % prob_tables(i_E + 1, i_Tlow) % n(i_up) % xs_mean, tope % INT)
+    xsTup = interpolator(fE, &
+         tope % prob_tables(i_E, i_Tup) % n(i_low) % xs_mean, &
+         tope % prob_tables(i_E + 1, i_Tup) % n(i_up) % xs_mean, tope % INT)
+    xs_n = interpolator(fT, xsTlow, xsTup, tope % INT)
 
     ! fission xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-         tope % prob_tables(i_E, iT) % f(i_low) % xs_mean > ZERO) then
-      xs_f = interpolator(f, &
-           tope % prob_tables(i_E, iT) % f(i_low) % xs_mean, &
-           tope % prob_tables(i_E + 1, iT) % f(i_up) % xs_mean, tope % INT)
+         tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean > ZERO) then
+      xsTlow = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tlow) % f(i_up) % xs_mean, tope % INT)
+      xsTup = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tup) % f(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tup) % f(i_up) % xs_mean, tope % INT)
+      xs_f = interpolator(fT, xsTlow, xsTup, tope % INT)
     else
       xs_f = ZERO
     end if
 
     ! capture xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-         tope % prob_tables(i_E, iT) % g(i_low) % xs_mean > ZERO) then
-      xs_g = interpolator(f, &
-           tope % prob_tables(i_E, iT) % g(i_low) % xs_mean, &
-           tope % prob_tables(i_E + 1, iT) % g(i_up) % xs_mean, tope % INT)
+         tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean > ZERO) then
+      xsTlow = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tlow) % g(i_up) % xs_mean, tope % INT)
+      xsTup = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tup) % g(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tup) % g(i_up) % xs_mean, tope % INT)
+      xs_g = interpolator(fT, xsTlow, xsTup, tope % INT)
     else
       xs_g = ZERO
     end if
 
     ! competitive xs from probability bands
     if (tope % INT == LINEAR_LINEAR .or. &
-         (tope % prob_tables(i_E, iT) % x(i_low) % xs_mean > ZERO&
-         .and. tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean > ZERO)) then
-      xs_x = interpolator(f, &
-           tope % prob_tables(i_E, iT) % x(i_low) % xs_mean, &
-           tope % prob_tables(i_E + 1, iT) % x(i_up) % xs_mean, tope % INT)
+         (tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean > ZERO&
+         .and. tope % prob_tables(i_E+1, i_Tlow) % x(i_up) % xs_mean > ZERO)) then
+      xsTlow = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tlow) % x(i_up) % xs_mean, tope % INT)
+      xsTup = interpolator(fE, &
+           tope % prob_tables(i_E, i_Tup) % x(i_low) % xs_mean, &
+           tope % prob_tables(i_E + 1, i_Tup) % x(i_up) % xs_mean, tope % INT)
+      xs_x = interpolator(fT, xsTlow, xsTup, tope % INT)
     else
       xs_x = ZERO
     end if
@@ -2934,10 +2862,8 @@ contains
     
     else if (tope % LSSF == 1) then
       ! multipy the self-shielding factors by the infinite-dilute xs
-      
       ! tabulated unresolved resonance parameters interpolation factor
       iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
-
       favg = interp_factor(tope % E, &
            tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
@@ -2964,12 +2890,10 @@ contains
       ! radiative capture xs
       ! background capture cross section
       capture = micro_xs(i_nuc) % absorption - micro_xs(i_nuc) % fission
-      if (avg_urr_g_xs > ZERO)&
-           capture = xs_g / avg_urr_g_xs * capture
+      if (avg_urr_g_xs > ZERO) capture = xs_g / avg_urr_g_xs * capture
 
       ! fission xs
-      if (avg_urr_f_xs > ZERO)&
-           micro_xs(i_nuc) % fission = xs_f / avg_urr_f_xs&
+      if (avg_urr_f_xs > ZERO) micro_xs(i_nuc) % fission = xs_f / avg_urr_f_xs&
            * micro_xs(i_nuc) % fission
 
     end if
@@ -3025,28 +2949,29 @@ contains
 
     if (tope % E == tope % E_last) then
       ! Energy hasn't changed since last realization, so use the same one
-
       if (this % i_res == 0) then
-        this % E_lam &
-             = tope % local_realization(i_l, i_J) % E_lam(1)
+        this % E_lam = tope % local_realization(i_l, i_J) % E_lam(1)
       else
-        this % E_lam &
-          = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
+        this % E_lam  = tope % local_realization(i_l, i_J) % E_lam(this % i_res)
       end if
+
     else
       ! sample a level spacing from the Wigner distribution
       this % D_lJ = wigner_dist(tope % D)
+
       if (this % i_res == 0) then
         ! set lowest-energy resonance for this ladder well below the energy grid
         ! point such that the ladder spans a sufficient energy range
         n_res = n_res_contrib(tope % L)
         this % E_lam = (tope % E - n_res/2 * tope % D) &
              + (ONE - TWO * prn()) * this % D_lJ
+      
       else
         ! add subsequent resonance energies at the sampled spacing above the
         ! last resonance
         this % E_lam = this % E_lam + this % D_lJ
         tope % local_realization(i_l, i_J) % E_lam(this % i_res) = this % E_lam
+
       end if
     end if
 
@@ -3209,16 +3134,22 @@ contains
 
     ! calculate cross section contributions from an additional resonance
     select case(formalism)
+    
     case (SLBW)
       call this % slbw_xs(iso)
+    
     case (MLBW)
       call this % mlbw_xs(iso)
+    
     case (REICH_MOORE)
       call fatal_error('Reich-Moore formalism not yet supported for the URR')
+    
     case (MNBW)
       call fatal_error('MNBW formalism not yet supported for the URR')
+    
     case default
       call fatal_error('Unrecognized URR resonance formalism')
+    
     end select
 
   end subroutine calc_xs
@@ -3935,7 +3866,6 @@ contains
     class(Isotope), intent(inout) :: this ! cross section object
     integer :: i_E ! tabulated URR energy index
     integer :: i_T ! temperature index
-    integer :: i_b ! total xs band that this realization falls in
 
     ! accumulate infinite-dilute xs values for this realization
     this % prob_tables(i_E, i_T) % avg_t % xs_tmp_sum &
@@ -3952,33 +3882,6 @@ contains
          + this % prob_tables(i_E, i_T) % avg_f % xs
     this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
          = this % prob_tables(i_E, i_T) % avg_x % xs_tmp_sum &
-         + this % prob_tables(i_E, i_T) % avg_x % xs
-
-    ! determine band number
-    i_b = 1
-    do
-      if (this % prob_tables(i_E, i_T) % avg_t % xs < xs_bands(i_b)) exit
-      i_b = i_b + 1
-      if (i_b == n_bands) exit
-    end do
-
-    ! add partial xs values to the band's single-batch sums
-    this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
-         = this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum + 1
-    this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-         = this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-         + this % prob_tables(i_E, i_T) % avg_t % xs
-    this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-         = this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-         + this % prob_tables(i_E, i_T) % avg_n % xs
-    this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-         = this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-         + this % prob_tables(i_E, i_T) % avg_g % xs
-    this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-         = this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-         + this % prob_tables(i_E, i_T) % avg_f % xs
-    this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
-         = this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
          + this % prob_tables(i_E, i_T) % avg_x % xs
 
   end subroutine accum_history
@@ -4019,62 +3922,9 @@ contains
     class(Isotope), intent(inout) :: this ! cross section object
     integer :: i_E ! tabulated URR energy index
     integer :: i_T ! temperature index
-    integer :: i_b ! probability band index
 
     if (this % E /= this % Etabs(i_E)) return
     do i_T = 1, this % nT
-      do i_b = 1, n_bands
-        ! accumulate single-batch band means and squared band means
-        if (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum /= 0) then
-          this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
-               = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum &
-               + this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum
-          this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
-               = this % prob_tables(i_E, i_T) % t(i_b) % xs_sum2 &
-               + (this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % t(i_b) % xs_tmp_sum)
-          this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
-               = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum &
-               + this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum
-          this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
-               = this % prob_tables(i_E, i_T) % n(i_b) % xs_sum2 &
-               + (this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % n(i_b) % xs_tmp_sum)
-          this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
-               = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum &
-               + this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum
-          this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
-               = this % prob_tables(i_E, i_T) % g(i_b) % xs_sum2 &
-               + (this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % g(i_b) % xs_tmp_sum)
-          this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
-               = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum &
-               + this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum
-          this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
-               = this % prob_tables(i_E, i_T) % f(i_b) % xs_sum2 &
-               + (this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % f(i_b) % xs_tmp_sum)
-          this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
-               = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum &
-               + this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum
-          this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
-               = this % prob_tables(i_E, i_T) % x(i_b) % xs_sum2 &
-               + (this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % x(i_b) % xs_tmp_sum)
-
-          ! accumulate single-batch band counts
-          this % prob_tables(i_E, i_T) % t(i_b) % cnt &
-               = this % prob_tables(i_E, i_T) % t(i_b) % cnt &
-               + this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum
-
-          ! accumulate squared single-batch band counts
-          this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
-               = this % prob_tables(i_E, i_T) % t(i_b) % cnt2 &
-               + (this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum &
-               *  this % prob_tables(i_E, i_T) % t(i_b) % cnt_tmp_sum)
-        end if
-      end do
-
       ! accumulate single-batch infinite-dilute means
       this % prob_tables(i_E, i_T) % avg_t % xs_sum &
            = this % prob_tables(i_E, i_T) % avg_t % xs_sum &
@@ -4145,7 +3995,6 @@ contains
     type(ProbabilityTable), pointer :: ptable => null() ! prob table pointer
     integer :: i_E       ! tabulated URR energy index
     integer :: i_T       ! temperature index
-    integer :: i_b       ! probability band index
     integer :: i_bat_int ! current batch index
     real(8) :: i_bat ! current batch index for calcs
 
@@ -4155,31 +4004,6 @@ contains
       if (this % E /= this % Etabs(i_E)) cycle
       do i_T = 1, this % nT
         ptable => this % prob_tables(i_E, i_T)
-        do i_b = 1, n_bands
-          if (ptable % t(i_b) % cnt > 0) then
-            ptable % t(i_b) % xs_mean &
-                 = ptable % t(i_b) % xs_sum / ptable % t(i_b) % cnt
-            ptable % n(i_b) % xs_mean &
-                 = ptable % n(i_b) % xs_sum / ptable % t(i_b) % cnt
-            ptable % g(i_b) % xs_mean &
-                 = ptable % g(i_b) % xs_sum / ptable % t(i_b) % cnt
-            ptable % f(i_b) % xs_mean &
-                 = ptable % f(i_b) % xs_sum / ptable % t(i_b) % cnt
-            ptable % x(i_b) % xs_mean &
-                 = ptable % x(i_b) % xs_sum / ptable % t(i_b) % cnt
-          end if
-          ptable % t(i_b) % cnt_mean &
-               = ptable % t(i_b) % cnt / (i_bat * histories_avg_urr)
-          ptable % n(i_b) % cnt_mean &
-               = ptable % n(i_b) % cnt / (i_bat * histories_avg_urr)
-          ptable % g(i_b) % cnt_mean &
-               = ptable % g(i_b) % cnt / (i_bat * histories_avg_urr)
-          ptable % f(i_b) % cnt_mean &
-               = ptable % f(i_b) % cnt / (i_bat * histories_avg_urr)
-          ptable % x(i_b) % cnt_mean &
-               = ptable % x(i_b) % cnt / (i_bat * histories_avg_urr)
-        end do
-
         ptable % avg_t % xs_mean = ptable % avg_t % xs_sum / i_bat
         ptable % avg_n % xs_mean = ptable % avg_n % xs_sum / i_bat
         ptable % avg_g % xs_mean = ptable % avg_g % xs_sum / i_bat
@@ -4849,7 +4673,7 @@ contains
     integer :: i_nuc  ! nuclide index
     integer :: i_grid ! background energy grid index
     integer :: n_pts  ! URR pointwise xs energy grid index
-    real(8) :: fact         ! File 3 interpolation factor
+    real(8) :: fmf3         ! File 3 interpolation factor
     real(8) :: capture_xs   ! radiative capture xs
     real(8) :: inelastic_xs ! first level inelastic scattering xs
 
@@ -4875,9 +4699,9 @@ contains
         if (tope % INT == LINEAR_LINEAR &
              .or. (tope % MF3_n(i_grid) > ZERO &
              .and. tope % MF3_n(i_grid + 1) > ZERO)) then
-          fact = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
+          fmf3 = interp_factor(tope % E, tope % MF3_n_e(i_grid), &
                tope % MF3_n_e(i_grid + 1), tope % INT)
-          micro_xs(i_nuc) % elastic = interpolator(fact, tope % MF3_n(i_grid),&
+          micro_xs(i_nuc) % elastic = interpolator(fmf3, tope % MF3_n(i_grid),&
                tope % MF3_n(i_grid + 1), tope % INT) + n % xs
         else
           micro_xs(i_nuc) % elastic = n % xs
@@ -4895,9 +4719,9 @@ contains
         if (tope % INT == LINEAR_LINEAR &
              .or. (tope % MF3_x(i_grid) > ZERO &
              .and. tope % MF3_x(i_grid + 1) > ZERO)) then
-          fact = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
+          fmf3 = interp_factor(tope % E, tope % MF3_x_e(i_grid), &
                tope % MF3_x_e(i_grid + 1), tope % INT)
-          inelastic_xs = interpolator(fact, tope % MF3_x(i_grid), &
+          inelastic_xs = interpolator(fmf3, tope % MF3_x(i_grid), &
                tope % MF3_x(i_grid + 1), tope % INT)
         else
           inelastic_xs = ZERO
@@ -4916,9 +4740,9 @@ contains
         if (tope % INT == LINEAR_LINEAR &
              .or. (tope % MF3_g(i_grid) > ZERO &
              .and. tope % MF3_g(i_grid + 1) > ZERO)) then
-          fact = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
+          fmf3 = interp_factor(tope % E, tope % MF3_g_e(i_grid), &
                tope % MF3_g_e(i_grid + 1), tope % INT)
-          capture_xs = interpolator(fact, tope % MF3_g(i_grid), &
+          capture_xs = interpolator(fmf3, tope % MF3_g(i_grid), &
                tope % MF3_g(i_grid + 1), tope % INT) + g % xs
         else
           capture_xs = g % xs
@@ -4938,9 +4762,9 @@ contains
           if (tope % INT == LINEAR_LINEAR &
                .or. (tope % MF3_f(i_grid) > ZERO &
                .and. tope % MF3_f(i_grid + 1) > ZERO)) then
-            fact = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
+            fmf3 = interp_factor(tope % E, tope % MF3_f_e(i_grid), &
                  tope % MF3_f_e(i_grid + 1), tope % INT)
-            micro_xs(i_nuc) % fission = interpolator(fact, tope%MF3_f(i_grid),&
+            micro_xs(i_nuc) % fission = interpolator(fmf3, tope%MF3_f(i_grid),&
                  tope % MF3_f(i_grid + 1), tope % INT) + f % xs
           else
             micro_xs(i_nuc) % fission = f % xs
@@ -5499,6 +5323,8 @@ contains
       allocate(this % Etabs(this % ntabs))
       this % Etabs(:) = Etables
     end if
+
+    this % nT = n_temperatures
 
     allocate(this % prob_tables(this % ntabs, this % nT))
 

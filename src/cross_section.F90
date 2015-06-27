@@ -440,29 +440,32 @@ contains
 
     if (associated(tope)) then
       if (E * 1.0E6_8 >= tope % EL(tope % i_urr) &
-        & .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
+           .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
         if (tope % prob_bands) then
-          call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E)
+          call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
+               nuc % kT / K_BOLTZMANN)
         else if (tope % otf_urr_xs) then
           select case(real_freq)
           case (EVENT)
             micro_xs(i_nuclide) % use_ptable = .true.
             call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
-              & nuc % kT / K_BOLTZMANN)
+                 nuc % kT / K_BOLTZMANN)
           case (HISTORY)
             call fatal_error('History-based URR realizations not yet supported')
           case (BATCH)
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
-              ! this is used in physics, even though we aren't actually using ptables
+              ! used in physics, even though ptables aren't actually used
               micro_xs(i_nuclide) % use_ptable = .true.
-              call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+              call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
+                   nuc % kT / K_BOLTZMANN)
           case default
             call fatal_error('Unrecognized URR realization frequency')
           end select
         else if (tope % point_urr_xs) then
           micro_xs(i_nuclide) % use_ptable = .true.
-          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, nuc % kT / K_BOLTZMANN)
+          call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
+               nuc % kT / K_BOLTZMANN)
         end if
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then

@@ -2797,7 +2797,6 @@ contains
 
     i_low = ceiling(r * n_bands)
     i_up  = i_low
-!TODO: account for possibility of last band not being exactly equiprobable
     ! elastic xs from probability bands
     xsTlow = interpolator(fE, &
          tope % prob_tables(i_E, i_Tlow) % n(i_low) % xs_mean, &

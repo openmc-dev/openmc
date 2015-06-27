@@ -3528,6 +3528,8 @@ contains
       ! histories per batch
       if (check_for_node(prob_table_node, "histories")) then
         call get_node_value(prob_table_node, "histories", histories_avg_urr)
+        if (mod(histories_avg_urr, n_bands) /= 0) call fatal_error('Histories &
+             &per batch must be evenly divisible by number of probability bands')
       else
         call fatal_error('No number of realization histories for probability&
              & table calculation given in urr.xml')

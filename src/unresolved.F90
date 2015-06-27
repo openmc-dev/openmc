@@ -2768,12 +2768,18 @@ contains
     if (tope % nT == 1) then
       i_Tlow = 1
       i_Tup  = 1
+      fT = ZERO
     else
-      i_Tlow = binary_search(temperatures, tope % nT, T)
+      if (T < temperatures(1)) then
+        i_Tlow = 1
+      else if (T > temperatures(tope % nT)) then
+        i_Tlow = tope % nT - 1
+      else
+        i_Tlow = binary_search(temperatures, tope % nT, T)
+      end if
       i_Tup  = i_Tlow + 1
+      fT = interp_factor(T, temperatures(i_Tlow), temperatures(i_Tup), tope % INT)
     end if
-
-    fT = interp_factor(T, temperatures(i_Tlow), temperatures(i_Tup), tope % INT)
     
     ! if we're dealing with a nuclide that we've previously encountered at
     ! this energy but a different temperature, use the original random number

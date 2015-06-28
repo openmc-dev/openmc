@@ -6,5 +6,5 @@ from testing_harness import PlotTestHarness
 
 
 if __name__ == '__main__':
-    harness = PlotTestHarness('statepoint.10.*', True)
+    harness = PlotTestHarness(('1_plot.ppm', '2_plot.ppm', '3_plot.ppm'))
     harness.execute_test()

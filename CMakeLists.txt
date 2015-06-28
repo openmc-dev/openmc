@@ -253,15 +253,14 @@ foreach(test ${TESTS})
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --mpi_exec)
 
     else(${MPI_ENABLED})
 
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME})
 
     endif(${MPI_ENABLED})
 

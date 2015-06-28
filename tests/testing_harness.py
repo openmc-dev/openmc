@@ -45,7 +45,7 @@ class TestHarness(object):
 
     def _run_openmc(self):
         if self._opts.mpi_exec:
-            mpi_procs = self._opts.mpi_np
+            mpi_procs = int(self._opts.mpi_np)
         else:
             mpi_procs = 1
 

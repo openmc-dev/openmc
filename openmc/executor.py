@@ -1,3 +1,4 @@
+from __future__ import print_function
 import subprocess
 import os
 
@@ -5,37 +6,39 @@ from openmc.checkvalue import *
 
 
 class Executor(object):
+    """Control execution of OpenMC
 
+    Attributes
+    ----------
+    working_directory : str
+        Path to working directory to run in
+
+    """
 
     def __init__(self):
         self._working_directory = '.'
 
-
     def _run_openmc(self, command, output):
-
         # Launch a subprocess to run OpenMC
-        p = subprocess.Popen(command, shell=True, 
+        p = subprocess.Popen(command, shell=True,
                              cwd=self._working_directory,
                              stdout=subprocess.PIPE)
 
         # Capture and re-print OpenMC output in real-time
         while (True and output):
             line = p.stdout.readline()
-            print(line),
+            print(line, end='')
 
             # If OpenMC is finished, break loop
             if line == '' and p.poll() != None:
                 break
 
-
     @property
     def working_directory(self):
         return self._working_directory
 
-
     @working_directory.setter
     def working_directory(self, working_directory):
-
         if not is_string(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \
                   'since it is not a string'.format(working_directory)
@@ -48,14 +51,34 @@ class Executor(object):
 
         self._working_directory = working_directory
 
-
     def plot_geometry(self, output=True):
-        self._run_openmc('openmc -p', output)
+        """Run OpenMC in plotting mode"""
 
+        self._run_openmc('openmc -p', output)
 
     def run_simulation(self, particles=None, threads=None,
                        geometry_debug=False, restart_file=None,
                        tracks=False, mpi_procs=1, output=True):
+        """Run an OpenMC simulation.
+
+        Parameters
+        ----------
+        particles : int
+            Number of particles to simulate per generation
+        threads : int
+            Number of OpenMP threads
+        geometry_debug : bool
+            Turn on geometry debugging during simulation
+        restart_file : str
+            Path to restart file to use
+        tracks : bool
+            Write tracks for all particles
+        mpi_procs : int
+            Number of MPI processes
+        output : bool
+            Capture OpenMC output from standard out
+
+        """
 
         post_args = ' '
         pre_args = ''

@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 
 import openmc
 from openmc.clean_xml import *
-
+from openmc.checkvalue import check_type
 
 def reset_auto_ids():
     openmc.reset_auto_material_id()
@@ -32,13 +32,8 @@ class Geometry(object):
 
     @root_universe.setter
     def root_universe(self, root_universe):
-
-        if not isinstance(root_universe, openmc.Universe):
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it is not a Universe'.format(root_universe)
-            raise ValueError(msg)
-
-        elif root_universe._id != 0:
+        check_type('root universe', root_universe, openmc.Universe)
+        if root_universe._id != 0:
             msg = 'Unable to add root Universe {0} to Geometry since ' \
                   'it has ID={1} instead of ' \
                   'ID=0'.format(root_universe, root_universe._id)
@@ -195,11 +190,7 @@ class GeometryFile(object):
 
     @geometry.setter
     def geometry(self, geometry):
-        if not isinstance(geometry, Geometry):
-            msg = 'Unable to set the Geometry to {0} for the GeometryFile ' \
-                        'since it is not a Geometry object'.format(geometry)
-            raise ValueError(msg)
-
+        check_type('the geometry', geometry, Geometry)
         self._geometry = geometry
 
     def export_to_xml(self):

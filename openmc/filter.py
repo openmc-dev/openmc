@@ -4,7 +4,7 @@ from numbers import Real, Integral
 
 from openmc import Mesh
 from openmc.constants import *
-
+from openmc.checkvalue import check_type
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally
@@ -135,11 +135,11 @@ class Filter(object):
             for edge in bins:
                 if not isinstance(edge, Integral):
                     msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
-                          'it is a non-integer'.format(edge, self._type)
+                          'it is not an integer'.format(edge, self._type)
                     raise ValueError(msg)
                 elif edge < 0:
                     msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
-                          'it is a negative integer'.format(edge, self._type)
+                          'it is negative'.format(edge, self._type)
                     raise ValueError(msg)
 
         elif self._type in ['energy', 'energyout']:
@@ -193,10 +193,7 @@ class Filter(object):
 
     @mesh.setter
     def mesh(self, mesh):
-        if not isinstance(mesh, Mesh):
-            msg = 'Unable to set Mesh to "{0}" for Filter since it is not a ' \
-                  'Mesh object'.format(mesh)
-            raise ValueError(msg)
+        check_type('mesh', mesh, Mesh)
 
         self._mesh = mesh
         self.type = 'mesh'
@@ -204,20 +201,13 @@ class Filter(object):
 
     @offset.setter
     def offset(self, offset):
-        if not isinstance(offset, Integral):
-            msg = 'Unable to set offset "{0}" for a {1} Filter since it is a ' \
-                  'non-integer value'.format(offset, self._type)
-            raise ValueError(msg)
+        check_type('offset', offset, Integral)
 
         self._offset = offset
 
     @stride.setter
     def stride(self, stride):
-        if not isinstance(stride, Integral):
-            msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
-                  'non-integer value'.format(stride, self._type)
-            raise ValueError(msg)
-
+        check_type('stride', stride, Integral)
         if stride < 0:
             msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
                   'negative value'.format(stride, self._type)

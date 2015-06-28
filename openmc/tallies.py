@@ -11,6 +11,7 @@ import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.summary import Summary
+from openmc.checkvalue import check_type, check_value
 from openmc.clean_xml import *
 
 
@@ -276,11 +277,7 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        if estimator not in ['analog', 'tracklength']:
-            msg = 'Unable to set the estimator for Tally ID={0} to {1} since ' \
-                  'it is not a valid estimator type'.format(self.id, estimator)
-            raise ValueError(msg)
-
+        check_value('estimator', estimator, ['analog', 'tracklength'])
         self._estimator = estimator
 
     def add_trigger(self, trigger):
@@ -306,29 +303,18 @@ class Tally(object):
             global AUTO_TALLY_ID
             self._id = AUTO_TALLY_ID
             AUTO_TALLY_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(tally_id, Integral):
-            msg = 'Unable to set a non-integer Tally ID {0}'.format(tally_id)
-            raise ValueError(msg)
-
-        elif tally_id < 0:
-            msg = 'Unable to set Tally ID to {0} since it must be a ' \
-                  'non-negative integer'.format(tally_id)
-            raise ValueError(msg)
-
         else:
+            check_type('tally ID', tally_id, Integral)
+            if tally_id < 0:
+                msg = 'Unable to set Tally ID to {0} since it must be a ' \
+                      'non-negative integer'.format(tally_id)
+                raise ValueError(msg)
             self._id = tally_id
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Tally ID={0} with a non-string ' \
-                  'value "{1}"'.format(self.id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('tally name', name, basestring)
+        self._name = name
 
     def add_filter(self, filter):
         """Add a filter to the tally
@@ -339,8 +325,6 @@ class Tally(object):
             Filter to add
 
         """
-
-        global filters
 
         if not isinstance(filter, Filter):
             msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
@@ -388,43 +372,27 @@ class Tally(object):
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
-        if not isinstance(num_realizations, Integral):
-            msg = 'Unable to set the number of realizations to "{0}" for ' \
-                  'Tally ID={1} since it is not an ' \
-                  'integer'.format(num_realizations)
-            raise ValueError(msg)
-
-        elif num_realizations < 0:
+        check_type('number of realizations', num_realizations, Integral)
+        if num_realizations < 0:
             msg = 'Unable to set the number of realizations to "{0}" for ' \
                   'Tally ID={1} since it is a negative ' \
                   'value'.format(num_realizations)
             raise ValueError(msg)
-
         self._num_realizations = num_realizations
 
     @with_summary.setter
     def with_summary(self, with_summary):
-        if not isinstance(with_summary, bool):
-            msg = 'Unable to set with_summary to a non-boolean ' \
-                  'value "{0}"'.format(with_summary)
-            raise ValueError(msg)
-
+        check_type('with_summary', with_summary, bool)
         self._with_summary = with_summary
 
     @sum.setter
     def sum(self, sum):
-        if not isinstance(sum, Sequence):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a sequence'.format(sum, self.id)
-            raise ValueError(msg)
+        check_type('sum', sum, Sequence)
         self._sum = sum
 
     @sum_sq.setter
     def sum_sq(self, sum_sq):
-        if not isinstance(sum_sq, Sequence):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a sequence'.format(sum_sq, self.id)
-            raise ValueError(msg)
+        check_type('sum_sq', sum_sq, Sequence)
         self._sum_sq = sum_sq
 
     def remove_score(self, score):
@@ -1341,7 +1309,7 @@ class Tally(object):
                   '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
-        elif not isinstance(append, (bool, np.bool)):
+        elif not isinstance(append, bool):
             msg = 'Unable to export the results for Tally ID={0} since the ' \
                   'append parameters is not True/False'.format(self.id, append)
             raise ValueError(msg)

@@ -8,6 +8,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 import openmc
+from openmc.checkvalue import check_type, check_value
 from openmc.clean_xml import *
 
 
@@ -118,35 +119,25 @@ class Material(object):
             self._id = AUTO_MATERIAL_ID
             MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(material_id, Integral):
-            msg = 'Unable to set a non-integer Material ' \
-                  'ID {0}'.format(material_id)
-            raise ValueError(msg)
-
-        elif material_id in MATERIAL_IDS:
-            msg = 'Unable to set Material ID to {0} since a Material with ' \
-                  'this ID was already initialized'.format(material_id)
-            raise ValueError(msg)
-
-        elif material_id < 0:
-            msg = 'Unable to set Material ID to {0} since it must be a ' \
-                  'non-negative integer'.format(material_id)
-            raise ValueError(msg)
-
         else:
+            check_type('material ID', material_id, Integral)
+            if material_id in MATERIAL_IDS:
+                msg = 'Unable to set Material ID to {0} since a Material with ' \
+                      'this ID was already initialized'.format(material_id)
+                raise ValueError(msg)
+            elif material_id < 0:
+                msg = 'Unable to set Material ID to {0} since it must be a ' \
+                      'non-negative integer'.format(material_id)
+                raise ValueError(msg)
+
             self._id = material_id
             MATERIAL_IDS.append(material_id)
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Material ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-        else:
-            self._name = name
+        check_type('name for Material ID={0}'.format(self._id),
+                   name, basestring)
+        self._name = name
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material
@@ -161,15 +152,9 @@ class Material(object):
 
         """
 
-        if not is_float(density):
-            msg = 'Unable to set the density for Material ID={0} to a ' \
-                  'non-floating point value {1}'.format(self._id, density)
-            raise ValueError(msg)
-
-        elif units not in DENSITY_UNITS:
-            msg = 'Unable to set the density for Material ID={0} with ' \
-                  'units {1}'.format(self._id, units)
-            raise ValueError(msg)
+        check_type('the density for Material ID={0}'.format(self._id),
+                   density, Real)
+        check_value('density units', units, DENSITY_UNITS)
 
         if density == NO_DENSITY and units is not 'sum':
             msg = 'Unable to set the density Material ID={0} ' \
@@ -220,7 +205,7 @@ class Material(object):
                   'non-Nuclide value {1}'.format(self._id, nuclide)
             raise ValueError(msg)
 
-        elif not is_float(percent):
+        elif not isinstance(percent, Real):
             msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
                   'non-floating point value {1}'.format(self._id, percent)
             raise ValueError(msg)
@@ -277,7 +262,7 @@ class Material(object):
                   'non-Element value {1}'.format(self._id, element)
             raise ValueError(msg)
 
-        if not is_float(percent):
+        if not isinstance(percent, Real):
             msg = 'Unable to add an Element to Material ID={0} with a ' \
                   'non-floating point value {1}'.format(self._id, percent)
             raise ValueError(msg)
@@ -526,10 +511,7 @@ class MaterialsFile(object):
 
     @default_xs.setter
     def default_xs(self, xs):
-        if not isinstance(xs, basestring):
-            msg = 'Unable to set default xs to a non-string value'.format(xs)
-            raise ValueError(msg)
-
+        check_type('default xs', xs, basestring)
         self._default_xs = xs
 
     def add_material(self, material):

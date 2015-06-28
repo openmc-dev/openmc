@@ -441,24 +441,22 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-      The type of spatial distribution. Valid options are "box" and "point". A
-      "box" spatial distribution has coordinates sampled uniformly in a
-      parallelepiped. A "point" spatial distribution has coordinates specified
-      by a triplet.
+
+      The type of spatial distribution. Valid options are "box", "fission", and
+      "point". A "box" spatial distribution has coordinates sampled uniformly in
+      a parallelepiped. A "fission" spatial distribution samples locations from
+      a "box" distribution but only locations in fissionable materials are
+      accepted. A "point" spatial distribution has coordinates specified by a
+      triplet.
 
       *Default*: None
 
     :parameters:
-      For a "box" spatial distribution, ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
-
-      To filter a "box" spatial distribution by fissionable material, specify
-      "fission" tag instead of "box". The ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
+      For a "box" or "fission" spatial distribution, ``parameters`` should be
+      given as six real numbers, the first three of which specify the lower-left
+      corner of a parallelepiped and the last three of which specify the
+      upper-right corner. Source sites are sampled uniformly through that
+      parallelepiped.
 
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
@@ -481,7 +479,7 @@ attributes/sub-elements:
 
     :parameters:
       For an "isotropic" angular distribution, ``parameters`` should not be
-      specified
+      specified.
 
       For a "monodirectional" angular distribution, ``parameters`` should be
       given as three real numbers which specify the angular cosines with respect
@@ -499,7 +497,7 @@ attributes/sub-elements:
       "watt", and "maxwell". The "monoenergetic" option produces source sites at
       a single energy. The "watt" option produces source sites whose energy is
       sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum
+      sites whose energy is sampled from a Maxwell fission spectrum.
 
       *Default*: watt
 
@@ -605,8 +603,6 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
-.. _trace:
-
 ``<threads>`` Element
 ---------------------
 
@@ -614,6 +610,8 @@ The ``<threads>`` element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.
 
   *Default*: None (Determined by environment variable :envvar:`OMP_NUM_THREADS`)
+
+.. _trace:
 
 ``<trace>`` Element
 -------------------
@@ -631,9 +629,9 @@ integers: the batch number, generation number, and particle number.
 
 The ``<track>`` element specifies particles for which OpenMC will output binary
 files describing particle position at every step of its transport. This element
-should be followed by triplets of integers.  Each triplet describes one particle
-. The integers in each triplet specify the batch number, generation number, and
-particle number, respectively.
+should be followed by triplets of integers.  Each triplet describes one
+particle. The integers in each triplet specify the batch number, generation
+number, and particle number, respectively.
 
   *Default*: None
 
@@ -1215,8 +1213,8 @@ The ``<tally>`` element accepts the following sub-elements:
     The ``filter`` element has the following attributes/sub-elements:
 
       :type:
-        The type of the filter. Accepted options are "cell", "cellborn", 
-        "material", "universe", "energy", "energyout", "mesh", and 
+        The type of the filter. Accepted options are "cell", "cellborn",
+        "material", "universe", "energy", "energyout", "mesh", and
         "distribcell".
 
       :bins:
@@ -1666,6 +1664,15 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
   *Default*: 1
 
+``<dhat_reset>`` Element
+------------------------
+
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
+It can be turned on with "true" and off with "false".
+
+  *Default*: false
+
 ``<display>`` Element
 ---------------------
 
@@ -1681,15 +1688,6 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
   fission source.
 
   *Default*: balance
-
-``<dhat_reset>`` Element
-------------------------
-
-The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
-CMFD parameters should be reset to zero before solving CMFD eigenproblem.
-It can be turned on with "true" and off with "false".
-
-  *Default*: false
 
 ``<downscatter>`` Element
 -------------------------
@@ -1734,11 +1732,11 @@ The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
 
   :lower_left:
-    The lower-left corner of the structured mesh. If only two coordinate are
+    The lower-left corner of the structured mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :upper_right:
-    The upper-right corner of the structrued mesh. If only two coordinate are
+    The upper-right corner of the structrued mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :dimension:
@@ -1761,7 +1759,7 @@ attributes/sub-elements:
 
   :map:
     An optional acceleration map can be specified to overlay on the coarse
-    mesh spatial grid. If this option is used a ``1`` is used for a
+    mesh spatial grid. If this option is used, a ``1`` is used for a
     non-accelerated region and a ``2`` is used for an accelerated region.
     For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
     reflector, the map is:

@@ -3,6 +3,9 @@ import subprocess
 from numbers import Integral
 import os
 import sys
+
+from openmc.checkvalue import check_type
+
 if sys.version_info[0] >= 3:
     basestring = str
 
@@ -41,12 +44,9 @@ class Executor(object):
 
     @working_directory.setter
     def working_directory(self, working_directory):
-        if not isinstance(working_directory, basestring):
-            msg = 'Unable to set Executor\'s working directory to {0} ' \
-                  'since it is not a string'.format(working_directory)
-            raise ValueError(msg)
-
-        elif not os.path.isdir(working_directory):
+        check_type("Executor's working directory", working_directory,
+                   basestring)
+        if not os.path.isdir(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \
                   'which does not exist'.format(working_directory)
             raise ValueError(msg)

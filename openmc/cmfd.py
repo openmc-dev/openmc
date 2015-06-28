@@ -18,6 +18,7 @@ import sys
 import numpy as np
 
 from openmc.clean_xml import *
+from openmc.checkvalue import check_type, check_length, check_value
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -108,144 +109,58 @@ class CMFDMesh(object):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, Sequence):
-            msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                  'not a sequence'.format(lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set CMFD Mesh with lower_left {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(lower_left)
-            raise ValueError(msg)
-
-        for coord in lower_left:
-            if not isinstance(coord, Real):
-                msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                      'not a real number'.format(coord)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh lower_left', lower_left, Sequence, Real)
+        check_length('CMFD mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-
-        if not isinstance(upper_right, Sequence):
-            msg = 'Unable to set CMFD Mesh with upper_right {0} which is ' \
-                  'not a sequence'.format(upper_right)
-            raise ValueError(msg)
-
-        if len(upper_right) != 2 and len(upper_right) != 3:
-            msg = 'Unable to set CMFD Mesh with upper_right {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(upper_right)
-            raise ValueError(msg)
-
-        for coord in upper_right:
-            if not isinstance(coord, Real):
-                msg = 'Unable to set CMFD Mesh with upper_right {0} which ' \
-                      'is not a real number'.format(coord)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh upper_right', upper_right, Sequence, Real)
+        check_length('CMFD mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, Sequence):
-            msg = 'Unable to set CMFD Mesh with dimension {0} which is ' \
-                  'not a sequence'.format(dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set CMFD Mesh with dimension {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(dimension)
-            raise ValueError(msg)
-
-        for dim in dimension:
-            if not isinstance(dim, Integral):
-                msg = 'Unable to set CMFD Mesh with dimension {0} which ' \
-                      'is a non-integer'.format(dim)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh dimension', dimension, Sequence, Integral)
+        check_length('CMFD mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @width.setter
     def width(self, width):
-        if width is not None:
-            if not isinstance(width, Sequence):
-                msg = 'Unable to set CMFD Mesh with width {0} which ' \
-                      'is not a sequence'.format(width)
-                raise ValueError(msg)
-
-        if len(width) != 2 and len(width) != 3:
-            msg = 'Unable to set CMFD Mesh with width {0} since it must ' \
-                  'include 2 or 3 dimensions'.format(width)
-            raise ValueError(msg)
-
-        for dim in width:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set CMFD Mesh with width {0} which is ' \
-                      'not a real number'.format(width)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh width', width, Sequence, Real)
+        check_length('CMFD mesh width', width, 2, 3)
         self._width = width
 
     @energy.setter
     def energy(self, energy):
-        if not isinstance(energy, Sequence):
-            msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                  'a sequence'.format(energy)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh energy', energy, Sequence, Real)
         for e in energy:
-            if not isinstance(e, Real):
-                msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                      'a real number'.format(e)
-                raise ValueError(msg)
-            elif e < 0:
+            if e < 0:
                 msg = 'Unable to set CMFD Mesh energy to {0} which is ' \
                       'is a negative integer'.format(e)
                 raise ValueError(msg)
-
         self._energy = energy
 
     @albedo.setter
     def albedo(self, albedo):
-        if not isinstance(albedo, Sequence):
-            msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                  'a sequence'.format(albedo)
-            raise ValueError(msg)
-
-        if not len(albedo) == 6:
-            msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                  'length 6 for +/-x,y,z'.format(albedo)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh albedo', albedo, Sequence, Real)
+        check_length('CMFD mesh albedo', albedo, 6)
         for a in albedo:
-            if not isinstance(a, Real):
-                msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                      'a real number'.format(a)
-                raise ValueError(msg)
-            elif a < 0 or a > 1:
+            if a < 0 or a > 1:
                 msg = 'Unable to set CMFD Mesh albedo to {0} which is ' \
                       'is not in [0,1]'.format(a)
                 raise ValueError(msg)
-
         self._albedo = albedo
 
     @map.setter
-    def map(self, map):
-
-        if not isinstance(map, Sequence):
-            msg = 'Unable to set CMFD Mesh map to {0} which is not ' \
-                  'a sequence'.format(map)
-            raise ValueError(msg)
-
-        for m in map:
+    def map(self, meshmap):
+        check_type('CMFD mesh map', meshmap, Sequence, Integral)
+        for m in meshmap:
             if m != 1 and m != 2:
                 msg = 'Unable to set CMFD Mesh map to {0} which is ' \
                       'is not 1 or 2'.format(m)
                 raise ValueError(msg)
-
-        self._map = map
+        self._map = meshmap
 
     def _get_xml_element(self):
         element = ET.Element("mesh")
@@ -422,173 +337,90 @@ class CMFDFile(object):
 
     @begin.setter
     def begin(self, begin):
-        if not isinstance(begin, Integral):
-            msg = 'Unable to set CMFD begin batch to a non-integer ' \
-                  'value {0}'.format(begin)
-            raise ValueError(msg)
-
+        check_type('CMFD begin batch', begin, Integral)
         if begin <= 0:
             msg = 'Unable to set CMFD begin batch batch to a negative ' \
                   'value {0}'.format(begin)
             raise ValueError(msg)
-
         self._begin = begin
 
     @dhat_reset.setter
     def dhat_reset(self, dhat_reset):
-        if not isinstance(dhat_reset, bool):
-            msg = 'Unable to set Dhat reset to {0} which is ' \
-                  'a non-boolean value'.format(dhat_reset)
-            raise ValueError(msg)
-
+        check_type('Dhat reset', dhat_reset, bool)
         self._dhat_reset = dhat_reset
 
     @display.setter
     def display(self, display):
-        if not isinstance(basestring):
-            msg = 'Unable to set CMFD display to a non-string ' \
-                  'value'.format(display)
-            raise ValueError(msg)
-
-        if display not in ['balance', 'dominance', 'entropy', 'source']:
-            msg = 'Unable to set CMFD display to {0} which is ' \
-                  'not an accepted value'.format(display)
-            raise ValueError(msg)
-
+        check_type('CMFD display', display, basestring)
+        check_value('CMFD display', display,
+                    ['balance', 'dominance', 'entropy', 'source'])
         self._display = display
 
     @downscatter.setter
     def downscatter(self, downscatter):
-        if not isinstance(downscatter, bool):
-            msg = 'Unable to set downscatter to {0} which is ' \
-                  'a non-boolean value'.format(downscatter)
-            raise ValueError(msg)
-
+        check_type('downscatter', downscatter, bool)
         self._downscatter = downscatter
 
     @feedback.setter
     def feedback(self, feedback):
-        if not isinstance(feedback, bool):
-            msg = 'Unable to set CMFD feedback to {0} which is ' \
-                  'a non-boolean value'.format(feedback)
-            raise ValueError(msg)
-
+        check_type('CMFD feedback', feedback, bool)
         self._feedback = feedback
 
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        if not isinstance(gauss_seidel_tolerance, Sequence):
-            msg = 'Unable to set Gauss-Seidel tolerance to {0} which is ' \
-                  'not a sequence'.format(gauss_seidel_tolerance)
-            raise ValueError(msg)
-
-        if len(gauss_seidel_tolerance) != 2:
-            msg = 'Unable to set Gauss-Seidel tolerance with {0} since ' \
-                  'it must be of length 2'.format(width)
-            raise ValueError(msg)
-
-        for t in gauss_seidel_tolerance:
-            if not isinstance(t, Real):
-                msg = 'Unable to set Gauss-Seidel tolerance with {0} which ' \
-                      'is not a real number'.format(t)
-                raise ValueError(msg)
-
+        check_type('Gauss-Seidel tolerance', gauss_seidel_tolerance,
+                   Sequence, Real)
+        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @ktol.setter
     def ktol(self, ktol):
-        if not isinstance(ktol, Real):
-            msg = 'Unable to set the eigenvalue tolerance to {0} which is ' \
-                  'not a real number'.format(ktol)
-            raise ValueError(msg)
-
+        check_type('eigenvalue tolerance', ktol, Real)
         self._ktol = ktol
 
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
-        if not isinstance(mesh, CMFDMesh):
-            msg = 'Unable to set CMFD mesh to {0} which is not a ' \
-                  'CMFDMesh object'.format(mesh)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh', mesh, CMFDMesh)
         self._mesh = mesh
 
     @norm.setter
     def norm(self, norm):
-        if not isinstance(norm, Real):
-            msg = 'Unable to set the CMFD norm to {0} which is not ' \
-                  'a real number'.format(norm)
-            raise ValueError(msg)
-
+        check_type('CMFD norm', norm, Real)
         self._norm = norm
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
-        if not isinstance(power_monitor, bool):
-            msg = 'Unable to set CMFD power monitor to {0} which is a ' \
-                  'non-boolean value'.format(power_monitor)
-            raise ValueError(msg)
-
+        check_type('CMFD power monitor', power_monitor, bool)
         self._power_monitor = power_monitor
 
     @run_adjoint.setter
     def run_adjoint(self, run_adjoint):
-        if not isinstance(run_adjoint, bool):
-            msg = 'Unable to set CMFD run adjoint to {0} which is a ' \
-                  'non-boolean value'.format(run_adjoint)
-            raise ValueError(msg)
-
+        check_type('CMFD run adjoint', run_adjoint, bool)
         self._run_adjoint = run_adjoint
 
     @shift.setter
     def shift(self, shift):
-        if not isinstance(shift, Real):
-            msg = 'Unable to set the Wielandt shift to {0} which is ' \
-                  'not a real number'.format(shift)
-            raise ValueError(msg)
-
+        check_type('Wielandt shift', shift, Real)
         self._shift = shift
 
     @spectral.setter
     def spectral(self, spectral):
-        if not isinstance(spectral, Real):
-            msg = 'Unable to set the spectral radius to {0} which is ' \
-                  'not a real number'.format(spectral)
-            raise ValueError(msg)
-
+        check_type('spectral radius', spectral, Real)
         self._spectral = spectral
 
     @stol.setter
     def stol(self, stol):
-        if not isinstance(stol, Real):
-            msg = 'Unable to set the fission source tolerance to {0} which ' \
-                  'is not a real number'.format(stol)
-            raise ValueError(msg)
-
+        check_type('fission source tolerance', stol, Real)
         self._stol = stol
 
     @tally_reset.setter
     def tally_reset(self, tally_reset):
-        if not isinstance(tally_reset, Sequence):
-            msg = 'Unable to set tally reset batches to {0} which is ' \
-                  'not a sequence'.format(tally_reset)
-            raise ValueError(msg)
-
-        for t in tally_reset:
-            if not isinstance(t, Integral):
-                msg = 'Unable to set tally reset batch to {0} which ' \
-                      'is not an integer'.format(t)
-                raise ValueError(msg)
-
+        check_type('tally reset batches', tally_reset, Sequence, Integral)
         self._tally_reset = tally_reset
 
     @write_matrices.setter
     def write_matrices(self, write_matrices):
-        if not isinstance(write_matrices, bool):
-            msg = 'Unable to set CMFD write matrices to {0} which is a ' \
-                  'non-boolean value'.format(write_matrices)
-            raise ValueError(msg)
-
+        check_type('CMFD write matrices', write_matrices, bool)
         self._write_matrices = write_matrices
 
     def _create_begin_subelement(self):

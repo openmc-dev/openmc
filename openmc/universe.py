@@ -4,8 +4,10 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-import openmc
+import numpy as np
 
+import openmc
+from openmc.checkvalue import check_type, check_length
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -108,33 +110,22 @@ class Cell(object):
             global AUTO_CELL_ID
             self._id = AUTO_CELL_ID
             AUTO_CELL_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(cell_id, Integral):
-            msg = 'Unable to set a non-integer Cell ID {0}'.format(cell_id)
-            raise ValueError(msg)
-
-        elif cell_id < 0:
-            msg = 'Unable to set Cell ID to {0} since it must be a ' \
-                        'non-negative integer'.format(cell_id)
-            raise ValueError(msg)
-
         else:
+            check_type('cell ID', cell_id, Integral)
+            if cell_id < 0:
+                msg = 'Unable to set Cell ID to {0} since it must be a ' \
+                      'non-negative integer'.format(cell_id)
+                raise ValueError(msg)
             self._id = cell_id
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, str):
-            msg = 'Unable to set name for Cell ID={0} with a non-string ' \
-                        'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('cell name', name, basestring)
+        self._name = name
 
     @fill.setter
     def fill(self, fill):
-        if isinstance(fill, str):
+        if isinstance(fill, basestring):
             if fill.strip().lower() == 'void':
                 self._type = 'void'
             else:
@@ -160,51 +151,19 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
-        if not isinstance(rotation, Sequence):
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it is not a sequence'.format(rotation, self._id)
-            raise ValueError(msg)
-
-        elif len(rotation) != 3:
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(rotation, self._id)
-            raise ValueError(msg)
-
-        for axis in rotation:
-            if not isinstance(axis, Real):
-                msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                      'it is not a real number'.format(axis, self._id)
-                raise ValueError(msg)
-
-            self._rotation = rotation
+        check_type('cell rotation', rotation, Sequence, Real)
+        check_length('cell rotation', rotation, 3)
+        self._rotation = rotation
 
     @translation.setter
     def translation(self, translation):
-        if not isinstance(translation, Sequence):
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it is not a sequence'.format(translation, self._id)
-            raise ValueError(msg)
-
-        elif len(translation) != 3:
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(translation, self._id)
-            raise ValueError(msg)
-
-        for axis in translation:
-            if not isinstance(axis, Real):
-                msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                      'it is not a real number'.format(axis, self._id)
-                raise ValueError(msg)
-
+        check_type('cell translation', translation, Sequence, Real)
+        check_length('cell translation', translation, 3)
         self._translation = translation
 
     @offsets.setter
     def offsets(self, offsets):
-        if not isinstance(offsets, Sequence):
-            msg = 'Unable to set offsets {0} to Cell ID={1} since ' \
-                  'it is not a sequence'.format(offsets, self._id)
-            raise ValueError(msg)
-
+        check_type('offsets', offsets, Sequence)
         self._offsets = offsets
 
     def add_surface(self, surface, halfspace):
@@ -475,30 +434,18 @@ class Universe(object):
             global AUTO_UNIVERSE_ID
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(universe_id, Integral):
-            msg = 'Unable to set Universe ID to a non-integer ' \
-                  '{0}'.format(universe_id)
-            raise ValueError(msg)
-
-        elif universe_id < 0:
-            msg = 'Unable to set Universe ID to {0} since it must be a ' \
-                  'non-negative integer'.format(universe_id)
-            raise ValueError(msg)
-
         else:
+            check_type('universe ID', universe_id, Integral)
+            if universe_id < 0:
+                msg = 'Unable to set Universe ID to {0} since it must be a ' \
+                      'non-negative integer'.format(universe_id)
+                raise ValueError(msg)
             self._id = universe_id
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Universe ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('universe name', name, basestring)
+        self._name = name
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -729,46 +676,27 @@ class Lattice(object):
             global AUTO_UNIVERSE_ID
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(lattice_id, Integral):
-            msg = 'Unable to set non-integer Lattice ID {0}'.format(lattice_id)
-            raise ValueError(msg)
-
-        elif lattice_id < 0:
-            msg = 'Unable to set Lattice ID to {0} since it must be a ' \
-                  'non-negative integer'.format(lattice_id)
-            raise ValueError(msg)
-
         else:
+            check_type('lattice ID', lattice_id, Integral)
+            if lattice_id < 0:
+                msg = 'Unable to set Lattice ID to {0} since it must be a ' \
+                      'non-negative integer'.format(lattice_id)
+                raise ValueError(msg)
             self._id = lattice_id
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Lattice ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('lattice name', name, basestring)
+        self._name = name
 
     @outer.setter
     def outer(self, outer):
-        if not isinstance(outer, Universe):
-            msg = 'Unable to set Lattice ID={0} outer universe to {1} ' \
-                  'since it is not a Universe object'.format(self._id, outer)
-            raise ValueError(msg)
-
+        check_type('outer universe', outer, Universe)
         self._outer = outer
 
     @universes.setter
     def universes(self, universes):
-        if not isinstance(universes, Sequence):
-            msg = 'Unable to set Lattice ID={0} universes to {1} since ' \
-                  'it is not a sequence'.format(self._id, universes)
-            raise ValueError(msg)
-
+        check_type('lattice universes', universes, Sequence)
         self._universes = np.asarray(universes, dtype=Universe)
 
     def get_unique_universes(self):
@@ -906,83 +834,35 @@ class RectLattice(Lattice):
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, Sequence):
-            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                  'it is not a sequence'.format(self._id, dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                  'it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, dimension)
-            raise ValueError(msg)
-
+        check_type('lattice dimension', dimension, Sequence, Integral)
+        check_length('lattice dimension', dimension, 2, 3)
         for dim in dimension:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                      'it is not a real number'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
+            if dim < 0:
                 msg = 'Unable to set RectLattice ID={0} dimension to {1} ' \
                       'since it is a negative value'.format(self._id, dim)
                 raise ValueError(msg)
-
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, Sequence):
-            msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
-                  'it is not a sequence'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set RectLattice ID={0} lower_left to {1} ' \
-                  'since it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        for dim in lower_left:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
-                      'it is is not a real number'.format(self._id, dim)
-                raise ValueError(msg)
-
+        check_type('lattice lower left corner', lower_left, Sequence, Real)
+        check_length('lattice lower left corner', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @offsets.setter
     def offsets(self, offsets):
-        if not isinstance(offsets, Sequence):
-            msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
-                  'it is not a sequence'.format(self._id, offsets)
-            raise ValueError(msg)
-
+        check_type('offsets', offsets, Sequence)
         self._offsets = offsets
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        if not isinstance(pitch, Sequence):
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                  'it is not a sequence'.format(self._id, pitch)
-            raise ValueError(msg)
-
-        elif len(pitch) != 2 and len(pitch) != 3:
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
-                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
-            raise ValueError(msg)
-
+        check_type('lattice pitch', pitch, Sequence, Real)
+        check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                      'it is not a real number'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
+            if dim < 0:
                 msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
                       'is a negative value'.format(self._id, dim)
                 raise ValueError(msg)
-
         self._pitch = pitch
 
     def get_offset(self, path, filter_offset):
@@ -1193,48 +1073,19 @@ class HexLattice(Lattice):
 
     @center.setter
     def center(self, center):
-        if not isinstance(center, Sequence):
-            msg = 'Unable to set HexLattice ID={0} dimension to {1} since ' \
-                  'it is not a sequence'.format(self._id, center)
-            raise ValueError(msg)
-
-        elif len(center) != 2 and len(center) != 3:
-            msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
-                  'it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, center)
-            raise ValueError(msg)
-
-        for dim in center:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
-                      'it is not a real number'.format(self._id, dim)
-                raise ValueError(msg)
-
+        check_type('lattice center', center, Sequence, Real)
+        check_length('lattice center', center, 2, 3)
         self._center = center
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        if not isinstance(pitch, Sequence):
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                  'it is not a sequence'.format(self._id, pitch)
-            raise ValueError(msg)
-
-        elif len(pitch) != 2 and len(pitch) != 3:
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
-                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
-            raise ValueError(msg)
-
+        check_type('lattice pitch', pitch, Sequence, Real)
+        check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if not isinstance(dim, Real):
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                      'it is not a real number'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
+            if dim < 0:
                 msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
                       'is a negative value'.format(self._id, dim)
                 raise ValueError(msg)
-
         self._pitch = pitch
 
     @Lattice.universes.setter

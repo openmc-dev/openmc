@@ -6,6 +6,7 @@ import sys
 import numpy as np
 
 from openmc.clean_xml import *
+from openmc.checkvalue import check_type, check_value, check_length
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -140,173 +141,74 @@ class Plot(object):
             global AUTO_PLOT_ID
             self._id = AUTO_PLOT_ID
             AUTO_PLOT_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not isinstance(plot_id, Integral):
-            msg = 'Unable to set a non-integer Plot ID {0}'.format(plot_id)
-            raise ValueError(msg)
-
-        elif plot_id < 0:
-            msg = 'Unable to set Plot ID to {0} since it must be a ' \
-                  'non-negative integer'.format(plot_id)
-            raise ValueError(msg)
-
         else:
+            check_type('plot ID', plot_id, Integral)
+            if plot_id < 0:
+                msg = 'Unable to set Plot ID to {0} since it must be a ' \
+                      'non-negative integer'.format(plot_id)
+                raise ValueError(msg)
             self._id = plot_id
 
     @name.setter
     def name(self, name):
-
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Plot ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('plot name', name, basestring)
+        self._name = name
 
     @width.setter
     def width(self, width):
-        if not isinstance(width, Sequence):
-            msg = 'Unable to create Plot ID={0} with width {1} which is not ' \
-                  'a sequence'.format(self._id, width)
-            raise ValueError(msg)
-
-        elif len(width) != 2 and len(width) != 3:
-            msg = 'Unable to create Plot ID={0} with width {1} since only 2D ' \
-                  'and 3D plots are supported'.format(self._id, width)
-            raise ValueError(msg)
-
-        for dim in width:
-            if not isinstance(dim, Real):
-                msg = 'Unable to create Plot ID={0} with width {1} since ' \
-                      'each element must be a floating point value or ' \
-                      'integer'.format(self._id, width)
-                raise ValueError(msg)
-
+        check_type('plot width', width, Sequence, Real)
+        check_length('plot width', width, 2, 3)
         self._width = width
 
     @origin.setter
     def origin(self, origin):
-        if not isinstance(origin, Sequence):
-            msg = 'Unable to create Plot ID={0} with origin {1} which is not ' \
-                  'a sequnce'.format(self._id, origin)
-            raise ValueError(msg)
-
-        elif len(origin) != 3:
-            msg = 'Unable to create Plot ID={0} with origin {1} since only ' \
-                  'a 3D coordinate must be input'.format(self._id, origin)
-            raise ValueError(msg)
-
-        for dim in origin:
-            if not isinstance(dim, Real):
-                msg = 'Unable to create Plot ID={0} with origin {1} since ' \
-                      'each element must be a floating point value or ' \
-                      'integer'.format(self._id, origin)
-                raise ValueError(msg)
-
+        check_type('plot origin', origin, Sequence, Real)
+        check_length('plot origin', origin, 3)
         self._origin = origin
 
     @pixels.setter
     def pixels(self, pixels):
-        if not isinstance(pixels, Sequence):
-            msg = 'Unable to create Plot ID={0} with pixels {1} which is not ' \
-                  'not a sequence'.format(self._id, pixels)
-            raise ValueError(msg)
-
-        elif len(pixels) != 2 and len(pixels) != 3:
-            msg = 'Unable to create Plot ID={0} with pixels {1} since ' \
-                  'only 2D and 3D plots are supported'.format(self._id, pixels)
-            raise ValueError(msg)
-
+        check_type('plot pixels', pixels, Sequence, Integral)
+        check_length('plot pixels', pixels, 2, 3)
         for dim in pixels:
-            if not isinstance(dim, Integral):
-                msg = 'Unable to create Plot ID={0} with pixel value {1} ' \
-                      'which is not an integer'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
+            if dim < 0:
                 msg = 'Unable to create Plot ID={0} with pixel value {1} ' \
                       'which is less than 0'.format(self._id, dim)
                 raise ValueError(msg)
-
         self._pixels = pixels
 
     @filename.setter
     def filename(self, filename):
-        if not isinstance(filename, basestring):
-            msg = 'Unable to create Plot ID={0} with filename {1} which is ' \
-                  'not a string'.format(self._id, filename)
-            raise ValueError(msg)
-
+        check_type('filename', filename, basestring)
         self._filename = filename
 
     @color.setter
     def color(self, color):
-        if not isinstance(color, basestring):
-            msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
-                  'a string'.format(self._id, color)
-            raise ValueError(msg)
-
-        elif color not in ['cell', 'mat']:
-            msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
-                  'a cell or mat'.format(self._id, color)
-            raise ValueError(msg)
-
+        check_type('plot color', color, basestring)
+        check_value('plot color', color, ['cell', 'mat'])
         self._color = color
 
     @type.setter
-    def type(self, type):
-        if not isinstance(type, basestring):
-            msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
-                  'a string'.format(self._id, type)
-            raise ValueError(msg)
-
-        elif type not in ['slice', 'voxel']:
-            msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
-                  'slice or voxel'.format(self._id, type)
-            raise ValueError(msg)
-
-        self._type = type
+    def type(self, plottype):
+        check_type('plot type', plottype, basestring)
+        check_value('plot type', plottype, ['slice', 'voxel'])
+        self._type = plottype
 
     @basis.setter
     def basis(self, basis):
-        if not isinstance(basis, basestring):
-            msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
-                  'a string'.format(self._id, basis)
-            raise ValueError(msg)
-
-        elif basis not in ['xy', 'xz', 'yz']:
-            msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
-                  'xy, xz, or yz'.format(self._id, basis)
-            raise ValueError(msg)
-
+        check_type('plot basis', basis, basestring)
+        check_value('plot basis', basis, ['xy', 'xz', 'yz'])
         self._basis = basis
 
     @background.setter
     def background(self, background):
-        if not isinstance(background, Sequence):
-            msg = 'Unable to create Plot ID={0} with background {1} ' \
-                  'which is not a sequence'.format(self._id, background)
-            raise ValueError(msg)
-
-        elif len(background) != 3:
-            msg = 'Unable to create Plot ID={0} with background {1} ' \
-                  'which is not 3 integer RGB ' \
-                  'values'.format(self._id, background)
-            raise ValueError(msg)
-
+        check_type('plot background', background, Sequence, Integral)
+        check_length('plot background', background, 3)
         for rgb in background:
-            if not isinstance(rgb, Integral):
-                msg = 'Unable to create Plot ID={0} with background RGB ' \
-                      'value {1} which is not an integer'.format(self._id, rgb)
-                raise ValueError(msg)
-
-            elif rgb < 0 or rgb > 255:
+            if rgb < 0 or rgb > 255:
                 msg = 'Unable to create Plot ID={0} with background RGB value ' \
                       '{1} which is not between 0 and 255'.format(self._id, rgb)
                 raise ValueError(msg)
-
         self._background = background
 
     @col_spec.setter
@@ -343,50 +245,24 @@ class Plot(object):
 
     @mask_componenets.setter
     def mask_components(self, mask_components):
-        if not isinstance(mask_components, Sequence):
-            msg = 'Unable to create Plot ID={0} with mask components {1} ' \
-                  'which is not a sequence'.format(self._id, mask_components)
-            raise ValueError(msg)
-
+        check_type('plot mask_components', mask_components, Sequence, Integral)
         for component in mask_components:
-            if not isinstance(component, Integral):
-                msg = 'Unable to create Plot ID={0} with mask component {1} ' \
-                      'which is not an integer'.format(self._id, component)
-                raise ValueError(msg)
-
-            elif component < 0:
+            if component < 0:
                 msg = 'Unable to create Plot ID={0} with mask component {1} ' \
                       'which is less than 0'.format(self._id, component)
                 raise ValueError(msg)
-
         self._mask_components = mask_components
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        if not isinstance(mask_background, Sequence):
-            msg = 'Unable to create Plot ID={0} with mask background {1} ' \
-                  'which is not a sequence'.format(self._id, mask_background)
-            raise ValueError(msg)
-
-        elif len(mask_background) != 3 and len(mask_background) != 0:
-            msg = 'Unable to create Plot ID={0} with mask background ' \
-                  '{1} since 3 RGB values must be ' \
-                  'input'.format(self._id, mask_background)
-            raise ValueError(msg)
-
+        check_type('plot mask background', mask_background, Sequence, Integral)
+        check_length('plot mask background', mask_background, 3)
         for rgb in mask_background:
-
-            if not isinstance(rgb, Integral):
-                msg = 'Unable to create Plot ID={0} with mask background RGB ' \
-                      'value {1} which is not an integer'.format(self._id, rgb)
-                raise ValueError(msg)
-
-            elif rgb < 0 or rgb > 255:
+            if rgb < 0 or rgb > 255:
                 msg = 'Unable to create Plot ID={0} with mask bacground ' \
                       'RGB value {1} which is not between 0 and ' \
                       '255'.format(self._id, rgb)
                 raise ValueError(msg)
-
         self._mask_background = mask_background
 
     def __repr__(self):

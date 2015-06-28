@@ -26,7 +26,7 @@ class StatepointRestartTestHarness(TestHarness):
     def _run_openmc_restart(self):
         # Get the number of MPI processes.
         if self._opts.mpi_exec:
-            mpi_procs = self._opts.mpi_np
+            mpi_procs = int(self._opts.mpi_np)
         else:
             mpi_procs = 1
 

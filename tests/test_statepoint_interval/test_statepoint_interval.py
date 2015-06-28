@@ -12,7 +12,6 @@ class StatepointTestHarness(TestHarness):
         self._opts = None
         self._args = None
 
-
     def _test_output_created(self):
         """Make sure statepoint files have been created."""
         sps = ('statepoint.02.*', 'statepoint.04.*', 'statepoint.06.*',

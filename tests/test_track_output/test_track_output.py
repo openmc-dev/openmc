@@ -19,18 +19,20 @@ class TrackTestHarness(TestHarness):
             assert files[0].endswith('binary') or files[0].endswith('h5'),\
             'Track files are not binary or hdf5 files'
 
-
     def _get_results(self):
-        """Digest info and create a simpler ASCII file."""
+        """Digest info in the statepoint and return as a string."""
         # Run the track-to-vtk conversion script.
         call(['../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
              glob.glob(''.join((os.getcwd(), '/track*'))))
 
-        # Make sure the vtk file was created then copy it to results.
-        poly = ''.join((os.getcwd(), '/poly.pvtp'))
+        # Make sure the vtk file was created then return it's contents.
+        poly = os.path.join(os.getcwd(), 'poly.pvtp')
         assert os.path.isfile(poly), 'poly.pvtp file not found.'
-        shutil.copy('poly.pvtp', 'results_test.dat')
 
+        with open(poly) as fin:
+            outstr = fin.read()
+
+        return outstr
 
     def _cleanup(self):
         TestHarness._cleanup(self)

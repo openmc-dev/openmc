@@ -7,7 +7,7 @@ from testing_harness import *
 
 class FixedSourceTestHarness(TestHarness):
     def _get_results(self):
-        """Digest info in the statepoint and create a simpler ASCII file."""
+        """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
@@ -28,9 +28,7 @@ class FixedSourceTestHarness(TestHarness):
                 outstr += '\n'.join(results) + '\n'
                 tally_num += 1
 
-        # Write results to a file.
-        with open('results_test.dat','w') as fh:
-            fh.write(outstr)
+        return outstr
 
 
 if __name__ == '__main__':

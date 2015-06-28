@@ -43,11 +43,11 @@ class SourceFileTestHarness(TestHarness):
             self._run_openmc()
             self._test_output_created()
             self._run_openmc_restart()
-            self._get_results()
+            results = self._get_results()
+            self._write_results(results)
             self._compare_results()
         finally:
             self._cleanup()
-
 
     def _test_output_created(self):
         """Make sure statepoint and source files have been created."""
@@ -64,7 +64,6 @@ class SourceFileTestHarness(TestHarness):
              or source[0].endswith('h5'), \
              'Source file is not a binary or hdf5 file.'
 
-
     def _run_openmc_restart(self):
         source = glob.glob(os.path.join(os.getcwd(), 'source.10.*'))
         with open('settings.xml','w') as fh:
@@ -80,7 +79,6 @@ class SourceFileTestHarness(TestHarness):
         print(proc.communicate()[0])
         returncode = proc.returncode
         assert returncode == 0, 'OpenMC did not exit successfully.'
-
 
     def _cleanup(self):
         TestHarness._cleanup(self)

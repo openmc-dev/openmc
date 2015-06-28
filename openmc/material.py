@@ -1,10 +1,13 @@
-from collections import MappingView
+from collections import Sequence
 from copy import deepcopy
+from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
+import sys
+if sys.version_info[0] >= 3:
+    basestring = str
 
 import openmc
-from openmc.checkvalue import *
 from openmc.clean_xml import *
 
 
@@ -117,7 +120,7 @@ class Material(object):
             AUTO_MATERIAL_ID += 1
 
         # Check that the ID is an integer and wasn't already used
-        elif not is_integer(material_id):
+        elif not isinstance(material_id, Integral):
             msg = 'Unable to set a non-integer Material ' \
                   'ID {0}'.format(material_id)
             raise ValueError(msg)
@@ -138,7 +141,7 @@ class Material(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Material ID={0} with a non-string ' \
                   'value {1}'.format(self._id, name)
             raise ValueError(msg)
@@ -183,7 +186,7 @@ class Material(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not is_string(filename) and filename is not None:
+        if not isinstance(filename, basestring) and filename is not None:
             msg = 'Unable to add OTF material file to Material ID={0} with a ' \
                   'non-string name {1}'.format(self._id, filename)
             raise ValueError(msg)
@@ -315,12 +318,12 @@ class Material(object):
 
         """
 
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to add an S(a,b) table to Material ID={0} with a ' \
                         'non-string table name {1}'.format(self._id, name)
             raise ValueError(msg)
 
-        if not is_string(xs):
+        if not isinstance(xs, basestring):
             msg = 'Unable to add an S(a,b) table to Material ID={0} with a ' \
                   'non-string cross-section identifier {1}'.format(self._id, xs)
             raise ValueError(msg)
@@ -523,7 +526,7 @@ class MaterialsFile(object):
 
     @default_xs.setter
     def default_xs(self, xs):
-        if not is_string(xs):
+        if not isinstance(xs, basestring):
             msg = 'Unable to set default xs to a non-string value'.format(xs)
             raise ValueError(msg)
 
@@ -556,9 +559,9 @@ class MaterialsFile(object):
 
         """
 
-        if not isinstance(materials, (tuple, list, MappingView)):
+        if not isinstance(materials, Sequence):
             msg = 'Unable to create OpenMC materials.xml file from {0} which ' \
-                  'is not a Python tuple/list'.format(materials)
+                  'is not a sequence'.format(materials)
             raise ValueError(msg)
 
         for material in materials:

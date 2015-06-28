@@ -1,4 +1,6 @@
-from openmc.checkvalue import *
+import sys
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class Element(object):
@@ -59,7 +61,7 @@ class Element(object):
 
     @xs.setter
     def xs(self, xs):
-        if not is_string(xs):
+        if not isinstance(xs, basestring):
             msg = 'Unable to set cross-section identifier xs for Element ' \
                   'with a non-string value {0}'.format(xs)
             raise ValueError(msg)
@@ -68,7 +70,7 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Element with a non-string ' \
                         'value {0}'.format(name)
             raise ValueError(msg)

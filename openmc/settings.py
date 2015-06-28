@@ -1,11 +1,16 @@
-import collections
+from collections import Sequence
+from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
 from openmc.clean_xml import *
+
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class SettingsFile(object):
@@ -38,11 +43,11 @@ class SettingsFile(object):
         Path to write output to
     verbosity : int
         Verbosity during simulation between 1 and 10
-    statepoint_batches : tuple or list or ndarray
+    statepoint_batches : Sequence of int
         List of batches at which to write statepoint files
     statepoint_interval : int
         Number of batches after which a new statepoint file should be written
-    sourcepoint_batches : tuple or list or ndarray
+    sourcepoint_batches : Sequence of int
         List of batches at which to write source files
     sourcepoint_interval : int
         Number of batches after which a new source file should be written
@@ -395,7 +400,7 @@ class SettingsFile(object):
 
     @batches.setter
     def batches(self, batches):
-        if not is_integer(batches):
+        if not isinstance(batches, Integral):
             msg = 'Unable to set batches to a non-integer ' \
                   'value {0}'.format(batches)
             raise ValueError(msg)
@@ -409,7 +414,7 @@ class SettingsFile(object):
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch):
-        if not is_integer(generations_per_batch):
+        if not isinstance(generations_per_batch, Integral):
             msg = 'Unable to set generations per batch to a non-integer ' \
                   'value {0}'.format(generations_per_batch)
             raise ValueError(msg)
@@ -423,7 +428,7 @@ class SettingsFile(object):
 
     @inactive.setter
     def inactive(self, inactive):
-        if not is_integer(inactive):
+        if not isinstance(inactive, Integral):
             msg = 'Unable to set inactive batches to a non-integer ' \
                   'value {0}'.format(inactive)
             raise ValueError(msg)
@@ -437,7 +442,7 @@ class SettingsFile(object):
 
     @particles.setter
     def particles(self, particles):
-        if not is_integer(particles):
+        if not isinstance(particles, Integral):
             msg = 'Unable to set particles to a non-integer ' \
                   'value {0}'.format(particles)
             raise ValueError(msg)
@@ -471,7 +476,7 @@ class SettingsFile(object):
                   'does not have a "threshold" key'.format(keff_trigger)
             raise ValueError(msg)
 
-        elif not is_float(keff_trigger['threshold']):
+        elif not isinstance(keff_trigger['threshold'], Real):
             msg = 'Unable to set a trigger on keff with ' \
                   'threshold {0}'.format(keff_trigger['threshold'])
             raise ValueError(msg)
@@ -480,7 +485,7 @@ class SettingsFile(object):
 
     @source_file.setter
     def source_file(self, source_file):
-        if not is_string(source_file):
+        if not isinstance(source_file, basestring):
             msg = 'Unable to set source file to a non-string ' \
                   'value {0}'.format(source_file)
             raise ValueError(msg)
@@ -499,7 +504,7 @@ class SettingsFile(object):
             distribution samples locations from a "box" distribution but only
             locations in fissionable materials are accepted. A "point" spatial
             distribution has coordinates specified by a triplet.
-        params : tuple or list or ndarray
+        params : Sequence of float
             For a "box" or "fission" spatial distribution, ``params`` should be
             given as six real numbers, the first three of which specify the
             lower-left corner of a parallelepiped and the last three of which
@@ -512,7 +517,7 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
+        if not isinstance(stype, basestring):
             msg = 'Unable to set source space type to a non-string ' \
                   'value {0}'.format(stype)
             raise ValueError(msg)
@@ -522,9 +527,9 @@ class SettingsFile(object):
                   'box or point'.format(stype)
             raise ValueError(msg)
 
-        elif not isinstance(params, (tuple, list, np.ndarray)):
+        elif not isinstance(params, Sequence):
             msg = 'Unable to set source space parameters to {0} since it is ' \
-                  'not a Python tuple, list or NumPy array'.format(params)
+                  'not a sequence'.format(params)
             raise ValueError(msg)
 
         elif stype in ['box', 'fission'] and len(params) != 6:
@@ -539,9 +544,9 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for param in params:
-            if not is_integer(param) and not is_float(param):
+            if not isinstance(param, Real):
                 msg = 'Unable to set source space parameters to {0} since it ' \
-                      'is not an integer or floating point value'.format(param)
+                      'is not a real number'.format(param)
                 raise ValueError(msg)
 
         self._source_space_type = stype
@@ -558,7 +563,7 @@ class SettingsFile(object):
             site is isotropic if the "isotropic" option is given. The angle of
             the particle emitted from a source site is the direction specified
             in ``params`` if the "monodirectional" option is given.
-        params : tuple or list or ndarray
+        params : Sequence of float
             For an "isotropic" angular distribution, ``params`` should not
             be specified.
 
@@ -568,7 +573,7 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
+        if not isinstance(stype, basestring):
             msg = 'Unable to set source angle type to a non-string ' \
                   'value {0}'.format(stype)
             raise ValueError(msg)
@@ -578,9 +583,9 @@ class SettingsFile(object):
                   'isotropic or monodirectional'.format(stype)
             raise ValueError(msg)
 
-        elif not isinstance(params, (tuple, list, np.ndarray)):
+        elif not isinstance(params, Sequence):
             msg = 'Unable to set source angle parameters to {0} since it is ' \
-                  'not a Python list/tuple or NumPy array'.format(params)
+                  'not a sequence'.format(params)
             raise ValueError(msg)
 
         elif stype == 'isotropic' and params is not None:
@@ -595,9 +600,9 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for param in params:
-            if not is_integer(param) and not is_float(param):
+            if not isinstance(param, Real):
                 msg = 'Unable to set source angle parameters to {0} since it ' \
-                      'is not an integer or floating point value'.format(param)
+                      'is not a real number'.format(param)
                 raise ValueError(msg)
 
         self._source_angle_type = stype
@@ -615,7 +620,7 @@ class SettingsFile(object):
             whose energy is sampled from a Watt fission spectrum. The "maxwell"
             option produce source sites whose energy is sampled from a Maxwell
             fission spectrum.
-        params : tuple or list or ndarray
+        params : Sequence of float
             For a "monoenergetic" energy distribution, ``params`` should be
             given as the energy in MeV of the source sites.
 
@@ -629,7 +634,7 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
+        if not isinstance(stype, basestring):
             msg = 'Unable to set source energy type to a non-string ' \
                    'value {0}'.format(stype)
             raise ValueError(msg)
@@ -639,9 +644,9 @@ class SettingsFile(object):
                   'monoenergetic, watt or maxwell'.format(stype)
             raise ValueError(msg)
 
-        elif not isinstance(params, (tuple, list, np.ndarray)):
+        elif not isinstance(params, Sequence):
             msg = 'Unable to set source energy params to {0} since it ' \
-                  'is not a Python list/tuple or NumPy array'.format(params)
+                  'is not a sequence'.format(params)
             raise ValueError(msg)
 
         elif stype == 'monoenergetic' and not len(params) != 1:
@@ -662,10 +667,9 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for param in params:
-            if not is_integer(param) and not is_float(param):
+            if not isinstance(param, Real):
                 msg = 'Unable to set source energy params to {0} ' \
-                      'since it is not an integer or floating point ' \
-                      'value'.format(param)
+                      'since it is not a real number'.format(param)
                 raise ValueError(msg)
 
         self._source_energy_type = stype
@@ -694,7 +698,7 @@ class SettingsFile(object):
 
     @output_path.setter
     def output_path(self, output_path):
-        if not is_string(output_path):
+        if not isinstance(output_path, basestring):
             msg = 'Unable to set output path to non-string ' \
                   'value {0}'.format(output_path)
             raise ValueError(msg)
@@ -703,7 +707,7 @@ class SettingsFile(object):
 
     @verbosity.setter
     def verbosity(self, verbosity):
-        if not is_integer(verbosity):
+        if not isinstance(verbosity, Integral):
             msg = 'Unable to set verbosity to non-integer ' \
                   'value {0}'.format(verbosity)
             raise ValueError(msg)
@@ -717,13 +721,13 @@ class SettingsFile(object):
 
     @statepoint_batches.setter
     def statepoint_batches(self, batches):
-        if not isinstance(batches, (tuple, list, np.ndarray)):
-            msg = 'Unable to set statepoint batches to {0} which is not a ' \
-                  'Python tuple/list or NumPy array'.format(batches)
+        if not isinstance(batches, Sequence):
+            msg = 'Unable to set statepoint batches to {0} which is not ' \
+                  'a sequnce'.format(batches)
             raise ValueError(msg)
 
         for batch in batches:
-            if not is_integer(batch):
+            if not isinstance(batch, Integral):
                 msg = 'Unable to set statepoint batches with non-integer ' \
                       'value {0}'.format(batch)
                 raise ValueError(msg)
@@ -737,7 +741,7 @@ class SettingsFile(object):
 
     @statepoint_interval.setter
     def statepoint_interval(self, interval):
-        if not is_integer(interval):
+        if not isinstance(interval, Integral):
             msg = 'Unable to set statepoint interval to non-integer ' \
                         'value {0}'.format(interval)
             raise ValueError(msg)
@@ -746,13 +750,13 @@ class SettingsFile(object):
 
     @sourcepoint_batches.setter
     def sourcepoint_batches(self, batches):
-        if not isinstance(batches, (tuple, list, np.ndarray)):
+        if not isinstance(batches, Sequence):
             msg = 'Unable to set sourcepoint batches to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(batches)
+                  'not a sequence'.format(batches)
             raise ValueError(msg)
 
         for batch in batches:
-            if not is_integer(batch):
+            if not isinstance(batch, Integral):
                 msg = 'Unable to set sourcepoint batches with non-integer ' \
                       'value {0}'.format(batch)
                 raise ValueError(msg)
@@ -766,7 +770,7 @@ class SettingsFile(object):
 
     @sourcepoint_interval.setter
     def sourcepoint_interval(self, interval):
-        if not is_integer(interval):
+        if not isinstance(interval, Integral):
             msg = 'Unable to set sourcepoint interval to non-integer ' \
                   'value {0}'.format(interval)
             raise ValueError(msg)
@@ -811,7 +815,7 @@ class SettingsFile(object):
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        if not is_string(cross_sections):
+        if not isinstance(cross_sections, basestring):
             msg = 'Unable to set cross sections to non-string ' \
                   'value {0}'.format(cross_sections)
             raise ValueError(msg)
@@ -847,7 +851,7 @@ class SettingsFile(object):
 
     @seed.setter
     def seed(self, seed):
-        if not is_integer(seed):
+        if not isinstance(seed, Integral):
             msg = 'Unable to set seed to non-integer value {0}'.format(seed)
             raise ValueError(msg)
 
@@ -868,7 +872,7 @@ class SettingsFile(object):
 
     @weight.setter
     def weight(self, weight):
-        if not is_float(weight):
+        if not isinstance(weight, Real):
             msg = 'Unable to set weight cutoff to non-floating point ' \
                   'value {0}'.format(weight)
             raise ValueError(msg)
@@ -882,7 +886,7 @@ class SettingsFile(object):
 
     @weight_avg.setter
     def weight_avg(self, weight_avg):
-        if not is_float(weight_avg):
+        if not isinstance(weight_avg, Real):
             msg = 'Unable to set weight avg. to non-floating point ' \
                   'value {0}'.format(weight_avg)
             raise ValueError(msg)
@@ -895,9 +899,9 @@ class SettingsFile(object):
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list)):
+        if not isinstance(dimension, Sequence):
             msg = 'Unable to set entropy mesh dimension to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
+                  'not a sequence'.format(dimension)
             raise ValueError(msg)
 
         elif len(dimension) != 3:
@@ -906,7 +910,7 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for dim in dimension:
-            if not is_integer(dim) and not is_float(dim):
+            if not isinstance(dim, Real):
                 msg = 'Unable to set entropy mesh dimension to a ' \
                       'non-integer or floating point value {0}'.format(dim)
                 raise ValueError(msg)
@@ -915,9 +919,9 @@ class SettingsFile(object):
 
     @entropy_lower_left.setter
     def entropy_lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list)):
+        if not isinstance(lower_left, Sequence):
             msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
-                  'is not a Python tuple or list'.format(lower_left)
+                  'is not a sequence'.format(lower_left)
             raise ValueError(msg)
 
         elif len(lower_left) != 3:
@@ -926,7 +930,7 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set entropy mesh lower left corner to a ' \
                       'non-integer or floating point value {0}'.format(coord)
                 raise ValueError(msg)
@@ -935,9 +939,9 @@ class SettingsFile(object):
 
     @entropy_upper_right.setter
     def entropy_upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list)):
+        if not isinstance(upper_right, Sequence):
             msg = 'Unable to set entropy mesh upper right corner to {0} ' \
-                  'which is not a Python tuple or list'.format(upper_right)
+                  'which is not a sequence'.format(upper_right)
             raise ValueError(msg)
 
         elif len(upper_right) < 3 or len(upper_right) > 3:
@@ -946,7 +950,7 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set entropy mesh upper right corner to a ' \
                       'non-integer or floating point value {0}'.format(coord)
                 raise ValueError(msg)
@@ -964,7 +968,7 @@ class SettingsFile(object):
 
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches):
-        if not is_integer(trigger_max_batches):
+        if not isinstance(trigger_max_batches, Integral):
             msg = 'Unable to set trigger max batches to a non-integer ' \
                   'value {0}'.format(trigger_max_batches)
             raise ValueError(msg)
@@ -978,7 +982,7 @@ class SettingsFile(object):
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval):
-        if not is_integer(trigger_batch_interval):
+        if not isinstance(trigger_batch_interval, Integral):
             msg = 'Unable to set trigger batch interval to a non-integer ' \
                   'value {0}'.format(trigger_batch_interval)
             raise ValueError(msg)
@@ -1001,7 +1005,7 @@ class SettingsFile(object):
 
     @threads.setter
     def threads(self, threads):
-        if not is_integer(threads):
+        if not isinstance(threads, Integral):
             msg = 'Unable to set the threads to a non-integer ' \
                   'value {0}'.format(threads)
             raise ValueError(msg)
@@ -1073,9 +1077,9 @@ class SettingsFile(object):
 
     @ufs_dimension.setter
     def ufs_dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list)):
+        if not isinstance(dimension, Sequence):
             msg = 'Unable to set UFS mesh dimension to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
+                  'not a sequence'.format(dimension)
             raise ValueError(msg)
 
         elif len(dimension) != 3:
@@ -1084,7 +1088,7 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         for dim in dimension:
-            if not is_integer(dim):
+            if not isinstance(dim, Integral):
                 msg = 'Unable to set entropy mesh dimension to a ' \
                       'non-integer {0}'.format(dim)
                 raise ValueError(msg)
@@ -1097,9 +1101,9 @@ class SettingsFile(object):
 
     @ufs_lower_left.setter
     def ufs_lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+        if not isinstance(lower_left, Sequence):
             msg = 'Unable to set UFS mesh lower left corner to {0} which is ' \
-                  'not a Python tuple or list'.format(lower_left)
+                  'not a sequence'.format(lower_left)
             raise ValueError(msg)
 
         elif len(lower_left) != 3:
@@ -1111,9 +1115,9 @@ class SettingsFile(object):
 
     @ufs_upper_right.setter
     def ufs_upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list)):
+        if not isinstance(upper_right, Sequence):
             msg = 'Unable to set UFs mesh upper right corner to {0} which is ' \
-                  'not a Python tuple or list'.format(upper_right)
+                  'not a sequence'.format(upper_right)
             raise ValueError(msg)
 
         if len(upper_right) != 3:
@@ -1129,9 +1133,9 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(dimension, (tuple, list)):
+        if not isinstance(dimension, Sequence):
             msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
+                  'not a sequence'.format(dimension)
             raise ValueError(msg)
 
         if len(dimension) != 3:
@@ -1147,9 +1151,9 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+        if not isinstance(lower_left, Sequence):
             msg = 'Unable to set DD mesh lower left corner to {0} which is ' \
-                  'not a Python tuple or list'.format(lower_left)
+                  'not a sequence'.format(lower_left)
             raise ValueError(msg)
 
         elif len(lower_left) < 3 or len(lower_left) > 3:
@@ -1184,9 +1188,9 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(nodemap, (tuple, list)):
+        if not isinstance(nodemap, Sequence):
             msg = 'Unable to set DD nodemap {0} which is ' \
-                  'not a Python tuple or list'.format(nodemap)
+                  'not a sequence'.format(nodemap)
             raise ValueError(msg)
 
         nodemap = np.array(nodemap).flatten()

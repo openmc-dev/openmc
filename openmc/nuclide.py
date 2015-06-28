@@ -1,4 +1,7 @@
-from openmc.checkvalue import *
+from numbers import Integral
+import sys
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class Nuclide(object):
@@ -68,7 +71,7 @@ class Nuclide(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Nuclide with a non-string ' \
                         'value {0}'.format(name)
             raise ValueError(msg)
@@ -77,7 +80,7 @@ class Nuclide(object):
 
     @xs.setter
     def xs(self, xs):
-        if not is_string(xs):
+        if not isinstance(xs, basestring):
             msg = 'Unable to set cross-section identifier xs for Nuclide ' \
                   'with a non-string value {0}'.format(xs)
             raise ValueError(msg)
@@ -86,7 +89,7 @@ class Nuclide(object):
 
     @zaid.setter
     def zaid(self, zaid):
-        if not is_integer(zaid):
+        if not isinstance(zaid, Integral):
             msg = 'Unable to set zaid for Nuclide ' \
                   'with a non-integer {0}'.format(zaid)
             raise ValueError(msg)

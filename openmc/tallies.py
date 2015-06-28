@@ -1,16 +1,21 @@
+from collections import Sequence
 import copy
 import os
 import pickle
 import itertools
+from numbers import Integral
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.summary import Summary
 from openmc.clean_xml import *
-from openmc.checkvalue import *
 
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # "Static" variable for auto-generated Tally IDs
 AUTO_TALLY_ID = 10000
@@ -303,7 +308,7 @@ class Tally(object):
             AUTO_TALLY_ID += 1
 
         # Check that the ID is an integer and wasn't already used
-        elif not is_integer(tally_id):
+        elif not isinstance(tally_id, Integral):
             msg = 'Unable to set a non-integer Tally ID {0}'.format(tally_id)
             raise ValueError(msg)
 
@@ -317,7 +322,7 @@ class Tally(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Tally ID={0} with a non-string ' \
                   'value "{1}"'.format(self.id, name)
             raise ValueError(msg)
@@ -366,7 +371,7 @@ class Tally(object):
 
         """
 
-        if not is_string(score):
+        if not isinstance(score, basestring):
             msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
@@ -383,7 +388,7 @@ class Tally(object):
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
-        if not is_integer(num_realizations):
+        if not isinstance(num_realizations, Integral):
             msg = 'Unable to set the number of realizations to "{0}" for ' \
                   'Tally ID={1} since it is not an ' \
                   'integer'.format(num_realizations)
@@ -408,19 +413,17 @@ class Tally(object):
 
     @sum.setter
     def sum(self, sum):
-        if not isinstance(sum, (tuple, list, np.ndarray)):
+        if not isinstance(sum, Sequence):
             msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum, self.id)
+                  'it is not a sequence'.format(sum, self.id)
             raise ValueError(msg)
         self._sum = sum
 
     @sum_sq.setter
     def sum_sq(self, sum_sq):
-        if not isinstance(sum_sq, (tuple, list, np.ndarray)):
+        if not isinstance(sum_sq, Sequence):
             msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum_sq, self.id)
+                  'it is not a sequence'.format(sum_sq, self.id)
             raise ValueError(msg)
         self._sum_sq = sum_sq
 
@@ -1321,13 +1324,13 @@ class Tally(object):
                   'Tally.export_results(...)'.format(self.id)
             raise KeyError(msg)
 
-        if not is_string(filename):
+        if not isinstance(filename, basestring):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
-        elif not is_string(directory):
+        elif not isinstance(directory, basestring):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)

@@ -1,8 +1,11 @@
+from collections import Sequence
 import copy
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
-from openmc.checkvalue import *
-
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # "Static" variable for auto-generated and Mesh IDs
 AUTO_MESH_ID = 10000
@@ -31,15 +34,15 @@ class Mesh(object):
         Name of the mesh
     type : str
         Type of the mesh
-    dimension : tuple or list or ndarray
+    dimension : Sequnce of int
         The number of mesh cells in each direction.
-    lower_left : tuple or list or ndarray
+    lower_left : Seuqnce of float
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : tuple or list or ndarray
+    upper_right : Sequence of float
         The upper-right corner of the structrued mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    width : tuple or list or ndarray
+    width : Sequence of float
         The width of mesh cells in each direction.
 
     """
@@ -137,7 +140,7 @@ class Mesh(object):
             AUTO_MESH_ID += 1
 
         # Check that the ID is an integer and wasn't already used
-        elif not is_integer(mesh_id):
+        elif not isinstance(mesh_id, Integral):
             msg = 'Unable to set a non-integer Mesh ID {0}'.format(mesh_id)
             raise ValueError(msg)
 
@@ -151,7 +154,7 @@ class Mesh(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Mesh ID={0} with a non-string ' \
                   'value {1}'.format(self._id, name)
             raise ValueError(msg)
@@ -160,7 +163,7 @@ class Mesh(object):
 
     @type.setter
     def type(self, type):
-        if not is_string(type):
+        if not isinstance(type, basestring):
             msg = 'Unable to set Mesh ID={0} for type {1} which is not ' \
                   'a string'.format(self._id, type)
             raise ValueError(msg)
@@ -174,10 +177,9 @@ class Mesh(object):
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
+        if not isinstance(dimension, Sequence):
             msg = 'Unable to set Mesh ID={0} with dimension {1} which is ' \
-                  'not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, dimension)
+                  'not a sequence'.format(self._id, dimension)
             raise ValueError(msg)
         elif len(dimension) != 2 and len(dimension) != 3:
             msg = 'Unable to set Mesh ID={0} with dimension {1} since it ' \
@@ -185,7 +187,7 @@ class Mesh(object):
             raise ValueError(msg)
 
         for dim in dimension:
-            if not is_integer(dim):
+            if not isinstance(dim, Integral):
                 msg = 'Unable to set Mesh ID={0} with dimension {1} which ' \
                       'is a non-integer'.format(self._id, dim)
                 raise ValueError(msg)
@@ -194,10 +196,9 @@ class Mesh(object):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+        if not isinstance(lower_left, Sequence):
             msg = 'Unable to set Mesh ID={0} with lower_left {1} which is ' \
-                  'not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, lower_left)
+                  'not a sequence'.format(self._id, lower_left)
             raise ValueError(msg)
 
         elif len(lower_left) != 2 and len(lower_left) != 3:
@@ -206,7 +207,7 @@ class Mesh(object):
             raise ValueError(msg)
 
         for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set Mesh ID={0} with lower_left {1} which ' \
                       'is neither neither an integer nor a floating point ' \
                       'value'.format(self._id, coord)
@@ -216,10 +217,9 @@ class Mesh(object):
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list, np.ndarray)):
+        if not isinstance(upper_right, Sequence):
             msg = 'Unable to set Mesh ID={0} with upper_right {1} which ' \
-                  'is not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, upper_right)
+                  'is not a sequence'.format(self._id, upper_right)
             raise ValueError(msg)
 
         if len(upper_right) != 2 and len(upper_right) != 3:
@@ -228,7 +228,7 @@ class Mesh(object):
             raise ValueError(msg)
 
         for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set Mesh ID={0} with upper_right {1} which ' \
                       'is neither an integer nor a floating point ' \
                       'value'.format(self._id, coord)
@@ -239,10 +239,9 @@ class Mesh(object):
     @width.setter
     def width(self, width):
         if width is not None:
-            if not isinstance(width, (tuple, list, np.ndarray)):
+            if not isinstance(width, Sequence):
                 msg = 'Unable to set Mesh ID={0} with width {1} which ' \
-                      'is not a Python list, tuple or NumPy ' \
-                      'array'.format(self._id, width)
+                      'is not a sequence'.format(self._id, width)
                 raise ValueError(msg)
 
         if len(width) != 2 and len(width) != 3:
@@ -251,7 +250,7 @@ class Mesh(object):
             raise ValueError(msg)
 
         for dim in width:
-            if not is_integer(dim) and not is_float(dim):
+            if not isinstance(dim, Real):
                 msg = 'Unable to set Mesh ID={0} with width {1} which is ' \
                       'neither an integer nor a floating point ' \
                       'value'.format(self._id, width)

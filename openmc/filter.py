@@ -1,7 +1,8 @@
+from collections import Sequence
 import copy
+from numbers import Real, Integral
 
 from openmc import Mesh
-from openmc.checkvalue import *
 from openmc.constants import *
 
 
@@ -15,7 +16,7 @@ class Filter(object):
         The type of the tally filter. Acceptable values are "universe",
         "material", "cell", "cellborn", "surface", "mesh", "energy",
         "energyout", and "distribcell".
-    bins : int or list of int or list of float or ndarray
+    bins : int or Sequence of int or Sequence of float
         The bins for the filter. This takes on different meaning for different
         filters.
 
@@ -23,7 +24,7 @@ class Filter(object):
     ----------
     type : str
         The type of the tally filter.
-    bins : int or list of int or list of float or ndarray
+    bins : int or Sequence of int or Sequence of float
         The bins for the filter
 
     """
@@ -122,7 +123,7 @@ class Filter(object):
             raise ValueError(msg)
 
         # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not isinstance(bins, (tuple, list, np.ndarray)):
+        if not isinstance(bins, Sequence):
             bins = [bins]
 
         # If the bins are in a collection, convert it to a list
@@ -132,7 +133,7 @@ class Filter(object):
         if self._type in ['cell', 'cellborn', 'surface', 'material',
                           'universe', 'distribcell']:
             for edge in bins:
-                if not is_integer(edge):
+                if not isinstance(edge, Integral):
                     msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
                           'it is a non-integer'.format(edge, self._type)
                     raise ValueError(msg)
@@ -143,7 +144,7 @@ class Filter(object):
 
         elif self._type in ['energy', 'energyout']:
             for edge in bins:
-                if not is_integer(edge) and not is_float(edge):
+                if not isinstance(edge, Real):
                     msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
                           'since it is a non-integer or floating point ' \
                           'value'.format(edge, self._type)
@@ -167,7 +168,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not is_integer(bins[0]):
+            elif not isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
@@ -182,7 +183,7 @@ class Filter(object):
     # FIXME
     @num_bins.setter
     def num_bins(self, num_bins):
-        if not is_integer(num_bins) or num_bins < 0:
+        if not isinstance(num_bins, Integral) or num_bins < 0:
             msg = 'Unable to set the number of bins "{0}" for a {1} Filter ' \
                   'since it is not a positive ' \
                   'integer'.format(num_bins, self._type)
@@ -203,7 +204,7 @@ class Filter(object):
 
     @offset.setter
     def offset(self, offset):
-        if not is_integer(offset):
+        if not isinstance(offset, Integral):
             msg = 'Unable to set offset "{0}" for a {1} Filter since it is a ' \
                   'non-integer value'.format(offset, self._type)
             raise ValueError(msg)
@@ -212,7 +213,7 @@ class Filter(object):
 
     @stride.setter
     def stride(self, stride):
-        if not is_integer(stride):
+        if not isinstance(stride, Integral):
             msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
                   'non-integer value'.format(stride, self._type)
             raise ValueError(msg)

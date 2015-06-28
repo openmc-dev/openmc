@@ -10,12 +10,17 @@ References
 
 """
 
+from collections import Sequence
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
 from openmc.clean_xml import *
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class CMFDMesh(object):
@@ -24,26 +29,26 @@ class CMFDMesh(object):
 
     Attributes
     ----------
-    lower_left : tuple or list or ndarray
+    lower_left : Sequence of float
         The lower-left corner of the structured mesh. If only two coordinates are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : tuple or list or ndarray
+    upper_right : Sequence of float
         The upper-right corner of the structrued mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
-    dimension : tuple or list or ndarray
+    dimension : Sequence of int
         The number of mesh cells in each direction.
-    width : tuple or list or ndarray
+    width : Sequence of float
         The width of mesh cells in each direction.
-    energy : tuple or list or ndarray
+    energy : Sequence of float
         Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
         20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
         OpenMC automatically assumes a one energy group calculation over the
         entire energy range.
-    albedo : tuple or list or ndarray
+    albedo : Sequence of float
         Surface ratio of incoming to outgoing partial currents on global
         boundary conditions. They are listed in the following order: -x +x -y +y
         -z +z.
-    map : tuple or list or ndarray
+    map : Sequence of int
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``1`` is used for a
         non-accelerated region and a ``2`` is used for an accelerated region.
@@ -103,9 +108,9 @@ class CMFDMesh(object):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
+        if not isinstance(lower_left, Sequence):
             msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(lower_left)
+                  'not a sequence'.format(lower_left)
             raise ValueError(msg)
 
         elif len(lower_left) != 2 and len(lower_left) != 3:
@@ -114,9 +119,9 @@ class CMFDMesh(object):
             raise ValueError(msg)
 
         for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                      'not an integer or a floating point value'.format(coord)
+                      'not a real number'.format(coord)
                 raise ValueError(msg)
 
         self._lower_left = lower_left
@@ -124,9 +129,9 @@ class CMFDMesh(object):
     @upper_right.setter
     def upper_right(self, upper_right):
 
-        if not isinstance(upper_right, (tuple, list, np.ndarray)):
+        if not isinstance(upper_right, Sequence):
             msg = 'Unable to set CMFD Mesh with upper_right {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(upper_right)
+                  'not a sequence'.format(upper_right)
             raise ValueError(msg)
 
         if len(upper_right) != 2 and len(upper_right) != 3:
@@ -135,18 +140,18 @@ class CMFDMesh(object):
             raise ValueError(msg)
 
         for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
+            if not isinstance(coord, Real):
                 msg = 'Unable to set CMFD Mesh with upper_right {0} which ' \
-                      'is not an integer or floating point value'.format(coord)
+                      'is not a real number'.format(coord)
                 raise ValueError(msg)
 
         self._upper_right = upper_right
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
+        if not isinstance(dimension, Sequence):
             msg = 'Unable to set CMFD Mesh with dimension {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(dimension)
+                  'not a sequence'.format(dimension)
             raise ValueError(msg)
 
         elif len(dimension) != 2 and len(dimension) != 3:
@@ -155,7 +160,7 @@ class CMFDMesh(object):
             raise ValueError(msg)
 
         for dim in dimension:
-            if not is_integer(dim):
+            if not isinstance(dim, Integral):
                 msg = 'Unable to set CMFD Mesh with dimension {0} which ' \
                       'is a non-integer'.format(dim)
                 raise ValueError(msg)
@@ -165,9 +170,9 @@ class CMFDMesh(object):
     @width.setter
     def width(self, width):
         if width is not None:
-            if not isinstance(width, (tuple, list, np.ndarray)):
+            if not isinstance(width, Sequence):
                 msg = 'Unable to set CMFD Mesh with width {0} which ' \
-                      'is not a Python list, tuple or NumPy array'.format(width)
+                      'is not a sequence'.format(width)
                 raise ValueError(msg)
 
         if len(width) != 2 and len(width) != 3:
@@ -176,24 +181,24 @@ class CMFDMesh(object):
             raise ValueError(msg)
 
         for dim in width:
-            if not is_integer(dim) and not is_float(dim):
+            if not isinstance(dim, Real):
                 msg = 'Unable to set CMFD Mesh with width {0} which is ' \
-                      'not an integer or floating point value'.format(width)
+                      'not a real number'.format(width)
                 raise ValueError(msg)
 
         self._width = width
 
     @energy.setter
     def energy(self, energy):
-        if not isinstance(energy, (tuple, list, np.ndarray)):
+        if not isinstance(energy, Sequence):
             msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(energy)
+                  'a sequence'.format(energy)
             raise ValueError(msg)
 
         for e in energy:
-            if not is_integer(e) and not is_float(e):
+            if not isinstance(e, Real):
                 msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                      'an integer or floating point value'.format(e)
+                      'a real number'.format(e)
                 raise ValueError(msg)
             elif e < 0:
                 msg = 'Unable to set CMFD Mesh energy to {0} which is ' \
@@ -204,9 +209,9 @@ class CMFDMesh(object):
 
     @albedo.setter
     def albedo(self, albedo):
-        if not isinstance(albedo, (tuple, list, np.ndarray)):
+        if not isinstance(albedo, Sequence):
             msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(albedo)
+                  'a sequence'.format(albedo)
             raise ValueError(msg)
 
         if not len(albedo) == 6:
@@ -215,9 +220,9 @@ class CMFDMesh(object):
             raise ValueError(msg)
 
         for a in albedo:
-            if not is_integer(a) and not is_float(a):
+            if not isinstance(a, Real):
                 msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                      'an integer or floating point value'.format(a)
+                      'a real number'.format(a)
                 raise ValueError(msg)
             elif a < 0 or a > 1:
                 msg = 'Unable to set CMFD Mesh albedo to {0} which is ' \
@@ -229,9 +234,9 @@ class CMFDMesh(object):
     @map.setter
     def map(self, map):
 
-        if not isinstance(map, (tuple, list, np.ndarray)):
+        if not isinstance(map, Sequence):
             msg = 'Unable to set CMFD Mesh map to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(map)
+                  'a sequence'.format(map)
             raise ValueError(msg)
 
         for m in map:
@@ -301,7 +306,7 @@ class CMFDFile(object):
     feedback : bool
         Indicate or not the CMFD diffusion result is used to adjust the weight
         of fission source neutrons on the next OpenMC batch. Defaults to False.
-    gauss_seidel_tolerance : tuple or list or ndarray of float
+    gauss_seidel_tolerance : Sequence of float
         Two parameters specifying the absolute inner tolerance and the relative
         inner tolerance for Gauss-Seidel iterations when performing CMFD.
     ktol : float
@@ -417,7 +422,7 @@ class CMFDFile(object):
 
     @begin.setter
     def begin(self, begin):
-        if not is_integer(begin):
+        if not isinstance(begin, Integral):
             msg = 'Unable to set CMFD begin batch to a non-integer ' \
                   'value {0}'.format(begin)
             raise ValueError(msg)
@@ -440,7 +445,7 @@ class CMFDFile(object):
 
     @display.setter
     def display(self, display):
-        if not is_string(display):
+        if not isinstance(basestring):
             msg = 'Unable to set CMFD display to a non-string ' \
                   'value'.format(display)
             raise ValueError(msg)
@@ -472,10 +477,9 @@ class CMFDFile(object):
 
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        if not isinstance(gauss_seidel_tolerance, (float, list, np.ndarray)):
+        if not isinstance(gauss_seidel_tolerance, Sequence):
             msg = 'Unable to set Gauss-Seidel tolerance to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(
-                      gauss_seidel_tolerance)
+                  'not a sequence'.format(gauss_seidel_tolerance)
             raise ValueError(msg)
 
         if len(gauss_seidel_tolerance) != 2:
@@ -484,18 +488,18 @@ class CMFDFile(object):
             raise ValueError(msg)
 
         for t in gauss_seidel_tolerance:
-            if not is_integer(t) and not is_float(t):
+            if not isinstance(t, Real):
                 msg = 'Unable to set Gauss-Seidel tolerance with {0} which ' \
-                      'is not an integer or floating point value'.format(t)
+                      'is not a real number'.format(t)
                 raise ValueError(msg)
 
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @ktol.setter
     def ktol(self, ktol):
-        if not is_integer(ktol) and not is_float(ktol):
+        if not isinstance(ktol, Real):
             msg = 'Unable to set the eigenvalue tolerance to {0} which is ' \
-                  'not an integer or floating point value'.format(ktol)
+                  'not a real number'.format(ktol)
             raise ValueError(msg)
 
         self._ktol = ktol
@@ -511,9 +515,9 @@ class CMFDFile(object):
 
     @norm.setter
     def norm(self, norm):
-        if not is_integer(norm) and not is_float(norm):
+        if not isinstance(norm, Real):
             msg = 'Unable to set the CMFD norm to {0} which is not ' \
-                  'an integer or floating point value'.format(norm)
+                  'a real number'.format(norm)
             raise ValueError(msg)
 
         self._norm = norm
@@ -538,41 +542,40 @@ class CMFDFile(object):
 
     @shift.setter
     def shift(self, shift):
-        if not is_integer(shift) and not is_float(shift):
+        if not isinstance(shift, Real):
             msg = 'Unable to set the Wielandt shift to {0} which is ' \
-                  'not an integer or floating point value'.format(shift)
+                  'not a real number'.format(shift)
             raise ValueError(msg)
 
         self._shift = shift
 
     @spectral.setter
     def spectral(self, spectral):
-        if not is_integer(spectral) and not is_float(spectral):
+        if not isinstance(spectral, Real):
             msg = 'Unable to set the spectral radius to {0} which is ' \
-                  'not an integer or floating point value'.format(spectral)
+                  'not a real number'.format(spectral)
             raise ValueError(msg)
 
         self._spectral = spectral
 
     @stol.setter
     def stol(self, stol):
-        if not is_integer(stol) and not is_float(stol):
+        if not isinstance(stol, Real):
             msg = 'Unable to set the fission source tolerance to {0} which ' \
-                  'is not an integer or floating point value'.format(stol)
+                  'is not a real number'.format(stol)
             raise ValueError(msg)
 
         self._stol = stol
 
     @tally_reset.setter
     def tally_reset(self, tally_reset):
-        if not isinstance(tally_reset, (tuple, list, np.ndarray)):
+        if not isinstance(tally_reset, Sequence):
             msg = 'Unable to set tally reset batches to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(
-                      tally_reset)
+                  'not a sequence'.format(tally_reset)
             raise ValueError(msg)
 
         for t in tally_reset:
-            if not is_integer(t):
+            if not isinstance(t, Integral):
                 msg = 'Unable to set tally reset batch to {0} which ' \
                       'is not an integer'.format(t)
                 raise ValueError(msg)

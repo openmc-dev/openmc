@@ -1,10 +1,14 @@
+from collections import Sequence
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
 from openmc.clean_xml import *
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # A static variable for auto-generated Plot IDs
 AUTO_PLOT_ID = 10000
@@ -35,9 +39,9 @@ class Plot(object):
         Unique identifier
     name : str
         Name of the plot
-    width : tuple or list or ndarray
+    width : Sequence of float
         Width of the plot in each basis direction
-    pixels : tuple or list or ndarray
+    pixels : Sequence of int
         Number of pixels to use in each basis direction
     origin : tuple or list of ndarray
         Origin (center) of the plot
@@ -51,9 +55,9 @@ class Plot(object):
         The basis directions for the plot
     background : tuple or list of ndarray
         Color of the background defined by RGB
-    mask_components : tuple or list or ndarray
+    mask_components : Sequence of int
         Unique id numbers of the cells or materials to plot
-    mask_background : tuple or list or ndarray
+    mask_background : Sequence of int
         Color to apply to all cells/materials not listed in mask_components
         defined by RGB
     col_spec : dict
@@ -138,7 +142,7 @@ class Plot(object):
             AUTO_PLOT_ID += 1
 
         # Check that the ID is an integer and wasn't already used
-        elif not is_integer(plot_id):
+        elif not isinstance(plot_id, Integral):
             msg = 'Unable to set a non-integer Plot ID {0}'.format(plot_id)
             raise ValueError(msg)
 
@@ -153,7 +157,7 @@ class Plot(object):
     @name.setter
     def name(self, name):
 
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Plot ID={0} with a non-string ' \
                   'value {1}'.format(self._id, name)
             raise ValueError(msg)
@@ -163,9 +167,9 @@ class Plot(object):
 
     @width.setter
     def width(self, width):
-        if not isinstance(width, (tuple, list, np.ndarray)):
+        if not isinstance(width, Sequence):
             msg = 'Unable to create Plot ID={0} with width {1} which is not ' \
-                   'a Python tuple/list or NumPy array'.format(self._id, width)
+                  'a sequence'.format(self._id, width)
             raise ValueError(msg)
 
         elif len(width) != 2 and len(width) != 3:
@@ -174,7 +178,7 @@ class Plot(object):
             raise ValueError(msg)
 
         for dim in width:
-            if not is_integer(dim) and not is_float(dim):
+            if not isinstance(dim, Real):
                 msg = 'Unable to create Plot ID={0} with width {1} since ' \
                       'each element must be a floating point value or ' \
                       'integer'.format(self._id, width)
@@ -184,9 +188,9 @@ class Plot(object):
 
     @origin.setter
     def origin(self, origin):
-        if not isinstance(origin, (tuple, list, np.ndarray)):
+        if not isinstance(origin, Sequence):
             msg = 'Unable to create Plot ID={0} with origin {1} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(self._id, origin)
+                  'a sequnce'.format(self._id, origin)
             raise ValueError(msg)
 
         elif len(origin) != 3:
@@ -195,7 +199,7 @@ class Plot(object):
             raise ValueError(msg)
 
         for dim in origin:
-            if not is_integer(dim) and not is_float(dim):
+            if not isinstance(dim, Real):
                 msg = 'Unable to create Plot ID={0} with origin {1} since ' \
                       'each element must be a floating point value or ' \
                       'integer'.format(self._id, origin)
@@ -205,9 +209,9 @@ class Plot(object):
 
     @pixels.setter
     def pixels(self, pixels):
-        if not isinstance(pixels, (tuple, list, np.ndarray)):
+        if not isinstance(pixels, Sequence):
             msg = 'Unable to create Plot ID={0} with pixels {1} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(self._id, pixels)
+                  'not a sequence'.format(self._id, pixels)
             raise ValueError(msg)
 
         elif len(pixels) != 2 and len(pixels) != 3:
@@ -216,7 +220,7 @@ class Plot(object):
             raise ValueError(msg)
 
         for dim in pixels:
-            if not is_integer(dim):
+            if not isinstance(dim, Integral):
                 msg = 'Unable to create Plot ID={0} with pixel value {1} ' \
                       'which is not an integer'.format(self._id, dim)
                 raise ValueError(msg)
@@ -230,7 +234,7 @@ class Plot(object):
 
     @filename.setter
     def filename(self, filename):
-        if not is_string(filename):
+        if not isinstance(filename, basestring):
             msg = 'Unable to create Plot ID={0} with filename {1} which is ' \
                   'not a string'.format(self._id, filename)
             raise ValueError(msg)
@@ -239,7 +243,7 @@ class Plot(object):
 
     @color.setter
     def color(self, color):
-        if not is_string(color):
+        if not isinstance(color, basestring):
             msg = 'Unable to create Plot ID={0} with color {1} which is not ' \
                   'a string'.format(self._id, color)
             raise ValueError(msg)
@@ -253,7 +257,7 @@ class Plot(object):
 
     @type.setter
     def type(self, type):
-        if not is_string(type):
+        if not isinstance(type, basestring):
             msg = 'Unable to create Plot ID={0} with type {1} which is not ' \
                   'a string'.format(self._id, type)
             raise ValueError(msg)
@@ -267,7 +271,7 @@ class Plot(object):
 
     @basis.setter
     def basis(self, basis):
-        if not is_string(basis):
+        if not isinstance(basis, basestring):
             msg = 'Unable to create Plot ID={0} with basis {1} which is not ' \
                   'a string'.format(self._id, basis)
             raise ValueError(msg)
@@ -281,10 +285,9 @@ class Plot(object):
 
     @background.setter
     def background(self, background):
-        if not isinstance(background, (tuple, list, np.ndarray)):
+        if not isinstance(background, Sequence):
             msg = 'Unable to create Plot ID={0} with background {1} ' \
-                  'which is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, background)
+                  'which is not a sequence'.format(self._id, background)
             raise ValueError(msg)
 
         elif len(background) != 3:
@@ -294,7 +297,7 @@ class Plot(object):
             raise ValueError(msg)
 
         for rgb in background:
-            if not is_integer(rgb):
+            if not isinstance(rgb, Integral):
                 msg = 'Unable to create Plot ID={0} with background RGB ' \
                       'value {1} which is not an integer'.format(self._id, rgb)
                 raise ValueError(msg)
@@ -315,7 +318,7 @@ class Plot(object):
             raise ValueError(msg)
 
         for key in col_spec:
-            if not is_integer(key):
+            if not isinstance(key, Integral):
                 msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
                       'which is not an integer'.format(self._id, key)
                 raise ValueError(msg)
@@ -325,10 +328,9 @@ class Plot(object):
                       'which is less than 0'.format(self._id, key)
                 raise ValueError(msg)
 
-            elif not isinstance(col_spec[key], (tuple, list, np.ndarray)):
-                msg = 'Unable to create Plot ID={0} with col_spec RGB ' \
-                      'values {1} which is not a Python tuple/list or NumPy ' \
-                      'array'.format(self._id, col_spec[key])
+            elif not isinstance(col_spec[key], Sequence):
+                msg = 'Unable to create Plot ID={0} with col_spec RGB values' \
+                      ' {1} which is not a sequence'.format(self._id, col_spec[key])
                 raise ValueError(msg)
 
             elif len(col_spec[key]) != 3:
@@ -341,14 +343,13 @@ class Plot(object):
 
     @mask_componenets.setter
     def mask_components(self, mask_components):
-        if not isinstance(mask_components, (list, tuple, np.ndarray)):
+        if not isinstance(mask_components, Sequence):
             msg = 'Unable to create Plot ID={0} with mask components {1} ' \
-                  'which is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, mask_components)
+                  'which is not a sequence'.format(self._id, mask_components)
             raise ValueError(msg)
 
         for component in mask_components:
-            if not is_integer(component):
+            if not isinstance(component, Integral):
                 msg = 'Unable to create Plot ID={0} with mask component {1} ' \
                       'which is not an integer'.format(self._id, component)
                 raise ValueError(msg)
@@ -362,10 +363,9 @@ class Plot(object):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        if not isinstance(mask_background, (list, tuple, np.ndarray)):
+        if not isinstance(mask_background, Sequence):
             msg = 'Unable to create Plot ID={0} with mask background {1} ' \
-                  'which is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, mask_background)
+                  'which is not a sequence'.format(self._id, mask_background)
             raise ValueError(msg)
 
         elif len(mask_background) != 3 and len(mask_background) != 0:
@@ -376,7 +376,7 @@ class Plot(object):
 
         for rgb in mask_background:
 
-            if not is_integer(rgb):
+            if not isinstance(rgb, Integral):
                 msg = 'Unable to create Plot ID={0} with mask background RGB ' \
                       'value {1} which is not an integer'.format(self._id, rgb)
                 raise ValueError(msg)

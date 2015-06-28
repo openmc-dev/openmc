@@ -1,9 +1,12 @@
 from abc import ABCMeta
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
-from openmc.checkvalue import *
 from openmc.constants import BC_TYPES
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
@@ -91,7 +94,7 @@ class Surface(object):
             AUTO_SURFACE_ID += 1
 
         # Check that the ID is an integer and wasn't already used
-        elif not is_integer(surface_id):
+        elif not isinstance(surface_id, Integral):
             msg = 'Unable to set a non-integer Surface ' \
                   'ID {0}'.format(surface_id)
             raise ValueError(msg)
@@ -106,7 +109,7 @@ class Surface(object):
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
+        if not isinstance(name, basestring):
             msg = 'Unable to set name for Surface ID={0} with a non-string ' \
                   'value {1}'.format(self._id, name)
             raise ValueError(msg)
@@ -116,7 +119,7 @@ class Surface(object):
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
-        if not is_string(boundary_type):
+        if not isinstance(boundary_type, basestring):
             msg = 'Unable to set boundary type for Surface ID={0} with a ' \
                   'non-string value {1}'.format(self._id, boundary_type)
             raise ValueError(msg)
@@ -235,7 +238,7 @@ class Plane(Surface):
 
     @a.setter
     def a(self, A):
-        if not is_integer(A) and not is_float(A):
+        if not isinstance(A, Real):
             msg = 'Unable to set A coefficient for Plane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, A)
             raise ValueError(msg)
@@ -244,7 +247,7 @@ class Plane(Surface):
 
     @b.setter
     def b(self, B):
-        if not is_integer(B) and not is_float(B):
+        if not isinstance(B, Real):
             msg = 'Unable to set B coefficient for Plane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, B)
             raise ValueError(msg)
@@ -253,7 +256,7 @@ class Plane(Surface):
 
     @c.setter
     def c(self, C):
-        if not is_integer(C) and not is_float(C):
+        if not isinstance(C, Real):
             msg = 'Unable to set C coefficient for Plane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, C)
             raise ValueError(msg)
@@ -262,7 +265,7 @@ class Plane(Surface):
 
     @d.setter
     def d(self, D):
-        if not is_integer(D) and not is_float(D):
+        if not isinstance(D, Real):
             msg = 'Unable to set D coefficient for Plane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, D)
             raise ValueError(msg)
@@ -312,7 +315,7 @@ class XPlane(Plane):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
+        if not isinstance(x0, Real):
             msg = 'Unable to set x0 coefficient for XPlane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, x0)
             raise ValueError(msg)
@@ -362,7 +365,7 @@ class YPlane(Plane):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
+        if not isinstance(y0, Real):
             msg = 'Unable to set y0 coefficient for XPlane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, y0)
             raise ValueError(msg)
@@ -412,7 +415,7 @@ class ZPlane(Plane):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
+        if not isinstance(z0, Real):
             msg = 'Unable to set z0 coefficient for ZPlane ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, z0)
             raise ValueError(msg)
@@ -463,7 +466,7 @@ class Cylinder(Surface):
 
     @r.setter
     def r(self, R):
-        if not is_integer(R) and not is_float(R):
+        if not isinstance(R, Real):
             msg = 'Unable to set R coefficient for Cylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, R)
             raise ValueError(msg)
@@ -527,7 +530,7 @@ class XCylinder(Cylinder):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
+        if not isinstance(y0, Real):
             msg = 'Unable to set y0 coefficient for XCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, y0)
             raise ValueError(msg)
@@ -536,7 +539,7 @@ class XCylinder(Cylinder):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
+        if not isinstance(z0, Real):
             msg = 'Unable to set z0 coefficient for XCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, z0)
             raise ValueError(msg)
@@ -600,7 +603,7 @@ class YCylinder(Cylinder):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
+        if not isinstance(x0, Real):
             msg = 'Unable to set x0 coefficient for YCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, x0)
             raise ValueError(msg)
@@ -609,7 +612,7 @@ class YCylinder(Cylinder):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
+        if not isinstance(z0, Real):
             msg = 'Unable to set z0 coefficient for YCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, z0)
             raise ValueError(msg)
@@ -673,7 +676,7 @@ class ZCylinder(Cylinder):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
+        if not isinstance(x0, Real):
             msg = 'Unable to set x0 coefficient for ZCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, x0)
             raise ValueError(msg)
@@ -682,7 +685,7 @@ class ZCylinder(Cylinder):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
+        if not isinstance(y0, Real):
             msg = 'Unable to set y0 coefficient for ZCylinder ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, y0)
             raise ValueError(msg)
@@ -764,7 +767,7 @@ class Sphere(Surface):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
+        if not isinstance(x0, Real):
             msg = 'Unable to set x0 coefficient for Sphere ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, x0)
             raise ValueError(msg)
@@ -773,7 +776,7 @@ class Sphere(Surface):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
+        if not isinstance(y0, Real):
             msg = 'Unable to set y0 coefficient for Sphere ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, y0)
             raise ValueError(msg)
@@ -782,7 +785,7 @@ class Sphere(Surface):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
+        if not isinstance(z0, Real):
             msg = 'Unable to set z0 coefficient for Sphere ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, z0)
             raise ValueError(msg)
@@ -791,7 +794,7 @@ class Sphere(Surface):
 
     @r.setter
     def r(self, R):
-        if not is_integer(R) and not is_float(R):
+        if not isinstance(R, Real):
             msg = 'Unable to set R coefficient for Sphere ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, R)
             raise ValueError(msg)
@@ -874,7 +877,7 @@ class Cone(Surface):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
+        if not isinstance(x0, Real):
             msg = 'Unable to set x0 coefficient for Cone ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, x0)
             raise ValueError(msg)
@@ -883,7 +886,7 @@ class Cone(Surface):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
+        if not isinstance(y0, Real):
             msg = 'Unable to set y0 coefficient for Cone ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, y0)
             raise ValueError(msg)
@@ -892,7 +895,7 @@ class Cone(Surface):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
+        if not isinstance(z0, Real):
             msg = 'Unable to set z0 coefficient for Cone ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, z0)
             raise ValueError(msg)
@@ -901,7 +904,7 @@ class Cone(Surface):
 
     @r2.setter
     def r2(self, R2):
-        if not is_integer(R2) and not is_float(R2):
+        if not isinstance(R2, Real):
             msg = 'Unable to set R^2 coefficient for Cone ID={0} to a ' \
                   'non-integer value {1}'.format(self._id, R2)
             raise ValueError(msg)

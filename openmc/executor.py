@@ -27,6 +27,9 @@ class Executor(object):
             if line == '' and p.poll() != None:
                 break
 
+        # Return the returncode (integer, zero if no problems encountered)
+        return p.returncode
+
 
     @property
     def working_directory(self):
@@ -50,7 +53,7 @@ class Executor(object):
 
 
     def plot_geometry(self, output=True):
-        self._run_openmc('openmc -p', output)
+        return self._run_openmc('openmc -p', output)
 
 
     def run_simulation(self, particles=None, threads=None,
@@ -80,4 +83,4 @@ class Executor(object):
 
         command = pre_args + 'openmc ' + post_args
 
-        self._run_openmc(command, output)
+        return self._run_openmc(command, output)

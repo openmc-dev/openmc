@@ -15,13 +15,7 @@ class StatepointRestartTestHarness(TestHarness):
             self._write_results(results)
             self._compare_results()
 
-            self._run_openmc_restart1()
-            self._test_output_created()
-            results = self._get_results()
-            self._write_results(results)
-            self._compare_results()
-
-            self._run_openmc_restart2()
+            self._run_openmc_restart()
             self._test_output_created()
             results = self._get_results()
             self._write_results(results)
@@ -29,32 +23,20 @@ class StatepointRestartTestHarness(TestHarness):
         finally:
             self._cleanup()
 
-    def _run_openmc_restart1(self):
+    def _run_openmc_restart(self):
+        # Get the number of MPI processes.
+        if self._opts.mpi_exec:
+            mpi_procs = self._opts.mpi_np
+        else:
+            mpi_procs = 1
+
+        # Get the name of the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
 
-        if self._opts.mpi_exec != '':
-            proc = Popen([self._opts.mpi_exec, '-np', self._opts.mpi_np,
-                          self._opts.exe, '-r', statepoint[0], os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
-        else:
-            proc = Popen([self._opts.exe, '-r', statepoint[0], os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
-        print(proc.communicate()[0])
-        returncode = proc.returncode
-        assert returncode == 0, 'OpenMC did not exit successfully.'
-
-    def _run_openmc_restart2(self):
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-
-        if self._opts.mpi_exec != '':
-            proc = Popen([self._opts.mpi_exec, '-np', self._opts.mpi_np,
-                          self._opts.exe, '--restart', statepoint[0],
-                          os.getcwd()], stderr=STDOUT, stdout=PIPE)
-        else:
-            proc = Popen([self._opts.exe, '--restart', statepoint[0],
-                          os.getcwd()], stderr=STDOUT, stdout=PIPE)
-        print(proc.communicate()[0])
-        returncode = proc.returncode
+        # Run OpenMC
+        executor = Executor()
+        returncode = executor.run_simulation(mpi_procs=mpi_procs,
+                                             restart_file=statepoint)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
 

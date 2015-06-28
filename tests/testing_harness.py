@@ -12,6 +12,7 @@ import numpy as np
 
 sys.path.insert(0, '../..')
 from openmc.statepoint import StatePoint
+from openmc.executor import Executor
 import openmc.particle_restart as pr
 
 
@@ -37,24 +38,19 @@ class TestHarness(object):
 
     def _parse_args(self):
         parser = OptionParser()
-        parser.add_option('--mpi_exec', dest='mpi_exec', default='')
+        parser.add_option('--mpi_exec', dest='mpi_exec', action='store_true',
+                          default=False)
         parser.add_option('--mpi_np', dest='mpi_np', default='3')
-        parser.add_option('--exe', dest='exe')
         (self._opts, self._args) = parser.parse_args()
-        if self._opts.exe is None:
-            raise Exception('Must specify OpenMC executable from command line '
-                            'with --exe.')
 
     def _run_openmc(self):
-        if self._opts.mpi_exec != '':
-            proc = Popen([self._opts.mpi_exec, '-np', self._opts.mpi_np,
-                          self._opts.exe, os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
+        if self._opts.mpi_exec:
+            mpi_procs = self._opts.mpi_np
         else:
-            proc = Popen([self._opts.exe, os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
-        print(proc.communicate()[0])
-        returncode = proc.returncode
+            mpi_procs = 1
+
+        executor = Executor()
+        returncode = executor.run_simulation(mpi_procs=mpi_procs)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):
@@ -132,31 +128,21 @@ class HashedTestHarness(TestHarness):
 
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests.""" 
-    def execute_test(self):
-        """Run OpenMC with the appropriate arguments and check the outputs."""
-        self._parse_args()
-        try:
-            self._run_openmc()
-            self._test_output_created()
-        finally:
-            self._cleanup()
+    def __init__(self, plot_names):
+        self._plot_names = plot_names
+        self._opts = None
+        self._args = None
 
     def _run_openmc(self):
-        if self._opts.mpi_exec != '':
-            proc = Popen([self._opts.mpi_exec, '-np', self._opts.mpi_np,
-                          self._opts.exe, '-p', os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
-        else:
-            proc = Popen([self._opts.exe, '-p', os.getcwd()],
-                         stderr=STDOUT, stdout=PIPE)
-        print(proc.communicate()[0])
-        returncode = proc.returncode
+        executor = Executor()
+        returncode = executor.plot_geometry()
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):
         """Make sure *.ppm has been created."""
-        assert os.path.exists(os.path.join(os.getcwd(), '1_plot.ppm')), \
-             'Plot output file does not exist.'
+        for fname in self._plot_names:
+            assert os.path.exists(os.path.join(os.getcwd(), fname)), \
+                 'Plot output file does not exist.'
 
     def _cleanup(self):
         TestHarness._cleanup(self)
@@ -164,6 +150,24 @@ class PlotTestHarness(TestHarness):
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
+
+    def _get_results(self):
+        """Return a string hash of the plot files."""
+        # Find the plot files.
+        plot_files = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
+
+        # Read the plot files.
+        outstr = bytes()
+        for fname in plot_files:
+            with open(fname, 'rb') as fh:
+                outstr += fh.read()
+
+        # Hash the information and return.
+        sha512 = hashlib.sha512()
+        sha512.update(outstr)
+        outstr = sha512.hexdigest()
+
+        return outstr
 
 
 class CMFDTestHarness(TestHarness):

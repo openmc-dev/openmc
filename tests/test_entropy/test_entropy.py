@@ -7,7 +7,7 @@ from testing_harness import *
 
 class EntropyTestHarness(TestHarness):
     def _get_results(self):
-        """Digest info in the statepoint and create a simpler ASCII file."""
+        """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
@@ -23,9 +23,7 @@ class EntropyTestHarness(TestHarness):
         results = ['{0:12.6E}'.format(x) for x in sp._entropy]
         outstr += '\n'.join(results) + '\n'
 
-        # Write results to a file.
-        with open('results_test.dat','w') as fh:
-            fh.write(outstr)
+        return outstr
 
 
 if __name__ == '__main__':

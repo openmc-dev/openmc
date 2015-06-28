@@ -11,21 +11,23 @@ class StatepointRestartTestHarness(TestHarness):
         try:
             self._run_openmc()
             self._test_output_created()
-            self._get_results()
+            results = self._get_results()
+            self._write_results(results)
             self._compare_results()
 
             self._run_openmc_restart1()
             self._test_output_created()
-            self._get_results()
+            results = self._get_results()
+            self._write_results(results)
             self._compare_results()
 
             self._run_openmc_restart2()
             self._test_output_created()
-            self._get_results()
+            results = self._get_results()
+            self._write_results(results)
             self._compare_results()
         finally:
             self._cleanup()
-
 
     def _run_openmc_restart1(self):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
@@ -40,7 +42,6 @@ class StatepointRestartTestHarness(TestHarness):
         print(proc.communicate()[0])
         returncode = proc.returncode
         assert returncode == 0, 'OpenMC did not exit successfully.'
-
 
     def _run_openmc_restart2(self):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))

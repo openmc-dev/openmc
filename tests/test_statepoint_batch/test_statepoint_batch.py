@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python 
 import sys
 sys.path.insert(0, '..')
 from testing_harness import *
@@ -11,7 +10,6 @@ class StatepointTestHarness(TestHarness):
         self._tallies = False
         self._opts = None
         self._args = None
-
 
     def _test_output_created(self):
         """Make sure statepoint files have been created."""

@@ -11,7 +11,7 @@ cd $TEST_DIR
 
 export LD_LIBRARY_PATH=/opt/gcc/4.9.0/lib64:/opt/mpich/3.1.2-gnu/lib
 
-export SHUTXS=/home/walshjon/scratch/shutmc/src/build/bin/openmc
+export SHUTXS=/home/walshjon/scratch/shutmc/src/build/bin/shutmc
 
 cd $TEST_DIR/case-1
 $SHUTXS

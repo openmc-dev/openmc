@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran C)
+project(shutmc Fortran C)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -241,7 +241,7 @@ add_subdirectory(xml/fox)
 # Build OpenMC executable
 #===============================================================================
 
-set(program "openmc")
+set(program "shutmc")
 file(GLOB source *.F90 xml/openmc_fox.F90)
 
 # build static Faddeeva library
@@ -326,7 +326,7 @@ foreach(test ${TESTS})
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:shutmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
     else(${MPI_ENABLED})
@@ -334,7 +334,7 @@ foreach(test ${TESTS})
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:shutmc>)
 
     endif(${MPI_ENABLED})
 
@@ -347,7 +347,7 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test with plot flag
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> -p ${TEST_PATH})
 
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
@@ -388,12 +388,12 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> ${TEST_PATH})
 
       # Perform serial valgrind and coverage restart test
       add_test(NAME ${TEST_NAME}_restart
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> -r ${RESTART_FILE} ${TEST_PATH})
 
       # Set test dependency
       set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
@@ -405,7 +405,7 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> ${TEST_PATH})
 
     endif(${test} MATCHES "test_plot")
 

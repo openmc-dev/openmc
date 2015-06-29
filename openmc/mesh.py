@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 import copy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -41,10 +41,10 @@ class Mesh(object):
     lower_left : Seuqnce of float
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : Sequence of float
+    upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    width : Sequence of float
+    width : Iterable of float
         The width of mesh cells in each direction.
 
     """
@@ -163,25 +163,25 @@ class Mesh(object):
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('mesh dimension', dimension, Sequence, Integral)
+        check_type('mesh dimension', dimension, Iterable, Integral)
         check_length('mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('mesh lower_left', lower_left, Sequence, Real)
+        check_type('mesh lower_left', lower_left, Iterable, Real)
         check_length('mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        check_type('mesh upper_right', upper_right, Sequence, Real)
+        check_type('mesh upper_right', upper_right, Iterable, Real)
         check_length('mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @width.setter
     def width(self, width):
-        check_type('mesh width', width, Sequence, Real)
+        check_type('mesh width', width, Iterable, Real)
         check_length('mesh width', width, 2, 3)
         self._width = width
 

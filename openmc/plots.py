@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
@@ -40,9 +40,9 @@ class Plot(object):
         Unique identifier
     name : str
         Name of the plot
-    width : Sequence of float
+    width : Iterable of float
         Width of the plot in each basis direction
-    pixels : Sequence of int
+    pixels : Iterable of int
         Number of pixels to use in each basis direction
     origin : tuple or list of ndarray
         Origin (center) of the plot
@@ -56,9 +56,9 @@ class Plot(object):
         The basis directions for the plot
     background : tuple or list of ndarray
         Color of the background defined by RGB
-    mask_components : Sequence of int
+    mask_components : Iterable of int
         Unique id numbers of the cells or materials to plot
-    mask_background : Sequence of int
+    mask_background : Iterable of int
         Color to apply to all cells/materials not listed in mask_components
         defined by RGB
     col_spec : dict
@@ -156,19 +156,19 @@ class Plot(object):
 
     @width.setter
     def width(self, width):
-        check_type('plot width', width, Sequence, Real)
+        check_type('plot width', width, Iterable, Real)
         check_length('plot width', width, 2, 3)
         self._width = width
 
     @origin.setter
     def origin(self, origin):
-        check_type('plot origin', origin, Sequence, Real)
+        check_type('plot origin', origin, Iterable, Real)
         check_length('plot origin', origin, 3)
         self._origin = origin
 
     @pixels.setter
     def pixels(self, pixels):
-        check_type('plot pixels', pixels, Sequence, Integral)
+        check_type('plot pixels', pixels, Iterable, Integral)
         check_length('plot pixels', pixels, 2, 3)
         for dim in pixels:
             if dim < 0:
@@ -202,7 +202,7 @@ class Plot(object):
 
     @background.setter
     def background(self, background):
-        check_type('plot background', background, Sequence, Integral)
+        check_type('plot background', background, Iterable, Integral)
         check_length('plot background', background, 3)
         for rgb in background:
             if rgb < 0 or rgb > 255:
@@ -230,9 +230,9 @@ class Plot(object):
                       'which is less than 0'.format(self._id, key)
                 raise ValueError(msg)
 
-            elif not isinstance(col_spec[key], Sequence):
+            elif not isinstance(col_spec[key], Iterable):
                 msg = 'Unable to create Plot ID={0} with col_spec RGB values' \
-                      ' {1} which is not a sequence'.format(self._id, col_spec[key])
+                      ' {1} which is not iterable'.format(self._id, col_spec[key])
                 raise ValueError(msg)
 
             elif len(col_spec[key]) != 3:
@@ -245,7 +245,7 @@ class Plot(object):
 
     @mask_componenets.setter
     def mask_components(self, mask_components):
-        check_type('plot mask_components', mask_components, Sequence, Integral)
+        check_type('plot mask_components', mask_components, Iterable, Integral)
         for component in mask_components:
             if component < 0:
                 msg = 'Unable to create Plot ID={0} with mask component {1} ' \
@@ -255,7 +255,7 @@ class Plot(object):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        check_type('plot mask background', mask_background, Sequence, Integral)
+        check_type('plot mask background', mask_background, Iterable, Integral)
         check_length('plot mask background', mask_background, 3)
         for rgb in mask_background:
             if rgb < 0 or rgb > 255:

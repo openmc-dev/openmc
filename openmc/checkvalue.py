@@ -31,13 +31,13 @@ def check_type(name, value, expected_type, expected_iter_type=None):
 
 
 def check_length(name, value, length_min, length_max=None):
-    """Ensure that a sequence has length within a given range.
+    """Ensure that a sized object has length within a given range.
 
     Parameters
     ----------
     name : str
         Description of value being checked
-    value : Sequence
+    value : collections.Sized
         Object to check length of
     length_min : int
         Minimum length of object
@@ -70,7 +70,7 @@ def check_value(name, value, accepted_values):
     ----------
     name : str
         Description of value being checked
-    value : Sequence
+    value : collections.Iterable
         Object to check
     accepted_values : collections.Container
         Container of acceptable values

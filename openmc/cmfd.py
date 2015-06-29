@@ -10,7 +10,7 @@ References
 
 """
 
-from collections import Sequence
+from collections import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
@@ -30,26 +30,26 @@ class CMFDMesh(object):
 
     Attributes
     ----------
-    lower_left : Sequence of float
+    lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinates are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : Sequence of float
+    upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
-    dimension : Sequence of int
+    dimension : Iterable of int
         The number of mesh cells in each direction.
-    width : Sequence of float
+    width : Iterable of float
         The width of mesh cells in each direction.
-    energy : Sequence of float
+    energy : Iterable of float
         Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
         20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
         OpenMC automatically assumes a one energy group calculation over the
         entire energy range.
-    albedo : Sequence of float
+    albedo : Iterable of float
         Surface ratio of incoming to outgoing partial currents on global
         boundary conditions. They are listed in the following order: -x +x -y +y
         -z +z.
-    map : Sequence of int
+    map : Iterable of int
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``1`` is used for a
         non-accelerated region and a ``2`` is used for an accelerated region.
@@ -109,31 +109,31 @@ class CMFDMesh(object):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('CMFD mesh lower_left', lower_left, Sequence, Real)
+        check_type('CMFD mesh lower_left', lower_left, Iterable, Real)
         check_length('CMFD mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        check_type('CMFD mesh upper_right', upper_right, Sequence, Real)
+        check_type('CMFD mesh upper_right', upper_right, Iterable, Real)
         check_length('CMFD mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('CMFD mesh dimension', dimension, Sequence, Integral)
+        check_type('CMFD mesh dimension', dimension, Iterable, Integral)
         check_length('CMFD mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @width.setter
     def width(self, width):
-        check_type('CMFD mesh width', width, Sequence, Real)
+        check_type('CMFD mesh width', width, Iterable, Real)
         check_length('CMFD mesh width', width, 2, 3)
         self._width = width
 
     @energy.setter
     def energy(self, energy):
-        check_type('CMFD mesh energy', energy, Sequence, Real)
+        check_type('CMFD mesh energy', energy, Iterable, Real)
         for e in energy:
             if e < 0:
                 msg = 'Unable to set CMFD Mesh energy to {0} which is ' \
@@ -143,7 +143,7 @@ class CMFDMesh(object):
 
     @albedo.setter
     def albedo(self, albedo):
-        check_type('CMFD mesh albedo', albedo, Sequence, Real)
+        check_type('CMFD mesh albedo', albedo, Iterable, Real)
         check_length('CMFD mesh albedo', albedo, 6)
         for a in albedo:
             if a < 0 or a > 1:
@@ -154,7 +154,7 @@ class CMFDMesh(object):
 
     @map.setter
     def map(self, meshmap):
-        check_type('CMFD mesh map', meshmap, Sequence, Integral)
+        check_type('CMFD mesh map', meshmap, Iterable, Integral)
         for m in meshmap:
             if m != 1 and m != 2:
                 msg = 'Unable to set CMFD Mesh map to {0} which is ' \
@@ -221,7 +221,7 @@ class CMFDFile(object):
     feedback : bool
         Indicate or not the CMFD diffusion result is used to adjust the weight
         of fission source neutrons on the next OpenMC batch. Defaults to False.
-    gauss_seidel_tolerance : Sequence of float
+    gauss_seidel_tolerance : Iterable of float
         Two parameters specifying the absolute inner tolerance and the relative
         inner tolerance for Gauss-Seidel iterations when performing CMFD.
     ktol : float
@@ -369,7 +369,7 @@ class CMFDFile(object):
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
         check_type('Gauss-Seidel tolerance', gauss_seidel_tolerance,
-                   Sequence, Real)
+                   Iterable, Real)
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
@@ -415,7 +415,7 @@ class CMFDFile(object):
 
     @tally_reset.setter
     def tally_reset(self, tally_reset):
-        check_type('tally reset batches', tally_reset, Sequence, Integral)
+        check_type('tally reset batches', tally_reset, Iterable, Integral)
         self._tally_reset = tally_reset
 
     @write_matrices.setter

@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 import copy
 import os
 import pickle
@@ -387,12 +387,12 @@ class Tally(object):
 
     @sum.setter
     def sum(self, sum):
-        check_type('sum', sum, Sequence)
+        check_type('sum', sum, Iterable)
         self._sum = sum
 
     @sum_sq.setter
     def sum_sq(self, sum_sq):
-        check_type('sum_sq', sum_sq, Sequence)
+        check_type('sum_sq', sum_sq, Iterable)
         self._sum_sq = sum_sq
 
     def remove_score(self, score):

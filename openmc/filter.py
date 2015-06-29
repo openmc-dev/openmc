@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 import copy
 from numbers import Real, Integral
 
@@ -16,7 +16,7 @@ class Filter(object):
         The type of the tally filter. Acceptable values are "universe",
         "material", "cell", "cellborn", "surface", "mesh", "energy",
         "energyout", and "distribcell".
-    bins : int or Sequence of int or Sequence of float
+    bins : int or Iterable of int or Iterable of float
         The bins for the filter. This takes on different meaning for different
         filters.
 
@@ -24,7 +24,7 @@ class Filter(object):
     ----------
     type : str
         The type of the tally filter.
-    bins : int or Sequence of int or Sequence of float
+    bins : int or Iterable of int or Iterable of float
         The bins for the filter
 
     """
@@ -123,7 +123,7 @@ class Filter(object):
             raise ValueError(msg)
 
         # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not isinstance(bins, Sequence):
+        if not isinstance(bins, Iterable):
             bins = [bins]
 
         # If the bins are in a collection, convert it to a list

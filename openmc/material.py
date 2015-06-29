@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
@@ -541,9 +541,9 @@ class MaterialsFile(object):
 
         """
 
-        if not isinstance(materials, Sequence):
+        if not isinstance(materials, Iterable):
             msg = 'Unable to create OpenMC materials.xml file from {0} which ' \
-                  'is not a sequence'.format(materials)
+                  'is not iterable'.format(materials)
             raise ValueError(msg)
 
         for material in materials:

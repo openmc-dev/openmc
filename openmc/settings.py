@@ -1,4 +1,4 @@
-from collections import Sequence
+from collections import Iterable
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -43,11 +43,11 @@ class SettingsFile(object):
         Path to write output to
     verbosity : int
         Verbosity during simulation between 1 and 10
-    statepoint_batches : Sequence of int
+    statepoint_batches : Iterable of int
         List of batches at which to write statepoint files
     statepoint_interval : int
         Number of batches after which a new statepoint file should be written
-    sourcepoint_batches : Sequence of int
+    sourcepoint_batches : Iterable of int
         List of batches at which to write source files
     sourcepoint_interval : int
         Number of batches after which a new source file should be written
@@ -480,7 +480,7 @@ class SettingsFile(object):
             distribution samples locations from a "box" distribution but only
             locations in fissionable materials are accepted. A "point" spatial
             distribution has coordinates specified by a triplet.
-        params : Sequence of float
+        params : Iterable of float
             For a "box" or "fission" spatial distribution, ``params`` should be
             given as six real numbers, the first three of which specify the
             lower-left corner of a parallelepiped and the last three of which
@@ -495,7 +495,7 @@ class SettingsFile(object):
 
         check_type('source space type', stype, basestring)
         check_value('source space type', stype, ['box', 'fission', 'point'])
-        check_type('source space parameters', params, Sequence, Real)
+        check_type('source space parameters', params, Iterable, Real)
         if stype in ['box', 'fission'] and len(params) != 6:
             check_length('source space parameters for a '
                          'box/fission distribution', params, 6)
@@ -517,7 +517,7 @@ class SettingsFile(object):
             site is isotropic if the "isotropic" option is given. The angle of
             the particle emitted from a source site is the direction specified
             in ``params`` if the "monodirectional" option is given.
-        params : Sequence of float
+        params : Iterable of float
             For an "isotropic" angular distribution, ``params`` should not
             be specified.
 
@@ -530,7 +530,7 @@ class SettingsFile(object):
         check_type('source angle type', stype, basestring)
         check_value('source angle type', stype,
                     ['isotropic', 'monodirectional'])
-        check_type('source angle parameters', params, Sequence, Real)
+        check_type('source angle parameters', params, Iterable, Real)
         if stype == 'isotropic' and params is not None:
             msg = 'Unable to set source angle parameters since they are not ' \
                   'it is not supported for isotropic type sources'
@@ -554,7 +554,7 @@ class SettingsFile(object):
             whose energy is sampled from a Watt fission spectrum. The "maxwell"
             option produce source sites whose energy is sampled from a Maxwell
             fission spectrum.
-        params : Sequence of float
+        params : Iterable of float
             For a "monoenergetic" energy distribution, ``params`` should be
             given as the energy in MeV of the source sites.
 
@@ -571,7 +571,7 @@ class SettingsFile(object):
         check_type('source energy type', stype, basestring)
         check_value('source energy type', stype,
                     ['monoenergetic', 'watt', 'maxwell'])
-        check_type('source energy parameters', params, Sequence, Real)
+        check_type('source energy parameters', params, Iterable, Real)
         if stype in ['monoenergetic', 'maxwell']:
             check_length('source energy parameters for a monoenergetic '
                          'or Maxwell source', params, 1)
@@ -619,7 +619,7 @@ class SettingsFile(object):
 
     @statepoint_batches.setter
     def statepoint_batches(self, batches):
-        check_type('statepoint batches', batches, Sequence, Integral)
+        check_type('statepoint batches', batches, Iterable, Integral)
         for batch in batches:
             if batch <= 0:
                 msg = 'Unable to set statepoint batches with {0} which is ' \
@@ -634,7 +634,7 @@ class SettingsFile(object):
 
     @sourcepoint_batches.setter
     def sourcepoint_batches(self, batches):
-        check_type('sourcepoint batches', batches, Sequence, Integral)
+        check_type('sourcepoint batches', batches, Iterable, Integral)
         for batch in batches:
             if batch <= 0:
                 msg = 'Unable to set sourcepoint batches with {0} which is ' \
@@ -721,21 +721,21 @@ class SettingsFile(object):
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
-        check_type('entropy mesh dimension', dimension, Sequence, Integral)
+        check_type('entropy mesh dimension', dimension, Iterable, Integral)
         check_length('entropy mesh dimension', dimension, 3)
         self._entropy_dimension = dimension
 
     @entropy_lower_left.setter
     def entropy_lower_left(self, lower_left):
         check_type('entropy mesh lower left corner', lower_left,
-                   Sequence, Real)
+                   Iterable, Real)
         check_length('entropy mesh lower left corner', lower_left, 3)
         self._entropy_lower_left = lower_left
 
     @entropy_upper_right.setter
     def entropy_upper_right(self, upper_right):
         check_type('entropy mesh upper right corner', upper_right,
-                   Sequence, Real)
+                   Iterable, Real)
         check_length('entropy mesh upper right corner', upper_right, 3)
         self._entropy_upper_right = upper_right
 
@@ -778,7 +778,7 @@ class SettingsFile(object):
 
     @trace.setter
     def trace(self, trace):
-        check_type('trace', trace, Sequence, Integral)
+        check_type('trace', trace, Iterable, Integral)
         check_length('trace', trace, 3)
         if trace[0] < 1:
             msg = 'Unable to set the trace batch to {0} since it must be ' \
@@ -796,7 +796,7 @@ class SettingsFile(object):
 
     @track.setter
     def track(self, track):
-        check_type('track', track, Sequence, Integral)
+        check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = 'Unable to set the track to {0} since its length is ' \
                   'not a multiple of 3'.format(track)
@@ -818,7 +818,7 @@ class SettingsFile(object):
 
     @ufs_dimension.setter
     def ufs_dimension(self, dimension):
-        check_type('UFS mesh dimension', dimension, Sequence, Integral)
+        check_type('UFS mesh dimension', dimension, Iterable, Integral)
         check_length('UFS mesh dimension', dimension, 3)
         for dim in dimension:
             if dim < 1:
@@ -829,13 +829,13 @@ class SettingsFile(object):
 
     @ufs_lower_left.setter
     def ufs_lower_left(self, lower_left):
-        check_type('UFS mesh lower left corner', lower_left, Sequence, Real)
+        check_type('UFS mesh lower left corner', lower_left, Iterable, Real)
         check_length('UFS mesh lower left corner', lower_left, 3)
         self._ufs_lower_left = lower_left
 
     @ufs_upper_right.setter
     def ufs_upper_right(self, upper_right):
-        check_type('UFS mesh upper right corner', upper_right, Sequence, Real)
+        check_type('UFS mesh upper right corner', upper_right, Iterable, Real)
         check_length('UFS mesh upper right corner', upper_right, 3)
         self._ufs_upper_right = upper_right
 
@@ -845,7 +845,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh dimension', dimension, Sequence, Integral)
+        check_type('DD mesh dimension', dimension, Iterable, Integral)
         check_length('DD mesh dimension', dimension, 3)
 
         self._dd_mesh_dimension = dimension
@@ -856,7 +856,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh lower left corner', lower_left, Sequence, Real)
+        check_type('DD mesh lower left corner', lower_left, Iterable, Real)
         check_length('DD mesh lower left corner', lower_left, 3)
 
         self._dd_mesh_lower_left = lower_left
@@ -867,7 +867,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh upper right corner', upper_right, Sequence, Real)
+        check_type('DD mesh upper right corner', upper_right, Iterable, Real)
         check_length('DD mesh upper right corner', upper_right, 3)
 
         self._dd_mesh_upper_right = upper_right
@@ -878,7 +878,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD nodemap', nodemap, Sequence)
+        check_type('DD nodemap', nodemap, Iterable)
 
         nodemap = np.array(nodemap).flatten()
 

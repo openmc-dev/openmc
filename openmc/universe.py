@@ -1,5 +1,5 @@
 import abc
-from collections import OrderedDict, Sequence
+from collections import OrderedDict, Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
@@ -151,19 +151,19 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
-        check_type('cell rotation', rotation, Sequence, Real)
+        check_type('cell rotation', rotation, Iterable, Real)
         check_length('cell rotation', rotation, 3)
         self._rotation = rotation
 
     @translation.setter
     def translation(self, translation):
-        check_type('cell translation', translation, Sequence, Real)
+        check_type('cell translation', translation, Iterable, Real)
         check_length('cell translation', translation, 3)
         self._translation = translation
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('offsets', offsets, Sequence)
+        check_type('offsets', offsets, Iterable)
         self._offsets = offsets
 
     def add_surface(self, surface, halfspace):
@@ -477,9 +477,9 @@ class Universe(object):
 
         """
 
-        if not isinstance(cells, Sequence):
+        if not isinstance(cells, Iterable):
             msg = 'Unable to add Cells to Universe ID={0} since {1} is not ' \
-                  'a sequence'.format(self._id, cells)
+                  'iterable'.format(self._id, cells)
             raise ValueError(msg)
 
         for cell in cells:
@@ -696,7 +696,7 @@ class Lattice(object):
 
     @universes.setter
     def universes(self, universes):
-        check_type('lattice universes', universes, Sequence)
+        check_type('lattice universes', universes, Iterable)
         self._universes = np.asarray(universes, dtype=Universe)
 
     def get_unique_universes(self):
@@ -834,7 +834,7 @@ class RectLattice(Lattice):
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('lattice dimension', dimension, Sequence, Integral)
+        check_type('lattice dimension', dimension, Iterable, Integral)
         check_length('lattice dimension', dimension, 2, 3)
         for dim in dimension:
             if dim < 0:
@@ -845,18 +845,18 @@ class RectLattice(Lattice):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('lattice lower left corner', lower_left, Sequence, Real)
+        check_type('lattice lower left corner', lower_left, Iterable, Real)
         check_length('lattice lower left corner', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('offsets', offsets, Sequence)
+        check_type('offsets', offsets, Iterable)
         self._offsets = offsets
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        check_type('lattice pitch', pitch, Sequence, Real)
+        check_type('lattice pitch', pitch, Iterable, Real)
         check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
             if dim < 0:
@@ -1073,13 +1073,13 @@ class HexLattice(Lattice):
 
     @center.setter
     def center(self, center):
-        check_type('lattice center', center, Sequence, Real)
+        check_type('lattice center', center, Iterable, Real)
         check_length('lattice center', center, 2, 3)
         self._center = center
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        check_type('lattice pitch', pitch, Sequence, Real)
+        check_type('lattice pitch', pitch, Iterable, Real)
         check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
             if dim < 0:

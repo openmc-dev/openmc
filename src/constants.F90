@@ -27,7 +27,7 @@ module constants
   ! adjusted. Modifying constants in other sections may cause the code to fail.
 
   ! Monoatomic ideal-gas scattering treatment threshold
-  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
+  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0_8
 
   ! Significance level for confidence intervals
   real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
@@ -63,11 +63,11 @@ module constants
 
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON = 1.008664916,       & ! mass of a neutron in amu
-       MASS_PROTON  = 1.007276466812,    & ! mass of a proton in amu
-       AMU          = 1.660538921e-27,   & ! 1 amu in kg
-       N_AVOGADRO   = 0.602214129,       & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
+       MASS_NEUTRON = 1.008664916_8,     & ! mass of a neutron in amu
+       MASS_PROTON  = 1.007276466812_8,  & ! mass of a proton in amu
+       AMU          = 1.660538921e-27_8, & ! 1 amu in kg
+       N_AVOGADRO   = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
+       K_BOLTZMANN  = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
        INFINITY     = huge(0.0_8),       & ! positive infinity
        ZERO         = 0.0_8,             &
        ONE          = 1.0_8,             &
@@ -317,13 +317,13 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-  
+
   ! Tally trigger types and threshold
   integer, parameter :: &
        VARIANCE           = 1, &
        RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3 
-       
+       STANDARD_DEVIATION = 3
+
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &

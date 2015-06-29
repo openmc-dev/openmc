@@ -2,6 +2,8 @@ from collections import Iterable
 import copy
 from numbers import Real, Integral
 
+import numpy as np
+
 from openmc import Mesh
 from openmc.constants import *
 from openmc.checkvalue import check_type

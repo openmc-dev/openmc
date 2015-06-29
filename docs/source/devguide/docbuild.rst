@@ -18,9 +18,7 @@ from the git repository as such:
 
 .. code-block:: sh
 
-   git clone https://bitbucket.org/philexander/tikz.git
-   cd tikz
-   sudo python setup.py install
+   sudo pip install https://bitbucket.org/philexander/tikz/get/HEAD.tar.gz
 
 The Numfig_ package can be installed directly with pip:
 

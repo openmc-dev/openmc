@@ -40,7 +40,7 @@ class TestHarness(object):
         parser = OptionParser()
         parser.add_option('--mpi_exec', dest='mpi_exec', action='store_true',
                           default=False)
-        parser.add_option('--mpi_np', dest='mpi_np', default='3')
+        parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
         (self._opts, self._args) = parser.parse_args()
 
     def _run_openmc(self):

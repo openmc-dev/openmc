@@ -1,9 +1,44 @@
-#!/usr/bin/env python
-
 import struct
 
 
 class Particle(object):
+    """Information used to restart a specific particle that caused a simulation to
+    fail.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the particle restart file
+
+    Attributes
+    ----------
+    filetype : int
+        Integer indicating the file type
+    revision : int
+        Revision of the particle restart format
+    current_batch : int
+        The batch containing the particle
+    gen_per_batch : int
+        Number of generations per batch
+    current_gen : int
+        The generation containing the particle
+    n_particles : int
+        Number of particles per generation
+    run_mode : int
+        Type of simulation (criticality or fixed source)
+    id : long
+        Identifier of the particle
+    weight : float
+        Weight of the particle
+    energy : float
+        Energy of the particle in MeV
+    xyz : list of float
+        Position of the particle
+    uvw : list of float
+        Directional cosines of the particle
+
+    """
+
     def __init__(self, filename):
         if filename.endswith('.h5'):
             import h5py

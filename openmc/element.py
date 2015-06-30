@@ -69,11 +69,7 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, basestring):
-            msg = 'Unable to set name for Element with a non-string ' \
-                        'value {0}'.format(name)
-            raise ValueError(msg)
-
+        check_type('name', name, basestring)
         self._name = name
 
     def __repr__(self):

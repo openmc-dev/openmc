@@ -53,4 +53,4 @@ if __name__ == '__main__':
         shutil.copy('results_true.dat', 'results_test.dat')
         exit()
     harness = TrackTestHarness('statepoint.2.*')
-    harness.execute_test()
+    harness.main()

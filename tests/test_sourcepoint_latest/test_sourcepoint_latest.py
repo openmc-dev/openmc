@@ -19,4 +19,4 @@ class SourcepointTestHarness(TestHarness):
 
 if __name__ == '__main__':
     harness = TestHarness('statepoint.10.*')
-    harness.execute_test()
+    harness.main()

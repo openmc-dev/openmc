@@ -7,7 +7,7 @@ from testing_harness import *
 
 class StatepointRestartTestHarness(TestHarness):
     def execute_test(self):
-        self._parse_args()
+        """Run OpenMC with the appropriate arguments and check the outputs."""
         try:
             self._run_openmc()
             self._test_output_created()
@@ -20,6 +20,17 @@ class StatepointRestartTestHarness(TestHarness):
             results = self._get_results()
             self._write_results(results)
             self._compare_results()
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Update the results_true using the current version of OpenMC."""
+        try:
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._overwrite_results()
         finally:
             self._cleanup()
 
@@ -42,4 +53,4 @@ class StatepointRestartTestHarness(TestHarness):
 
 if __name__ == '__main__':
     harness = StatepointRestartTestHarness('statepoint.07.*', True)
-    harness.execute_test()
+    harness.main()

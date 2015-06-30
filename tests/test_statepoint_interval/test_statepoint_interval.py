@@ -23,4 +23,4 @@ class StatepointTestHarness(TestHarness):
 
 if __name__ == '__main__':
     harness = StatepointTestHarness()
-    harness.execute_test()
+    harness.main()

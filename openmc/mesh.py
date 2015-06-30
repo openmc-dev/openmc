@@ -1,8 +1,14 @@
+from collections import Iterable
 import copy
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
-from openmc.checkvalue import *
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than)
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # "Static" variable for auto-generated and Mesh IDs
 AUTO_MESH_ID = 10000
@@ -31,15 +37,15 @@ class Mesh(object):
         Name of the mesh
     type : str
         Type of the mesh
-    dimension : tuple or list or ndarray
+    dimension : Iterable of int
         The number of mesh cells in each direction.
-    lower_left : tuple or list or ndarray
+    lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : tuple or list or ndarray
+    upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    width : tuple or list or ndarray
+    width : Iterable of float
         The width of mesh cells in each direction.
 
     """
@@ -135,128 +141,46 @@ class Mesh(object):
             global AUTO_MESH_ID
             self._id = AUTO_MESH_ID
             AUTO_MESH_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(mesh_id):
-            msg = 'Unable to set a non-integer Mesh ID {0}'.format(mesh_id)
-            raise ValueError(msg)
-
-        elif mesh_id < 0:
-            msg = 'Unable to set Mesh ID to {0} since it must be a ' \
-                  'non-negative integer'.format(mesh_id)
-            raise ValueError(msg)
-
         else:
+            check_type('mesh ID', mesh_id, Integral)
+            check_greater_than('mesh ID', mesh_id, 0)
             self._id = mesh_id
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
-            msg = 'Unable to set name for Mesh ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-        else:
-            self._name = name
+        check_type('name for mesh ID={0}'.format(self._id), name, basestring)
+        self._name = name
 
     @type.setter
-    def type(self, type):
-        if not is_string(type):
-            msg = 'Unable to set Mesh ID={0} for type {1} which is not ' \
-                  'a string'.format(self._id, type)
-            raise ValueError(msg)
-        elif type not in ['rectangular', 'hexagonal']:
-            msg = 'Unable to set Mesh ID={0} for type {1} which since ' \
-                  'only rectangular and hexagonal meshes are ' \
-                  'supported '.format(self._id, type)
-            raise ValueError(msg)
-
-        self._type = type
+    def type(self, meshtype):
+        check_type('type for mesh ID={0}'.format(self._id),
+                   meshtype, basestring)
+        check_value('type for mesh ID={0}'.format(self._id),
+                    meshtype, ['rectangular', 'hexagonal'])
+        self._type = meshtype
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Mesh ID={0} with dimension {1} which is ' \
-                  'not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, dimension)
-            raise ValueError(msg)
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set Mesh ID={0} with dimension {1} since it ' \
-                  'must include 2 or 3 dimensions'.format(self._id, dimension)
-            raise ValueError(msg)
-
-        for dim in dimension:
-            if not is_integer(dim):
-                msg = 'Unable to set Mesh ID={0} with dimension {1} which ' \
-                      'is a non-integer'.format(self._id, dim)
-                raise ValueError(msg)
-
+        check_type('mesh dimension', dimension, Iterable, Integral)
+        check_length('mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Mesh ID={0} with lower_left {1} which is ' \
-                  'not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set Mesh ID={0} with lower_left {1} since it ' \
-                   'must include 2 or 3 dimensions'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set Mesh ID={0} with lower_left {1} which ' \
-                      'is neither neither an integer nor a floating point ' \
-                      'value'.format(self._id, coord)
-                raise ValueError(msg)
-
+        check_type('mesh lower_left', lower_left, Iterable, Real)
+        check_length('mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Mesh ID={0} with upper_right {1} which ' \
-                  'is not a Python list, tuple or NumPy ' \
-                  'array'.format(self._id, upper_right)
-            raise ValueError(msg)
-
-        if len(upper_right) != 2 and len(upper_right) != 3:
-            msg = 'Unable to set Mesh ID={0} with upper_right {1} since it ' \
-                  'must include 2 or 3 dimensions'.format(self._id, upper_right)
-            raise ValueError(msg)
-
-        for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set Mesh ID={0} with upper_right {1} which ' \
-                      'is neither an integer nor a floating point ' \
-                      'value'.format(self._id, coord)
-                raise ValueError(msg)
-
+        check_type('mesh upper_right', upper_right, Iterable, Real)
+        check_length('mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @width.setter
     def width(self, width):
-        if width is not None:
-            if not isinstance(width, (tuple, list, np.ndarray)):
-                msg = 'Unable to set Mesh ID={0} with width {1} which ' \
-                      'is not a Python list, tuple or NumPy ' \
-                      'array'.format(self._id, width)
-                raise ValueError(msg)
-
-        if len(width) != 2 and len(width) != 3:
-            msg = 'Unable to set Mesh ID={0} with width {1} since it must ' \
-                  'include 2 or 3 dimensions'.format(self._id, width)
-            raise ValueError(msg)
-
-        for dim in width:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Mesh ID={0} with width {1} which is ' \
-                      'neither an integer nor a floating point ' \
-                      'value'.format(self._id, width)
-                raise ValueError(msg)
-
+        check_type('mesh width', width, Iterable, Real)
+        check_length('mesh width', width, 2, 3)
         self._width = width
 
     def __repr__(self):

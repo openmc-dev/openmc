@@ -81,3 +81,57 @@ def check_value(name, value, accepted_values):
         msg = 'Unable to set {0} to {1} since it is not in {2}'.format(
             name, value, accepted_values)
         raise ValueError(msg)
+
+def check_less_than(name, value, maximum, equality=False):
+    """Ensure that an object's value is less than a given value.
+
+    Parameters
+    ----------
+    name : str
+        Description of the value being checked
+    value : object
+        Object to check
+    maximum : object
+        Maximum value to check against
+    equality : bool, optional
+        Whether equality is allowed. Defaluts to False.
+
+    """
+
+    if equality:
+        if value > maximum:
+            msg = 'Unable to set {0} to {1} since it is greater than ' \
+                  '{2}'.format(name, value, maximum)
+            raise ValueError(msg)
+    else:
+        if value >= maximum:
+            msg = 'Unable to set {0} to {1} since it is greater than ' \
+                  'or equal to {2}'.format(name, value, maximum)
+            raise ValueError(msg)
+
+def check_greater_than(name, value, minimum, equality=False):
+    """Ensure that an object's value is less than a given value.
+
+    Parameters
+    ----------
+    name : str
+        Description of the value being checked
+    value : object
+        Object to check
+    minimum : object
+        Minimum value to check against
+    equality : bool, optional
+        Whether equality is allowed. Defaluts to False.
+
+    """
+
+    if equality:
+        if value < minimum:
+            msg = 'Unable to set {0} to {1} since it is less than ' \
+                  '{2}'.format(name, value, minimum)
+            raise ValueError(msg)
+    else:
+        if value <= minimum:
+            msg = 'Unable to set {0} to {1} since it is less than ' \
+                  'or equal to {2}'.format(name, value, minimum)
+            raise ValueError(msg)

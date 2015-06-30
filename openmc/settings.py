@@ -7,7 +7,8 @@ import sys
 import numpy as np
 
 from openmc.clean_xml import *
-from openmc.checkvalue import check_type, check_length, check_value
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than, check_less_than)
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -401,37 +402,25 @@ class SettingsFile(object):
     @batches.setter
     def batches(self, batches):
         check_type('batches', batches, Integral)
-        if batches <= 0:
-            msg = 'Unable to set batches to a negative ' \
-                  'value {0}'.format(batches)
-            raise ValueError(msg)
+        check_greater_than('batches', batches, 0)
         self._batches = batches
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch):
-        check_type('generation per patch', generations_per_batch, Integral)
-        if generations_per_batch <= 0:
-            msg = 'Unable to set generations per batch to a negative ' \
-                  'value {0}'.format(generations_per_batch)
-            raise ValueError(msg)
+        check_type('generations per patch', generations_per_batch, Integral)
+        check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
     def inactive(self, inactive):
         check_type('inactive batches', inactive, Integral)
-        if inactive <= 0:
-            msg = 'Unable to set inactive batches to a negative ' \
-                  'value {0}'.format(inactive)
-            raise ValueError(msg)
+        check_greater_than('inactive batches', inactive, 0)
         self._inactive = inactive
 
     @particles.setter
     def particles(self, particles):
         check_type('particles', particles, Integral)
-        if particles <= 0:
-            msg = 'Unable to set particles to a negative ' \
-                  'value {0}'.format(particles)
-            raise ValueError(msg)
+        check_greater_than('particles', particles, 0)
         self._particles = particles
 
     @keff_trigger.setter
@@ -496,7 +485,7 @@ class SettingsFile(object):
         check_type('source space type', stype, basestring)
         check_value('source space type', stype, ['box', 'fission', 'point'])
         check_type('source space parameters', params, Iterable, Real)
-        if stype in ['box', 'fission'] and len(params) != 6:
+        if stype in ['box', 'fission']:
             check_length('source space parameters for a '
                          'box/fission distribution', params, 6)
         elif stype == 'point':
@@ -611,20 +600,15 @@ class SettingsFile(object):
     @verbosity.setter
     def verbosity(self, verbosity):
         check_type('verbosity', verbosity, Integral)
-        if verbosity < 1 or verbosity > 10:
-            msg = 'Unable to set verbosity to {0} which is not between ' \
-                  '1 and 10'.format(verbosity)
-            raise ValueError(msg)
+        check_greater_than('verbosity', verbosity, 1, True)
+        check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
 
     @statepoint_batches.setter
     def statepoint_batches(self, batches):
         check_type('statepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            if batch <= 0:
-                msg = 'Unable to set statepoint batches with {0} which is ' \
-                      'less than or equal to zero'.format(batch)
-                raise ValueError(msg)
+            check_greater_than('statepoint batch', batch, 0)
         self._statepoint_batches = batches
 
     @statepoint_interval.setter
@@ -636,10 +620,7 @@ class SettingsFile(object):
     def sourcepoint_batches(self, batches):
         check_type('sourcepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            if batch <= 0:
-                msg = 'Unable to set sourcepoint batches with {0} which is ' \
-                      'less than or equal to zero'.format(batch)
-                raise ValueError(msg)
+            check_greater_than('sourcepoint batch', batch, 0)
         self._sourcepoint_batches = batches
 
     @sourcepoint_interval.setter
@@ -691,9 +672,7 @@ class SettingsFile(object):
     @seed.setter
     def seed(self, seed):
         check_type('random number generator seed', seed, Integral)
-        if seed <= 0:
-            msg = 'Unable to set seed to non-positive integer {0}'.format(seed)
-            raise ValueError(msg)
+        check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
 
     @survival_biasing.setter
@@ -704,19 +683,13 @@ class SettingsFile(object):
     @weight.setter
     def weight(self, weight):
         check_type('weight cutoff', weight, Real)
-        if weight < 0.0:
-            msg = 'Unable to set weight cutoff to negative ' \
-                  'value {0}'.format(weight)
-            raise ValueError(msg)
+        check_greater_than('weight cutoff', weight, 0.0)
         self._weight = weight
 
     @weight_avg.setter
     def weight_avg(self, weight_avg):
         check_type('average survival weight', weight_avg, Real)
-        if weight_avg < 0.0:
-            msg = 'Unable to set weight avg. to negative ' \
-                  'value {0}'.format(weight_avg)
-            raise ValueError(msg)
+        check_greater_than('average survival weight', weight_avg, 0.0)
         self._weight_avg = weight_avg
 
     @entropy_dimension.setter
@@ -747,19 +720,13 @@ class SettingsFile(object):
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches):
         check_type('trigger maximum batches', trigger_max_batches, Integral)
-        if trigger_max_batches <= 0:
-            msg = 'Unable to set trigger max batches to a non-positive ' \
-                  'value {0}'.format(trigger_max_batches)
-            raise ValueError(msg)
+        check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval):
         check_type('trigger batch interval', trigger_batch_interval, Integral)
-        if trigger_batch_interval <= 0:
-            msg = 'Unable to set trigger batch interval to a non-positive ' \
-                  'value {0}'.format(trigger_batch_interval)
-            raise ValueError(msg)
+        check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
@@ -770,28 +737,16 @@ class SettingsFile(object):
     @threads.setter
     def threads(self, threads):
         check_type('number of threads', threads, Integral)
-        if threads <= 0:
-            msg = 'Unable to set the threads to a negative ' \
-                  'value {0}'.format(threads)
-            raise ValueError(msg)
+        check_greater_than('number of threads', threads, 0)
         self._threads = threads
 
     @trace.setter
     def trace(self, trace):
         check_type('trace', trace, Iterable, Integral)
         check_length('trace', trace, 3)
-        if trace[0] < 1:
-            msg = 'Unable to set the trace batch to {0} since it must be ' \
-                  'greater than or equal to 1'.format(trace[0])
-            raise ValueError(msg)
-        elif trace[1] < 1:
-            msg = 'Unable to set the trace generation to {0} since it ' \
-                  'must be greater than or equal to 1'.format(trace[1])
-            raise ValueError(msg)
-        elif trace[2] < 1:
-            msg = 'Unable to set the trace particle to {0} since it ' \
-                  'must be greater than or equal to 1'.format(trace[2])
-            raise ValueError(msg)
+        check_greater_than('trace batch', trace[0], 0)
+        check_greater_than('trace generation', trace[1], 0)
+        check_greater_than('trace particle', trace[2], 0)
         self._trace = trace
 
     @track.setter
@@ -802,18 +757,9 @@ class SettingsFile(object):
                   'not a multiple of 3'.format(track)
             raise ValueError(msg)
         for t in zip(track[::3], track[1::3], track[2::3]):
-            if t[0] < 1:
-                msg = 'Unable to set the track batch to {0} since it must be ' \
-                      'greater than or equal to 1'.format(t[0])
-                raise ValueError(msg)
-            elif t[1] < 1:
-                msg = 'Unable to set the track generation to {0} since it must ' \
-                      'be greater than or equal to 1'.format(t[1])
-                raise ValueError(msg)
-            elif t[2] < 1:
-                msg = 'Unable to set the track particle to {0} since it must ' \
-                      'be greater than or equal to 1'.format(t[2])
-                raise ValueError(msg)
+            check_greater_than('track batch', t[0], 0)
+            check_greater_than('track generation', t[0], 0)
+            check_greater_than('track particle', t[0], 0)
         self._track = track
 
     @ufs_dimension.setter
@@ -821,10 +767,7 @@ class SettingsFile(object):
         check_type('UFS mesh dimension', dimension, Iterable, Integral)
         check_length('UFS mesh dimension', dimension, 3)
         for dim in dimension:
-            if dim < 1:
-                msg = 'Unable to set UFS dimension to value {0} which is ' \
-                      'less than one'.format(dimension)
-                raise ValueError(msg)
+            check_greater_than('UFS mesh dimension', dim, 1, True)
         self._ufs_dimension = dimension
 
     @ufs_lower_left.setter

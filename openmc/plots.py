@@ -6,7 +6,8 @@ import sys
 import numpy as np
 
 from openmc.clean_xml import *
-from openmc.checkvalue import check_type, check_value, check_length
+from openmc.checkvalue import (check_type, check_value, check_length,
+                               check_greater_than, check_less_than)
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -143,10 +144,7 @@ class Plot(object):
             AUTO_PLOT_ID += 1
         else:
             check_type('plot ID', plot_id, Integral)
-            if plot_id < 0:
-                msg = 'Unable to set Plot ID to {0} since it must be a ' \
-                      'non-negative integer'.format(plot_id)
-                raise ValueError(msg)
+            check_greater_than('plot ID', plot_id, 0)
             self._id = plot_id
 
     @name.setter
@@ -171,10 +169,7 @@ class Plot(object):
         check_type('plot pixels', pixels, Iterable, Integral)
         check_length('plot pixels', pixels, 2, 3)
         for dim in pixels:
-            if dim < 0:
-                msg = 'Unable to create Plot ID={0} with pixel value {1} ' \
-                      'which is less than 0'.format(self._id, dim)
-                raise ValueError(msg)
+            check_greater_than('plot pixels', dim, 0)
         self._pixels = pixels
 
     @filename.setter
@@ -205,27 +200,16 @@ class Plot(object):
         check_type('plot background', background, Iterable, Integral)
         check_length('plot background', background, 3)
         for rgb in background:
-            if rgb < 0 or rgb > 255:
-                msg = 'Unable to create Plot ID={0} with background RGB value ' \
-                      '{1} which is not between 0 and 255'.format(self._id, rgb)
-                raise ValueError(msg)
+            check_greater_than('plot background',rgb, 0, True)
+            check_less_than('plot background', rgb, 256)
         self._background = background
 
     @col_spec.setter
     def col_spec(self, col_spec):
-        if not isinstance(col_spec, dict):
-            msg = 'Unable to create Plot ID={0} with col_spec parameter {1} ' \
-                  'which is not a Python dictionary of IDs to ' \
-                  'pixels'.format(self._id, col_spec)
-            raise ValueError(msg)
+        check_type('plot col_spec parameter', col_spec, dict, Integral)
 
         for key in col_spec:
-            if not isinstance(key, Integral):
-                msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
-                      'which is not an integer'.format(self._id, key)
-                raise ValueError(msg)
-
-            elif key < 0:
+            if key < 0:
                 msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
                       'which is less than 0'.format(self._id, key)
                 raise ValueError(msg)
@@ -247,10 +231,7 @@ class Plot(object):
     def mask_components(self, mask_components):
         check_type('plot mask_components', mask_components, Iterable, Integral)
         for component in mask_components:
-            if component < 0:
-                msg = 'Unable to create Plot ID={0} with mask component {1} ' \
-                      'which is less than 0'.format(self._id, component)
-                raise ValueError(msg)
+            check_greater_than('plot mask_components', component, 0, True)
         self._mask_components = mask_components
 
     @mask_background.setter
@@ -258,11 +239,8 @@ class Plot(object):
         check_type('plot mask background', mask_background, Iterable, Integral)
         check_length('plot mask background', mask_background, 3)
         for rgb in mask_background:
-            if rgb < 0 or rgb > 255:
-                msg = 'Unable to create Plot ID={0} with mask bacground ' \
-                      'RGB value {1} which is not between 0 and ' \
-                      '255'.format(self._id, rgb)
-                raise ValueError(msg)
+            check_greater_than('plot mask background', rgb, 0, True)
+            check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
 
     def __repr__(self):

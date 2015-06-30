@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 import openmc
-from openmc.checkvalue import check_type, check_length
+from openmc.checkvalue import check_type, check_length, check_greater_than
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -112,10 +112,7 @@ class Cell(object):
             AUTO_CELL_ID += 1
         else:
             check_type('cell ID', cell_id, Integral)
-            if cell_id < 0:
-                msg = 'Unable to set Cell ID to {0} since it must be a ' \
-                      'non-negative integer'.format(cell_id)
-                raise ValueError(msg)
+            check_greater_than('cell ID', cell_id, 0)
             self._id = cell_id
 
     @name.setter
@@ -436,10 +433,7 @@ class Universe(object):
             AUTO_UNIVERSE_ID += 1
         else:
             check_type('universe ID', universe_id, Integral)
-            if universe_id < 0:
-                msg = 'Unable to set Universe ID to {0} since it must be a ' \
-                      'non-negative integer'.format(universe_id)
-                raise ValueError(msg)
+            check_greater_than('universe ID', universe_id, 0, True)
             self._id = universe_id
 
     @name.setter
@@ -678,10 +672,7 @@ class Lattice(object):
             AUTO_UNIVERSE_ID += 1
         else:
             check_type('lattice ID', lattice_id, Integral)
-            if lattice_id < 0:
-                msg = 'Unable to set Lattice ID to {0} since it must be a ' \
-                      'non-negative integer'.format(lattice_id)
-                raise ValueError(msg)
+            check_greater_than('lattice ID', lattice_id, 0)
             self._id = lattice_id
 
     @name.setter
@@ -837,10 +828,7 @@ class RectLattice(Lattice):
         check_type('lattice dimension', dimension, Iterable, Integral)
         check_length('lattice dimension', dimension, 2, 3)
         for dim in dimension:
-            if dim < 0:
-                msg = 'Unable to set RectLattice ID={0} dimension to {1} ' \
-                      'since it is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
+            check_greater_than('lattice dimension', dim, 0)
         self._dimension = dimension
 
     @lower_left.setter
@@ -859,10 +847,7 @@ class RectLattice(Lattice):
         check_type('lattice pitch', pitch, Iterable, Real)
         check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if dim < 0:
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
-                      'is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
+            check_greater_than('lattice pitch', dim, 0.0)
         self._pitch = pitch
 
     def get_offset(self, path, filter_offset):
@@ -1055,20 +1040,14 @@ class HexLattice(Lattice):
 
     @num_rings.setter
     def num_rings(self, num_rings):
-        if not isinstance(num_rings, Integral) and num_rings < 1:
-            msg = 'Unable to set HexLattice ID={0} number of rings to {1} ' \
-                  'since it is not a positive integer'.format(self._id, num_rings)
-            raise ValueError(msg)
-
+        check_type('number of rings', num_rings, Integral)
+        check_greater_than('number of rings', num_rings, 0)
         self._num_rings = num_rings
 
     @num_axial.setter
     def num_axial(self, num_axial):
-        if not isinstance(num_axial, Integral) and num_axial < 1:
-            msg = 'Unable to set HexLattice ID={0} number of axial to {1} ' \
-                  'since it is not a positive integer'.format(self._id, num_axial)
-            raise ValueError(msg)
-
+        check_type('number of axial', num_axial, Integral)
+        check_greater_than('number of axial', num_axial, 0)
         self._num_axial = num_axial
 
     @center.setter
@@ -1082,10 +1061,7 @@ class HexLattice(Lattice):
         check_type('lattice pitch', pitch, Iterable, Real)
         check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if dim < 0:
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
-                      'is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
+            check_greater_than('lattice pitch', dim, 0)
         self._pitch = pitch
 
     @Lattice.universes.setter

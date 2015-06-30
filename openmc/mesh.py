@@ -4,7 +4,8 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from openmc.checkvalue import check_type, check_length, check_value
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than)
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -36,9 +37,9 @@ class Mesh(object):
         Name of the mesh
     type : str
         Type of the mesh
-    dimension : Sequnce of int
+    dimension : Iterable of int
         The number of mesh cells in each direction.
-    lower_left : Seuqnce of float
+    lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
@@ -142,10 +143,7 @@ class Mesh(object):
             AUTO_MESH_ID += 1
         else:
             check_type('mesh ID', mesh_id, Integral)
-            if mesh_id < 0:
-                msg = 'Unable to set Mesh ID to {0} since it must be a ' \
-                      'non-negative integer'.format(mesh_id)
-                raise ValueError(msg)
+            check_greater_than('mesh ID', mesh_id, 0)
             self._id = mesh_id
 
     @name.setter

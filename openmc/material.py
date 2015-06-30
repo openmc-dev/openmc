@@ -8,7 +8,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 import openmc
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
 
 
@@ -125,10 +125,7 @@ class Material(object):
                 msg = 'Unable to set Material ID to {0} since a Material with ' \
                       'this ID was already initialized'.format(material_id)
                 raise ValueError(msg)
-            elif material_id < 0:
-                msg = 'Unable to set Material ID to {0} since it must be a ' \
-                      'non-negative integer'.format(material_id)
-                raise ValueError(msg)
+            check_greater_than('material ID', material_id, 0)
 
             self._id = material_id
             MATERIAL_IDS.append(material_id)

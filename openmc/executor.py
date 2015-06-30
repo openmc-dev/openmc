@@ -1,8 +1,13 @@
 from __future__ import print_function
 import subprocess
+from numbers import Integral
 import os
+import sys
 
-from openmc.checkvalue import *
+from openmc.checkvalue import check_type
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class Executor(object):
@@ -39,12 +44,9 @@ class Executor(object):
 
     @working_directory.setter
     def working_directory(self, working_directory):
-        if not is_string(working_directory):
-            msg = 'Unable to set Executor\'s working directory to {0} ' \
-                  'since it is not a string'.format(working_directory)
-            raise ValueError(msg)
-
-        elif not os.path.isdir(working_directory):
+        check_type("Executor's working directory", working_directory,
+                   basestring)
+        if not os.path.isdir(working_directory):
             msg = 'Unable to set Executor\'s working directory to {0} ' \
                   'which does not exist'.format(working_directory)
             raise ValueError(msg)
@@ -83,22 +85,22 @@ class Executor(object):
         post_args = ' '
         pre_args = ''
 
-        if is_integer(particles) and particles > 0:
+        if isinstance(particles, Integral) and particles > 0:
             post_args += '-n {0} '.format(particles)
 
-        if is_integer(threads) and threads > 0:
+        if isinstance(threads, Integral) and threads > 0:
             post_args += '-s {0} '.format(threads)
 
         if geometry_debug:
             post_args += '-g '
 
-        if is_string(restart_file):
+        if isinstance(restart_file, basestring):
             post_args += '-r {0} '.format(restart_file)
 
         if tracks:
             post_args += '-t'
 
-        if is_integer(mpi_procs) and mpi_procs > 1:
+        if isinstance(mpi_procs, Integral) and mpi_procs > 1:
             pre_args += 'mpirun -n {0} '.format(mpi_procs)
 
         command = pre_args + 'openmc ' + post_args

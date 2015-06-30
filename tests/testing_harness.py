@@ -5,6 +5,7 @@ import glob
 import hashlib
 from optparse import OptionParser
 import os
+import shutil
 from subprocess import Popen, STDOUT, PIPE, call
 import sys
 
@@ -24,9 +25,16 @@ class TestHarness(object):
         self._opts = None
         self._args = None
 
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        self._parse_args()
+        if self._opts.update:
+            self.update_results()
+        else:
+            self.execute_test()
+
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
-        self._parse_args()
         try:
             self._run_openmc()
             self._test_output_created()
@@ -36,11 +44,24 @@ class TestHarness(object):
         finally:
             self._cleanup()
 
+    def update_results(self):
+        """Update the results_true using the current version of OpenMC."""
+        try:
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
+
     def _parse_args(self):
         parser = OptionParser()
         parser.add_option('--mpi_exec', dest='mpi_exec', action='store_true',
                           default=False)
         parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
+        parser.add_option('--update', dest='update', action='store_true',
+                          default=False)
         (self._opts, self._args) = parser.parse_args()
 
     def _run_openmc(self):
@@ -103,6 +124,10 @@ class TestHarness(object):
         """Write the results to an ASCII file."""
         with open('results_test.dat','w') as fh:
             fh.write(results_string)
+
+    def _overwrite_results(self):
+        """Overwrite the results_true with the results_test."""
+        shutil.copyfile('results_test.dat', 'results_true.dat')
 
     def _compare_results(self):
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')

@@ -33,4 +33,4 @@ class FixedSourceTestHarness(TestHarness):
 
 if __name__ == '__main__':
     harness = FixedSourceTestHarness('statepoint.10.*', True)
-    harness.execute_test()
+    harness.main()

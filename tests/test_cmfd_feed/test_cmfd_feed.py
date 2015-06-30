@@ -7,4 +7,4 @@ from testing_harness import CMFDTestHarness
 
 if __name__ == '__main__':
     harness = CMFDTestHarness('statepoint.20.*', True)
-    harness.execute_test()
+    harness.main()

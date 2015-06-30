@@ -7,4 +7,4 @@ from testing_harness import PlotTestHarness
 
 if __name__ == '__main__':
     harness = PlotTestHarness(('1_plot.ppm', ))
-    harness.execute_test()
+    harness.main()

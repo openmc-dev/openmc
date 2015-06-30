@@ -7,4 +7,4 @@ from testing_harness import TestHarness
 
 if __name__ == '__main__':
     harness = TestHarness('statepoint.10.*', True)
-    harness.execute_test()
+    harness.main()

@@ -3,7 +3,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.constants import BC_TYPES
 
 if sys.version_info[0] >= 3:
@@ -95,10 +95,7 @@ class Surface(object):
             AUTO_SURFACE_ID += 1
         else:
             check_type('surface ID', surface_id, Integral)
-            if surface_id < 0:
-                msg = 'Unable to set Surface ID to {0} since it must be a ' \
-                      'non-negative integer'.format(surface_id)
-                raise ValueError(msg)
+            check_greater_than('surface ID', surface_id, 0)
             self._id = surface_id
 
     @name.setter
@@ -547,7 +544,7 @@ class YCylinder(Cylinder):
 
     @z0.setter
     def z0(self, z0):
-        check_type('y0 coefficient', y0, Real)
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
 

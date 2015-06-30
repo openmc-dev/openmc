@@ -18,7 +18,8 @@ import sys
 import numpy as np
 
 from openmc.clean_xml import *
-from openmc.checkvalue import check_type, check_length, check_value
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than, check_less_than)
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -135,10 +136,7 @@ class CMFDMesh(object):
     def energy(self, energy):
         check_type('CMFD mesh energy', energy, Iterable, Real)
         for e in energy:
-            if e < 0:
-                msg = 'Unable to set CMFD Mesh energy to {0} which is ' \
-                      'is a negative integer'.format(e)
-                raise ValueError(msg)
+            check_greater_than('CMFD mesh energy', e, 0, True)
         self._energy = energy
 
     @albedo.setter
@@ -146,20 +144,15 @@ class CMFDMesh(object):
         check_type('CMFD mesh albedo', albedo, Iterable, Real)
         check_length('CMFD mesh albedo', albedo, 6)
         for a in albedo:
-            if a < 0 or a > 1:
-                msg = 'Unable to set CMFD Mesh albedo to {0} which is ' \
-                      'is not in [0,1]'.format(a)
-                raise ValueError(msg)
+            check_greater_than('CMFD mesh albedo', a, 0, True)
+            check_less_than('CMFD mesh albedo', a, 1, True)
         self._albedo = albedo
 
     @map.setter
     def map(self, meshmap):
         check_type('CMFD mesh map', meshmap, Iterable, Integral)
         for m in meshmap:
-            if m != 1 and m != 2:
-                msg = 'Unable to set CMFD Mesh map to {0} which is ' \
-                      'is not 1 or 2'.format(m)
-                raise ValueError(msg)
+            check_value('CMFD mesh map', m, [1, 2])
         self._map = meshmap
 
     def _get_xml_element(self):
@@ -338,10 +331,7 @@ class CMFDFile(object):
     @begin.setter
     def begin(self, begin):
         check_type('CMFD begin batch', begin, Integral)
-        if begin <= 0:
-            msg = 'Unable to set CMFD begin batch batch to a negative ' \
-                  'value {0}'.format(begin)
-            raise ValueError(msg)
+        check_greater_than('CMFD begin batch', begin, 0)
         self._begin = begin
 
     @dhat_reset.setter

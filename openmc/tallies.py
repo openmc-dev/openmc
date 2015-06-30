@@ -11,7 +11,7 @@ import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.summary import Summary
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
 
 
@@ -305,10 +305,7 @@ class Tally(object):
             AUTO_TALLY_ID += 1
         else:
             check_type('tally ID', tally_id, Integral)
-            if tally_id < 0:
-                msg = 'Unable to set Tally ID to {0} since it must be a ' \
-                      'non-negative integer'.format(tally_id)
-                raise ValueError(msg)
+            check_greater_than('tally ID', tally_id, 0)
             self._id = tally_id
 
     @name.setter
@@ -373,11 +370,7 @@ class Tally(object):
     @num_realizations.setter
     def num_realizations(self, num_realizations):
         check_type('number of realizations', num_realizations, Integral)
-        if num_realizations < 0:
-            msg = 'Unable to set the number of realizations to "{0}" for ' \
-                  'Tally ID={1} since it is a negative ' \
-                  'value'.format(num_realizations)
-            raise ValueError(msg)
+        check_greater_than('number of realizations', num_realizations, 0, True)
         self._num_realizations = num_realizations
 
     @with_summary.setter
@@ -1311,7 +1304,7 @@ class Tally(object):
 
         elif not isinstance(append, bool):
             msg = 'Unable to export the results for Tally ID={0} since the ' \
-                  'append parameters is not True/False'.format(self.id, append)
+                  'append parameter is not True/False'.format(self.id, append)
             raise ValueError(msg)
 
         # Make directory if it does not exist

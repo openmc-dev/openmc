@@ -160,7 +160,7 @@ class Cell(object):
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('offsets', offsets, Iterable)
+        check_type('cell offsets', offsets, Iterable)
         self._offsets = offsets
 
     def add_surface(self, surface, halfspace):
@@ -839,7 +839,7 @@ class RectLattice(Lattice):
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('offsets', offsets, Iterable)
+        check_type('lattice offsets', offsets, Iterable)
         self._offsets = offsets
 
     @Lattice.pitch.setter

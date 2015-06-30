@@ -346,7 +346,7 @@ class CMFDFile(object):
 
     @dhat_reset.setter
     def dhat_reset(self, dhat_reset):
-        check_type('Dhat reset', dhat_reset, bool)
+        check_type('CMFD Dhat reset', dhat_reset, bool)
         self._dhat_reset = dhat_reset
 
     @display.setter
@@ -358,7 +358,7 @@ class CMFDFile(object):
 
     @downscatter.setter
     def downscatter(self, downscatter):
-        check_type('downscatter', downscatter, bool)
+        check_type('CMFD downscatter', downscatter, bool)
         self._downscatter = downscatter
 
     @feedback.setter
@@ -368,14 +368,14 @@ class CMFDFile(object):
 
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        check_type('Gauss-Seidel tolerance', gauss_seidel_tolerance,
+        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
                    Iterable, Real)
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @ktol.setter
     def ktol(self, ktol):
-        check_type('eigenvalue tolerance', ktol, Real)
+        check_type('CMFD eigenvalue tolerance', ktol, Real)
         self._ktol = ktol
 
     @cmfd_mesh.setter
@@ -400,17 +400,17 @@ class CMFDFile(object):
 
     @shift.setter
     def shift(self, shift):
-        check_type('Wielandt shift', shift, Real)
+        check_type('CMFD Wielandt shift', shift, Real)
         self._shift = shift
 
     @spectral.setter
     def spectral(self, spectral):
-        check_type('spectral radius', spectral, Real)
+        check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
 
     @stol.setter
     def stol(self, stol):
-        check_type('fission source tolerance', stol, Real)
+        check_type('CMFD fission source tolerance', stol, Real)
         self._stol = stol
 
     @tally_reset.setter

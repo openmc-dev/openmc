@@ -195,7 +195,7 @@ class Filter(object):
 
     @mesh.setter
     def mesh(self, mesh):
-        check_type('mesh', mesh, Mesh)
+        check_type('filter mesh', mesh, Mesh)
 
         self._mesh = mesh
         self.type = 'mesh'
@@ -203,13 +203,12 @@ class Filter(object):
 
     @offset.setter
     def offset(self, offset):
-        check_type('offset', offset, Integral)
-
+        check_type('filter offset', offset, Integral)
         self._offset = offset
 
     @stride.setter
     def stride(self, stride):
-        check_type('stride', stride, Integral)
+        check_type('filter stride', stride, Integral)
         if stride < 0:
             msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
                   'negative value'.format(stride, self._type)

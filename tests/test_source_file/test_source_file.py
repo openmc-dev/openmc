@@ -77,12 +77,6 @@ class SourceFileTestHarness(TestHarness):
              'Source file is not a binary or hdf5 file.'
 
     def _run_openmc_restart(self):
-        # Get the number of MPI processes.
-        if self._opts.mpi_exec:
-            mpi_procs = int(self._opts.mpi_np)
-        else:
-            mpi_procs = 1
-
         # Get the name of the source file.
         source = glob.glob(os.path.join(os.getcwd(), 'source.10.*'))
 
@@ -91,10 +85,7 @@ class SourceFileTestHarness(TestHarness):
             fh.write(settings2.format(source[0].split('.')[-1]))
 
         # Run OpenMC.
-        executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=mpi_procs,
-                                             openmc_exec=self._opts.exe)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+        self._run_openmc()
 
     def _cleanup(self):
         TestHarness._cleanup(self)

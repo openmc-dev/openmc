@@ -254,7 +254,7 @@ foreach(test ${TESTS})
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec)
+        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
     else(${MPI_ENABLED})
 

@@ -58,24 +58,23 @@ class TestHarness(object):
     def _parse_args(self):
         parser = OptionParser()
         parser.add_option('--exe', dest='exe', default='openmc')
-        parser.add_option('--mpi_exec', dest='mpi_exec', action='store_true',
-                          default=False)
+        parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
         parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
         parser.add_option('--update', dest='update', action='store_true',
                           default=False)
         (self._opts, self._args) = parser.parse_args()
 
     def _run_openmc(self):
-        print('******')
-        print(self._opts.exe)
-        if self._opts.mpi_exec:
-            mpi_procs = self._opts.mpi_np
-        else:
-            mpi_procs = 1
-
         executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=mpi_procs,
-                                             openmc_exec=self._opts.exe)
+
+        if self._opts.mpi_exec is not None:
+            returncode = executor.run_simulation(mpi_procs=mpi_procs,
+                                                 openmc_exec=self._opts.exe,
+                                                 mpi_exec=self._opts.mpi_exec)
+
+        else:
+            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):

@@ -64,7 +64,7 @@ class Executor(object):
     def run_simulation(self, particles=None, threads=None,
                        geometry_debug=False, restart_file=None,
                        tracks=False, mpi_procs=1, output=True,
-                       openmc_exec='openmc'):
+                       openmc_exec='openmc', mpi_exec=None):
         """Run an OpenMC simulation.
 
         Parameters
@@ -107,7 +107,21 @@ class Executor(object):
             post_args += '-t'
 
         if isinstance(mpi_procs, Integral) and mpi_procs > 1:
-            pre_args += 'mpirun -n {0} '.format(mpi_procs)
+            np_present = True
+        else:
+            np_present = False
+
+        if mpi_exec is not None and isinstance(mpi_exec, basestring):
+            mpi_exec_present = True
+        else:
+            mpi_exec_present = False
+
+        if np_present or mpi_exec_present:
+            if mpi_exec_present:
+                pre_args += mpi_exec + ' '
+            else:
+                pre_args += 'mpirun '
+            pre_args += '-n {0} '.format(mpi_procs)
 
         command = pre_args + openmc_exec + ' ' + post_args
 

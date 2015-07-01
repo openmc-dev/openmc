@@ -509,4 +509,7 @@ for test in tests:
         print(' '*len(test)+tests[test].msg)
         return_code = 1
 
+with open(logfilename) as fh:
+    print(fh.read())
+
 sys.exit(return_code)

@@ -78,7 +78,7 @@ contains
 
     ! Write out initial source
     if (write_initial_source) then
-      call write_message('Writing out initial source guess...', 1)
+      call write_message('Writing out initial source...', 1)
 #ifdef HDF5
       filename = trim(path_output) // 'initial_source.h5'
 #else

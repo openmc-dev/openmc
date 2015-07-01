@@ -16,7 +16,7 @@ module eigenvalue
   use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
-  use source,       only: get_source_particle
+  use source,       only: get_source_particle, initialize_source
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
@@ -43,6 +43,8 @@ contains
 
     type(Particle) :: p
     integer(8)     :: i_work
+
+    if (.not. restart_run) call initialize_source()
 
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 

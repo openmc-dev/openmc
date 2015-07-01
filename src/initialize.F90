@@ -20,7 +20,6 @@ module initialize
                               write_message
   use output_interface
   use random_lcg,       only: initialize_prng
-  use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult, TallyFilter
@@ -141,13 +140,9 @@ contains
       ! Determine how much work each processor should do
       call calculate_work()
 
-      ! Allocate banks and create source particles -- for a fixed source
-      ! calculation, the external source distribution is sampled during the
-      ! run, not at initialization
-      if (run_mode == MODE_EIGENVALUE) then
-        call allocate_banks()
-        if (.not. restart_run) call initialize_source()
-      end if
+      ! Allocate source bank, and for eigenvalu simulations also allocate the
+      ! fission bank
+      call allocate_banks()
 
       ! If this is a restart run, load the state point data and binary source
       ! file
@@ -904,31 +899,33 @@ contains
       call fatal_error("Failed to allocate source bank.")
     end if
 
+    if (run_mode == MODE_EIGENVALUE) then
 #ifdef _OPENMP
-    ! If OpenMP is being used, each thread needs its own private fission
-    ! bank. Since the private fission banks need to be combined at the end of a
-    ! generation, there is also a 'master_fission_bank' that is used to collect
-    ! the sites from each thread.
+      ! If OpenMP is being used, each thread needs its own private fission
+      ! bank. Since the private fission banks need to be combined at the end of
+      ! a generation, there is also a 'master_fission_bank' that is used to
+      ! collect the sites from each thread.
 
-    n_threads = omp_get_max_threads()
+      n_threads = omp_get_max_threads()
 
 !$omp parallel
-    thread_id = omp_get_thread_num()
+      thread_id = omp_get_thread_num()
 
-    if (thread_id == 0) then
-      allocate(fission_bank(3*work))
-    else
-      allocate(fission_bank(3*work/n_threads))
-    end if
+      if (thread_id == 0) then
+        allocate(fission_bank(3*work))
+      else
+        allocate(fission_bank(3*work/n_threads))
+      end if
 !$omp end parallel
-    allocate(master_fission_bank(3*work), STAT=alloc_err)
+      allocate(master_fission_bank(3*work), STAT=alloc_err)
 #else
-    allocate(fission_bank(3*work), STAT=alloc_err)
+      allocate(fission_bank(3*work), STAT=alloc_err)
 #endif
 
-    ! Check for allocation errors
-    if (alloc_err /= 0) then
-      call fatal_error("Failed to allocate fission bank.")
+      ! Check for allocation errors
+      if (alloc_err /= 0) then
+        call fatal_error("Failed to allocate fission bank.")
+      end if
     end if
 
   end subroutine allocate_banks

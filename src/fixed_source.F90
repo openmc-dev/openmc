@@ -9,7 +9,7 @@ module fixed_source
   use output,          only: write_message, header
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
-  use source,          only: sample_external_source, copy_source_attributes
+  use source,          only: initialize_source, get_source_particle
   use state_point,     only: write_state_point
   use string,          only: to_str
   use tally,           only: synchronize_tallies, setup_active_usertallies
@@ -22,15 +22,12 @@ contains
 
   subroutine run_fixedsource()
 
-    integer(8)     :: i ! index over histories in single cycle
     type(Particle) :: p
+    integer(8)     :: i_work ! index over histories in single cycle
+
+    if (.not. restart_run) call initialize_source()
 
     if (master) call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
-
-    ! Allocate particle and dummy source site
-!$omp parallel
-    allocate(source_site)
-!$omp end parallel
 
     ! Turn timer and tallies on
     tallies_on = .true.
@@ -50,6 +47,7 @@ contains
       end if
 
       call initialize_batch()
+      overall_gen = current_batch
 
       ! Start timer for transport
       call time_transport % start()
@@ -57,21 +55,11 @@ contains
       ! =======================================================================
       ! LOOP OVER PARTICLES
 !$omp parallel do schedule(static) firstprivate(p)
-      PARTICLE_LOOP: do i = 1, work
-
-        ! Set unique particle ID
-        p % id = (current_batch - 1)*n_particles + work_index(rank) + i
-
-        ! set particle trace
-        trace = .false.
-        if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-             work_index(rank) + i == trace_particle) trace = .true.
-
-        ! set random number seed
-        call set_particle_seed(p % id)
+      PARTICLE_LOOP: do i_work = 1, work
+        current_work = i_work
 
         ! grab source particle from bank
-        call sample_source_particle(p)
+        call get_source_particle(p, current_work)
 
         ! transport particle
         call transport(p)
@@ -150,27 +138,5 @@ contains
     end if
 
   end subroutine finalize_batch
-
-!===============================================================================
-! SAMPLE_SOURCE_PARTICLE
-!===============================================================================
-
-  subroutine sample_source_particle(p)
-
-    type(Particle), intent(inout) :: p
-
-    ! Set particle
-    call p % initialize()
-
-    ! Sample the external source distribution
-    call sample_external_source(source_site)
-
-    ! Copy source attributes to the particle
-    call copy_source_attributes(p, source_site)
-
-    ! Determine whether to create track file
-    if (write_all_tracks) p % write_track = .true.
-
-  end subroutine sample_source_particle
 
 end module fixed_source

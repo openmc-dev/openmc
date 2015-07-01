@@ -1,9 +1,13 @@
 from abc import ABCMeta
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
-from openmc.checkvalue import *
+from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.constants import BC_TYPES
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
@@ -89,46 +93,21 @@ class Surface(object):
             global AUTO_SURFACE_ID
             self._id = AUTO_SURFACE_ID
             AUTO_SURFACE_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(surface_id):
-            msg = 'Unable to set a non-integer Surface ' \
-                  'ID {0}'.format(surface_id)
-            raise ValueError(msg)
-
-        elif surface_id < 0:
-            msg = 'Unable to set Surface ID to {0} since it must be a ' \
-                  'non-negative integer'.format(surface_id)
-            raise ValueError(msg)
-
         else:
+            check_type('surface ID', surface_id, Integral)
+            check_greater_than('surface ID', surface_id, 0)
             self._id = surface_id
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
-            msg = 'Unable to set name for Surface ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('surface name', name, basestring)
+        self._name = name
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
-        if not is_string(boundary_type):
-            msg = 'Unable to set boundary type for Surface ID={0} with a ' \
-                  'non-string value {1}'.format(self._id, boundary_type)
-            raise ValueError(msg)
-
-        elif boundary_type not in BC_TYPES.values():
-            msg = 'Unable to set boundary type for Surface ID={0} to ' \
-                  '{1} which is not trasmission, vacuum or ' \
-                  'reflective'.format(boundary_type)
-            raise ValueError(msg)
-
-        else:
-            self._boundary_type = boundary_type
+        check_type('boundary type', boundary_type, basestring)
+        check_value('boundary type', boundary_type, BC_TYPES.values())
+        self._boundary_type = boundary_type
 
     def __repr__(self):
         string = 'Surface\n'
@@ -235,38 +214,22 @@ class Plane(Surface):
 
     @a.setter
     def a(self, A):
-        if not is_integer(A) and not is_float(A):
-            msg = 'Unable to set A coefficient for Plane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, A)
-            raise ValueError(msg)
-
+        check_type('A coefficient', A, Real)
         self._coeffs['A'] = A
 
     @b.setter
     def b(self, B):
-        if not is_integer(B) and not is_float(B):
-            msg = 'Unable to set B coefficient for Plane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, B)
-            raise ValueError(msg)
-
+        check_type('B coefficient', B, Real)
         self._coeffs['B'] = B
 
     @c.setter
     def c(self, C):
-        if not is_integer(C) and not is_float(C):
-            msg = 'Unable to set C coefficient for Plane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, C)
-            raise ValueError(msg)
-
+        check_type('C coefficient', C, Real)
         self._coeffs['C'] = C
 
     @d.setter
     def d(self, D):
-        if not is_integer(D) and not is_float(D):
-            msg = 'Unable to set D coefficient for Plane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, D)
-            raise ValueError(msg)
-
+        check_type('D coefficient', D, Real)
         self._coeffs['D'] = D
 
 
@@ -312,11 +275,7 @@ class XPlane(Plane):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
-            msg = 'Unable to set x0 coefficient for XPlane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, x0)
-            raise ValueError(msg)
-
+        check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
 
 
@@ -362,11 +321,7 @@ class YPlane(Plane):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
-            msg = 'Unable to set y0 coefficient for XPlane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, y0)
-            raise ValueError(msg)
-
+        check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
 
 
@@ -412,11 +367,7 @@ class ZPlane(Plane):
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
-            msg = 'Unable to set z0 coefficient for ZPlane ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, z0)
-            raise ValueError(msg)
-
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
 
@@ -463,11 +414,7 @@ class Cylinder(Surface):
 
     @r.setter
     def r(self, R):
-        if not is_integer(R) and not is_float(R):
-            msg = 'Unable to set R coefficient for Cylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, R)
-            raise ValueError(msg)
-
+        check_type('R coefficient', R, Real)
         self._coeffs['R'] = R
 
 
@@ -527,20 +474,12 @@ class XCylinder(Cylinder):
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
-            msg = 'Unable to set y0 coefficient for XCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, y0)
-            raise ValueError(msg)
-
+        check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
-            msg = 'Unable to set z0 coefficient for XCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, z0)
-            raise ValueError(msg)
-
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
 
@@ -600,20 +539,12 @@ class YCylinder(Cylinder):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
-            msg = 'Unable to set x0 coefficient for YCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, x0)
-            raise ValueError(msg)
-
+        check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
-            msg = 'Unable to set z0 coefficient for YCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, z0)
-            raise ValueError(msg)
-
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
 
@@ -673,20 +604,12 @@ class ZCylinder(Cylinder):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
-            msg = 'Unable to set x0 coefficient for ZCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, x0)
-            raise ValueError(msg)
-
+        check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
-            msg = 'Unable to set y0 coefficient for ZCylinder ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, y0)
-            raise ValueError(msg)
-
+        check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
 
 
@@ -764,38 +687,22 @@ class Sphere(Surface):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
-            msg = 'Unable to set x0 coefficient for Sphere ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, x0)
-            raise ValueError(msg)
-
+        check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
-            msg = 'Unable to set y0 coefficient for Sphere ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, y0)
-            raise ValueError(msg)
-
+        check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
-            msg = 'Unable to set z0 coefficient for Sphere ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, z0)
-            raise ValueError(msg)
-
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
     @r.setter
     def r(self, R):
-        if not is_integer(R) and not is_float(R):
-            msg = 'Unable to set R coefficient for Sphere ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, R)
-            raise ValueError(msg)
-
+        check_type('R coefficient', R, Real)
         self._coeffs['R'] = R
 
 
@@ -874,38 +781,22 @@ class Cone(Surface):
 
     @x0.setter
     def x0(self, x0):
-        if not is_integer(x0) and not is_float(x0):
-            msg = 'Unable to set x0 coefficient for Cone ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, x0)
-            raise ValueError(msg)
-
+        check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
-        if not is_integer(y0) and not is_float(y0):
-            msg = 'Unable to set y0 coefficient for Cone ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, y0)
-            raise ValueError(msg)
-
+        check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
-        if not is_integer(z0) and not is_float(z0):
-            msg = 'Unable to set z0 coefficient for Cone ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, z0)
-            raise ValueError(msg)
-
+        check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
 
     @r2.setter
     def r2(self, R2):
-        if not is_integer(R2) and not is_float(R2):
-            msg = 'Unable to set R^2 coefficient for Cone ID={0} to a ' \
-                  'non-integer value {1}'.format(self._id, R2)
-            raise ValueError(msg)
-
+        check_type('R^2 coefficient', R2, Real)
         self._coeffs['R2'] = R2
 
 

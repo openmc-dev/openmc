@@ -1,16 +1,22 @@
+from collections import Iterable
 import copy
 import os
 import pickle
 import itertools
+from numbers import Integral
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.summary import Summary
+from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
-from openmc.checkvalue import *
 
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # "Static" variable for auto-generated Tally IDs
 AUTO_TALLY_ID = 10000
@@ -271,11 +277,7 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        if estimator not in ['analog', 'tracklength']:
-            msg = 'Unable to set the estimator for Tally ID={0} to {1} since ' \
-                  'it is not a valid estimator type'.format(self.id, estimator)
-            raise ValueError(msg)
-
+        check_value('estimator', estimator, ['analog', 'tracklength'])
         self._estimator = estimator
 
     def add_trigger(self, trigger):
@@ -301,29 +303,15 @@ class Tally(object):
             global AUTO_TALLY_ID
             self._id = AUTO_TALLY_ID
             AUTO_TALLY_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(tally_id):
-            msg = 'Unable to set a non-integer Tally ID {0}'.format(tally_id)
-            raise ValueError(msg)
-
-        elif tally_id < 0:
-            msg = 'Unable to set Tally ID to {0} since it must be a ' \
-                  'non-negative integer'.format(tally_id)
-            raise ValueError(msg)
-
         else:
+            check_type('tally ID', tally_id, Integral)
+            check_greater_than('tally ID', tally_id, 0)
             self._id = tally_id
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
-            msg = 'Unable to set name for Tally ID={0} with a non-string ' \
-                  'value "{1}"'.format(self.id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('tally name', name, basestring)
+        self._name = name
 
     def add_filter(self, filter):
         """Add a filter to the tally
@@ -334,8 +322,6 @@ class Tally(object):
             Filter to add
 
         """
-
-        global filters
 
         if not isinstance(filter, Filter):
             msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
@@ -366,7 +352,7 @@ class Tally(object):
 
         """
 
-        if not is_string(score):
+        if not isinstance(score, basestring):
             msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
@@ -383,45 +369,23 @@ class Tally(object):
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
-        if not is_integer(num_realizations):
-            msg = 'Unable to set the number of realizations to "{0}" for ' \
-                  'Tally ID={1} since it is not an ' \
-                  'integer'.format(num_realizations)
-            raise ValueError(msg)
-
-        elif num_realizations < 0:
-            msg = 'Unable to set the number of realizations to "{0}" for ' \
-                  'Tally ID={1} since it is a negative ' \
-                  'value'.format(num_realizations)
-            raise ValueError(msg)
-
+        check_type('number of realizations', num_realizations, Integral)
+        check_greater_than('number of realizations', num_realizations, 0, True)
         self._num_realizations = num_realizations
 
     @with_summary.setter
     def with_summary(self, with_summary):
-        if not isinstance(with_summary, bool):
-            msg = 'Unable to set with_summary to a non-boolean ' \
-                  'value "{0}"'.format(with_summary)
-            raise ValueError(msg)
-
+        check_type('with_summary', with_summary, bool)
         self._with_summary = with_summary
 
     @sum.setter
     def sum(self, sum):
-        if not isinstance(sum, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum, self.id)
-            raise ValueError(msg)
+        check_type('sum', sum, Iterable)
         self._sum = sum
 
     @sum_sq.setter
     def sum_sq(self, sum_sq):
-        if not isinstance(sum_sq, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum_sq, self.id)
-            raise ValueError(msg)
+        check_type('sum_sq', sum_sq, Iterable)
         self._sum_sq = sum_sq
 
     def remove_score(self, score):
@@ -1321,13 +1285,13 @@ class Tally(object):
                   'Tally.export_results(...)'.format(self.id)
             raise KeyError(msg)
 
-        if not is_string(filename):
+        if not isinstance(filename, basestring):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
-        elif not is_string(directory):
+        elif not isinstance(directory, basestring):
             msg = 'Unable to export the results for Tally ID={0} to ' \
                   'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)
@@ -1338,9 +1302,9 @@ class Tally(object):
                   '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
-        elif not isinstance(append, (bool, np.bool)):
+        elif not isinstance(append, bool):
             msg = 'Unable to export the results for Tally ID={0} since the ' \
-                  'append parameters is not True/False'.format(self.id, append)
+                  'append parameter is not True/False'.format(self.id, append)
             raise ValueError(msg)
 
         # Make directory if it does not exist

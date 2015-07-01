@@ -10,12 +10,19 @@ References
 
 """
 
+from collections import Iterable
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
 from openmc.clean_xml import *
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than, check_less_than)
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class CMFDMesh(object):
@@ -24,26 +31,26 @@ class CMFDMesh(object):
 
     Attributes
     ----------
-    lower_left : tuple or list or ndarray
+    lower_left : Iterable of float
         The lower-left corner of the structured mesh. If only two coordinates are
         given, it is assumed that the mesh is an x-y mesh.
-    upper_right : tuple or list or ndarray
+    upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
-    dimension : tuple or list or ndarray
+    dimension : Iterable of int
         The number of mesh cells in each direction.
-    width : tuple or list or ndarray
+    width : Iterable of float
         The width of mesh cells in each direction.
-    energy : tuple or list or ndarray
+    energy : Iterable of float
         Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
         20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
         OpenMC automatically assumes a one energy group calculation over the
         entire energy range.
-    albedo : tuple or list or ndarray
+    albedo : Iterable of float
         Surface ratio of incoming to outgoing partial currents on global
         boundary conditions. They are listed in the following order: -x +x -y +y
         -z +z.
-    map : tuple or list or ndarray
+    map : Iterable of int
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``1`` is used for a
         non-accelerated region and a ``2`` is used for an accelerated region.
@@ -103,144 +110,50 @@ class CMFDMesh(object):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set CMFD Mesh with lower_left {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(lower_left)
-            raise ValueError(msg)
-
-        for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set CMFD Mesh with lower_left {0} which is ' \
-                      'not an integer or a floating point value'.format(coord)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh lower_left', lower_left, Iterable, Real)
+        check_length('CMFD mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-
-        if not isinstance(upper_right, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh with upper_right {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(upper_right)
-            raise ValueError(msg)
-
-        if len(upper_right) != 2 and len(upper_right) != 3:
-            msg = 'Unable to set CMFD Mesh with upper_right {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(upper_right)
-            raise ValueError(msg)
-
-        for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set CMFD Mesh with upper_right {0} which ' \
-                      'is not an integer or floating point value'.format(coord)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh upper_right', upper_right, Iterable, Real)
+        check_length('CMFD mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh with dimension {0} which is ' \
-                  'not a Python list, tuple or NumPy array'.format(dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set CMFD Mesh with dimension {0} since it ' \
-                  'must include 2 or 3 dimensions'.format(dimension)
-            raise ValueError(msg)
-
-        for dim in dimension:
-            if not is_integer(dim):
-                msg = 'Unable to set CMFD Mesh with dimension {0} which ' \
-                      'is a non-integer'.format(dim)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh dimension', dimension, Iterable, Integral)
+        check_length('CMFD mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @width.setter
     def width(self, width):
-        if width is not None:
-            if not isinstance(width, (tuple, list, np.ndarray)):
-                msg = 'Unable to set CMFD Mesh with width {0} which ' \
-                      'is not a Python list, tuple or NumPy array'.format(width)
-                raise ValueError(msg)
-
-        if len(width) != 2 and len(width) != 3:
-            msg = 'Unable to set CMFD Mesh with width {0} since it must ' \
-                  'include 2 or 3 dimensions'.format(width)
-            raise ValueError(msg)
-
-        for dim in width:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set CMFD Mesh with width {0} which is ' \
-                      'not an integer or floating point value'.format(width)
-                raise ValueError(msg)
-
+        check_type('CMFD mesh width', width, Iterable, Real)
+        check_length('CMFD mesh width', width, 2, 3)
         self._width = width
 
     @energy.setter
     def energy(self, energy):
-        if not isinstance(energy, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(energy)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh energy', energy, Iterable, Real)
         for e in energy:
-            if not is_integer(e) and not is_float(e):
-                msg = 'Unable to set CMFD Mesh energy to {0} which is not ' \
-                      'an integer or floating point value'.format(e)
-                raise ValueError(msg)
-            elif e < 0:
-                msg = 'Unable to set CMFD Mesh energy to {0} which is ' \
-                      'is a negative integer'.format(e)
-                raise ValueError(msg)
-
+            check_greater_than('CMFD mesh energy', e, 0, True)
         self._energy = energy
 
     @albedo.setter
     def albedo(self, albedo):
-        if not isinstance(albedo, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(albedo)
-            raise ValueError(msg)
-
-        if not len(albedo) == 6:
-            msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                  'length 6 for +/-x,y,z'.format(albedo)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh albedo', albedo, Iterable, Real)
+        check_length('CMFD mesh albedo', albedo, 6)
         for a in albedo:
-            if not is_integer(a) and not is_float(a):
-                msg = 'Unable to set CMFD Mesh albedo to {0} which is not ' \
-                      'an integer or floating point value'.format(a)
-                raise ValueError(msg)
-            elif a < 0 or a > 1:
-                msg = 'Unable to set CMFD Mesh albedo to {0} which is ' \
-                      'is not in [0,1]'.format(a)
-                raise ValueError(msg)
-
+            check_greater_than('CMFD mesh albedo', a, 0, True)
+            check_less_than('CMFD mesh albedo', a, 1, True)
         self._albedo = albedo
 
     @map.setter
-    def map(self, map):
-
-        if not isinstance(map, (tuple, list, np.ndarray)):
-            msg = 'Unable to set CMFD Mesh map to {0} which is not ' \
-                  'a Python tuple/list or NumPy array'.format(map)
-            raise ValueError(msg)
-
-        for m in map:
-            if m != 1 and m != 2:
-                msg = 'Unable to set CMFD Mesh map to {0} which is ' \
-                      'is not 1 or 2'.format(m)
-                raise ValueError(msg)
-
-        self._map = map
+    def map(self, meshmap):
+        check_type('CMFD mesh map', meshmap, Iterable, Integral)
+        for m in meshmap:
+            check_value('CMFD mesh map', m, [1, 2])
+        self._map = meshmap
 
     def _get_xml_element(self):
         element = ET.Element("mesh")
@@ -301,7 +214,7 @@ class CMFDFile(object):
     feedback : bool
         Indicate or not the CMFD diffusion result is used to adjust the weight
         of fission source neutrons on the next OpenMC batch. Defaults to False.
-    gauss_seidel_tolerance : tuple or list or ndarray of float
+    gauss_seidel_tolerance : Iterable of float
         Two parameters specifying the absolute inner tolerance and the relative
         inner tolerance for Gauss-Seidel iterations when performing CMFD.
     ktol : float
@@ -417,175 +330,87 @@ class CMFDFile(object):
 
     @begin.setter
     def begin(self, begin):
-        if not is_integer(begin):
-            msg = 'Unable to set CMFD begin batch to a non-integer ' \
-                  'value {0}'.format(begin)
-            raise ValueError(msg)
-
-        if begin <= 0:
-            msg = 'Unable to set CMFD begin batch batch to a negative ' \
-                  'value {0}'.format(begin)
-            raise ValueError(msg)
-
+        check_type('CMFD begin batch', begin, Integral)
+        check_greater_than('CMFD begin batch', begin, 0)
         self._begin = begin
 
     @dhat_reset.setter
     def dhat_reset(self, dhat_reset):
-        if not isinstance(dhat_reset, bool):
-            msg = 'Unable to set Dhat reset to {0} which is ' \
-                  'a non-boolean value'.format(dhat_reset)
-            raise ValueError(msg)
-
+        check_type('CMFD Dhat reset', dhat_reset, bool)
         self._dhat_reset = dhat_reset
 
     @display.setter
     def display(self, display):
-        if not is_string(display):
-            msg = 'Unable to set CMFD display to a non-string ' \
-                  'value'.format(display)
-            raise ValueError(msg)
-
-        if display not in ['balance', 'dominance', 'entropy', 'source']:
-            msg = 'Unable to set CMFD display to {0} which is ' \
-                  'not an accepted value'.format(display)
-            raise ValueError(msg)
-
+        check_type('CMFD display', display, basestring)
+        check_value('CMFD display', display,
+                    ['balance', 'dominance', 'entropy', 'source'])
         self._display = display
 
     @downscatter.setter
     def downscatter(self, downscatter):
-        if not isinstance(downscatter, bool):
-            msg = 'Unable to set downscatter to {0} which is ' \
-                  'a non-boolean value'.format(downscatter)
-            raise ValueError(msg)
-
+        check_type('CMFD downscatter', downscatter, bool)
         self._downscatter = downscatter
 
     @feedback.setter
     def feedback(self, feedback):
-        if not isinstance(feedback, bool):
-            msg = 'Unable to set CMFD feedback to {0} which is ' \
-                  'a non-boolean value'.format(feedback)
-            raise ValueError(msg)
-
+        check_type('CMFD feedback', feedback, bool)
         self._feedback = feedback
 
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        if not isinstance(gauss_seidel_tolerance, (float, list, np.ndarray)):
-            msg = 'Unable to set Gauss-Seidel tolerance to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(
-                      gauss_seidel_tolerance)
-            raise ValueError(msg)
-
-        if len(gauss_seidel_tolerance) != 2:
-            msg = 'Unable to set Gauss-Seidel tolerance with {0} since ' \
-                  'it must be of length 2'.format(width)
-            raise ValueError(msg)
-
-        for t in gauss_seidel_tolerance:
-            if not is_integer(t) and not is_float(t):
-                msg = 'Unable to set Gauss-Seidel tolerance with {0} which ' \
-                      'is not an integer or floating point value'.format(t)
-                raise ValueError(msg)
-
+        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
+                   Iterable, Real)
+        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @ktol.setter
     def ktol(self, ktol):
-        if not is_integer(ktol) and not is_float(ktol):
-            msg = 'Unable to set the eigenvalue tolerance to {0} which is ' \
-                  'not an integer or floating point value'.format(ktol)
-            raise ValueError(msg)
-
+        check_type('CMFD eigenvalue tolerance', ktol, Real)
         self._ktol = ktol
 
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
-        if not isinstance(mesh, CMFDMesh):
-            msg = 'Unable to set CMFD mesh to {0} which is not a ' \
-                  'CMFDMesh object'.format(mesh)
-            raise ValueError(msg)
-
+        check_type('CMFD mesh', mesh, CMFDMesh)
         self._mesh = mesh
 
     @norm.setter
     def norm(self, norm):
-        if not is_integer(norm) and not is_float(norm):
-            msg = 'Unable to set the CMFD norm to {0} which is not ' \
-                  'an integer or floating point value'.format(norm)
-            raise ValueError(msg)
-
+        check_type('CMFD norm', norm, Real)
         self._norm = norm
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
-        if not isinstance(power_monitor, bool):
-            msg = 'Unable to set CMFD power monitor to {0} which is a ' \
-                  'non-boolean value'.format(power_monitor)
-            raise ValueError(msg)
-
+        check_type('CMFD power monitor', power_monitor, bool)
         self._power_monitor = power_monitor
 
     @run_adjoint.setter
     def run_adjoint(self, run_adjoint):
-        if not isinstance(run_adjoint, bool):
-            msg = 'Unable to set CMFD run adjoint to {0} which is a ' \
-                  'non-boolean value'.format(run_adjoint)
-            raise ValueError(msg)
-
+        check_type('CMFD run adjoint', run_adjoint, bool)
         self._run_adjoint = run_adjoint
 
     @shift.setter
     def shift(self, shift):
-        if not is_integer(shift) and not is_float(shift):
-            msg = 'Unable to set the Wielandt shift to {0} which is ' \
-                  'not an integer or floating point value'.format(shift)
-            raise ValueError(msg)
-
+        check_type('CMFD Wielandt shift', shift, Real)
         self._shift = shift
 
     @spectral.setter
     def spectral(self, spectral):
-        if not is_integer(spectral) and not is_float(spectral):
-            msg = 'Unable to set the spectral radius to {0} which is ' \
-                  'not an integer or floating point value'.format(spectral)
-            raise ValueError(msg)
-
+        check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
 
     @stol.setter
     def stol(self, stol):
-        if not is_integer(stol) and not is_float(stol):
-            msg = 'Unable to set the fission source tolerance to {0} which ' \
-                  'is not an integer or floating point value'.format(stol)
-            raise ValueError(msg)
-
+        check_type('CMFD fission source tolerance', stol, Real)
         self._stol = stol
 
     @tally_reset.setter
     def tally_reset(self, tally_reset):
-        if not isinstance(tally_reset, (tuple, list, np.ndarray)):
-            msg = 'Unable to set tally reset batches to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(
-                      tally_reset)
-            raise ValueError(msg)
-
-        for t in tally_reset:
-            if not is_integer(t):
-                msg = 'Unable to set tally reset batch to {0} which ' \
-                      'is not an integer'.format(t)
-                raise ValueError(msg)
-
+        check_type('tally reset batches', tally_reset, Iterable, Integral)
         self._tally_reset = tally_reset
 
     @write_matrices.setter
     def write_matrices(self, write_matrices):
-        if not isinstance(write_matrices, bool):
-            msg = 'Unable to set CMFD write matrices to {0} which is a ' \
-                  'non-boolean value'.format(write_matrices)
-            raise ValueError(msg)
-
+        check_type('CMFD write matrices', write_matrices, bool)
         self._write_matrices = write_matrices
 
     def _create_begin_subelement(self):

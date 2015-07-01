@@ -92,7 +92,8 @@ class SourceFileTestHarness(TestHarness):
 
         # Run OpenMC.
         executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=mpi_procs)
+        returncode = executor.run_simulation(mpi_procs=mpi_procs,
+                                             openmc_exec=self._opts.exe)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _cleanup(self):

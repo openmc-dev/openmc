@@ -56,14 +56,15 @@ class Executor(object):
 
         self._working_directory = working_directory
 
-    def plot_geometry(self, output=True):
+    def plot_geometry(self, output=True, openmc_exec='openmc'):
         """Run OpenMC in plotting mode"""
 
-        return self._run_openmc('openmc -p', output)
+        return self._run_openmc(openmc_exec + ' -p', output)
 
     def run_simulation(self, particles=None, threads=None,
                        geometry_debug=False, restart_file=None,
-                       tracks=False, mpi_procs=1, output=True):
+                       tracks=False, mpi_procs=1, output=True,
+                       openmc_exec='openmc'):
         """Run an OpenMC simulation.
 
         Parameters
@@ -82,6 +83,8 @@ class Executor(object):
             Number of MPI processes
         output : bool
             Capture OpenMC output from standard out
+        openmc_exec : str
+            Path to OpenMC executable
 
         """
 
@@ -106,6 +109,6 @@ class Executor(object):
         if isinstance(mpi_procs, Integral) and mpi_procs > 1:
             pre_args += 'mpirun -n {0} '.format(mpi_procs)
 
-        command = pre_args + 'openmc ' + post_args
+        command = pre_args + openmc_exec + ' ' + post_args
 
         return self._run_openmc(command, output)

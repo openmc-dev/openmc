@@ -47,7 +47,8 @@ class StatepointRestartTestHarness(TestHarness):
         # Run OpenMC
         executor = Executor()
         returncode = executor.run_simulation(mpi_procs=mpi_procs,
-                                             restart_file=statepoint)
+                                             restart_file=statepoint,
+                                             openmc_exec = self._opts.exe)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
 

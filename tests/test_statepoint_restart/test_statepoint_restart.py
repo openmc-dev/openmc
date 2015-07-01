@@ -35,20 +35,21 @@ class StatepointRestartTestHarness(TestHarness):
             self._cleanup()
 
     def _run_openmc_restart(self):
-        # Get the number of MPI processes.
-        if self._opts.mpi_exec:
-            mpi_procs = int(self._opts.mpi_np)
-        else:
-            mpi_procs = 1
-
         # Get the name of the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
 
         # Run OpenMC
         executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=mpi_procs,
-                                             restart_file=statepoint,
-                                             openmc_exec = self._opts.exe)
+
+        if self._opts.mpi_exec is not None:
+            returncode = executor.run_simulation(mpi_procs=mpi_procs,
+                                                 restart_file=statepoint,
+                                                 openmc_exec=self._opts.exe,
+                                                 mpi_exec=self._opts.mpi_exec)
+
+        else:
+            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
 

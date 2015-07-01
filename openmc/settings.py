@@ -414,7 +414,7 @@ class SettingsFile(object):
     @inactive.setter
     def inactive(self, inactive):
         check_type('inactive batches', inactive, Integral)
-        check_greater_than('inactive batches', inactive, 0)
+        check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
 
     @particles.setter

@@ -4,6 +4,7 @@ module unresolved
   use faddeeva,      only: quickw, faddeeva_w
   use fission,       only: nu_total
   use global
+  use list,          only: RealList
   use list_header,   only: ListInt, ListReal
   use output,        only: write_coords
   use random_lcg,    only: prn
@@ -415,21 +416,18 @@ module unresolved
     type(LocalSequence), allocatable :: local_realization(:,:)
 
     ! pointwise URR cross section data
-    real(8), allocatable :: E_tmp(:) ! Scratch energy grid values
-    real(8), allocatable :: n_tmp(:) ! scratch elastic xs
-    real(8), allocatable :: g_tmp(:) ! scratch capture xs
-    real(8), allocatable :: f_tmp(:) ! scratch fission xs
-    real(8), allocatable :: x_tmp(:) ! scratch competitive xs
-    real(8), allocatable :: t_tmp(:) ! scratch total xs
+    type(RealList) :: E_tmp ! scratch energy grid values
+    type(RealList) :: n_tmp ! scratch elastic xs
+    type(RealList) :: g_tmp ! scratch capture xs
+    type(RealList) :: f_tmp ! scratch fission xs
+    type(RealList) :: x_tmp ! scratch competitive xs
+    type(RealList) :: t_tmp ! scratch total xs
     real(8), allocatable :: urr_E(:) ! energy grid values
     real(8), allocatable :: urr_n(:) ! elastic xs
     real(8), allocatable :: urr_g(:) ! capture xs
     real(8), allocatable :: urr_f(:) ! fission xs
     real(8), allocatable :: urr_x(:) ! first level inelastic xs
     real(8), allocatable :: urr_t(:) ! total xs
-
-    ! pointwise URR cross section parameters
-    integer :: n_urr_gridpoints  = 100000000 ! max URR energy-xs gridpoints
 
   ! Type-Bound procedures
   contains
@@ -460,12 +458,6 @@ module unresolved
 
     ! deallocate local URR resonance realization
     procedure :: dealloc_local_realization => dealloc_local_realization
-
-    ! allocate temporary pointwise URR cross sections
-    procedure :: alloc_pointwise_tmp => alloc_pointwise_tmp
-
-    ! deallocate temporary pointwise URR cross sections
-    procedure :: dealloc_pointwise_tmp => dealloc_pointwise_tmp
 
     ! allocate pointwise URR cross sections
     procedure :: alloc_pointwise => alloc_pointwise
@@ -1126,6 +1118,7 @@ contains
     integer :: n_pts     ! xs energy grid point counter
     integer :: i_ES      ! index of current URR tabulated energy
     integer :: iavg      ! index in average cross section
+    integer :: iE        ! pointwise energy grid index
     real(8) :: T_K          ! isotope temperature [K]
     real(8) :: favg         ! average cross section interpolation factor
     real(8) :: face         ! cross section energy grid interpolation factor
@@ -1134,6 +1127,7 @@ contains
     real(8) :: avg_urr_g_xs ! averaged capture cross section
     real(8) :: avg_urr_x_xs ! averaged competitive inelastic cross section
     real(8) :: dE_trial     ! trial energy spacing for xs grid
+    real(8) :: xs_prev      ! cross section at last accepted energy point
     real(8) :: xs_trial     ! trial xs via interpolation between gridpoints
     real(8) :: rel_err      ! relative error between interpolated and exact xs
     logical :: enhance ! refine energy-xs grid?
@@ -1149,32 +1143,38 @@ contains
     ! set current energy
     tope % E = tope % EL(tope % i_urr)
 
-    ! allocate pointwise URR cross sections
-    call tope % alloc_pointwise_tmp()
+    ! point current linked list elements on first elements in the lists
+    tope % E_tmp % head => tope % E_tmp % first
+    tope % n_tmp % head => tope % n_tmp % first
+    tope % g_tmp % head => tope % g_tmp % first
+    tope % f_tmp % head => tope % f_tmp % first
+    tope % x_tmp % head => tope % x_tmp % first
+    tope % t_tmp % head => tope % t_tmp % first
 
     ! enforce xs continuity at RRR-URR energy crossover
     n_pts = 1
     i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
-    tope % E_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
-    tope % n_tmp(n_pts) = nuc % elastic(i_grid)
-    tope % g_tmp(n_pts) = nuc % absorption(i_grid)&
+    tope % E_tmp % head % val = 1.0e6_8 * nuc % energy(i_grid)
+    tope % n_tmp % head % val = nuc % elastic(i_grid)
+    tope % g_tmp % head % val = nuc % absorption(i_grid)&
          - nuc % fission(i_grid)
-    tope % f_tmp(n_pts) = nuc % fission(i_grid)
-    tope % t_tmp(n_pts) = nuc % total(i_grid)
-    tope % x_tmp(n_pts) = tope % t_tmp(n_pts)&
-         - tope % n_tmp(n_pts)&
-         - tope % g_tmp(n_pts)&
-         - tope % f_tmp(n_pts)
-    tope % t_tmp(n_pts) = tope % n_tmp(n_pts)&
-         + tope % g_tmp(n_pts)&
-         + tope % f_tmp(n_pts)&
-         + tope % x_tmp(n_pts)
+    tope % f_tmp % head % val = nuc % fission(i_grid)
+    tope % t_tmp % head % val = nuc % total(i_grid)
+    tope % x_tmp % head % val = tope % t_tmp % head % val&
+         - tope % n_tmp % head % val&
+         - tope % g_tmp % head % val&
+         - tope % f_tmp % head % val
+    tope % t_tmp % head % val = tope % n_tmp % head % val&
+         + tope % g_tmp % head % val&
+         + tope % f_tmp % head % val&
+         + tope % x_tmp % head % val
 
     tope % E = 1.0e6_8 * nuc % energy(i_grid + 1)
 
     i_ES = 1
     ENERGY_LOOP: do
 
+      xs_prev = tope % t_tmp % head % val
       dE_trial = max_dE_point_urr
       tope % E = tope % E + dE_trial
       tope % k_n = wavenumber(tope % AWR, abs(tope % E))
@@ -1189,6 +1189,18 @@ contains
         end if
       end if
       n_pts = n_pts + 1
+      allocate(tope % E_tmp % head % next)
+      allocate(tope % n_tmp % head % next)
+      allocate(tope % g_tmp % head % next)
+      allocate(tope % f_tmp % head % next)
+      allocate(tope % x_tmp % head % next)
+      allocate(tope % t_tmp % head % next)
+      tope % E_tmp % head => tope % E_tmp % head % next
+      tope % n_tmp % head => tope % n_tmp % head % next
+      tope % g_tmp % head => tope % g_tmp % head % next
+      tope % f_tmp % head => tope % f_tmp % head % next
+      tope % x_tmp % head => tope % x_tmp % head % next
+      tope % t_tmp % head => tope % t_tmp % head % next
       enhance  = .true.
 
       CONVERGE_XS: do while(enhance)
@@ -1345,14 +1357,14 @@ contains
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+        call interp_ace_background(iso, i_nuc, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
         ! multiply the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
@@ -1373,33 +1385,38 @@ contains
           if (avg_urr_x_xs > ZERO&
                .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
                .and. competitive)&
-               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+               tope % x_tmp % head % val&
+               = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
           ! elastic scattering xs
-          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+          tope % n_tmp % head % val&
+               = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
           ! set negative elastic xs and competitive xs to zero
-          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+          if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+          if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO)&
-               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+               tope % g_tmp % head % val&
+               = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
           ! fission xs
           if (avg_urr_f_xs > ZERO)&
-               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+               tope % f_tmp % head % val&
+               = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
           ! total xs
-          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+          tope % t_tmp % head % val&
+               = tope % n_tmp % head % val + tope % g_tmp % head % val&
+               + tope % f_tmp % head % val + tope % x_tmp % head % val
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
 
         end if
 
-        xs_trial = HALF * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
+        xs_trial = HALF * (tope % t_tmp % head % val + xs_prev)
         dE_trial = HALF * dE_trial
         tope % E  = tope % E - dE_trial
         tope % k_n = wavenumber(tope % AWR, abs(tope % E))
@@ -1467,27 +1484,26 @@ contains
           call fatal_error('URR energy grid extends above available pointwise&
             & data')
         else
-          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, &
-               tope % E)
+          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
         end if
 
         ! check for rare case where two energy points are the same
-        if (nuc % energy(i_grid) == nuc % energy(i_grid + 1)) &
+        if (nuc % energy(i_grid) == nuc % energy(i_grid + 1))&
              i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
-        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid),&
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+        call interp_ace_background(iso, i_nuc, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
         elseif (tope % LSSF == 1) then
           ! multipy the self-shielding factors by the infinite-dilute xs
@@ -1498,42 +1514,45 @@ contains
             iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
           end if
 
-          favg = interp_factor(tope % E, &
+          favg = interp_factor(tope % E,&
                tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
-          call interp_avg_urr_xs(favg, iso, iavg, &
+          call interp_avg_urr_xs(favg, iso, iavg,&
                avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
           if (avg_urr_x_xs > ZERO&
                .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
-               .and. competitive)&
-               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+               .and. competitive) tope % x_tmp % head % val&
+               = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
           ! elastic scattering xs
-          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+          tope % n_tmp % head % val&
+               = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
           ! set negative elastic xs and competitive xs to zero
-          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+          if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+          if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
           ! radiative capture xs
-          if (avg_urr_g_xs > ZERO)&
-               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+          if (avg_urr_g_xs > ZERO) tope % g_tmp % head % val&
+               = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
           ! fission xs
-          if (avg_urr_f_xs > ZERO)&
-               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+          if (avg_urr_f_xs > ZERO) tope % f_tmp % head % val&
+               = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
-          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+          tope % t_tmp % head % val&
+               = tope % n_tmp % head % val + tope % g_tmp % head % val&
+               + tope % f_tmp % head % val + tope % x_tmp % head % val
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
 
         end if
 
-        rel_err = abs(xs_trial - tope % t_tmp(n_pts)) / tope % t_tmp(n_pts)
+        rel_err = abs(xs_trial - tope % t_tmp % head % val)&
+             / tope % t_tmp % head % val
         if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr)&
              enhance = .false.
       
@@ -1542,7 +1561,7 @@ contains
       ! add energy point to grid
       tope % E = tope % E + dE_trial
       tope % k_n = wavenumber(tope % AWR, abs(tope % E))
-      tope % E_tmp(n_pts) = tope % E
+      tope % E_tmp % head % val = tope % E
 
       ! reset xs accumulators
       call flush_sigmas(t, n, g, f, x)
@@ -1618,14 +1637,14 @@ contains
            1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
       ! calculate evaluator-supplied backgrounds at the current energy
-      call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+      call interp_ace_background(iso, i_nuc, face, i_grid)
 
       ! interpret MF3 data according to ENDF-6 LSSF flag:
       ! MF3 contains background xs values, add to MF2 resonance contributions
       if (tope % LSSF == 0) then
 
         ! add resonance xs component to background
-        call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+        call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
       else if (tope % LSSF == 1) then
         ! multipy the self-shielding factors by the average (infinite-dilute)
@@ -1637,35 +1656,37 @@ contains
           iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
         end if
 
-        favg = interp_factor(tope % E, &
+        favg = interp_factor(tope % E,&
              tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
-        call interp_avg_urr_xs(favg, iso, iavg, &
+        call interp_avg_urr_xs(favg, iso, iavg,&
              avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
         ! competitive xs
         if (avg_urr_x_xs > ZERO&
              .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
-             .and. competitive)&
-             tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+             .and. competitive) tope % x_tmp % head % val&
+             = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
         ! elastic scattering xs
-        tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+        tope % n_tmp % head % val&
+             = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
         ! set negative elastic xs and competitive xs to zero
-        if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-        if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+        if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+        if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
         ! radiative capture xs
-        if (avg_urr_g_xs > ZERO)&
-             tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+        if (avg_urr_g_xs > ZERO) tope % g_tmp % head % val&
+             = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
         ! fission xs
-        if (avg_urr_f_xs > ZERO)&
-             tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+        if (avg_urr_f_xs > ZERO) tope % f_tmp % head % val&
+             = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
-        tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-             + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+        tope % t_tmp % head % val&
+             = tope % n_tmp % head % val + tope % g_tmp % head % val&
+             + tope % f_tmp % head % val + tope % x_tmp % head % val
 
       else
         call fatal_error('Self-shielding flag (LSSF) not allowed -&
@@ -1674,16 +1695,34 @@ contains
       end if
     end do ENERGY_LOOP
 
-    ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
-    ! the proper length
+    ! pass temporary, energy-xs linked lists to dynamic vectors
     call tope % alloc_pointwise(n_pts)
-    tope % urr_E = tope % E_tmp(1:n_pts)
-    tope % urr_n = tope % n_tmp(1:n_pts)
-    tope % urr_g = tope % g_tmp(1:n_pts)
-    tope % urr_f = tope % f_tmp(1:n_pts)
-    tope % urr_x = tope % x_tmp(1:n_pts)
-    tope % urr_t = tope % t_tmp(1:n_pts)
-    call tope % dealloc_pointwise_tmp()
+    tope % E_tmp % head => tope % E_tmp % first
+    tope % n_tmp % head => tope % n_tmp % first
+    tope % g_tmp % head => tope % g_tmp % first
+    tope % f_tmp % head => tope % f_tmp % first
+    tope % x_tmp % head => tope % x_tmp % first
+    tope % t_tmp % head => tope % t_tmp % first
+    do iE = 1, n_pts
+      tope % urr_E(iE) = tope % E_tmp % head % val
+      tope % urr_n(iE) = tope % n_tmp % head % val
+      tope % urr_g(iE) = tope % g_tmp % head % val
+      tope % urr_f(iE) = tope % f_tmp % head % val
+      tope % urr_x(iE) = tope % x_tmp % head % val
+      tope % urr_t(iE) = tope % t_tmp % head % val
+      tope % E_tmp % head => tope % E_tmp % head % next
+      tope % n_tmp % head => tope % n_tmp % head % next
+      tope % g_tmp % head => tope % g_tmp % head % next
+      tope % f_tmp % head => tope % f_tmp % head % next
+      tope % x_tmp % head => tope % x_tmp % head % next
+      tope % t_tmp % head => tope % t_tmp % head % next
+    end do
+    call tope % E_tmp % clear()
+    call tope % n_tmp % clear()
+    call tope % g_tmp % clear()
+    call tope % f_tmp % clear()
+    call tope % x_tmp % clear()
+    call tope % t_tmp % clear()
 
   end subroutine pointwise_urr
 
@@ -1883,7 +1922,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     else if (tope % LSSF == 1) then
       ! multipy the self-shielding factors by the infinite-dilute xs
@@ -2647,7 +2686,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
@@ -4609,13 +4648,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine interp_ace_background(iso, i_nuc, n_pts, f, i_grid)
+  subroutine interp_ace_background(iso, i_nuc, f, i_grid)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     integer :: iso
     integer :: i_nuc
-    integer :: n_pts
     integer :: i_grid
     real(8) :: f
 
@@ -4623,38 +4661,38 @@ contains
     nuc  => nuclides(i_nuc)
 
     ! elastic scattering xs
-    tope % n_tmp(n_pts) = interpolator(f, &
+    tope % n_tmp % head % val = interpolator(f, &
          nuc % elastic(i_grid), nuc % elastic(i_grid + 1), tope % INT)
 
     ! radiative capture xs
-    tope % g_tmp(n_pts) = interpolator(f, &
+    tope % g_tmp % head % val = interpolator(f, &
          nuc % absorption(i_grid) - nuc % fission(i_grid), &
          nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), tope % INT)
 
     ! fission xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % fission(i_grid) > ZERO) then
-      tope % f_tmp(n_pts) = interpolator(f, nuc % fission(i_grid), &
+      tope % f_tmp % head % val = interpolator(f, nuc % fission(i_grid), &
            nuc % fission(i_grid + 1), tope % INT)
     else
-      tope % f_tmp(n_pts) = ZERO
+      tope % f_tmp % head % val = ZERO
     end if
 
     ! competitive reaction xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
          - nuc % absorption(i_grid) - nuc % elastic(i_grid) > ZERO) then
-      tope % x_tmp(n_pts) = interpolator(f, &
+      tope % x_tmp % head % val = interpolator(f, &
              nuc % total(i_grid) - nuc % absorption(i_grid) &
            - nuc % elastic(i_grid), &
              nuc % total(i_grid + 1) - nuc % absorption(i_grid + 1) &
            - nuc % elastic(i_grid + 1), tope % INT)
     else
-      tope % x_tmp(n_pts) = ZERO
+      tope % x_tmp % head % val = ZERO
     end if
 
     ! total xs
-    tope % t_tmp(n_pts) = tope % n_tmp(n_pts) &
-         + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
-         + tope % x_tmp(n_pts)
+    tope % t_tmp % head % val&
+         = tope % n_tmp % head % val + tope % g_tmp % head % val&
+         + tope % f_tmp % head % val + tope % x_tmp % head % val
 
   end subroutine interp_ace_background
 
@@ -4665,7 +4703,7 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+  subroutine add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(CrossSection) :: t ! total xs object
@@ -4676,7 +4714,6 @@ contains
     integer :: iso    ! isotope index
     integer :: i_nuc  ! nuclide index
     integer :: i_grid ! background energy grid index
-    integer :: n_pts  ! URR pointwise xs energy grid index
     real(8) :: fmf3         ! File 3 interpolation factor
     real(8) :: capture_xs   ! radiative capture xs
     real(8) :: inelastic_xs ! first level inelastic scattering xs
@@ -4685,11 +4722,11 @@ contains
 
     if (tope % point_urr_xs) then
 
-      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) + n % xs
-      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) + g % xs
-      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) + f % xs
-      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) + x % xs
-      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) + t % xs
+      tope % n_tmp % head % val = tope % n_tmp % head % val + n % xs
+      tope % g_tmp % head % val = tope % g_tmp % head % val + g % xs
+      tope % f_tmp % head % val = tope % f_tmp % head % val + f % xs
+      tope % x_tmp % head % val = tope % x_tmp % head % val + x % xs
+      tope % t_tmp % head % val = tope % t_tmp % head % val + t % xs
 
     else
 
@@ -5220,46 +5257,6 @@ contains
     deallocate(this % local_realization)
 
   end subroutine dealloc_local_realization
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_POINTWISE_TMP allocates the temporary pointwise URR energy-cross section
-! grids
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_pointwise_tmp(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-
-    allocate(this % E_tmp(this % n_urr_gridpoints))
-    allocate(this % n_tmp(this % n_urr_gridpoints))
-    allocate(this % g_tmp(this % n_urr_gridpoints))
-    allocate(this % f_tmp(this % n_urr_gridpoints))
-    allocate(this % x_tmp(this % n_urr_gridpoints))
-    allocate(this % t_tmp(this % n_urr_gridpoints))
-
-  end subroutine alloc_pointwise_tmp
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_POINTWISE_TMP deallocates the temporary pointwise URR energy-cross
-! section grids
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_pointwise_tmp(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-
-    deallocate(this % E_tmp)
-    deallocate(this % n_tmp)
-    deallocate(this % g_tmp)
-    deallocate(this % f_tmp)
-    deallocate(this % x_tmp)
-    deallocate(this % t_tmp)
-
-  end subroutine dealloc_pointwise_tmp
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

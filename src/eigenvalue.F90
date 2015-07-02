@@ -96,7 +96,7 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-      
+
       if (satisfy_triggers) exit BATCH_LOOP
 
     end do BATCH_LOOP
@@ -220,12 +220,12 @@ contains
 
     ! Calculate combined estimate of k-effective
     if (master) call calculate_combined_keff()
-    
+
     ! Check_triggers
     if (master) call check_triggers()
 #ifdef MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         MPI_COMM_WORLD, mpi_err)              
+         MPI_COMM_WORLD, mpi_err)
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then
@@ -544,7 +544,7 @@ contains
         ! If the user did not specify how many mesh cells are to be used in
         ! each direction, we automatically determine an appropriate number of
         ! cells
-        n = ceiling((n_particles/20)**(1.0/3.0))
+        n = ceiling((n_particles/20)**(ONE/THREE))
 
         ! copy dimensions
         m % n_dimension = 3

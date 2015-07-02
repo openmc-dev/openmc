@@ -1141,8 +1141,8 @@ contains
           z = coord % xyz(3)
 
           ! determine oncoming edge
-          x0 = sign(lat % pitch(1) * 0.5_8, u)
-          y0 = sign(lat % pitch(2) * 0.5_8, v)
+          x0 = sign(lat % pitch(1) * HALF, u)
+          y0 = sign(lat % pitch(2) * HALF, v)
 
           ! left and right sides
           if (abs(x - x0) < FP_PRECISION) then
@@ -1179,7 +1179,7 @@ contains
           end if
 
           if (lat % is_3d) then
-            z0 = sign(lat % pitch(3) * 0.5_8, w)
+            z0 = sign(lat % pitch(3) * HALF, w)
 
             ! top and bottom sides
             if (abs(z - z0) < FP_PRECISION) then
@@ -1212,8 +1212,8 @@ contains
           end do
 
           ! Compute velocities along the hexagonal axes.
-          beta_dir = u*sqrt(3.0_8)/2.0_8 + v/2.0_8
-          gama_dir = u*sqrt(3.0_8)/2.0_8 - v/2.0_8
+          beta_dir = u*sqrt(THREE)/TWO + v/TWO
+          gama_dir = u*sqrt(THREE)/TWO - v/TWO
 
           ! Note that hexagonal lattice distance calculations are performed
           ! using the particle's coordinates relative to the neighbor lattice
@@ -1223,13 +1223,13 @@ contains
           ! of hex lattices.
 
           ! Upper right and lower left sides.
-          edge = -sign(lat % pitch(1)/2.0_8, beta_dir)  ! Oncoming edge
-          if (beta_dir > 0.0) then
+          edge = -sign(lat % pitch(1)/TWO, beta_dir)  ! Oncoming edge
+          if (beta_dir > ZERO) then
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, 0, 0])
           else
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 0, 0])
           end if
-          beta = xyz_t(1)*sqrt(3.0_8)/2.0_8 + xyz_t(2)/2.0_8
+          beta = xyz_t(1)*sqrt(THREE)/TWO + xyz_t(2)/TWO
           if (abs(beta - edge) < FP_PRECISION) then
             d = INFINITY
           else if (beta_dir == ZERO) then
@@ -1246,13 +1246,13 @@ contains
           end if
 
           ! Lower right and upper left sides.
-          edge = -sign(lat % pitch(1)/2.0_8, gama_dir)  ! Oncoming edge
-          if (gama_dir > 0.0) then
+          edge = -sign(lat % pitch(1)/TWO, gama_dir)  ! Oncoming edge
+          if (gama_dir > ZERO) then
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[1, -1, 0])
           else
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[-1, 1, 0])
           end if
-          gama = xyz_t(1)*sqrt(3.0_8)/2.0_8 - xyz_t(2)/2.0_8
+          gama = xyz_t(1)*sqrt(THREE)/TWO - xyz_t(2)/TWO
           if (abs(gama - edge) < FP_PRECISION) then
             d = INFINITY
           else if (gama_dir == ZERO) then
@@ -1271,8 +1271,8 @@ contains
           end if
 
           ! Upper and lower sides.
-          edge = -sign(lat % pitch(1)/2.0_8, v)  ! Oncoming edge
-          if (v > 0.0) then
+          edge = -sign(lat % pitch(1)/TWO, v)  ! Oncoming edge
+          if (v > ZERO) then
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, 1, 0])
           else
             xyz_t = lat % get_local_xyz(parent_coord % xyz, i_xyz+[0, -1, 0])
@@ -1296,7 +1296,7 @@ contains
 
           ! Top and bottom sides.
           if (lat % is_3d) then
-            z0 = sign(lat % pitch(2) * 0.5_8, w)
+            z0 = sign(lat % pitch(2) * HALF, w)
 
             if (abs(z - z0) < FP_PRECISION) then
               d = INFINITY
@@ -1317,10 +1317,10 @@ contains
           end if
         end select LAT_TYPE
 
-        if (d_lat < 0.0) then
+        if (d_lat < ZERO) then
           call handle_lost_particle(p, "Particle " // trim(to_str(p % id)) &
-               &//" had a negative distance to a lattice boundary. d = " &
-               &//trim(to_str(d_lat)))
+               //" had a negative distance to a lattice boundary. d = " &
+               //trim(to_str(d_lat)))
         end if
       end if LAT_COORD
 

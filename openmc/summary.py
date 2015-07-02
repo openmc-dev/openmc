@@ -2,12 +2,6 @@ import numpy as np
 
 import openmc
 
-try:
-    import h5py
-except ImportError:
-    msg = 'Unable to import h5py which is needed by openmc.summary'
-    raise ImportError(msg)
-
 
 class Summary(object):
     """Information summarizing the geometry, materials, and tallies used in a
@@ -16,6 +10,11 @@ class Summary(object):
     """
 
     def __init__(self, filename):
+        # A user may not have h5py, but they can still use the rest of the
+        # Python API so we'll only try to import h5py if the user actually inits
+        # a Summary object.
+        import h5py
+
         openmc.reset_auto_ids()
 
         if not filename.endswith(('.h5', '.hdf5')):

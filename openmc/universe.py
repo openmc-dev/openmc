@@ -1,10 +1,16 @@
 import abc
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
+from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import sys
+
+import numpy as np
 
 import openmc
-from openmc.checkvalue import *
+from openmc.checkvalue import check_type, check_length, check_greater_than
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
@@ -104,33 +110,19 @@ class Cell(object):
             global AUTO_CELL_ID
             self._id = AUTO_CELL_ID
             AUTO_CELL_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(cell_id):
-            msg = 'Unable to set a non-integer Cell ID {0}'.format(cell_id)
-            raise ValueError(msg)
-
-        elif cell_id < 0:
-            msg = 'Unable to set Cell ID to {0} since it must be a ' \
-                        'non-negative integer'.format(cell_id)
-            raise ValueError(msg)
-
         else:
+            check_type('cell ID', cell_id, Integral)
+            check_greater_than('cell ID', cell_id, 0)
             self._id = cell_id
 
     @name.setter
     def name(self, name):
-        if not isinstance(name, str):
-            msg = 'Unable to set name for Cell ID={0} with a non-string ' \
-                        'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('cell name', name, basestring)
+        self._name = name
 
     @fill.setter
     def fill(self, fill):
-        if isinstance(fill, str):
+        if isinstance(fill, basestring):
             if fill.strip().lower() == 'void':
                 self._type = 'void'
             else:
@@ -156,56 +148,19 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
-        if not isinstance(rotation, (tuple, list, np.ndarray)):
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(rotation, self._id)
-            raise ValueError(msg)
-
-        elif len(rotation) != 3:
-            msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(rotation, self._id)
-            raise ValueError(msg)
-
-        for axis in rotation:
-            if not is_integer(axis) and not is_float(axis):
-                msg = 'Unable to add rotation {0} to Cell ID={1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(axis, self._id)
-                raise ValueError(msg)
-
-            self._rotation = rotation
+        check_type('cell rotation', rotation, Iterable, Real)
+        check_length('cell rotation', rotation, 3)
+        self._rotation = rotation
 
     @translation.setter
     def translation(self, translation):
-        if not isinstance(translation, (tuple, list, np.ndarray)):
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(translation, self._id)
-            raise ValueError(msg)
-
-        elif len(translation) != 3:
-            msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                  'it does not contain 3 values'.format(translation, self._id)
-            raise ValueError(msg)
-
-        for axis in translation:
-            if not is_integer(axis) and not is_float(axis):
-                msg = 'Unable to add translation {0} to Cell ID={1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(axis, self._id)
-                raise ValueError(msg)
-
+        check_type('cell translation', translation, Iterable, Real)
+        check_length('cell translation', translation, 3)
         self._translation = translation
 
     @offsets.setter
     def offsets(self, offsets):
-        if not isinstance(offsets, (tuple, list, np.ndarray)):
-            msg = 'Unable to set offsets {0} to Cell ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(offsets, self._id)
-            raise ValueError(msg)
-
+        check_type('cell offsets', offsets, Iterable)
         self._offsets = offsets
 
     def add_surface(self, surface, halfspace):
@@ -476,30 +431,15 @@ class Universe(object):
             global AUTO_UNIVERSE_ID
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(universe_id):
-            msg = 'Unable to set Universe ID to a non-integer ' \
-                  '{0}'.format(universe_id)
-            raise ValueError(msg)
-
-        elif universe_id < 0:
-            msg = 'Unable to set Universe ID to {0} since it must be a ' \
-                  'non-negative integer'.format(universe_id)
-            raise ValueError(msg)
-
         else:
+            check_type('universe ID', universe_id, Integral)
+            check_greater_than('universe ID', universe_id, 0, True)
             self._id = universe_id
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
-            msg = 'Unable to set name for Universe ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('universe name', name, basestring)
+        self._name = name
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -531,13 +471,13 @@ class Universe(object):
 
         """
 
-        if not isinstance(cells, (list, tuple, np.ndarray)):
-            msg = 'Unable to add Cells to Universe ID={0} since {1} is not a ' \
-                  'Python tuple/list or NumPy array'.format(self._id, cells)
+        if not isinstance(cells, Iterable):
+            msg = 'Unable to add Cells to Universe ID={0} since {1} is not ' \
+                  'iterable'.format(self._id, cells)
             raise ValueError(msg)
 
-        for i in range(len(cells)):
-            self.add_cell(cells[i])
+        for cell in cells:
+            self.add_cell(cell)
 
     def remove_cell(self, cell):
         """Remove a cell from the universe.
@@ -730,47 +670,24 @@ class Lattice(object):
             global AUTO_UNIVERSE_ID
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
-
-        # Check that the ID is an integer and wasn't already used
-        elif not is_integer(lattice_id):
-            msg = 'Unable to set non-integer Lattice ID {0}'.format(lattice_id)
-            raise ValueError(msg)
-
-        elif lattice_id < 0:
-            msg = 'Unable to set Lattice ID to {0} since it must be a ' \
-                  'non-negative integer'.format(lattice_id)
-            raise ValueError(msg)
-
         else:
+            check_type('lattice ID', lattice_id, Integral)
+            check_greater_than('lattice ID', lattice_id, 0)
             self._id = lattice_id
 
     @name.setter
     def name(self, name):
-        if not is_string(name):
-            msg = 'Unable to set name for Lattice ID={0} with a non-string ' \
-                  'value {1}'.format(self._id, name)
-            raise ValueError(msg)
-
-        else:
-            self._name = name
+        check_type('lattice name', name, basestring)
+        self._name = name
 
     @outer.setter
     def outer(self, outer):
-        if not isinstance(outer, Universe):
-            msg = 'Unable to set Lattice ID={0} outer universe to {1} ' \
-                  'since it is not a Universe object'.format(self._id, outer)
-            raise ValueError(msg)
-
+        check_type('outer universe', outer, Universe)
         self._outer = outer
 
     @universes.setter
     def universes(self, universes):
-        if not isinstance(universes, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} universes to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, universes)
-            raise ValueError(msg)
-
+        check_type('lattice universes', universes, Iterable)
         self._universes = np.asarray(universes, dtype=Universe)
 
     def get_unique_universes(self):
@@ -908,90 +825,29 @@ class RectLattice(Lattice):
 
     @dimension.setter
     def dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list, np.ndarray)):
-            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 2 and len(dimension) != 3:
-            msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                  'it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, dimension)
-            raise ValueError(msg)
-
+        check_type('lattice dimension', dimension, Iterable, Integral)
+        check_length('lattice dimension', dimension, 2, 3)
         for dim in dimension:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set RectLattice ID={0} dimension to {1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
-                msg = 'Unable to set RectLattice ID={0} dimension to {1} ' \
-                      'since it is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
-
+            check_greater_than('lattice dimension', dim, 0)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 2 and len(lower_left) != 3:
-            msg = 'Unable to set RectLattice ID={0} lower_left to {1} ' \
-                  'since it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, lower_left)
-            raise ValueError(msg)
-
-        for dim in lower_left:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set RectLattice ID={0} lower_left to {1} since ' \
-                      'it is is not an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
+        check_type('lattice lower left corner', lower_left, Iterable, Real)
+        check_length('lattice lower left corner', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @offsets.setter
     def offsets(self, offsets):
-        if not isinstance(offsets, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} offsets to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, offsets)
-            raise ValueError(msg)
-
+        check_type('lattice offsets', offsets, Iterable)
         self._offsets = offsets
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        if not isinstance(pitch, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, pitch)
-            raise ValueError(msg)
-
-        elif len(pitch) != 2 and len(pitch) != 3:
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
-                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
-            raise ValueError(msg)
-
+        check_type('lattice pitch', pitch, Iterable, Real)
+        check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                      'it is not an an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
-                      'is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
-
+            check_greater_than('lattice pitch', dim, 0.0)
         self._pitch = pitch
 
     def get_offset(self, path, filter_offset):
@@ -1184,71 +1040,28 @@ class HexLattice(Lattice):
 
     @num_rings.setter
     def num_rings(self, num_rings):
-
-        if not is_integer(num_rings) and num_rings < 1:
-            msg = 'Unable to set HexLattice ID={0} number of rings to {1} ' \
-                  'since it is not a positive integer'.format(self._id, num_rings)
-            raise ValueError(msg)
-
+        check_type('number of rings', num_rings, Integral)
+        check_greater_than('number of rings', num_rings, 0)
         self._num_rings = num_rings
 
     @num_axial.setter
     def num_axial(self, num_axial):
-        if not is_integer(num_axial) and num_axial < 1:
-            msg = 'Unable to set HexLattice ID={0} number of axial to {1} ' \
-                  'since it is not a positive integer'.format(self._id, num_axial)
-            raise ValueError(msg)
-
+        check_type('number of axial', num_axial, Integral)
+        check_greater_than('number of axial', num_axial, 0)
         self._num_axial = num_axial
 
     @center.setter
     def center(self, center):
-        if not isinstance(center, (tuple, list, np.ndarray)):
-            msg = 'Unable to set HexLattice ID={0} dimension to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, center)
-            raise ValueError(msg)
-
-        elif len(center) != 2 and len(center) != 3:
-            msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
-                  'it does not contain 2 or 3 ' \
-                  'coordinates'.format(self._id, center)
-            raise ValueError(msg)
-
-        for dim in center:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set HexLattice ID={0} center to {1} since ' \
-                      'it is not an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
+        check_type('lattice center', center, Iterable, Real)
+        check_length('lattice center', center, 2, 3)
         self._center = center
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        if not isinstance(pitch, (tuple, list, np.ndarray)):
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(self._id, pitch)
-            raise ValueError(msg)
-
-        elif len(pitch) != 2 and len(pitch) != 3:
-            msg = 'Unable to set Lattice ID={0} pitch to {1} since it does ' \
-                  'not contain 2 or 3 coordinates'.format(self._id, pitch)
-            raise ValueError(msg)
-
+        check_type('lattice pitch', pitch, Iterable, Real)
+        check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since ' \
-                      'it is not an an integer or floating point ' \
-                      'value'.format(self._id, dim)
-                raise ValueError(msg)
-
-            elif dim < 0:
-                msg = 'Unable to set Lattice ID={0} pitch to {1} since it ' \
-                      'is a negative value'.format(self._id, dim)
-                raise ValueError(msg)
-
+            check_greater_than('lattice pitch', dim, 0)
         self._pitch = pitch
 
     @Lattice.universes.setter

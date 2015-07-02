@@ -1,11 +1,17 @@
-import collections
+from collections import Iterable
+from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
 from openmc.clean_xml import *
+from openmc.checkvalue import (check_type, check_length, check_value,
+                               check_greater_than, check_less_than)
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class SettingsFile(object):
@@ -38,11 +44,11 @@ class SettingsFile(object):
         Path to write output to
     verbosity : int
         Verbosity during simulation between 1 and 10
-    statepoint_batches : tuple or list or ndarray
+    statepoint_batches : Iterable of int
         List of batches at which to write statepoint files
     statepoint_interval : int
         Number of batches after which a new statepoint file should be written
-    sourcepoint_batches : tuple or list or ndarray
+    sourcepoint_batches : Iterable of int
         List of batches at which to write source files
     sourcepoint_interval : int
         Number of batches after which a new source file should be written
@@ -395,58 +401,26 @@ class SettingsFile(object):
 
     @batches.setter
     def batches(self, batches):
-        if not is_integer(batches):
-            msg = 'Unable to set batches to a non-integer ' \
-                  'value {0}'.format(batches)
-            raise ValueError(msg)
-
-        if batches <= 0:
-            msg = 'Unable to set batches to a negative ' \
-                  'value {0}'.format(batches)
-            raise ValueError(msg)
-
+        check_type('batches', batches, Integral)
+        check_greater_than('batches', batches, 0)
         self._batches = batches
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch):
-        if not is_integer(generations_per_batch):
-            msg = 'Unable to set generations per batch to a non-integer ' \
-                  'value {0}'.format(generations_per_batch)
-            raise ValueError(msg)
-
-        if generations_per_batch <= 0:
-            msg = 'Unable to set generations per batch to a negative ' \
-                  'value {0}'.format(generations_per_batch)
-            raise ValueError(msg)
-
+        check_type('generations per patch', generations_per_batch, Integral)
+        check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
     def inactive(self, inactive):
-        if not is_integer(inactive):
-            msg = 'Unable to set inactive batches to a non-integer ' \
-                  'value {0}'.format(inactive)
-            raise ValueError(msg)
-
-        if inactive <= 0:
-            msg = 'Unable to set inactive batches to a negative ' \
-                  'value {0}'.format(inactive)
-            raise ValueError(msg)
-
+        check_type('inactive batches', inactive, Integral)
+        check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
 
     @particles.setter
     def particles(self, particles):
-        if not is_integer(particles):
-            msg = 'Unable to set particles to a non-integer ' \
-                  'value {0}'.format(particles)
-            raise ValueError(msg)
-
-        if particles <= 0:
-            msg = 'Unable to set particles to a negative ' \
-                  'value {0}'.format(particles)
-            raise ValueError(msg)
-
+        check_type('particles', particles, Integral)
+        check_greater_than('particles', particles, 0)
         self._particles = particles
 
     @keff_trigger.setter
@@ -471,7 +445,7 @@ class SettingsFile(object):
                   'does not have a "threshold" key'.format(keff_trigger)
             raise ValueError(msg)
 
-        elif not is_float(keff_trigger['threshold']):
+        elif not isinstance(keff_trigger['threshold'], Real):
             msg = 'Unable to set a trigger on keff with ' \
                   'threshold {0}'.format(keff_trigger['threshold'])
             raise ValueError(msg)
@@ -480,11 +454,7 @@ class SettingsFile(object):
 
     @source_file.setter
     def source_file(self, source_file):
-        if not is_string(source_file):
-            msg = 'Unable to set source file to a non-string ' \
-                  'value {0}'.format(source_file)
-            raise ValueError(msg)
-
+        check_type('source file', source_file, basestring)
         self._source_file = source_file
 
     def set_source_space(self, stype, params):
@@ -499,7 +469,7 @@ class SettingsFile(object):
             distribution samples locations from a "box" distribution but only
             locations in fissionable materials are accepted. A "point" spatial
             distribution has coordinates specified by a triplet.
-        params : tuple or list or ndarray
+        params : Iterable of float
             For a "box" or "fission" spatial distribution, ``params`` should be
             given as six real numbers, the first three of which specify the
             lower-left corner of a parallelepiped and the last three of which
@@ -512,37 +482,15 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
-            msg = 'Unable to set source space type to a non-string ' \
-                  'value {0}'.format(stype)
-            raise ValueError(msg)
-
-        elif stype not in ['box', 'fission', 'point']:
-            msg = 'Unable to set source space type to {0} since it is not ' \
-                  'box or point'.format(stype)
-            raise ValueError(msg)
-
-        elif not isinstance(params, (tuple, list, np.ndarray)):
-            msg = 'Unable to set source space parameters to {0} since it is ' \
-                  'not a Python tuple, list or NumPy array'.format(params)
-            raise ValueError(msg)
-
-        elif stype in ['box', 'fission'] and len(params) != 6:
-            msg = 'Unable to set source space parameters for a box/fission ' \
-                  'distribution to {0} since it does not contain 6 values'\
-                      .format(params)
-            raise ValueError(msg)
-
-        elif stype == 'point' and len(params) != 3:
-            msg = 'Unable to set source space parameters for a point to {0} ' \
-                  'since it does not contain 3 values'.format(params)
-            raise ValueError(msg)
-
-        for param in params:
-            if not is_integer(param) and not is_float(param):
-                msg = 'Unable to set source space parameters to {0} since it ' \
-                      'is not an integer or floating point value'.format(param)
-                raise ValueError(msg)
+        check_type('source space type', stype, basestring)
+        check_value('source space type', stype, ['box', 'fission', 'point'])
+        check_type('source space parameters', params, Iterable, Real)
+        if stype in ['box', 'fission']:
+            check_length('source space parameters for a '
+                         'box/fission distribution', params, 6)
+        elif stype == 'point':
+            check_length('source space parameters for a point source',
+                         params, 3)
 
         self._source_space_type = stype
         self._source_space_params = params
@@ -558,7 +506,7 @@ class SettingsFile(object):
             site is isotropic if the "isotropic" option is given. The angle of
             the particle emitted from a source site is the direction specified
             in ``params`` if the "monodirectional" option is given.
-        params : tuple or list or ndarray
+        params : Iterable of float
             For an "isotropic" angular distribution, ``params`` should not
             be specified.
 
@@ -568,37 +516,17 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
-            msg = 'Unable to set source angle type to a non-string ' \
-                  'value {0}'.format(stype)
-            raise ValueError(msg)
-
-        elif stype not in ['isotropic', 'monodirectional']:
-            msg = 'Unable to set source angle type to {0} since it is not ' \
-                  'isotropic or monodirectional'.format(stype)
-            raise ValueError(msg)
-
-        elif not isinstance(params, (tuple, list, np.ndarray)):
-            msg = 'Unable to set source angle parameters to {0} since it is ' \
-                  'not a Python list/tuple or NumPy array'.format(params)
-            raise ValueError(msg)
-
-        elif stype == 'isotropic' and params is not None:
+        check_type('source angle type', stype, basestring)
+        check_value('source angle type', stype,
+                    ['isotropic', 'monodirectional'])
+        check_type('source angle parameters', params, Iterable, Real)
+        if stype == 'isotropic' and params is not None:
             msg = 'Unable to set source angle parameters since they are not ' \
                   'it is not supported for isotropic type sources'
             raise ValueError(msg)
-
-        elif stype == 'monodirectional' and len(params) != 3:
-            msg = 'Unable to set source angle parameters to {0} ' \
-                  'since 3 parameters are required for monodirectional ' \
-                  'sources'.format(params)
-            raise ValueError(msg)
-
-        for param in params:
-            if not is_integer(param) and not is_float(param):
-                msg = 'Unable to set source angle parameters to {0} since it ' \
-                      'is not an integer or floating point value'.format(param)
-                raise ValueError(msg)
+        elif stype == 'monodirectional':
+            check_length('source angle parameters for a monodirectional '
+                         'source', params, 3)
 
         self._source_angle_type = stype
         self._source_angle_params = params
@@ -615,7 +543,7 @@ class SettingsFile(object):
             whose energy is sampled from a Watt fission spectrum. The "maxwell"
             option produce source sites whose energy is sampled from a Maxwell
             fission spectrum.
-        params : tuple or list or ndarray
+        params : Iterable of float
             For a "monoenergetic" energy distribution, ``params`` should be
             given as the energy in MeV of the source sites.
 
@@ -629,44 +557,16 @@ class SettingsFile(object):
 
         """
 
-        if not is_string(stype):
-            msg = 'Unable to set source energy type to a non-string ' \
-                   'value {0}'.format(stype)
-            raise ValueError(msg)
-
-        elif stype not in ['monoenergetic', 'watt', 'maxwell']:
-            msg = 'Unable to set source energy type to {0} since it is not ' \
-                  'monoenergetic, watt or maxwell'.format(stype)
-            raise ValueError(msg)
-
-        elif not isinstance(params, (tuple, list, np.ndarray)):
-            msg = 'Unable to set source energy params to {0} since it ' \
-                  'is not a Python list/tuple or NumPy array'.format(params)
-            raise ValueError(msg)
-
-        elif stype == 'monoenergetic' and not len(params) != 1:
-            msg = 'Unable to set source energy params to {0} ' \
-                  'since 1 paramater is required for monenergetic ' \
-                  'sources'.format(params)
-            raise ValueError(msg)
-
-        elif stype == 'watt' and len(params) != 2:
-            msg = 'Unable to set source energy params to {0} ' \
-                  'since 2 params are required for monoenergetic ' \
-                  'sources'.format(params)
-            raise ValueError(msg)
-
-        elif stype == 'maxwell' and len(params) != 2:
-            msg = 'Unable to set source energy params to {0} since 1 ' \
-                  'parameter is required for maxwell sources'.format(params)
-            raise ValueError(msg)
-
-        for param in params:
-            if not is_integer(param) and not is_float(param):
-                msg = 'Unable to set source energy params to {0} ' \
-                      'since it is not an integer or floating point ' \
-                      'value'.format(param)
-                raise ValueError(msg)
+        check_type('source energy type', stype, basestring)
+        check_value('source energy type', stype,
+                    ['monoenergetic', 'watt', 'maxwell'])
+        check_type('source energy parameters', params, Iterable, Real)
+        if stype in ['monoenergetic', 'maxwell']:
+            check_length('source energy parameters for a monoenergetic '
+                         'or Maxwell source', params, 1)
+        elif stype == 'watt':
+            check_length('source energy parameters for a Watt source',
+                         params, 2)
 
         self._source_energy_type = stype
         self._source_energy_params = params
@@ -694,433 +594,192 @@ class SettingsFile(object):
 
     @output_path.setter
     def output_path(self, output_path):
-        if not is_string(output_path):
-            msg = 'Unable to set output path to non-string ' \
-                  'value {0}'.format(output_path)
-            raise ValueError(msg)
-
+        check_type('output path', output_path, basestring)
         self._output_path = output_path
 
     @verbosity.setter
     def verbosity(self, verbosity):
-        if not is_integer(verbosity):
-            msg = 'Unable to set verbosity to non-integer ' \
-                  'value {0}'.format(verbosity)
-            raise ValueError(msg)
-
-        if verbosity < 1 or verbosity > 10:
-            msg = 'Unable to set verbosity to {0} which is not between ' \
-                  '1 and 10'.format(verbosity)
-            raise ValueError(msg)
-
+        check_type('verbosity', verbosity, Integral)
+        check_greater_than('verbosity', verbosity, 1, True)
+        check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
 
     @statepoint_batches.setter
     def statepoint_batches(self, batches):
-        if not isinstance(batches, (tuple, list, np.ndarray)):
-            msg = 'Unable to set statepoint batches to {0} which is not a ' \
-                  'Python tuple/list or NumPy array'.format(batches)
-            raise ValueError(msg)
-
+        check_type('statepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            if not is_integer(batch):
-                msg = 'Unable to set statepoint batches with non-integer ' \
-                      'value {0}'.format(batch)
-                raise ValueError(msg)
-
-            if batch <= 0:
-                msg = 'Unable to set statepoint batches with {0} which is ' \
-                      'less than or equal to zero'.format(batch)
-                raise ValueError(msg)
-
+            check_greater_than('statepoint batch', batch, 0)
         self._statepoint_batches = batches
 
     @statepoint_interval.setter
     def statepoint_interval(self, interval):
-        if not is_integer(interval):
-            msg = 'Unable to set statepoint interval to non-integer ' \
-                        'value {0}'.format(interval)
-            raise ValueError(msg)
-
+        check_type('statepoint interval', interval, Integral)
         self._statepoint_interval = interval
 
     @sourcepoint_batches.setter
     def sourcepoint_batches(self, batches):
-        if not isinstance(batches, (tuple, list, np.ndarray)):
-            msg = 'Unable to set sourcepoint batches to {0} which is ' \
-                  'not a Python tuple/list or NumPy array'.format(batches)
-            raise ValueError(msg)
-
+        check_type('sourcepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            if not is_integer(batch):
-                msg = 'Unable to set sourcepoint batches with non-integer ' \
-                      'value {0}'.format(batch)
-                raise ValueError(msg)
-
-            if batch <= 0:
-                msg = 'Unable to set sourcepoint batches with {0} which is ' \
-                      'less than or equal to zero'.format(batch)
-                raise ValueError(msg)
-
+            check_greater_than('sourcepoint batch', batch, 0)
         self._sourcepoint_batches = batches
 
     @sourcepoint_interval.setter
     def sourcepoint_interval(self, interval):
-        if not is_integer(interval):
-            msg = 'Unable to set sourcepoint interval to non-integer ' \
-                  'value {0}'.format(interval)
-            raise ValueError(msg)
-
+        check_type('sourcepoint interval', interval, Integral)
         self._sourcepoint_interval = interval
 
     @sourcepoint_separate.setter
     def sourcepoint_separate(self, source_separate):
-        if not isinstance(source_separate, (bool, np.bool)):
-            msg = 'Unable to set sourcepoint separate to non-boolean ' \
-                  'value {0}'.format(source_separate)
-            raise ValueError(msg)
-
+        check_type('sourcepoint separate', source_separate, bool)
         self._sourcepoint_separate = source_separate
 
     @sourcepoint_write.setter
     def sourcepoint_write(self, source_write):
-        if not isinstance(source_write, (bool, np.bool)):
-            msg = 'Unable to set sourcepoint write to non-boolean ' \
-                  'value {0}'.format(source_write)
-            raise ValueError(msg)
-
+        check_type('sourcepoint write', source_write, bool)
         self._sourcepoint_write = source_write
 
     @sourcepoint_overwrite.setter
     def sourcepoint_overwrite(self, source_overwrite):
-        if not isinstance(source_overwrite, (bool, np.bool)):
-            msg = 'Unable to set sourcepoint overwrite to non-boolean ' \
-                  'value {0}'.format(source_overwrite)
-            raise ValueError(msg)
-
+        check_type('sourcepoint overwrite', source_overwrite, bool)
         self._sourcepoint_overwrite = source_overwrite
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals):
-        if not isinstance(confidence_intervals, (bool, np.bool)):
-            msg = 'Unable to set confidence interval to non-boolean ' \
-                  'value {0}'.format(confidence_intervals)
-            raise ValueError(msg)
-
+        check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        if not is_string(cross_sections):
-            msg = 'Unable to set cross sections to non-string ' \
-                  'value {0}'.format(cross_sections)
-            raise ValueError(msg)
-
+        check_type('cross sections', cross_sections, basestring)
         self._cross_sections = cross_sections
 
     @energy_grid.setter
     def energy_grid(self, energy_grid):
-        if energy_grid not in ['nuclide', 'logarithm', 'material-union']:
-            msg = 'Unable to set energy grid to {0} which is neither ' \
-                  'nuclide, logarithm, nor material-union'.format(energy_grid)
-            raise ValueError(msg)
-
+        check_value('energy grid', energy_grid,
+                    ['nuclide', 'logarithm', 'material-union'])
         self._energy_grid = energy_grid
 
     @ptables.setter
     def ptables(self, ptables):
-        if not isinstance(ptables, (bool, np.bool)):
-            msg = 'Unable to set ptables to non-boolean ' \
-                  'value {0}'.format(ptables)
-            raise ValueError(msg)
-
+        check_type('probability tables', ptables, bool)
         self._ptables = ptables
 
     @run_cmfd.setter
     def run_cmfd(self, run_cmfd):
-        if not isinstance(run_cmfd, (bool, np.bool)):
-            msg = 'Unable to set run_cmfd to non-boolean ' \
-                  'value {0}'.format(run_cmfd)
-            raise ValueError(msg)
-
+        check_type('run_cmfd', run_cmfd, bool)
         self._run_cmfd = run_cmfd
 
     @seed.setter
     def seed(self, seed):
-        if not is_integer(seed):
-            msg = 'Unable to set seed to non-integer value {0}'.format(seed)
-            raise ValueError(msg)
-
-        elif seed <= 0:
-            msg = 'Unable to set seed to non-positive integer {0}'.format(seed)
-            raise ValueError(msg)
-
+        check_type('random number generator seed', seed, Integral)
+        check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
 
     @survival_biasing.setter
     def survival_biasing(self, survival_biasing):
-        if not isinstance(survival_biasing, (bool, np.bool)):
-            msg = 'Unable to set survival biasing to non-boolean ' \
-                  'value {0}'.format(survival_biasing)
-            raise ValueError(msg)
-
+        check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
     @weight.setter
     def weight(self, weight):
-        if not is_float(weight):
-            msg = 'Unable to set weight cutoff to non-floating point ' \
-                  'value {0}'.format(weight)
-            raise ValueError(msg)
-
-        elif weight < 0.0:
-            msg = 'Unable to set weight cutoff to negative ' \
-                  'value {0}'.format(weight)
-            raise ValueError(msg)
-
+        check_type('weight cutoff', weight, Real)
+        check_greater_than('weight cutoff', weight, 0.0)
         self._weight = weight
 
     @weight_avg.setter
     def weight_avg(self, weight_avg):
-        if not is_float(weight_avg):
-            msg = 'Unable to set weight avg. to non-floating point ' \
-                  'value {0}'.format(weight_avg)
-            raise ValueError(msg)
-        elif weight_avg < 0.0:
-            msg = 'Unable to set weight avg. to negative ' \
-                  'value {0}'.format(weight_avg)
-            raise ValueError(msg)
-
+        check_type('average survival weight', weight_avg, Real)
+        check_greater_than('average survival weight', weight_avg, 0.0)
         self._weight_avg = weight_avg
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list)):
-            msg = 'Unable to set entropy mesh dimension to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 3:
-            msg = 'Unable to set entropy mesh dimension to {0} which is ' \
-                  'not a set of 3 integer dimensions'.format(dimension)
-            raise ValueError(msg)
-
-        for dim in dimension:
-            if not is_integer(dim) and not is_float(dim):
-                msg = 'Unable to set entropy mesh dimension to a ' \
-                      'non-integer or floating point value {0}'.format(dim)
-                raise ValueError(msg)
-
+        check_type('entropy mesh dimension', dimension, Iterable, Integral)
+        check_length('entropy mesh dimension', dimension, 3)
         self._entropy_dimension = dimension
 
     @entropy_lower_left.setter
     def entropy_lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list)):
-            msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
-                  'is not a Python tuple or list'.format(lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 3:
-            msg = 'Unable to set entropy mesh lower left corner to {0} which ' \
-                  'is not a 3D point'.format(lower_left)
-            raise ValueError(msg)
-
-        for coord in lower_left:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set entropy mesh lower left corner to a ' \
-                      'non-integer or floating point value {0}'.format(coord)
-                raise ValueError(msg)
-
+        check_type('entropy mesh lower left corner', lower_left,
+                   Iterable, Real)
+        check_length('entropy mesh lower left corner', lower_left, 3)
         self._entropy_lower_left = lower_left
 
     @entropy_upper_right.setter
     def entropy_upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list)):
-            msg = 'Unable to set entropy mesh upper right corner to {0} ' \
-                  'which is not a Python tuple or list'.format(upper_right)
-            raise ValueError(msg)
-
-        elif len(upper_right) < 3 or len(upper_right) > 3:
-            msg = 'Unable to set entropy mesh upper right corner to {0} ' \
-                  'which is not a 3D point'.format(upper_right)
-            raise ValueError(msg)
-
-        for coord in upper_right:
-            if not is_integer(coord) and not is_float(coord):
-                msg = 'Unable to set entropy mesh upper right corner to a ' \
-                      'non-integer or floating point value {0}'.format(coord)
-                raise ValueError(msg)
-
+        check_type('entropy mesh upper right corner', upper_right,
+                   Iterable, Real)
+        check_length('entropy mesh upper right corner', upper_right, 3)
         self._entropy_upper_right = upper_right
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):
-        if not isinstance(trigger_active, bool):
-            msg = 'Unable to set trigger active to a ' \
-                  'non-boolean value {0}'.format(trigger_active)
-            raise ValueError(msg)
-
+        check_type('trigger active', trigger_active, bool)
         self._trigger_active = trigger_active
 
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches):
-        if not is_integer(trigger_max_batches):
-            msg = 'Unable to set trigger max batches to a non-integer ' \
-                  'value {0}'.format(trigger_max_batches)
-            raise ValueError(msg)
-
-        elif trigger_max_batches <= 0:
-            msg = 'Unable to set trigger max batches to a non-positive ' \
-                  'value {0}'.format(trigger_max_batches)
-            raise ValueError(msg)
-
+        check_type('trigger maximum batches', trigger_max_batches, Integral)
+        check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval):
-        if not is_integer(trigger_batch_interval):
-            msg = 'Unable to set trigger batch interval to a non-integer ' \
-                  'value {0}'.format(trigger_batch_interval)
-            raise ValueError(msg)
-
-        elif trigger_batch_interval <= 0:
-            msg = 'Unable to set trigger batch interval to a non-positive ' \
-                  'value {0}'.format(trigger_batch_interval)
-            raise ValueError(msg)
-
+        check_type('trigger batch interval', trigger_batch_interval, Integral)
+        check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
     def no_reduce(self, no_reduce):
-        if not isinstance(no_reduce, (bool, np.bool)):
-            msg = 'Unable to set the no_reduce to a non-boolean ' \
-                  'value {0}'.format(no_reduce)
-            raise ValueError(msg)
-
+        check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
 
     @threads.setter
     def threads(self, threads):
-        if not is_integer(threads):
-            msg = 'Unable to set the threads to a non-integer ' \
-                  'value {0}'.format(threads)
-            raise ValueError(msg)
-
-        elif threads <= 0:
-            msg = 'Unable to set the threads to a negative ' \
-                  'value {0}'.format(threads)
-            raise ValueError(msg)
-
+        check_type('number of threads', threads, Integral)
+        check_greater_than('number of threads', threads, 0)
         self._threads = threads
 
     @trace.setter
     def trace(self, trace):
-        if not isinstance(trace, (list, tuple)):
-            msg = 'Unable to set the trace to {0} which is not a Python ' \
-                  'tuple or list'.format(trace)
-            raise ValueError(msg)
-
-        elif len(trace) != 3:
-            msg = 'Unable to set the trace to {0} since it does not contain ' \
-                  '3 elements - batch, generation, and particle'.format(trace)
-            raise ValueError(msg)
-
-        elif trace[0] < 1:
-            msg = 'Unable to set the trace batch to {0} since it must be ' \
-                  'greater than or equal to 1'.format(trace[0])
-            raise ValueError(msg)
-
-        elif trace[1] < 1:
-            msg = 'Unable to set the trace generation to {0} since it ' \
-                  'must be greater than or equal to 1'.format(trace[1])
-            raise ValueError(msg)
-
-        elif trace[2] < 1:
-            msg = 'Unable to set the trace particle to {0} since it ' \
-                  'must be greater than or equal to 1'.format(trace[2])
-            raise ValueError(msg)
-
+        check_type('trace', trace, Iterable, Integral)
+        check_length('trace', trace, 3)
+        check_greater_than('trace batch', trace[0], 0)
+        check_greater_than('trace generation', trace[1], 0)
+        check_greater_than('trace particle', trace[2], 0)
         self._trace = trace
 
     @track.setter
     def track(self, track):
-        if not isinstance(track, (list, tuple)):
-            msg = 'Unable to set the track to {0} which is not a Python ' \
-                  'tuple or list'.format(track)
+        check_type('track', track, Iterable, Integral)
+        if len(track) % 3 != 0:
+            msg = 'Unable to set the track to {0} since its length is ' \
+                  'not a multiple of 3'.format(track)
             raise ValueError(msg)
-
-        elif len(track) != 3:
-            msg = 'Unable to set the track to {0} since it does not contain ' \
-                  '3 elements - batch, generation, and particle'.format(track)
-            raise ValueError(msg)
-
-        elif track[0] < 1:
-            msg = 'Unable to set the track batch to {0} since it must be ' \
-                  'greater than or equal to 1'.format(track[0])
-            raise ValueError(msg)
-
-        elif track[1] < 1:
-            msg = 'Unable to set the track generation to {0} since it must ' \
-                  'be greater than or equal to 1'.format(track[1])
-            raise ValueError(msg)
-
-        elif track[2] < 1:
-            msg = 'Unable to set the track particle to {0} since it must ' \
-                  'be greater than or equal to 1'.format(track[2])
-            raise ValueError(msg)
-
+        for t in zip(track[::3], track[1::3], track[2::3]):
+            check_greater_than('track batch', t[0], 0)
+            check_greater_than('track generation', t[0], 0)
+            check_greater_than('track particle', t[0], 0)
         self._track = track
 
     @ufs_dimension.setter
     def ufs_dimension(self, dimension):
-        if not isinstance(dimension, (tuple, list)):
-            msg = 'Unable to set UFS mesh dimension to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
-            raise ValueError(msg)
-
-        elif len(dimension) != 3:
-            msg = 'Unable to set UFS mesh dimension to {0} which is ' \
-                  'not a set of 3 integer dimensions'.format(dimension)
-            raise ValueError(msg)
-
+        check_type('UFS mesh dimension', dimension, Iterable, Integral)
+        check_length('UFS mesh dimension', dimension, 3)
         for dim in dimension:
-            if not is_integer(dim):
-                msg = 'Unable to set entropy mesh dimension to a ' \
-                      'non-integer {0}'.format(dim)
-                raise ValueError(msg)
-            elif dim < 1:
-                msg = 'Unable to set UFS dimension to value {0} which is ' \
-                      'less than one'.format(dimension)
-                raise ValueError(msg)
-
+            check_greater_than('UFS mesh dimension', dim, 1, True)
         self._ufs_dimension = dimension
 
     @ufs_lower_left.setter
     def ufs_lower_left(self, lower_left):
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set UFS mesh lower left corner to {0} which is ' \
-                  'not a Python tuple or list'.format(lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) != 3:
-            msg = 'Unable to set UFS mesh lower left corner to {0} which ' \
-                  'is not a 3D point'.format(lower_left)
-            raise ValueError(msg)
-
+        check_type('UFS mesh lower left corner', lower_left, Iterable, Real)
+        check_length('UFS mesh lower left corner', lower_left, 3)
         self._ufs_lower_left = lower_left
 
     @ufs_upper_right.setter
     def ufs_upper_right(self, upper_right):
-        if not isinstance(upper_right, (tuple, list)):
-            msg = 'Unable to set UFs mesh upper right corner to {0} which is ' \
-                  'not a Python tuple or list'.format(upper_right)
-            raise ValueError(msg)
-
-        if len(upper_right) != 3:
-            msg = 'Unable to set UFS mesh upper right corner to {0} which ' \
-                  'is not a 3D point'.format(upper_right)
-            raise ValueError(msg)
-
+        check_type('UFS mesh upper right corner', upper_right, Iterable, Real)
+        check_length('UFS mesh upper right corner', upper_right, 3)
         self._ufs_upper_right = upper_right
 
     @dd_mesh_dimension.setter
@@ -1129,15 +788,8 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(dimension, (tuple, list)):
-            msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
-                  'not a Python tuple or list'.format(dimension)
-            raise ValueError(msg)
-
-        if len(dimension) != 3:
-            msg = 'Unable to set DD mesh upper right corner to {0} which ' \
-                  'is not a 3D point'.format(dimension)
-            raise ValueError(msg)
+        check_type('DD mesh dimension', dimension, Iterable, Integral)
+        check_length('DD mesh dimension', dimension, 3)
 
         self._dd_mesh_dimension = dimension
 
@@ -1147,15 +799,8 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(lower_left, (tuple, list, np.ndarray)):
-            msg = 'Unable to set DD mesh lower left corner to {0} which is ' \
-                  'not a Python tuple or list'.format(lower_left)
-            raise ValueError(msg)
-
-        elif len(lower_left) < 3 or len(lower_left) > 3:
-            msg = 'Unable to set DD mesh lower left corner to {0} which ' \
-                  'is not a 3D point'.format(lower_left)
-            raise ValueError(msg)
+        check_type('DD mesh lower left corner', lower_left, Iterable, Real)
+        check_length('DD mesh lower left corner', lower_left, 3)
 
         self._dd_mesh_lower_left = lower_left
 
@@ -1165,16 +810,8 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(upper_right, tuple) and \
-          not isinstance(upper_right, list):
-            msg = 'Unable to set DD mesh upper right corner to {0} which is ' \
-                  'not a Python tuple or list'.format(upper_right)
-            raise ValueError(msg)
-
-        if len(upper_right) < 3 or len(upper_right) > 3:
-            msg = 'Unable to set DD mesh upper right corner to {0} which ' \
-                  'is not a 3D point'.format(upper_right)
-            raise ValueError(msg)
+        check_type('DD mesh upper right corner', upper_right, Iterable, Real)
+        check_length('DD mesh upper right corner', upper_right, 3)
 
         self._dd_mesh_upper_right = upper_right
 
@@ -1184,10 +821,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(nodemap, (tuple, list)):
-            msg = 'Unable to set DD nodemap {0} which is ' \
-                  'not a Python tuple or list'.format(nodemap)
-            raise ValueError(msg)
+        check_type('DD nodemap', nodemap, Iterable)
 
         nodemap = np.array(nodemap).flatten()
 
@@ -1212,10 +846,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(allow, bool):
-            msg = 'Unable to set DD allow_leakage {0} which is ' \
-                  'not a Python bool'.format(allow)
-            raise ValueError(msg)
+        check_type('DD allow leakage', allow, bool)
 
         self._dd_allow_leakage = allow
 
@@ -1226,10 +857,7 @@ class SettingsFile(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(interactions, bool):
-            msg = 'Unable to set DD count_interactions {0} which is ' \
-                  'not a Python bool'.format(interactions)
-            raise ValueError(msg)
+        check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions
 

@@ -1,6 +1,11 @@
+from numbers import Real
 from xml.etree import ElementTree as ET
+import sys
 
-from openmc.checkvalue import *
+from openmc.checkvalue import check_type, check_value
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class Trigger(object):
@@ -67,20 +72,13 @@ class Trigger(object):
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        if trigger_type not in ['variance', 'std_dev', 'rel_err']:
-            msg = 'Unable to create a tally trigger with ' \
-                  'type "{0}"'.format(trigger_type)
-            raise ValueError(msg)
-
+        check_value('tally trigger type', trigger_type,
+                    ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
     @threshold.setter
     def threshold(self, threshold):
-        if not is_float(threshold):
-            msg = 'Unable to set a tally trigger threshold with ' \
-                  'threshold "{0}"'.format(threshold)
-            raise ValueError(msg)
-
+        check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
 
     def add_score(self, score):
@@ -93,7 +91,7 @@ class Trigger(object):
 
         """
 
-        if not is_string(score):
+        if not isinstance(score, basestring):
             msg = 'Unable to add score "{0}" to tally trigger since ' \
                   'it is not a string'.format(score)
             raise ValueError(msg)

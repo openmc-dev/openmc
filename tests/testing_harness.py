@@ -186,7 +186,7 @@ class PlotTestHarness(TestHarness):
 
         # Read the plot files.
         outstr = bytes()
-        for fname in plot_files:
+        for fname in sorted(plot_files):
             with open(fname, 'rb') as fh:
                 outstr += fh.read()
 

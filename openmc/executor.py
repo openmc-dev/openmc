@@ -35,7 +35,7 @@ class Executor(object):
             print(line, end='')
 
             # If OpenMC is finished, break loop
-            if line == '' and p.poll() != None:
+            if not line and p.poll() != None:
                 break
 
         # Return the returncode (integer, zero if no problems encountered)

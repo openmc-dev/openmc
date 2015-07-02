@@ -112,8 +112,8 @@ contains
 
       ! Score track-length estimate of k-eff
       if (run_mode == MODE_EIGENVALUE) then
-        tally_tracklength = tally_tracklength + p % wgt * distance * &
-             material_xs % nu_fission
+        global_tally_tracklength = global_tally_tracklength + p % wgt * &
+             distance * material_xs % nu_fission
       end if
 
       if (d_collision > d_boundary) then
@@ -140,7 +140,7 @@ contains
 
         ! Score collision estimate of keff
         if (run_mode == MODE_EIGENVALUE) then
-          tally_collision = tally_collision + p % wgt * &
+          global_tally_collision = global_tally_collision + p % wgt * &
                material_xs % nu_fission / material_xs % total
         end if
 

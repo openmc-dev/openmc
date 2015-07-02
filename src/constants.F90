@@ -333,13 +333,13 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-  
+
   ! Tally trigger types and threshold
   integer, parameter :: &
        VARIANCE           = 1, &
        RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3 
-       
+       STANDARD_DEVIATION = 3
+
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
@@ -409,6 +409,7 @@ module constants
        MODE_PARTICLE    = 4    ! Particle restart mode
 
   ! Unit numbers
+  integer, parameter :: UNIT_DATAFILE = 7
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file

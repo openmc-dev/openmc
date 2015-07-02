@@ -34,35 +34,36 @@ module ndpp_ops
     integer, intent(in) :: scatt_order ! Number of moments requested in tallies
     logical, intent(in) :: is_nuc      ! Is our data a nuc or an sab?
 
-    integer       :: in = 7        ! file unit
-    integer       :: i             ! loop index for data records
-    integer       :: location      ! location of NDPP table
-    integer       :: filetype      ! Ascii, Binary or HDF5 filetype
-    logical       :: file_exists   ! does NDPP library exist?
-    character(7)  :: readable      ! is NDPP library readable?
-    character(10) :: name          ! name of NDPP table
-    real(8)       :: kT            ! temperature of table
-    real(8)       :: dkT           ! difference in temperature of table
-    integer       :: NG            ! Number of energy groups in library
+    integer       :: in = UNIT_DATAFILE ! file unit
+    integer       :: i                  ! loop index for data records
+    integer       :: location           ! location of NDPP table
+    integer       :: filetype           ! Ascii, Binary or HDF5 filetype
+    logical       :: file_exists        ! does NDPP library exist?
+    character(7)  :: readable           ! is NDPP library readable?
+    character(10) :: name               ! name of NDPP table
+    real(8)       :: kT                 ! temperature of table
+    real(8)       :: dkT                ! difference in temperature of table
+    integer       :: NG                 ! Number of energy groups in library
     character(MAX_FILE_LEN) :: filename ! path to NDPP data library
-    real(8), allocatable    :: energy_bins(:) ! Energy group structure
-    integer       :: mu_bins       ! NUmber of angular points used
-    integer       :: scatt_type    ! Type of scattering data, discarded
-    integer       :: lib_order     ! Order of scattering data in library
-    integer       :: nuscatter     ! Flag as to if nuscatter data is present
-    integer       :: chi_present   ! Flag as to if chi data is present
-    integer       :: gmin, gmax    ! Min and max possible group transfers
-    real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
-    integer       :: NEin, iE      ! Number of incoming energies and the index
+    integer       :: mu_bins            ! NUmber of angular points used
+    integer       :: scatt_type         ! Type of scattering data, discarded
+    integer       :: lib_order          ! Order of scattering data in library
+    integer       :: nuscatter          ! Flag as to if nuscatter data is present
+    integer       :: chi_present_int    ! Is chi present? (from input)
+    logical       :: chi_present        ! Flag as to if chi data is present
+    integer       :: gmin, gmax         ! Min and max possible group transfers
+    real(8)       :: thin_tol           ! Thinning tolerance used in lib, discarded
+    integer       :: NEin, iE           ! Number of incoming energies and the index
+    integer       :: NP                 ! Number of precursors groups
+    real(8), allocatable    :: energy_bins(:)  ! Energy group structure
     real(8), allocatable :: temp_outgoing(:,:) ! Temporary storage of scatt data
-    integer       :: NP            ! Number of precursors groups
 
-    ! determine path, record length, and location of table
-    filename      = listing % path
-    filetype      = listing % filetype
-    location      = listing % location
+    ! determine path, file type, and location of table
+    filename = listing % path
+    filetype = listing % filetype
+    location = listing % location
 
-    ! Check if ACE library exists and is readable
+    ! Check if NDPP library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
       call fatal_error("NDPP library '" // trim(filename) // &
@@ -96,7 +97,14 @@ module ndpp_ops
       read(UNIT=in, FMT=*) energy_bins
       ! The next line is scatt_type, lib_order, nuscatter, chi_present
       read(UNIT=in, FMT='(I20,I20,I20,I20)') scatt_type, lib_order, &
-        nuscatter, chi_present
+           nuscatter, chi_present_int
+      ! Convert chi_present_int to a bool
+      if (chi_present_int == 1) then
+        chi_present = .True.
+      else
+        chi_present = .False.
+      end if
+
       ! Finally, mu_bins, thin_tol
       read(UNIT=in, FMT='(I20,1PE20.12)') mu_bins, thin_tol
 
@@ -118,7 +126,7 @@ module ndpp_ops
       read(UNIT=in, FMT=*) this % el_Ein_srch
 
       ! Get the elastic moments themselves
-      do iE = 1, NEin
+      ENERGY_LOOP: do iE = 1, NEin
         ! get gmin and gmax
         read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
@@ -138,9 +146,10 @@ module ndpp_ops
             temp_outgoing(1 : scatt_order, gmin : gmax)
           deallocate(temp_outgoing)
         end if
-      end do
+      end do ENERGY_LOOP
 
-      ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
+      ! The remainder only apply to nuclides
+      ! (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
         read(UNIT=in, FMT='(I20)') NEin
         if (NEin > 0) then
@@ -161,9 +170,9 @@ module ndpp_ops
             if ((gmin > 0) .and. (gmax > 0)) then
               ! Then we can allocate the space. Do it to lib_order
               ! since this is the largest order requested in the tallies.
-              ! Since we only need to store up to the maximum, we also need to have
-              ! an array for reading the file which we can later truncate to fit
-              ! in to this % inel(iE) % outgoing.
+              ! Since we only need to store up to the maximum, we also need to
+              ! have an array for reading the file which we can later truncate
+              ! to fit in to this % inel(iE) % outgoing.
               allocate(temp_outgoing(lib_order, gmin : gmax))
 
               ! Now we have a space to store the data, get it.
@@ -171,7 +180,7 @@ module ndpp_ops
               ! And copy in to this % el
               allocate(this % inel(iE) % outgoing(scatt_order, gmin : gmax))
               this % inel(iE) % outgoing(:, gmin : gmax) = &
-                temp_outgoing(1 : scatt_order, gmin : gmax)
+                   temp_outgoing(1 : scatt_order, gmin : gmax)
               deallocate(temp_outgoing)
             end if
           end do
@@ -179,7 +188,7 @@ module ndpp_ops
           ! Get nu-scatter, if needed
           if (nuscatter == 1) then
             allocate(this % nuinel(NEin))
-            do iE = 1, NEin
+            ENERGY_LOOP_ASCII: do iE = 1, NEin
               ! get gmin and gmax
               read(UNIT=in, FMT='(I20,I20)') gmin, gmax
 
@@ -199,12 +208,12 @@ module ndpp_ops
                   temp_outgoing(1 : scatt_order, gmin : gmax)
                 deallocate(temp_outgoing)
               end if
-            end do
+            end do ENERGY_LOOP_ASCII
           end if
         end if
 
         ! Get chi(E_{in}) data if provided
-        if (chi_present == 1) then
+        if (chi_present) then
           ! Get Ein grid and number of precursors
           read(UNIT=in, FMT='(I20,I20)') NEin, NP
 
@@ -250,7 +259,14 @@ module ndpp_ops
       ! the right data set), and the other meta information
       allocate(energy_bins(NG + 1))
       read(UNIT=in) energy_bins, scatt_type, lib_order, &
-        nuscatter, chi_present, mu_bins, thin_tol
+           nuscatter, chi_present_int, mu_bins, thin_tol
+
+      ! Convert chi_present_int to a bool
+      if (chi_present_int == 1) then
+        chi_present = .True.
+      else
+        chi_present = .False.
+      end if
 
       ! set lib_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) lib_order = lib_order + 1
@@ -289,12 +305,13 @@ module ndpp_ops
           ! And copy in to this % el
           allocate(this % el(iE) % outgoing(scatt_order, gmin : gmax))
           this % el(iE) % outgoing(:, gmin : gmax) = &
-            temp_outgoing(1 : scatt_order, gmin : gmax)
+               temp_outgoing(1 : scatt_order, gmin : gmax)
           deallocate(temp_outgoing)
         end if
       end do
 
-      ! The remainder only apply to nuclides (inelastic, nu-inelastic and chi data)
+      ! The remainder only apply to nuclides
+      ! (inelastic, nu-inelastic and chi data)
       if (is_nuc) then
         read(UNIT=in) NEin
 
@@ -316,9 +333,9 @@ module ndpp_ops
             if ((gmin > 0) .and. (gmax > 0)) then
               ! Then we can allocate the space. Do it to lib_order
               ! since this is the largest order requested in the tallies.
-              ! Since we only need to store up to the maximum, we also need to have
-              ! an array for reading the file which we can later truncate to fit
-              ! in to this % inel(iE) % outgoing.
+              ! Since we only need to store up to the maximum, we also need to
+              ! have an array for reading the file which we can later truncate
+              ! to fit in to this % inel(iE) % outgoing.
               allocate(temp_outgoing(lib_order, gmin : gmax))
 
               ! Now we have a space to store the data, get it.
@@ -326,7 +343,7 @@ module ndpp_ops
               ! And copy in to this % inel
               allocate(this % inel(iE) % outgoing(scatt_order, gmin : gmax))
               this % inel(iE) % outgoing(:, gmin : gmax) = &
-                temp_outgoing(1 : scatt_order, gmin : gmax)
+                   temp_outgoing(1 : scatt_order, gmin : gmax)
               deallocate(temp_outgoing)
             end if
           end do
@@ -334,33 +351,33 @@ module ndpp_ops
           ! Get nu-scatter, if needed
           if (nuscatter == 1) then
             allocate(this % nuinel(NEin))
-            do iE = 1, NEin
+            ENERGY_LOOP_BINARY: do iE = 1, NEin
               ! get gmin and gmax
               read(UNIT=in) gmin, gmax
 
               if ((gmin > 0) .and. (gmax > 0)) then
                 ! Then we can allocate the space. Do it to lib_order
                 ! since this is the largest order requested in the tallies.
-                ! Since we only need to store up to the maximum, we also need to have
-                ! an array for reading the file which we can later truncate to fit
-                ! in to this % nuinel(iE) % outgoing.
+                ! Since we only need to store up to the maximum, we also need to
+                ! have an array for reading the file which we can later truncate
+                ! to fit in to this % nuinel(iE) % outgoing.
                 allocate(temp_outgoing(lib_order, gmin : gmax))
 
                 ! Now we have a space to store the data, get it.
                 read(UNIT=in) temp_outgoing
                 ! And copy in to this % nuinel
                 allocate(this % nuinel(iE) % outgoing(scatt_order, &
-                  gmin : gmax))
+                     gmin : gmax))
                 this % nuinel(iE) % outgoing(:, gmin : gmax) = &
-                  temp_outgoing(1 : scatt_order, gmin : gmax)
+                     temp_outgoing(1 : scatt_order, gmin : gmax)
                 deallocate(temp_outgoing)
               end if
-            end do
+            end do ENERGY_LOOP_BINARY
           end if
         end if
 
         ! Get chi data, if provided
-        if (chi_present == 1) then
+        if (chi_present) then
           ! Get Ein grid and Number of Precursors
           read(UNIT=in) NEin, NP
 
@@ -391,6 +408,8 @@ module ndpp_ops
       ! READ NDPP DATA IN HDF5 FORMAT
 
       ! NOT YET IMPLEMENTED
+      call fatal_error("HDF5 NDPP Filetypes Not Yet Implemented. " // &
+                       "Check ndpp_lib.xml for Errors.")
 
     end if ! No default needed - read_ndpp_xml() already checked filetype
 
@@ -518,7 +537,7 @@ module ndpp_ops
         micro_xs(i_nuclide) % absorption)
     end if
 
-    ! Add the contribution from the elastic score
+    ! Add the combined distribution to our tally
     do g = gmin, gmax
       g_filter = filter_index + g - 1
 !$omp atomic

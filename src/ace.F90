@@ -228,13 +228,14 @@ contains
     integer, intent(in) :: i_table   ! index in nuclides/sab_tables
     integer, intent(in) :: i_listing ! index in xs_listings
 
+    integer       :: in = UNIT_DATAFILE ! file unit
+    character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
     integer       :: i             ! loop index for XSS records
     integer       :: j, j1, j2     ! indices in XSS
     integer       :: record_length ! Fortran record length
     integer       :: location      ! location of ACE table
     integer       :: entries       ! number of entries on each record
     integer       :: length        ! length of ACE table
-    integer       :: in = 7        ! file unit
     integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
     integer       :: filetype      ! filetype (ASCII or BINARY)
     real(8)       :: kT            ! temperature of table
@@ -247,7 +248,6 @@ contains
     character(10) :: date_         ! date ACE library was processed
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
-    character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
     type(Nuclide),   pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
@@ -752,31 +752,31 @@ contains
         ! Set flag and allocate space for Tab1 to store yield
         rxn % multiplicity_with_E = .true.
         allocate(rxn % multiplicity_E)
-        
+
         XSS_index = JXS(11) + rxn % multiplicity - 101
         NR = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_regions = NR
-        
+
         ! allocate space for ENDF interpolation parameters
         if (NR > 0) then
           allocate(rxn % multiplicity_E % nbt(NR))
           allocate(rxn % multiplicity_E % int(NR))
         end if
-        
+
         ! read ENDF interpolation parameters
         XSS_index = XSS_index + 1
         if (NR > 0) then
           rxn % multiplicity_E % nbt = get_int(NR)
           rxn % multiplicity_E % int = get_int(NR)
         end if
-        
+
         ! allocate space for yield data
         XSS_index = XSS_index + 2*NR
         NE = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_pairs = NE
         allocate(rxn % multiplicity_E % x(NE))
         allocate(rxn % multiplicity_E % y(NE))
-        
+
         ! read yield data
         XSS_index = XSS_index + 1
         rxn % multiplicity_E % x = get_real(NE)

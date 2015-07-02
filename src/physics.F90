@@ -254,7 +254,7 @@ contains
 
       ! Score implicit absorption estimate of keff
       if (run_mode == MODE_EIGENVALUE) then
-        tally_absorption = tally_absorption + p % absorb_wgt * &
+        global_tally_absorption = global_tally_absorption + p % absorb_wgt * &
              micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
       end if
     else
@@ -263,7 +263,7 @@ contains
            prn() * micro_xs(i_nuclide) % total) then
         ! Score absorption estimate of keff
         if (run_mode == MODE_EIGENVALUE) then
-          tally_absorption = tally_absorption + p % wgt * &
+          global_tally_absorption = global_tally_absorption + p % wgt * &
                micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
         end if
 

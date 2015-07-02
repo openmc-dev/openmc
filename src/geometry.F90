@@ -320,7 +320,7 @@ contains
 
       ! Score to global leakage tally
       if (tallies_on) then
-        tally_leakage = tally_leakage + p % wgt
+        global_tally_leakage = global_tally_leakage + p % wgt
       end if
 
       ! Display message

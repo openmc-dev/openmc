@@ -175,20 +175,20 @@ contains
 !$omp parallel
 !$omp critical
     global_tallies(K_TRACKLENGTH) % value = &
-         global_tallies(K_TRACKLENGTH) % value + tally_tracklength
+         global_tallies(K_TRACKLENGTH) % value + global_tally_tracklength
     global_tallies(K_COLLISION) % value   = &
-         global_tallies(K_COLLISION) % value + tally_collision
+         global_tallies(K_COLLISION) % value + global_tally_collision
     global_tallies(LEAKAGE) % value   = &
-         global_tallies(LEAKAGE) % value + tally_leakage
+         global_tallies(LEAKAGE) % value + global_tally_leakage
     global_tallies(K_ABSORPTION) % value   = &
-         global_tallies(K_ABSORPTION) % value + tally_absorption
+         global_tallies(K_ABSORPTION) % value + global_tally_absorption
 !$omp end critical
 
     ! reset private tallies
-    tally_tracklength = 0
-    tally_collision   = 0
-    tally_leakage     = 0
-    tally_absorption  = 0
+    global_tally_tracklength = 0
+    global_tally_collision   = 0
+    global_tally_leakage     = 0
+    global_tally_absorption  = 0
 !$omp end parallel
 
 #ifdef _OPENMP

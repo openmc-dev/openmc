@@ -2,7 +2,7 @@
 
 <ndpp>
   <scatt_type>legendre</scatt_type>
-  <scatt_order>1</scatt_order>
+  <scatt_order>5</scatt_order>
   <cross_sections>./cross_sections.xml</cross_sections>
   <energy_bins>0.000E0 6.250E-7 2.000E1</energy_bins>
   <nuscatter>true</nuscatter>

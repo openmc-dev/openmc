@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <ndpp_lib>
+  <directory> /home/nelsonag/git/openmc/tests/NDPP_data/  </directory>
   <filetype> ascii </filetype>
   <entries> 4  </entries>
   <nuscatter> true </nuscatter>
   <chi_present> true </chi_present>
   <scatt_type> 0 </scatt_type>
-  <scatt_order> 1 </scatt_order>
+  <scatt_order> 5 </scatt_order>
   <print_tol> 1.00000E-08 </print_tol>
   <thin_tol> 1.00000E-06 </thin_tol>
   <mu_bins> 51 </mu_bins>

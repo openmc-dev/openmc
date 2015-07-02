@@ -4,14 +4,14 @@
   <tally id="1">
     <filter type="energy" bins="0 0.625E-6 20.0" />
     <filter type="energyout" bins="0 0.625E-6 20.0" />
-    <scores>ndpp-nu-scatter-p1</scores>
+    <scores>ndpp-nu-scatter-p5</scores>
     <estimator>analog</estimator>
   </tally>
 
   <tally id="2">
     <filter type="energy" bins="0 0.625E-6 20.0" />
     <filter type="energyout" bins="0 0.625E-6 20.0" />
-    <scores>ndpp-nu-scatter-p1</scores>
+    <scores>ndpp-nu-scatter-p5</scores>
     <estimator>tracklength</estimator>
   </tally>
 

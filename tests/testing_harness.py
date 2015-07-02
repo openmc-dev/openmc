@@ -68,7 +68,7 @@ class TestHarness(object):
         executor = Executor()
 
         if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=mpi_procs,
+            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
                                                  openmc_exec=self._opts.exe,
                                                  mpi_exec=self._opts.mpi_exec)
 

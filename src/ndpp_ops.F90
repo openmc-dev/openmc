@@ -678,11 +678,11 @@ module ndpp_ops
       i_score = score_index
       do l = 0, t_order
         num_lm = 2 * l + 1
-!$omp critical
+!$omp critical (ndpp_tally_scatt_yn)
         results(i_score: i_score + num_lm - 1, g_filter) % value = &
           results(i_score: i_score + num_lm - 1, g_filter) % value + &
           ndpp_outgoing(thread_id, l + 1, g) * norm * calc_rn(l, uvw)
-!$omp end critical
+!$omp end critical (ndpp_tally_scatt_yn)
 
         i_score = i_score + num_lm
       end do

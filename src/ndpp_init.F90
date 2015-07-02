@@ -439,7 +439,7 @@ contains
                  "not match that requested in tally!")
           end if
           ! Now we can check the actual group boundaries.
-          if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+          if (any(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
             call fatal_error("NDPP Library group structure does not " // &
                  "match that requested in tally!")
           end if
@@ -449,7 +449,7 @@ contains
             call fatal_error("Number of groups in NDPP Library do " // &
                  "not match that requested in tally!")
           end if
-          if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+          if (any(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
             call fatal_error("NDPP Library group structure does not " // &
                  "match that requested in tally!")
           end if
@@ -477,7 +477,7 @@ contains
                  "not match that requested in tally " // to_str(t % id) // ".")
           end if
           ! Now we can check the actual group boundaries.
-          if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+          if (any(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
             call fatal_error("NDPP Library group structure does " // &
                  "not match that requested in tally " // to_str(t % id) // ".")
           end if
@@ -487,7 +487,7 @@ contains
             call fatal_error("Number of groups in NDPP Library do " // &
                  "not match that requested in tally " // to_str(t % id) // ".")
           end if
-          if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+          if (any(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
             call fatal_error("NDPP Library group structure does " // &
                  "not match that requested in tally " // to_str(t % id) // ".")
           end if
@@ -499,7 +499,7 @@ contains
             call fatal_error("Number of groups in NDPP Library do " // &
                  "not match that requested in tally " // to_str(t % id) // ".")
           end if
-          if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+          if (any(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
             call fatal_error("NDPP Library group structure does not " // &
                  "match that requested in tally " // to_str(t % id) // ".")
           end if

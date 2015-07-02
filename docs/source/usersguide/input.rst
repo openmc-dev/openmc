@@ -1298,29 +1298,36 @@ The ``<tally>`` element accepts the following sub-elements:
     quantities:
 
     :flux:
-      Total flux.  This score can be used with either an ``analog`` or
-      ``tracklength`` estimator.
+      Total flux in particle-cm per source particle. This score can be used with either an ``analog``
+      or ``tracklength`` estimator.
 
     :total:
-      Total reaction rate.  This score can be used with either an ``analog``
+      Total reaction rate in reactions per source particle.  This score can be used with either an ``analog``
       or ``tracklength`` estimator.
 
     :scatter:
       Total scattering rate. Can also be identified with the ``scatter-0``
-      response type.  This score can be used with either an ``analog`` or
+      response type.
+      Units are reactions per source particle.
+      This score can be used with either an ``analog`` or
       ``tracklength`` estimator.
 
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons.  This score can be used with either an
+      produce secondary neutrons.
+      Units are reactions per source particle.
+      This score can be used with either an
       ``analog`` or ``tracklength`` estimator.
 
     :fission:
-      Total fission rate.  This score can be used with either an ``analog`` or
+      Total fission rate in reactions per source particle.
+      This score can be used with either an ``analog`` or
       ``tracklength`` estimator.
 
     :nu-fission:
-      Total production of neutrons due to fission.  This score can always be
+      Total production of neutrons due to fission.
+      Units are neutrons produced per source particle.
+      This score can always be
       used with an ``analog`` estimator, but can only be used with a
       ``tracklength`` estimator if no ``energyout`` filter is specified.
 
@@ -1331,15 +1338,18 @@ The ``<tally>`` element accepts the following sub-elements:
       total energies, and the total energy released by the delayed :math:`\beta`
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally.  The energy units reported from this score are in MeV.  This
-      score can be used with either an ``analog`` or ``tracklength`` estimator.
+      locally.
+      This score can be used with either an ``analog`` or ``tracklength`` estimator.
+      Units are MeV per source particle.
 
     :scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order of the change in particle angle :math:`\left(\mu\right)`.
       N must be between 0 and 10. As an example, tallying the
       2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-2 </scores>``.  This score can only be used with an
+      ``<scores> scatter-2 </scores>``.
+      Units are reactions per source particle. 
+      This score can only be used with an
       ``analog`` estimator.
 
     :scatter-PN:
@@ -1349,7 +1359,9 @@ The ``<tally>`` element accepts the following sub-elements:
       requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
       ``scatter-N``, N must be between 0 and 10. As an example, tallying up
       to the 2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-P2 </scores>``.  This score can only be used with an
+      ``<scores> scatter-P2 </scores>``.
+      Units are reactions per source particle.       
+      This score can only be used with an
       ``analog`` estimator.
 
     :scatter-YN:
@@ -1357,15 +1369,18 @@ The ``<tally>`` element accepts the following sub-elements:
       expansion is performed for the incoming particle direction
       :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
       useful for performing angular flux moment weighting of the scattering
-      moments.  Like ``scatter-PN``, ``scatter-YN`` will tally all of the
+      moments.
+      Like ``scatter-PN``, ``scatter-YN`` will tally all of the
       moments from order 0 to N; N again must be between 0 and 10.
+      Units are reactions per source particle. 
       This score can only be used with an ``analog`` estimator.
 
     :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
       These scores are similar in functionality to their ``scatter*``
-      equivalents except the total production of neutrons due to
-      scattering is scored vice simply the scattering rate. This accounts for
-      multiplicity from (n,2n), (n,3n), and (n,4n) reactions.
+      equivalents except the total production of neutrons due to scattering is
+      scored vice simply the scattering rate. This accounts for multiplicity
+      from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
+      source particle.
 
     :ndpp-scatter-N, ndpp-scatter-PN, ndpp-scatter-YN, ndpp-nu-scatter-N,
      ndpp-nu-scatter-PN, ndpp-nu-scatter-YN:
@@ -1380,17 +1395,22 @@ The ``<tally>`` element accepts the following sub-elements:
       in that order.  These energy and energyout filters must have bins
       corresponding to the energy group structure used to generate the NDPP
       data.
+      Units are reactions per source particle.
 
     :flux-YN:
       Spherical harmonic expansion of the direction of motion
-      :math:`\left(\Omega\right)` of the total flux.  This score will tally
-      all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
+      :math:`\left(\Omega\right)` of the total flux.  This score will tally all
+      of the harmonic moments of order 0 to N.  N must be between 0
+      and 10.
+      Units are particle-cm per source particle.
+      This score can be used with either an ``analog`` or ``tracklength`` estimator.
 
     :total-YN:
       The total reaction rate expanded via spherical harmonics about the
       direction of motion of the neutron, :math:`\Omega`.
       This score will tally all of the harmonic moments of order 0 to N.  N must
       be between 0 and 10.
+      Units are reactions per source particle.
 
     :ndpp-chi:
       The total fission neutron energy spectra including both prompt and
@@ -1419,7 +1439,9 @@ The ``<tally>`` element accepts the following sub-elements:
 ..      be applied with an energy group structure used to generate the NDPP data.
 
     :current:
-      Partial currents on the boundaries of each cell in a mesh.
+      Partial currents on the boundaries of each cell in a mesh. Units are
+      particles per source particle.
+      This score can be used with either an ``analog`` or ``tracklength`` estimator.
 
       .. note::
           This score can only be used if a mesh filter has been
@@ -1427,7 +1449,8 @@ The ``<tally>`` element accepts the following sub-elements:
           other score.
 
     :events:
-      Number of scoring events.
+      Number of scoring events. Units are events per source particle.
+      This score can be used with either an ``analog`` or ``tracklength`` estimator.
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.

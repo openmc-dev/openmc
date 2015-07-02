@@ -518,13 +518,13 @@ contains
           num_nm = 2 * n + 1
 
           ! multiply score by the angular flux moments and store
-!$omp critical
+!$omp critical (score_general_scatt_yn)
           t % results(score_index: score_index + num_nm - 1, filter_index) &
                % value = t &
                % results(score_index: score_index + num_nm - 1, filter_index)&
                % value &
                + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
-!$omp end critical
+!$omp end critical (score_general_scatt_yn)
         end do
         i = i + (t % moment_order(i) + 1)**2 - 1
 
@@ -546,13 +546,13 @@ contains
           num_nm = 2 * n + 1
 
           ! multiply score by the angular flux moments and store
-!$omp critical
+!$omp critical (score_general_flux_tot_yn)
           t % results(score_index: score_index + num_nm - 1, filter_index) &
                % value = t &
                % results(score_index: score_index + num_nm - 1, filter_index)&
                % value &
                + score * calc_rn(n, uvw)
-!$omp end critical
+!$omp end critical (score_general_flux_tot_yn)
         end do
         i = i + (t % moment_order(i) + 1)**2 - 1
 

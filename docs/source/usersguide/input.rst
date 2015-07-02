@@ -1296,24 +1296,25 @@ The ``<tally>`` element accepts the following sub-elements:
     physical quantities:
 
     :flux:
-      Total flux
+      Total flux in particle-cm per source particle.
 
     :total:
-      Total reaction rate
+      Total reaction rate in reactions per source particle.
 
     :scatter:
       Total scattering rate. Can also be identified with the ``scatter-0``
-      response type.
+      response type. Units are reactions per source particle.
 
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons.
+      produce secondary neutrons. Units are reactions per source particle.
 
     :fission:
-      Total fission rate
+      Total fission rate in reactions per source particle.
 
     :nu-fission:
-      Total production of neutrons due to fission
+      Total production of neutrons due to fission. Units are neutrons produced
+      per source neutron.
 
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable
@@ -1322,51 +1323,55 @@ The ``<tally>`` element accepts the following sub-elements:
       total energies, and the total energy released by the delayed :math:`\beta`
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally.
+      locally. Units are MeV per source particle.
 
     :scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order of the change in particle angle :math:`\left(\mu\right)`.
-      N must be between 0 and 10. As an example, tallying the
-      2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-2 </scores>``.
+      N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \
+      scattering moment would be specified as ``<scores> scatter-2
+      </scores>``. Units are reactions per source particle.
 
     :scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
       Legendre expansion order of the change in particle angle
       :math:`\left(\mu\right)`. That is, ``scatter-P1`` is equivalent to
       requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
-      ``scatter-N``, N must be between 0 and 10. As an example, tallying up
-      to the 2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-P2 </scores>``.
+      ``scatter-N``, N must be between 0 and 10. As an example, tallying up to
+      the 2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
+      scatter-P2 </scores>``. Units are reactions per source particle.
 
     :scatter-YN:
-      ``scatter-YN`` is similar to ``scatter-PN`` except an additional
-      expansion is performed for the incoming particle direction
+      ``scatter-YN`` is similar to ``scatter-PN`` except an additional expansion
+      is performed for the incoming particle direction
       :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
       useful for performing angular flux moment weighting of the scattering
-      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the
-      moments from order 0 to N; N again must be between 0 and 10.
+      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments
+      from order 0 to N; N again must be between 0 and 10. Units are reactions
+      per source particle.
 
     :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
       These scores are similar in functionality to their ``scatter*``
-      equivalents except the total production of neutrons due to
-      scattering is scored vice simply the scattering rate. This accounts for
-      multiplicity from (n,2n), (n,3n), and (n,4n) reactions.
+      equivalents except the total production of neutrons due to scattering is
+      scored vice simply the scattering rate. This accounts for multiplicity
+      from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
+      source particle.
 
     :flux-YN:
       Spherical harmonic expansion of the direction of motion
-      :math:`\left(\Omega\right)` of the total flux.  This score will tally
-      all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
+      :math:`\left(\Omega\right)` of the total flux.  This score will tally all
+      of the harmonic moments of order 0 to N.  N must be between 0
+      and 10. Units are particle-cm per source particle.
 
     :total-YN:
       The total reaction rate expanded via spherical harmonics about the
       direction of motion of the neutron, :math:`\Omega`.
       This score will tally all of the harmonic moments of order 0 to N.  N must
-      be between 0 and 10.
+      be between 0 and 10. Units are reactions per source particle.
 
     :current:
-      Partial currents on the boundaries of each cell in a mesh.
+      Partial currents on the boundaries of each cell in a mesh. Units are
+      particles per source particle.
 
       .. note::
           This score can only be used if a mesh filter has been
@@ -1374,7 +1379,7 @@ The ``<tally>`` element accepts the following sub-elements:
           other score.
 
     :events:
-      Number of scoring events
+      Number of scoring events. Units are events per source particle.
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.

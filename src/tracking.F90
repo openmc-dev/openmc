@@ -1,25 +1,26 @@
 module tracking
 
-  use cross_section,   only: calculate_xs
-  use dd_header,       only: dd_type
-  use dd_tracking,     only: cross_domain_boundary
-  use error,           only: fatal_error, warning
-  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
-                             cross_lattice, check_cell_overlap, &
-                             distance_to_mesh_surface
-  use geometry_header, only: Universe, BASE_UNIVERSE
+  use constants
+  use cross_section,     only: calculate_xs
+  use dd_header,         only: dd_type
+  use dd_tracking,       only: cross_domain_boundary, recalc_initial_xs
+  use error,             only: fatal_error, warning
+  use geometry,          only: find_cell, distance_to_boundary, cross_surface, &
+                               cross_lattice, check_cell_overlap, &
+                               distance_to_mesh_surface
+  use geometry_header,   only: Universe, BASE_UNIVERSE
   use global
   use material_header
-  use mesh,            only: get_mesh_bin
-  use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle
-  use physics,         only: collision
-  use random_lcg,      only: prn, prn_seed
-  use string,          only: to_str
-  use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_surface_current
-  use track_output,    only: initialize_particle_track, write_particle_track, &
-                             finalize_particle_track
+  use mesh,              only: get_mesh_bin
+  use output,            only: write_message
+  use particle_header,   only: LocalCoord, Particle
+  use physics,           only: collision
+  use random_lcg,        only: prn, prn_seed
+  use string,            only: to_str
+  use tally,             only: score_analog_tally, score_tracklength_tally, &
+                               score_surface_current
+  use track_output,      only: initialize_particle_track, &
+                               write_particle_track, finalize_particle_track
   implicit none
 
 contains
@@ -47,14 +48,15 @@ contains
     ! DD debugging vars
     integer :: meshbin
     integer(8) :: starting_seed
-    integer(8) :: debug1 = 0_8
-    integer(8) :: debug2 = 0_8
+    integer(8) :: debug1 = 5464171501723750348_8
+    integer(8) :: debug2 = 331860069508688933_8
     integer(8) :: debug3 = 0_8
     integer(8) :: debug4 = 0_8
 
-!    starting_seed = prn_seed(1)
-!    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!        print *,'starting particle', starting_seed, p % id, p % new_particle
+    starting_seed = prn_seed(1)
+    !print *, 'starting', starting_seed
+    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+        print *,'starting particle', starting_seed, p % id, p % new_particle
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
       call write_message("Simulating Particle " // trim(to_str(p % id)))
@@ -92,19 +94,12 @@ contains
       call initialize_particle_track()
     endif
 
-    if (dd_run) then
-      ! For DD runs, if we normally wouldn't have to recalculate the cross
-      ! section after a scatter then we need to make sure that we recalculate it
-      ! here with the same random number seed so we get the same thing as before
-      ! (because URR ptables)
-      if (p % material == p % last_material .and. p % material /= NONE) then
-        call calculate_xs(p)
-      end if
-    end if
+    ! Make sure we start with the proper XS for DD runs
+    if (dd_run) call recalc_initial_xs(p)
 
     do while (p % alive)
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), p % coord0 % xyz
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), p % coord0 % xyz
 !      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
 !        then
 !          call get_mesh_bin(domain_decomp % mesh, p % coord0 % xyz, meshbin)
@@ -116,23 +111,32 @@ contains
 
       if (check_overlaps) call check_cell_overlap(p)
 
+!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!          print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
+
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
-      if (dd_run) then
-        ! TODO: the optimization for not re-calculating XS on a per-nuclide
-        ! basis means that for reproducibility we'd need to send a prn seed
-        ! for each nuclide along with particles as they cross domain
-        ! boundaries.  This would just about double the amount of info that
-        ! goes with particles across boundaries, so I'll disable it for now.
-        micro_xs % last_E = ZERO
-        micro_xs % last_index_sab = NONE
-      end if
       if (p % material /= p % last_material &
-            & .or. p % inst /= p % last_inst) call calculate_xs(p)
+            & .or. p % inst /= p % last_inst) then
+
+        if (dd_run) then
+          ! NOTE: calculate_xs does not re-calculate XS on a per-nuclide
+          ! basis if the energy hasn't changed. For DD reproducibility we'd
+          ! need to send a prn seed for each nuclide along with particles as
+          ! they cross domain boundaries.  This would just about double the
+          ! amount of info that goes with particles across boundaries, so we
+          ! disable it for DD runs.  If we care about XS calculation speed more
+          ! than network communication load, we might consider communicating
+          ! these seeds with particles.  Or, we could comment out these two
+          ! lines and lose random number reproducibility.
+          micro_xs % last_E = ZERO
+          micro_xs % last_index_sab = NONE
+        end if
+
+        call calculate_xs(p)
+
+      end if
 
       ! Find the distance to the nearest boundary
 !      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
@@ -162,10 +166,11 @@ contains
         distance = min(distance, d_dd_mesh)
       end if
 
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
 !      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
 !          print *, prn_seed(1), 'direction', p % coord0 % uvw
+
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))
@@ -189,38 +194,36 @@ contains
       ! cell or lattice boundaries
       if (dd_run .and. &
            d_dd_mesh < d_collision .and. &
-           (d_dd_mesh <= d_boundary .or. &
+           (d_dd_mesh < d_boundary .or. &
             abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
         ! ======================================================================
         ! PARTICLE CROSSES DOMAIN BOUNDARY
-
-!        print *, rank,p %id,'checking',d_dd_mesh, d_boundary, d_collision, distance, surface_crossed, &
-!lattice_crossed, surfaces(abs(surface_crossed)) % bc
+      
+    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+        print *, "coincidence", &
+            any(lattice_translation /= 0), &
+            surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT, &
+            d_collision > d_boundary, &
+            abs(d_dd_mesh - distance) < FP_COINCIDENT, &
+            d_collision, d_boundary
 
         ! Check for coincidence with a boundary condition - in this case we
         ! don't need to communicate the particle.  Here we rely on lattice
         ! boundaries NOT being selected by distance_to_boundary when they are
         ! coincident with boundary condition surfaces.
-        if (any(lattice_translation /= 0) .or. &
-            .not. (d_collision > d_boundary .and. &
-                abs(d_dd_mesh - distance) < FP_COINCIDENT .and. &
-                .not. surfaces(abs(surface_crossed)) % bc == BC_TRANSMIT)) then
+        if (any(lattice_translation /= 0) .or. & ! communicate if lattice trans
+            .not. (surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT .and. &
+                   d_collision > d_boundary .and. & 
+                   abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
 
           ! If the next interaction would have been a collision, we need to use
           ! the same distance to that collision when the particle is continued
           ! in the adjacent domain, for reproducibility
-          stored_distance = ZERO
-          if (.not. d_collision > d_boundary) then
-            stored_distance = d_collision - distance
-          end if
+          stored_distance = d_collision - distance
 
-          
-          !if (current_batch == 2) print *, 'crossing boundary', prn_seed(1), starting_seed, p % coord0 % xyz
+          if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+              print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % uvw
 
-          !if (rank == 124) print *,'starting is crossing', prn_seed(1), starting_seed, p % id, p % coord0 % xyz(1)
-
-!          if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!              print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % xyz
           ! Prepare particle for communication
           call cross_domain_boundary(p, domain_decomp, stored_distance)
 
@@ -229,24 +232,10 @@ contains
 
         end if
 
-      end if
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+        print *, "DECIDED NOT TO SEND DUE TO COINCIDENCE"
 
-!      if (dd_run) then
-!        ! Check for a bug where this domain continues tracking a particle it shouldn't
-!        xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-!        call get_mesh_bin(domain_decomp % mesh, xyz, meshbin)
-!        if (meshbin /= domain_decomp % meshbin) then
-!          call fatal_error("Tracking particle " // trim(to_str(p % id)) // &
-!                      " on rank " // trim(to_str(rank)) // " in DD meshbin "// &
-!                      trim(to_str(meshbin)) // " at (" // &
-!                      trim(to_str(p % coord0 % xyz(1))) // ", " // &
-!                      trim(to_str(p % coord0 % xyz(2))) // ", " // &
-!                      trim(to_str(p % coord0 % xyz(3))) // "), but this " // &
-!                      "rank is set to track DD meshbin " // &
-!                      trim(to_str(domain_decomp % meshbin)) // &
-!                      ".  prn_seed: " // trim(to_str(prn_seed(1))))
-!        end if
-!      end if
+      end if
 
       if (d_collision > d_boundary) then
         ! ====================================================================

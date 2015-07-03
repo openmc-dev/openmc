@@ -1,18 +1,19 @@
 module dd_tracking
 
   use constants
-  use dd_header,        only: dd_type
-  use error,            only: fatal_error
-  use global,           only: domain_decomp, rank, verbosity, trace
-  use particle_header,  only: Particle
-  use mesh,             only: get_mesh_bin
-  use output,           only: write_message
-  use random_lcg,       only: prn_seed
-  use string,           only: to_str
+  use cross_section,     only: calculate_xs
+  use dd_header,         only: dd_type
+  use error,             only: fatal_error
+  use global,            only: domain_decomp, rank, verbosity, trace
+  use particle_header,   only: Particle
+  use mesh,              only: get_mesh_bin
+  use output,            only: write_message
+  use random_lcg,        only: prn_seed
+  use random_lcg_header, only: N_STREAMS
+  use string,            only: to_str
   
   implicit none
-  private
-  public :: cross_domain_boundary
+  public
 
 contains
 
@@ -94,5 +95,31 @@ contains
     p % prn_seed        = prn_seed
     
   end subroutine cross_domain_boundary
+
+
+!===============================================================================
+! RECALC_INITIAL_XS recalculates the inital cross sections for a particle using
+! a stored random number seed. For DD runs, if we normally wouldn't have to
+! recalculate the cross section after a scatter then we need to make sure that 
+! we recalculate it before starting transport with the same random number seed
+! so we get the same thing as we would have gotten if we tracked the particle to
+! completion without transporting it across domains.  This is needed entirely 
+! because URR ptables use a random number from the stream.
+!===============================================================================
+
+  subroutine recalc_initial_xs(p)
+
+    type(Particle), intent(inout) :: p
+
+    integer(8) :: tmp_seed(N_STREAMS) ! Temporary variable to hold prn_seed
+
+    if (p % material /= NONE .and. p % material == p % last_material) then
+      tmp_seed = prn_seed
+      prn_seed = p % xs_seed
+      call calculate_xs(p)
+      prn_seed = tmp_seed
+    end if
+
+  end subroutine recalc_initial_xs
 
 end module dd_tracking

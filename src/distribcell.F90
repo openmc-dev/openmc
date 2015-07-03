@@ -72,7 +72,7 @@ contains
 
     count_all = .false.
 
-    ! Loop over tallies    
+    ! Check for distributed tallies
     do i = 1, n_tallies
 
       ! Get pointer to tally
@@ -96,7 +96,11 @@ contains
       end do
 
     end do
-    
+
+    ! Check for distributed materials
+    if (any(materials % distribcell /= NONE)) count_all = .true.
+
+    ! If we have any distribution, count up cell instances
     if (count_all) then
       
       univ => universes(BASE_UNIVERSE)

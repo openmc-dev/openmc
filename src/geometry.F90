@@ -190,6 +190,15 @@ contains
         p % last_material = p % material
         p % material = c % material
 
+        ! Store the distribcell instance index
+        if (p % material == NONE) then
+          p % inst = NONE
+        else
+          mat => materials(p % material)
+          p % last_inst = p % inst
+          p % inst = get_distribcell_instance(p, mat % distribmap, index_cell)
+        end if
+
       elseif (c % type == CELL_FILL) then CELL_TYPE
         ! ======================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
@@ -263,15 +272,6 @@ contains
         if (.not. found) exit
 
       end if CELL_TYPE
-
-      ! Store the distribcell instance index
-      if (p % material == NONE) then
-        p % inst = NONE
-      else
-        mat => materials(p % material)
-        p % last_inst = p % inst
-        p % inst = get_distribcell_instance(p, mat % distribmap, index_cell)
-      end if
 
       ! Found cell so we can return
       found = .true.

@@ -213,10 +213,11 @@ contains
             ! Save the cell id on the material, and enforce that no two cells 
             ! share a distributed material
             if (mat % distribcell == NONE) then
-              mat % distribcell = c % id
-              call cell_list % add(c % id)
+              mat % distribcell = cell_dict % get_key(c % id)
+              call cell_list % add(mat % distribcell)
             else
-              call fatal_error("Two cells, " // trim(to_str(mat % distribcell)) // &
+              call fatal_error("Two cells, " // &
+                               trim(to_str(cells(mat % distribcell) % id)) // &
                                " and " // trim(to_str(c % id)) // &
                                ", cannot share the same distributed material.")
             end if
@@ -225,7 +226,7 @@ contains
 
         end do
 
-        if (mat % distribcell < 1) then        
+        if (mat % distribcell == NONE) then
           if (master) call warning("No cell found for distributed material: " // &
               to_str(mat % id))
         end if        
@@ -293,7 +294,7 @@ contains
 
             ! If this material is in the current cell, store its corresponding
             ! map index
-            if (cell_dict % get_key(mat % distribcell) == univ % cells(j)) then
+            if (mat % distribcell == univ % cells(j)) then
               mat % distribmap = mapnum
             end if
 
@@ -359,9 +360,9 @@ contains
       if (mat % distrib_dens) then
 
         ! Skip unused mats
-        if (mat % distribcell < 1) cycle
+        if (mat % distribcell == NONE) cycle
 
-        c => cells(cell_dict % get_key(mat % distribcell))
+        c => cells(mat % distribcell)
 
         num = mat % density % num
         ! Ensure that there are a sensible number of densities specified
@@ -404,9 +405,9 @@ contains
       else if (mat % distrib_comp) then
 
         ! Skip unused mats
-        if (mat % distribcell < 1) cycle
+        if (mat % distribcell == NONE) cycle
 
-        c => cells(cell_dict % get_key(mat % distribcell))
+        c => cells(mat % distribcell)
 
         num = mat % n_comp
 
@@ -795,9 +796,9 @@ contains
       if (mat % distrib_dens .or. mat % distrib_comp) then
 
         ! Skip unused mats
-        if (mat % distribcell < 1) cycle
+        if (mat % distribcell == NONE) cycle
 
-        c => cells(cell_dict % get_key(mat % distribcell))
+        c => cells(mat % distribcell)
 
         write(UNIT_HELP,*) 'Distributed Material:', mat % id
         write(UNIT_HELP,*) 'Number of Instances:', c % instances

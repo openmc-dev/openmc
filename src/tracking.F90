@@ -3,7 +3,7 @@ module tracking
   use constants
   use cross_section,     only: calculate_xs
   use dd_header,         only: dd_type
-  use dd_tracking,       only: cross_domain_boundary, recalc_initial_xs
+  use dd_tracking,       only: check_domain_boundary_crossing, recalc_initial_xs
   use error,             only: fatal_error, warning
   use geometry,          only: find_cell, distance_to_boundary, cross_surface, &
                                cross_lattice, check_cell_overlap, &
@@ -41,8 +41,8 @@ contains
     real(8) :: d_collision            ! sampled distance to collision
     real(8) :: d_dd_mesh              ! distance to boundary on the DD mesh
     real(8) :: distance               ! distance particle travels
-    real(8) :: stored_distance        ! remaining dist after DD boundary
     logical :: found_cell             ! found cell which particle is in?
+    logical :: dd_boundary_crossed    ! domain decomposition boundary crossed
     type(LocalCoord), pointer :: coord
 
     ! DD debugging vars
@@ -190,53 +190,16 @@ contains
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
 
-      ! Check if we cross a domain boundary, which could be coincident with
-      ! cell or lattice boundaries
-      if (dd_run .and. &
-           d_dd_mesh < d_collision .and. &
-           (d_dd_mesh < d_boundary .or. &
-            abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
-        ! ======================================================================
-        ! PARTICLE CROSSES DOMAIN BOUNDARY
-      
-    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-        print *, "coincidence", &
-            any(lattice_translation /= 0), &
-            surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT, &
-            d_collision > d_boundary, &
-            abs(d_dd_mesh - distance) < FP_COINCIDENT, &
-            d_collision, d_boundary
-
-        ! Check for coincidence with a boundary condition - in this case we
-        ! don't need to communicate the particle.  Here we rely on lattice
-        ! boundaries NOT being selected by distance_to_boundary when they are
-        ! coincident with boundary condition surfaces.
-        if (any(lattice_translation /= 0) .or. & ! communicate if lattice trans
-            .not. (surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT .and. &
-                   d_collision > d_boundary .and. & 
-                   abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
-
-          ! If the next interaction would have been a collision, we need to use
-          ! the same distance to that collision when the particle is continued
-          ! in the adjacent domain, for reproducibility
-          stored_distance = d_collision - distance
-
-          if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-              print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % uvw
-
-          ! Prepare particle for communication
-          call cross_domain_boundary(p, domain_decomp, stored_distance)
-
-          ! Exit the particle tracking loop without killing the particle
-          exit
-
-        end if
-
-      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-        print *, "DECIDED NOT TO SEND DUE TO COINCIDENCE"
-
+      ! Check for domain boundary crossing
+      if (dd_run) then
+        call check_domain_boundary_crossing(domain_decomp, p, distance, &
+            d_dd_mesh, d_collision, d_boundary, lattice_translation, &
+            surface_crossed, dd_boundary_crossed)
+        ! If the particle crosses a domain boundary, stop tracking it
+        if (dd_boundary_crossed) exit
       end if
 
+      ! Check for collisions and surface crossings
       if (d_collision > d_boundary) then
         ! ====================================================================
         ! PARTICLE CROSSES SURFACE
@@ -312,7 +275,6 @@ contains
           coord => coord % next
         end do
       end if
-
 
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1

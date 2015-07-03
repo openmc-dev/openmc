@@ -4,7 +4,7 @@ module dd_tracking
   use cross_section,     only: calculate_xs
   use dd_header,         only: dd_type
   use error,             only: fatal_error
-  use global,            only: domain_decomp, rank, verbosity, trace
+  use global,            only: domain_decomp, surfaces, rank, verbosity, trace
   use particle_header,   only: Particle
   use mesh,              only: get_mesh_bin
   use output,            only: write_message
@@ -16,6 +16,79 @@ module dd_tracking
   public
 
 contains
+
+!===============================================================================
+! CHECK_DOMAIN_BOUNDARY_CROSSING checks if a particle would cross and domain
+! boundary, and preps it for communication between boundaries if so. Care must
+! be taken to account for reflective boundary conditions and lattice
+! translations, which might be coincident with domain domain boundaries.
+!===============================================================================
+
+  subroutine check_domain_boundary_crossing(dd, p, distance, d_dd_mesh, &
+      d_collision, d_boundary, lattice_translation, surface_crossed, &
+      boundary_crossed)
+
+    type(dd_type),  intent(inout)    :: dd         ! domain decomposition object
+    type(Particle), intent(inout) :: p             ! particle
+    real(8), intent(in)  :: distance               ! distance particle is moving
+    real(8), intent(in)  :: d_dd_mesh              ! distance to DD boundary
+    real(8), intent(in)  :: d_collision            ! distance to collision
+    real(8), intent(in)  :: d_boundary             ! distance to cell boundary
+    integer, intent(in)  :: lattice_translation(3) ! lattice translation vector
+    integer, intent(in)  :: surface_crossed        ! surface which particle is on
+    logical, intent(out) :: boundary_crossed
+
+    real(8) :: stored_distance ! remaining dist after DD boundary
+
+    boundary_crossed = .false.
+
+    ! Check if we cross a domain boundary, which could be coincident with
+    ! cell or lattice boundaries
+    if (d_dd_mesh < d_collision .and. &
+        (d_dd_mesh < d_boundary .or. &
+         abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
+      ! ======================================================================
+      ! PARTICLE CROSSES DOMAIN BOUNDARY
+
+!  if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!      print *, "coincidence", &
+!          any(lattice_translation /= 0), &
+!          surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT, &
+!          d_collision > d_boundary, &
+!          abs(d_dd_mesh - distance) < FP_COINCIDENT, &
+!          d_collision, d_boundary
+
+      ! Check for coincidence with a boundary condition - in this case we
+      ! don't need to communicate the particle.  Here we rely on lattice
+      ! boundaries NOT being selected by distance_to_boundary when they are
+      ! coincident with boundary condition surfaces.
+      if (any(lattice_translation /= 0) .or. & ! communicate if lattice trans
+          .not. (surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT .and. &
+                 d_collision > d_boundary .and. &
+                 abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
+
+        ! If the next interaction would have been a collision, we need to use
+        ! the same distance to that collision when the particle is continued
+        ! in the adjacent domain, for reproducibility
+        stored_distance = d_collision - distance
+
+!        if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!            print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % uvw
+
+        ! Prepare particle for communication
+        call cross_domain_boundary(p, dd, stored_distance)
+
+        ! Exit the particle tracking loop without killing the particle
+        boundary_crossed = .true.
+
+      end if
+
+!    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+!      print *, "DECIDED NOT TO SEND DUE TO COINCIDENCE"
+
+    end if
+
+  end subroutine check_domain_boundary_crossing
 
 !===============================================================================
 ! CROSS_DOMAIN_BOUNDARY determines which domain a particle will scatter to,

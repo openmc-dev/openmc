@@ -93,8 +93,8 @@ module material_header
     character(12), allocatable :: sab_names(:) ! name of S(a,b) table
 
     ! Distribution variables
-    logical                        :: distrib_dens ! distributed densities
-    logical                        :: distrib_comp ! distributed compositions
+    logical :: distrib_dens = .false. ! distributed densities
+    logical :: distrib_comp = .false. ! distributed compositions
 
     ! On-the-fly allocation controls
     real(8), allocatable           :: otf_comp(:, :)

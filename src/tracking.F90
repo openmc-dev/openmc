@@ -3,7 +3,9 @@ module tracking
   use constants
   use cross_section,     only: calculate_xs
   use dd_header,         only: dd_type
-  use dd_tracking,       only: check_domain_boundary_crossing, recalc_initial_xs
+  use dd_tracking,       only: recalc_initial_xs, &
+                               check_domain_boundary_crossing, &
+                               cross_domain_boundary
   use error,             only: fatal_error, warning
   use geometry,          only: find_cell, distance_to_boundary, cross_surface, &
                                cross_lattice, check_cell_overlap, &
@@ -191,12 +193,23 @@ contains
            material_xs % nu_fission
 
       ! Check for domain boundary crossing
-      if (dd_run) then
-        call check_domain_boundary_crossing(domain_decomp, p, distance, &
-            d_dd_mesh, d_collision, d_boundary, lattice_translation, &
+      if (dd_run .and. &
+          abs(distance - d_dd_mesh) < FP_COINCIDENT) then
+
+        ! Determine if we should communicate the particle
+        call check_domain_boundary_crossing(d_dd_mesh, d_collision, d_boundary, lattice_translation, &
             surface_crossed, dd_boundary_crossed)
-        ! If the particle crosses a domain boundary, stop tracking it
-        if (dd_boundary_crossed) exit
+
+        if (dd_boundary_crossed) then
+          ! =================================================================
+          ! PARTICLE CROSSES DOMAIN BOUNDARY
+
+          ! Prepare particle for communication and stop tracking it
+          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
+          exit
+
+        end if
+
       end if
 
       ! Check for collisions and surface crossings

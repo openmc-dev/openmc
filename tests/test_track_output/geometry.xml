@@ -35,7 +35,7 @@
     <!-- Central Fuel Assemblies -->
 
       <!-- Central Fuel Assembly -->      
-      <lattice id="11" type="rectangular" dimension="15 15">
+      <lattice id="11" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -59,7 +59,7 @@
       <cell id="111" universe="111" fill="11" surfaces=""/>
       
       <!-- North Fuel Assembly -->      
-      <lattice id="22" type="rectangular" dimension="15 15">
+      <lattice id="22" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -86,7 +86,7 @@
       <cell id="666" universe="666" fill="222" surfaces="" rotation="0 0 270"/> <!-- east  -->
       
       <!-- Northeast Fuel Assembly -->      
-      <lattice id="33" type="rectangular" dimension="15 15">
+      <lattice id="33" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -115,7 +115,7 @@
     <!-- Surrounding Driver Assemblies -->
 
       <!-- Full Driver Assembly -->
-      <lattice id="24" type="rectangular" dimension="15 15">
+      <lattice id="24" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -139,7 +139,7 @@
       <cell id="240" universe="240" fill="24" surfaces="-99"/>
 
       <!-- North Edge -->
-      <lattice id="14" type="rectangular" dimension="15 15">
+      <lattice id="14" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -166,7 +166,7 @@
       <cell id="470" universe="470" fill="140" surfaces="" rotation="0 0 270"/> <!-- west  -->
 
       <!-- Northeast Edge Corner -->
-      <lattice id="15" type="rectangular" dimension="15 15">
+      <lattice id="15" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -193,7 +193,7 @@
       <cell id="570" universe="570" fill="150" surfaces="" rotation="0 0 270"/> <!-- southeast -->
 
       <!-- Northeast Top Steps -->
-      <lattice id="25" type="rectangular" dimension="15 15">
+      <lattice id="25" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -221,7 +221,7 @@
 
 
       <!-- Northeast Middle Corner -->
-      <lattice id="26" type="rectangular" dimension="15 15">
+      <lattice id="26" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -248,7 +248,7 @@
       <cell id="660" universe="660" fill="260" surfaces="" rotation="0 0 270"/> <!-- northwest -->
 
       <!-- Northeast Bottom Steps -->
-      <lattice id="36" type="rectangular" dimension="15 15">
+      <lattice id="36" dimension="15 15">
         <lower_left> -12.2682 -12.2682 </lower_left>
         <pitch>    1.63576 1.63576 </pitch>
         <universes>
@@ -284,7 +284,7 @@
     <surface id="40" type="z-cylinder" coeffs="0.0 0.0 77.470" boundary="vacuum"/>
 
     <!-- Core lattice -->
-    <lattice id="99" type="rectangular" dimension="7 7">
+    <lattice id="99" dimension="7 7">
       <lower_left> -85.8774 -85.8774 </lower_left>
       <pitch>   24.5364  24.5364 </pitch>
       <universes>

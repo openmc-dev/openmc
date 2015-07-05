@@ -1,109 +1,78 @@
 #!/usr/bin/env python
 
-import os
+import hashlib
 import sys
-from subprocess import Popen, STDOUT, PIPE, call
-import filecmp
-import glob
-from optparse import OptionParser
-from shutil import copyfile
 
-parser = OptionParser()
-parser.add_option('--mpi_exec', dest='mpi_exec', default='')
-parser.add_option('--mpi_np', dest='mpi_np', default='3')
-parser.add_option('--exe', dest='exe')
-(opts, args) = parser.parse_args()
+sys.path.insert(0, '..')
+from testing_harness import *
 
-def test_run():
 
-    if opts.mpi_exec != '':
-        opts.mpi_exe = os.path.abspath(opts.mpi_exec)
+class DistribcellTestHarness(TestHarness):
+    def __init__(self):
+        self._sp_name = None
+        self._tallies = True
+        self._opts = None
+        self._args = None
 
-    opts.exe = os.path.abspath(opts.exe)
+    def execute_test(self):
+        """Run OpenMC with the appropriate arguments and check the outputs."""
+        base_dir = os.getcwd()
+        try:
+            dirs = ('case-1', '../case-2', '../case-3')
+            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*')
+            tallies_out_present = (True, True, False)
+            hash_out = (False, False, True)
+            for i in range(len(dirs)):
+                os.chdir(dirs[i])
+                self._sp_name = sps[i]
 
-    # Call 1
-    os.chdir('case-1')
-    cwd = os.getcwd()
-    if opts.mpi_exec != '':
-        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
-               stderr=STDOUT, stdout=PIPE)
-    else:
-        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
-    print(proc.communicate()[0])
-    returncode = proc.returncode
-    assert returncode == 0
+                self._run_openmc()
+                self._test_output_created(tallies_out_present[i])
+                results = self._get_results(hash_out[i])
+                self._write_results(results)
+                self._compare_results()
+        finally:
+            os.chdir(base_dir)
+            for i in range(len(dirs)):
+                os.chdir(dirs[i])
+                self._cleanup()
 
-    # Call 2
-    os.chdir('../case-2')
-    cwd = os.getcwd()
-    if opts.mpi_exec != '':
-        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
-               stderr=STDOUT, stdout=PIPE)
-    else:
-        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
-    print(proc.communicate()[0])
-    returncode = proc.returncode
-    assert returncode == 0
+    def update_results(self):
+        """Update the results_true using the current version of OpenMC."""
+        base_dir = os.getcwd()
+        try:
+            dirs = ('case-1', '../case-2', '../case-3')
+            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*')
+            tallies_out_present = (True, True, False)
+            hash_out = (False, False, True)
+            for i in range(len(dirs)):
+                os.chdir(dirs[i])
+                self._sp_name = sps[i]
 
-    # Call 3
-    os.chdir('../case-3')
-    cwd = os.getcwd()
-    if opts.mpi_exec != '':
-        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
-               stderr=STDOUT, stdout=PIPE)
-    else:
-        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
-    print(proc.communicate()[0])
-    returncode = proc.returncode
-    assert returncode == 0
+                self._run_openmc()
+                self._test_output_created(tallies_out_present[i])
+                results = self._get_results(hash_out[i])
+                self._write_results(results)
+                self._overwrite_results()
+        finally:
+            os.chdir(base_dir)
+            for i in range(len(dirs)):
+                os.chdir(dirs[i])
+                self._cleanup()
 
-    os.chdir('..')
+    def _test_output_created(self, tallies_out_present):
+        """Make sure statepoint.* and tallies.out have been created."""
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
+             'exist.'
+        assert statepoint[0].endswith('binary') \
+             or statepoint[0].endswith('h5'), \
+             'Statepoint file is not a binary or hdf5 file.'
+        if tallies_out_present:
+            assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
+                 'Tally output file does not exist.'
 
-def test_created_statepoint():
-    cwd = os.getcwd()
-    statepoint1 = glob.glob(cwd + '/case-1/statepoint.1.*')
-    statepoint2 = glob.glob(cwd + '/case-2/statepoint.1.*')
-    statepoint3 = glob.glob(cwd + '/case-3/statepoint.3.*')
-    assert len(statepoint1) == 1
-    assert len(statepoint2) == 1
-    assert len(statepoint3) == 1
-    string1 = statepoint1.pop()
-    string2 = statepoint2.pop()
-    string3 = statepoint3.pop()
-    assert string1.endswith('binary') or string1.endswith('h5')
-    assert string2.endswith('binary') or string2.endswith('h5')
-    assert string3.endswith('binary') or string3.endswith('h5')
-
-def test_results():
-    cwd = os.getcwd()
-    statepoint = list()
-    statepoint.append(glob.glob(cwd + '/case-1/statepoint.1.*'))
-    statepoint.append(glob.glob(cwd + '/case-2/statepoint.1.*'))
-    statepoint.append(glob.glob(cwd + '/case-3/statepoint.3.*'))
-    call([sys.executable, 'results.py', statepoint.pop()[0], statepoint.pop()[0], statepoint.pop()[0]])
-    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
-    if not compare:
-      os.rename('results_test.dat', 'results_error.dat')
-    assert compare
-
-def teardown():
-    cwd = os.getcwd()
-    output = glob.glob(cwd + '/statepoint.*')
-    output.append(cwd + '/results_test.dat')
-    for f in output:
-        if os.path.exists(str(f)):
-            os.remove(str(f))
 
 if __name__ == '__main__':
-
-    # test for openmc executable
-    if opts.exe is None:
-        raise Exception('Must specify OpenMC executable from command line with --exe.')
-
-    # run tests
-    try:
-        test_run()
-        test_created_statepoint()
-        test_results()
-    finally:
-        teardown()
+    harness = DistribcellTestHarness()
+    harness.main()

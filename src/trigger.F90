@@ -4,6 +4,7 @@ module trigger
   use mpi
 #endif
 
+  use constants
   use global
   use string,           only: to_str
   use output,           only: warning, write_message
@@ -30,7 +31,7 @@ contains
     character(len=52)  :: name            ! "eigenvalue" or tally score
 
     integer    :: n_pred_batches  ! predicted # batches to satisfy all triggers
-    
+
     ! Checks if current_batch is one for which the triggers must be checked
     if (current_batch < n_batches .or. (.not. trigger_on)) return
     if (mod((current_batch - n_batches), n_batch_interval) /= 0 .and. &
@@ -39,24 +40,24 @@ contains
     ! Check the trigger and output the result
     call check_tally_triggers(max_ratio, tally_id, name)
 
-    ! When trigger threshold is reached, write information 
+    ! When trigger threshold is reached, write information
     if (satisfy_triggers) then
       call write_message("Triggers satisfied for batch " // &
           trim(to_str(current_batch)))
-    
+
     ! When trigger is not reached write convergence info for user
     elseif (name == "eigenvalue") then
       call write_message("Triggers unsatisfied, max unc./thresh. is " // &
            trim(to_str(max_ratio)) //  " for " // trim(name))
     else
-      call write_message("Triggers unsatisfied, max unc./thresh. is " // & 
+      call write_message("Triggers unsatisfied, max unc./thresh. is " // &
            trim(to_str(max_ratio)) // " for " // trim(name) // &
            " in tally " // trim(to_str(tally_id)))
-    end if 
+    end if
 
     ! If batch_interval is not set, estimate batches till triggers are satisfied
     if (pred_batches .and. .not. satisfy_triggers) then
-         
+
       ! Estimate the number of remaining batches to convergence
       ! The prediction uses the fact that tally variances are proportional
       ! to 1/N where N is the number of the batches/particles
@@ -65,9 +66,9 @@ contains
       n_pred_batches = n_batch_interval + n_batches
 
       ! Write the predicted number of batches for the user
-      if (n_pred_batches > n_max_batches) then 
+      if (n_pred_batches > n_max_batches) then
         call warning("The estimated number of batches is " // &
-             trim(to_str(n_pred_batches)) // & 
+             trim(to_str(n_pred_batches)) // &
              " --  greater than max batches. ")
       else
         call write_message("The estimated number of batches is " // &
@@ -98,8 +99,8 @@ contains
     integer :: n_order        ! loop index for moment orders
     integer :: nm_order       ! loop index for Ynm moment orders
     real(8) :: uncertainty    ! trigger uncertainty
-    real(8) :: std_dev = 0.0  ! trigger standard deviation
-    real(8) :: rel_err = 0.0  ! trigger relative error
+    real(8) :: std_dev = ZERO ! trigger standard deviation
+    real(8) :: rel_err = ZERO ! trigger relative error
     real(8) :: ratio          ! ratio of the uncertainty/trigger threshold
     type(TallyObject), pointer     :: t               ! tally pointer
     type(TriggerObject), pointer   :: trigger         ! tally trigger
@@ -115,8 +116,8 @@ contains
       ! Check eigenvalue trigger
       if (run_mode == MODE_EIGENVALUE) then
         if (keff_trigger % trigger_type /= 0) then
-          select case (keff_trigger % trigger_type)        
-          case(VARIANCE) 
+          select case (keff_trigger % trigger_type)
+          case(VARIANCE)
             uncertainty = k_combined(2) ** 2
           case(STANDARD_DEVIATION)
             uncertainty = k_combined(2)
@@ -124,7 +125,7 @@ contains
             uncertainty = k_combined(2) / k_combined(1)
           end select
 
-          ! If uncertainty is above threshold, store uncertainty ratio         
+          ! If uncertainty is above threshold, store uncertainty ratio
           if (uncertainty > keff_trigger % threshold) then
             satisfy_triggers = .false.
             if (keff_trigger % trigger_type == VARIANCE) then
@@ -133,11 +134,11 @@ contains
               ratio = uncertainty / keff_trigger % threshold
             end if
             if (max_ratio < ratio) then
-              max_ratio = ratio             
+              max_ratio = ratio
               name = "eigenvalue"
-            end if 
-          end if 
-        end if   
+            end if
+          end if
+        end if
       end if
 
       ! Compute uncertainties for all tallies, scores with triggers
@@ -153,10 +154,10 @@ contains
           trigger => t % triggers(s)
 
           ! Initialize trigger uncertainties to zero
-          trigger % std_dev = 0.
-          trigger % rel_err = 0.
-          trigger % variance = 0.
-        
+          trigger % std_dev = ZERO
+          trigger % rel_err = ZERO
+          trigger % variance = ZERO
+
           ! Surface current tally triggers require special treatment
           if (t % type == TALLY_SURFACE_CURRENT) then
             call compute_tally_current(t, trigger)
@@ -178,9 +179,9 @@ contains
                   j = j - 1
                 else
                   if (j == t % n_filters) exit find_bin
-                end if 
+                end if
               end do find_bin
-        
+
               if (t % n_filters > 0) then
                 filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * &
                      t % stride) + 1
@@ -193,13 +194,13 @@ contains
 
               ! Initialize score bin index
               NUCLIDE_LOOP: do n = 1, t % n_nuclide_bins
-                
+
                 select case(t % score_bins(trigger % score_index))
 
                 case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
 
                   score_index = score_index - 1
-             
+
                   do n_order = 0, t % moment_order(trigger % score_index)
                     score_index = score_index + 1
 
@@ -207,17 +208,17 @@ contains
                          score_index, filter_index, t)
 
                     if (trigger % variance < variance) then
-                      trigger % variance = std_dev ** 2 
+                      trigger % variance = std_dev ** 2
                     end if
-                    if (trigger % std_dev < std_dev) then 
+                    if (trigger % std_dev < std_dev) then
                       trigger % std_dev = std_dev
                     end if
-                    if (trigger % rel_err < rel_err) then 
+                    if (trigger % rel_err < rel_err) then
                       trigger % rel_err = rel_err
                     end if
 
                   end do
-              
+
                 case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
                      SCORE_TOTAL_YN)
 
@@ -242,32 +243,32 @@ contains
 
                     end do
                   end do
-           
+
                 case default
                   call get_trigger_uncertainty(std_dev, rel_err, &
                        score_index, filter_index, t)
 
                   if (trigger % variance < variance) then
-                    trigger % variance = std_dev ** 2 
+                    trigger % variance = std_dev ** 2
                   end if
-                  if (trigger % std_dev < std_dev) then 
+                  if (trigger % std_dev < std_dev) then
                     trigger % std_dev = std_dev
                   end if
-                  if (trigger % rel_err < rel_err) then 
+                  if (trigger % rel_err < rel_err) then
                     trigger % rel_err = rel_err
                   end if
 
                 end select
- 
-                select case (t % triggers(s) % type)        
-                case(VARIANCE) 
+
+                select case (t % triggers(s) % type)
+                case(VARIANCE)
                   uncertainty = trigger % variance
                 case(STANDARD_DEVIATION)
                   uncertainty = trigger % std_dev
                 case default
                   uncertainty = trigger % rel_err
                 end select
-              
+
                 if (uncertainty > t % triggers(s) % threshold) then
                   satisfy_triggers = .false.
 
@@ -275,8 +276,8 @@ contains
                     ratio = sqrt(uncertainty / t % triggers(s) % threshold)
                   else
                     ratio = uncertainty / t % triggers(s) % threshold
-                  end if 
-                  
+                  end if
+
                   if (max_ratio < ratio) then
                     max_ratio = ratio
                     name  = t % triggers(s) % score_name
@@ -297,7 +298,7 @@ contains
 ! COMPUTE_TALLY_CURRENT computes the current for a surface current tally with
 ! precision trigger(s).
 !===============================================================================
- 
+
  subroutine compute_tally_current(t, trigger)
 
     integer :: i                    ! mesh index for x
@@ -310,8 +311,8 @@ contains
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
-    real(8) :: rel_err  = 0.0         ! temporary relative error of result
-    real(8) :: std_dev  = 0.0         ! temporary standard deviration of result
+    real(8) :: rel_err  = ZERO      ! temporary relative error of result
+    real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
     type(TallyObject), pointer    :: t        ! surface current tally
     type(TriggerObject)           :: trigger  ! surface current tally trigger
     type(StructuredMesh), pointer :: m        ! surface current mesh
@@ -350,10 +351,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = std_dev**2
@@ -362,10 +363,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -377,22 +378,22 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
-            
+
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -404,10 +405,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -417,10 +418,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -432,10 +433,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -444,10 +445,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -459,10 +460,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -471,10 +472,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -486,10 +487,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -498,10 +499,10 @@ contains
             filter_index = &
                  sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
-            if (trigger % std_dev < std_dev) then 
+            if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
             end if
-            if (trigger % rel_err < rel_err) then 
+            if (trigger % rel_err < rel_err) then
               trigger % rel_err = rel_err
             end if
             trigger % variance = trigger % std_dev**2
@@ -539,11 +540,11 @@ contains
     std_dev = sqrt((tally_result % sum_sq / n - mean * mean) / (n - 1))
 
     ! Compute the relative error if the mean is non-zero
-    if (mean == 0.) then
-      rel_err = 0.
+    if (mean == ZERO) then
+      rel_err = ZERO
     else
       rel_err = std_dev / mean
-    end if  
+    end if
 
   end subroutine get_trigger_uncertainty
 

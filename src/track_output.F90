@@ -69,12 +69,12 @@ contains
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.binary'
 #endif
-!$omp critical (finalize_particle_track)
+!$omp critical (FinalizeParticleTrack)
     call binout % file_create(fname)
     length = [3, n_tracks]
     call binout % write_data(coords, 'coordinates', length=length)
     call binout % file_close()
-!$omp end critical (finalize_particle_track)
+!$omp end critical (FinalizeParticleTrack)
     deallocate(coords)
   end subroutine finalize_particle_track
 

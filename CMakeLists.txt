@@ -24,7 +24,7 @@ option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
-option(coverage "Compile with flags"                             OFF)
+option(coverage "Compile with coverage analysis flags"           OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)

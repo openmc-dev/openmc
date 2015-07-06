@@ -1885,5 +1885,82 @@ contains
 
   end subroutine count_instance
 
+!===============================================================================
+! MAXIMUM_LEVELS determines the maximum number of nested coordinate levels in
+! the geometry
+!===============================================================================
+
+  recursive function maximum_levels(univ) result(levels)
+
+    type(Universe), intent(in) :: univ  ! universe to search through
+    integer :: levels                   ! maximum number of levels for this universe
+
+    integer :: i                          ! index over cells
+    integer :: j, k, m                    ! indices in lattice
+    integer :: levels_below               ! max levels below this universe
+    type(Cell),     pointer :: c          ! pointer to current cell
+    type(Universe), pointer :: next_univ  ! next universe to loop through
+    class(Lattice), pointer :: lat        ! pointer to current lattice
+
+    levels_below = 0
+    do i = 1, univ % n_cells
+      c => cells(univ % cells(i))
+
+      ! ====================================================================
+      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+      if (c % type == CELL_FILL) then
+
+        next_univ => universes(c % fill)
+        levels_below = maximum_levels(next_univ)
+
+      ! ====================================================================
+      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+      elseif (c % type == CELL_LATTICE) then
+
+        ! Set current lattice
+        lat => lattices(c % fill) % obj
+
+        select type (lat)
+
+        type is (RectLattice)
+
+          ! Loop over lattice coordinates
+          do j = 1, lat % n_cells(1)
+            do k = 1, lat % n_cells(2)
+              do m = 1, lat % n_cells(3)
+                next_univ => universes(lat % universes(j, k, m))
+                levels_below = max(levels_below, maximum_levels(next_univ))
+              end do
+            end do
+          end do
+
+        type is (HexLattice)
+
+          ! Loop over lattice coordinates
+          do m = 1, lat % n_axial
+            do k = 1, 2*lat % n_rings - 1
+              do j = 1, 2*lat % n_rings - 1
+                ! This array location is never used
+                if (j + k < lat % n_rings + 1) then
+                  cycle
+                ! This array location is never used
+                else if (j + k > 3*lat % n_rings - 1) then
+                  cycle
+                else
+                  next_univ => universes(lat % universes(j, k, m))
+                  levels_below = max(levels_below, maximum_levels(next_univ))
+                end if
+              end do
+            end do
+          end do
+
+        end select
+
+      end if
+    end do
+
+    levels = 1 + levels_below
+
+  end function maximum_levels
 
 end module geometry

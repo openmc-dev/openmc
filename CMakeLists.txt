@@ -30,6 +30,10 @@ if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
 endif()
 
+# Maximum number of nested coordinates levels
+set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
+add_definitions(-DMAX_COORD=${maxcoord})
+
 #===============================================================================
 # MPI for distributed-memory parallelism / HDF5 for binary output
 #===============================================================================

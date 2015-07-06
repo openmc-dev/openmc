@@ -133,9 +133,6 @@ module constants
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10
 
-  ! Maximum levels of nested universes
-  integer, parameter :: MAX_COORD = 10
-
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 

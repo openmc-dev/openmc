@@ -54,6 +54,7 @@ endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
+  message("-- Using Fortran 2008 MPI bindings")
   add_definitions(-DMPIF08)
 endif()
 

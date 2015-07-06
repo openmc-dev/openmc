@@ -1,7 +1,7 @@
 module fixed_source
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use constants,       only: ZERO, MAX_LINE_LEN

@@ -133,31 +133,31 @@ contains
     if (pl % basis == PLOT_BASIS_XY) then
       in_i  = 1
       out_i = 2
-      xyz(1) = pl % origin(1) - pl % width(1) / 2.0
-      xyz(2) = pl % origin(2) + pl % width(2) / 2.0
+      xyz(1) = pl % origin(1) - pl % width(1) / TWO
+      xyz(2) = pl % origin(2) + pl % width(2) / TWO
       xyz(3) = pl % origin(3)
     else if (pl % basis == PLOT_BASIS_XZ) then
       in_i  = 1
       out_i = 3
-      xyz(1) = pl % origin(1) - pl % width(1) / 2.0
+      xyz(1) = pl % origin(1) - pl % width(1) / TWO
       xyz(2) = pl % origin(2)
-      xyz(3) = pl % origin(3) + pl % width(2) / 2.0
+      xyz(3) = pl % origin(3) + pl % width(2) / TWO
     else if (pl % basis == PLOT_BASIS_YZ) then
       in_i  = 2
       out_i = 3
       xyz(1) = pl % origin(1)
-      xyz(2) = pl % origin(2) - pl % width(1) / 2.0
-      xyz(3) = pl % origin(3) + pl % width(2) / 2.0
+      xyz(2) = pl % origin(2) - pl % width(1) / TWO
+      xyz(3) = pl % origin(3) + pl % width(2) / TWO
     end if
 
     ! allocate and initialize particle
     call p % initialize()
     p % coord(1) % xyz = xyz
-    p % coord(1) % uvw = (/ 0.5, 0.5, 0.5 /)
+    p % coord(1) % uvw = [ HALF, HALF, HALF ]
     p % coord(1) % universe = BASE_UNIVERSE
 
     do y = 1, img % height
-      call progress % set_value(dble(y)/dble(img % height)*100.)
+      call progress % set_value(dble(y)/dble(img % height)*100)
       do x = 1, img % width
 
         ! get pixel color
@@ -235,10 +235,10 @@ contains
     xyz_ll_plot = pl % origin
     xyz_ur_plot = pl % origin
 
-    xyz_ll_plot(outer) = pl % origin(1) - pl % width(1) / 2.0
-    xyz_ll_plot(inner) = pl % origin(2) - pl % width(2) / 2.0
-    xyz_ur_plot(outer) = pl % origin(1) + pl % width(1) / 2.0
-    xyz_ur_plot(inner) = pl % origin(2) + pl % width(2) / 2.0
+    xyz_ll_plot(outer) = pl % origin(1) - pl % width(1) / TWO
+    xyz_ll_plot(inner) = pl % origin(2) - pl % width(2) / TWO
+    xyz_ur_plot(outer) = pl % origin(1) + pl % width(1) / TWO
+    xyz_ur_plot(inner) = pl % origin(2) + pl % width(2) / TWO
 
     width = xyz_ur_plot - xyz_ll_plot
 
@@ -266,9 +266,9 @@ contains
           outrange(2) = int(frac * real(img % width, 8))
 
           frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(1) = int((1. - frac) * real(img % height, 8))
+          inrange(1) = int((ONE - frac) * real(img % height, 8))
           frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(2) = int((1. - frac) * real(img % height, 8))
+          inrange(2) = int((ONE - frac) * real(img % height, 8))
 
           ! draw lines
           do out_ = outrange(1), outrange(2)
@@ -355,12 +355,12 @@ contains
     vox = pl % width/dble(pl % pixels)
 
     ! initial particle position
-    ll = pl % origin - pl % width / 2.0
+    ll = pl % origin - pl % width / TWO
 
     ! allocate and initialize particle
     call p % initialize()
     p % coord(1) % xyz = ll
-    p % coord(1) % uvw = (/ 0.5, 0.5, 0.5 /)
+    p % coord(1) % uvw = [ HALF, HALF, HALF ]
     p % coord(1) % universe = BASE_UNIVERSE
 
     ! Open binary plot file for writing
@@ -371,10 +371,10 @@ contains
     write(UNIT_PLOT) pl % pixels, vox, ll
 
     ! move to center of voxels
-    ll = ll + vox / 2.0
+    ll = ll + vox / TWO
 
     do x = 1, pl % pixels(1)
-      call progress % set_value(dble(x)/dble(pl % pixels(1))*100.)
+      call progress % set_value(dble(x)/dble(pl % pixels(1))*100)
       do y = 1, pl % pixels(2)
         do z = 1, pl % pixels(3)
 

@@ -597,13 +597,13 @@ contains
           if (r > ONE) then
             ! equally likely N-4 middle bins
             j = int(r) + 2
-          elseif (r > 0.6) then
+          elseif (r > 0.6_8) then
             ! second to last bin has relative probability of 0.4
             j = n_energy_out - 1
-          elseif (r > 0.5) then
+          elseif (r > HALF) then
             ! last bin has relative probability of 0.1
             j = n_energy_out
-          elseif (r > 0.1) then
+          elseif (r > 0.1_8) then
             ! second bin has relative probability of 0.4
             j = 2
           else
@@ -818,8 +818,8 @@ contains
 
     case ('dbrc')
       E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - 4.0_8)**2) * kT) / awr
-      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+      E_low = (((E_red - FOUR)**2) * kT) / awr
+      E_up  = (((E_red + FOUR)**2) * kT) / awr
 
       ! find lower and upper energy bound indices
       ! lower index
@@ -872,8 +872,8 @@ contains
 
     case ('ares')
       E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - 4.0_8)**2) * kT) / awr
-      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+      E_low = (((E_red - FOUR)**2) * kT) / awr
+      E_up  = (((E_red + FOUR)**2) * kT) / awr
 
       ! find lower and upper energy bound indices
       ! lower index

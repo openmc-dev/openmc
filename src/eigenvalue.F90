@@ -564,7 +564,7 @@ contains
         ! If the user did not specify how many mesh cells are to be used in
         ! each direction, we automatically determine an appropriate number of
         ! cells
-        n = ceiling((n_particles/20)**(1.0/3.0))
+        n = ceiling((n_particles/20)**(ONE/THREE))
 
         ! copy dimensions
         m % n_dimension = 3

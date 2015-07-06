@@ -44,6 +44,7 @@ contains
 
   subroutine read_cmfd_xml()
 
+    use constants, only: ZERO, ONE
     use error,   only: fatal_error, warning
     use global
     use output,  only: write_message
@@ -103,7 +104,7 @@ contains
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
-      cmfd % egrid = (/0.0_8,20.0_8/)
+      cmfd % egrid = [ ZERO, 20.0_8 ]
       cmfd % indices(4) = 1 ! one energy group
     end if
 
@@ -111,7 +112,7 @@ contains
     if (check_for_node(node_mesh, "albedo")) then
       call get_node_array(node_mesh, "albedo", cmfd % albedo)
     else
-      cmfd % albedo = (/1.0, 1.0, 1.0, 1.0, 1.0, 1.0/)
+      cmfd % albedo = [ ONE, ONE, ONE, ONE, ONE, ONE ]
     end if
 
     ! Get acceleration map

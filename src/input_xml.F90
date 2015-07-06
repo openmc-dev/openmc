@@ -1796,11 +1796,11 @@ contains
         case ('g/cc', 'g/cm3')
           mat % density = -val
         case ('kg/m3')
-          mat % density = -0.001 * val
+          mat % density = -0.001_8 * val
         case ('atom/b-cm')
           mat % density = val
         case ('atom/cm3', 'atom/cc')
-          mat % density = 1.0e-24 * val
+          mat % density = 1.0e-24_8 * val
         case default
           call fatal_error("Unkwown units '" // trim(units) &
                &// "' specified on material " // trim(to_str(mat % id)))

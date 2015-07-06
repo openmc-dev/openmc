@@ -267,8 +267,8 @@ module global
   ! VARIANCE REDUCTION VARIABLES
 
   logical :: survival_biasing = .false.
-  real(8) :: weight_cutoff = 0.25
-  real(8) :: weight_survive = 1.0
+  real(8) :: weight_cutoff = 0.25_8
+  real(8) :: weight_survive = ONE
 
   ! ============================================================================
   ! HDF5 VARIABLES

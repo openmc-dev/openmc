@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <ndpp_lib>
-  <directory> /home/nelsonag/git/openmc/tests/NDPP_data/  </directory>
   <filetype> ascii </filetype>
   <entries> 4  </entries>
   <nuscatter> true </nuscatter>

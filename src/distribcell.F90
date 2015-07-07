@@ -98,7 +98,8 @@ contains
     end do
 
     ! Check for distributed materials
-    if (any(materials % distribcell /= NONE)) count_all = .true.
+    if (any(materials % distrib_dens) .or. &
+        any(materials % distrib_comp)) count_all = .true.
 
     ! If we have any distribution, count up cell instances
     if (count_all) then

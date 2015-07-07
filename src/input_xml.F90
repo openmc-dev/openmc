@@ -2156,7 +2156,7 @@ contains
     if (check_for_node(doc, "ndpp_library")) then
       call get_node_value(doc, "ndpp_library", ndpp_lib)
     else
-      ndpp_lib = './ndpp_lib.xml'
+      ndpp_lib = 'ndpp_lib.xml'
     end if
 
     ! Check for <assume_separate> setting
@@ -2953,7 +2953,7 @@ contains
             if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
               call fatal_error("Energy and Energyout filter types must " // &
-                   "be the last declared (and in that order) in any " // & 
+                   "be the last declared (and in that order) in any " // &
                    "tally with an ndpp-nu-scatter-pn score!")
             end if
 

@@ -412,7 +412,6 @@ module constants
        MODE_PARTICLE    = 4    ! Particle restart mode
 
   ! Unit numbers
-  integer, parameter :: UNIT_DATAFILE = 7
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file

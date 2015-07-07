@@ -228,8 +228,8 @@ contains
     integer, intent(in) :: i_table   ! index in nuclides/sab_tables
     integer, intent(in) :: i_listing ! index in xs_listings
 
-    integer       :: in = UNIT_DATAFILE ! file unit
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
+    integer       :: in            ! file unit
     integer       :: i             ! loop index for XSS records
     integer       :: j, j1, j2     ! indices in XSS
     integer       :: record_length ! Fortran record length
@@ -277,7 +277,7 @@ contains
       ! READ ACE TABLE IN ASCII FORMAT
 
       ! Find location of table
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
+      open(NEWUNIT=in, FILE=filename, STATUS='old', ACTION='read')
       rewind(UNIT=in)
       do i = 1, location - 1
         read(UNIT=in, FMT=*)
@@ -314,7 +314,7 @@ contains
       ! READ ACE TABLE IN BINARY FORMAT
 
       ! Open ACE file
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+      open(NEWUNIT=in, FILE=filename, STATUS='old', ACTION='read', &
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information

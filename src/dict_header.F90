@@ -19,7 +19,7 @@ module dict_header
 
   integer, parameter, private :: HASH_SIZE       = 4993
   integer, parameter, private :: HASH_MULTIPLIER = 31
-  integer, parameter          :: DICT_NULL       = -huge(0)
+  integer, parameter, private :: DICT_NULL       = -huge(0)
   integer, parameter          :: DICT_KEY_LENGTH = 255
 
 !===============================================================================
@@ -56,7 +56,7 @@ module dict_header
 !===============================================================================
 ! DICT* is a dictionary of (key,value) pairs with convenience methods as
 ! type-bound procedures. DictCharInt has character(*) keys and integer values,
-! and DictIntInt has integer keys and values. 
+! and DictIntInt has integer keys and values.
 !===============================================================================
 
   type, public :: DictCharInt
@@ -105,7 +105,7 @@ contains
     if (associated(elem)) then
       elem % value = value
     else
-      ! Get hash 
+      ! Get hash
       hash = dict_hash_key_ci(key)
 
       ! Create new element
@@ -135,7 +135,7 @@ contains
     if (associated(elem)) then
       elem % value = value
     else
-      ! Get hash 
+      ! Get hash
       hash = dict_hash_key_ii(key)
 
       ! Create new element
@@ -156,13 +156,13 @@ contains
 !===============================================================================
 
   function dict_get_elem_ci(this, key) result(elem)
- 
+
     class(DictCharInt)            :: this
     character(*), intent(in)      :: key
     type(ElemKeyValueCI), pointer :: elem
 
     integer :: hash
-    
+
     ! Check for dictionary not being allocated
     if (.not. associated(this % table)) then
       allocate(this % table(HASH_SIZE))
@@ -178,13 +178,13 @@ contains
   end function dict_get_elem_ci
 
   function dict_get_elem_ii(this, key) result(elem)
- 
+
     class(DictIntInt)             :: this
     integer, intent(in)           :: key
     type(ElemKeyValueII), pointer :: elem
 
     integer :: hash
-    
+
     ! Check for dictionary not being allocated
     if (.not. associated(this % table)) then
       allocate(this % table(HASH_SIZE))
@@ -279,7 +279,7 @@ contains
 
     character(*), intent(in) :: key
     integer                  :: val
-    
+
     integer :: i
 
     val = 0
@@ -298,7 +298,7 @@ contains
 
     integer, intent(in) :: key
     integer             :: val
-    
+
     val = 0
 
     ! Added the absolute val on val-1 since the sum in the do loop is
@@ -420,7 +420,7 @@ contains
     integer :: i
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
-    
+
     if (associated(this % table)) then
       do i = 1, size(this % table)
         current => this % table(i) % list
@@ -440,5 +440,5 @@ contains
     end if
 
   end subroutine dict_clear_ii
-  
+
 end module dict_header

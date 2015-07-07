@@ -104,7 +104,6 @@ contains
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
     ! reasons
-    print *, 'Max levels = ', maximum_levels(universes(BASE_UNIVERSE))
     if (maximum_levels(universes(BASE_UNIVERSE)) > MAX_COORD) then
       call fatal_error("Too many nested coordinate levels in the geometry. &
            &Try increasing the maximum number of coordinate levels by &

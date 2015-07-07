@@ -162,7 +162,7 @@ openmp
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov.
+  used in conjunction with gcov_.
 
 maxcoord
   Maximum number of nested coordinate levels in geometry. Defaults to 10.
@@ -173,6 +173,8 @@ should be used:
 .. code-block:: sh
 
     cmake -Ddebug=on /path/to/openmc
+
+.. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 Compiling with MPI
 ++++++++++++++++++

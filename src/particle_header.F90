@@ -41,7 +41,7 @@ module particle_header
     integer    :: type          ! Particle type (n, p, e, etc)
 
     ! Particle coordinates
-    integer :: n_coord                   ! number of current coordinates
+    integer          :: n_coord          ! number of current coordinates
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
     ! Other physical data

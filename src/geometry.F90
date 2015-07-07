@@ -76,8 +76,8 @@ contains
     type(Particle), intent(inout) :: p
 
     integer :: i                       ! cell loop index on a level
-    integer :: j
-    integer :: n_coord
+    integer :: j                       ! coordinate level index
+    integer :: n_coord                 ! saved number of coordinate levels
     integer :: n                       ! number of cells to search on a level
     integer :: index_cell              ! index in cells array
     type(Cell),       pointer :: c     ! pointer to cell
@@ -125,7 +125,7 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
     integer :: i                    ! index over cells
-    integer :: j
+    integer :: j                    ! coordinate level index
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -186,7 +186,7 @@ contains
         ! ======================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
-        ! Create new level of coordinates
+        ! Store lower level coordinates
         p % coord(j + 1) % xyz = p % coord(j) % xyz
         p % coord(j + 1) % uvw = p % coord(j) % uvw
 
@@ -221,7 +221,7 @@ contains
         ! Determine lattice indices
         i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
 
-        ! Create new level of coordinates
+        ! Store lower level coordinates
         p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)
         p % coord(j + 1) % uvw = p % coord(j) % uvw
 
@@ -1911,7 +1911,7 @@ contains
       if (c % type == CELL_FILL) then
 
         next_univ => universes(c % fill)
-        levels_below = maximum_levels(next_univ)
+        levels_below = max(levels_below, maximum_levels(next_univ))
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL

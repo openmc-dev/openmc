@@ -17,7 +17,7 @@ module physics
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use string,                 only: to_str
-  use unresolved,             only: Isotope, isotopes
+  use xs,                     only: Isotope, isotopes
 
   implicit none
 

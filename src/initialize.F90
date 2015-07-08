@@ -12,11 +12,11 @@ module initialize
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_xml,        only: read_input_xml, read_cross_sections_xml, &
+  use input_xml,        only: read_input_xml, read_cross_sections_xml,&
                               cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
-  use output,           only: title, header, write_summary, print_version, &
-                              print_usage, write_xs_summary, print_plot, &
+  use output,           only: title, header, write_summary, print_version,&
+                              print_usage, write_xs_summary, print_plot,&
                               write_message
   use output_interface
   use random_lcg,       only: initialize_prng
@@ -25,16 +25,16 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use unresolved,       only: endf_files, &
-                              isotopes, &
-                              n_isotopes, &
-                              pointwise_urr, &
-                              prob_tables, &
-                              real_freq, &
-                              represent_params, &
-                              represent_urr, &
-                              resonance_ensemble, &
-                              run_fasturr, &
+  use xs,               only: endf_files,&
+                              isotopes,&
+                              n_isotopes,&
+                              pointwise_urr,&
+                              prob_tables,&
+                              real_freq,&
+                              represent_params,&
+                              represent_urr,&
+                              resonance_ensemble,&
+                              run_fasturr,&
                               write_avg_urr_xs
 
 #ifdef MPI

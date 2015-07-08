@@ -1,19 +1,19 @@
-module list
+module lists
 
   implicit none
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! REALLISTELEM contains one element of a linked list of reals
+! REALELEM contains one element of a linked list of reals
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type RealListElem
+  type RealElem
 
     real(8) :: val ! value of this element
-    type(RealListElem), pointer :: next => null() ! next element in list
+    type(RealElem), pointer :: next => null() ! next element in list
 
-  end type RealListElem
+  end type RealElem
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -23,8 +23,8 @@ module list
 
   type RealList
 
-    type(RealListElem) :: first ! first element
-    type(RealListElem), pointer :: head => null() ! current element
+    type(RealElem) :: first ! first element
+    type(RealElem), pointer :: head => null() ! current element
 
   ! type-bound procedures
   contains
@@ -45,7 +45,7 @@ contains
   subroutine clear_real_list(this)
 
     class(RealList), target, intent(inout) :: this ! real linked list object
-    type(RealListElem), pointer :: next => null() ! placeholder for next element
+    type(RealElem), pointer :: next => null() ! placeholder for next element
 
     ! start at beginning of list
     this % head => this % first
@@ -70,4 +70,4 @@ contains
 
   end subroutine clear_real_list
 
-end module list
+end module lists

@@ -12,7 +12,7 @@ module cross_section
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
-  use unresolved,      only: calculate_prob_band_xs, &
+  use xs,              only: calculate_prob_band_xs, &
                              calculate_urr_xs_otf, &
                              calc_urr_xs_otf, &
                              Isotope, &
@@ -206,8 +206,6 @@ contains
           ! write the energy-xs value pairs to a file
           call write_coords(99, &
             & filename, &
-            & x_size, &
-            & y_size, &
             & x_vals, &
             & y_vals)
           deallocate(x_vals)

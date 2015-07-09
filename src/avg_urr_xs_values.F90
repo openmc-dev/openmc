@@ -9,6 +9,8 @@ module avg_urr_xs_values
                         represent_params
 
   implicit none
+  private
+  public :: read_avg_urr_xs
 
 contains
 

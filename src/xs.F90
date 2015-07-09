@@ -15,6 +15,16 @@ module xs
   use vectors,       only: VecReal, VecVecReal, VecInt
 
   implicit none
+  private
+  public :: calculate_prob_band_xs, calculate_urr_xs_otf, calc_urr_xs_otf,&
+            Isotope, isotopes, real_freq, path_avg_urr_xs, represent_params,&
+            E_spacing, represent_urr, write_avg_urr_xs, background,&
+            competitive, endf_files, Etables, formalism, histories_avg_urr,&
+            i_real_user, l_waves, max_batches_avg_urr, max_dE_point_urr,&
+            max_E_point_urr, min_batches_avg_urr, min_dE_point_urr, n_bands,&
+            n_isotopes, n_reals, n_tables, n_temperatures, run_fasturr,&
+            temperatures, tol_avg_urr, tol_point_urr, write_urr_tables,&
+            pointwise_urr, prob_tables, resonance_ensemble, wigner_surmise
 
   logical :: competitive      ! use competitve reaction xs resonance structure?
   logical :: run_fasturr      ! use special treatment for Fast/URR data?

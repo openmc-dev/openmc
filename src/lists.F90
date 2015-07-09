@@ -1,6 +1,8 @@
 module lists
 
   implicit none
+  private
+  public :: RealList
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

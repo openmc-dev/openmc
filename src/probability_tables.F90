@@ -1,6 +1,7 @@
 module prob_tables
 
   implicit none
+  private
 
 contains
 

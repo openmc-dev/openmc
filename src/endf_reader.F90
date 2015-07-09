@@ -12,6 +12,8 @@ module endf_reader
                                write_avg_urr_xs
 
   implicit none
+  private
+  public :: path_endf, read_endf6
 
   integer :: in = 11 ! input unit
   character(80) :: filename ! ENDF-6 filename

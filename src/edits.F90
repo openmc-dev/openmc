@@ -4,6 +4,7 @@ module edits
   use xs,     only: wigner_surmise
 
   implicit none
+  private
 
 contains
 

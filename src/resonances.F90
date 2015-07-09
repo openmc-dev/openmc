@@ -1,6 +1,9 @@
 module resonances
 
   implicit none
+  private
+  public :: BWResonanceListVec, BWResonanceVec, BWResonanceVecVec,&
+            RMResonanceVec
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

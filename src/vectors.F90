@@ -1,6 +1,8 @@
 module vectors
 
   implicit none
+  private
+  public :: VecReal, VecVecReal, VecInt
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !

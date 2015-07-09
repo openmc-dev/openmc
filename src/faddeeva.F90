@@ -14,6 +14,8 @@ module faddeeva
   use ISO_C_BINDING
  
   implicit none
+  private
+  public :: quickw, faddeeva_w, tabulate_w
 
   ! Tabulated Faddeeva evaluations for use by QUICKW
   complex(8) :: w_tabulated(-1:60,-1:60)

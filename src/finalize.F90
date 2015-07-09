@@ -1,10 +1,10 @@
 module finalize
 
   use global
-  use output,         only: print_runtime, print_results, &
-                            print_overlap_check, write_tallies
-  use tally,          only: tally_statistics
-  use unresolved,     only: isotopes, n_isotopes
+  use output, only: print_runtime, print_results,&
+                    print_overlap_check, write_tallies
+  use tally,  only: tally_statistics
+  use xs,     only: isotopes, n_isotopes
 
 #ifdef MPI
   use mpi

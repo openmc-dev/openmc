@@ -16,7 +16,7 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use unresolved,       only: background,&
+  use xs,               only: background,&
                               competitive,&
                               endf_files,&
                               E_spacing,&

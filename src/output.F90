@@ -5,7 +5,7 @@ module output
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
-  use error,           only: warning
+  use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -59,14 +59,14 @@ contains
 !         '                      (        |(||(||)||||        )',&
 !         '                        (     //|/l|||)|\\ \     )',&
 !         '                      (/ / //  /|//||||\\  \ \  \ _)',&
-     '       .d88888b.  88|   |88 88|  |88 88888888 888b     d888  .d8888b.' , &
-     '      d88P" "Y88b 88|   |88 88|  |88 88888888 8888b   d8888 d88P  Y88b', &
-     '      888      YP 88|   |88 88|  |88   |88|   88888b.d88888 888    888', &
-     '       \8888\     888888888 88|  |88   |88|   888Y88888P888 888       ', &
-     '          \8888\  888888888 88|  |88   |88|   888 Y888P 888 888       ', &
-     '      db     \888 88|   |88 88|  |88   |88|   888  Y8P  888 888    888', &
-     '      Y88b. .d88P 88|   |88 Y8b..d8Y   |88|   888   "   888 Y88b  d88P', &
-     '       "Y88888P"  88|   |88  "Y88Y"    |88|   888       888  "Y8888P"' , &
+     '       .d88888b.  |88   88| |88  88| |888888| |88\     /88|  .d8888b. ', &
+     '      |88P" "Y88| |88   88| |88  88| |888888| |888\   /888| .88P  "88.', &
+     '      |88      Y| |88   88| |88  88|   |88|   |8888\./8888| |88    88|', &
+     '       8Ybcccc.   |8888888| |88  88|   |88|   |88\88888/88| |88      ' , &
+     '        "V88888b  |8888888| |88  88|   |88|   |88 \888/ 88| |88      ' , &
+     '      |b     "88| |88   88| |88  88|   |88|   |88  \8/  88| |88    d8|', &
+     '      |88b. .d88| |88   88| "8b__d8"   |88|   |88   "   88| `88b..,88"', &
+     '       "Y88888P"  |88   88|  "Y88Y"    |88|   |88       88|   Y8888P'  , &
          '___________________________________________________________________________'
 
     ! Write version information
@@ -2087,24 +2087,22 @@ contains
 ! text file
 !===============================================================================
 
-  subroutine write_coords(unit_num, filename, x_size, y_size, x_vals, y_vals)
+  subroutine write_coords(unit_num, filename, x, y)
 
-    integer :: unit_num                    ! unit number for output file
-    integer :: x_size                      ! length of vector of abscissae
-    integer :: y_size                      ! length of vector of ordinates
-    integer :: i                           ! coordinate pair index
-    character(80) :: filename              ! name of output file
-    real(8) :: x_vals(x_size)              ! vector of abscissae
-    real(8) :: y_vals(y_size)              ! vector of ordinates
+    integer :: unit_num ! unit number for output file
+    integer :: i        ! coordinate pair index
+    character(*) :: filename ! name of output file
+    real(8) :: x(:) ! vector of abscissae
+    real(8) :: y(:) ! vector of ordinates
 
     open(unit = unit_num, file = trim(adjustl(filename)))
 
-    if (x_size == y_size) then
-      do i = 1, x_size
-        write(unit_num, '(ES24.16, ES24.16)') x_vals(i), y_vals(i)
+    if (size(x) == size(y)) then
+      do i = 1, size(x)
+        write(unit_num, '(ES24.16, ES24.16)') x(i), y(i)
       end do
     else
-      continue
+      call fatal_error('Mismatched vector lengths in write_coords')
     end if
 
     close(unit_num)

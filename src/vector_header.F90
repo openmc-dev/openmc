@@ -28,16 +28,6 @@ module vector_header
 #  endif
   end type Vector
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! JAGGEDARRAY is a jagged 2-D array object (i.e. a vector of vectors)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type, public :: JaggedArray
-    type(Vector), allocatable :: data(:)
-  end type JaggedArray
-
 #ifdef PETSC
   integer :: petsc_err ! petsc error code
 #endif

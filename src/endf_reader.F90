@@ -5,10 +5,10 @@ module endf_reader
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
-  use unresolved,        only: E_spacing, &
-                               Isotope, &
-                               isotopes, &
-                               represent_urr, &
+  use xs,                only: E_spacing,&
+                               Isotope,&
+                               isotopes,&
+                               represent_urr,&
                                write_avg_urr_xs
 
   implicit none
@@ -693,7 +693,7 @@ contains
          & d-wave')
 
     ! allocate SLBW resonance vectors for each l
-    allocate(tope % slbw_resonances(tope % NLS(i_ER)))
+    allocate(tope % bw_resonances(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
     do i_l = 0, tope % NLS(i_ER) - 1
@@ -705,7 +705,7 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate SLBW resonances
-      call tope % slbw_resonances(i_l + 1) % alloc_slbw_resonances(NRS)
+      call tope % bw_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
       call check_mass(A, tope % AWR)
@@ -720,36 +720,42 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') tope % slbw_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') tope % slbw_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') tope % slbw_resonances(i_l + 1) % GT(i_R)
-        read(rec(34:44), '(E11.0)') tope % slbw_resonances(i_l + 1) % GN(i_R)
-        read(rec(45:55), '(E11.0)') tope % slbw_resonances(i_l + 1) % GG(i_R)
-        read(rec(56:66), '(E11.0)') tope % slbw_resonances(i_l + 1) % GF(i_R)
+        read(rec(1:11),  '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % E_lam
+        read(rec(12:22), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % AJ
+        read(rec(23:33), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GT
+        read(rec(34:44), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GN
+        read(rec(45:55), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GG
+        read(rec(56:66), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GF
 
         if (LRX == 0) then
-          tope % slbw_resonances(i_l + 1) % GX(i_R) = ZERO
+          tope % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
         else if (LRX == 1) then
-          tope % slbw_resonances(i_l + 1) % GX(i_R) &
-            & = tope % slbw_resonances(i_l + 1) % GT(i_R) &
-            & - tope % slbw_resonances(i_l + 1) % GN(i_R) &
-            & - tope % slbw_resonances(i_l + 1) % GG(i_R) &
-            & - tope % slbw_resonances(i_l + 1) % GF(i_R)
+          tope % bw_resonances(i_l + 1) % res(i_R) % GX&
+               = tope % bw_resonances(i_l + 1) % res(i_R) % GT&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GN&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GG&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GF
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % slbw_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % bw_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
       if (i_ER < tope % NER - 1) then
-        call tope % slbw_resonances(i_l + 1) % dealloc_slbw_resonances()
+        call tope % bw_resonances(i_l + 1) % clear()
       end if
 
     end do
 
-    if (i_ER < tope % NER - 1) deallocate(tope % slbw_resonances)
+    if (i_ER < tope % NER - 1) deallocate(tope % bw_resonances)
 
   end subroutine read_slbw_parameters
 
@@ -788,7 +794,7 @@ contains
          & d-wave')
 
     ! allocate MLBW resonance vectors for each l
-    allocate(tope % mlbw_resonances(tope % NLS(i_ER)))
+    allocate(tope % bw_resonances(tope % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
     do i_l = 0, tope % NLS(i_ER) - 1
@@ -800,7 +806,7 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate MLBW resonances
-      call tope % mlbw_resonances(i_l + 1) % alloc_mlbw_resonances(NRS)
+      call tope % bw_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
       call check_mass(A, tope % AWR)
@@ -815,35 +821,41 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') tope % mlbw_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') tope % mlbw_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GT(i_R)
-        read(rec(34:44), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GN(i_R)
-        read(rec(45:55), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GG(i_R)
-        read(rec(56:66), '(E11.0)') tope % mlbw_resonances(i_l + 1) % GF(i_R)
+        read(rec(1:11),  '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % E_lam
+        read(rec(12:22), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % AJ
+        read(rec(23:33), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GT
+        read(rec(34:44), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GN
+        read(rec(45:55), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GG
+        read(rec(56:66), '(E11.0)')&
+             tope % bw_resonances(i_l + 1) % res(i_R) % GF
 
         if (LRX == 0) then
-          tope % mlbw_resonances(i_l + 1) % GX(i_R) = ZERO
+          tope % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
         else if (LRX == 1) then
-          tope % mlbw_resonances(i_l + 1) % GX(i_R) &
-            & = tope % mlbw_resonances(i_l + 1) % GT(i_R) &
-            & - tope % mlbw_resonances(i_l + 1) % GN(i_R) &
-            & - tope % mlbw_resonances(i_l + 1) % GG(i_R) &
-            & - tope % mlbw_resonances(i_l + 1) % GF(i_R)
+          tope % bw_resonances(i_l + 1) % res(i_R) % GX&
+               = tope % bw_resonances(i_l + 1) % res(i_R) % GT&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GN&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GG&
+               - tope % bw_resonances(i_l + 1) % res(i_R) % GF
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % mlbw_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % bw_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
       if (i_ER < tope % NER - 1) then
-        call tope % mlbw_resonances(i_l + 1) % dealloc_mlbw_resonances()
+        call tope % bw_resonances(i_l + 1) % clear()
       end if
     end do
 
-    if (i_ER < tope % NER - 1) deallocate(tope % mlbw_resonances)
+    if (i_ER < tope % NER - 1) deallocate(tope % bw_resonances)
 
   end subroutine read_mlbw_parameters
 
@@ -892,7 +904,7 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate Reich-Moore resonances
-      call tope % rm_resonances(i_l + 1) % alloc_rm_resonances(NRS)
+      call tope % rm_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
       call check_mass(A, tope % AWR)
@@ -907,19 +919,25 @@ contains
       do i_R = 1, NRS
 
         read(in, 10) rec
-        read(rec(1:11),  '(E11.0)') tope % rm_resonances(i_l + 1) % E_lam(i_R)
-        read(rec(12:22), '(E11.0)') tope % rm_resonances(i_l + 1) % AJ(i_R)
-        read(rec(23:33), '(E11.0)') tope % rm_resonances(i_l + 1) % GN(i_R)
-        read(rec(34:44), '(E11.0)') tope % rm_resonances(i_l + 1) % GG(i_R)
-        read(rec(45:55), '(E11.0)') tope % rm_resonances(i_l + 1) % GFA(i_R)
-        read(rec(56:66), '(E11.0)') tope % rm_resonances(i_l + 1) % GFB(i_R)
+        read(rec(1:11),  '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % E_lam
+        read(rec(12:22), '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % AJ
+        read(rec(23:33), '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % GN
+        read(rec(34:44), '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % GG
+        read(rec(45:55), '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % GFA
+        read(rec(56:66), '(E11.0)')&
+             tope % rm_resonances(i_l + 1) % res(i_R) % GFB
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % rm_resonances(i_l + 1) % AJ(i_R))
+        call check_j_sign(tope % rm_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
       if (i_ER < tope % NER - 1) then
-        call tope % rm_resonances(i_l + 1) % dealloc_rm_resonances()
+        call tope % rm_resonances(i_l + 1) % clear()
       end if
 
     end do
@@ -946,7 +964,6 @@ contains
     integer :: i_J  ! total angular momentum quantum number index
     integer :: i_ES ! tabulated fission width energy grid index
     real(8) :: A    ! isotope/neutron mass ratio
-!$omp threadprivate(tope)
 
     tope => isotopes(i)
 
@@ -1025,68 +1042,68 @@ contains
       call check_l_number(L, i_l)
 
       ! allocate total angular momenta
-      allocate(tope % AJ(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
       
       ! allocate degress of freedom for partial widths
-      allocate(tope % DOFX(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFN(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFG(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFF(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
 
-      allocate(tope % D_mean  (i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % GN0_mean(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % GG_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % GF_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % GX_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+      allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
+      allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+      allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+      allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
 
       ! loop over total angular momenta
       do i_J = 1, tope % NJS(i_l + 1)
-        allocate(tope % D_mean  (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GN0_mean(i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GG_mean (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GF_mean (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GX_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
 
         read(in, 10) rec
         read(rec(23:33), '(I11)') L
         call check_l_number(L, i_l)
-        read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % data(i_J)
+        read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % data(i_J) % data(1)
-        tope % D_mean(i_l + 1) % data(i_J) % data(:)&
-             = tope % D_mean(i_l + 1) % data(i_J) % data(1)
-        read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % data(i_J)
-        read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % data(i_J)
-        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % data(i_J) % data(1)
-        tope % GN0_mean(i_l + 1) % data(i_J) % data(:)&
-             = tope % GN0_mean(i_l + 1) % data(i_J) % data(1)
-        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % data(i_J) % data(1)
-        tope % GG_mean(i_l + 1) % data(i_J) % data(:)&
-             = tope % GG_mean(i_l + 1) % data(i_J) % data(1)
-        tope % GX_mean(i_l + 1) % data(i_J) % data(:) = ZERO
-        tope % DOFG(i_l + 1) % data(i_J) = ZERO
-        tope % DOFX(i_l + 1) % data(i_J) = ZERO
+        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+        tope % D_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+             = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+        read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
+        read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
+        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % dim2(i_J) % dim1(1)
+        tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+             = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
+        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % dim2(i_J) % dim1(1)
+        tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+             = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
+        tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+        tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
+        tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
 
         ! loop over energies for which data are tabulated
         i_ES = 1
         do
           read(in, 10) rec
-          read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
-          read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
-          read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
-          read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
-          read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
-          read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%data(i_J)%data(i_ES)
+          read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
           if (i_ES == tope % NE) exit
           i_ES = i_ES + 1
         end do
@@ -1113,7 +1130,6 @@ contains
     integer :: i_J  ! total angular momentum quantum number index
     integer :: i_E  ! energy region index
     real(8) :: A    ! isotope/neutron mass ratio
-!$omp threadprivate(tope)
 
     tope => isotopes(i)
 
@@ -1156,19 +1172,19 @@ contains
       call check_l_number(L, i_L)
 
       ! allocate total angular momenta
-      allocate(tope % AJ(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
       
       ! allocate degress of freedom for partial widths
-      allocate(tope % DOFX(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFN(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFG(i_l + 1) % data(tope % NJS(i_l + 1)))
-      allocate(tope % DOFF(i_l + 1) % data(tope % NJS(i_l + 1)))
+      allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
 
       ! loop over total angular momenta
       do i_J = 1, tope % NJS(i_l + 1)
 
         read(in, 10) rec
-        read(rec(1:11), '(E11.0)') tope % AJ(i_l + 1) % data(i_J)
+        read(rec(1:11), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
         read(rec(23:33),  '(I11)') tope % INT
         read(rec(56:66),  '(I11)') tope % NE
 
@@ -1185,35 +1201,35 @@ contains
             call read_avg_urr_xs(i)
           end if
         end if
-        if (.not. (allocated(tope % D_mean(i_l + 1) % data))) then
-          allocate(tope % D_mean  (i_l + 1) % data(tope % NJS(i_l + 1)))
-          allocate(tope % GN0_mean(i_l + 1) % data(tope % NJS(i_l + 1)))
-          allocate(tope % GG_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
-          allocate(tope % GF_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
-          allocate(tope % GX_mean (i_l + 1) % data(tope % NJS(i_l + 1)))
+        if (.not. (allocated(tope % D_mean(i_l + 1) % dim2))) then
+          allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+          allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
+          allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+          allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+          allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
         end if
-        allocate(tope % D_mean  (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GN0_mean(i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GG_mean (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GF_mean (i_l + 1) % data(i_J) % data(tope % NE))
-        allocate(tope % GX_mean (i_l + 1) % data(i_J) % data(tope % NE))
+        allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
 
         ! read in degrees of freedom
         read(in, 10) rec
-        read(rec(23:33), '(E11.0)') tope % DOFX(i_l + 1) % data(i_J)
-        read(rec(34:44), '(E11.0)') tope % DOFN(i_l + 1) % data(i_J)
-        read(rec(45:55), '(E11.0)') tope % DOFG(i_l + 1) % data(i_J)
-        read(rec(56:66), '(E11.0)') tope % DOFF(i_l + 1) % data(i_J)
+        read(rec(23:33), '(E11.0)') tope % DOFX(i_l + 1) % dim1(i_J)
+        read(rec(34:44), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
+        read(rec(45:55), '(E11.0)') tope % DOFG(i_l + 1) % dim1(i_J)
+        read(rec(56:66), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
 
         ! loop over energies for which data are tabulated
         do i_E = 1, tope % NE
           read(in, 10) rec
-          read(rec(1:11),  '(E11.0)') tope % ES(i_E)
-          read(rec(12:22), '(E11.0)') tope % D_mean  (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(23:33), '(E11.0)') tope % GX_mean (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l + 1) % data(i_J) % data(i_E)
-          read(rec(45:55), '(E11.0)') tope % GG_mean (i_l + 1) % data(i_J) % data(i_E)
-          read(rec(56:66), '(E11.0)') tope % GF_mean (i_l + 1) % data(i_J) % data(i_E)
+          read(rec(1:11), '(E11.0)') tope % ES(i_E)
+          read(rec(12:22),'(E11.0)') tope%D_mean  (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(23:33),'(E11.0)') tope%GX_mean (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(34:44),'(E11.0)') tope%GN0_mean(i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(45:55),'(E11.0)') tope%GG_mean (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(56:66),'(E11.0)') tope%GF_mean (i_l+1)% dim2(i_J) % dim1(i_E)
         end do
       end do
     end do
@@ -1232,10 +1248,9 @@ contains
     integer :: zaid_val
     integer :: zaid_ref
 
-    if (zaid_val /= zaid_ref) then
-      call fatal_error(trim(adjustl(filename))//' and the corresponding ACE file give&
-        & conflicting ZAID values')
-    end if
+    if (zaid_val /= zaid_ref .and. master)&
+         call fatal_error(trim(adjustl(filename))//&
+         ' and the corresponding ACE file give conflicting ZAID values')
 
   end subroutine check_zaid
 
@@ -1251,10 +1266,9 @@ contains
     real(8) :: awr_val
     real(8) :: awr_ref
 
-    if (awr_val /= awr_ref) then
-      call write_message(trim(adjustl(filename))//' and the corresponding ACE file give&
-        & conflicting AWR values', 6)
-   end if
+    if (awr_val /= awr_ref .and. master)&
+         call write_message(trim(adjustl(filename))//&
+         ' and the corresponding ACE file give conflicting AWR values', 6)
 
   end subroutine check_mass
 
@@ -1268,9 +1282,8 @@ contains
 
     real(8) :: QX
 
-    if (QX /= ZERO) then
-      call fatal_error('Q-value is not equal to 0.0 in '//trim(filename))
-   end if
+    if (QX /= ZERO .and. master)&
+         call fatal_error('Q-value is not equal to 0.0 in '//trim(filename))
 
  end subroutine check_q_value
 
@@ -1284,18 +1297,20 @@ contains
 
     integer :: lrp_val
 
-    select case(lrp_val)
-    case(-1)
-      call fatal_error('LRP of -1 not supported in '//trim(filename))
-    case(0)
-      call fatal_error('LRP of 0 not supported in '//trim(filename))
-    case(1)
-      continue
-    case(2)
-      call fatal_error('LRP of 2 not supported in '//trim(filename))
-    case default
-      call fatal_error('LRP must be -1, 0, 1, or 2 in '//trim(filename))
-    end select
+    if (master) then
+      select case(lrp_val)
+      case(-1)
+        call fatal_error('LRP of -1 not supported in '//trim(filename))
+      case(0)
+       call fatal_error('LRP of 0 not supported in '//trim(filename))
+      case(1)
+        continue
+      case(2)
+        call fatal_error('LRP of 2 not supported in '//trim(filename))
+      case default
+        call fatal_error('LRP must be -1, 0, 1, or 2 in '//trim(filename))
+      end select
+    end if
 
   end subroutine check_parameters
 
@@ -1310,9 +1325,9 @@ contains
 
     integer :: nis_val
 
-    if (nis_val /= 1) then
-      call fatal_error(trim(filename)//' contains data for more than 1 isotope')
-    end if
+    if (nis_val /= 1 .and. master)&
+         call fatal_error(trim(filename)//&
+         ' contains data for more than 1 isotope')
 
   end subroutine check_single_isotope
 
@@ -1327,10 +1342,9 @@ contains
 
     real(8) :: abn_val
 
-    if (abn_val /= ONE) then
-      call fatal_error('Abundance of isotope given in '//trim(filename)//' is not&
-        & unity')
-    end if
+    if (abn_val /= ONE .and. master)&
+         call fatal_error('Abundance of isotope given in '//&
+         trim(filename)//' is not unity')
 
   end subroutine check_abundance
 
@@ -1372,15 +1386,14 @@ contains
     real(8) :: e_high
 
     if (n_ranges /= 2) then
-      if (master) then
-        call warning('More than 2 resonance energy ranges (i.e. NER > 2); see &
-          &'//trim(filename))
-      end if
+      if (master)&
+           call warning('> 2 resonance energy ranges (i.e. NER > 2); see '&
+           //trim(filename))
     end if
 
     if (e_high <= e_low) then
       if (master) call fatal_error('Upper resonance energy range bound is not &
-        &greater than the lower in '//trim(filename))
+           &greater than the lower in '//trim(filename))
     end if
 
   end subroutine check_energy_ranges
@@ -1409,7 +1422,7 @@ contains
       end select
     case(1)
       if (master) call fatal_error('Energy-dependent scattering radius in '&
-           &//trim(filename)//' not yet supported')
+           //trim(filename)//' not yet supported')
       select case(naps_val)
       case(0)
         continue
@@ -1423,7 +1436,7 @@ contains
       end select
     case default
       if (master) call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '&
-           &//trim(filename))
+           //trim(filename))
     end select
 
   end subroutine check_radius_flags
@@ -1441,8 +1454,9 @@ contains
     real(8) :: ap_ref
 
     if (ap_val /= ap_ref) then
-      if (master) call warning('AP value changes within a resonance energy range in '&
-        & //trim(filename))
+      if (master)&
+           call warning('AP value changes within a resonance energy range in '&
+           //trim(filename))
     end if
 
   end subroutine check_scattering_radius
@@ -1460,7 +1474,7 @@ contains
 
     if (l_val /= l_ref) then
       if (master) call fatal_error('Unexpected ordering of orbital quantum &
-        &numbers in '//trim(filename))
+           &numbers in '//trim(filename))
     end if
 
   end subroutine check_l_number
@@ -1478,7 +1492,7 @@ contains
 
     if (j_val < ZERO) then
       if (master) call fatal_error('Negative total angular momentum not &
-        &supported in '//trim(filename))
+           &supported in '//trim(filename))
     end if
 
   end subroutine check_j_sign

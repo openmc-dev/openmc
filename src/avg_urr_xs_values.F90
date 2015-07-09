@@ -3,14 +3,21 @@ module avg_urr_xs_values
   use constants,  only: N_AVG_URR_GRID
   use error,      only: fatal_error
   use global
-  use unresolved, only: Isotope, &
-                        isotopes, &
-                        path_avg_urr_xs, &
+  use xs,         only: Isotope,&
+                        isotopes,&
+                        path_avg_urr_xs,&
                         represent_params
 
   implicit none
 
 contains
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! READ_AVG_URR_XS reads in pre-computed average URR cross sections needed for
+! LSSF = 1 treatment
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_avg_urr_xs(i)
 
@@ -25,27 +32,26 @@ contains
     integer :: ir       ! record index
     integer :: ZAI      ! isotope ZAID number
     real(8) :: tol ! tolerance used in generating avg xs values
-!$omp threadprivate(tope)
 
     tope => isotopes(i)
     write(zaid_str, '(I6)') tope % ZAI
 
     ! check that file exists and is readable
     inquire(file = trim(path_avg_urr_xs)&
-      //trim(adjustl(zaid_str))//'-avg-urr-xs.dat',&
-      exist = file_exists, read = readable)
+         //trim(adjustl(zaid_str))//'-avg-urr-xs.dat',&
+         exist = file_exists, read = readable)
     if (.not. file_exists) then
       call fatal_error('Averaged URR cross sections file '&
-        //trim(adjustl(zaid_str))//'-avg-urr-xs.dat'//' does not exist.')
+           //trim(adjustl(zaid_str))//'-avg-urr-xs.dat'//' does not exist.')
     else if (readable(1:3) == 'NO') then
       call fatal_error('Averaged URR cross sections file '&
-        //trim(adjustl(zaid_str))//'-avg-urr-xs.dat'&
-        //' is not readable.  Change file permissions with chmod command.')
+           //trim(adjustl(zaid_str))//'-avg-urr-xs.dat'&
+           //' is not readable.  Change file permissions with chmod command.')
     end if
 
     ! open file with average xs values
-    open(unit = in, file = &
-      trim(path_avg_urr_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
+    open(unit = in, file =&
+         trim(path_avg_urr_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
     
 10  format(A80)
     ! SHA1
@@ -63,10 +69,10 @@ contains
     read(in, 10) rec
     read(rec(1:13), '(ES13.6)') tol
     if (ZAI /= tope % ZAI)&
-      call fatal_error('ZAID number disagreement')
+         call fatal_error('ZAID number disagreement')
     if (master)&
-      write(*, '(A56,ES13.6)') trim(adjustl(zaid_str))//'-avg-urr-xs.dat'&
-      //' was generated with a tolerance of ',tol
+        write(*, '(A56,ES13.6)') trim(adjustl(zaid_str))//'-avg-urr-xs.dat'&
+        //' was generated with a tolerance of ',tol
 
     ! read column labels
     read(in, 10) rec
@@ -85,12 +91,12 @@ contains
     ! read in average xs values
     do ir = 1, N_AVG_URR_GRID
       read(in, 20)&
-        tope % Eavg(ir),&
-        tope % avg_urr_t(ir),&
-        tope % avg_urr_n(ir),&
-        tope % avg_urr_g(ir),&
-        tope % avg_urr_f(ir),&
-        tope % avg_urr_x(ir)
+           tope % Eavg(ir),&
+           tope % avg_urr_t(ir),&
+           tope % avg_urr_n(ir),&
+           tope % avg_urr_g(ir),&
+           tope % avg_urr_f(ir),&
+           tope % avg_urr_x(ir)
     end do
 
     close(in)

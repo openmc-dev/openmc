@@ -1,14 +1,18 @@
-module unresolved
+module xs
 
   use error,         only: fatal_error
   use faddeeva,      only: quickw, faddeeva_w
   use fission,       only: nu_total
   use global
+  use lists,         only: RealList
   use list_header,   only: ListInt, ListReal
-  use output,        only: write_coords
   use random_lcg,    only: prn
+  use resonances,    only: BWResonanceListVec,&
+                           BWResonanceVec,&
+                           BWResonanceVecVec,&
+                           RMResonanceVec
   use search,        only: binary_search
-  use vector_header, only: Vector, JaggedArray
+  use vectors,       only: VecReal, VecVecReal, VecInt
 
   implicit none
 
@@ -98,89 +102,6 @@ module unresolved
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! SLBWRESONANCES is an object containing a vector of SLBW resonances'
-! information
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type SLBWResonances
-
-    real(8), allocatable :: E_lam(:)
-    real(8), allocatable :: AJ(:)
-    real(8), allocatable :: GN(:)
-    real(8), allocatable :: GG(:)
-    real(8), allocatable :: GF(:)
-    real(8), allocatable :: GX(:)
-    real(8), allocatable :: GT(:)
-
-    ! type-bound procedures
-    contains
-
-      ! allocate vector of SLBW resonances for a given l
-      procedure :: alloc_slbw_resonances => alloc_slbw_resonances
-
-      ! deallocate vector of SLBW resonances for a given l
-      procedure :: dealloc_slbw_resonances => dealloc_slbw_resonances
-
-  end type SLBWResonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! MLBWRESONANCES is an object containing a vector of MLBW resonances'
-! information
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type MLBWResonances
-
-    real(8), allocatable :: E_lam(:)
-    real(8), allocatable :: AJ(:)
-    real(8), allocatable :: GN(:)
-    real(8), allocatable :: GG(:)
-    real(8), allocatable :: GF(:)
-    real(8), allocatable :: GX(:)
-    real(8), allocatable :: GT(:)
-
-    ! type-bound procedures
-    contains
-
-      ! allocate vector of MLBW resonances for a given l
-      procedure :: alloc_mlbw_resonances => alloc_mlbw_resonances
-
-      ! deallocate vector of MLBW resonances for a given l
-      procedure :: dealloc_mlbw_resonances => dealloc_mlbw_resonances
-
-  end type MLBWResonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! RMRESONANCES is an object containing a vector of Reich-Moore resonance
-! data
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type RMResonances
-
-    real(8), allocatable :: E_lam(:)
-    real(8), allocatable :: AJ(:)
-    real(8), allocatable :: GN(:)
-    real(8), allocatable :: GG(:)
-    real(8), allocatable :: GFA(:)
-    real(8), allocatable :: GFB(:)
-
-    ! type-bound procedures
-    contains
-
-      ! allocate vector of R-M resonances for a given l
-      procedure :: alloc_rm_resonances => alloc_rm_resonances
-
-      ! deallocate vector of R-M resonances for a given l
-      procedure :: dealloc_rm_resonances => dealloc_rm_resonances
-
-  end type RMResonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
 ! CROSSSECTION is an object containing data for a partial (or total) cross
 ! section
 !
@@ -236,35 +157,6 @@ module unresolved
     type(CrossSection) :: avg_x   ! infinite-dilute competitive xs object
 
   end type ProbabilityTable
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! LOCALSEQUENCE is an object containing vectors of resonance parameters for
-! one spin sequence of a local realization of resonances about E_n - the vectors
-! are the lengths of the number of contributing resonances for the corresponding
-! spin sequence
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type LocalSequence
-
-     real(8), allocatable :: E_lam(:)
-     real(8), allocatable :: Gam_n(:)
-     real(8), allocatable :: Gam_f(:)
-     real(8), allocatable :: Gam_g(:)
-     real(8), allocatable :: Gam_x(:)
-     real(8), allocatable :: Gam_t(:)
-
-   ! type-bound procedures
-   contains
-
-     ! allocate vector of local resonances for a given l
-     procedure :: alloc_local_sequence => alloc_local_sequence
-
-     ! deallocate vector of local resonances for a given l
-     procedure :: dealloc_local_sequence => dealloc_local_sequence
-
-  end type LocalSequence
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -336,16 +228,16 @@ module unresolved
     real(8), allocatable :: ES(:)  ! URR tabulated data energies
 
     ! mean values
-    type(JaggedArray), allocatable :: D_mean(:)   ! level spacing
-    type(JaggedArray), allocatable :: GN0_mean(:) ! reduced neutron width
-    type(JaggedArray), allocatable :: GG_mean(:)  ! radiative capture width
-    type(JaggedArray), allocatable :: GF_mean(:)  ! fission width
-    type(JaggedArray), allocatable :: GX_mean(:)  ! competitive inelastic width
-    type(Vector), allocatable :: AJ(:)   ! total angular momentum
-    type(Vector), allocatable :: DOFN(:) ! # neutron channels
-    type(Vector), allocatable :: DOFG(:) ! # capture channels
-    type(Vector), allocatable :: DOFF(:) ! # fission channels
-    type(Vector), allocatable :: DOFX(:) ! # competitive channels
+    type(VecVecReal), allocatable :: D_mean(:)   ! level spacing
+    type(VecVecReal), allocatable :: GN0_mean(:) ! reduced neutron width
+    type(VecVecReal), allocatable :: GG_mean(:)  ! radiative capture width
+    type(VecVecReal), allocatable :: GF_mean(:)  ! fission width
+    type(VecVecReal), allocatable :: GX_mean(:)  ! competitive inelastic width
+    type(VecReal), allocatable :: AJ(:)   ! total angular momentum
+    type(VecReal), allocatable :: DOFN(:) ! # neutron channels
+    type(VecReal), allocatable :: DOFG(:) ! # capture channels
+    type(VecReal), allocatable :: DOFF(:) ! # fission channels
+    type(VecReal), allocatable :: DOFX(:) ! # competitive channels
 
     ! current values
     real(8) :: E_last = ZERO ! last neutron energy
@@ -394,42 +286,37 @@ module unresolved
     type(ProbabilityTable), allocatable :: prob_tables(:,:)
     type(xsSample), allocatable :: xs_samples(:,:)
 
-    ! vectors of URR resonances for a given (J, L, realization)
-    type(SLBWResonances), allocatable :: urr_resonances_tmp(:,:,:)
-    type(SLBWResonances), allocatable :: urr_resonances(:,:,:)
+    ! for each (l, realization), a vector of lists of (l, J) resonances
+    type(BWResonanceListVec), allocatable :: urr_resonances_tmp(:,:)
 
-    ! max resonances for a given (J, l, realization)
-    integer :: n_lam_tmp = 1000000
-    integer, allocatable :: n_lam(:,:,:)
+    ! for each (l, realization), a vector of vectors of (l, J) resonances
+    type(BWResonanceVecVec), allocatable :: urr_resonances(:,:)
+
+    ! max resonances for a given (l, realization)
+    type(VecInt), allocatable :: n_lam(:,:)
 
     ! vector of Reich-Moore resonances for each l
-    type(RMResonances), allocatable :: rm_resonances(:)
+    type(RMResonanceVec), allocatable :: rm_resonances(:)
 
-    ! vector of SLBW resonances for each l
-    type(SLBWResonances), allocatable :: slbw_resonances(:)
+    ! vector of BW resonances for each l
+    type(BWResonanceVec), allocatable :: bw_resonances(:)
 
-    ! vector of MLBW resonances for each l
-    type(MLBWResonances), allocatable :: mlbw_resonances(:)
-
-    ! local contributing resonances for (i_J, i_l)
-    type(LocalSequence), allocatable :: local_realization(:,:)
+    ! for each (l), a vector of vectors of local (l, J) resonances
+    type(BWResonanceVecVec), allocatable :: local_realization(:)
 
     ! pointwise URR cross section data
-    real(8), allocatable :: E_tmp(:) ! Scratch energy grid values
-    real(8), allocatable :: n_tmp(:) ! scratch elastic xs
-    real(8), allocatable :: g_tmp(:) ! scratch capture xs
-    real(8), allocatable :: f_tmp(:) ! scratch fission xs
-    real(8), allocatable :: x_tmp(:) ! scratch competitive xs
-    real(8), allocatable :: t_tmp(:) ! scratch total xs
+    type(RealList) :: E_tmp ! scratch energy grid values
+    type(RealList) :: n_tmp ! scratch elastic xs
+    type(RealList) :: g_tmp ! scratch capture xs
+    type(RealList) :: f_tmp ! scratch fission xs
+    type(RealList) :: x_tmp ! scratch competitive xs
+    type(RealList) :: t_tmp ! scratch total xs
     real(8), allocatable :: urr_E(:) ! energy grid values
     real(8), allocatable :: urr_n(:) ! elastic xs
     real(8), allocatable :: urr_g(:) ! capture xs
     real(8), allocatable :: urr_f(:) ! fission xs
     real(8), allocatable :: urr_x(:) ! first level inelastic xs
     real(8), allocatable :: urr_t(:) ! total xs
-
-    ! pointwise URR cross section parameters
-    integer :: n_urr_gridpoints  = 100000000 ! max URR energy-xs gridpoints
 
   ! Type-Bound procedures
   contains
@@ -443,12 +330,6 @@ module unresolved
     ! deallocate File 3 average (infinite-dilute) cross sections
     procedure :: dealloc_MF3 => dealloc_MF3
 
-    ! allocate temporary URR resonance ensemble realization
-    procedure :: alloc_ensemble_tmp => alloc_ensemble_tmp
-
-    ! deallocate temporary URR resonance ensemble realization
-    procedure :: dealloc_ensemble_tmp => dealloc_ensemble_tmp
-
     ! allocate URR resonance ensemble realization
     procedure :: alloc_ensemble => alloc_ensemble
 
@@ -460,12 +341,6 @@ module unresolved
 
     ! deallocate local URR resonance realization
     procedure :: dealloc_local_realization => dealloc_local_realization
-
-    ! allocate temporary pointwise URR cross sections
-    procedure :: alloc_pointwise_tmp => alloc_pointwise_tmp
-
-    ! deallocate temporary pointwise URR cross sections
-    procedure :: dealloc_pointwise_tmp => dealloc_pointwise_tmp
 
     ! allocate pointwise URR cross sections
     procedure :: alloc_pointwise => alloc_pointwise
@@ -939,7 +814,7 @@ contains
     integer :: i_J         ! total angular momentum quantum number
     integer :: i_E         ! tabulated URR parameters energy index
     integer :: i_ens       ! ensemble index
-    integer :: i_res       ! (l, J) resonance counter
+    integer :: i_res       ! l-wave resonance counter
     integer :: n_res       ! number of l-wave resonances to include
     integer :: n_above_urr ! number of resonances abover upper URR energy
     real(8) :: E_res ! current resonance (lab) energy (e.g. E_lam)
@@ -947,11 +822,9 @@ contains
 
     tope => isotopes(iso)
 
-    ! allocate temporary URR resonance ensemble realizations
-    call tope % alloc_ensemble_tmp(n_reals)
-
-    allocate(tope % n_lam(maxval(tope % NJS(:)), &
-         tope % NLS(tope % i_urr), n_reals))
+    ! allocate vector of linked lists of (l,J) resonances for (l, realization)
+    allocate(tope % urr_resonances_tmp(tope % NLS(tope % i_urr), n_reals))
+    allocate(tope % n_lam(tope % NLS(tope % i_urr), n_reals))
 
     res % i_res = 0
 
@@ -960,6 +833,10 @@ contains
 
       ! loop over orbital angular momenta
       ORBITAL_ANG_MOM_LOOP: do i_l = 1, tope % NLS(tope % i_urr)
+
+        ! alloc vector of NJS(l) linked lists of resonances for (l, realization)
+        allocate(tope % urr_resonances_tmp(i_l, i_ens) % J(tope % NJS(i_l)))
+        allocate(tope % n_lam(i_l, i_ens) % dim1(tope % NJS(i_l)))
 
         ! set current orbital angular momentum quantum number
         tope % L = i_l - 1
@@ -971,27 +848,32 @@ contains
         TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
           ! set current total angular momentum quantum number
-          tope % J = tope % AJ(i_l) % data(i_J)
+          tope % J = tope % AJ(i_l) % dim1(i_J)
 
           ! set current partial width degrees of freedom
-          tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
-          tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
-          tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
-          tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
+          tope % AMUX = int(tope % DOFX(i_l) % dim1(i_J))
+          tope % AMUN = int(tope % DOFN(i_l) % dim1(i_J))
+          tope % AMUG = int(tope % DOFG(i_l) % dim1(i_J))
+          tope % AMUF = int(tope % DOFF(i_l) % dim1(i_J))
 
           ! set energy of the lowest-lying contributing URR resonance
-          tope % D = tope % D_mean(i_l) % data(i_J) % data(1)
+          tope % D = tope % D_mean(i_l) % dim2(i_J) % dim1(1)
           if (i_l > tope % NLS(tope % i_urr - 1)) then
             ! the URR has more l-states than the RRR; place resonance energy
             ! randomly about lower URR energy bound
-            E_res = tope % EL(tope % i_urr) &
-                 + (ONE - TWO * prn()) * wigner_dist(tope % D)
+            E_res = tope % EL(tope % i_urr)&
+                 + (ONE - TWO * prn()) * wigner_surmise(tope % D)
           else
             ! offset first URR resonance energy from the highest-energy RRR
             ! resonance with the same (l,J) spin sequence
-            E_res = E_last_rrr(iso, tope % L, tope % J) + wigner_dist(tope % D)
+            E_res = E_last_rrr(iso, tope % L, tope % J)+wigner_surmise(tope % D)
           end if
 
+          ! point to first resonance for this l-wave, realization, J
+          tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res&
+               => tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % first
+
+          ! zero resonance counters
           i_res = 0
           n_above_urr = 0
           RESONANCE_LOOP: do while(n_above_urr < n_res + 1)
@@ -1012,27 +894,27 @@ contains
 
             ! set current mean unresolved resonance parameters
             tope % D = interpolator(m, &
-                 tope % D_mean(i_l) % data(i_J) % data(i_E), &
-                 tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % D_mean(i_l) % dim2(i_J) % dim1(i_E), &
+                 tope % D_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
             tope % GN0 = interpolator(m, &
-                 tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
-                 tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % GN0_mean(i_l) % dim2(i_J) % dim1(i_E), &
+                 tope % GN0_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
             tope % GG = interpolator(m, &
-                 tope % GG_mean(i_l) % data(i_J) % data(i_E), &
-                 tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                 tope % GG_mean(i_l) % dim2(i_J) % dim1(i_E), &
+                 tope % GG_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
             if (tope % INT == LINEAR_LINEAR &
-                 .or. tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+                 .or. tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E) > ZERO) then
               tope % GF = interpolator(m, &
-                   tope % GF_mean(i_l) % data(i_J) % data(i_E), &
-                   tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                   tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E), &
+                   tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
             else
               tope % GF = ZERO
             end if
             if (tope % INT == LINEAR_LINEAR &
-              .or. tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+              .or. tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E) > ZERO) then
               tope % GX = interpolator(m, &
-                   tope % GX_mean(i_l) % data(i_J) % data(i_E), &
-                   tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+                   tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E), &
+                   tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
             else
               tope % GX = ZERO
             end if
@@ -1052,48 +934,80 @@ contains
             tope % phi_l_n = phase_shift(tope % L,&
                  tope % k_n * tope % AP(tope % i_urr))
             call res % channel_width(iso, i_l, i_J)
-            call add_parameters(res, iso, i_ens, i_res, i_l, i_J)
+            call add_parameters(res, iso, i_ens, i_l, i_J)
 
             ! add an additional resonance
-            E_res = E_res + wigner_dist(tope % D)
+            E_res = E_res + wigner_surmise(tope % D)
 
             if (E_res > tope % EH(tope % i_urr)) n_above_urr = n_above_urr + 1
 
           end do RESONANCE_LOOP
-
-          tope % n_lam(i_J, i_l, i_ens) = i_res
+  
+          tope % n_lam(i_l, i_ens) % dim1(i_J) = i_res
 
         end do TOTAL_ANG_MOM_LOOP
       end do ORBITAL_ANG_MOM_LOOP
     end do ENSEMBLE_LOOP
 
     ! allocate URR resonance ensemble realizations
-    call tope % alloc_ensemble(n_reals)
+    call tope % alloc_ensemble()
 
-    ! transfer scratch URR ensembles to permanent array
+    ! transfer linked list URR ensembles to permanent array
     do i_ens = 1, n_reals
       do i_l = 1, tope % NLS(tope % i_urr)
         do i_J = 1, tope % NJS(i_l)
-          do i_res = 1, tope % n_lam(i_J, i_l, i_ens)
-            tope % urr_resonances(i_J, i_l, i_ens) % E_lam(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % E_lam(i_res)
-            tope % urr_resonances(i_J, i_l, i_ens) % GN(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % GN(i_res)
-            tope % urr_resonances(i_J, i_l, i_ens) % GG(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % GG(i_res)
-            tope % urr_resonances(i_J, i_l, i_ens) % GF(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % GF(i_res)
-            tope % urr_resonances(i_J, i_l, i_ens) % GX(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % GX(i_res)
-            tope % urr_resonances(i_J, i_l, i_ens) % GT(i_res) &
-                 = tope % urr_resonances_tmp(i_J, i_l, i_ens) % GT(i_res)
+
+          ! point to first resonance for this l-wave, realization, J
+          tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res&
+               => tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % first
+        
+          do i_res = 1, tope % n_lam(i_l, i_ens) % dim1(i_J)
+
+            ! resonance energy
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % E_lam&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % E_lam
+          
+            ! total angular momentum, J
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % AJ&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % AJ
+          
+            ! neutron width
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % GN&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GN
+          
+            ! gamma width
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % GG&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GG
+          
+            ! fission width
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % GF&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GF
+          
+            ! competitive width
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % GX&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GX
+          
+            ! total width
+            tope % urr_resonances(i_l, i_ens) % J(i_J) % res(i_res) % GT&
+                 = tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GT
+       
+            ! point to next resonance
+            tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res&
+                 => tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % next
+
           end do
+
+          call tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % clear()
+
         end do
+
+        deallocate(tope % urr_resonances_tmp(i_l, i_ens) % J)
+
       end do
     end do
 
-    ! deallocate temporary URR resonance ensemble realizations
-    call tope % dealloc_ensemble_tmp(n_reals)
+    ! deallocate temporary linked list URR resonance ensemble realizations
+    deallocate(tope % urr_resonances_tmp)
 
   end subroutine resonance_ensemble
 
@@ -1126,6 +1040,7 @@ contains
     integer :: n_pts     ! xs energy grid point counter
     integer :: i_ES      ! index of current URR tabulated energy
     integer :: iavg      ! index in average cross section
+    integer :: iE        ! pointwise energy grid index
     real(8) :: T_K          ! isotope temperature [K]
     real(8) :: favg         ! average cross section interpolation factor
     real(8) :: face         ! cross section energy grid interpolation factor
@@ -1134,6 +1049,7 @@ contains
     real(8) :: avg_urr_g_xs ! averaged capture cross section
     real(8) :: avg_urr_x_xs ! averaged competitive inelastic cross section
     real(8) :: dE_trial     ! trial energy spacing for xs grid
+    real(8) :: xs_prev      ! cross section at last accepted energy point
     real(8) :: xs_trial     ! trial xs via interpolation between gridpoints
     real(8) :: rel_err      ! relative error between interpolated and exact xs
     logical :: enhance ! refine energy-xs grid?
@@ -1149,32 +1065,38 @@ contains
     ! set current energy
     tope % E = tope % EL(tope % i_urr)
 
-    ! allocate pointwise URR cross sections
-    call tope % alloc_pointwise_tmp()
+    ! point current linked list elements on first elements in the lists
+    tope % E_tmp % head => tope % E_tmp % first
+    tope % n_tmp % head => tope % n_tmp % first
+    tope % g_tmp % head => tope % g_tmp % first
+    tope % f_tmp % head => tope % f_tmp % first
+    tope % x_tmp % head => tope % x_tmp % first
+    tope % t_tmp % head => tope % t_tmp % first
 
     ! enforce xs continuity at RRR-URR energy crossover
     n_pts = 1
     i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
-    tope % E_tmp(n_pts)  = 1.0e6_8 * nuc % energy(i_grid)
-    tope % n_tmp(n_pts) = nuc % elastic(i_grid)
-    tope % g_tmp(n_pts) = nuc % absorption(i_grid)&
+    tope % E_tmp % head % val = 1.0e6_8 * nuc % energy(i_grid)
+    tope % n_tmp % head % val = nuc % elastic(i_grid)
+    tope % g_tmp % head % val = nuc % absorption(i_grid)&
          - nuc % fission(i_grid)
-    tope % f_tmp(n_pts) = nuc % fission(i_grid)
-    tope % t_tmp(n_pts) = nuc % total(i_grid)
-    tope % x_tmp(n_pts) = tope % t_tmp(n_pts)&
-         - tope % n_tmp(n_pts)&
-         - tope % g_tmp(n_pts)&
-         - tope % f_tmp(n_pts)
-    tope % t_tmp(n_pts) = tope % n_tmp(n_pts)&
-         + tope % g_tmp(n_pts)&
-         + tope % f_tmp(n_pts)&
-         + tope % x_tmp(n_pts)
+    tope % f_tmp % head % val = nuc % fission(i_grid)
+    tope % t_tmp % head % val = nuc % total(i_grid)
+    tope % x_tmp % head % val = tope % t_tmp % head % val&
+         - tope % n_tmp % head % val&
+         - tope % g_tmp % head % val&
+         - tope % f_tmp % head % val
+    tope % t_tmp % head % val = tope % n_tmp % head % val&
+         + tope % g_tmp % head % val&
+         + tope % f_tmp % head % val&
+         + tope % x_tmp % head % val
 
     tope % E = 1.0e6_8 * nuc % energy(i_grid + 1)
 
     i_ES = 1
     ENERGY_LOOP: do
 
+      xs_prev = tope % t_tmp % head % val
       dE_trial = max_dE_point_urr
       tope % E = tope % E + dE_trial
       tope % k_n = wavenumber(tope % AWR, abs(tope % E))
@@ -1189,6 +1111,18 @@ contains
         end if
       end if
       n_pts = n_pts + 1
+      allocate(tope % E_tmp % head % next)
+      allocate(tope % n_tmp % head % next)
+      allocate(tope % g_tmp % head % next)
+      allocate(tope % f_tmp % head % next)
+      allocate(tope % x_tmp % head % next)
+      allocate(tope % t_tmp % head % next)
+      tope % E_tmp % head => tope % E_tmp % head % next
+      tope % n_tmp % head => tope % n_tmp % head % next
+      tope % g_tmp % head => tope % g_tmp % head % next
+      tope % f_tmp % head => tope % f_tmp % head % next
+      tope % x_tmp % head => tope % x_tmp % head % next
+      tope % t_tmp % head => tope % t_tmp % head % next
       enhance  = .true.
 
       CONVERGE_XS: do while(enhance)
@@ -1206,23 +1140,19 @@ contains
           ! get the number of contributing l-wave resonances for this l
           n_res = n_res_contrib(tope % L)
 
-          ! loop over total angular momentum quantum numbers
+          ! loop over total quantum numbers
           LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
-            ! set current total angular momentum quantum number
-            tope % J = tope % AJ(i_l) % data(i_J)
-
-            ! find the nearest lower resonance
-            if (tope % E &
-                 < tope % urr_resonances(i_J, i_l, i_real) % E_lam(1)) then
+            if (tope % E&
+            < tope % urr_resonances(i_l, i_real) % J(i_J) % res(1) % E_lam) then
               i_low = 1
-            
             else
               i_low = binary_search(&
-                   tope % urr_resonances(i_J, i_l, i_real) % E_lam(:),&
-                   tope % n_lam(i_J, i_l, i_real), tope % E)
-
+                   tope % urr_resonances(i_l,i_real) % J(i_J) % res(:) % E_lam,&
+                   tope % n_lam(i_l, i_real) % dim1(i_J), tope % E)
             end if
+! set current total angular momentum quantum number
+            tope % J = tope % AJ(i_l) % dim1(i_J)
 
             res % i_res = 0
             ! loop over the addition of resonances to this ladder
@@ -1297,7 +1227,7 @@ contains
           TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
             ! set current total angular momentum quantum number
-            tope % J = tope % AJ(i_l) % data(i_J)
+            tope % J = tope % AJ(i_l) % dim1(i_J)
 
             ! compute statistical spin factor
             tope % g_J = (TWO * tope % J + ONE) &
@@ -1307,12 +1237,18 @@ contains
             RESONANCES_LOOP: do i_res = 1, n_res
 
               res % i_res = i_res
-              res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_res)
-              res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_res)
-              res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_res)
-              res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_res)
-              res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_res)
-              res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_res)
+              res % E_lam&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % E_lam
+              res % Gam_n&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GN
+              res % Gam_g&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GG
+              res % Gam_f&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GF
+              res % Gam_x&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GX
+              res % Gam_t&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GT
 
               call res % calc_xs(iso)
               call accum_resonances(res, t, n, g, f, x)
@@ -1345,14 +1281,14 @@ contains
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+        call interp_ace_background(iso, i_nuc, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
         ! multiply the self-shielding factors by the infinite-dilute xs
         elseif (tope % LSSF == 1) then
@@ -1373,33 +1309,38 @@ contains
           if (avg_urr_x_xs > ZERO&
                .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
                .and. competitive)&
-               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+               tope % x_tmp % head % val&
+               = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
           ! elastic scattering xs
-          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+          tope % n_tmp % head % val&
+               = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
           ! set negative elastic xs and competitive xs to zero
-          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+          if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+          if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
           ! radiative capture xs
           if (avg_urr_g_xs > ZERO)&
-               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+               tope % g_tmp % head % val&
+               = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
           ! fission xs
           if (avg_urr_f_xs > ZERO)&
-               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+               tope % f_tmp % head % val&
+               = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
           ! total xs
-          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+          tope % t_tmp % head % val&
+               = tope % n_tmp % head % val + tope % g_tmp % head % val&
+               + tope % f_tmp % head % val + tope % x_tmp % head % val
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
 
         end if
 
-        xs_trial = HALF * (tope % t_tmp(n_pts) + tope % t_tmp(n_pts - 1))
+        xs_trial = HALF * (tope % t_tmp % head % val + xs_prev)
         dE_trial = HALF * dE_trial
         tope % E  = tope % E - dE_trial
         tope % k_n = wavenumber(tope % AWR, abs(tope % E))
@@ -1432,7 +1373,7 @@ contains
           TOTAL_ANG_MOM_LOOPb: do i_J = 1, tope % NJS(i_l)
 
             ! set current total angular momentum quantum number
-            tope % J = tope % AJ(i_l) % data(i_J)
+            tope % J = tope % AJ(i_l) % dim1(i_J)
 
             ! compute statistical spin factor
             tope % g_J = (TWO * tope % J + ONE) &
@@ -1442,12 +1383,18 @@ contains
             RESONANCES_LOOPb: do i_res = 1, n_res
 
               res % i_res = i_res
-              res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_res)
-              res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_res)
-              res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_res)
-              res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_res)
-              res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_res)
-              res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_res)
+              res % E_lam&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % E_lam
+              res % Gam_n&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GN
+              res % Gam_g&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GG
+              res % Gam_f&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GF
+              res % Gam_x&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GX
+              res % Gam_t&
+                   = tope % local_realization(i_l) % J(i_J) % res(i_res) % GT
 
               call res % calc_xs(iso)
               call accum_resonances(res, t, n, g, f, x)
@@ -1467,27 +1414,26 @@ contains
           call fatal_error('URR energy grid extends above available pointwise&
             & data')
         else
-          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, &
-               tope % E)
+          i_grid = binary_search(1.0e6_8 * nuc % energy, nuc % n_grid, tope % E)
         end if
 
         ! check for rare case where two energy points are the same
-        if (nuc % energy(i_grid) == nuc % energy(i_grid + 1)) &
+        if (nuc % energy(i_grid) == nuc % energy(i_grid + 1))&
              i_grid = i_grid + 1
 
         ! calculate xs energy grid interpolation factor
-        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid), &
+        face = interp_factor(tope % E, 1.0e6_8 * nuc % energy(i_grid),&
              1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
         ! calculate evaluator-supplied backgrounds at the current energy
-        call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+        call interp_ace_background(iso, i_nuc, face, i_grid)
 
         ! interpret MF3 data according to ENDF-6 LSSF flag:
         ! MF3 contains background xs, add to MF2 resonance contributions
         if (tope % LSSF == 0) then
 
           ! add resonance xs component to background
-          call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+          call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
         elseif (tope % LSSF == 1) then
           ! multipy the self-shielding factors by the infinite-dilute xs
@@ -1498,42 +1444,45 @@ contains
             iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
           end if
 
-          favg = interp_factor(tope % E, &
+          favg = interp_factor(tope % E,&
                tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
-          call interp_avg_urr_xs(favg, iso, iavg, &
+          call interp_avg_urr_xs(favg, iso, iavg,&
                avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
           ! competitive xs
           if (avg_urr_x_xs > ZERO&
                .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
-               .and. competitive)&
-               tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+               .and. competitive) tope % x_tmp % head % val&
+               = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
           ! elastic scattering xs
-          tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+          tope % n_tmp % head % val&
+               = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
           ! set negative elastic xs and competitive xs to zero
-          if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-          if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+          if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+          if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
           ! radiative capture xs
-          if (avg_urr_g_xs > ZERO)&
-               tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+          if (avg_urr_g_xs > ZERO) tope % g_tmp % head % val&
+               = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
           ! fission xs
-          if (avg_urr_f_xs > ZERO)&
-               tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+          if (avg_urr_f_xs > ZERO) tope % f_tmp % head % val&
+               = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
-          tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-               + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+          tope % t_tmp % head % val&
+               = tope % n_tmp % head % val + tope % g_tmp % head % val&
+               + tope % f_tmp % head % val + tope % x_tmp % head % val
 
         else
           call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
 
         end if
 
-        rel_err = abs(xs_trial - tope % t_tmp(n_pts)) / tope % t_tmp(n_pts)
+        rel_err = abs(xs_trial - tope % t_tmp % head % val)&
+             / tope % t_tmp % head % val
         if (rel_err < tol_point_urr .or. dE_trial < min_dE_point_urr)&
              enhance = .false.
       
@@ -1542,7 +1491,7 @@ contains
       ! add energy point to grid
       tope % E = tope % E + dE_trial
       tope % k_n = wavenumber(tope % AWR, abs(tope % E))
-      tope % E_tmp(n_pts) = tope % E
+      tope % E_tmp % head % val = tope % E
 
       ! reset xs accumulators
       call flush_sigmas(t, n, g, f, x)
@@ -1572,7 +1521,7 @@ contains
         TOTAL_ANG_MOM_LOOPc: do i_J = 1, tope % NJS(i_l)
 
           ! set current total angular momentum quantum number
-          tope % J = tope % AJ(i_l) % data(i_J)
+          tope % J = tope % AJ(i_l) % dim1(i_J)
 
           ! compute statistical spin factor
           tope % g_J = (TWO * tope % J + ONE) &
@@ -1582,12 +1531,18 @@ contains
           RESONANCES_LOOPc: do i_res = 1, n_res
 
             res % i_res = i_res
-            res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_res)
-            res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_res)
-            res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_res)
-            res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_res)
-            res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_res)
-            res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_res)
+            res % E_lam&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % E_lam
+            res % Gam_n&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % GN
+            res % Gam_g&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % GG
+            res % Gam_f&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % GF
+            res % Gam_x&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % GX
+            res % Gam_t&
+                 = tope % local_realization(i_l) % J(i_J) % res(i_res) % GT
 
             call res % calc_xs(iso)
             call accum_resonances(res, t, n, g, f, x)
@@ -1618,14 +1573,14 @@ contains
            1.0e6_8 * nuc % energy(i_grid + 1), tope % INT)
 
       ! calculate evaluator-supplied backgrounds at the current energy
-      call interp_ace_background(iso, i_nuc, n_pts, face, i_grid)
+      call interp_ace_background(iso, i_nuc, face, i_grid)
 
       ! interpret MF3 data according to ENDF-6 LSSF flag:
       ! MF3 contains background xs values, add to MF2 resonance contributions
       if (tope % LSSF == 0) then
 
         ! add resonance xs component to background
-        call add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+        call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
       else if (tope % LSSF == 1) then
         ! multipy the self-shielding factors by the average (infinite-dilute)
@@ -1637,35 +1592,37 @@ contains
           iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
         end if
 
-        favg = interp_factor(tope % E, &
+        favg = interp_factor(tope % E,&
              tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
 
-        call interp_avg_urr_xs(favg, iso, iavg, &
+        call interp_avg_urr_xs(favg, iso, iavg,&
              avg_urr_n_xs, avg_urr_f_xs, avg_urr_g_xs, avg_urr_x_xs)
 
         ! competitive xs
         if (avg_urr_x_xs > ZERO&
              .and. tope % E <= (ONE + ENDF_PRECISION) * tope % E_ex2&
-             .and. competitive)&
-             tope % x_tmp(n_pts) = x % xs / avg_urr_x_xs * tope % x_tmp(n_pts)
+             .and. competitive) tope % x_tmp % head % val&
+             = x % xs / avg_urr_x_xs * tope % x_tmp % head % val
 
         ! elastic scattering xs
-        tope % n_tmp(n_pts) = n % xs / avg_urr_n_xs * tope % n_tmp(n_pts)
+        tope % n_tmp % head % val&
+             = n % xs / avg_urr_n_xs * tope % n_tmp % head % val
 
         ! set negative elastic xs and competitive xs to zero
-        if (tope % n_tmp(n_pts) < ZERO) tope % n_tmp(n_pts) = ZERO
-        if (tope % x_tmp(n_pts) < ZERO) tope % x_tmp(n_pts) = ZERO
+        if (tope % n_tmp % head % val < ZERO) tope % n_tmp % head % val = ZERO
+        if (tope % x_tmp % head % val < ZERO) tope % x_tmp % head % val = ZERO
 
         ! radiative capture xs
-        if (avg_urr_g_xs > ZERO)&
-             tope % g_tmp(n_pts) = g % xs / avg_urr_g_xs * tope % g_tmp(n_pts)
+        if (avg_urr_g_xs > ZERO) tope % g_tmp % head % val&
+             = g % xs / avg_urr_g_xs * tope % g_tmp % head % val
 
         ! fission xs
-        if (avg_urr_f_xs > ZERO)&
-             tope % f_tmp(n_pts) = f % xs / avg_urr_f_xs * tope % f_tmp(n_pts)
+        if (avg_urr_f_xs > ZERO) tope % f_tmp % head % val&
+             = f % xs / avg_urr_f_xs * tope % f_tmp % head % val
 
-        tope % t_tmp(n_pts) = tope % n_tmp(n_pts) + tope % g_tmp(n_pts)&
-             + tope % f_tmp(n_pts) + tope % x_tmp(n_pts)
+        tope % t_tmp % head % val&
+             = tope % n_tmp % head % val + tope % g_tmp % head % val&
+             + tope % f_tmp % head % val + tope % x_tmp % head % val
 
       else
         call fatal_error('Self-shielding flag (LSSF) not allowed -&
@@ -1674,16 +1631,34 @@ contains
       end if
     end do ENERGY_LOOP
 
-    ! pass temporary, pre-allocated energy-xs vectors to dynamic vectors of
-    ! the proper length
+    ! pass temporary, energy-xs linked lists to dynamic vectors
     call tope % alloc_pointwise(n_pts)
-    tope % urr_E = tope % E_tmp(1:n_pts)
-    tope % urr_n = tope % n_tmp(1:n_pts)
-    tope % urr_g = tope % g_tmp(1:n_pts)
-    tope % urr_f = tope % f_tmp(1:n_pts)
-    tope % urr_x = tope % x_tmp(1:n_pts)
-    tope % urr_t = tope % t_tmp(1:n_pts)
-    call tope % dealloc_pointwise_tmp()
+    tope % E_tmp % head => tope % E_tmp % first
+    tope % n_tmp % head => tope % n_tmp % first
+    tope % g_tmp % head => tope % g_tmp % first
+    tope % f_tmp % head => tope % f_tmp % first
+    tope % x_tmp % head => tope % x_tmp % first
+    tope % t_tmp % head => tope % t_tmp % first
+    do iE = 1, n_pts
+      tope % urr_E(iE) = tope % E_tmp % head % val
+      tope % urr_n(iE) = tope % n_tmp % head % val
+      tope % urr_g(iE) = tope % g_tmp % head % val
+      tope % urr_f(iE) = tope % f_tmp % head % val
+      tope % urr_x(iE) = tope % x_tmp % head % val
+      tope % urr_t(iE) = tope % t_tmp % head % val
+      tope % E_tmp % head => tope % E_tmp % head % next
+      tope % n_tmp % head => tope % n_tmp % head % next
+      tope % g_tmp % head => tope % g_tmp % head % next
+      tope % f_tmp % head => tope % f_tmp % head % next
+      tope % x_tmp % head => tope % x_tmp % head % next
+      tope % t_tmp % head => tope % t_tmp % head % next
+    end do
+    call tope % E_tmp % clear()
+    call tope % n_tmp % clear()
+    call tope % g_tmp % clear()
+    call tope % f_tmp % clear()
+    call tope % x_tmp % clear()
+    call tope % t_tmp % clear()
 
   end subroutine pointwise_urr
 
@@ -1763,19 +1738,19 @@ contains
       LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum number
-        tope % J = tope % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % dim1(i_J)
 
         ! zero the resonance counter
         res % i_res = 0
 
         ! find the nearest lower resonance
-        if (tope % E &
-             < tope % urr_resonances(i_J, i_l, i_real) % E_lam(1)) then
+        if (tope % E&
+             < tope % urr_resonances(i_l,i_real) % J(i_J) % res(1) % E_lam) then
           i_low = 1
         else
           i_low = binary_search(&
-               tope % urr_resonances(i_J, i_l, i_real) % E_lam(:),&
-               tope % n_lam(i_J, i_l, i_real), tope % E)
+               tope % urr_resonances(i_l, i_real) % J(i_J) % res(:) % E_lam,&
+               tope % n_lam(i_l, i_real) % dim1(i_J), tope % E)
         end if
 
         ! loop over the addition of resonances to this ladder
@@ -1850,7 +1825,7 @@ contains
       TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum number
-        tope % J = tope % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % dim1(i_J)
 
         ! compute statistical spin factor
         tope % g_J = (TWO * tope % J + ONE) &
@@ -1860,12 +1835,18 @@ contains
         RESONANCES_LOOP: do i_res = 1, n_res
 
           res % i_res = i_res
-          res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_res)
-          res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_res)
-          res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_res)
-          res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_res)
-          res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_res)
-          res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_res)
+          res % E_lam&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % E_lam
+          res % Gam_n&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % GN
+          res % Gam_g&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % GG
+          res % Gam_f&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % GF
+          res % Gam_x&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % GX
+          res % Gam_t&
+               = tope % local_realization(i_l) % J(i_J) % res(i_res) % GT
 
           call res % calc_xs(iso)
           call accum_resonances(res, t, n, g, f, x)
@@ -1883,7 +1864,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     else if (tope % LSSF == 1) then
       ! multipy the self-shielding factors by the infinite-dilute xs
@@ -2062,13 +2043,13 @@ contains
             LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
               ! set current total angular momentum quantum number
-              tope % J = tope % AJ(i_l) % data(i_J)
+              tope % J = tope % AJ(i_l) % dim1(i_J)
 
               ! set current partial width degrees of freedom
-              tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
-              tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
-              tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
-              tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
+              tope % AMUX = int(tope % DOFX(i_l) % dim1(i_J))
+              tope % AMUN = int(tope % DOFN(i_l) % dim1(i_J))
+              tope % AMUG = int(tope % DOFG(i_l) % dim1(i_J))
+              tope % AMUF = int(tope % DOFF(i_l) % dim1(i_J))
 
               ! zero the resonance counter
               res % i_res = 0
@@ -2129,7 +2110,7 @@ contains
             TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
               ! set current total angular momentum quantum number
-              tope % J = tope % AJ(i_l) % data(i_J)
+              tope % J = tope % AJ(i_l) % dim1(i_J)
 
               ! compute statistical spin factor
               tope % g_J = (TWO * tope % J + ONE) &
@@ -2139,12 +2120,18 @@ contains
               RESONANCES_LOOP: do i_r = 1, n_res
 
                 res % i_res = i_r
-                res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_r)
-                res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)
-                res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_r)
-                res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_r)
-                res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_r)
-                res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_r)
+                res % E_lam&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam
+                res % Gam_n&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN
+                res % Gam_g&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % GG
+                res % Gam_f&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % GF
+                res % Gam_x&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
+                res % Gam_t&
+                     = tope % local_realization(i_l) % J(i_J) % res(i_r) % GT
 
                 TEMPERATURES_LOOP: do i_T = 1, tope % nT
 
@@ -2541,13 +2528,13 @@ contains
       LOC_TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum number
-        tope % J = tope % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % dim1(i_J)
 
         ! set current partial width degrees of freedom
-        tope % AMUX = int(tope % DOFX(i_l) % data(i_J))
-        tope % AMUN = int(tope % DOFN(i_l) % data(i_J))
-        tope % AMUG = int(tope % DOFG(i_l) % data(i_J))
-        tope % AMUF = int(tope % DOFF(i_l) % data(i_J))
+        tope % AMUX = int(tope % DOFX(i_l) % dim1(i_J))
+        tope % AMUN = int(tope % DOFN(i_l) % dim1(i_J))
+        tope % AMUG = int(tope % DOFG(i_l) % dim1(i_J))
+        tope % AMUF = int(tope % DOFF(i_l) % dim1(i_J))
 
         ! zero the resonance counter
         res % i_res = 0
@@ -2608,7 +2595,7 @@ contains
       TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
 
         ! set current total angular momentum quantum number
-        tope % J = tope % AJ(i_l) % data(i_J)
+        tope % J = tope % AJ(i_l) % dim1(i_J)
 
         ! compute statistical spin factor
         tope % g_J = (TWO * tope % J + ONE) &
@@ -2618,12 +2605,18 @@ contains
         RESONANCES_LOOP: do i_r = 1, n_res
 
           res % i_res = i_r
-          res % E_lam = tope % local_realization(i_J, i_l) % E_lam(i_r)
-          res % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)
-          res % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(i_r)
-          res % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(i_r)
-          res % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(i_r)
-          res % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(i_r)
+          res % E_lam&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam
+          res % Gam_n&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN
+          res % Gam_g&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % GG
+          res % Gam_f&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % GF
+          res % Gam_x&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
+          res % Gam_t&
+               = tope % local_realization(i_l) % J(i_J) % res(i_r) % GT
 
           ! calculate the contribution to the partial cross sections,
           ! at this energy, from an additional resonance
@@ -2647,7 +2640,7 @@ contains
     if (tope % LSSF == 0) then
 
       ! add resonance xs component to background
-      call add_mf3_background(iso, i_nuc, NONE, t, n, g, f, x)
+      call add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     ! MF3 contains evaluator-supplied background xs values that we multipy
     ! the self-shielding factors computed from MF2 by
@@ -2954,14 +2947,15 @@ contains
     if (tope % E == tope % E_last) then
       ! Energy hasn't changed since last realization, so use the same one
       if (this % i_res == 0) then
-        this % E_lam = tope % local_realization(i_J, i_l) % E_lam(1)
+        this % E_lam = tope % local_realization(i_l) % J(i_J) % res(1) % E_lam
       else
-        this % E_lam  = tope % local_realization(i_J, i_l) % E_lam(this % i_res)
+        this % E_lam&
+             = tope % local_realization(i_l) % J(i_J) % res(this%i_res) % E_lam
       end if
 
     else
       ! sample a level spacing from the Wigner distribution
-      this % D_lJ = wigner_dist(tope % D)
+      this % D_lJ = wigner_surmise(tope % D)
 
       if (this % i_res == 0) then
         ! set lowest-energy resonance for this ladder well below the energy grid
@@ -2974,7 +2968,8 @@ contains
         ! add subsequent resonance energies at the sampled spacing above the
         ! last resonance
         this % E_lam = this % E_lam + this % D_lJ
-        tope % local_realization(i_J, i_l) % E_lam(this % i_res) = this % E_lam
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % E_lam&
+             = this % E_lam
 
       end if
     end if
@@ -3017,7 +3012,7 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  function wigner_dist(D_avg) result(D_samp)
+  function wigner_surmise(D_avg) result(D_samp)
 
     real(8) :: D_avg  ! mean level spacing
     real(8) :: D_samp ! sampled level spacing
@@ -3025,7 +3020,7 @@ contains
     ! sample a level spacing by directly inverting the Wigner distribution CDF
     D_samp = D_avg * sqrt(-FOUR * log(prn()) / PI)
 
-  end function wigner_dist
+  end function wigner_surmise
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -3057,11 +3052,16 @@ contains
     if (tope % E == tope % E_last) then
       if (this % i_res == 0) return
       ! Energy hasn't changed since last realization, so use the same one
-      this % Gam_n = tope % local_realization(i_J, i_l) % Gam_n(this % i_res)
-      this % Gam_f = tope % local_realization(i_J, i_l) % Gam_f(this % i_res)
-      this % Gam_g = tope % local_realization(i_J, i_l) % Gam_g(this % i_res)
-      this % Gam_x = tope % local_realization(i_J, i_l) % Gam_x(this % i_res)
-      this % Gam_t = tope % local_realization(i_J, i_l) % Gam_t(this % i_res)
+      this % Gam_n&
+           = tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GN
+      this % Gam_f&
+           = tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GF
+      this % Gam_g&
+           = tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GG
+      this % Gam_x&
+           = tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GX
+      this % Gam_t&
+           = tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GT
 
     else
       ! sample indices into table of equiprobable chi-squared function values
@@ -3114,11 +3114,17 @@ contains
       this % Gam_t = this % Gam_n + this % Gam_f + this % Gam_g + this % Gam_x
 
       if (this % i_res /= 0) then
-        tope % local_realization(i_J, i_l) % Gam_n(this % i_res) = this % Gam_n
-        tope % local_realization(i_J, i_l) % Gam_f(this % i_res) = this % Gam_f
-        tope % local_realization(i_J, i_l) % Gam_g(this % i_res) = this % Gam_g
-        tope % local_realization(i_J, i_l) % Gam_x(this % i_res) = this % Gam_x
-        tope % local_realization(i_J, i_l) % Gam_t(this % i_res) = this % Gam_t
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GN&
+             = this % Gam_n
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GF&
+             = this % Gam_f
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GG&
+             = this % Gam_g
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GX&
+             = this % Gam_x
+        tope % local_realization(i_l) % J(i_J) % res(this % i_res) % GT&
+             = this % Gam_t
+
       end if
     end if
 
@@ -3413,36 +3419,36 @@ contains
 
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
-        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % dim1(i_J)) cycle
 
         ! if URR parameters have resonance energy dependence
         if (represent_params == E_RESONANCE) then
           ! absolute value of energy in order to handle bound levels which have
           ! negative resonance energies
           k_lam = wavenumber(tope % AWR,&
-               abs(tope % local_realization(i_J, i_l) % E_lam(i_r)))
+               abs(tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam))
           P_l_lam = penetration(tope % L, k_lam * tope % ac(tope % i_urr))
           S_l_lam = shift(tope % L, k_lam * tope % ac(tope % i_urr))
 
-          E_shift = tope % local_realization(i_J, i_l) % E_lam(i_r)&
-               + tope % local_realization(i_J, i_l) % Gam_n(i_r)&
+          E_shift = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam&
+               + tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
                * (S_l_lam - tope % S_l_n) / (TWO * P_l_lam)
 
-          Gam_n_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)&
+          Gam_n_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
                * tope % P_l_n / P_l_lam
 
           if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths
-            Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)
+            Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
           else if (tope % E >= tope % E_ex1) then
             ! compute an energy-dependent width for the one competitive reaction
             k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
             k_lam_x = wavenumber(tope % AWR,&
-                 abs(tope % local_realization(i_J, i_l) % E_lam(i_r)&
+                 abs(tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam&
                  - tope % E_ex1))
-            Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)&
+            Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX&
                  * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr))&
                  / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr))
           else
@@ -3452,15 +3458,15 @@ contains
         else
 
           ! assume all URR parameters already have neutron energy dependence
-          E_shift = tope % local_realization(i_J, i_l) % E_lam(i_r)
-          Gam_n_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)
-          Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)
+          E_shift = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam
+          Gam_n_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN
+          Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
 
         end if
 
-        Gam_t_n = tope % local_realization(i_J, i_l) % Gam_t(i_r)&
-             - tope % local_realization(i_J, i_l) % Gam_n(i_r)&
-             - tope % local_realization(i_J, i_l) % Gam_x(i_r)&
+        Gam_t_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GT&
+             - tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
+             - tope % local_realization(i_l) % J(i_J) % res(i_r) % GX&
              + Gam_n_n&
              + Gam_x_n
 
@@ -3511,36 +3517,36 @@ contains
 
     TOTAL_ANG_MOM_LOOP: do i_J = 1, tope % NJS(i_l)
       RESONANCE_LOOP: do i_r = 1, n_res_contrib(tope % L)
-        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % data(i_J)) cycle
+        if (i_r == i_res .and. tope % J == tope % AJ(i_l) % dim1(i_J)) cycle
 
         ! if URR parameters have resonance energy dependence
         if (represent_params == E_RESONANCE) then
           ! absolute value of energy in order to handle bound levels which have
           ! negative resonance energies
           k_lam = wavenumber(tope % AWR,&
-               abs(tope % local_realization(i_J, i_l) % E_lam(i_r)))
+               abs(tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam))
           P_l_lam = penetration(tope % L, k_lam * tope % ac(tope % i_urr))
           S_l_lam = shift(tope % L, k_lam * tope % ac(tope % i_urr))
 
-          E_shift = tope % local_realization(i_J, i_l) % E_lam(i_r)&
-               + tope % local_realization(i_J, i_l) % Gam_n(i_r)&
+          E_shift = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam&
+               + tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
                * (S_l_lam - tope % S_l_n) / (TWO * P_l_lam)
 
-          Gam_n_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)&
+          Gam_n_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
                * tope % P_l_n / P_l_lam
 
           if (tope % E > (ONE + ENDF_PRECISION) * tope % E_ex2) then
             ! two competitive reactions possible;
             ! can't calculate an energy-dependent width because it depends on
             ! the two (unprovided) reaction partial widths
-            Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)
+            Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
           else if (tope % E >= tope % E_ex1) then
             ! compute an energy-dependent width for the one competitive reaction
             k_n_x = wavenumber(tope % AWR, tope % E - tope % E_ex1)
             k_lam_x = wavenumber(tope % AWR,&
-                 abs(tope % local_realization(i_J, i_l) % E_lam(i_r)&
+                 abs(tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam&
                  - tope % E_ex1))
-            Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)&
+            Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX&
                  * penetration(tope % L, k_n_x   * tope % ac(tope % i_urr))&
                  / penetration(tope % L, k_lam_x * tope % ac(tope % i_urr))
           else
@@ -3550,15 +3556,15 @@ contains
         else
 
           ! assume all URR parameters already have neutron energy dependence
-          E_shift = tope % local_realization(i_J, i_l) % E_lam(i_r)
-          Gam_n_n = tope % local_realization(i_J, i_l) % Gam_n(i_r)
-          Gam_x_n = tope % local_realization(i_J, i_l) % Gam_x(i_r)
+          E_shift = tope % local_realization(i_l) % J(i_J) % res(i_r) % E_lam
+          Gam_n_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GN
+          Gam_x_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GX
 
         end if
 
-        Gam_t_n = tope % local_realization(i_J, i_l) % Gam_t(i_r)&
-             - tope % local_realization(i_J, i_l) % Gam_n(i_r)&
-             - tope % local_realization(i_J, i_l) % Gam_x(i_r)&
+        Gam_t_n = tope % local_realization(i_l) % J(i_J) % res(i_r) % GT&
+             - tope % local_realization(i_l) % J(i_J) % res(i_r) % GN&
+             - tope % local_realization(i_l) % J(i_J) % res(i_r) % GX&
              + Gam_n_n&
              + Gam_x_n
 
@@ -4153,31 +4159,31 @@ contains
     select case (tope % LRF(tope % i_urr - 1))
     
     case (SLBW)
-      do i_res = size(tope % slbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % slbw_resonances(l_val + 1) % AJ(i_res) == J_val&
-             .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % bw_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % bw_resonances(l_val + 1) % res(i_res) % AJ== J_val&
+             .and. tope % bw_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) then
-          E_val = tope % slbw_resonances(l_val + 1) % E_lam(i_res)
+          E_val = tope % bw_resonances(l_val + 1) % res(i_res) % E_lam
           exit
         end if
       end do
     
     case (MLBW)
-      do i_res = size(tope % mlbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % mlbw_resonances(l_val + 1) % AJ(i_res) == J_val&
-             .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % bw_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % bw_resonances(l_val + 1) % res(i_res) % AJ == J_val&
+             .and. tope % bw_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) then
-          E_val = tope % mlbw_resonances(l_val + 1) % E_lam(i_res)
+          E_val = tope % bw_resonances(l_val + 1) % res(i_res) % E_lam
           exit
         end if
       end do
     
     case (REICH_MOORE)
-      do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val&
-             .and. tope % rm_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % rm_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % rm_resonances(l_val + 1) % res(i_res) % AJ == J_val&
+             .and. tope % rm_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) then
-          E_val = tope % rm_resonances(l_val + 1) % E_lam(i_res)
+          E_val = tope % rm_resonances(l_val + 1) % res(i_res) % E_lam
           exit
         end if
       end do
@@ -4213,25 +4219,25 @@ contains
     select case (tope % LRF(tope % i_urr - 1))
 
     case (SLBW)
-      do i_res = size(tope % slbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % slbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-             .and. tope % slbw_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % bw_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % bw_resonances(l_val + 1) % res(i_res) % AJ == J_val &
+             .and. tope % bw_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
 
     case (MLBW)
-      do i_res = size(tope % mlbw_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % mlbw_resonances(l_val + 1) % AJ(i_res) == J_val &
-             .and. tope % mlbw_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % bw_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % bw_resonances(l_val + 1) % res(i_res) % AJ == J_val &
+             .and. tope % bw_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
     
     case (REICH_MOORE)
-      do i_res = size(tope % rm_resonances(l_val + 1) % E_lam), 1, -1
-        if (tope % rm_resonances(l_val + 1) % AJ(i_res) == J_val &
-             .and. tope % rm_resonances(l_val + 1) % E_lam(i_res)&
+      do i_res = size(tope % rm_resonances(l_val + 1) % res(:)), 1, -1
+        if (tope % rm_resonances(l_val + 1) % res(i_res) % AJ == J_val &
+             .and. tope % rm_resonances(l_val + 1) % res(i_res) % E_lam&
              < tope % EL(tope % i_urr)) cnt_res = cnt_res + 1
         if (cnt_res == n_rrr_res) exit
       end do
@@ -4361,24 +4367,29 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_parameters(res, iso, i_ens, i_res, i_l, i_J)
+  subroutine add_parameters(res, iso, i_ens, i_l, i_J)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Resonance) :: res ! resonance object
     integer :: iso   ! isotope index
     integer :: i_ens ! resonance ensemble index
-    integer :: i_res ! resonance counter
-    integer :: i_l   ! orbital quantum number index
-    integer :: i_J   ! total angular momentum quantum number
+    integer :: i_l   ! orbital angular momentum index
+    integer :: i_J   ! total angular momentum quantum number index
 
     tope => isotopes(iso)
 
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % E_lam(i_res) = res % E_lam
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % GN(i_res)    = res % Gam_n
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % GG(i_res)    = res % Gam_g
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % GF(i_res)    = res % Gam_f
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % GX(i_res)    = res % Gam_x
-    tope % urr_resonances_tmp(i_J, i_l, i_ens) % GT(i_res)    = res % Gam_t
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % E_lam = res % E_lam
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % AJ = tope % J
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GN = res % Gam_n
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GG = res % Gam_g
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GF = res % Gam_f
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GX = res % Gam_x
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % GT = res % Gam_t
+
+    ! point to next resonance
+    allocate(tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % next)
+    tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res&
+         => tope % urr_resonances_tmp(i_l, i_ens) % J(i_J) % res % next
 
   end subroutine add_parameters
 
@@ -4406,51 +4417,51 @@ contains
     case (1)
       select case (tope % LRF(i_ER))
       case (SLBW)
-        if (i_res > size(tope % slbw_resonances(i_l) % E_lam(:))) then
-          i_res = size(tope % slbw_resonances(i_l) % E_lam(:))
+        if (i_res > size(tope % bw_resonances(i_l) % res(:))) then
+          i_res = size(tope % bw_resonances(i_l) % res(:))
           res % E_lam = res % E_lam&
-               + (tope % slbw_resonances(i_l) % E_lam(i_res)&
-               -  tope % slbw_resonances(i_l) % E_lam(i_res - 1))
+               + (tope % bw_resonances(i_l) % res(i_res) % E_lam&
+               -  tope % bw_resonances(i_l) % res(i_res - 1) % E_lam)
         else
-          res % E_lam = tope % slbw_resonances(i_l) % E_lam(i_res)
+          res % E_lam = tope % bw_resonances(i_l) % res(i_res) % E_lam
         end if
 
-        res % Gam_n = tope % slbw_resonances(i_l) % GN(i_res)
-        res % Gam_g = tope % slbw_resonances(i_l) % GG(i_res)
-        res % Gam_f = tope % slbw_resonances(i_l) % GF(i_res)
-        res % Gam_t = tope % slbw_resonances(i_l) % GT(i_res)
+        res % Gam_n = tope % bw_resonances(i_l) % res(i_res) % GN
+        res % Gam_g = tope % bw_resonances(i_l) % res(i_res) % GG
+        res % Gam_f = tope % bw_resonances(i_l) % res(i_res) % GF
+        res % Gam_t = tope % bw_resonances(i_l) % res(i_res) % GT
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (MLBW)
-        if (i_res > size(tope % mlbw_resonances(i_l) % E_lam(:))) then
-          i_res = size(tope % mlbw_resonances(i_l) % E_lam(:))
+        if (i_res > size(tope % bw_resonances(i_l) % res(:))) then
+          i_res = size(tope % bw_resonances(i_l) % res(:))
           res % E_lam = res % E_lam&
-               + (tope % mlbw_resonances(i_l) % E_lam(i_res)&
-               -  tope % mlbw_resonances(i_l) % E_lam(i_res - 1))
+               + (tope % bw_resonances(i_l) % res(i_res) % E_lam&
+               -  tope % bw_resonances(i_l) % res(i_res - 1) % E_lam)
         else
-          res % E_lam = tope % mlbw_resonances(i_l) % E_lam(i_res)
+          res % E_lam = tope % bw_resonances(i_l) % res(i_res) % E_lam
         end if
         
-        res % Gam_n = tope % mlbw_resonances(i_l) % GN(i_res)
-        res % Gam_g = tope % mlbw_resonances(i_l) % GG(i_res)
-        res % Gam_f = tope % mlbw_resonances(i_l) % GF(i_res)
-        res % Gam_t = tope % mlbw_resonances(i_l) % GT(i_res)
+        res % Gam_n = tope % bw_resonances(i_l) % res(i_res) % GN
+        res % Gam_g = tope % bw_resonances(i_l) % res(i_res) % GG
+        res % Gam_f = tope % bw_resonances(i_l) % res(i_res) % GF
+        res % Gam_t = tope % bw_resonances(i_l) % res(i_res) % GT
         res % Gam_x = res % Gam_t - res % Gam_n - res % Gam_g - res % Gam_f
 
       case (REICH_MOORE)
-        if (i_res > size(tope % rm_resonances(i_l) % E_lam(:))) then
-          i_res = size(tope % rm_resonances(i_l) % E_lam(:))
+        if (i_res > size(tope % rm_resonances(i_l) % res(:))) then
+          i_res = size(tope % rm_resonances(i_l) % res(:))
           res % E_lam = res % E_lam&
-               + (tope % rm_resonances(i_l) % E_lam(i_res)&
-               -  tope % rm_resonances(i_l) % E_lam(i_res - 1))
+               + (tope % rm_resonances(i_l) % res(i_res) % E_lam&
+               -  tope % rm_resonances(i_l) % res(i_res - 1) % E_lam)
         else
-          res % E_lam = tope % rm_resonances(i_l) % E_lam(i_res)
+          res % E_lam = tope % rm_resonances(i_l) % res(i_res) % E_lam
         end if
 
-        res % Gam_n = tope % rm_resonances(i_l) % GN(i_res)
-        res % Gam_g = tope % rm_resonances(i_l) % GG(i_res)
-        res % Gam_f = tope % rm_resonances(i_l) % GFA(i_res)&
-             + tope % rm_resonances(i_l) % GFB(i_res)
+        res % Gam_n = tope % rm_resonances(i_l) % res(i_res) % GN
+        res % Gam_g = tope % rm_resonances(i_l) % res(i_res) % GG
+        res % Gam_f = tope % rm_resonances(i_l) % res(i_res) % GFA&
+             + tope % rm_resonances(i_l) % res(i_res) % GFB
         res % Gam_x = ZERO
         res % Gam_t = res % Gam_n + res % Gam_g + res % Gam_f + res % Gam_x
 
@@ -4461,24 +4472,31 @@ contains
 
     ! unresolved parameters
     case (2)
-      res % E_lam = tope % urr_resonances(i_J, i_l, i_real) % E_lam(i_res)
-      res % Gam_n = tope % urr_resonances(i_J, i_l, i_real) % GN(i_res)
-      res % Gam_g = tope % urr_resonances(i_J, i_l, i_real) % GG(i_res)
-      res % Gam_f = tope % urr_resonances(i_J, i_l, i_real) % GF(i_res)
-      res % Gam_x = tope % urr_resonances(i_J, i_l, i_real) % GX(i_res)
-      res % Gam_t = tope % urr_resonances(i_J, i_l, i_real) % GT(i_res)
+      res % E_lam&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % E_lam
+      res % Gam_n&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % GN
+      res % Gam_g&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % GG
+      res % Gam_f&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % GF
+      res % Gam_x&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % GX
+      res % Gam_t&
+           = tope % urr_resonances(i_l, i_real) % J(i_J) % res(i_res) % GT
 
     case default
       call fatal_error('Only 1 and 2 are supported ENDF-6 LRU values')
 
     end select
 
-    tope % local_realization(i_J, i_l) % E_lam(res % i_res) = res % E_lam
-    tope % local_realization(i_J, i_l) % Gam_n(res % i_res) = res % Gam_n
-    tope % local_realization(i_J, i_l) % Gam_g(res % i_res) = res % Gam_g
-    tope % local_realization(i_J, i_l) % Gam_f(res % i_res) = res % Gam_f
-    tope % local_realization(i_J, i_l) % Gam_x(res % i_res) = res % Gam_x
-    tope % local_realization(i_J, i_l) % Gam_t(res % i_res) = res % Gam_t
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % E_lam&
+         = res % E_lam
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % GN = res % Gam_n
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % GG = res % Gam_g
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % GF = res % Gam_f
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % GX = res % Gam_x
+    tope % local_realization(i_l) % J(i_J) % res(res % i_res) % GT = res % Gam_t
 
   end subroutine set_parameters
 
@@ -4513,27 +4531,27 @@ contains
 
     ! set current mean unresolved resonance parameters
     tope % D   = interpolator(fendf, &
-         tope % D_mean(i_l) % data(i_J) % data(i_E), &
-         tope % D_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+         tope % D_mean(i_l) % dim2(i_J) % dim1(i_E), &
+         tope % D_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
     tope % GN0 = interpolator(fendf, &
-         tope % GN0_mean(i_l) % data(i_J) % data(i_E), &
-         tope % GN0_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+         tope % GN0_mean(i_l) % dim2(i_J) % dim1(i_E), &
+         tope % GN0_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
     tope % GG  = interpolator(fendf, &
-         tope % GG_mean(i_l) % data(i_J) % data(i_E), &
-         tope % GG_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+         tope % GG_mean(i_l) % dim2(i_J) % dim1(i_E), &
+         tope % GG_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
     if (tope % INT == LINEAR_LINEAR .or. &
-         tope % GF_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+         tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E) > ZERO) then
       tope % GF  = interpolator(fendf, &
-           tope % GF_mean(i_l) % data(i_J) % data(i_E), &
-           tope % GF_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+           tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E), &
+           tope % GF_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
     else
       tope % GF = ZERO
     end if
     if (tope % INT == LINEAR_LINEAR .or. &
-         tope % GX_mean(i_l) % data(i_J) % data(i_E) > ZERO) then
+         tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E) > ZERO) then
       tope % GX  = interpolator(fendf, &
-           tope % GX_mean(i_l) % data(i_J) % data(i_E), &
-           tope % GX_mean(i_l) % data(i_J) % data(i_E + 1), tope % INT)
+           tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E), &
+           tope % GX_mean(i_l) % dim2(i_J) % dim1(i_E + 1), tope % INT)
     else
       tope % GX = ZERO
     end if
@@ -4609,13 +4627,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine interp_ace_background(iso, i_nuc, n_pts, f, i_grid)
+  subroutine interp_ace_background(iso, i_nuc, f, i_grid)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(Nuclide), pointer :: nuc => null() ! nuclide object pointer
     integer :: iso
     integer :: i_nuc
-    integer :: n_pts
     integer :: i_grid
     real(8) :: f
 
@@ -4623,38 +4640,38 @@ contains
     nuc  => nuclides(i_nuc)
 
     ! elastic scattering xs
-    tope % n_tmp(n_pts) = interpolator(f, &
+    tope % n_tmp % head % val = interpolator(f, &
          nuc % elastic(i_grid), nuc % elastic(i_grid + 1), tope % INT)
 
     ! radiative capture xs
-    tope % g_tmp(n_pts) = interpolator(f, &
+    tope % g_tmp % head % val = interpolator(f, &
          nuc % absorption(i_grid) - nuc % fission(i_grid), &
          nuc % absorption(i_grid + 1) - nuc % fission(i_grid + 1), tope % INT)
 
     ! fission xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % fission(i_grid) > ZERO) then
-      tope % f_tmp(n_pts) = interpolator(f, nuc % fission(i_grid), &
+      tope % f_tmp % head % val = interpolator(f, nuc % fission(i_grid), &
            nuc % fission(i_grid + 1), tope % INT)
     else
-      tope % f_tmp(n_pts) = ZERO
+      tope % f_tmp % head % val = ZERO
     end if
 
     ! competitive reaction xs
     if (tope % INT == LINEAR_LINEAR .or. nuc % total(i_grid) &
          - nuc % absorption(i_grid) - nuc % elastic(i_grid) > ZERO) then
-      tope % x_tmp(n_pts) = interpolator(f, &
+      tope % x_tmp % head % val = interpolator(f, &
              nuc % total(i_grid) - nuc % absorption(i_grid) &
            - nuc % elastic(i_grid), &
              nuc % total(i_grid + 1) - nuc % absorption(i_grid + 1) &
            - nuc % elastic(i_grid + 1), tope % INT)
     else
-      tope % x_tmp(n_pts) = ZERO
+      tope % x_tmp % head % val = ZERO
     end if
 
     ! total xs
-    tope % t_tmp(n_pts) = tope % n_tmp(n_pts) &
-         + tope % g_tmp(n_pts) + tope % f_tmp(n_pts)&
-         + tope % x_tmp(n_pts)
+    tope % t_tmp % head % val&
+         = tope % n_tmp % head % val + tope % g_tmp % head % val&
+         + tope % f_tmp % head % val + tope % x_tmp % head % val
 
   end subroutine interp_ace_background
 
@@ -4665,7 +4682,7 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine add_mf3_background(iso, i_nuc, n_pts, t, n, g, f, x)
+  subroutine add_mf3_background(iso, i_nuc, t, n, g, f, x)
 
     type(Isotope), pointer :: tope => null() ! isotope object pointer
     type(CrossSection) :: t ! total xs object
@@ -4676,7 +4693,6 @@ contains
     integer :: iso    ! isotope index
     integer :: i_nuc  ! nuclide index
     integer :: i_grid ! background energy grid index
-    integer :: n_pts  ! URR pointwise xs energy grid index
     real(8) :: fmf3         ! File 3 interpolation factor
     real(8) :: capture_xs   ! radiative capture xs
     real(8) :: inelastic_xs ! first level inelastic scattering xs
@@ -4685,11 +4701,11 @@ contains
 
     if (tope % point_urr_xs) then
 
-      tope % n_tmp(n_pts) = tope % n_tmp(n_pts) + n % xs
-      tope % g_tmp(n_pts) = tope % g_tmp(n_pts) + g % xs
-      tope % f_tmp(n_pts) = tope % f_tmp(n_pts) + f % xs
-      tope % x_tmp(n_pts) = tope % x_tmp(n_pts) + x % xs
-      tope % t_tmp(n_pts) = tope % t_tmp(n_pts) + t % xs
+      tope % n_tmp % head % val = tope % n_tmp % head % val + n % xs
+      tope % g_tmp % head % val = tope % g_tmp % head % val + g % xs
+      tope % f_tmp % head % val = tope % f_tmp % head % val + f % xs
+      tope % x_tmp % head % val = tope % x_tmp % head % val + x % xs
+      tope % t_tmp % head % val = tope % t_tmp % head % val + t % xs
 
     else
 
@@ -4853,106 +4869,35 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_ENSEMBLE_TMP allocates temporary URR resonance ensemble realizations
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_ensemble_tmp(this, n_reals)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-    integer :: n_reals ! number of realizations
-    integer :: i_ens   ! realization/ensemble index
-    integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_J     ! total angular momentum quantum number index
-
-    ! allocate temporary URR resonances
-    allocate(this % urr_resonances_tmp(maxval(this % NJS(:)), &
-         this % NLS(this % i_urr), n_reals))
-
-    ! loop over realizations
-    do i_ens = 1, n_reals
-
-      ! loop over orbital quantum numbers
-      do i_l = 1, this % NLS(this % i_urr)
-
-        ! loop over total angular momenta
-        do i_J = 1, this % NJS(i_l)
-
-          ! allocate resonance parameters
-          call this % urr_resonances_tmp(i_J, i_l, i_ens) &
-               % alloc_slbw_resonances(this % n_lam_tmp)
-        end do
-      end do
-    end do
-
-  end subroutine alloc_ensemble_tmp
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_ENSEMBLE_TMP deallocates temporary URR resonance ensemble realizations
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_ensemble_tmp(this, n_reals)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-    integer :: n_reals ! number of realizations
-    integer :: i_ens   ! realization/ensemble index
-    integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_J     ! total angular momentum quantum number index
-
-    ! loop over realizations
-    do i_ens = 1, n_reals
-
-      ! loop over orbital quantum numbers
-      do i_l = 1, this % NLS(this % i_urr)
-
-        ! loop over total angular momenta
-        do i_J = 1, this % NJS(i_l)
-
-! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
-          ! allocate resonance parameters
-          call this % urr_resonances_tmp(i_J, i_l, i_ens) &
-               % dealloc_slbw_resonances()
-        end do
-      end do
-    end do
-
-    ! deallocate temporary URR resonances
-    deallocate(this % urr_resonances_tmp)
-
-  end subroutine dealloc_ensemble_tmp
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
 ! ALLOC_ENSEMBLE allocates URR resonance ensemble realizations
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine alloc_ensemble(this, n_reals)
+  subroutine alloc_ensemble(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
-    integer :: n_reals ! number of realizations
-    integer :: i_ens   ! realization/ensemble index
-    integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_J     ! total angular momentum quantum number index
+    integer :: i_ens ! realization/ensemble index
+    integer :: i_l   ! orbital angular momentum index
+    integer :: i_J   ! total angular momentum index
 
     ! allocate URR resonance realizations
-    allocate(this % urr_resonances(maxval(this % NJS(:)), &
-         this % NLS(this % i_urr), n_reals))
+    allocate(this % urr_resonances(this % NLS(this % i_urr), n_reals))
 
     ! loop over realizations
     do i_ens = 1, n_reals
 
       ! loop over orbital quantum numbers
       do i_l = 1, this % NLS(this % i_urr)
+
+        allocate(this % urr_resonances(i_l, i_ens) % J(this % NJS(i_l)))
 
         ! loop over total angular momenta
         do i_J = 1, this % NJS(i_l)
 
           ! allocate URR resonances
-          call this % urr_resonances(i_J, i_l, i_ens) &
-               % alloc_slbw_resonances(this % n_lam(i_J, i_l, i_ens))
+          allocate(this % urr_resonances(i_l, i_ens) % J(i_J) %&
+               res(this % n_lam(i_l, i_ens) % dim1(i_J)))
+
         end do
       end do
     end do
@@ -4965,13 +4910,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine dealloc_ensemble(this, n_reals)
+  subroutine dealloc_ensemble(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
-    integer :: n_reals ! number of realizations
-    integer :: i_ens   ! realization/ensemble index
-    integer :: i_l     ! orbital angular momentum quantum number index
-    integer :: i_J     ! total angular momentum quantum number index
+    integer :: i_ens ! realization/ensemble index
+    integer :: i_l   ! orbital angular momentum quantum number index
+    integer :: i_J   ! total angular momentum index
 
     ! loop over realizations
     do i_ens = 1, n_reals
@@ -4981,12 +4925,14 @@ contains
 
         ! loop over total angular momenta
         do i_J = 1, this % NJS(i_l)
-
 ! TODO: deallocate resonances of the proper formalism once MLBW, RM allowed
           ! deallocate resonance parameters
-          call this % urr_resonances(i_J, i_l, i_ens) &
-               % dealloc_slbw_resonances()
+          deallocate(this % urr_resonances(i_l, i_ens) % J(i_J) % res)
+      
         end do
+
+        deallocate(this % urr_resonances(i_l, i_ens) % J)
+
       end do
     end do
 
@@ -4994,272 +4940,6 @@ contains
     deallocate(this % urr_resonances)
 
   end subroutine dealloc_ensemble
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_SLBW_RESONANCES allocates a vector of SLBW resonances for a given (l,J)
-! in the URR case, and for a given number of resonances, NRS, in the RRR case
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_slbw_resonances(this, NRS)
-
-    class(SLBWResonances), intent(inout) :: this ! resonance vector object
-    integer :: NRS
-
-    allocate(this % E_lam(NRS))
-    allocate(this % AJ(NRS))
-    allocate(this % GN(NRS))
-    allocate(this % GG(NRS))
-    allocate(this % GF(NRS))
-    allocate(this % GX(NRS))
-    allocate(this % GT(NRS))
-
-  end subroutine alloc_slbw_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_SLBW_RESONANCES deallocates a vector of SLBW resonances for a given
-! (l,J) in the URR case, and for a given number of resonances, NRS, in the RRR
-! case
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_slbw_resonances(this)
-
-    class(SLBWResonances), intent(inout) :: this ! resonance vector object
-
-    deallocate(this % E_lam)
-    deallocate(this % AJ)
-    deallocate(this % GN)
-    deallocate(this % GG)
-    deallocate(this % GF)
-    deallocate(this % GX)
-    deallocate(this % GT)
-
-  end subroutine dealloc_slbw_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_MLBW_RESONANCES allocates a vector of NRS MLBW resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_mlbw_resonances(this, NRS)
-
-    class(MLBWResonances), intent(inout) :: this ! resonance vector object
-    integer :: NRS
-
-    allocate(this % E_lam(NRS))
-    allocate(this % AJ(NRS))
-    allocate(this % GN(NRS))
-    allocate(this % GG(NRS))
-    allocate(this % GF(NRS))
-    allocate(this % GX(NRS))
-    allocate(this % GT(NRS))
-
-  end subroutine alloc_mlbw_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_MLBW_RESONANCES deallocates a vector of NRS MLBW resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_mlbw_resonances(this)
-
-    class(MLBWResonances), intent(inout) :: this ! resonance vector object
-
-    deallocate(this % E_lam)
-    deallocate(this % AJ)
-    deallocate(this % GN)
-    deallocate(this % GG)
-    deallocate(this % GF)
-    deallocate(this % GX)
-    deallocate(this % GT)
-
-  end subroutine dealloc_mlbw_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_RM_RESONANCES allocates a vector of NRS Reich-Moore resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_rm_resonances(this, NRS)
-
-    class(RMResonances), intent(inout) :: this ! resonance vector object
-    integer :: NRS
-
-    allocate(this % E_lam(NRS))
-    allocate(this % AJ(NRS))
-    allocate(this % GN(NRS))
-    allocate(this % GG(NRS))
-    allocate(this % GFA(NRS))
-    allocate(this % GFB(NRS))
-
-  end subroutine alloc_rm_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_RM_RESONANCES deallocates a vector of NRS Reich-Moore resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_rm_resonances(this)
-
-    class(RMResonances), intent(inout) :: this ! resonance vector object
-
-    deallocate(this % E_lam)
-    deallocate(this % AJ)
-    deallocate(this % GN)
-    deallocate(this % GG)
-    deallocate(this % GFA)
-    deallocate(this % GFB)
-
-  end subroutine dealloc_rm_resonances
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_LOCAL_SEQUENCE allocates a local spin sequence of URR resonances about
-! E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_local_sequence(this, n_lam)
-
-    class(LocalSequence), intent(inout) :: this ! resonance vector object
-    integer :: n_lam
-
-    allocate(this % E_lam(n_lam))
-    allocate(this % Gam_n(n_lam))
-    allocate(this % Gam_f(n_lam))
-    allocate(this % Gam_g(n_lam))
-    allocate(this % Gam_x(n_lam))
-    allocate(this % Gam_t(n_lam))
-
-  end subroutine alloc_local_sequence
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_LOCAL_SEQUENCE deallocates a local spin sequence of URR resonances
-! about E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_local_sequence(this)
-
-    class(LocalSequence), intent(inout) :: this ! resonance vector object
-
-    deallocate(this % E_lam)
-    deallocate(this % Gam_n)
-    deallocate(this % Gam_f)
-    deallocate(this % Gam_g)
-    deallocate(this % Gam_x)
-    deallocate(this % Gam_t)
-
-  end subroutine dealloc_local_sequence
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_LOCAL_REALIZATION allocates a local realization of URR resonances
-! about E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_local_realization(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-    integer :: i_l ! orbital angular momentum quantum number index
-    integer :: i_J ! total angular momentum quantum number index
-
-    ! allocate URR spin sequences
-    allocate(this % local_realization(maxval(this % NJS(:)),&
-         this % NLS(this % i_urr)))
-
-    ! loop over orbital quantum numbers
-    do i_l = 1, this % NLS(this % i_urr)
-
-      ! loop over total angular momenta
-      do i_J = 1, this % NJS(i_l)
-
-        ! allocate spin sequence resonances
-        call this % local_realization(i_J, i_l) &
-          % alloc_local_sequence(l_waves(i_l))
-      end do
-    end do
-
-  end subroutine alloc_local_realization
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_LOCAL_REALIZATION deallocates a local realization of URR resonances
-! about E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_local_realization(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-    integer :: i_l ! orbital angular momentum quantum number index
-    integer :: i_J ! total angular momentum quantum number index
-
-    ! loop over orbital quantum numbers
-    do i_l = 1, this % NLS(this % i_urr)
-
-      ! loop over total angular momenta
-      do i_J = 1, this % NJS(i_l)
-
-        ! deallocate spin sequence resonances
-        call this % local_realization(i_J, i_l) &
-          % dealloc_local_sequence()
-      end do
-    end do
-
-    ! deallocate URR spin sequences
-    deallocate(this % local_realization)
-
-  end subroutine dealloc_local_realization
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ALLOC_POINTWISE_TMP allocates the temporary pointwise URR energy-cross section
-! grids
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine alloc_pointwise_tmp(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-
-    allocate(this % E_tmp(this % n_urr_gridpoints))
-    allocate(this % n_tmp(this % n_urr_gridpoints))
-    allocate(this % g_tmp(this % n_urr_gridpoints))
-    allocate(this % f_tmp(this % n_urr_gridpoints))
-    allocate(this % x_tmp(this % n_urr_gridpoints))
-    allocate(this % t_tmp(this % n_urr_gridpoints))
-
-  end subroutine alloc_pointwise_tmp
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! DEALLOC_POINTWISE_TMP deallocates the temporary pointwise URR energy-cross
-! section grids
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine dealloc_pointwise_tmp(this)
-
-    class(Isotope), intent(inout) :: this ! isotope object
-
-    deallocate(this % E_tmp)
-    deallocate(this % n_tmp)
-    deallocate(this % g_tmp)
-    deallocate(this % f_tmp)
-    deallocate(this % x_tmp)
-    deallocate(this % t_tmp)
-
-  end subroutine dealloc_pointwise_tmp
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -5507,28 +5187,34 @@ contains
   subroutine dealloc_isotope(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
-    integer :: i_l  ! orbital angular momentum index
-    integer :: i_J  ! total angular momentum index
+    integer :: i_l   ! orbital angular momentum index
+    integer :: i_J   ! total angular momentum index
+    integer :: i_ens ! realization index
 
     ! deallocate mean parameters
     do i_l = 1, this % NLS(this % i_urr)
       do i_J = 1, this % NJS(i_l)
-        deallocate(this % D_mean(i_l) % data(i_J) % data)
-        deallocate(this % GN0_mean(i_l) % data(i_J) % data)
-        deallocate(this % GG_mean(i_l) % data(i_J) % data)
-        deallocate(this % GF_mean(i_l) % data(i_J) % data)
-        deallocate(this % GX_mean(i_l) % data(i_J) % data)
+        deallocate(this % D_mean(i_l) % dim2(i_J) % dim1)
+        deallocate(this % GN0_mean(i_l) % dim2(i_J) % dim1)
+        deallocate(this % GG_mean(i_l) % dim2(i_J) % dim1)
+        deallocate(this % GF_mean(i_l) % dim2(i_J) % dim1)
+        deallocate(this % GX_mean(i_l) % dim2(i_J) % dim1)
       end do
-      deallocate(this % D_mean(i_l) % data)
-      deallocate(this % GN0_mean(i_l) % data)
-      deallocate(this % GG_mean(i_l) % data)
-      deallocate(this % GF_mean(i_l) % data)
-      deallocate(this % GX_mean(i_l) % data)
-      deallocate(this % AJ(i_l) % data)
-      deallocate(this % DOFX(i_l) % data)
-      deallocate(this % DOFN(i_l) % data)
-      deallocate(this % DOFG(i_l) % data)
-      deallocate(this % DOFF(i_l) % data)
+      if (allocated(this % n_lam)) then
+        do i_ens = 1, n_reals
+          deallocate(this % n_lam(i_l, i_ens) % dim1)
+        end do
+      end if
+      deallocate(this % D_mean(i_l) % dim2)
+      deallocate(this % GN0_mean(i_l) % dim2)
+      deallocate(this % GG_mean(i_l) % dim2)
+      deallocate(this % GF_mean(i_l) % dim2)
+      deallocate(this % GX_mean(i_l) % dim2)
+      deallocate(this % AJ(i_l) % dim1)
+      deallocate(this % DOFX(i_l) % dim1)
+      deallocate(this % DOFN(i_l) % dim1)
+      deallocate(this % DOFG(i_l) % dim1)
+      deallocate(this % DOFF(i_l) % dim1)
     end do
     deallocate(this % D_mean)
     deallocate(this % GN0_mean)
@@ -5547,24 +5233,18 @@ contains
 
     ! deallocate URR resonances
     if (allocated(this % n_lam)) deallocate(this % n_lam)
-    if (allocated(this % urr_resonances)) call this % dealloc_ensemble(n_reals)
+    if (allocated(this % urr_resonances)) call this % dealloc_ensemble()
 
     ! deallocate RRR resonances
-    if (allocated(this % slbw_resonances)) then
+    if (allocated(this % bw_resonances)) then
       do i_l = 1, this % NLS(this % i_urr - 1)
-        call this % slbw_resonances(i_l) % dealloc_slbw_resonances()
+        call this % bw_resonances(i_l) % clear()
       end do
-      deallocate(this % slbw_resonances)
-    end if
-    if (allocated(this % mlbw_resonances)) then
-      do i_l = 1, this % NLS(this % i_urr - 1)
-        call this % mlbw_resonances(i_l) % dealloc_mlbw_resonances()
-      end do
-      deallocate(this % mlbw_resonances)
+      deallocate(this % bw_resonances)
     end if
     if (allocated(this % rm_resonances)) then
       do i_l = 1, this % NLS(this % i_urr - 1)
-        call this % rm_resonances(i_l) % dealloc_rm_resonances()
+        call this % rm_resonances(i_l) % clear()
       end do
       deallocate(this % rm_resonances)
     end if
@@ -5589,4 +5269,72 @@ contains
 
   end subroutine dealloc_isotope
 
-end module unresolved
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ALLOC_LOCAL_REALIZATION allocates an NLS-length vector of NJS(l)-length
+! vectors of NRS(l,J)-length vectors of spin group resonances
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine alloc_local_realization(this)
+  
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_l ! orbital angular momentum index 
+    integer :: i_J ! total angular momentum index
+
+    ! allocate NLS-length vec of NJS(l)-length vec of NRS(l,J)-length vec
+    allocate(this % local_realization(this % NLS(this % i_urr)))
+    
+    ! loop over orbital quantum numbers
+    do i_l = 1, this % NLS(this % i_urr)
+
+      ! allocate each vector of (l,J) vectors
+      allocate(this % local_realization(i_l) % J(this % NJS(i_l)))
+
+      ! loop of total quantum numbers
+      do i_J = 1, this % NJS(i_l)
+
+        ! allocate each vector of (l,J) resonances
+        allocate(this%local_realization(i_l)%J(i_J)%res(n_res_contrib(i_l-1)))
+
+      end do
+
+    end do
+
+  end subroutine alloc_local_realization
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! DEALLOC_LOCAL_REALIZATION deallocates an NLS-length vector of NJS(l)-length
+! vectors of NRS(l,J)-length vectors of spin group resonances
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  subroutine dealloc_local_realization(this)
+  
+    class(Isotope), intent(inout) :: this ! isotope object
+    integer :: i_l ! orbital angular momentum index 
+    integer :: i_J ! total angular momentum index
+
+    ! loop over orbital quantum numbers
+    do i_l = 1, this % NLS(this % i_urr)
+
+      ! loop of total quantum numbers
+      do i_J = 1, this % NJS(i_l)
+
+        ! deallocate each vector of (l,J) resonances
+        call this % local_realization(i_l) % J(i_J) % clear()
+
+      end do
+      
+      ! deallocate each vector of (l,J) vectors
+      deallocate(this % local_realization(i_l) % J)
+
+    end do
+
+    ! deallocate NLS-length vec of NJS(l)-length vec of NRS(l,J)-length vec
+    deallocate(this % local_realization)
+
+  end subroutine dealloc_local_realization
+
+end module xs

@@ -205,7 +205,7 @@ class GeometryFile(object):
         sort_xml_elements(self._geometry_file)
         clean_xml_indentation(self._geometry_file)
 
-        # Write the XML Tree to the materials.xml file
+        # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(self._geometry_file)
         tree.write("geometry.xml", xml_declaration=True,
                              encoding='utf-8', method="xml")

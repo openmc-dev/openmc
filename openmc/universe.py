@@ -1059,7 +1059,7 @@ class HexLattice(Lattice):
     @Lattice.pitch.setter
     def pitch(self, pitch):
         check_type('lattice pitch', pitch, Iterable, Real)
-        check_length('lattice pitch', pitch, 2, 3)
+        check_length('lattice pitch', pitch, 1, 2)
         for dim in pitch:
             check_greater_than('lattice pitch', dim, 0)
         self._pitch = pitch

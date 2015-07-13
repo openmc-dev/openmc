@@ -935,6 +935,7 @@ class RectLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
+            self._outer.create_xml_subelement(xml_element)
 
         # Export Lattice cell dimensions
         dimension = ET.SubElement(lattice_subelement, "dimension")
@@ -1059,7 +1060,7 @@ class HexLattice(Lattice):
     @Lattice.pitch.setter
     def pitch(self, pitch):
         check_type('lattice pitch', pitch, Iterable, Real)
-        check_length('lattice pitch', pitch, 2, 3)
+        check_length('lattice pitch', pitch, 1, 2)
         for dim in pitch:
             check_greater_than('lattice pitch', dim, 0)
         self._pitch = pitch
@@ -1197,6 +1198,7 @@ class HexLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
+            self._outer.create_xml_subelement(xml_element)
 
         lattice_subelement.set("n_rings", str(self._num_rings))
 

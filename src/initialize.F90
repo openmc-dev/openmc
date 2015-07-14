@@ -7,7 +7,8 @@ module initialize
   use set_header,       only: SetInt
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, count_instance, calc_offsets
+  use geometry,         only: neighbor_lists, count_instance, calc_offsets,    &
+                              maximum_levels
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                               &BASE_UNIVERSE
   use global
@@ -95,10 +96,19 @@ contains
 
     ! Initialize distribcell_filters
     call prepare_distribcell()
-    
+
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
+
+    ! Check to make sure there are not too many nested coordinate levels in the
+    ! geometry since the coordinate list is statically allocated for performance
+    ! reasons
+    if (maximum_levels(universes(BASE_UNIVERSE)) > MAX_COORD) then
+      call fatal_error("Too many nested coordinate levels in the geometry. &
+           &Try increasing the maximum number of coordinate levels by &
+           &providing the CMake -Dmaxcoord= option.")
+    end if
 
     if (run_mode /= MODE_PLOTTING) then
       ! With the AWRs from the xs_listings, change all material specifications
@@ -936,7 +946,7 @@ contains
 
     count_all = .false.
 
-    ! Loop over tallies    
+    ! Loop over tallies
     do i = 1, n_tallies
 
       ! Get pointer to tally
@@ -954,25 +964,25 @@ contains
           if (size(tally % filters(j) % int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
-          end if      
+          end if
         end if
 
       end do
 
     end do
-    
+
     if (count_all) then
-      
+
       univ => universes(BASE_UNIVERSE)
 
       ! sum the number of occurrences of all cells
       call count_instance(univ)
 
-      ! Loop over tallies    
-      do i = 1, n_tallies    
+      ! Loop over tallies
+      do i = 1, n_tallies
 
         ! Get pointer to tally
-        tally => tallies(i)      
+        tally => tallies(i)
 
         ! Initialize the filters
         do j = 1, tally % n_filters
@@ -993,7 +1003,7 @@ contains
 
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
-      do j = 1, n_universes  
+      do j = 1, n_universes
         univ => universes(j)
         call calc_offsets(univ_list(i), i, univ, counts, found)
       end do
@@ -1003,7 +1013,7 @@ contains
     deallocate(counts)
     deallocate(found)
     deallocate(univ_list)
-  
+
   end subroutine prepare_distribcell
 
 !===============================================================================
@@ -1018,31 +1028,31 @@ contains
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
     integer :: i, j, k, l, m                    ! Loop counters
-    type(SetInt)               :: cell_list     ! distribells to track    
+    type(SetInt)               :: cell_list     ! distribells to track
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice
     type(TallyObject), pointer :: tally         ! pointer to tally
     type(TallyFilter), pointer :: filter        ! pointer to filter
-    
+
     ! Begin gathering list of cells in distribcell tallies
     n_maps = 0
-    
+
     ! Populate list of distribcells to track
     do i = 1, n_tallies
       tally => tallies(i)
 
       do j = 1, tally % n_filters
-        filter => tally % filters(j)        
+        filter => tally % filters(j)
 
         if (filter % type == FILTER_DISTRIBCELL) then
           if (.not. cell_list % contains(filter % int_bins(1))) then
             call cell_list % add(filter % int_bins(1))
           end if
-        end if 
+        end if
 
       end do
     end do
-    
+
     ! Compute the number of unique universes containing these distribcells
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
@@ -1053,7 +1063,7 @@ contains
         end if
       end do
     end do
-    
+
     ! Allocate the list of offset tables for each unique universe
     allocate(univ_list(n_maps))
 
@@ -1071,34 +1081,34 @@ contains
       univ => universes(i)
 
       do j = 1, univ % n_cells
-      
+
         if (cell_list % contains(univ % cells(j))) then
-          
-            ! Loop over all tallies    
+
+            ! Loop over all tallies
             do l = 1, n_tallies
               tally => tallies(l)
-              
+
               do m = 1, tally % n_filters
                 filter => tally % filters(m)
-                
+
                 ! Loop over only distribcell filters
                 ! If filter points to cell we just found, set offset index
-                if (filter % type == FILTER_DISTRIBCELL) then                  
+                if (filter % type == FILTER_DISTRIBCELL) then
                   if (filter % int_bins(1) == univ % cells(j)) then
                     filter % offset = k
                   end if
                 end if
 
               end do
-            end do          
-          
+            end do
+
           univ_list(k) = univ % id
           k = k + 1
         end if
       end do
     end do
-    
-    ! Allocate the offset tables for lattices    
+
+    ! Allocate the offset tables for lattices
     do i = 1, n_lattices
       lat => lattices(i) % obj
 

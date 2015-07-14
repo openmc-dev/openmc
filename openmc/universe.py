@@ -1238,8 +1238,8 @@ class HexLattice(Lattice):
             universe.create_xml_subelement(xml_element)
 
             # Initialize the remaining universes.
-            for r in range(self._num_rings-1):
-                for theta in range(2*(self._num_rings - r)):
+            for r in range(self._num_rings - 1):
+                for theta in range(6*(self._num_rings - 1 - r)):
                     universe = self._universes[r][theta]
                     universe.create_xml_subelement(xml_element)
 

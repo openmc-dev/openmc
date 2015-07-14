@@ -10,7 +10,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
   tar -xzvf mpich-3.1.3.tar.gz >/dev/null 2>&1
   cd mpich-3.1.3
   ./configure --prefix=$PWD/../mpich_install -q
-  make -j >/dev/null 2>&1
+  make >/dev/null 2>&1
   make install >/dev/null 2>&1
   cd ..
 
@@ -22,7 +22,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
      ./configure \
      --prefix=$PWD/../phdf5_install -q --enable-fortran \
      --enable-fortran2003 --enable-parallel
-  make -j >/dev/null 2>&1
+  make >/dev/null 2>&1
   make install >/dev/null 2>&1
   cd ..
 
@@ -31,7 +31,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
   cd  hdf5-1.8.15
   CC=gcc FC=gfortran ./configure --prefix=$PWD/../hdf5_install -q \
                                  --enable-fortran --enable-fortran2003
-  make -j >/dev/null 2>&1
+  make >/dev/null 2>&1
   make install >/dev/null 2>&1
   cd ..
 

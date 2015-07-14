@@ -89,13 +89,13 @@ contains
     call pr % read_data(p % id, 'id')
     call pr % read_data(p % wgt, 'weight')
     call pr % read_data(p % E, 'energy')
-    call pr % read_data(p % coord % xyz, 'xyz', length=3)
-    call pr % read_data(p % coord % uvw, 'uvw', length=3)
+    call pr % read_data(p % coord(1) % xyz, 'xyz', length=3)
+    call pr % read_data(p % coord(1) % uvw, 'uvw', length=3)
 
     ! Set particle last attributes
     p % last_wgt = p % wgt
-    p % last_xyz = p % coord % xyz
-    p % last_uvw = p % coord % uvw
+    p % last_xyz = p % coord(1) % xyz
+    p % last_uvw = p % coord(1) % uvw
     p % last_E   = p % E
 
     ! Close hdf5 file

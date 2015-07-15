@@ -1182,9 +1182,17 @@ contains
             offset = offset + cells(p % coord(j) % cell) % &
                  offset(t % filters(i) % offset)
           elseif(cells(p % coord(j) % cell) % type == CELL_LATTICE) then
-            offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
-                 offset(t % filters(i) % offset, p % coord(j + 1) % lattice_x, &
-                 p % coord(j + 1) % lattice_y, p % coord(j + 1) % lattice_z)
+            if (lattices(p % coord(j + 1) % lattice) % obj &
+                 % are_valid_indices([&
+                 p % coord(j + 1) % lattice_x, &
+                 p % coord(j + 1) % lattice_y, &
+                 p % coord(j + 1) % lattice_z])) then
+              offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
+                   offset(t % filters(i) % offset, &
+                   p % coord(j + 1) % lattice_x, &
+                   p % coord(j + 1) % lattice_y, &
+                   p % coord(j + 1) % lattice_z)
+            end if
           end if
           if (t % filters(i) % int_bins(1) == p % coord(j) % cell) then
             matching_bins(i) = offset + 1

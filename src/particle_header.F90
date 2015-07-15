@@ -1,6 +1,7 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO
+  use bank_header,     only: Bank
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -79,9 +80,14 @@ module particle_header
     ! Track output
     logical    :: write_track = .false.
 
+    ! Secondary particles created
+    integer    :: n_secondary = 0
+    type(Bank) :: secondary_bank(MAX_SECONDARY)
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
+    procedure :: initialize_from_source => initialize_from_source
   end type Particle
 
 contains
@@ -114,6 +120,7 @@ contains
     this % wgt_bank      = ZERO
     this % n_collision   = 0
     this % fission       = .false.
+    this % n_secondary   = 0
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE
@@ -153,5 +160,28 @@ contains
     this % rotated = .false.
 
   end subroutine reset_coord
+
+!===============================================================================
+! INITIALIZE_FROM_SOURCE
+!===============================================================================
+
+  subroutine initialize_from_source(this, src)
+    class(Particle), intent(inout) :: this
+    type(Bank),      intent(in)    :: src
+
+    ! set defaults
+    call this % initialize()
+
+    ! copy attributes from source bank site
+    this % wgt            = src % wgt
+    this % last_wgt       = src % wgt
+    this % coord(1) % xyz = src % xyz
+    this % coord(1) % uvw = src % uvw
+    this % last_xyz       = src % xyz
+    this % last_uvw       = src % uvw
+    this % E              = src % E
+    this % last_E         = src % E
+
+  end subroutine initialize_from_source
 
 end module particle_header

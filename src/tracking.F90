@@ -45,20 +45,6 @@ contains
       call write_message("Simulating Particle " // trim(to_str(p % id)))
     end if
 
-    ! If the cell hasn't been determined based on the particle's location,
-    ! initiate a search for the current cell
-    if (p % coord(p % n_coord) % cell == NONE) then
-      call find_cell(p, found_cell)
-
-      ! Particle couldn't be located
-      if (.not. found_cell) then
-        call fatal_error("Could not locate particle " // trim(to_str(p % id)))
-      end if
-
-      ! set birth cell attribute
-      p % cell_born = p % coord(p % n_coord) % cell
-    end if
-
     ! Initialize number of events to zero
     n_event = 0
 
@@ -74,7 +60,19 @@ contains
       call initialize_particle_track()
     endif
 
-    do while (p % alive)
+    EVENT_LOOP: do
+      ! If the cell hasn't been determined based on the particle's location,
+      ! initiate a search for the current cell. This generally happens at the
+      ! beginning of the history and again for any secondary particles
+      if (p % coord(p % n_coord) % cell == NONE) then
+        call find_cell(p, found_cell)
+        if (.not. found_cell) then
+          call fatal_error("Could not locate particle " // trim(to_str(p % id)))
+        end if
+
+        ! set birth cell attribute
+        if (p % cell_born == NONE) p % cell_born = p % coord(p % n_coord) % cell
+      end if
 
       ! Write particle track.
       if (p % write_track) call write_particle_track(p)
@@ -197,7 +195,16 @@ contains
         p % alive = .false.
       end if
 
-    end do
+      ! Check for secondary particles if this particle is dead
+      if (.not. p % alive) then
+        if (p % n_secondary > 0) then
+          call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+          p % n_secondary = p % n_secondary - 1
+        else
+          exit EVENT_LOOP
+        end if
+      end if
+    end do EVENT_LOOP
 
     ! Finish particle track output.
     if (p % write_track) then

@@ -16,7 +16,8 @@ module simulation
   use output,       only: write_message, header, print_columns, &
                           print_batch_keff, print_generation
   use particle_header, only: Particle
-  use source,       only: get_source_particle, initialize_source
+  use random_lcg,   only: set_particle_seed
+  use source,       only: initialize_source
   use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
@@ -83,7 +84,7 @@ contains
           current_work = i_work
 
           ! grab source particle from bank
-          call get_source_particle(p, current_work)
+          call initialize_history(p, current_work)
 
           ! transport particle
           call transport(p)
@@ -115,6 +116,50 @@ contains
     call p % clear()
 
   end subroutine run_simulation
+
+!===============================================================================
+! INITIALIZE_HISTORY
+!===============================================================================
+
+  subroutine initialize_history(p, index_source)
+
+    type(Particle), intent(inout) :: p
+    integer(8),     intent(in)    :: index_source
+
+    integer(8) :: particle_seed  ! unique index for particle
+    integer :: i
+
+    ! set defaults
+    call p % initialize_from_source(source_bank(index_source))
+
+    ! set identifier for particle
+    p % id = work_index(rank) + index_source
+
+    ! set random number seed
+    particle_seed = (overall_gen - 1)*n_particles + p % id
+    call set_particle_seed(particle_seed)
+
+    ! set particle trace
+    trace = .false.
+    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
+         p % id == trace_particle) trace = .true.
+
+    ! Set particle track.
+    p % write_track = .false.
+    if (write_all_tracks) then
+      p % write_track = .true.
+    else if (allocated(track_identifiers)) then
+      do i=1, size(track_identifiers(1,:))
+        if (current_batch == track_identifiers(1,i) .and. &
+             &current_gen == track_identifiers(2,i) .and. &
+             &p % id == track_identifiers(3,i)) then
+          p % write_track = .true.
+          exit
+        end if
+      end do
+    end if
+
+  end subroutine initialize_history
 
 !===============================================================================
 ! INITIALIZE_BATCH

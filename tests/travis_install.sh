@@ -2,11 +2,8 @@
 
 set -ev
 
-# Build MPICH and HDF5 for rest of debug tests
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-
-  # Build MPICH
-  if [[ ! -d $HOME/mpich_install ]]; then
+# Build MPICH
+if [[ ! -e $HOME/mpich_install/bin/mpiexec ]]; then
     wget -q http://www.mpich.org/static/downloads/3.1.3/mpich-3.1.3.tar.gz
     tar -xzvf mpich-3.1.3.tar.gz >/dev/null 2>&1
     cd mpich-3.1.3
@@ -14,10 +11,10 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     make >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
-  fi
+fi
 
-  # Build PHDF5
-  if [[ ! -d $HOME/phdf5_install ]]; then
+# Build PHDF5
+if [[ ! -e $HOME/phdf5_install/bin/h5pfc ]]; then
     wget -q http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15/src/hdf5-1.8.15.tar.gz
     tar -xzvf hdf5-1.8.15.tar.gz >/dev/null 2>&1
     mv hdf5-1.8.15 phdf5-1.8.15; cd phdf5-1.8.15
@@ -28,10 +25,10 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     make >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
-  fi
+fi
 
-  # Build HDF5
-  if [[ ! -d $HOME/hdf5_install ]]; then
+# Build HDF5
+if [[ ! -e $HOME/hdf5_install/bin/h5fc ]]; then
     tar -xzvf hdf5-1.8.15.tar.gz >/dev/null 2>&1
     cd hdf5-1.8.15
     CC=gcc FC=gfortran ./configure --prefix=$HOME/hdf5_install -q \
@@ -39,6 +36,4 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     make -j >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
-  fi
-
 fi

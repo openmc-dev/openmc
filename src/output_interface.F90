@@ -6,9 +6,6 @@ module output_interface
   use tally_header,  only: TallyResult
 
   use hdf5_interface
-#ifdef MPI
-  use mpiio_interface
-#endif
 
   implicit none
   private

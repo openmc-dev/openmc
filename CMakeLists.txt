@@ -39,20 +39,12 @@ add_definitions(-DMAX_COORD=${maxcoord})
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-set(HDF5_ENABLED FALSE)
-if($ENV{FC} MATCHES "mpi[^/]*$")
-  message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
-  set(MPI_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "h5fc$")
+if($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
-  add_definitions(-DHDF5)
-  set(HDF5_ENABLED TRUE)
 elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
-  add_definitions(-DMPI -DHDF5)
+  add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)
-  set(HDF5_ENABLED TRUE)
 endif()
 
 # Check for Fortran 2008 MPI interface
@@ -332,38 +324,18 @@ foreach(test ${TESTS})
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
 
-      # Set restart file names
-      if (${HDF5_ENABLED})
-
-        # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.07.h5)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.07.h5 source.07.h5)
-        elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_9_555.h5)
-        elseif(${test} MATCHES "test_particle_restart_fixed")
-          set(RESTART_FILE particle_7_928.h5)
-        else(${test} MATCHES "test_statepoint_restart")
-          message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
-
-      else(${HDF5_ENABLED})
-
-        # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.07.binary)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.07.binary source.07.binary)
-        elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_9_555.binary)
-        elseif(${test} MATCHES "test_particle_restart_fixed")
-          set(RESTART_FILE particle_7_6144.binary)
-        else(${test} MATCHES "test_statepoint_restart")
-          message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
-
-      endif(${HDF5_ENABLED})
+      # Handle restart tests separately
+      if(${test} MATCHES "test_statepoint_restart")
+        set(RESTART_FILE statepoint.07.h5)
+      elseif(${test} MATCHES "test_sourcepoint_restart")
+        set(RESTART_FILE statepoint.07.h5 source.07.h5)
+      elseif(${test} MATCHES "test_particle_restart_eigval")
+        set(RESTART_FILE particle_9_555.h5)
+      elseif(${test} MATCHES "test_particle_restart_fixed")
+        set(RESTART_FILE particle_7_928.h5)
+      else(${test} MATCHES "test_statepoint_restart")
+        message(FATAL_ERROR "Restart test ${test} not recognized")
+      endif(${test} MATCHES "test_statepoint_restart")
 
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}

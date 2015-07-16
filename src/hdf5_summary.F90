@@ -1,7 +1,5 @@
 module hdf5_summary
 
-#ifdef HDF5
-
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
@@ -874,7 +872,5 @@ contains
     call su % write_data(speed, "neutrons_per_second", group="timing")
 
   end subroutine hdf5_write_timing
-
-#endif
 
 end module hdf5_summary

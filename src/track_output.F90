@@ -95,15 +95,9 @@ contains
     integer, allocatable :: n_coords(:)
     integer :: n_particle_tracks
 
-#ifdef HDF5
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.h5'
-#else
-    fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
-         // '.binary'
-#endif
 
     ! Determine total number of particles and number of coordinates for each
     n_particle_tracks = size(tracks)

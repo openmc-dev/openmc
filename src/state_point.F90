@@ -55,11 +55,7 @@ contains
          & zero_padded(current_batch, count_digits(n_max_batches))
 
     ! Append appropriate extension
-#ifdef HDF5
     filename = trim(filename) // '.h5'
-#else
-    filename = trim(filename) // '.binary'
-#endif
 
     ! Write message
     call write_message("Creating state point " // trim(filename) // "...", 1)
@@ -118,10 +114,8 @@ contains
 
         ! Write out CMFD info
         if (cmfd_on) then
-#ifdef HDF5
           call sp % open_group("cmfd")
           call sp % close_group()
-#endif
           call sp % write_data(1, "cmfd_on")
           call sp % write_data(cmfd % indices, "indices", length=4, group="cmfd")
           call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
@@ -143,10 +137,8 @@ contains
         end if
       end if
 
-#ifdef HDF5
       call sp % open_group("tallies")
       call sp % close_group()
-#endif
 
       ! Write number of meshes
       call sp % write_data(n_meshes, "n_meshes", group="tallies/meshes")
@@ -414,11 +406,7 @@ contains
         filename = trim(path_output) // 'source.' // &
              & zero_padded(current_batch, count_digits(n_max_batches))
 
-#ifdef HDF5
         filename = trim(filename) // '.h5'
-#else
-        filename = trim(filename) // '.binary'
-#endif
 
         ! Write message for new file creation
         call write_message("Creating source file " // trim(filename) // "...", &
@@ -434,12 +422,8 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-             & zero_padded(current_batch, count_digits(n_max_batches))
-#ifdef HDF5
+             zero_padded(current_batch, count_digits(n_max_batches))
         filename = trim(filename) // '.h5'
-#else
-        filename = trim(filename) // '.binary'
-#endif
 
         ! Reopen statepoint file in parallel
         call sp % file_open(filename, 'w', serial = .false.)
@@ -456,14 +440,9 @@ contains
 
     ! Also check to write source separately in overwritten file
     if (source_latest) then
-
       ! Set filename
       filename = trim(path_output) // 'source'
-#ifdef HDF5
       filename = trim(filename) // '.h5'
-#else
-      filename = trim(filename) // '.binary'
-#endif
 
       ! Write message for new file creation
       call write_message("Creating source file " // trim(filename) // "...", 1)

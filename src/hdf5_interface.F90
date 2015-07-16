@@ -1,7 +1,5 @@
 module hdf5_interface
 
-#ifdef HDF5
-
   use hdf5
   use h5lt
   use, intrinsic :: ISO_C_BINDING
@@ -1810,7 +1808,5 @@ contains
   end subroutine hdf5_read_string_parallel
 
 # endif
-
-#endif
 
 end module hdf5_interface

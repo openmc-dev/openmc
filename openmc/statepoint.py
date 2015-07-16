@@ -92,13 +92,8 @@ class StatePoint(object):
     """
 
     def __init__(self, filename):
-        if filename.endswith('.h5'):
-            import h5py
-            self._f = h5py.File(filename, 'r')
-            self._hdf5 = True
-        else:
-            self._f = open(filename, 'rb')
-            self._hdf5 = False
+        import h5py
+        self._f = h5py.File(filename, 'r')
 
         # Set flags for what data has been read
         self._results = False
@@ -171,12 +166,9 @@ class StatePoint(object):
             raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
-        if self._hdf5:
-            self._version = [self._get_int(path='version_major')[0],
-                             self._get_int(path='version_minor')[0],
-                             self._get_int(path='version_release')[0]]
-        else:
-            self._version = self._get_int(3)
+        self._version = [self._get_int(path='version_major')[0],
+                         self._get_int(path='version_minor')[0],
+                         self._get_int(path='version_release')[0]]
 
         # Read date and time
         self._date_and_time = self._get_string(19, path='date_and_time')
@@ -473,13 +465,8 @@ class StatePoint(object):
         # Read global Tallies
         n_global_tallies = self._get_int(path='n_global_tallies')[0]
 
-        if self._hdf5:
-            data = self._f['global_tallies'].value
-            self._global_tallies = np.column_stack((data['sum'], data['sum_sq']))
-
-        else:
-            self._global_tallies = np.array(self._get_double(2*n_global_tallies))
-            self._global_tallies.shape = (n_global_tallies, 2)
+        data = self._f['global_tallies'].value
+        self._global_tallies = np.column_stack((data['sum'], data['sum_sq']))
 
         # Flag indicating if Tallies are present
         self._tallies_present = self._get_int(path='tallies/tallies_present')[0]
@@ -499,15 +486,9 @@ class StatePoint(object):
                 num_tot_bins = tally.num_bins
 
                 # Extract Tally data from the file
-                if self._hdf5:
-                    data = self._f['{0}{1}/results'.format(base, tally_key)].value
-                    sum = data['sum']
-                    sum_sq = data['sum_sq']
-
-                else:
-                    results = np.array(self._get_double(2*num_tot_bins))
-                    sum = results[0::2]
-                    sum_sq = results[1::2]
+                data = self._f['{0}{1}/results'.format(base, tally_key)].value
+                sum = data['sum']
+                sum_sq = data['sum_sq']
 
                 # Define a routine to convert 0 to 1
                 def nonzero(val):
@@ -547,8 +528,7 @@ class StatePoint(object):
         self._source = np.empty(self._n_particles, dtype=SourceSite)
 
         # For HDF5 state points, copy entire bank
-        if self._hdf5:
-            source_sites = self._f['source_bank'].value
+        source_sites = self._f['source_bank'].value
 
         # Initialize SourceSite object for each particle
         for i in range(self._n_particles):
@@ -556,13 +536,7 @@ class StatePoint(object):
             site = SourceSite()
 
             # Read position, angle, and energy
-            if self._hdf5:
-                site._weight, site._xyz, site._uvw, site._E = source_sites[i]
-            else:
-                site._weight = self._get_double()[0]
-                site._xyz = self._get_double(3)
-                site._uvw = self._get_double(3)
-                site._E = self._get_double()[0]
+            site._weight, site._xyz, site._uvw, site._E = source_sites[i]
 
             # Store the source site in the NumPy array
             self._source[i] = site
@@ -798,37 +772,19 @@ class StatePoint(object):
                     self._f.read(n*size)))
 
     def _get_int(self, n=1, path=None):
-        if self._hdf5:
-            return [int(v) for v in self._f[path].value]
-        else:
-            return [int(v) for v in self._get_data(n, 'i', 4)]
+        return [int(v) for v in self._f[path].value]
 
     def _get_long(self, n=1, path=None):
-        if self._hdf5:
-            return [long(v) for v in self._f[path].value]
-        else:
-            return [long(v) for v in self._get_data(n, 'q', 8)]
+        return [long(v) for v in self._f[path].value]
 
     def _get_float(self, n=1, path=None):
-        if self._hdf5:
-            return [float(v) for v in self._f[path].value]
-        else:
-            return [float(v) for v in self._get_data(n, 'f', 4)]
+        return [float(v) for v in self._f[path].value]
 
     def _get_double(self, n=1, path=None):
-        if self._hdf5:
-            return [float(v) for v in self._f[path].value]
-        else:
-            return [float(v) for v in self._get_data(n, 'd', 8)]
+        return [float(v) for v in self._f[path].value]
 
     def _get_double_array(self, n=1, path=None):
-        if self._hdf5:
-            return self._f[path].value
-        else:
-            return self._get_data(n, 'd', 8)
+        return self._f[path].value
 
     def _get_string(self, n=1, path=None):
-        if self._hdf5:
-            return str(self._f[path].value)
-        else:
-            return str(self._get_data(n, 's', 1)[0])
+        return str(self._f[path].value)

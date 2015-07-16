@@ -9,9 +9,7 @@ module finalize
   use message_passing
 #endif
 
-#ifdef HDF5
   use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
-#endif
 
   implicit none
 
@@ -51,14 +49,12 @@ contains
     ! Deallocate arrays
     call free_memory()
 
-#ifdef HDF5
     ! Release compound datatypes
     call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
     call h5tclose_f(hdf5_bank_t, hdf5_err)
 
     ! Close FORTRAN interface.
     call h5close_f(hdf5_err)
-#endif
 
 #ifdef MPI
     ! Free all MPI types

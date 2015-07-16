@@ -15,9 +15,8 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
-  use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, write_xs_summary, print_plot,       &
-                              write_message
+  use output,           only: title, header, print_version, write_message,     &
+                              print_usage, write_xs_summary, print_plot
   use output_interface
   use random_lcg,       only: initialize_prng
   use state_point,      only: load_state_point
@@ -33,10 +32,8 @@ module initialize
   use omp_lib
 #endif
 
-#ifdef HDF5
   use hdf5_interface
   use hdf5_summary,     only: hdf5_write_summary
-#endif
 
   implicit none
 
@@ -60,10 +57,8 @@ contains
     call initialize_mpi()
 #endif
 
-#ifdef HDF5
     ! Initialize HDF5 interface
     call hdf5_initialize()
-#endif
 
     ! Read command line arguments
     call read_command_line()
@@ -155,11 +150,7 @@ contains
         call print_plot()
       else
         ! Write summary information
-#ifdef HDF5
         if (output_summary) call hdf5_write_summary()
-#else
-        if (output_summary) call write_summary()
-#endif
 
         ! Write cross section information
         if (output_xs) call write_xs_summary()
@@ -275,8 +266,6 @@ contains
   end subroutine initialize_mpi
 #endif
 
-#ifdef HDF5
-
 !===============================================================================
 ! HDF5_INITIALIZE
 !===============================================================================
@@ -318,8 +307,6 @@ contains
     hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
 
   end subroutine hdf5_initialize
-
-#endif
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

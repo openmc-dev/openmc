@@ -5,12 +5,9 @@ module output_interface
   use global
   use tally_header,  only: TallyResult
 
-#ifdef HDF5
   use hdf5_interface
-#else
 #ifdef MPI
   use mpiio_interface
-#endif
 #endif
 
   implicit none
@@ -19,17 +16,8 @@ module output_interface
   type, public :: BinaryOutput
     private
     ! Compilation specific data
-#ifdef HDF5
     integer(HID_T) :: hdf5_fh
     integer(HID_T) :: hdf5_grp
-#else
-    integer        :: unit_fh
-#ifdef MPIF08
-    type(MPI_File) :: mpi_fh
-#else
-    integer        :: mpi_fh
-#endif
-#endif
     logical :: serial ! Serial I/O when using MPI/PHDF5
   contains
     generic, public :: write_data =>  write_double, &
@@ -87,11 +75,9 @@ module output_interface
     procedure, public :: read_tally_result => read_tally_result
     procedure, public :: write_source_bank => write_source_bank
     procedure, public :: read_source_bank => read_source_bank
-#ifdef HDF5
     procedure, public :: write_attribute_string => write_attribute_string
     procedure, public :: open_group => open_group
     procedure, public :: close_group => close_group
-#endif
   end type BinaryOutput
 
 contains
@@ -113,26 +99,14 @@ contains
       self % serial = .true.
     end if
 
-#ifdef HDF5
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_file_create(filename, self % hdf5_fh)
     else
       call hdf5_file_create_parallel(filename, self % hdf5_fh)
     endif
-# else
-    call hdf5_file_create(filename, self % hdf5_fh)
-# endif
-#elif MPI
-    if (self % serial) then
-      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
-           STATUS='replace', ACCESS='stream')
-    else
-      call mpi_create_file(filename, self % mpi_fh)
-    end if
 #else
-    open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
-         STATUS='replace', ACCESS='stream')
+    call hdf5_file_create(filename, self % hdf5_fh)
 #endif
 
   end subroutine file_create
@@ -155,38 +129,14 @@ contains
       self % serial = .true.
     end if
 
-#ifdef HDF5
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_file_open(filename, self % hdf5_fh, mode)
     else
       call hdf5_file_open_parallel(filename, self % hdf5_fh, mode)
     endif
-# else
-    call hdf5_file_open(filename, self % hdf5_fh, mode)
-# endif
-#elif MPI
-    if (self % serial) then
-      ! Check for read/write mode to open, default is read only
-      if (mode == 'w') then
-        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
-             STATUS='old', ACCESS='stream', POSITION='append')
-      else
-        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
-             STATUS='old', ACCESS='stream')
-      end if
-    else
-      call mpi_open_file(filename, self % mpi_fh, mode)
-    end if
 #else
-    ! Check for read/write mode to open, default is read only
-    if (mode == 'w') then
-      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
-           STATUS='old', ACCESS='stream', POSITION='append')
-    else
-      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
-           STATUS='old', ACCESS='stream')
-    end if
+    call hdf5_file_open(filename, self % hdf5_fh, mode)
 #endif
 
   end subroutine file_open
@@ -199,21 +149,7 @@ contains
 
     class(BinaryOutput) :: self
 
-#ifdef HDF5
-# ifdef MPI
     call hdf5_file_close(self % hdf5_fh)
-# else
-    call hdf5_file_close(self % hdf5_fh)
-# endif
-#elif MPI
-    if (self % serial) then
-      close(UNIT=self % unit_fh)
-    else
-      call mpi_close_file(self % mpi_fh)
-    end if
-#else
-    close(UNIT=self % unit_fh)
-#endif
 
   end subroutine file_close
 
@@ -221,7 +157,6 @@ contains
 ! OPEN_GROUP call hdf5 routine to open a group within binary output context
 !===============================================================================
 
-#ifdef HDF5
   subroutine open_group(self, group)
 
     character(*), intent(in) :: group ! HDF5 group name
@@ -230,13 +165,11 @@ contains
     call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
 
   end subroutine open_group
-#endif
 
 !===============================================================================
 ! CLOSE_GROUP call hdf5 routine to close a group within binary output context
 !===============================================================================
 
-#ifdef HDF5
   subroutine close_group(self)
 
     class(BinaryOutput) :: self
@@ -244,7 +177,6 @@ contains
     call hdf5_close_group(self % hdf5_grp)
 
   end subroutine close_group
-#endif
 
 !===============================================================================
 ! WRITE_DOUBLE writes double precision scalar data
@@ -277,33 +209,23 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_double(self % hdf5_grp, name_, buffer)
     else
       call hdf5_write_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
-# else
+#else
     call hdf5_write_double(self % hdf5_grp, name_, buffer)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer
-    else
-      call mpi_write_double(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer
-#endif
 
   end subroutine write_double
 
@@ -338,33 +260,23 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_double(self % hdf5_grp, name_, buffer)
     else
       call hdf5_read_double_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
-# else
+#else
     call hdf5_read_double(self % hdf5_grp, name_, buffer)
-# endif
+#endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer
-    else
-      call mpi_read_double(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer
-#endif
 
   end subroutine read_double
 
@@ -400,34 +312,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_double_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length)
-    else
-      call mpi_write_double_1Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length)
-#endif
 
   end subroutine write_double_1Darray
 
@@ -463,34 +365,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
            length, collect_)
     end if
-# else
+#else
     call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length)
-    else
-      call mpi_read_double_1Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length)
-#endif
 
   end subroutine read_double_1Darray
 
@@ -526,34 +418,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_double_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_double_2Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2))
-    else
-      call mpi_write_double_2Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2))
-#endif
 
   end subroutine write_double_2Darray
 
@@ -589,34 +471,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_double_2Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2))
-    else
-      call mpi_read_double_2Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2))
-#endif
 
   end subroutine read_double_2Darray
 
@@ -652,34 +524,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, &
            length, collect_)
     end if
-# else
+#else
     call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-    else
-      call mpi_write_double_3Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-#endif
 
   end subroutine write_double_3Darray
 
@@ -715,34 +577,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_double_3Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-    else
-      call mpi_read_double_3Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-#endif
 
   end subroutine read_double_3Darray
 
@@ -779,37 +631,25 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_double_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     ! Write the data in serial
     call hdf5_write_double_4Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                         1:length(4))
-    else
-      call mpi_write_double_4Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                       1:length(4))
-#endif
 
   end subroutine write_double_4Darray
 
@@ -846,36 +686,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_double_4Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                        1:length(4))
-    else
-      call mpi_read_double_4Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                      1:length(4))
-#endif
 
   end subroutine read_double_4Darray
 
@@ -910,33 +738,23 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_integer(self % hdf5_grp, name_, buffer)
     else
       call hdf5_write_integer_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
-# else
+#else
     call hdf5_write_integer(self % hdf5_grp, name_, buffer)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer
-    else
-      call mpi_write_integer(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer
-#endif
 
   end subroutine write_integer
 
@@ -971,33 +789,23 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_integer(self % hdf5_grp, name_, buffer)
     else
       call hdf5_read_integer_parallel(self % hdf5_grp, name_, buffer, collect_)
     end if
-# else
+#else
     call hdf5_read_integer(self % hdf5_grp, name_, buffer)
-# endif
+#endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer
-    else
-      call mpi_read_integer(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer
-#endif
 
   end subroutine read_integer
 
@@ -1033,34 +841,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_integer_1Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_integer_1Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length)
-    else
-      call mpi_write_integer_1Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length)
-#endif
 
   end subroutine write_integer_1Darray
 
@@ -1096,35 +894,25 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_integer_1Darray_parallel(self % hdf5_grp, name_, buffer, &
            length, collect_)
     end if
-# else
+#else
     ! Read the data in serial
     call hdf5_read_integer_1Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length)
-    else
-      call mpi_read_integer_1Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length)
-#endif
 
   end subroutine read_integer_1Darray
 
@@ -1160,34 +948,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_integer_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_integer_2Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2))
-    else
-      call mpi_write_integer_2Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2))
-#endif
 
   end subroutine write_integer_2Darray
 
@@ -1223,34 +1001,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_integer_2Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_integer_2Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2))
-    else
-      call mpi_read_integer_2Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2))
-#endif
 
   end subroutine read_integer_2Darray
 
@@ -1286,34 +1054,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_integer_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_integer_3Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-    else
-      call mpi_write_integer_3Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-#endif
 
   end subroutine write_integer_3Darray
 
@@ -1349,34 +1107,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_integer_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_integer_3Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-    else
-      call mpi_read_integer_3Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
-#endif
 
   end subroutine read_integer_3Darray
 
@@ -1413,36 +1161,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_write_integer_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_write_integer_4Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                         1:length(4))
-    else
-      call mpi_write_integer_4Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                       1:length(4))
-#endif
 
   end subroutine write_integer_4Darray
 
@@ -1479,36 +1215,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_integer_4Darray_parallel(self % hdf5_grp, name_, buffer, length, &
            collect_)
     end if
-# else
+#else
     call hdf5_read_integer_4Darray(self % hdf5_grp, name_, buffer, length)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                        1:length(4))
-    else
-      call mpi_read_integer_4Darray(self % mpi_fh, buffer, length, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
-                      1:length(4))
-#endif
 
   end subroutine read_integer_4Darray
 
@@ -1543,34 +1267,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
       call hdf5_write_long_parallel(self % hdf5_grp, name_, buffer, &
            hdf5_integer8_t, collect_)
     end if
-# else
+#else
     call hdf5_write_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer
-    else
-      call mpi_write_long(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer
-#endif
 
   end subroutine write_long
 
@@ -1605,34 +1319,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
       call hdf5_read_long_parallel(self % hdf5_grp, name_, buffer, &
            hdf5_integer8_t, collect_)
     end if
-# else
+#else
     call hdf5_read_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer
-    else
-      call mpi_read_long(self % mpi_fh, buffer, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer
-#endif
 
   end subroutine read_long
 
@@ -1671,34 +1375,24 @@ contains
       collect_ = .true.
     end if
 
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_write_string(self % hdf5_grp, name_, buffer, n)
     else
       call hdf5_write_string_parallel(self % hdf5_grp, name_, buffer, n, collect_)
     end if
-# else
+#else
     ! Write the data
     call hdf5_write_string(self % hdf5_grp, name_, buffer, n)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      write(self % unit_fh) buffer
-    else
-      call mpi_write_string(self % mpi_fh, buffer, n, collect_)
-    end if
-#else
-    write(self % unit_fh) buffer
-#endif
 
   end subroutine write_string
 
@@ -1737,34 +1431,23 @@ contains
       collect_ = .true.
     end if
 
-
-#ifdef HDF5
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(self % hdf5_fh, group_, self % hdf5_grp)
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-# ifdef MPI
+#ifdef MPI
     if (self % serial) then
       call hdf5_read_string(self % hdf5_grp, name_, buffer, n)
     else
       call hdf5_read_string_parallel(self % hdf5_grp, name_, buffer, n, collect_)
     end if
-# else
+#else
     call hdf5_read_string(self % hdf5_grp, name_, buffer, n)
-# endif
+#endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-    if (self % serial) then
-      read(self % unit_fh) buffer
-    else
-      call mpi_read_string(self % mpi_fh, buffer, n, collect_)
-    end if
-#else
-    read(self % unit_fh) buffer
-#endif
 
   end subroutine read_string
 
@@ -1772,7 +1455,6 @@ contains
 ! WRITE_ATTRIBUTE_STRING
 !===============================================================================
 
-#ifdef HDF5
   subroutine write_attribute_string(self, var, attr_type, attr_str, group)
 
     character(*), intent(in)           :: var       ! variable name for attr
@@ -1795,7 +1477,6 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 
   end subroutine write_attribute_string
-#endif
 
 !===============================================================================
 ! WRITE_TALLY_RESULT writes an OpenMC TallyResult type
@@ -1812,10 +1493,6 @@ contains
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
     character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
 
-#ifndef HDF5
-    integer :: j,k ! iteration counters
-#endif
-
     ! Set name
     name_ = trim(name)
 
@@ -1823,8 +1500,6 @@ contains
     if (present(group)) then
       group_ = trim(group)
     end if
-
-#ifdef HDF5
 
     ! Open up sub-group if present
     if (present(group)) then
@@ -1854,18 +1529,6 @@ contains
       call hdf5_close_group(self % hdf5_grp)
     end if
 
-#else
-
-    ! Write out tally buffer
-    do k = 1, n2
-      do j = 1, n1
-        write(self % unit_fh) buffer(j,k) % sum
-        write(self % unit_fh) buffer(j,k) % sum_sq
-      end do
-    end do
-
-#endif
-
   end subroutine write_tally_result
 
 !===============================================================================
@@ -1883,12 +1546,6 @@ contains
     character(len=MAX_WORD_LEN) :: name_  ! HDF5 dataset name
     character(len=MAX_WORD_LEN) :: group_ ! HDF5 group name
 
-#ifndef HDF5
-# ifndef MPI
-    integer :: j,k ! iteration counters
-# endif
-#endif
-
     ! Set name
     name_ = trim(name)
 
@@ -1896,8 +1553,6 @@ contains
     if (present(group)) then
       group_ = trim(group)
     end if
-
-#ifdef HDF5
 
     ! Open up sub-group if present
     if (present(group)) then
@@ -1917,24 +1572,6 @@ contains
     call h5dclose_f(dset, hdf5_err)
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 
-# elif MPI
-
-    ! Write out tally buffer
-    call MPI_FILE_READ(self % mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
-         MPI_STATUS_IGNORE, mpiio_err)
-
-#else
-
-    ! Read tally result
-    do k = 1, n2
-      do j = 1, n1
-        read(self % unit_fh) buffer(j,k) % sum
-        read(self % unit_fh) buffer(j,k) % sum_sq
-      end do
-    end do
-
-#endif
-
   end subroutine read_tally_result
 
 !===============================================================================
@@ -1946,21 +1583,9 @@ contains
     class(BinaryOutput) :: self
 
 #ifdef MPI
-# ifndef HDF5
-    integer(MPI_OFFSET_KIND) :: offset           ! offset of data
-    integer                  :: size_bank        ! size of bank to write
-#ifdef MPIF08
-    type(MPI_Datatype)       :: datatype
-#else
-    integer                  :: datatype
-#endif
-# endif
-# ifdef HDF5
-    integer(8)               :: offset(1)        ! source data offset
-# endif
+    integer(8) :: offset(1) ! source data offset
 #endif
 
-#ifdef HDF5
 #ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
@@ -2005,7 +1630,7 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
 
-# else
+#else
 
     ! Set size
     dims1(1) = work
@@ -2028,31 +1653,6 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
 
-# endif
-
-#elif MPI
-
-    ! Get current offset for master
-    if (master) call MPI_FILE_GET_POSITION(self % mpi_fh, offset, mpiio_err)
-
-    ! Determine offset on master process and broadcast to all processors
-    call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_INTEGER, MPI_OFFSET_KIND, &
-         datatype, mpi_err)
-    call MPI_BCAST(offset, 1, datatype, 0, MPI_COMM_WORLD, mpi_err)
-
-    ! Set the proper offset for source data on this processor
-    call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-    offset = offset + size_bank*work_index(rank)
-
-    ! Write all source sites
-    call MPI_FILE_WRITE_AT(self % mpi_fh, offset, source_bank(1), int(work), &
-         MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
-
-#else
-
-    ! Write out source sites
-    write(self % unit_fh) source_bank
-
 #endif
 
   end subroutine write_source_bank
@@ -2066,17 +1666,10 @@ contains
     class(BinaryOutput) :: self
 
 #ifdef MPI
-# ifndef HDF5
-    integer(MPI_OFFSET_KIND) :: offset           ! offset of data
-    integer                  :: size_bank        ! size of bank to read
-# endif
-# ifdef HDF5
-    integer(8)               :: offset(1)        ! offset of data
-# endif
+    integer(8) :: offset(1) ! offset of data
 #endif
 
-#ifdef HDF5
-# ifdef MPI
+#ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
     dims1(1) = n_particles
@@ -2114,7 +1707,7 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
 
-# else
+#else
 
     ! Open dataset
     call h5dopen_f(self % hdf5_fh, "source_bank", dset, hdf5_err)
@@ -2127,36 +1720,6 @@ contains
 
     ! Close all ids
     call h5dclose_f(dset, hdf5_err)
-
-# endif
-
-#elif MPI
-
-    ! Go to the end of the file to set file pointer
-    offset = 0
-    call MPI_FILE_SEEK(self % mpi_fh, offset, MPI_SEEK_END, &
-         mpiio_err)
-
-    ! Get current offset (will be at EOF)
-    call MPI_FILE_GET_POSITION(self % mpi_fh, offset, mpiio_err)
-
-    ! Get the size of the source bank on all procs
-    call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-
-    ! Calculate offset where the source bank will begin
-    offset = offset - n_particles*size_bank
-
-    ! Set the proper offset for source data on this processor
-    offset = offset + size_bank*work_index(rank)
-
-    ! Write all source sites
-    call MPI_FILE_READ_AT(self % mpi_fh, offset, source_bank(1), int(work), &
-         MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
-
-#else
-
-    ! Write out source sites
-    read(self % unit_fh) source_bank
 
 #endif
 

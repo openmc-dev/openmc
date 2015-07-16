@@ -171,6 +171,26 @@ contains
 
   subroutine finalize_generation()
 
+    ! Update global tallies with the omp private accumulation variables
+!$omp parallel
+!$omp critical
+    global_tallies(K_TRACKLENGTH) % value = &
+         global_tallies(K_TRACKLENGTH) % value + global_tally_tracklength
+    global_tallies(K_COLLISION) % value   = &
+         global_tallies(K_COLLISION) % value + global_tally_collision
+    global_tallies(LEAKAGE) % value   = &
+         global_tallies(LEAKAGE) % value + global_tally_leakage
+    global_tallies(K_ABSORPTION) % value   = &
+         global_tallies(K_ABSORPTION) % value + global_tally_absorption
+!$omp end critical
+
+    ! reset private tallies
+    global_tally_tracklength = 0
+    global_tally_collision   = 0
+    global_tally_leakage     = 0
+    global_tally_absorption  = 0
+!$omp end parallel
+
 #ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()

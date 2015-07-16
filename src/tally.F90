@@ -11,7 +11,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord, Particle, deallocate_coord
+  use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -487,7 +487,7 @@ contains
         if (t % estimator == ESTIMATOR_ANALOG) then
           uvw = p % last_uvw
         else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          uvw = p % coord0 % uvw
+          uvw = p % coord(1) % uvw
         end if
         ! Find the order for a collection of requested moments
         ! and store the moment contribution of each
@@ -909,7 +909,6 @@ contains
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
     type(Material),       pointer :: mat
-    type(LocalCoord),     pointer :: coord
 
     t => tallies(i_tally)
     matching_bins(1:t%n_filters) = 1
@@ -918,8 +917,8 @@ contains
     ! CHECK IF THIS TRACK INTERSECTS THE MESH
 
     ! Copy starting and ending location of particle
-    xyz0 = p % coord0 % xyz - (d_track - TINY_BIT) * p % coord0 % uvw
-    xyz1 = p % coord0 % xyz  - TINY_BIT * p % coord0 % uvw
+    xyz0 = p % coord(1) % xyz - (d_track - TINY_BIT) * p % coord(1) % uvw
+    xyz1 = p % coord(1) % xyz  - TINY_BIT * p % coord(1) % uvw
 
     ! Get index for mesh filter
     i_filter_mesh = t % find_filter(FILTER_MESH)
@@ -940,8 +939,8 @@ contains
     end if
 
     ! Reset starting and ending location
-    xyz0 = p % coord0 % xyz - d_track * p % coord0 % uvw
-    xyz1 = p % coord0 % xyz
+    xyz0 = p % coord(1) % xyz - d_track * p % coord(1) % uvw
+    xyz1 = p % coord(1) % xyz
 
     ! =========================================================================
     ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH
@@ -953,7 +952,7 @@ contains
         ! determine next universe bin
         ! TODO: Account for multiple universes when performing this filter
         matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-             p % coord % universe, i_tally)
+             p % coord(p % n_coord) % universe, i_tally)
 
       case (FILTER_MATERIAL)
         matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
@@ -961,15 +960,12 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        coord => p % coord0
-        do while(associated(coord))
+        do j = 1, p % n_coord
           position(FILTER_CELL) = 0
           matching_bins(i) = get_next_bin(FILTER_CELL, &
-               coord % cell, i_tally)
+               p % coord(j) % cell, i_tally)
           if (matching_bins(i) /= NO_BIN_FOUND) exit
-          coord => coord % next
         end do
-        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
@@ -1009,7 +1005,7 @@ contains
     n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
 
     ! Copy particle's direction
-    uvw = p % coord0 % uvw
+    uvw = p % coord(1) % uvw
 
     ! Bounding coordinates
     do j = 1, m % n_dimension
@@ -1135,12 +1131,12 @@ contains
     logical,        intent(out) :: found_bin
 
     integer :: i ! loop index for filters
+    integer :: j
     integer :: n ! number of bins for single filter
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
-    type(LocalCoord),     pointer :: coord
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1154,13 +1150,13 @@ contains
         m => meshes(t % filters(i) % int_bins(1))
 
         ! Determine if we're in the mesh first
-        call get_mesh_bin(m, p % coord0 % xyz, matching_bins(i))
+        call get_mesh_bin(m, p % coord(1) % xyz, matching_bins(i))
 
       case (FILTER_UNIVERSE)
         ! determine next universe bin
         ! TODO: Account for multiple universes when performing this filter
         matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-             p % coord % universe, i_tally)
+             p % coord(p % n_coord) % universe, i_tally)
 
       case (FILTER_MATERIAL)
         if (p % material /= MATERIAL_VOID) then
@@ -1170,37 +1166,39 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        coord => p % coord0
-        do while(associated(coord))
+        do j = 1, p % n_coord
           position(FILTER_CELL) = 0
           matching_bins(i) = get_next_bin(FILTER_CELL, &
-               coord % cell, i_tally)
+               p % coord(j) % cell, i_tally)
           if (matching_bins(i) /= NO_BIN_FOUND) exit
-          coord => coord % next
         end do
-        nullify(coord)
 
       case (FILTER_DISTRIBCELL)
         ! determine next distribcell bin
         matching_bins(i) = NO_BIN_FOUND
-        coord => p % coord0
         offset = 0
-        do while(associated(coord))
-          if (cells(coord % cell) % type == CELL_FILL) then
-            offset = offset + cells(coord % cell) % &
+        do j = 1, p % n_coord
+          if (cells(p % coord(j) % cell) % type == CELL_FILL) then
+            offset = offset + cells(p % coord(j) % cell) % &
                  offset(t % filters(i) % offset)
-          elseif(cells(coord % cell) % type == CELL_LATTICE) then
-            offset = offset + lattices(coord % next % lattice) % obj % &
-                 offset(t % filters(i) % offset, coord % next % lattice_x, &
-                 coord % next % lattice_y, coord % next % lattice_z)
+          elseif(cells(p % coord(j) % cell) % type == CELL_LATTICE) then
+            if (lattices(p % coord(j + 1) % lattice) % obj &
+                 % are_valid_indices([&
+                 p % coord(j + 1) % lattice_x, &
+                 p % coord(j + 1) % lattice_y, &
+                 p % coord(j + 1) % lattice_z])) then
+              offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
+                   offset(t % filters(i) % offset, &
+                   p % coord(j + 1) % lattice_x, &
+                   p % coord(j + 1) % lattice_y, &
+                   p % coord(j + 1) % lattice_z)
+            end if
           end if
-          if (t % filters(i) % int_bins(1) == coord % cell) then
+          if (t % filters(i) % int_bins(1) == p % coord(j) % cell) then
             matching_bins(i) = offset + 1
             exit
           end if
-          coord => coord % next
         end do
-        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
@@ -1296,7 +1294,7 @@ contains
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
       xyz0 = p % last_xyz
-      xyz1 = p % coord0 % xyz
+      xyz1 = p % coord(1) % xyz
 
       ! Get pointer to tally
       i_tally = active_current_tallies % get_item(i)
@@ -1328,7 +1326,7 @@ contains
       end if
 
       ! Copy particle's direction
-      uvw = p % coord0 % uvw
+      uvw = p % coord(1) % uvw
 
       ! determine incoming energy bin
       j = t % find_filter(FILTER_ENERGYIN)

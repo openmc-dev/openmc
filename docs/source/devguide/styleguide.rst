@@ -125,8 +125,16 @@ program, subroutine, function, if, associate, etc. Emacs users should set the
 variables f90-if-indent, f90-do-indent, f90-continuation-indent,
 f90-type-indent, f90-associate-indent, and f90-program indent to 2.
 
-Continuation lines should be indented by an extra 5 spaces. This is the default
-value of f90-continuation-indent in Emacs.
+Continuation lines should be indented by at least 5 spaces. They may be indented
+more in order to make the content match the context.  For example, either of
+these are valid continuation indentations:
+
+.. code-block:: fortran
+
+    local_xyz(1) = xyz(1) - (this % lower_left(1) + &
+         (i_xyz(1) - HALF)*this % pitch(1))
+    call which_data(scatt_type, get_scatt, get_nuscatt, get_chi_t, get_chi_p, &
+                    get_chi_d, scatt_order)
 
 Whitespace in Expressions
 -------------------------

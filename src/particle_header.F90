@@ -87,7 +87,8 @@ module particle_header
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
-    procedure :: initialize_from_source => initialize_from_source
+    procedure :: initialize_from_source
+    procedure :: create_secondary
   end type Particle
 
 contains
@@ -120,7 +121,6 @@ contains
     this % wgt_bank      = ZERO
     this % n_collision   = 0
     this % fission       = .false.
-    this % n_secondary   = 0
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE
@@ -183,5 +183,25 @@ contains
     this % last_E         = src % E
 
   end subroutine initialize_from_source
+
+!===============================================================================
+! CREATE_SECONDARY
+!===============================================================================
+
+  subroutine create_secondary(this, uvw, type)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+
+    integer :: n
+
+    n = this % n_secondary + 1
+    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
+    this % secondary_bank(n) % uvw(:) = uvw
+    this % secondary_bank(n) % E      = this % E
+    this % n_secondary = n
+
+  end subroutine create_secondary
 
 end module particle_header

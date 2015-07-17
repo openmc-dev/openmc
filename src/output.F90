@@ -2398,10 +2398,24 @@ contains
                   end if
 
                   if (final >= lat % offset(map, k, l, m) + offset) then
-                    old_m = m
-                    old_l = l
-                    old_k = k
-                    cycle
+                    if (k == lat % n_rings .and. l == n_y .and. m == n_z) then
+                      ! This is last lattice cell, so target must be here
+                      lat_offset = lat % offset(map, k, l, m)
+                      offset = offset + lat_offset
+                      next_univ => universes(lat % universes(k, l, m))
+                      path = trim(path) // "(" // &
+                           trim(to_str(k - lat % n_rings)) // "," // &
+                           trim(to_str(l - lat % n_rings)) // "," // &
+                           trim(to_str(m)) // ")"
+                      call find_offset(map, goal, next_univ, final, offset, &
+                                       path)
+                      return
+                    else
+                      old_m = m
+                      old_l = l
+                      old_k = k
+                      cycle
+                    end if
                   else
                     ! Target is at this lattice position
                     lat_offset = lat % offset(map, old_k, old_l, old_m)

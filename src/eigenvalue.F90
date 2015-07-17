@@ -1,7 +1,7 @@
 module eigenvalue
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use cmfd_execute, only: cmfd_init_batch, execute_cmfd
@@ -293,7 +293,11 @@ contains
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
+#ifdef MPIF08
+    type(MPI_Request) :: request(20)
+#else
     integer    :: request(20)  ! communication request for send/recving sites
+#endif
     integer    :: n_request    ! number of communication requests
     integer(8) :: index_local  ! index in local source bank
     integer(8), save, allocatable :: &

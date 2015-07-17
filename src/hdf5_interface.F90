@@ -7,7 +7,7 @@ module hdf5_interface
   use, intrinsic :: ISO_C_BINDING
 
 #ifdef MPI
-   use mpi, only: MPI_COMM_WORLD, MPI_INFO_NULL
+   use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
 
   implicit none
@@ -149,7 +149,12 @@ contains
 
     ! Setup file access property list with parallel I/O access
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+#ifdef MPIF08
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD%MPI_VAL, &
+         MPI_INFO_NULL%MPI_VAL, hdf5_err)
+#else
     call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+#endif
 
     ! Create the file collectively
     call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err, &
@@ -174,7 +179,12 @@ contains
 
     ! Setup file access property list with parallel I/O access
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+#ifdef MPIF08
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD%MPI_VAL, &
+         MPI_INFO_NULL%MPI_VAL, hdf5_err)
+#else
     call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+#endif
 
     ! Determine access type
     open_mode = H5F_ACC_RDONLY_F

@@ -25,6 +25,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
+option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -53,6 +54,12 @@ elseif($ENV{FC} MATCHES "h5pfc$")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
   set(HDF5_ENABLED TRUE)
+endif()
+
+# Check for Fortran 2008 MPI interface
+if(MPI_ENABLED AND mpif08)
+  message("-- Using Fortran 2008 MPI bindings")
+  add_definitions(-DMPIF08)
 endif()
 
 #===============================================================================

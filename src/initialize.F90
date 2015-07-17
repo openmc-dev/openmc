@@ -27,7 +27,7 @@ module initialize
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
 #ifdef _OPENMP
@@ -195,11 +195,17 @@ contains
   subroutine initialize_mpi()
 
     integer                   :: bank_blocks(4)  ! Count for each datatype
+#ifdef MPIF08
+    type(MPI_Datatype)        :: bank_types(4)
+    type(MPI_Datatype)        :: result_types(1)
+    type(MPI_Datatype)        :: temp_type
+#else
     integer                   :: bank_types(4)   ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
-    integer                   :: temp_type       ! temporary derived type
-    integer                   :: result_blocks(1) ! Count for each datatype
     integer                   :: result_types(1)  ! Datatypes
+    integer                   :: temp_type       ! temporary derived type
+#endif
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer                   :: result_blocks(1) ! Count for each datatype
     integer(MPI_ADDRESS_KIND) :: result_disp(1)   ! Displacements
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
     integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult

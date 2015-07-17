@@ -1,9 +1,16 @@
 module mpiio_interface
 
 #ifdef MPI
-  use mpi
+#ifndef HDF5
+  use message_passing
 
   implicit none
+
+#ifdef MPIF08
+#define FH_TYPE type(MPI_File)
+#else
+#define FH_TYPE integer
+#endif
 
   integer :: mpiio_err ! MPI error code
 
@@ -48,11 +55,11 @@ contains
   subroutine mpi_create_file(filename, fh)
 
     character(*), intent(in)    :: filename ! name of file to create
-    integer,      intent(inout) :: fh       ! file handle
+    FH_TYPE,      intent(inout) :: fh       ! file handle
 
     ! Create the file
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
-         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpiio_err) 
+         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpiio_err)
 
   end subroutine mpi_create_file
 
@@ -64,7 +71,7 @@ contains
 
     character(*), intent(in)    :: filename ! name of file to open
     character(*), intent(in)    :: mode     ! open 'r' read, 'w' write
-    integer,      intent(inout) :: fh       ! file handle
+    FH_TYPE,      intent(inout) :: fh       ! file handle
 
     integer :: open_mode
 
@@ -76,7 +83,7 @@ contains
 
     ! Create the file
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, &
-         open_mode, MPI_INFO_NULL, fh, mpiio_err) 
+         open_mode, MPI_INFO_NULL, fh, mpiio_err)
 
   end subroutine mpi_open_file
 
@@ -86,7 +93,7 @@ contains
 
   subroutine mpi_close_file(fh)
 
-    integer, intent(inout) :: fh ! file handle
+    FH_TYPE, intent(inout) :: fh ! file handle
 
     call MPI_FILE_CLOSE(fh, mpiio_err)
 
@@ -98,16 +105,16 @@ contains
 
   subroutine mpi_write_integer(fh, buffer, collect)
 
-    integer, intent(in) :: fh      ! file handle
+    FH_TYPE, intent(in) :: fh      ! file handle
     integer, intent(in) :: buffer  ! data to write
     logical, intent(in) :: collect ! collective I/O
 
     if (collect) then
       call MPI_FILE_WRITE_ALL(fh, buffer, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpiio_err) 
+           MPI_STATUS_IGNORE, mpiio_err)
     else
       call MPI_FILE_WRITE(fh, buffer, 1, MPI_INTEGER, &
-           MPI_STATUS_IGNORE, mpiio_err) 
+           MPI_STATUS_IGNORE, mpiio_err)
     end if
 
   end subroutine mpi_write_integer
@@ -118,7 +125,7 @@ contains
 
   subroutine mpi_read_integer(fh, buffer, collect)
 
-    integer, intent(in)    :: fh      ! file handle
+    FH_TYPE, intent(in)    :: fh      ! file handle
     integer, intent(inout) :: buffer  ! read data to here
     logical, intent(in)    :: collect ! collective I/O
 
@@ -138,7 +145,7 @@ contains
 
   subroutine mpi_write_integer_1Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length    ! length of array
     integer, intent(in) :: buffer(:) ! data to write
     logical, intent(in) :: collect   ! collective I/O
@@ -159,7 +166,7 @@ contains
 
   subroutine mpi_read_integer_1Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length    ! length of array
     integer, intent(inout) :: buffer(:) ! read data to here
     logical, intent(in)    :: collect   ! collective I/O
@@ -180,7 +187,7 @@ contains
 
   subroutine mpi_write_integer_2Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(2)  ! length of array
     integer, intent(in) :: buffer(length(1),length(2)) ! data to write
     logical, intent(in) :: collect   ! collective I/O
@@ -201,7 +208,7 @@ contains
 
   subroutine mpi_read_integer_2Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(2)    ! length of array
     integer, intent(inout) :: buffer(length(1),length(2)) ! read data to here
     logical, intent(in)    :: collect   ! collective I/O
@@ -222,7 +229,7 @@ contains
 
   subroutine mpi_write_integer_3Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(3)  ! length of array
     integer, intent(in) :: buffer(length(1),length(2),&
                            length(3)) ! data to write
@@ -244,7 +251,7 @@ contains
 
   subroutine mpi_read_integer_3Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(3)    ! length of array
     integer, intent(inout) :: buffer(length(1),length(2), &
                               length(3)) ! read data to here
@@ -266,7 +273,7 @@ contains
 
   subroutine mpi_write_integer_4Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(4)  ! length of array
     integer, intent(in) :: buffer(length(1),length(2),&
                            length(3),length(4)) ! data to write
@@ -288,7 +295,7 @@ contains
 
   subroutine mpi_read_integer_4Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(4)    ! length of array
     integer, intent(inout) :: buffer(length(1),length(2), &
                               length(3),length(4)) ! read data to here
@@ -310,16 +317,16 @@ contains
 
   subroutine mpi_write_double(fh, buffer, collect)
 
-    integer, intent(in) :: fh      ! file handle
+    FH_TYPE, intent(in) :: fh      ! file handle
     real(8), intent(in) :: buffer  ! data to write
     logical, intent(in) :: collect ! collective I/O
 
     if (collect) then
       call MPI_FILE_WRITE_ALL(fh, buffer, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpiio_err) 
+           MPI_STATUS_IGNORE, mpiio_err)
     else
       call MPI_FILE_WRITE(fh, buffer, 1, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpiio_err) 
+           MPI_STATUS_IGNORE, mpiio_err)
     end if
 
   end subroutine mpi_write_double
@@ -330,7 +337,7 @@ contains
 
   subroutine mpi_read_double(fh, buffer, collect)
 
-    integer, intent(in)    :: fh      ! file handle
+    FH_TYPE, intent(in)    :: fh      ! file handle
     real(8), intent(inout) :: buffer  ! read data to here
     logical, intent(in)    :: collect ! collective I/O
 
@@ -350,7 +357,7 @@ contains
 
   subroutine mpi_write_double_1Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length    ! length of array
     real(8), intent(in) :: buffer(:) ! data to write
     logical, intent(in) :: collect   ! collective I/O
@@ -371,7 +378,7 @@ contains
 
   subroutine mpi_read_double_1Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length    ! length of array
     real(8), intent(inout) :: buffer(:) ! read data to here
     logical, intent(in)    :: collect   ! collective I/O
@@ -392,7 +399,7 @@ contains
 
   subroutine mpi_write_double_2Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(2)  ! length of array
     real(8), intent(in) :: buffer(length(1),length(2)) ! data to write
     logical, intent(in) :: collect   ! collective I/O
@@ -413,7 +420,7 @@ contains
 
   subroutine mpi_read_double_2Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(2)    ! length of array
     real(8), intent(inout) :: buffer(length(1),length(2)) ! read data to here
     logical, intent(in)    :: collect   ! collective I/O
@@ -434,7 +441,7 @@ contains
 
   subroutine mpi_write_double_3Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(3)  ! length of array
     real(8), intent(in) :: buffer(length(1),length(2),&
                            length(3)) ! data to write
@@ -456,7 +463,7 @@ contains
 
   subroutine mpi_read_double_3Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(3)    ! length of array
     real(8), intent(inout) :: buffer(length(1),length(2), &
                               length(3)) ! read data to here
@@ -478,7 +485,7 @@ contains
 
   subroutine mpi_write_double_4Darray(fh, buffer, length, collect)
 
-    integer, intent(in) :: fh        ! file handle
+    FH_TYPE, intent(in) :: fh        ! file handle
     integer, intent(in) :: length(4)  ! length of array
     real(8), intent(in) :: buffer(length(1),length(2),&
                            length(3),length(4)) ! data to write
@@ -500,7 +507,7 @@ contains
 
   subroutine mpi_read_double_4Darray(fh, buffer, length, collect)
 
-    integer, intent(in)    :: fh        ! file handle
+    FH_TYPE, intent(in)    :: fh        ! file handle
     integer, intent(in)    :: length(4)    ! length of array
     real(8), intent(inout) :: buffer(length(1),length(2), &
                               length(3),length(4)) ! read data to here
@@ -522,7 +529,7 @@ contains
 
   subroutine mpi_write_long(fh, buffer, collect)
 
-    integer,    intent(in) :: fh      ! file handle
+    FH_TYPE,    intent(in) :: fh      ! file handle
     integer(8), intent(in) :: buffer  ! data to write
     logical,    intent(in) :: collect ! collective I/O
 
@@ -542,7 +549,7 @@ contains
 
   subroutine mpi_read_long(fh, buffer, collect)
 
-    integer,    intent(in)    :: fh      ! file handle
+    FH_TYPE,    intent(in)    :: fh      ! file handle
     integer(8), intent(inout) :: buffer  ! read data to here
     logical,    intent(in)    :: collect ! collective I/O
 
@@ -563,7 +570,7 @@ contains
   subroutine mpi_write_string(fh, buffer, length, collect)
 
     character(*), intent(in) :: buffer  ! data to write
-    integer,      intent(in) :: fh      ! file handle
+    FH_TYPE,      intent(in) :: fh      ! file handle
     integer,      intent(in) :: length  ! length of data
     logical,      intent(in) :: collect ! collective I/O
 
@@ -584,7 +591,7 @@ contains
   subroutine mpi_read_string(fh, buffer, length, collect)
 
     character(*), intent(inout) :: buffer  ! read data to here
-    integer,      intent(in)    :: fh      ! file handle
+    FH_TYPE,      intent(in)    :: fh      ! file handle
     integer,      intent(in)    :: length  ! length of string
     logical,      intent(in)    :: collect ! collective I/O
 
@@ -598,5 +605,6 @@ contains
 
   end subroutine mpi_read_string
 
+#endif
 #endif
 end module mpiio_interface

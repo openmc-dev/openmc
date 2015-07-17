@@ -1,7 +1,7 @@
 module trigger
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use constants

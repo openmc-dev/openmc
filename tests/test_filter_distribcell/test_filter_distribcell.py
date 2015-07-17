@@ -18,10 +18,11 @@ class DistribcellTestHarness(TestHarness):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         base_dir = os.getcwd()
         try:
-            dirs = ('case-1', '../case-2', '../case-3')
-            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*')
-            tallies_out_present = (True, True, False)
-            hash_out = (False, False, True)
+            dirs = ('case-1', '../case-2', '../case-3', '../case-4')
+            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*',
+                   'statepoint.1.*')
+            tallies_out_present = (True, True, False, True)
+            hash_out = (False, False, True, False)
             for i in range(len(dirs)):
                 os.chdir(dirs[i])
                 self._sp_name = sps[i]
@@ -41,10 +42,11 @@ class DistribcellTestHarness(TestHarness):
         """Update the results_true using the current version of OpenMC."""
         base_dir = os.getcwd()
         try:
-            dirs = ('case-1', '../case-2', '../case-3')
-            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*')
-            tallies_out_present = (True, True, False)
-            hash_out = (False, False, True)
+            dirs = ('case-1', '../case-2', '../case-3', '../case-4')
+            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*',
+                   'statepoint.1.*')
+            tallies_out_present = (True, True, False, True)
+            hash_out = (False, False, True, False)
             for i in range(len(dirs)):
                 os.chdir(dirs[i])
                 self._sp_name = sps[i]

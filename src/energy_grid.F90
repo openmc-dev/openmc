@@ -94,6 +94,11 @@ contains
       j = 1
       do k = 0, M - 1
         do while (log(nuc%energy(j + 1)/E_min) <= umesh(k))
+          ! Ensure that for isotopes where maxval(nuc % energy) << E_max
+          ! that there are no out-of-bounds issues.
+          if(j + 1 == nuc % n_grid) then
+            exit
+          end if
           j = j + 1
         end do
         nuc % grid_index(k) = j

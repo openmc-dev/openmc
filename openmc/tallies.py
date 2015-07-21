@@ -269,10 +269,16 @@ class Tally(object):
 
     @property
     def mean(self):
+        # Compute the mean if needed
+        if self._mean is None:
+            self.compute_mean()
         return self._mean
 
     @property
     def std_dev(self):
+        # Compute the standard deviation if needed
+        if self._std_dev is None:
+            self.compute_std_dev()
         return self._std_dev
 
     @estimator.setter
@@ -439,8 +445,14 @@ class Tally(object):
 
         self._nuclides.remove(nuclide)
 
+    def compute_mean(self):
+        """Compute the sample mean for each bin in the tally"""
+
+        # Calculate sample mean
+        self._mean = self.sum / self.num_realizations
+
     def compute_std_dev(self, t_value=1.0):
-        """Compute the sample mean and standard deviation for each bin in the tally
+        """Compute the sample standard deviation for each bin in the tally
 
         Parameters
         ----------
@@ -450,8 +462,8 @@ class Tally(object):
 
         """
 
-        # Calculate sample mean and standard deviation
-        self._mean = self.sum / self.num_realizations
+        # Calculate sample standard deviation
+        self.compute_mean()
         self._std_dev = np.sqrt((self.sum_sq / self.num_realizations -
                                  self.mean**2) / (self.num_realizations - 1))
         self._std_dev *= t_value

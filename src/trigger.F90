@@ -43,7 +43,7 @@ contains
     ! When trigger threshold is reached, write information
     if (satisfy_triggers) then
       call write_message("Triggers satisfied for batch " // &
-          trim(to_str(current_batch)))
+           trim(to_str(current_batch)))
 
     ! When trigger is not reached write convergence info for user
     elseif (name == "eigenvalue") then
@@ -83,7 +83,7 @@ contains
 ! and finds the maximum  uncertainty/threshold ratio for all triggers
 !===============================================================================
 
- subroutine check_tally_triggers(max_ratio, tally_id, name)
+  subroutine check_tally_triggers(max_ratio, tally_id, name)
 
     ! Variables to reflect distance to trigger convergence criteria
     real(8), intent(inout) :: max_ratio       ! max uncertainty/thresh ratio
@@ -299,7 +299,7 @@ contains
 ! precision trigger(s).
 !===============================================================================
 
- subroutine compute_tally_current(t, trigger)
+  subroutine compute_tally_current(t, trigger)
 
     integer :: i                    ! mesh index for x
     integer :: j                    ! mesh index for y

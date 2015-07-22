@@ -11,19 +11,19 @@ module matrix_header
     integer, allocatable :: row(:) ! csr row vector
     integer, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
-   contains
-     procedure :: create             => matrix_create
-     procedure :: destroy            => matrix_destroy
-     procedure :: add_value          => matrix_add_value
-     procedure :: new_row            => matrix_new_row
-     procedure :: assemble           => matrix_assemble
-     procedure :: get_row            => matrix_get_row
-     procedure :: get_col            => matrix_get_col
-     procedure :: vector_multiply    => matrix_vector_multiply
-     procedure :: search_indices     => matrix_search_indices
-     procedure :: write              => matrix_write
-     procedure :: copy               => matrix_copy
-     procedure :: transpose          => matrix_transpose
+  contains
+    procedure :: create             => matrix_create
+    procedure :: destroy            => matrix_destroy
+    procedure :: add_value          => matrix_add_value
+    procedure :: new_row            => matrix_new_row
+    procedure :: assemble           => matrix_assemble
+    procedure :: get_row            => matrix_get_row
+    procedure :: get_col            => matrix_get_col
+    procedure :: vector_multiply    => matrix_vector_multiply
+    procedure :: search_indices     => matrix_search_indices
+    procedure :: write              => matrix_write
+    procedure :: copy               => matrix_copy
+    procedure :: transpose          => matrix_transpose
   end type matrix
 
 contains

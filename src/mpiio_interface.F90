@@ -129,13 +129,13 @@ contains
     integer, intent(inout) :: buffer  ! read data to here
     logical, intent(in)    :: collect ! collective I/O
 
-   if (collect) then
-     call MPI_FILE_READ_ALL(fh, buffer, 1, MPI_INTEGER, &
-          MPI_STATUS_IGNORE, mpiio_err)
-   else
-     call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER, &
-          MPI_STATUS_IGNORE, mpiio_err)
-   end if
+    if (collect) then
+      call MPI_FILE_READ_ALL(fh, buffer, 1, MPI_INTEGER, &
+           MPI_STATUS_IGNORE, mpiio_err)
+    else
+      call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER, &
+           MPI_STATUS_IGNORE, mpiio_err)
+    end if
 
   end subroutine mpi_read_integer
 
@@ -341,13 +341,13 @@ contains
     real(8), intent(inout) :: buffer  ! read data to here
     logical, intent(in)    :: collect ! collective I/O
 
-   if (collect) then
-     call MPI_FILE_READ_ALL(fh, buffer, 1, MPI_REAL8, &
-          MPI_STATUS_IGNORE, mpiio_err)
-   else
-     call MPI_FILE_READ(fh, buffer, 1, MPI_REAL8, &
-          MPI_STATUS_IGNORE, mpiio_err)
-   end if
+    if (collect) then
+      call MPI_FILE_READ_ALL(fh, buffer, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpiio_err)
+    else
+      call MPI_FILE_READ(fh, buffer, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpiio_err)
+    end if
 
   end subroutine mpi_read_double
 

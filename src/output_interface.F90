@@ -31,7 +31,7 @@ module output_interface
 #endif
 #endif
     logical :: serial ! Serial I/O when using MPI/PHDF5
-   contains
+  contains
     generic, public :: write_data =>  write_double, &
                                       write_double_1Darray, &
                                       write_double_2Darray, &
@@ -111,7 +111,7 @@ contains
       self % serial = serial
     else
       self % serial = .true.
-     end if
+    end if
 
 #ifdef HDF5
 # ifdef MPI
@@ -153,7 +153,7 @@ contains
       self % serial = serial
     else
       self % serial = .true.
-     end if
+    end if
 
 #ifdef HDF5
 # ifdef MPI
@@ -201,18 +201,18 @@ contains
 
 #ifdef HDF5
 # ifdef MPI
-     call hdf5_file_close(self % hdf5_fh)
+    call hdf5_file_close(self % hdf5_fh)
 # else
-     call hdf5_file_close(self % hdf5_fh)
+    call hdf5_file_close(self % hdf5_fh)
 # endif
 #elif MPI
-     if (self % serial) then
-       close(UNIT=self % unit_fh)
-     else
-       call mpi_close_file(self % mpi_fh)
-     end if
+    if (self % serial) then
+      close(UNIT=self % unit_fh)
+    else
+      call mpi_close_file(self % mpi_fh)
+    end if
 #else
-     close(UNIT=self % unit_fh)
+    close(UNIT=self % unit_fh)
 #endif
 
   end subroutine file_close
@@ -475,7 +475,7 @@ contains
       call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
-         length, collect_)
+           length, collect_)
     end if
 # else
     call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
@@ -663,8 +663,8 @@ contains
     if (self % serial) then
       call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
-         collect_)
+      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, &
+           length, collect_)
     end if
 # else
     call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)

@@ -250,7 +250,7 @@ contains
       do j = ijk_ll(inner), ijk_ur(inner)
         ! check if we're in the mesh for this ijk
         if (i > 0 .and. i <= m % dimension(outer) .and. &
-            j > 0 .and. j <= m % dimension(inner)) then
+             j > 0 .and. j <= m % dimension(inner)) then
 
           ! get xyz's of lower left and upper right of this mesh cell
           xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)

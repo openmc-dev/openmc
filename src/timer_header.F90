@@ -15,11 +15,11 @@ module timer_header
     logical :: running      = .false. ! is timer running?
     integer :: start_counts = 0       ! counts when started
     real(8), public :: elapsed = ZERO ! total time elapsed in seconds
-   contains
-     procedure :: start     => timer_start
-     procedure :: get_value => timer_get_value
-     procedure :: stop      => timer_stop
-     procedure :: reset     => timer_reset
+  contains
+    procedure :: start     => timer_start
+    procedure :: get_value => timer_get_value
+    procedure :: stop      => timer_stop
+    procedure :: reset     => timer_reset
   end type Timer
 
 contains
@@ -83,7 +83,7 @@ contains
 !===============================================================================
 
   subroutine timer_reset(self)
-    
+
     class(Timer), intent(inout) :: self
 
     self % running      = .false.

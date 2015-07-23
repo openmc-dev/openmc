@@ -201,6 +201,16 @@ had a collision at every event. Thus, for tallies with outgoing-energy filters
 
 .. TODO: Add description of surface current tallies
 
+NDPP Tallies
+------------
+
+The scattering moments and fission energy spectra score types can alternatively
+be tallied using pre-integrated outgoing energy/angle distributions. Doing so
+requires the use of a separate code, NDPP_, to perform this a priori integration.
+The NDPP code itself is open source using the same MIT license as OpenMC.
+NDPP can be found at the `NDPP Github Page`_ with more information at the NDPP_
+documentation site.
+
 ----------
 Statistics
 ----------
@@ -430,7 +440,7 @@ analytically. For one degree of freedom, the t-distribution becomes a standard
 .. math::
     :label: cauchy-cdf
 
-    c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}. 
+    c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}.
 
 Thus, inverting the cumulative distribution function, we find the :math:`x`
 percentile of the standard Cauchy distribution to be
@@ -510,3 +520,7 @@ improve the estimate of the percentile.
 .. _unpublished rational approximation: http://home.online.no/~pjacklam/notes/invnorm/
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+
+.. _NDPP:  http://ndpp.github.io/
+
+.. _NDPP Github Page:  https://github.com/ndpp/ndpp

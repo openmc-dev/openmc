@@ -43,4 +43,7 @@ element tallies {
   }* &
 
   element assume_separate { xsd:boolean }?
+  
+  element ndpp_library { xsd:string { maxLength="255" } }?
+  
 }

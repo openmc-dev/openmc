@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+
+<ndpp>
+  <scatt_type>legendre</scatt_type>
+  <scatt_order>5</scatt_order>
+  <cross_sections>./cross_sections.xml</cross_sections>
+  <energy_bins>0.000E0 6.250E-7 2.000E1</energy_bins>
+  <nuscatter>true</nuscatter>
+  <integrate_chi>true</integrate_chi>
+  <output_format>ascii</output_format>
+  <freegas_cutoff>400.0</freegas_cutoff>
+  <mu_bins>51</mu_bins>
+  <print_tol>1.0E-8</print_tol>
+  <thinning_tol>1E-4</thinning_tol>
+  <threads>3</threads>
+</ndpp>

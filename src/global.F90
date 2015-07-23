@@ -9,6 +9,7 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
+  use ndpp_header,      only: Ndpp
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
@@ -156,6 +157,26 @@ module global
   logical :: confidence_intervals = .false.
 
   ! ============================================================================
+  ! NDPP PREPROCESSED TALLY VARIABLES
+
+  ! Flag to indicate need to store pre-processed data library
+  logical        :: use_ndpp_data = .false.
+
+  ! File which stores ndpp library data.
+  character(MAX_FILE_LEN) :: ndpp_lib
+
+  ! Storage for the combined elastic & inelastic data to be tallied for the
+  ! case of NDPP scattering.
+  ! Dimensions are: (Thread Id, Scattering Order, Incoming Energy)
+  real(8), allocatable :: ndpp_outgoing(:,:,:)
+
+  ! The Ndpp data which contains the data to tally, for nuclides and sab data
+  ! The index of each matches the index of nuclides and sabs in nuclides(:)
+  ! and sab_tables(:)
+  type(Ndpp), allocatable, target :: ndpp_nuc_data(:)
+  type(Ndpp), allocatable, target :: ndpp_sab_data(:)
+
+  ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
@@ -239,6 +260,9 @@ module global
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
+#else
+  integer :: n_threads = 1         ! number of OpenMP threads
+  integer :: thread_id = 0         ! ID of a given thread
 #endif
 
   ! No reduction at end of batch
@@ -483,6 +507,19 @@ contains
     end if
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
+    if (allocated(ndpp_outgoing)) deallocate(ndpp_outgoing)
+    if (allocated(ndpp_nuc_data)) then
+      do i = 1, size(ndpp_nuc_data)
+        call ndpp_nuc_data(i) % clear()
+      end do
+      deallocate(ndpp_nuc_data)
+    end if
+    if (allocated(ndpp_sab_data)) then
+      do i = 1, size(ndpp_sab_data)
+        call ndpp_sab_data(i) % clear()
+      end do
+      deallocate(ndpp_sab_data)
+    end if
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

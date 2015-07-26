@@ -22,7 +22,7 @@ class LineOfCode(object):
         self.content = content
         self.is_continuation = is_continuation
         self.is_continued = False
-        assert (string_terminator == None or
+        assert (string_terminator is None or
                 string_terminator == "'" or
                 string_terminator == '"')
         self.initial_string_terminator = string_terminator
@@ -114,11 +114,9 @@ class LineOfCode(object):
         if (not has_real_content) and in_a_comment:
             self.is_comment_only = True
 
-
     def get_indent(self):
         """Return the number of indentation spaces prefixing this line."""
         return len(self.content) - len(self.content.lstrip(' '))
-
 
     def contains_whitespace_only(self):
         """Return True/False if all characters in the line are whitespace."""
@@ -126,7 +124,6 @@ class LineOfCode(object):
         is_ws = [ any([char == ws for ws in whitespace])
                   for char in self.content.strip('\n') ]
         return all(is_ws)
-
 
     def has_trailing_whitespace(self):
         """Return True/False if this line ends with a whitespace character."""
@@ -181,15 +178,15 @@ def check_source(fname):
         # Check for extra whitespace errors.
         if loc.contains_whitespace_only():
             good_code = False
-            print_error(fname, loc.number, "Line contains whitespace " \
+            print_error(fname, loc.number, "Line contains whitespace "
                  "characters but no content.  Please remove whitespace.")
         elif loc.has_trailing_whitespace():
             good_code = False
-            print_error(fname, loc.number, "Line has trailing whitespace after"\
+            print_error(fname, loc.number, "Line has trailing whitespace after"
                  " the content.  Please remove trailing whitespace.")
         if loc.contains_tab():
             good_code = False
-            print_error(fname, loc.number, "Line contains a tab character.  " \
+            print_error(fname, loc.number, "Line contains a tab character.  "
                  "Please replace with single whitespace characters.")
 
         # Check indentation.
@@ -197,13 +194,13 @@ def check_source(fname):
         if ((not loc.is_continuation) and (not loc.is_comment_only) and
               (not loc.contains_whitespace_only()) and current_indent % 2 != 0):
             good_code = False
-            print_error(fname, loc.number, "Line is indented an odd number of "\
-                 "spaces.  All non-continuation lines should be indented an "\
+            print_error(fname, loc.number, "Line is indented an odd number of "
+                 "spaces.  All non-continuation lines should be indented an "
                  "even number of spaces.")
         if loc.is_continuation and current_indent < base_indent + 5:
             good_code = False
-            print_error(fname, loc.number, "Continuation lines must be "\
-                 "indented by at least 5 spaces, but this line is indented {0}"\
+            print_error(fname, loc.number, "Continuation lines must be "
+                 "indented by at least 5 spaces, but this line is indented {0}"
                  " spaces.".format(current_indent - base_indent))
 
         # Set base indentation for next lines.

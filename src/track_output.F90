@@ -46,7 +46,7 @@ contains
     end if
 
     ! Write current coordinates into the newest column.
-    coords(:, n_tracks) = p % coord0 % xyz
+    coords(:, n_tracks) = p % coord(1) % xyz
   end subroutine write_particle_track
 
 !===============================================================================
@@ -69,12 +69,12 @@ contains
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.binary'
 #endif
-!$omp critical
+!$omp critical (FinalizeParticleTrack)
     call binout % file_create(fname)
     length = [3, n_tracks]
     call binout % write_data(coords, 'coordinates', length=length)
     call binout % file_close()
-!$omp end critical
+!$omp end critical (FinalizeParticleTrack)
     deallocate(coords)
   end subroutine finalize_particle_track
 

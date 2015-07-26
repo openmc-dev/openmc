@@ -441,24 +441,22 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-      The type of spatial distribution. Valid options are "box" and "point". A
-      "box" spatial distribution has coordinates sampled uniformly in a
-      parallelepiped. A "point" spatial distribution has coordinates specified
-      by a triplet.
+
+      The type of spatial distribution. Valid options are "box", "fission", and
+      "point". A "box" spatial distribution has coordinates sampled uniformly in
+      a parallelepiped. A "fission" spatial distribution samples locations from
+      a "box" distribution but only locations in fissionable materials are
+      accepted. A "point" spatial distribution has coordinates specified by a
+      triplet.
 
       *Default*: None
 
     :parameters:
-      For a "box" spatial distribution, ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
-
-      To filter a "box" spatial distribution by fissionable material, specify
-      "fission" tag instead of "box". The ``parameters`` should be given as six
-      real numbers, the first three of which specify the lower-left corner of a
-      parallelepiped and the last three of which specify the upper-right
-      corner. Source sites are sampled uniformly through that parallelepiped.
+      For a "box" or "fission" spatial distribution, ``parameters`` should be
+      given as six real numbers, the first three of which specify the lower-left
+      corner of a parallelepiped and the last three of which specify the
+      upper-right corner. Source sites are sampled uniformly through that
+      parallelepiped.
 
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
@@ -481,7 +479,7 @@ attributes/sub-elements:
 
     :parameters:
       For an "isotropic" angular distribution, ``parameters`` should not be
-      specified
+      specified.
 
       For a "monodirectional" angular distribution, ``parameters`` should be
       given as three real numbers which specify the angular cosines with respect
@@ -499,7 +497,7 @@ attributes/sub-elements:
       "watt", and "maxwell". The "monoenergetic" option produces source sites at
       a single energy. The "watt" option produces source sites whose energy is
       sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum
+      sites whose energy is sampled from a Maxwell fission spectrum.
 
       *Default*: watt
 
@@ -605,8 +603,6 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
-.. _trace:
-
 ``<threads>`` Element
 ---------------------
 
@@ -614,6 +610,8 @@ The ``<threads>`` element indicates the number of OpenMP threads to be used for
 a simulation. It has no attributes and accepts a positive integer value.
 
   *Default*: None (Determined by environment variable :envvar:`OMP_NUM_THREADS`)
+
+.. _trace:
 
 ``<trace>`` Element
 -------------------
@@ -631,9 +629,9 @@ integers: the batch number, generation number, and particle number.
 
 The ``<track>`` element specifies particles for which OpenMC will output binary
 files describing particle position at every step of its transport. This element
-should be followed by triplets of integers.  Each triplet describes one particle
-. The integers in each triplet specify the batch number, generation number, and
-particle number, respectively.
+should be followed by triplets of integers.  Each triplet describes one
+particle. The integers in each triplet specify the batch number, generation
+number, and particle number, respectively.
 
   *Default*: None
 
@@ -1224,8 +1222,8 @@ The ``<tally>`` element accepts the following sub-elements:
     The ``filter`` element has the following attributes/sub-elements:
 
       :type:
-        The type of the filter. Accepted options are "cell", "cellborn", 
-        "material", "universe", "energy", "energyout", "mesh", and 
+        The type of the filter. Accepted options are "cell", "cellborn",
+        "material", "universe", "energy", "energyout", "mesh", and
         "distribcell".
 
       :bins:
@@ -1307,24 +1305,25 @@ The ``<tally>`` element accepts the following sub-elements:
     physical quantities:
 
     :flux:
-      Total flux
+      Total flux in particle-cm per source particle.
 
     :total:
-      Total reaction rate
+      Total reaction rate in reactions per source particle.
 
     :scatter:
       Total scattering rate. Can also be identified with the ``scatter-0``
-      response type.
+      response type. Units are reactions per source particle.
 
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons.
+      produce secondary neutrons. Units are reactions per source particle.
 
     :fission:
-      Total fission rate
+      Total fission rate in reactions per source particle.
 
     :nu-fission:
-      Total production of neutrons due to fission
+      Total production of neutrons due to fission. Units are neutrons produced
+      per source neutron.
 
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable
@@ -1333,51 +1332,55 @@ The ``<tally>`` element accepts the following sub-elements:
       total energies, and the total energy released by the delayed :math:`\beta`
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally.
+      locally. Units are MeV per source particle.
 
     :scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order of the change in particle angle :math:`\left(\mu\right)`.
-      N must be between 0 and 10. As an example, tallying the
-      2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-2 </scores>``.
+      N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \
+      scattering moment would be specified as ``<scores> scatter-2
+      </scores>``. Units are reactions per source particle.
 
     :scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
       Legendre expansion order of the change in particle angle
       :math:`\left(\mu\right)`. That is, ``scatter-P1`` is equivalent to
       requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
-      ``scatter-N``, N must be between 0 and 10. As an example, tallying up
-      to the 2\ :sup:`nd` \ scattering moment would be specified as
-      ``<scores> scatter-P2 </scores>``.
+      ``scatter-N``, N must be between 0 and 10. As an example, tallying up to
+      the 2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
+      scatter-P2 </scores>``. Units are reactions per source particle.
 
     :scatter-YN:
-      ``scatter-YN`` is similar to ``scatter-PN`` except an additional
-      expansion is performed for the incoming particle direction
+      ``scatter-YN`` is similar to ``scatter-PN`` except an additional expansion
+      is performed for the incoming particle direction
       :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
       useful for performing angular flux moment weighting of the scattering
-      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the
-      moments from order 0 to N; N again must be between 0 and 10.
+      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments
+      from order 0 to N; N again must be between 0 and 10. Units are reactions
+      per source particle.
 
     :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
       These scores are similar in functionality to their ``scatter*``
-      equivalents except the total production of neutrons due to
-      scattering is scored vice simply the scattering rate. This accounts for
-      multiplicity from (n,2n), (n,3n), and (n,4n) reactions.
+      equivalents except the total production of neutrons due to scattering is
+      scored vice simply the scattering rate. This accounts for multiplicity
+      from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
+      source particle.
 
     :flux-YN:
       Spherical harmonic expansion of the direction of motion
-      :math:`\left(\Omega\right)` of the total flux.  This score will tally
-      all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
+      :math:`\left(\Omega\right)` of the total flux.  This score will tally all
+      of the harmonic moments of order 0 to N.  N must be between 0
+      and 10. Units are particle-cm per source particle.
 
     :total-YN:
       The total reaction rate expanded via spherical harmonics about the
       direction of motion of the neutron, :math:`\Omega`.
       This score will tally all of the harmonic moments of order 0 to N.  N must
-      be between 0 and 10.
+      be between 0 and 10. Units are reactions per source particle.
 
     :current:
-      Partial currents on the boundaries of each cell in a mesh.
+      Partial currents on the boundaries of each cell in a mesh. Units are
+      particles per source particle.
 
       .. note::
           This score can only be used if a mesh filter has been
@@ -1385,7 +1388,7 @@ The ``<tally>`` element accepts the following sub-elements:
           other score.
 
     :events:
-      Number of scoring events
+      Number of scoring events. Units are events per source particle.
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.
@@ -1675,6 +1678,15 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
   *Default*: 1
 
+``<dhat_reset>`` Element
+------------------------
+
+The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
+CMFD parameters should be reset to zero before solving CMFD eigenproblem.
+It can be turned on with "true" and off with "false".
+
+  *Default*: false
+
 ``<display>`` Element
 ---------------------
 
@@ -1690,15 +1702,6 @@ The ``<display>`` element sets one additional CMFD output column. Options are:
   fission source.
 
   *Default*: balance
-
-``<dhat_reset>`` Element
-------------------------
-
-The ``<dhat_reset>`` element controls whether :math:`\widehat{D}` nonlinear
-CMFD parameters should be reset to zero before solving CMFD eigenproblem.
-It can be turned on with "true" and off with "false".
-
-  *Default*: false
 
 ``<downscatter>`` Element
 -------------------------
@@ -1743,11 +1746,11 @@ The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
 
   :lower_left:
-    The lower-left corner of the structured mesh. If only two coordinate are
+    The lower-left corner of the structured mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :upper_right:
-    The upper-right corner of the structrued mesh. If only two coordinate are
+    The upper-right corner of the structrued mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh.
 
   :dimension:
@@ -1770,7 +1773,7 @@ attributes/sub-elements:
 
   :map:
     An optional acceleration map can be specified to overlay on the coarse
-    mesh spatial grid. If this option is used a ``1`` is used for a
+    mesh spatial grid. If this option is used, a ``1`` is used for a
     non-accelerated region and a ``2`` is used for an accelerated region.
     For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
     reflector, the map is:

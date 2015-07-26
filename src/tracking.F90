@@ -1,5 +1,6 @@
 module tracking
 
+  use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
@@ -28,6 +29,8 @@ contains
 
     type(Particle), intent(inout) :: p
 
+    integer :: j                      ! coordinate level
+    integer :: next_level             ! next coordinate level to check
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
     integer :: last_cell              ! most recent cell particle was in
@@ -36,7 +39,6 @@ contains
     real(8) :: d_collision            ! sampled distance to collision
     real(8) :: distance               ! distance particle travels
     logical :: found_cell             ! found cell which particle is in?
-    type(LocalCoord), pointer :: coord
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
@@ -45,7 +47,7 @@ contains
 
     ! If the cell hasn't been determined based on the particle's location,
     ! initiate a search for the current cell
-    if (p % coord % cell == NONE) then
+    if (p % coord(p % n_coord) % cell == NONE) then
       call find_cell(p, found_cell)
 
       ! Particle couldn't be located
@@ -54,7 +56,7 @@ contains
       end if
 
       ! set birth cell attribute
-      p % cell_born = p % coord % cell
+      p % cell_born = p % coord(p % n_coord) % cell
     end if
 
     ! Initialize number of events to zero
@@ -87,7 +89,7 @@ contains
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, &
-           &lattice_translation)
+           lattice_translation, next_level)
 
       ! Sample a distance to collision
       if (material_xs % total == ZERO) then
@@ -100,10 +102,8 @@ contains
       distance = min(d_boundary, d_collision)
 
       ! Advance particle
-      coord => p % coord0
-      do while (associated(coord))
-        coord % xyz = coord % xyz + distance * coord % uvw
-        coord => coord % next
+      do j = 1, p % n_coord
+        p % coord(j) % xyz = p % coord(j) % xyz + distance * p % coord(j) % uvw
       end do
 
       ! Score track-length tallies
@@ -111,17 +111,18 @@ contains
            call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
-!$omp atomic
-      global_tallies(K_TRACKLENGTH) % value = &
-           global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
-           material_xs % nu_fission
+      if (run_mode == MODE_EIGENVALUE) then
+        global_tally_tracklength = global_tally_tracklength + p % wgt * &
+             distance * material_xs % nu_fission
+      end if
 
       if (d_collision > d_boundary) then
         ! ====================================================================
         ! PARTICLE CROSSES SURFACE
 
-        last_cell = p % coord % cell
-        p % coord % cell = NONE
+        if (next_level > 0) p % n_coord = next_level
+        last_cell = p % coord(p % n_coord) % cell
+        p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
           p % surface = NONE
@@ -138,10 +139,10 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-!$omp atomic
-        global_tallies(K_COLLISION) % value = &
-             global_tallies(K_COLLISION) % value + p % wgt * &
-             material_xs % nu_fission / material_xs % total
+        if (run_mode == MODE_EIGENVALUE) then
+          global_tally_collision = global_tally_collision + p % wgt * &
+               material_xs % nu_fission / material_xs % total
+        end if
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the
@@ -168,7 +169,7 @@ contains
         p % fission = .false.
 
         ! Save coordinates for tallying purposes
-        p % last_xyz = p % coord0 % xyz
+        p % last_xyz = p % coord(1) % xyz
 
         ! Set last material to none since cross sections will need to be
         ! re-evaluated
@@ -176,19 +177,15 @@ contains
 
         ! Set all uvws to base level -- right now, after a collision, only the
         ! base level uvws are changed
-        coord => p % coord0
-        do while(associated(coord % next))
-          if (coord % next % rotated) then
+        do j = 1, p % n_coord - 1
+          if (p % coord(j + 1) % rotated) then
             ! If next level is rotated, apply rotation matrix
-            coord % next % uvw = matmul(cells(coord % cell) % &
-                 rotation_matrix, coord % uvw)
+            p % coord(j + 1) % uvw = matmul(cells(p % coord(j) % cell) % &
+                 rotation_matrix, p % coord(j) % uvw)
           else
             ! Otherwise, copy this level's direction
-            coord % next % uvw = coord % uvw
+            p % coord(j + 1) % uvw = p % coord(j) % uvw
           end if
-
-          ! Advance coordinate level
-          coord => coord % next
         end do
       end if
 

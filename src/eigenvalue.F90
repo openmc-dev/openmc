@@ -1,7 +1,7 @@
 module eigenvalue
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use cmfd_execute, only: cmfd_init_batch, execute_cmfd
@@ -96,7 +96,7 @@ contains
       end do GENERATION_LOOP
 
       call finalize_batch()
-      
+
       if (satisfy_triggers) exit BATCH_LOOP
 
     end do BATCH_LOOP
@@ -171,6 +171,26 @@ contains
 
   subroutine finalize_generation()
 
+    ! Update global tallies with the omp private accumulation variables
+!$omp parallel
+!$omp critical
+    global_tallies(K_TRACKLENGTH) % value = &
+         global_tallies(K_TRACKLENGTH) % value + global_tally_tracklength
+    global_tallies(K_COLLISION) % value   = &
+         global_tallies(K_COLLISION) % value + global_tally_collision
+    global_tallies(LEAKAGE) % value   = &
+         global_tallies(LEAKAGE) % value + global_tally_leakage
+    global_tallies(K_ABSORPTION) % value   = &
+         global_tallies(K_ABSORPTION) % value + global_tally_absorption
+!$omp end critical
+
+    ! reset private tallies
+    global_tally_tracklength = 0
+    global_tally_collision   = 0
+    global_tally_leakage     = 0
+    global_tally_absorption  = 0
+!$omp end parallel
+
 #ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()
@@ -220,12 +240,12 @@ contains
 
     ! Calculate combined estimate of k-effective
     if (master) call calculate_combined_keff()
-    
+
     ! Check_triggers
     if (master) call check_triggers()
 #ifdef MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         MPI_COMM_WORLD, mpi_err)              
+         MPI_COMM_WORLD, mpi_err)
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then
@@ -273,7 +293,11 @@ contains
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
+#ifdef MPIF08
+    type(MPI_Request) :: request(20)
+#else
     integer    :: request(20)  ! communication request for send/recving sites
+#endif
     integer    :: n_request    ! number of communication requests
     integer(8) :: index_local  ! index in local source bank
     integer(8), save, allocatable :: &
@@ -544,7 +568,7 @@ contains
         ! If the user did not specify how many mesh cells are to be used in
         ! each direction, we automatically determine an appropriate number of
         ! cells
-        n = ceiling((n_particles/20)**(1.0/3.0))
+        n = ceiling((n_particles/20)**(ONE/THREE))
 
         ! copy dimensions
         m % n_dimension = 3

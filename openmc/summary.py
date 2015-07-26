@@ -2,16 +2,18 @@ import numpy as np
 
 import openmc
 
-try:
-    import h5py
-except ImportError:
-    msg = 'Unable to import h5py which is needed by openmc.summary'
-    raise ImportError(msg)
-
 
 class Summary(object):
+    """Information summarizing the geometry, materials, and tallies used in a
+    simulation.
+
+    """
 
     def __init__(self, filename):
+        # A user may not have h5py, but they can still use the rest of the
+        # Python API so we'll only try to import h5py if the user actually inits
+        # a Summary object.
+        import h5py
 
         openmc.reset_auto_ids()
 
@@ -27,9 +29,7 @@ class Summary(object):
         self._read_geometry()
         self._read_tallies()
 
-
     def _read_metadata(self):
-
         # Read OpenMC version
         self.version = [self._f['version_major'][0],
                          self._f['version_minor'][0],
@@ -44,9 +44,7 @@ class Summary(object):
         self.gen_per_batch = self._f['gen_per_batch'][0]
         self.n_procs = self._f['n_procs'][0]
 
-
     def _read_geometry(self):
-
         # Read in and initialize the Materials and Geometry
         self._read_nuclides()
         self._read_materials()
@@ -56,9 +54,7 @@ class Summary(object):
         self._read_lattices()
         self._finalize_geometry()
 
-
     def _read_nuclides(self):
-
         self.n_nuclides = self._f['nuclides/n_nuclides'][0]
 
         # Initialize dictionary for each Nuclide
@@ -67,7 +63,6 @@ class Summary(object):
         self.nuclides = {}
 
         for key in self._f['nuclides'].keys():
-
             if key == 'n_nuclides':
                 continue
 
@@ -88,9 +83,7 @@ class Summary(object):
                 self.nuclides[zaid] = openmc.Nuclide(name=name, xs=xs)
                 self.nuclides[zaid].zaid = zaid
 
-
     def _read_materials(self):
-
         self.n_materials = self._f['materials/n_materials'][0]
 
         # Initialize dictionary for each Material
@@ -99,7 +92,6 @@ class Summary(object):
         self.materials = {}
 
         for key in self._f['materials'].keys():
-
             if key == 'n_materials':
                 continue
 
@@ -116,7 +108,6 @@ class Summary(object):
 
             # Read the names of the S(a,b) tables for this Material
             for i in range(1, n_sab+1):
-
                 sab_table = self._f['materials'][key]['sab_tables'][str(i)][0]
 
                 # Read the cross-section identifiers for each S(a,b) table
@@ -148,9 +139,7 @@ class Summary(object):
             # Add the Material to the global dictionary of all Materials
             self.materials[index] = material
 
-
     def _read_surfaces(self):
-
         self.n_surfaces = self._f['geometry/n_surfaces'][0]
 
         # Initialize dictionary for each Surface
@@ -159,7 +148,6 @@ class Summary(object):
         self.surfaces = {}
 
         for key in self._f['geometry/surfaces'].keys():
-
             if key == 'n_surfaces':
                 continue
 
@@ -171,7 +159,6 @@ class Summary(object):
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
 
             # Create the Surface based on its type
-
             if surf_type == 'X Plane':
                 x0 = coeffs[0]
                 surface = openmc.XPlane(surface_id, bc, x0, name)
@@ -232,9 +219,7 @@ class Summary(object):
             # Add Surface to global dictionary of all Surfaces
             self.surfaces[index] = surface
 
-
     def _read_cells(self):
-
         self.n_cells = self._f['geometry/n_cells'][0]
 
         # Initialize dictionary for each Cell
@@ -251,7 +236,6 @@ class Summary(object):
         self._cell_fills = {}
 
         for key in self._f['geometry/cells'].keys():
-
             if key == 'n_cells':
                 continue
 
@@ -310,9 +294,7 @@ class Summary(object):
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
 
-
     def _read_universes(self):
-
         self.n_universes = self._f['geometry/n_universes'][0]
 
         # Initialize dictionary for each Universe
@@ -321,7 +303,6 @@ class Summary(object):
         self.universes = {}
 
         for key in self._f['geometry/universes'].keys():
-
             if key == 'n_universes':
                 continue
 
@@ -340,9 +321,7 @@ class Summary(object):
             # Add the Universe to the global list of Universes
             self.universes[index] = universe
 
-
     def _read_lattices(self):
-
         self.n_lattices = self._f['geometry/n_lattices'][0]
 
         # Initialize lattices for each Lattice
@@ -351,7 +330,6 @@ class Summary(object):
         self.lattices = {}
 
         for key in self._f['geometry/lattices'].keys():
-
             if key == 'n_lattices':
                 continue
 
@@ -383,7 +361,6 @@ class Summary(object):
                 lattice.lower_left = lower_left
                 lattice.pitch = pitch
 
-
                 # If the Universe specified outer the Lattice is not void (-22)
                 if outer != -22:
                     lattice.outer = self.universes[outer]
@@ -395,14 +372,14 @@ class Summary(object):
                 for x in range(universe_ids.shape[0]):
                     for y in range(universe_ids.shape[1]):
                         for z in range(universe_ids.shape[2]):
-                            universes[x,y,z] = \
-                                 self.get_universe_by_id(universe_ids[x,y,z])
+                            universes[x, y, z] = \
+                                 self.get_universe_by_id(universe_ids[x, y, z])
 
                 # Transpose, reverse y-dimension for appropriate ordering
                 shape = universes.shape
-                universes = np.transpose(universes, (1,0,2))
+                universes = np.transpose(universes, (1, 0, 2))
                 universes.shape = shape
-                universes = universes[:,::-1,:]
+                universes = universes[:, ::-1, :]
                 lattice.universes = universes
 
                 if offset_size > 0:
@@ -420,8 +397,8 @@ class Summary(object):
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'][0]
 
-                universe_ids = \
-                     self._f['geometry/lattices'][key]['universes'][...]
+                universe_ids = self._f[
+                    'geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
                 lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
@@ -441,9 +418,9 @@ class Summary(object):
                 for i in range(universe_ids.shape[0]):
                     for j in range(universe_ids.shape[1]):
                         for k in range(universe_ids.shape[2]):
-                            if universe_ids[i,j,k] != -1:
-                              universes[i,j,k] = \
-                                   self.get_universe_by_id(universe_ids[i,j,k])
+                            if universe_ids[i, j, k] != -1:
+                                universes[i, j, k] = self.get_universe_by_id(
+                                    universe_ids[i, j, k])
 
                 if offset_size > 0:
                     lattice.offsets = offsets
@@ -451,15 +428,12 @@ class Summary(object):
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
 
-
     def _finalize_geometry(self):
-
         # Initialize Geometry object
         self.openmc_geometry = openmc.Geometry()
 
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_key in self._cell_fills.keys():
-
             # Determine fill type ('normal', 'universe', or 'lattice') and ID
             fill_type = self._cell_fills[cell_key][0]
             fill_id = self._cell_fills[cell_key][1]
@@ -482,16 +456,14 @@ class Summary(object):
         root_universe = self.get_universe_by_id(0)
         self.openmc_geometry.root_universe = root_universe
 
-
     def _read_tallies(self):
-
         # Initialize dictionaries for the Tallies
         # Keys     - Tally IDs
         # Values   - Tally objects
         self.tallies = {}
 
         # Read the number of tallies
-        if not 'tallies' in self._f.keys():
+        if 'tallies' not in self._f:
             self.n_tallies = 0
             return
 
@@ -554,8 +526,11 @@ class Summary(object):
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
 
-
     def make_opencg_geometry(self):
+        """Create OpenCG geometry based on the information contained in the summary
+        file. The geometry is stored as the 'opencg_geometry' attribute.
+
+        """
 
         try:
             from openmc.opencg_compatible import get_opencg_geometry
@@ -567,8 +542,22 @@ class Summary(object):
         if self.opencg_geometry is None:
             self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
 
-
     def get_nuclide_by_zaid(self, zaid):
+        """Return a Nuclide object given the 'zaid' identifier for the nuclide.
+
+        Parameters
+        ----------
+        zaid : int
+            1000*Z + A, where Z is the atomic number of the nuclide and A is the
+            mass number. For example, the zaid for U-235 is 92235.
+
+        Returns
+        -------
+        nuclide : openmc.nuclide.Nuclide or None
+            Nuclide matching the specified zaid, or None if no matching object
+            is found.
+
+        """
 
         for index, nuclide in self.nuclides.items():
             if nuclide._zaid == zaid:
@@ -576,8 +565,20 @@ class Summary(object):
 
         return None
 
-
     def get_material_by_id(self, material_id):
+        """Return a Material object given the material id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the material
+
+        Returns
+        -------
+        material : openmc.material.Material
+            Material with given id
+
+        """
 
         for index, material in self.materials.items():
             if material._id == material_id:
@@ -585,8 +586,20 @@ class Summary(object):
 
         return None
 
-
     def get_surface_by_id(self, surface_id):
+        """Return a Surface object given the surface id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the surface
+
+        Returns
+        -------
+        surface : openmc.surface.Surface
+            Surface with given id
+
+        """
 
         for index, surface in self.surfaces.items():
             if surface._id == surface_id:
@@ -594,8 +607,20 @@ class Summary(object):
 
         return None
 
-
     def get_cell_by_id(self, cell_id):
+        """Return a Cell object given the cell id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the cell
+
+        Returns
+        -------
+        cell : openmc.universe.Cell
+            Cell with given id
+
+        """
 
         for index, cell in self.cells.items():
             if cell._id == cell_id:
@@ -603,8 +628,20 @@ class Summary(object):
 
         return None
 
-
     def get_universe_by_id(self, universe_id):
+        """Return a Universe object given the universe id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the universe
+
+        Returns
+        -------
+        universe : openmc.universe.Universe
+            Universe with given id
+
+        """
 
         for index, universe in self.universes.items():
             if universe._id == universe_id:
@@ -612,8 +649,20 @@ class Summary(object):
 
         return None
 
-
     def get_lattice_by_id(self, lattice_id):
+        """Return a Lattice object given the lattice id
+
+        Parameters
+        ----------
+        id : int
+            Unique identifier for the lattice
+
+        Returns
+        -------
+        lattice : openmc.universe.Lattice
+            Lattice with given id
+
+        """
 
         for index, lattice in self.lattices.items():
             if lattice._id == lattice_id:

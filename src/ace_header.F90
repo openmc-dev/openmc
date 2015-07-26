@@ -1,6 +1,6 @@
 module ace_header
 
-  use constants,   only: MAX_FILE_LEN
+  use constants,   only: MAX_FILE_LEN, ZERO
   use endf_header, only: Tab1
   use list_header, only: ListInt
 
@@ -167,12 +167,12 @@ module ace_header
 
   type Nuclide0K
 
-    character(10) :: nuclide            ! name of nuclide, e.g. U-238
-    character(16) :: scheme = 'ares'    ! target velocity sampling scheme
-    character(10) :: name               ! name of nuclide, e.g. 92235.03c
-    character(10) :: name_0K            ! name of 0K nuclide, e.g. 92235.00c
-    real(8)       :: E_min = 0.01e-6    ! lower cutoff energy for res scattering
-    real(8)       :: E_max = 1000.0e-6  ! upper cutoff energy for res scattering
+    character(10) :: nuclide             ! name of nuclide, e.g. U-238
+    character(16) :: scheme = 'ares'     ! target velocity sampling scheme
+    character(10) :: name                ! name of nuclide, e.g. 92235.03c
+    character(10) :: name_0K             ! name of 0K nuclide, e.g. 92235.00c
+    real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
+    real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
 
   end type Nuclide0K
 
@@ -204,7 +204,7 @@ module ace_header
 
     ! threshold for S(a,b) treatment (usually ~4 eV)
     real(8) :: threshold_inelastic
-    real(8) :: threshold_elastic = 0.0
+    real(8) :: threshold_elastic = ZERO
 
     ! Inelastic scattering data
     integer :: n_inelastic_e_in  ! # of incoming E for inelastic
@@ -258,7 +258,7 @@ module ace_header
   type NuclideMicroXS
     integer :: index_grid      ! index on nuclide energy grid
     integer :: index_temp      ! temperature index for nuclide
-    real(8) :: last_E = 0.0    ! last evaluated energy
+    real(8) :: last_E = ZERO   ! last evaluated energy
     real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
     real(8) :: total           ! microscropic total xs
     real(8) :: elastic         ! microscopic elastic scattering xs

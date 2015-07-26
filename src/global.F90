@@ -19,6 +19,9 @@ module global
 #ifdef HDF5
   use hdf5_interface,  only: HID_T
 #endif
+#ifdef MPIF08
+  use mpi_f08
+#endif
 
   implicit none
   save
@@ -112,10 +115,23 @@ module global
 
   ! Global tallies
   !   1) collision estimate of k-eff
-  !   2) track-length estimate of k-eff
-  !   3) leakage fraction
+  !   2) absorption estimate of k-eff
+  !   3) track-length estimate of k-eff
+  !   4) leakage fraction
 
   type(TallyResult), allocatable, target :: global_tallies(:)
+
+  ! It is possible to protect accumulate operations on global tallies by using
+  ! an atomic update. However, when multiple threads accumulate to the same
+  ! global tally, it can cause a higher cache miss rate due to
+  ! invalidation. Thus, we use threadprivate variables to accumulate global
+  ! tallies and then reduce at the end of a generation.
+  real(8) :: global_tally_collision   = ZERO
+  real(8) :: global_tally_absorption  = ZERO
+  real(8) :: global_tally_tracklength = ZERO
+  real(8) :: global_tally_leakage     = ZERO
+!$omp threadprivate(global_tally_collision, global_tally_absorption, &
+!$omp&              global_tally_tracklength, global_tally_leakage)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -212,8 +228,13 @@ module global
   logical :: master      = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
   integer :: mpi_err               ! MPI error code
+#ifdef MPIF08
+  type(MPI_Datatype) :: MPI_BANK
+  type(MPI_Datatype) :: MPI_TALLYRESULT
+#else
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
+#endif
 
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
@@ -243,8 +264,8 @@ module global
   ! VARIANCE REDUCTION VARIABLES
 
   logical :: survival_biasing = .false.
-  real(8) :: weight_cutoff = 0.25
-  real(8) :: weight_survive = 1.0
+  real(8) :: weight_cutoff = 0.25_8
+  real(8) :: weight_survive = ONE
 
   ! ============================================================================
   ! HDF5 VARIABLES

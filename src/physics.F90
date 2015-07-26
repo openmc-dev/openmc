@@ -37,7 +37,7 @@ contains
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
     p % last_E   = p % E
-    p % last_uvw = p % coord0 % uvw
+    p % last_uvw = p % coord(1) % uvw
 
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
@@ -142,7 +142,7 @@ contains
     case ('total')
       cutoff = prn() * material_xs % total
     case ('scatter')
-      cutoff = prn() * material_xs % total - material_xs % absorption
+      cutoff = prn() * (material_xs % total - material_xs % absorption)
     case ('fission')
       cutoff = prn() * material_xs % fission
     end select
@@ -253,19 +253,19 @@ contains
       p % last_wgt = p % wgt
 
       ! Score implicit absorption estimate of keff
-!$omp atomic
-      global_tallies(K_ABSORPTION) % value = &
-           global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
-           micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+      if (run_mode == MODE_EIGENVALUE) then
+        global_tally_absorption = global_tally_absorption + p % absorb_wgt * &
+             micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+      end if
     else
       ! See if disappearance reaction happens
       if (micro_xs(i_nuclide) % absorption > &
            prn() * micro_xs(i_nuclide) % total) then
         ! Score absorption estimate of keff
-!$omp atomic
-        global_tallies(K_ABSORPTION) % value = &
-             global_tallies(K_ABSORPTION) % value + p % wgt * &
-             micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+        if (run_mode == MODE_EIGENVALUE) then
+          global_tally_absorption = global_tally_absorption + p % wgt * &
+               micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+        end if
 
         p % alive = .false.
         p % event = EVENT_ABSORB
@@ -332,7 +332,7 @@ contains
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
         ! S(a,b) scattering
         call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
-             p % E, p % coord0 % uvw, p % mu)
+             p % E, p % coord(1) % uvw, p % mu)
 
       else
         ! get pointer to elastic scattering reaction
@@ -340,7 +340,7 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord0 % uvw, p % mu, p % wgt)
+             p % E, p % coord(1) % uvw, p % mu, p % wgt)
       end if
 
       p % event_MT = ELASTIC
@@ -382,7 +382,7 @@ contains
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
+      call inelastic_scatter(nuc, rxn, p % E, p % coord(1) % uvw, &
            p % mu, p % wgt)
       p % event_MT = rxn % MT
 
@@ -597,13 +597,13 @@ contains
           if (r > ONE) then
             ! equally likely N-4 middle bins
             j = int(r) + 2
-          elseif (r > 0.6) then
+          elseif (r > 0.6_8) then
             ! second to last bin has relative probability of 0.4
             j = n_energy_out - 1
-          elseif (r > 0.5) then
+          elseif (r > HALF) then
             ! last bin has relative probability of 0.1
             j = n_energy_out
-          elseif (r > 0.1) then
+          elseif (r > 0.1_8) then
             ! second bin has relative probability of 0.4
             j = 2
           else
@@ -818,8 +818,8 @@ contains
 
     case ('dbrc')
       E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - 4.0_8)**2) * kT) / awr
-      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+      E_low = (((E_red - FOUR)**2) * kT) / awr
+      E_up  = (((E_red + FOUR)**2) * kT) / awr
 
       ! find lower and upper energy bound indices
       ! lower index
@@ -872,8 +872,8 @@ contains
 
     case ('ares')
       E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - 4.0_8)**2) * kT) / awr
-      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+      E_low = (((E_red - FOUR)**2) * kT) / awr
+      E_up  = (((E_red + FOUR)**2) * kT) / awr
 
       ! find lower and upper energy bound indices
       ! lower index
@@ -1074,7 +1074,7 @@ contains
 
     if (ufs) then
       ! Determine indices on ufs mesh for current location
-      call get_mesh_indices(ufs_mesh, p % coord0 % xyz, ijk, in_mesh)
+      call get_mesh_indices(ufs_mesh, p % coord(1) % xyz, ijk, in_mesh)
       if (.not. in_mesh) then
         call write_particle_restart(p)
         call fatal_error("Source site outside UFS mesh!")
@@ -1112,7 +1112,7 @@ contains
     p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
-      fission_bank(i) % xyz = p % coord0 % xyz
+      fission_bank(i) % xyz = p % coord(1) % xyz
 
       ! Set weight of fission bank site
       fission_bank(i) % wgt = ONE/weight

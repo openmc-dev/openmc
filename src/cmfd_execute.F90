@@ -95,7 +95,7 @@ contains
 
 #ifdef MPI
     use global,     only: mpi_err
-    use mpi
+    use message_passing
 #endif
 
     integer :: nx      ! maximum number of cells in x direction
@@ -224,7 +224,7 @@ contains
 
 #ifdef MPI
     use global,      only: mpi_err
-    use mpi
+    use message_passing
 #endif
 
     logical, intent(in) :: new_weights ! calcualte new weights

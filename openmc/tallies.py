@@ -3,7 +3,7 @@ import copy
 import os
 import pickle
 import itertools
-from numbers import Integral
+from numbers import Integral, Rational
 from xml.etree import ElementTree as ET
 import sys
 
@@ -200,10 +200,8 @@ class Tally(object):
 
             if self.estimator == other.estimator:
                 new_tally.estimator = self.estimator
-
             if self.with_summary and other.with_summary:
                 new_tally.with_summary = self.with_summary
-
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
@@ -243,11 +241,10 @@ class Tally(object):
                         new_score = _CrossScore(self_score, other_score, '+')
                         new_tally.add_score(new_score)
 
-        elif is_integer(other) or is_float(other):
+        elif isinstance(other, Integral) or isinstance(other):
 
             new_tally._mean = self._mean + other
             new_tally._std_dev = self._std_dev
-
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -255,10 +252,8 @@ class Tally(object):
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
-
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
-
             for score in self.scores:
                 new_tally.add_score(score)
 
@@ -305,10 +300,8 @@ class Tally(object):
 
             if self.estimator == other.estimator:
                 new_tally.estimator = self.estimator
-
             if self.with_summary and other.with_summary:
                 new_tally.with_summary = self.with_summary
-
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
@@ -348,11 +341,10 @@ class Tally(object):
                         new_score = _CrossScore(self_score, other_score, '-')
                         new_tally.add_score(new_score)
 
-        elif is_integer(other) or is_float(other):
+        elif isinstance(other, (Integral, Rational)):
 
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
-
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -360,10 +352,8 @@ class Tally(object):
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
-
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
-
             for score in self.scores:
                 new_tally.add_score(score)
 
@@ -413,10 +403,8 @@ class Tally(object):
 
             if self.estimator == other.estimator:
                 new_tally.estimator = self.estimator
-
             if self.with_summary and other.with_summary:
                 new_tally.with_summary = self.with_summary
-
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
@@ -456,11 +444,10 @@ class Tally(object):
                         new_score = _CrossScore(self_score, other_score, '*')
                         new_tally.add_score(new_score)
 
-        elif is_integer(other) or is_float(other):
+        elif isinstance(other, (Integral, Rational)):
 
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
-
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -468,10 +455,8 @@ class Tally(object):
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
-
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
-
             for score in self.scores:
                 new_tally.add_score(score)
 
@@ -521,10 +506,8 @@ class Tally(object):
 
             if self.estimator == other.estimator:
                 new_tally.estimator = self.estimator
-
             if self.with_summary and other.with_summary:
                 new_tally.with_summary = self.with_summary
-
             if self.num_realizations == other.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
@@ -564,11 +547,10 @@ class Tally(object):
                         new_score = _CrossScore(self_score, other_score, '/')
                         new_tally.add_score(new_score)
 
-        elif is_integer(other) or is_float(other):
+        elif isinstance(other, (Integral, Rational)):
 
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
-
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -576,10 +558,8 @@ class Tally(object):
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
-
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
-
             for score in self.scores:
                 new_tally.add_score(score)
 
@@ -630,10 +610,8 @@ class Tally(object):
 
             if self.estimator == power.estimator:
                 new_tally.estimator = self.estimator
-
             if self.with_summary and power.with_summary:
                 new_tally.with_summary = self.with_summary
-
             if self.num_realizations == power.num_realizations:
                 new_tally.num_realizations = self.num_realizations
 
@@ -673,12 +651,11 @@ class Tally(object):
                         new_score = _CrossScore(self_score, power_score, '^')
                         new_tally.add_score(new_score)
 
-        elif is_integer(power) or is_float(power):
+        elif isinstance(power, (Integral, Rational)):
 
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean
             new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
-
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -686,10 +663,8 @@ class Tally(object):
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
-
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
-
             for score in self.scores:
                 new_tally.add_score(score)
 
@@ -702,18 +677,13 @@ class Tally(object):
 
 
     def __pos__(self):
-
         new_tally = copy.deepcopy(self)
         new_tally._mean = np.abs(new_tally.mean)
         return new_tally
 
-
     def __neg__(self):
-
-        new_tally = copy.deepcopy(self)
-        new_tally._mean *= -1
+        new_tally = self * -1
         return new_tally
-
 
     def minimum(self, scores=[], filters=[], filter_bins=[],
                 nuclides=[], value='mean'):
@@ -722,41 +692,42 @@ class Tally(object):
         Parameters
         ----------
         scores : list
-             A list of one or more score strings
-             (e.g., ['absorption', 'nu-fission']; default is [])
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
 
         filters : list
-             A list of filter type strings
-             (e.g., ['mesh', 'energy']; default is [])
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
 
         filter_bins : list
-             A list of the filter bins corresponding to the filter_types
-             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
-             in the list is the integer ID for 'material', 'surface', 'cell',
-             'cellborn', and 'universe' Filters. Each bin is an integer for
-             the cell instance ID for 'distribcell Filters. Each bin is
-             a 2-tuple of floats for 'energy' and 'energyout' filters
-             corresponding to the energy boundaries of the bin of interest.
-             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
-             to the mesh cell of interest. The order of the bins in the list
-             must correspond of the filter_types parameter.
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
 
         nuclides : list
-             A list of nuclide name strings
-             (e.g., ['U-235', 'U-238']; default is [])
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
 
         value : str
-             A string for the type of value to return  - 'mean' (default),
-             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
 
         Returns
         -------
-             The minimum value of the requested slice of Tally data.
+        float
+            A scalar float of the minimum value in the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
         """
 
         data = self.get_values(scores, filters, filter_bins, nuclides, value)
         return np.min(data)
-
 
     def maximum(self, scores=[], filters=[], filter_bins=[],
                 nuclides=[], value='mean'):
@@ -765,41 +736,42 @@ class Tally(object):
         Parameters
         ----------
         scores : list
-             A list of one or more score strings
-             (e.g., ['absorption', 'nu-fission']; default is [])
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
 
         filters : list
-             A list of filter type strings
-             (e.g., ['mesh', 'energy']; default is [])
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
 
         filter_bins : list
-             A list of the filter bins corresponding to the filter_types
-             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
-             in the list is the integer ID for 'material', 'surface', 'cell',
-             'cellborn', and 'universe' Filters. Each bin is an integer for
-             the cell instance ID for 'distribcell Filters. Each bin is
-             a 2-tuple of floats for 'energy' and 'energyout' filters
-             corresponding to the energy boundaries of the bin of interest.
-             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
-             to the mesh cell of interest. The order of the bins in the list
-             must correspond of the filter_types parameter.
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
 
         nuclides : list
-             A list of nuclide name strings
-             (e.g., ['U-235', 'U-238']; default is [])
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
 
         value : str
-             A string for the type of value to return  - 'mean' (default),
-             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
 
         Returns
         -------
-             The maximum value of the requested slice of Tally data.
+        float
+            A scalar float of the maximum value in the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
         """
 
         data = self.get_values(scores, filters, filter_bins, nuclides, value)
         return np.max(data)
-
 
     def summation(self, scores=[], filters=[], filter_bins=[],
                   nuclides=[], value='mean'):
@@ -808,43 +780,42 @@ class Tally(object):
         Parameters
         ----------
         scores : list
-             A list of one or more score strings
-             (e.g., ['absorption', 'nu-fission']; default is [])
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
 
         filters : list
-             A list of filter type strings
-             (e.g., ['mesh', 'energy']; default is [])
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
 
         filter_bins : list
-             A list of the filter bins corresponding to the filter_types
-             parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin
-             in the list is the integer ID for 'material', 'surface', 'cell',
-             'cellborn', and 'universe' Filters. Each bin is an integer for
-             the cell instance ID for 'distribcell Filters. Each bin is
-             a 2-tuple of floats for 'energy' and 'energyout' filters
-             corresponding to the energy boundaries of the bin of interest.
-             The bin is a (x,y,z) 3-tuple for 'mesh' filters corresponding
-             to the mesh cell of interest. The order of the bins in the list
-             must correspond of the filter_types parameter.
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
 
         nuclides : list
-             A list of nuclide name strings
-             (e.g., ['U-235', 'U-238']; default is [])
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
 
         value : str
-             A string for the type of value to return  - 'mean' (default),
-             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
 
         Returns
         -------
-             The sum of the requested slice of Tally data.
+        float
+            A scalar float of the sum of the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
         """
 
         data = self.get_values(scores, filters, filter_bins, nuclides, value)
         return np.sum(data)
-
-
-
 
     def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
         """
@@ -866,7 +837,8 @@ class Tally(object):
                                   nuclides, 'sum')
         new_sum_sq = self.get_values(scores, filters, filter_bins,
                                      nuclides, 'sum_sq')
-        new_tally.set_results(new_sum, new_sum_sq)
+        new_tally.sum = new_sum
+        new_tally.sum_sq = new_sum_sq
 
         ############################      FILTERS      #########################
         # Determine the score indices from any of the requested scores
@@ -1236,28 +1208,8 @@ class Tally(object):
 
     @with_batch_statistics.setter
     def with_batch_statistics(self, with_batch_statistics):
-
-        if not isinstance(with_batch_statistics, bool):
-            msg = 'Unable to set with_batch_statistics to a non-boolean ' \
-                  'value "{0}"'.format(with_batch_statistics)
-            raise ValueError(msg)
-
+        check_type('with_batch_statistics', with_batch_statistics, bool)
         self._with_batch_statistics = with_batch_statistics
-
-
-    def set_results(self, sum, sum_sq):
-
-        if not isinstance(sum, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum, self.id)
-            raise ValueError(msg)
-
-        if not isinstance(sum_sq, (tuple, list, np.ndarray)):
-            msg = 'Unable to set the sum to "{0}" for Tally ID={1} since ' \
-                  'it is not a Python tuple/list or NumPy ' \
-                  'array'.format(sum_sq, self.id)
-            raise ValueError(msg)
 
     @sum.setter
     def sum(self, sum):
@@ -1564,7 +1516,7 @@ class Tally(object):
         return filter
 
     def get_filter_index(self, filter_type, filter_bin):
-        """Returns the index in the Tally's results array for a Filter bin.
+        """Returns the index in the Tally's results array for a Filter bin
 
         Parameters
         ----------
@@ -1582,7 +1534,7 @@ class Tally(object):
 
         Returns
         -------
-             The index in the Tally data array for this filter bin.
+             The index in the Tally data array for this filter bin
 
         """
 
@@ -1594,7 +1546,7 @@ class Tally(object):
         return filter_index
 
     def get_nuclide_index(self, nuclide):
-        """Returns the index in the Tally's results array for a Nuclide bin.
+        """Returns the index in the Tally's results array for a Nuclide bin
 
         Parameters
         ----------
@@ -1639,7 +1591,7 @@ class Tally(object):
             return nuclide_index
 
     def get_score_index(self, score):
-        """Returns the index in the Tally's results array for a score bin.
+        """Returns the index in the Tally's results array for a score bin
 
         Parameters
         ----------
@@ -1675,7 +1627,7 @@ class Tally(object):
 
         This routine constructs a 3D NumPy array for the requested Tally data
         indexed by filter bin, nuclide bin, and score index. The routine will
-        order the data in the array as specified in the parameter lists.
+        order the data in the array as specified in the parameter lists
 
         Parameters
         ----------
@@ -2461,61 +2413,37 @@ class _CrossScore(object):
 
         if left_score is not None:
             self.left_score = left_score
-
         if right_score is not None:
             self.right_score = right_score
-
         if binary_op is not None:
             self.binary_op = binary_op
-
 
     @property
     def left_score(self):
         return self._left_score
 
-
     @property
     def right_score(self):
         return self._right_score
-
 
     @property
     def binary_op(self):
         return self._binary_op
 
-
     @left_score.setter
     def left_score(self, left_score):
-
-        if not isinstance(left_score, (_CrossScore, str)):
-            msg = 'Unable to set CrossScore left score to {0} which ' \
-                  'is not a string'.format(left_score)
-            raise ValueError(msg)
-
+        check_type('left score', left_score, (str, _CrossScore))
         self._left_score = left_score
-
 
     @right_score.setter
     def right_score(self, right_score):
-
-        if not isinstance(right_score, (_CrossScore, str)):
-            msg = 'Unable to set CrossScore right score to {0} which ' \
-                  'is not a string'.format(right_score)
-            raise ValueError(msg)
-
+        check_type('right score', right_score, (str, _CrossScore))
         self._right_score = right_score
-
 
     @binary_op.setter
     def binary_op(self, binary_op):
-
-        if not is_string(binary_op):
-            msg = 'Unable to set CrossScore binary op to {0} which ' \
-                  'is not a string'.format(binary_op)
-            raise ValueError(msg)
-
+        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
-
 
     def __repr__(self):
         string = '({0} {1} {2})'.format(self.left_score,
@@ -2533,61 +2461,37 @@ class _CrossNuclide(object):
 
         if left_nuclide is not None:
             self.left_nuclide = left_nuclide
-
         if right_nuclide is not None:
             self.right_nuclide = right_nuclide
-
         if binary_op is not None:
             self.binary_op = binary_op
-
 
     @property
     def left_nuclide(self):
         return self._left_nuclide
 
-
     @property
     def right_nuclide(self):
         return self._right_nuclide
-
 
     @property
     def binary_op(self):
         return self._binary_op
 
-
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
-
-        if not isinstance(left_nuclide, (Nuclide, _CrossNuclide, int)):
-            msg = 'Unable to set CrossNuclide left nuclide to {0} which ' \
-                  'is not an integer or Nuclide'.format(left_nuclide)
-            raise ValueError(msg)
-
+        check_type('left nuclide', left_nuclide, (Nuclide, _CrossNuclide))
         self._left_nuclide = left_nuclide
-
 
     @right_nuclide.setter
     def right_nuclide(self, right_nuclide):
-
-        if not isinstance(right_nuclide, (Nuclide, _CrossNuclide, int)):
-            msg = 'Unable to set CrossNuclide right nuclide to {0} which ' \
-                  'is not an integer or Nuclide'.format(right_nuclide)
-            raise ValueError(msg)
-
+        check_type('right nuclide', right_nuclide, (Nuclide, _CrossNuclide))
         self._right_nuclide = right_nuclide
-
 
     @binary_op.setter
     def binary_op(self, binary_op):
-
-        if not is_string(binary_op):
-            msg = 'Unable to set CrossNuclide binary op to {0} which ' \
-                  'is not a string'.format(binary_op)
-            raise ValueError(msg)
-
+        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
-
 
     def __repr__(self):
 
@@ -2622,94 +2526,63 @@ class _CrossFilter(object):
 
         if left_filter is not None:
             self.left_filter = left_filter
-
         if right_filter is not None:
             self.right_filter = right_filter
-
         if binary_op is not None:
             self.binary_op = binary_op
-
 
     @property
     def left_filter(self):
         return self._left_filter
 
-
     @property
     def right_filter(self):
         return self._right_filter
-
 
     @property
     def binary_op(self):
         return self._binary_op
 
-
     @property
     def type(self):
         return (self.right_filter.type, self.left_filter.type)
-
 
     @property
     def bins(self):
         return (self.right_filter.bins, self.left_filter.bins)
 
-
     @property
     def num_bins(self):
         return self.left_filter.num_bins * self.right_filter.num_bins
-
 
     @property
     def stride(self):
         return self.left_filter.stride * self.right_filter.stride
 
-
     @left_filter.setter
     def left_filter(self, left_filter):
-
-        if not isinstance(left_filter, (Filter, _CrossFilter)):
-            msg = 'Unable to set CrossFilter left filter to {0} which ' \
-                  'is not a Filter'.format(left_filter)
-            raise ValueError(msg)
-
+        check_type('left filter', left_filter, (Filter, _CrossFilter))
         self._left_filter = left_filter
-
 
     @right_filter.setter
     def right_filter(self, right_filter):
-
-        if not isinstance(right_filter, (Filter, _CrossFilter)):
-            msg = 'Unable to set CrossFilter right filter to {0} which ' \
-                  'is not a Filter'.format(right_filter)
-            raise ValueError(msg)
-
+        check_type('right filter', right_filter, (Filter, _CrossFilter))
         self._right_filter = right_filter
-
 
     @binary_op.setter
     def binary_op(self, binary_op):
-
-        if not is_string(binary_op):
-            msg = 'Unable to set CrossFilter binary op to {0} which ' \
-                  'is not a string'.format(binary_op)
-            raise ValueError(msg)
-
+        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
-
 
     def __repr__(self):
 
         string = '_CrossFilter\n'
-
         filter_type = '({0} {1} {2})'.format(self.left_filter.type,
                                              self.binary_op,
                                              self.right_filter.type)
-
         filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
                                              self.binary_op,
                                              self.right_filter.bins)
-
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
         return string

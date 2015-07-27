@@ -1180,8 +1180,8 @@ class Tally(object):
 
         """
 
-        if not isinstance(score, basestring):
-            msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
+        if not isinstance(score, (basestring, _CrossScore)):
+           msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
 
@@ -2404,6 +2404,30 @@ class TalliesFile(object):
 
 
 class _CrossScore(object):
+    """A special-purpose tally score used to encapsulate all combinations of two
+    tally's scores as a cross product for tally arithmetic.
+
+    Parameters
+    ----------
+    left_score : str or _CrossScore
+        The left score in the cross product.
+    right_score : str or _CrossScore
+        The right score in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's scores with this _CrossNuclide.
+
+    Attributes
+    ----------
+    left_score : str or _CrossScore
+        The left score in the cross product.
+    right_score : str or _CrossScore
+        The right score in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's scores with this _CrossNuclide.
+
+    """
 
     def __init__(self, left_score=None, right_score=None, binary_op=None):
 
@@ -2452,6 +2476,30 @@ class _CrossScore(object):
 
 
 class _CrossNuclide(object):
+    """A special-purpose nuclide used to encapsulate all combinations of two
+    tally's nuclides as a cross product for tally arithmetic.
+
+    Parameters
+    ----------
+    left_nuclide : Nuclide or _CrossNuclide
+        The left nuclide in the cross product.
+    right_nuclide : Nuclide or _CrossNuclide
+        The right nuclide in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's nuclides with this _CrossNuclide.
+
+    Attributes
+    ----------
+    left_nuclide : Nuclide or _CrossNuclide
+        The left nuclide in the cross product.
+    right_nuclide : Nuclide or _CrossNuclide
+        The right nuclide in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's nuclides with this _CrossNuclide.
+
+    """
 
     def __init__(self, left_nuclide=None, right_nuclide=None, binary_op=None):
 
@@ -2517,6 +2565,30 @@ class _CrossNuclide(object):
 
 
 class _CrossFilter(object):
+    """A special-purpose filter used to encapsulate all combinations of two
+    tally's filter bins as a cross product for tally arithmetic.
+
+    Parameters
+    ----------
+    left_filter : Filter or _CrossFilter
+        The left filter in the cross product.
+    right_filter : Filter or _CrossFilter
+        The right filter in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's filter bins with this _CrossFilter.
+
+    Attributes
+    ----------
+    left_filter : Filter or _CrossFilter
+        The left filter in the cross product.
+    right_filter : Filter or _CrossFilter
+        The right filter in the cross product.
+    binary_op : str
+        The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
+        combine two tally's filter bins with this _CrossFilter.
+
+    """
 
     def __init__(self, left_filter=None, right_filter=None, binary_op=None):
 

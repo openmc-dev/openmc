@@ -92,8 +92,6 @@ class Nuclide(object):
         check_type('zaid', zaid, Integral)
         self._zaid = zaid
 
-<<<<<<< HEAD
-
     @scattering.setter
     def scattering(self, scattering):
 
@@ -104,18 +102,12 @@ class Nuclide(object):
 
         self._scattering = scattering
 
-
-=======
->>>>>>> develop
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         if self._zaid is not None:
             string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
-<<<<<<< HEAD
         if self._scattering is not None:
             string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t', 
                                                 self._scattering)
-=======
->>>>>>> develop
         return string

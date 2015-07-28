@@ -30,8 +30,11 @@ module material_header
     ! Are any nuclides in this material given in terms of natural elements
     logical :: nat_elements = .false.
 
-    ! String array of xs grids that need to be written
-    type(ListChar), allocatable :: xs_gridpoints(:)
+    ! String array of energy-xs data that need to be written
+    type(ListChar), allocatable :: write_xs(:)
+
+    ! String array of MT's for sec. angular dist's that need to be written
+    type(ListChar), allocatable :: write_angle(:)
 
   end type Material
 

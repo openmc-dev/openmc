@@ -3,7 +3,7 @@ module initialize
   use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
-  use cross_section,    only: write_xs_grids
+  use cross_section,    only: write_xs
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use endf_reader,      only: read_endf6
   use energy_grid,      only: unionized_grid
@@ -19,6 +19,7 @@ module initialize
                               print_usage, write_xs_summary, print_plot,&
                               write_message
   use output_interface
+  use physics,          only: write_angle
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -122,6 +123,9 @@ contains
       call read_xs()
       call time_read_xs % stop()
 
+      ! write out ACE elastic scatter secondary angular distributions
+      call write_angle()
+
       ! Read ENDF-6 format nuclear data file
       if (run_fasturr) then
         call initialize_endf()
@@ -140,7 +144,6 @@ contains
                 call isotopes(i) % ace_T_list &
                   % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
                 call isotopes(i) % ace_index_list % append(i_nuc)
-                micro_xs(i_nuc) % use_ptable = .true.
               end if
             end do
             call isotopes(i) % alloc_prob_tables()
@@ -203,7 +206,7 @@ contains
       end if
 
       ! Write user-requested energy-xs coordinate files
-      call write_xs_grids()
+      call write_xs()
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
@@ -271,7 +274,6 @@ contains
       do i_nuc = 1, n_nuclides_total
         if (nuclides(i_nuc) % zaid == isotopes(i) % ZAI) then
           nuclides(i_nuc) % i_sotope = i
-          micro_xs(i_nuc) % use_ptable = .true.
           if (nuclides(i_nuc) % fissionable) then
             isotopes(i) % fissionable = .true.
           else

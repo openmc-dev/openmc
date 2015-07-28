@@ -1547,9 +1547,10 @@ contains
       ! Get pointer list of XML <nuclide>
       call get_node_list(node_mat, "nuclide", node_nuc_list)
 
-      ! Allocate array of lists containing strings indicating which xs grids
+      ! Allocate array of lists containing strings indicating which nucl. data
       ! should be writeen for each nuclide in the material
-      allocate(mat % xs_gridpoints(get_list_size(node_nuc_list)))
+      allocate(mat % write_xs(get_list_size(node_nuc_list)))
+      allocate(mat % write_angle(get_list_size(node_nuc_list)))
 
       ! Create list of nuclides based on those specified plus natural elements
       INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
@@ -1601,17 +1602,27 @@ contains
           call get_node_value(node_nuc, "wo", temp_dble)
           call list_density % append(-temp_dble)
         end if
-
-        ! Check if xs grid data needs to be written out
-        if (check_for_node(node_nuc, "xs_gridpoints")) then
-          allocate(sarray(get_arraysize_string(node_nuc, "xs_gridpoints")))
-          call get_node_array(node_nuc, "xs_gridpoints", sarray)
-          do k = 1, get_arraysize_string(node_nuc, "xs_gridpoints")
-            call mat % xs_gridpoints(j) % append(sarray(k))
+        
+        ! Check if energy-xs data needs to be written out
+        if (check_for_node(node_nuc, "cross_sections")) then
+          allocate(sarray(get_arraysize_string(node_nuc, "cross_sections")))
+          call get_node_array(node_nuc, "cross_sections", sarray)
+          do k = 1, get_arraysize_string(node_nuc, "cross_sections")
+            call mat % write_xs(j) % append(sarray(k))
           end do
           deallocate(sarray)
         end if
-
+        
+        ! Check if secondary angular distribution data needs to be written out
+        if (check_for_node(node_nuc, "angular_dist")) then
+          allocate(sarray(get_arraysize_string(node_nuc, "angular_dist")))
+          call get_node_array(node_nuc, "angular_dist", sarray)
+          do k = 1, get_arraysize_string(node_nuc, "angular_dist")
+            call mat % write_angle(j) % append(sarray(k))
+          end do
+          deallocate(sarray)
+        end if
+      
       end do INDIVIDUAL_NUCLIDES
 
       ! =======================================================================

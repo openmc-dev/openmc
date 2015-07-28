@@ -276,7 +276,7 @@ module ace_header
     real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
 
     ! Information for URR probability table use
-    logical :: use_ptable  ! in URR range with probability tables?
+    logical :: in_urr  ! in the URR?
     real(8) :: last_prn
   end type NuclideMicroXS
 

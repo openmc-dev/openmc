@@ -2756,8 +2756,6 @@ contains
     tope % E = E
     tope % T = T
 
-    micro_xs(i_nuc) % use_ptable = .true.
-
     ! determine energy table
     i_E = 1
     do

@@ -7,7 +7,8 @@ import sys
 import numpy as np
 
 import openmc
-from openmc.checkvalue import check_type, check_length, check_greater_than
+from openmc.checkvalue import check_type, check_iterable_type, check_length, \
+                              check_greater_than
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -687,8 +688,11 @@ class Lattice(object):
 
     @universes.setter
     def universes(self, universes):
-        check_type('lattice universes', universes, Iterable)
-        self._universes = np.asarray(universes, dtype=Universe)
+        #check_type('lattice universes', universes, Iterable)
+        check_iterable_type('lattice universes', universes, Universe,
+                            min_depth=2, max_depth=3)
+        self._universes = universes
+        #self._universes = np.asarray(universes, dtype=Universe)
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -701,13 +705,24 @@ class Lattice(object):
 
         """
 
-        unique_universes = np.unique(self._universes.ravel())
-        universes = {}
+        univs = dict()
+        for k in range(len(self._universes)):
+            for j in range(len(self._universes[k])):
+                if isinstance(self._universes[k][j], Universe):
+                    u = self._universes[k][j]
+                    if u._id not in univs:
+                        univs[u._id] = u
+                else:
+                    for i in range(len(self._universes[k][j])):
+                        u = self._universes[k][j][i]
+                        assert isinstance(u, Universe)
+                        if u._id not in univs:
+                            univs[u._id] = u
 
-        for universe in unique_universes:
-            universes[universe._id] = universe
+        if self._outer._id not in univs:
+            univs[self._outer._id] = self._outer
 
-        return universes
+        return univs
 
     def get_all_nuclides(self):
         """Return all nuclides contained in the lattice
@@ -1091,14 +1106,14 @@ class HexLattice(Lattice):
 
         # Set the number of axial positions.
         if n_dims == 3:
-            self.num_axial = self._universes.shape[0]
+            self.num_axial = len(self._universes)
         else:
             self._num_axial = None
 
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
         if n_dims == 3:
-            self.num_rings = len(self._universes[0])
+            self.num_rings = len(self._universes)
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
@@ -1106,7 +1121,7 @@ class HexLattice(Lattice):
                     raise ValueError(msg)
 
         else:
-            self.num_rings = self._universes.shape[0]
+            self.num_rings = len(self._universes)
 
         # Make sure there are the correct number of elements in each ring.
         if n_dims == 3:

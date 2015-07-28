@@ -1,3 +1,5 @@
+from collections import Iterable
+
 def check_type(name, value, expected_type, expected_iter_type=None):
     """Ensure that an object is of an expected type. Optionally, if the object is
     iterable, check that each element is of a particular type.
@@ -27,6 +29,82 @@ def check_type(name, value, expected_type, expected_iter_type=None):
                 msg = 'Unable to set {0} to {1} since each item must be ' \
                       'of type {2}'.format(name, value,
                                            expected_iter_type.__name__)
+                raise ValueError(msg)
+
+
+def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
+    """Ensure that an object is an iterable containing an expected type.
+
+    Parameters
+    ----------
+    name : str
+        Description of value being checked
+    value : Iterable
+        Iterable, possibly of other iterables, that should ultimately contain
+        the expected type
+    expected_type : type
+        type that the iterable should contain
+    min_depth : int
+        The minimum number of layers of nested iterables there should be before
+        reaching the ultimately contained items
+    max_depth : int
+        The maximum number of layers of nested iterables ...
+    """
+    # Initialize the tree at the very first item.
+    tree = [value]
+    index = [0]
+
+    # Traverse the tree.
+    while index[0] != len(tree[0]):
+        # If we are done with this level of the tree, go to the next branch on
+        # the level above this one.
+        if index[-1] == len(tree[-1]):
+            del index[-1]
+            del tree[-1]
+            index[-1] += 1
+            continue
+
+        # Get a string representation of the current index in case we raise an
+        # exception.
+        form = '[' + '{:d}, '*(len(index)-1) + '{:d}]'
+        ind_str = form.format(*index)
+
+        # What is the current item we are looking at?
+        current_item = tree[-1][index[-1]]
+
+        # If this item is of the expected type, then we've reached the bottom
+        # level of this branch.
+        if isinstance(current_item, expected_type):
+            # Is this deep enough?
+            if len(tree) < min_depth:
+                msg = 'Error setting {0}: The item at {1} does not meet the ' \
+                      'minimum depth of {2}'.format(name, ind_str, min_depth)
+                raise ValueError(msg)
+
+            # This item is okay.  Move on to the next item.
+            index[-1] += 1
+
+        # If this item is not of the expected type, then it's either an error or
+        # another level of the tree that we need to pursue deeper.
+        else:
+            if isinstance(current_item, Iterable):
+                # The tree goes deeper here, let's explore it.
+                tree.append(current_item)
+                index.append(0)
+
+                # But first, have we exceeded the max depth?
+                if len(tree) > max_depth:
+                    msg = 'Error setting {0}: Found an iterable at {1}, items '\
+                          'in that iterable excceed the maximum depth of {2}' \
+                          .format(name, ind_str, max_depth)
+                    raise ValueError(msg)
+
+            else:
+                # This item is completely unexected.
+                msg = "Error setting {0}: Items must be of type '{1}', but " \
+                      "item at {2} is of type '{3}'"\
+                      .format(name, expected_type.__name__, ind_str,
+                              type(current_item).__name__)
                 raise ValueError(msg)
 
 

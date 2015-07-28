@@ -1602,7 +1602,7 @@ contains
           call get_node_value(node_nuc, "wo", temp_dble)
           call list_density % append(-temp_dble)
         end if
-        
+
         ! Check if energy-xs data needs to be written out
         if (check_for_node(node_nuc, "cross_sections")) then
           allocate(sarray(get_arraysize_string(node_nuc, "cross_sections")))

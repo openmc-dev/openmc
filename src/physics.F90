@@ -1443,32 +1443,24 @@ contains
 
           open(unit=90, file='sec-ang-dist-MT'//trim(adjustl(to_str(rxn%MT)))&
                //'-'//trim(adjustl(to_str(nuc%zaid)))//'.dat')
-          do i_E = 2, n
+          
+          ENERGY_LOOP: do i_E = 2, n
             write(90, '(ES24.16)') rxn % adist % energy(i_E)
             lc  = rxn % adist % location(i_E)
             type = rxn % adist % type(i_E)
+            
             if (type == ANGLE_ISOTROPIC) then
               call fatal_error('isotropic secondary angular distribution')
+            
             elseif (type == ANGLE_32_EQUI) then
               do i_mu = 1, 33
                 write(90, '(ES24.16)') rxn % adist % energy(i_E),&
                                        rxn % adist % data(lc + i_mu)
               end do
-              ! sample cosine bin
-!             xi = prn()
-!             k = 1 + int(32.0_8*xi)
-!
-!             ! calculate cosine
-!             mu0 = rxn % adist % data(lc + k)
-!             mu1 = rxn % adist % data(lc + k+1)
-!             mu = mu0 + (32.0_8 * xi - k + ONE) * (mu1 - mu0)
-!
-            elseif (type == ANGLE_TABULAR) then
-!             interp = int(rxn % adist % data(lc + 1))
-              NP     = int(rxn % adist % data(lc + 2))
 
-              ! determine outgoing cosine bin
-!             xi = prn()
+            elseif (type == ANGLE_TABULAR) then
+              interp = int(rxn % adist % data(lc + 1))
+              NP     = int(rxn % adist % data(lc + 2))
               lc = lc + 2
               do i_mu = 1, NP
                 write(90, '(ES24.16,ES24.16,ES24.16,ES24.16)')&
@@ -1476,61 +1468,16 @@ contains
                      rxn % adist % data(lc + 0*NP + i_mu),&
                      rxn % adist % data(lc + 1*NP + i_mu),&
                      rxn % adist % data(lc + 2*NP + i_mu)
+              
               end do
-
-
-!             c_k = rxn % adist % data(lc + 2*NP + 1)
-!             do k = 1, NP - 1
-!               c_k1 = rxn % adist % data(lc + 2*NP + k+1)
-!               if (xi < c_k1) exit
-!               c_k = c_k1
-!             end do
-!
-!             ! check to make sure k is <= NP - 1
-!             k = min(k, NP - 1)
-!
-!             p0  = rxn % adist % data(lc + NP + k)
-!             mu0 = rxn % adist % data(lc + k)
-!             if (interp == HISTOGRAM) then
-!               ! Histogram interpolation
-!               if (p0 > ZERO) then
-!                 mu = mu0 + (xi - c_k)/p0
-!               else
-!                 mu = mu0
-!               end if
-!
-!             elseif (interp == LINEAR_LINEAR) then
-!               ! Linear-linear interpolation
-!               p1  = rxn % adist % data(lc + NP + k+1)
-!               mu1 = rxn % adist % data(lc + k+1)
-!
-!               frac = (p1 - p0)/(mu1 - mu0)
-!               if (frac == ZERO) then
-!                 mu = mu0 + (xi - c_k)/p0
-!               else
-!                 mu = mu0 + (sqrt(max(ZERO, p0*p0 + 2*frac*(xi-c_k))) - p0)/frac
-!               end if
-!             else
-!               ! call write_particle_restart(p)
-!               call fatal_error("Unknown interpolation type: " //&
-!                    trim(to_str(interp)))
             end if
-          end do
+          end do ENERGY_LOOP
+
           close(90)
+        
         end do RXN_LOOP
       end do NUC_LOOP
     end do MAT_LOOP
-!      ! Because of floating-point roundoff, it may be possible for mu to be
-!      ! outside of the range [-1,1). In these cases, we just set mu to exactly
-!      ! -1 or 1
-!
-!      if (abs(mu) > ONE) mu = sign(ONE,mu)
-!
-!    else
-!      ! call write_particle_restart(p)
-!      call fatal_error("Unknown angular distribution type: " &
-!           &// trim(to_str(type)))
-!    end if
 
   end subroutine write_angle
 

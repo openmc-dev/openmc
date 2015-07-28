@@ -27,11 +27,13 @@ module cross_section
 
 contains
 
-!===============================================================================
-! WRITE_XS_GRIDS writes out user-requested energy-cross section coordinate pairs
-!===============================================================================
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! WRITE_XS writes out user-requested energy-cross section coordinate pairs
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine write_xs_grids()
+  subroutine write_xs()
 
     integer :: i      ! material index
     integer :: j      ! nuclide index
@@ -51,12 +53,12 @@ contains
       mat => materials(i)
 
       if (mat % nat_elements) then
-        call write_message('xs_gridpoints element(s) in material(s) with natural&
-          & elements will be ignored', 6)
+        call write_message('cross_sections element(s) in material(s) with &
+             &natural elements will be ignored', 6)
         cycle
       end if
 
-      ! loop over all nuclides
+      ! loop over all nuclides in material
       do j = 1, mat % n_nuclides
         i_nuc = mat % nuclide(j)
         nuc => nuclides(i_nuc)
@@ -67,10 +69,10 @@ contains
         end if
 
         ! loop over all requested energy-xs grid outputs
-        do k = 1, mat % xs_gridpoints(j) % size()
+        do k = 1, mat % write_xs(j) % size()
 
           ! determine which energy-xs grid is requested
-          select case (trim(adjustl(mat % xs_gridpoints(j) % get_item(k))))
+          select case (trim(adjustl(mat % write_xs(j) % get_item(k))))
 
           ! write unionized energy grid values
           case ('unionized')
@@ -214,7 +216,7 @@ contains
       end do
     end do
 
-  end subroutine write_xs_grids
+  end subroutine write_xs
 
 !===============================================================================
 ! CALCULATE_XS determines the macroscopic cross sections for the material the
@@ -389,8 +391,8 @@ contains
     micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
 
-    ! Initialize URR probability table treatment to false
-    micro_xs(i_nuclide) % use_ptable  = .false.
+    ! Initialize to not being in the URR
+    micro_xs(i_nuclide) % in_urr  = .false.
 
     ! Initialize nuclide cross-sections to zero
     micro_xs(i_nuclide) % fission    = ZERO
@@ -439,13 +441,13 @@ contains
     if (associated(tope)) then
       if (E * 1.0E6_8 >= tope % EL(tope % i_urr) &
            .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
+        micro_xs(i_nuclide) % in_urr = .true.
         if (tope % prob_bands) then
           call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
                nuc % kT / K_BOLTZMANN)
         else if (tope % otf_urr_xs) then
           select case(real_freq)
           case (EVENT)
-            micro_xs(i_nuclide) % use_ptable = .true.
             call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
                  nuc % kT / K_BOLTZMANN)
           case (HISTORY)
@@ -454,21 +456,20 @@ contains
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
               ! used in physics, even though ptables aren't actually used
-              micro_xs(i_nuclide) % use_ptable = .true.
               call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
                    nuc % kT / K_BOLTZMANN)
           case default
             call fatal_error('Unrecognized URR realization frequency')
           end select
         else if (tope % point_urr_xs) then
-          micro_xs(i_nuclide) % use_ptable = .true.
           call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
                nuc % kT / K_BOLTZMANN)
         end if
       end if
     else if (urr_ptables_on .and. nuc % urr_present) then
-      if (E > nuc % urr_data % energy(1) &
-        & .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+      if (E > nuc % urr_data % energy(1)&
+           .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+        micro_xs(i_nuclide) % in_urr = .true.
         call calculate_urr_xs_ptable(i_nuclide, E)
       end if
     end if
@@ -592,8 +593,6 @@ contains
     type(Reaction), pointer, save :: rxn      => null()
 
 !$omp threadprivate(urr, nuc, rxn)
-
-    micro_xs(i_nuclide) % use_ptable = .true.
 
     ! get pointer to probability table
     nuc => nuclides(i_nuclide)

@@ -1235,9 +1235,6 @@ class Tally(object):
 
                 # energy, energyout filters
                 elif 'energy' in filter.type:
-
-                    print filter
-
                     bins = filter.bins
                     num_bins = filter.num_bins
 
@@ -1296,7 +1293,7 @@ class Tally(object):
         Parameters
         ----------
         filename : str
-           The name of the file for the results (default is 'tally-results')
+            The name of the file for the results (default is 'tally-results')
 
         directory : str
             The name of the directory for the results (default is '.')
@@ -1436,6 +1433,59 @@ class Tally(object):
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
 
+    def _cross_product(self, other_tally, new_tally, binary_op):
+        """
+
+        Parameters
+        ----------
+        other_tally : Tally
+            The tally on the right hand side of the cross-product
+        new_tally: Tally
+            The new tally to represent the cross-product
+        op : str
+            The binary operation in the cross product (+,-,*,/,^)
+        """
+
+        if self.estimator == other_tally.estimator:
+            new_tally.estimator = self.estimator
+        if self.with_summary and other_tally.with_summary:
+            new_tally.with_summary = self.with_summary
+        if self.num_realizations == other_tally.num_realizations:
+            new_tally.num_realizations = self.num_realizations
+
+        # Generate nuclide "cross products"
+        if self.nuclides == other_tally.nuclides:
+            for self_nuclide in self.nuclides:
+                new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, binary_op)
+                new_tally.add_nuclide(new_nuclide)
+        else:
+            all_nuclides = [self.nuclides, other_tally.nuclides]
+            for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
+                new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, binary_op)
+                new_tally.add_nuclide(new_nuclide)
+
+        # Generate filter "cross products"
+        if self.filters == other_tally.filters:
+            for self_filter in self.filters:
+                new_filter = _CrossScore(self_filter, self_filter, binary_op)
+                new_tally.add_filter(new_filter)
+        else:
+            all_filters = [self.filters, other_tally.filters]
+            for self_filter, other_filter in itertools.product(*all_filters):
+                new_filter = _CrossScore(self_filter, other_filter, binary_op)
+                new_tally.add_filter(new_filter)
+
+        # Generate score "cross products"
+        if self.scores == other_tally.scores:
+            for self_score in self.scores:
+                new_score = _CrossScore(self_score, self_score, binary_op)
+                new_tally.add_score(new_score)
+        else:
+            all_scores = [self.scores, other_tally.scores]
+            for self_score, other_score in itertools.product(*all_scores):
+                new_score = _CrossScore(self_score, other_score, binary_op)
+                new_tally.add_score(new_score)
+
     def _align_tally_data(self, other):
 
         self_mean = copy.deepcopy(self.mean)
@@ -1522,56 +1572,14 @@ class Tally(object):
             # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-            # FIXME: Redundant filters
 
+            self._cross_product(other, new_tally, binary_op='+')
             data = self._align_tally_data(other)
-
             new_tally._mean = data['self']['mean'] + data['other']['mean']
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
                                          data['other']['std. dev.']**2)
 
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # Generate filter "cross products"
-            if self.filters == other.filters:
-                for self_filter in self.filters:
-                    new_filter = _CrossFilter(self_filter, self_filter, '+')
-                    new_tally.add_filter(new_filter)
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '+')
-                        new_tally.add_filter(new_filter)
-
-            # Generate nuclide "cross products"
-            if self.nuclides == other.nuclides:
-                for self_nuclide in self.nuclides:
-                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '+')
-                    new_tally.add_nuclide(new_nuclide)
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '+')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # Generate score "cross products"
-            if self.scores == other.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '+')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '+')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(other, Integral) or isinstance(other):
+        elif isinstance(other, (Integral, Rational)):
 
             new_tally._mean = self._mean + other
             new_tally._std_dev = self._std_dev
@@ -1615,53 +1623,12 @@ class Tally(object):
             # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
 
+            self._cross_product(other, new_tally, binary_op='-')
             data = self._align_tally_data(other)
-
             new_tally._mean = data['self']['mean'] - data['other']['mean']
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
                                          data['other']['std. dev.']**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # Generate filter "cross products"
-            if self.filters == other.filters:
-                for self_filter in self.filters:
-                    new_filter = _CrossFilter(self_filter, self_filter, '-')
-                    new_tally.add_filter(new_filter)
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '-')
-                        new_tally.add_filter(new_filter)
-
-            # Generate nuclide "cross products"
-            if self.nuclides == other.nuclides:
-                for self_nuclide in self.nuclides:
-                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '-')
-                    new_tally.add_nuclide(new_nuclide)
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '-')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # Generate score "cross products"
-            if self.scores == other.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '-')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '-')
-                        new_tally.add_score(new_score)
 
         elif isinstance(other, (Integral, Rational)):
 
@@ -1708,55 +1675,14 @@ class Tally(object):
             # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
 
+            self._cross_product(other, new_tally, binary_op='*')
             data = self._align_tally_data(other)
-
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] * data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # Generate filter "cross products"
-            if self.filters == other.filters:
-                for self_filter in self.filters:
-                    new_filter = _CrossFilter(self_filter, self_filter, '*')
-                    new_tally.add_filter(new_filter)
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '*')
-                        new_tally.add_filter(new_filter)
-
-            # Generate nuclide "cross products"
-            if self.nuclides == other.nuclides:
-                for self_nuclide in self.nuclides:
-                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '*')
-                    new_tally.add_nuclide(new_nuclide)
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '*')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # Generate score "cross products"
-            if self.scores == other.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '*')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '*')
-                        new_tally.add_score(new_score)
 
         elif isinstance(other, (Integral, Rational)):
 
@@ -1803,55 +1729,14 @@ class Tally(object):
             # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
 
+            self._cross_product(other, new_tally, binary_op='/')
             data = self._align_tally_data(other)
-
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] / data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # Generate filter "cross products"
-            if self.filters == other.filters:
-                for self_filter in self.filters:
-                    new_filter = _CrossFilter(self_filter, self_filter, '/')
-                    new_tally.add_filter(new_filter)
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '/')
-                        new_tally.add_filter(new_filter)
-
-            # Generate nuclide "cross products"
-            if self.nuclides == other.nuclides:
-                for self_nuclide in self.nuclides:
-                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '/')
-                    new_tally.add_nuclide(new_nuclide)
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '/')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # Generate score "cross products"
-            if self.scores == other.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '/')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '/')
-                        new_tally.add_score(new_score)
 
         elif isinstance(other, (Integral, Rational)):
 
@@ -1898,56 +1783,15 @@ class Tally(object):
             # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
 
+            self._cross_product(power, new_tally, binary_op='^')
             data = self._align_tally_data(power)
-
             mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = np.log(data['self']['mean']) * data['other']['std. dev.']
             new_tally._mean = data['self']['mean'] ** data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(first_term**2 + second_term**2)
-
-            if self.estimator == power.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and power.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == power.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # Generate nuclide "cross products"
-            if self.nuclides == power.nuclides:
-                for self_nuclide in self.nuclides:
-                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '^')
-                    new_tally.add_nuclide(new_nuclide)
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in power.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '^')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # Generate score "cross products"
-            if self.scores == power.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '^')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in power.scores:
-                        new_score = _CrossScore(self_score, other_score, '^')
-                        new_tally.add_score(new_score)
-
-            # Generate score "cross products"
-            if self.scores == power.scores:
-                for self_score in self.scores:
-                    new_score = _CrossScore(self_score, self_score, '^')
-                    new_tally.add_score(new_score)
-            else:
-                for self_score in self.scores:
-                    for other_score in power.scores:
-                        new_score = _CrossScore(self_score, other_score, '^')
-                        new_tally.add_score(new_score)
 
         elif isinstance(power, (Integral, Rational)):
 

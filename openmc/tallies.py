@@ -102,821 +102,6 @@ class Tally(object):
         self._std_dev = None
         self._with_batch_statistics = False
 
-
-    def _align_tally_data(self, other):
-
-        self_mean = copy.deepcopy(self.mean)
-        self_std_dev = copy.deepcopy(self.std_dev)
-        other_mean = copy.deepcopy(other.mean)
-        other_std_dev = copy.deepcopy(other.std_dev)
-
-        if self.filters != other.filters:
-
-            # Determine the number of paired combinations of filter bins
-            # between the two tallies and repeat arrays along filter axes
-            self_num_filter_bins = self.mean.shape[0]
-            other_num_filter_bins = other.mean.shape[0]
-            num_filter_bins = self_num_filter_bins * other_num_filter_bins
-            self_repeat_factor = num_filter_bins / self_num_filter_bins
-            other_tile_factor = num_filter_bins / other_num_filter_bins
-
-            # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
-            other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=0)
-            other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
-
-        if self.nuclides != other.nuclides:
-
-            # Determine the number of paired combinations of nuclides
-            # between the two tallies and repeat arrays along nuclide axes
-            self_num_nuclide_bins = self.mean.shape[1]
-            other_num_nuclide_bins = other.mean.shape[1]
-            num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
-            self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
-            other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
-
-            # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
-            other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
-            other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
-
-        if self.scores != other.scores:
-
-            # Determine the number of paired combinations of score bins
-            # between the two tallies and repeat arrays along score axes
-            self_num_score_bins = self.mean.shape[2]
-            other_num_score_bins = other.mean.shape[2]
-            num_score_bins = self_num_score_bins * other_num_score_bins
-            self_repeat_factor = num_score_bins / self_num_score_bins
-            other_tile_factor = num_score_bins / other_num_score_bins
-
-            # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
-            other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
-            other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
-
-        data = {}
-        data['self'] = {}
-        data['other'] = {}
-        data['self']['mean'] = self_mean
-        data['other']['mean'] = other_mean
-        data['self']['std. dev.'] = self_std_dev
-        data['other']['std. dev.'] = other_std_dev
-        return data
-
-
-    def __add__(self, other):
-
-        # Check that results have been read
-        if self.mean is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
-        if isinstance(other, Tally):
-
-            # Check that results have been read
-            if other.mean is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
-            # FIXME: Need to be able to use StatePoint.get_tally
-            # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-            # FIXME: Redundant filters
-
-            data = self._align_tally_data(other)
-
-            new_tally._mean = data['self']['mean'] + data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
-                                         data['other']['std. dev.']**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # If the two Tallies have same filters, replicate them in new Tally
-            if self.filters == other.filters:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-
-            # Generate filter "cross product"
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '+')
-                        new_tally.add_filter(new_filter)
-
-            # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == other.nuclides:
-                for nuclide in self.nuclides:
-                    new_tally.add_nuclide(nuclide)
-
-            # Generate nuclide "cross product"
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '+')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
-
-            # Generate score "cross product"
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '+')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(other, Integral) or isinstance(other):
-
-            new_tally._mean = self._mean + other
-            new_tally._std_dev = self._std_dev
-            new_tally.estimator = self.estimator
-            new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
-
-            for filter in self.filters:
-                new_tally.add_filter(filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
-
-        else:
-            msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
-            raise ValueError(msg)
-
-        return new_tally
-
-
-    def __radd__(self, other):
-        return self + other
-
-
-    def __sub__(self, other):
-
-        # Check that results have been read
-        if self.mean is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
-        if isinstance(other, Tally):
-
-            # Check that results have been read
-            if other.mean is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
-            # FIXME: Need to be able to use StatePoint.get_tally
-            # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-
-            data = self._align_tally_data(other)
-
-            new_tally._mean = data['self']['mean'] - data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
-                                         data['other']['std. dev.']**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # If the two Tallies have same filters, replicate them in new Tally
-            if self.filters == other.filters:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-
-            # Generate filter "cross product"
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '-')
-                        new_tally.add_filter(new_filter)
-
-            # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == other.nuclides:
-                for nuclide in self.nuclides:
-                    new_tally.add_nuclide(nuclide)
-
-            # Generate nuclide "cross product"
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '-')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
-
-            # Generate score "cross product"
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '-')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(other, (Integral, Rational)):
-
-            new_tally._mean = self._mean - other
-            new_tally._std_dev = self._std_dev
-            new_tally.estimator = self.estimator
-            new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
-
-            for filter in self.filters:
-                new_tally.add_filter(filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
-
-        else:
-            msg = 'Unable to subtract {0} from Tally ' \
-                  'ID={1}'.format(other, self.id)
-            raise ValueError(msg)
-
-        return new_tally
-
-
-    def __rsub__(self, other):
-        return -1. * self + other
-
-
-    def __mul__(self, other):
-
-        # Check that results have been read
-        if self.mean is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
-        if isinstance(other, Tally):
-
-            # Check that results have been read
-            if other.mean is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
-            # FIXME: Need to be able to use StatePoint.get_tally
-            # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-
-            data = self._align_tally_data(other)
-
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] * data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # If the two Tallies have same filters, replicate them in new Tally
-            if self.filters == other.filters:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-
-            # Generate filter "cross product"
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '*')
-                        new_tally.add_filter(new_filter)
-
-            # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == other.nuclides:
-                for nuclide in self.nuclides:
-                    new_tally.add_nuclide(nuclide)
-
-            # Generate nuclide "cross product"
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '*')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
-
-            # Generate score "cross product"
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '*')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(other, (Integral, Rational)):
-
-            new_tally._mean = self._mean * other
-            new_tally._std_dev = self._std_dev * np.abs(other)
-            new_tally.estimator = self.estimator
-            new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
-
-            for filter in self.filters:
-                new_tally.add_filter(filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
-
-        else:
-            msg = 'Unable to multiply Tally ID={1} ' \
-                  'by {0}'.format(self.id, other)
-            raise ValueError(msg)
-
-        return new_tally
-
-
-    def __rmul__(self, other):
-        return self * other
-
-
-    def __div__(self, other):
-
-        # Check that results have been read
-        if self.mean is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
-        if isinstance(other, Tally):
-
-            # Check that results have been read
-            if other.mean is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
-            # FIXME: Need to be able to use StatePoint.get_tally
-            # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-
-            data = self._align_tally_data(other)
-
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] / data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-            if self.estimator == other.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and other.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == other.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # If the two Tallies have same filters, replicate them in new Tally
-            if self.filters == other.filters:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-
-            # Generate filter "cross product"
-            else:
-                for self_filter in self.filters:
-                    for other_filter in other.filters:
-                        new_filter = _CrossFilter(self_filter, other_filter, '/')
-                        new_tally.add_filter(new_filter)
-
-            # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == other.nuclides:
-                for nuclide in self.nuclides:
-                    new_tally.add_nuclide(nuclide)
-
-            # Generate nuclide "cross product"
-            else:
-                for self_nuclide in self.nuclides:
-                    for other_nuclide in other.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '/')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == other.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
-
-            # Generate score "cross product"
-            else:
-                for self_score in self.scores:
-                    for other_score in other.scores:
-                        new_score = _CrossScore(self_score, other_score, '/')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(other, (Integral, Rational)):
-
-            new_tally._mean = self._mean / other
-            new_tally._std_dev = self._std_dev * np.abs(1. / other)
-            new_tally.estimator = self.estimator
-            new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
-
-            for filter in self.filters:
-                new_tally.add_filter(filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
-
-        else:
-            msg = 'Unable to divide Tally ID={0} ' \
-                  'by {1}'.format(self.id, other)
-            raise ValueError(msg)
-
-        return new_tally
-
-
-    def __rdiv__(self, other):
-        return self * (1. / other)
-
-
-    def __pow__(self, power):
-
-        # Check that results have been read
-        if self.mean is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
-        if isinstance(power, Tally):
-
-            # Check that results have been read
-            if power.mean is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(power.id)
-                raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
-            # FIXME: Need to be able to use StatePoint.get_tally
-            # FIXME: Need to be able to use Tally.get_value
-            # FIXME: Modularize
-
-            data = self._align_tally_data(power)
-
-            mean_ratio = data['other']['mean'] / data['self']['mean']
-            first_term = mean_ratio * data['self']['std. dev.']
-            second_term = np.log(data['self']['mean']) * data['other']['std. dev.']
-            new_tally._mean = data['self']['mean'] ** data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(first_term**2 + second_term**2)
-
-            if self.estimator == power.estimator:
-                new_tally.estimator = self.estimator
-            if self.with_summary and power.with_summary:
-                new_tally.with_summary = self.with_summary
-            if self.num_realizations == power.num_realizations:
-                new_tally.num_realizations = self.num_realizations
-
-            # If the two Tallies have same filters, replicate them in new Tally
-            if self.filters == power.filters:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-
-            # Generate filter "cross product"
-            else:
-                for self_filter in self.filters:
-                    for power_filter in power.filters:
-                        new_filter = _CrossFilter(self_filter, power_filter, '^')
-                        new_tally.add_filter(new_filter)
-
-            # If the two Tallies have same nuclides, replicate them in new Tally
-            if self.nuclides == power.nuclides:
-                for nuclide in self.nuclides:
-                    new_tally.add_nuclide(nuclide)
-
-            # Generate nuclide "cross product"
-            else:
-                for self_nuclide in self.nuclides:
-                    for power_nuclide in power.nuclides:
-                        new_nuclide = _CrossNuclide(self_nuclide, power_nuclide, '^')
-                        new_tally.add_nuclide(new_nuclide)
-
-            # If the two Tallies have same scores, replicate them in new Tally
-            if self.scores == power.scores:
-                for score in self.scores:
-                    new_tally.add_score(score)
-
-            # Generate score "cross product"
-            else:
-                for self_score in self.scores:
-                    for power_score in power.scores:
-                        new_score = _CrossScore(self_score, power_score, '^')
-                        new_tally.add_score(new_score)
-
-        elif isinstance(power, (Integral, Rational)):
-
-            new_tally._mean = self._mean ** power
-            self_rel_err = self.std_dev / self.mean
-            new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
-            new_tally.estimator = self.estimator
-            new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
-
-            for filter in self.filters:
-                new_tally.add_filter(filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
-
-        else:
-            msg = 'Unable to raise Tally ID={0} to ' \
-                  'power {1}'.format(self.id, power)
-            raise ValueError(msg)
-
-        return new_tally
-
-
-    def __pos__(self):
-        new_tally = copy.deepcopy(self)
-        new_tally._mean = np.abs(new_tally.mean)
-        return new_tally
-
-    def __neg__(self):
-        new_tally = self * -1
-        return new_tally
-
-    def minimum(self, scores=[], filters=[], filter_bins=[],
-                nuclides=[], value='mean'):
-        """Returns the minimum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the minimum value in the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.min(data)
-
-    def maximum(self, scores=[], filters=[], filter_bins=[],
-                nuclides=[], value='mean'):
-        """Returns the maximum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the maximum value in the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.max(data)
-
-    def summation(self, scores=[], filters=[], filter_bins=[],
-                  nuclides=[], value='mean'):
-        """Returns the sum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the sum of the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.sum(data)
-
-    def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
-        """
-        """
-
-        # Ensure that StatePoint.read_results() was called first
-        if (self.mean is None) or (self.std_dev is None):
-            msg = 'The Tally ID={0} has no data to slice. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
-                  'Tally.slice(...)'.format(self.id)
-            raise ValueError(msg)
-
-        # Compute batch statistics if not yet computed
-        if not self.with_batch_statistics:
-            self.compute_std_dev()
-
-        new_tally = copy.deepcopy(self)
-        new_sum = self.get_values(scores, filters, filter_bins,
-                                  nuclides, 'sum')
-        new_sum_sq = self.get_values(scores, filters, filter_bins,
-                                     nuclides, 'sum_sq')
-        new_tally.sum = new_sum
-        new_tally.sum_sq = new_sum_sq
-
-        ############################      FILTERS      #########################
-        # Determine the score indices from any of the requested scores
-        if filters:
-
-            # Initialize list of indices to Filters to exclude from slice
-            filter_indices = []
-
-            # Loop over all of the Tally's Filters
-            for i, filter in enumerate(self.filters):
-
-                # FIXME: sum over unused filter bins
-                # FIXME: neglect bins not selected for selected filters
-                # NOTE: We must store filter indices here since they are strings
-
-                if filter.type not in filters:
-                    filter_index = self.get_filter_index(filters[i], filter_bins[i])
-                    filter_indices.append(filter_index)
-
-                # Loop over indices in reverse to remove excluded Filters
-                for filter_index in filter_indices[::-1]:
-                    new_tally.remove_filter(self.filters[filter_index])
-
-                for i, filter_type in enumerate(filters):
-
-                    if 'energy' in filter_type:
-                        # Create a list of the first energy edge
-                        bins = [filter_bin[0] for filter_bin in filter_bins]
-
-
-
-        ############################      NUCLIDES      ########################
-        # Determine the score indices from any of the requested scores
-        if nuclides:
-
-            # Initialize list of indices to Nuclides to exclude from slice
-            nuclide_indices = []
-
-            for nuclide in self.nuclides:
-
-                if isinstance(nuclide, Nuclide):
-                    if nuclide.name not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
-                        nuclide_indices.append(nuclide_index)
-                else:
-                    if nuclide not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
-                        nuclide_indices.append(nuclide_index)
-
-            # Loop over indices in reverse to remove excluded Nuclides
-            for nuclide_index in nuclide_indices[::-1]:
-                new_tally.remove_nuclide(self.nuclides[nuclide_index])
-
-        #############################      SCORES      #########################
-        # Determine the score indices from any of the requested scores
-        if scores:
-
-            # Initialize list of indices to Nuclides to exclude from slice
-            score_indices = []
-
-            for score in self.scores:
-
-                if score not in scores:
-                    score_index = self.get_score_index(score)
-                    score_indices.append(score_index)
-
-            # Loop over indices in reverse to remove excluded scores
-            for score_index in score_indices[::-1]:
-                new_tally.remove_score(self.scores[score_index])
-                new_tally.num_score_bins -= 1
-
-
-
-        return new_tally
-
-
-
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 
@@ -1005,14 +190,6 @@ class Tally(object):
         hashable.append(self.name)
 
         return hash(tuple(hashable))
-
-    def __add__(self, other):
-        # FIXME: Error checking: must check that results has been
-        # set and that # bins is the same
-
-        new_tally = Tally()
-        new_tally._mean = self._mean + other._mean
-        new_tally._std_dev = np.sqrt(self.std_dev**2 + other.std_dev**2)
 
     @property
     def id(self):
@@ -2258,6 +1435,791 @@ class Tally(object):
 
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
+
+    def _align_tally_data(self, other):
+
+        self_mean = copy.deepcopy(self.mean)
+        self_std_dev = copy.deepcopy(self.std_dev)
+        other_mean = copy.deepcopy(other.mean)
+        other_std_dev = copy.deepcopy(other.std_dev)
+
+        if self.filters != other.filters:
+
+            # Determine the number of paired combinations of filter bins
+            # between the two tallies and repeat arrays along filter axes
+            self_num_filter_bins = self.mean.shape[0]
+            other_num_filter_bins = other.mean.shape[0]
+            num_filter_bins = self_num_filter_bins * other_num_filter_bins
+            self_repeat_factor = num_filter_bins / self_num_filter_bins
+            other_tile_factor = num_filter_bins / other_num_filter_bins
+
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
+            other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=0)
+            other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
+
+        if self.nuclides != other.nuclides:
+
+            # Determine the number of paired combinations of nuclides
+            # between the two tallies and repeat arrays along nuclide axes
+            self_num_nuclide_bins = self.mean.shape[1]
+            other_num_nuclide_bins = other.mean.shape[1]
+            num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
+            self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
+            other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
+
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
+            other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
+            other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
+
+        if self.scores != other.scores:
+
+            # Determine the number of paired combinations of score bins
+            # between the two tallies and repeat arrays along score axes
+            self_num_score_bins = self.mean.shape[2]
+            other_num_score_bins = other.mean.shape[2]
+            num_score_bins = self_num_score_bins * other_num_score_bins
+            self_repeat_factor = num_score_bins / self_num_score_bins
+            other_tile_factor = num_score_bins / other_num_score_bins
+
+            # Replicate the data
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
+            other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
+            other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
+
+        data = {}
+        data['self'] = {}
+        data['other'] = {}
+        data['self']['mean'] = self_mean
+        data['other']['mean'] = other_mean
+        data['self']['std. dev.'] = self_std_dev
+        data['other']['std. dev.'] = other_std_dev
+        return data
+
+    def __add__(self, other):
+
+        # Check that results have been read
+        if self.mean is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if other.mean is None:
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(other.id)
+                raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
+            # FIXME: Redundant filters
+
+            data = self._align_tally_data(other)
+
+            new_tally._mean = data['self']['mean'] + data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+                                         data['other']['std. dev.']**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+            # Generate filter "cross products"
+            if self.filters == other.filters:
+                for self_filter in self.filters:
+                    new_filter = _CrossFilter(self_filter, self_filter, '+')
+                    new_tally.add_filter(new_filter)
+            else:
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '+')
+                        new_tally.add_filter(new_filter)
+
+            # Generate nuclide "cross products"
+            if self.nuclides == other.nuclides:
+                for self_nuclide in self.nuclides:
+                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '+')
+                    new_tally.add_nuclide(new_nuclide)
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '+')
+                        new_tally.add_nuclide(new_nuclide)
+
+            # Generate score "cross products"
+            if self.scores == other.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '+')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '+')
+                        new_tally.add_score(new_score)
+
+        elif isinstance(other, Integral) or isinstance(other):
+
+            new_tally._mean = self._mean + other
+            new_tally._std_dev = self._std_dev
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for filter in self.filters:
+                new_tally.add_filter(filter)
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+    def __sub__(self, other):
+
+        # Check that results have been read
+        if self.mean is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if other.mean is None:
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(other.id)
+                raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
+
+            data = self._align_tally_data(other)
+
+            new_tally._mean = data['self']['mean'] - data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+                                         data['other']['std. dev.']**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+            # Generate filter "cross products"
+            if self.filters == other.filters:
+                for self_filter in self.filters:
+                    new_filter = _CrossFilter(self_filter, self_filter, '-')
+                    new_tally.add_filter(new_filter)
+            else:
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '-')
+                        new_tally.add_filter(new_filter)
+
+            # Generate nuclide "cross products"
+            if self.nuclides == other.nuclides:
+                for self_nuclide in self.nuclides:
+                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '-')
+                    new_tally.add_nuclide(new_nuclide)
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '-')
+                        new_tally.add_nuclide(new_nuclide)
+
+            # Generate score "cross products"
+            if self.scores == other.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '-')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '-')
+                        new_tally.add_score(new_score)
+
+        elif isinstance(other, (Integral, Rational)):
+
+            new_tally._mean = self._mean - other
+            new_tally._std_dev = self._std_dev
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for filter in self.filters:
+                new_tally.add_filter(filter)
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to subtract {0} from Tally ' \
+                  'ID={1}'.format(other, self.id)
+            raise ValueError(msg)
+
+        return new_tally
+
+    def __mul__(self, other):
+
+        # Check that results have been read
+        if self.mean is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if other.mean is None:
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(other.id)
+                raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
+
+            data = self._align_tally_data(other)
+
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] * data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+            # Generate filter "cross products"
+            if self.filters == other.filters:
+                for self_filter in self.filters:
+                    new_filter = _CrossFilter(self_filter, self_filter, '*')
+                    new_tally.add_filter(new_filter)
+            else:
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '*')
+                        new_tally.add_filter(new_filter)
+
+            # Generate nuclide "cross products"
+            if self.nuclides == other.nuclides:
+                for self_nuclide in self.nuclides:
+                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '*')
+                    new_tally.add_nuclide(new_nuclide)
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '*')
+                        new_tally.add_nuclide(new_nuclide)
+
+            # Generate score "cross products"
+            if self.scores == other.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '*')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '*')
+                        new_tally.add_score(new_score)
+
+        elif isinstance(other, (Integral, Rational)):
+
+            new_tally._mean = self._mean * other
+            new_tally._std_dev = self._std_dev * np.abs(other)
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for filter in self.filters:
+                new_tally.add_filter(filter)
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to multiply Tally ID={1} ' \
+                  'by {0}'.format(self.id, other)
+            raise ValueError(msg)
+
+        return new_tally
+
+    def __div__(self, other):
+
+        # Check that results have been read
+        if self.mean is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
+
+        if isinstance(other, Tally):
+
+            # Check that results have been read
+            if other.mean is None:
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(other.id)
+                raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
+
+            data = self._align_tally_data(other)
+
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+
+            if self.estimator == other.estimator:
+                new_tally.estimator = self.estimator
+            if self.with_summary and other.with_summary:
+                new_tally.with_summary = self.with_summary
+            if self.num_realizations == other.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+            # Generate filter "cross products"
+            if self.filters == other.filters:
+                for self_filter in self.filters:
+                    new_filter = _CrossFilter(self_filter, self_filter, '/')
+                    new_tally.add_filter(new_filter)
+            else:
+                for self_filter in self.filters:
+                    for other_filter in other.filters:
+                        new_filter = _CrossFilter(self_filter, other_filter, '/')
+                        new_tally.add_filter(new_filter)
+
+            # Generate nuclide "cross products"
+            if self.nuclides == other.nuclides:
+                for self_nuclide in self.nuclides:
+                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '/')
+                    new_tally.add_nuclide(new_nuclide)
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in other.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '/')
+                        new_tally.add_nuclide(new_nuclide)
+
+            # Generate score "cross products"
+            if self.scores == other.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '/')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in other.scores:
+                        new_score = _CrossScore(self_score, other_score, '/')
+                        new_tally.add_score(new_score)
+
+        elif isinstance(other, (Integral, Rational)):
+
+            new_tally._mean = self._mean / other
+            new_tally._std_dev = self._std_dev * np.abs(1. / other)
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for filter in self.filters:
+                new_tally.add_filter(filter)
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to divide Tally ID={0} ' \
+                  'by {1}'.format(self.id, other)
+            raise ValueError(msg)
+
+        return new_tally
+
+    def __pow__(self, power):
+
+        # Check that results have been read
+        if self.mean is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        new_tally = Tally(name='derived')
+        new_tally.with_batch_statistics = True
+
+        if isinstance(power, Tally):
+
+            # Check that results have been read
+            if power.mean is None:
+                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                      'since it does not contain any results.'.format(power.id)
+                raise ValueError(msg)
+
+            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
+            # FIXME: Need to be able to use StatePoint.get_tally
+            # FIXME: Need to be able to use Tally.get_value
+            # FIXME: Modularize
+
+            data = self._align_tally_data(power)
+
+            mean_ratio = data['other']['mean'] / data['self']['mean']
+            first_term = mean_ratio * data['self']['std. dev.']
+            second_term = np.log(data['self']['mean']) * data['other']['std. dev.']
+            new_tally._mean = data['self']['mean'] ** data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(first_term**2 + second_term**2)
+
+            if self.estimator == power.estimator:
+                new_tally.estimator = self.estimator
+            if self.with_summary and power.with_summary:
+                new_tally.with_summary = self.with_summary
+            if self.num_realizations == power.num_realizations:
+                new_tally.num_realizations = self.num_realizations
+
+            # Generate nuclide "cross products"
+            if self.nuclides == power.nuclides:
+                for self_nuclide in self.nuclides:
+                    new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, '^')
+                    new_tally.add_nuclide(new_nuclide)
+            else:
+                for self_nuclide in self.nuclides:
+                    for other_nuclide in power.nuclides:
+                        new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, '^')
+                        new_tally.add_nuclide(new_nuclide)
+
+            # Generate score "cross products"
+            if self.scores == power.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '^')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in power.scores:
+                        new_score = _CrossScore(self_score, other_score, '^')
+                        new_tally.add_score(new_score)
+
+            # Generate score "cross products"
+            if self.scores == power.scores:
+                for self_score in self.scores:
+                    new_score = _CrossScore(self_score, self_score, '^')
+                    new_tally.add_score(new_score)
+            else:
+                for self_score in self.scores:
+                    for other_score in power.scores:
+                        new_score = _CrossScore(self_score, other_score, '^')
+                        new_tally.add_score(new_score)
+
+        elif isinstance(power, (Integral, Rational)):
+
+            new_tally._mean = self._mean ** power
+            self_rel_err = self.std_dev / self.mean
+            new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
+            new_tally.estimator = self.estimator
+            new_tally.with_summary = self.with_summary
+            new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
+
+            for filter in self.filters:
+                new_tally.add_filter(filter)
+            for nuclide in self.nuclides:
+                new_tally.add_nuclide(nuclide)
+            for score in self.scores:
+                new_tally.add_score(score)
+
+        else:
+            msg = 'Unable to raise Tally ID={0} to ' \
+                  'power {1}'.format(self.id, power)
+            raise ValueError(msg)
+
+        return new_tally
+
+    def __radd__(self, other):
+        return self + other
+
+    def __rsub__(self, other):
+        return -1. * self + other
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __rdiv__(self, other):
+        return self * (1. / other)
+
+    def __pos__(self):
+        new_tally = copy.deepcopy(self)
+        new_tally._mean = np.abs(new_tally.mean)
+        return new_tally
+
+    def __neg__(self):
+        new_tally = self * -1
+        return new_tally
+
+    def minimum(self, scores=[], filters=[], filter_bins=[],
+                nuclides=[], value='mean'):
+        """Returns the minimum of a slice of the Tally's data.
+
+        Parameters
+        ----------
+        scores : list
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
+
+        nuclides : list
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        float
+            A scalar float of the minimum value in the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.min(data)
+
+    def maximum(self, scores=[], filters=[], filter_bins=[],
+                nuclides=[], value='mean'):
+        """Returns the maximum of a slice of the Tally's data.
+
+        Parameters
+        ----------
+        scores : list
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
+
+        nuclides : list
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        float
+            A scalar float of the maximum value in the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.max(data)
+
+    def summation(self, scores=[], filters=[], filter_bins=[],
+                  nuclides=[], value='mean'):
+        """Returns the sum of a slice of the Tally's data.
+
+        Parameters
+        ----------
+        scores : list
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
+
+        nuclides : list
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        float
+            A scalar float of the sum of the Tally data indexed by
+            each filter, nuclide and score as listed in the parameters.
+        """
+
+        data = self.get_values(scores, filters, filter_bins, nuclides, value)
+        return np.sum(data)
+
+    def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
+        """
+        """
+
+        # Ensure that StatePoint.read_results() was called first
+        if (self.mean is None) or (self.std_dev is None):
+            msg = 'The Tally ID={0} has no data to slice. Call the ' \
+                  'StatePoint.read_results() routine before using ' \
+                  'Tally.slice(...)'.format(self.id)
+            raise ValueError(msg)
+
+        # Compute batch statistics if not yet computed
+        if not self.with_batch_statistics:
+            self.compute_std_dev()
+
+        new_tally = copy.deepcopy(self)
+        new_sum = self.get_values(scores, filters, filter_bins,
+                                  nuclides, 'sum')
+        new_sum_sq = self.get_values(scores, filters, filter_bins,
+                                     nuclides, 'sum_sq')
+        new_tally.sum = new_sum
+        new_tally.sum_sq = new_sum_sq
+
+        ############################      FILTERS      #########################
+        # Determine the score indices from any of the requested scores
+        if filters:
+
+            # Initialize list of indices to Filters to exclude from slice
+            filter_indices = []
+
+            # Loop over all of the Tally's Filters
+            for i, filter in enumerate(self.filters):
+
+                # FIXME: sum over unused filter bins
+                # FIXME: neglect bins not selected for selected filters
+                # NOTE: We must store filter indices here since they are strings
+
+                if filter.type not in filters:
+                    filter_index = self.get_filter_index(filters[i], filter_bins[i])
+                    filter_indices.append(filter_index)
+
+                # Loop over indices in reverse to remove excluded Filters
+                for filter_index in filter_indices[::-1]:
+                    new_tally.remove_filter(self.filters[filter_index])
+
+                for i, filter_type in enumerate(filters):
+
+                    if 'energy' in filter_type:
+                        # Create a list of the first energy edge
+                        bins = [filter_bin[0] for filter_bin in filter_bins]
+
+
+
+        ############################      NUCLIDES      ########################
+        # Determine the score indices from any of the requested scores
+        if nuclides:
+
+            # Initialize list of indices to Nuclides to exclude from slice
+            nuclide_indices = []
+
+            for nuclide in self.nuclides:
+
+                if isinstance(nuclide, Nuclide):
+                    if nuclide.name not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+                else:
+                    if nuclide not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+
+            # Loop over indices in reverse to remove excluded Nuclides
+            for nuclide_index in nuclide_indices[::-1]:
+                new_tally.remove_nuclide(self.nuclides[nuclide_index])
+
+        #############################      SCORES      #########################
+        # Determine the score indices from any of the requested scores
+        if scores:
+
+            # Initialize list of indices to Nuclides to exclude from slice
+            score_indices = []
+
+            for score in self.scores:
+
+                if score not in scores:
+                    score_index = self.get_score_index(score)
+                    score_indices.append(score_index)
+
+            # Loop over indices in reverse to remove excluded scores
+            for score_index in score_indices[::-1]:
+                new_tally.remove_score(self.scores[score_index])
+                new_tally.num_score_bins -= 1
+
+        return new_tally
 
 
 class TalliesFile(object):

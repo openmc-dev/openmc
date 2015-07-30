@@ -180,7 +180,7 @@ class Filter(object):
                 raise ValueError(msg)
 
         # If all error checks passed, add bin edges
-        self._bins = bins
+        self._bins = np.array(bins)
 
     # FIXME
     @num_bins.setter

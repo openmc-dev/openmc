@@ -1,30 +1,29 @@
 from openmc import Filter, Nuclide
-from openmc.checkvalue import check_type
 
 
 class _CrossScore(object):
     """A special-purpose tally score used to encapsulate all combinations of two
-    tally's scores as a cross product for tally arithmetic.
+    tally's scores as a outer product for tally arithmetic.
 
     Parameters
     ----------
     left_score : str or _CrossScore
-        The left score in the cross product.
+        The left score in the outer product
     right_score : str or _CrossScore
-        The right score in the cross product.
+        The right score in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's scores with this _CrossNuclide.
+        combine two tally's scores with this _CrossNuclide
 
     Attributes
     ----------
     left_score : str or _CrossScore
-        The left score in the cross product.
+        The left score in the outer product
     right_score : str or _CrossScore
-        The right score in the cross product.
+        The right score in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's scores with this _CrossNuclide.
+        combine two tally's scores with this _CrossNuclide
 
     """
 
@@ -55,17 +54,14 @@ class _CrossScore(object):
 
     @left_score.setter
     def left_score(self, left_score):
-        check_type('left score', left_score, (str, _CrossScore))
         self._left_score = left_score
 
     @right_score.setter
     def right_score(self, right_score):
-        check_type('right score', right_score, (str, _CrossScore))
         self._right_score = right_score
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
 
     def __repr__(self):
@@ -76,27 +72,27 @@ class _CrossScore(object):
 
 class _CrossNuclide(object):
     """A special-purpose nuclide used to encapsulate all combinations of two
-    tally's nuclides as a cross product for tally arithmetic.
+    tally's nuclides as a outer product for tally arithmetic.
 
     Parameters
     ----------
     left_nuclide : Nuclide or _CrossNuclide
-        The left nuclide in the cross product.
+        The left nuclide in the outer product
     right_nuclide : Nuclide or _CrossNuclide
-        The right nuclide in the cross product.
+        The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's nuclides with this _CrossNuclide.
+        combine two tally's nuclides with this _CrossNuclide
 
     Attributes
     ----------
     left_nuclide : Nuclide or _CrossNuclide
-        The left nuclide in the cross product.
+        The left nuclide in the outer product
     right_nuclide : Nuclide or _CrossNuclide
-        The right nuclide in the cross product.
+        The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's nuclides with this _CrossNuclide.
+        combine two tally's nuclides with this _CrossNuclide
 
     """
 
@@ -127,17 +123,14 @@ class _CrossNuclide(object):
 
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
-        check_type('left nuclide', left_nuclide, (Nuclide, _CrossNuclide))
         self._left_nuclide = left_nuclide
 
     @right_nuclide.setter
     def right_nuclide(self, right_nuclide):
-        check_type('right nuclide', right_nuclide, (Nuclide, _CrossNuclide))
         self._right_nuclide = right_nuclide
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
 
     def __repr__(self):
@@ -165,31 +158,40 @@ class _CrossNuclide(object):
 
 class _CrossFilter(object):
     """A special-purpose filter used to encapsulate all combinations of two
-    tally's filter bins as a cross product for tally arithmetic.
+    tally's filter bins as a outer product for tally arithmetic.
 
     Parameters
     ----------
     left_filter : Filter or _CrossFilter
-        The left filter in the cross product.
+        The left filter in the outer product
     right_filter : Filter or _CrossFilter
-        The right filter in the cross product.
+        The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's filter bins with this _CrossFilter.
+        combine two tally's filter bins with this _CrossFilter
 
     Attributes
     ----------
     left_filter : Filter or _CrossFilter
-        The left filter in the cross product.
+        The left filter in the outer product
     right_filter : Filter or _CrossFilter
-        The right filter in the cross product.
+        The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's filter bins with this _CrossFilter.
+        combine two tally's filter bins with this _CrossFilter
 
     """
 
     def __init__(self, left_filter=None, right_filter=None, binary_op=None):
+
+        left_type = left_filter.type
+        right_type = right_filter.type
+        self.type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
+
+        self._bins = {}
+        self._bins['left'] = left_filter.bins
+        self._bins['right'] = right_filter.bins
+        self._num_bins = left_filter.num_bins * right_filter.num_bins
 
         self._left_filter = None
         self._right_filter = None
@@ -216,33 +218,34 @@ class _CrossFilter(object):
 
     @property
     def type(self):
-        return (self.right_filter.type, self.left_filter.type)
+        return self._type
 
     @property
     def bins(self):
-        return (self.right_filter.bins, self.left_filter.bins)
+        return (self._bins['left'], self._bins['right'])
 
     @property
     def num_bins(self):
-        return self.left_filter.num_bins * self.right_filter.num_bins
+        return self._num_bins
 
     @property
     def stride(self):
         return self.left_filter.stride * self.right_filter.stride
 
+    @type.setter
+    def type(self, filter_type):
+        self._type = filter_type
+
     @left_filter.setter
     def left_filter(self, left_filter):
-        check_type('left filter', left_filter, (Filter, _CrossFilter))
         self._left_filter = left_filter
 
     @right_filter.setter
     def right_filter(self, right_filter):
-        check_type('right filter', right_filter, (Filter, _CrossFilter))
         self._right_filter = right_filter
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        check_type('binary op', binary_op, str)
         self._binary_op = binary_op
 
     def __repr__(self):

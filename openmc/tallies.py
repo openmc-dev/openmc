@@ -479,7 +479,7 @@ class Tally(object):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
 
-        string += '{0: <16}\n'.format('\tFilters')
+        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
         for filter in self.filters:
             string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
@@ -864,10 +864,6 @@ class Tally(object):
                   'Tally.get_values(...)'.format(self.id)
             raise ValueError(msg)
 
-        # Compute batch statistics if not yet computed
-        if not self.with_batch_statistics:
-            self.compute_std_dev()
-
         ############################      FILTERS      #########################
         # Determine the score indices from any of the requested scores
         if filters:
@@ -1026,10 +1022,6 @@ class Tally(object):
         except ImportError:
             msg = 'The pandas Python package must be installed on your system'
             raise ImportError(msg)
-
-        # Compute batch statistics if not yet computed
-        if not self.with_batch_statistics:
-            self.compute_std_dev()
 
         # Initialize a pandas dataframe for the tally data
         df = pd.DataFrame()
@@ -1452,7 +1444,7 @@ class Tally(object):
 
         """
 
-        new_tally.name = '({0} {1} {2})'.format(self.name, other.name, binary_op)
+        new_tally.name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
 
         if self.estimator == other.estimator:
             new_tally.estimator = self.estimator
@@ -1464,12 +1456,12 @@ class Tally(object):
         # Generate filter "outer products"
         if self.filters == other.filters:
             for self_filter in self.filters:
-                new_filter = _CrossScore(self_filter, self_filter, binary_op)
+                new_filter = _CrossFilter(self_filter, self_filter, binary_op)
                 new_tally.add_filter(new_filter)
         else:
             all_filters = [self.filters, other.filters]
             for self_filter, other_filter in itertools.product(*all_filters):
-                new_filter = _CrossScore(self_filter, other_filter, binary_op)
+                new_filter = _CrossFilter(self_filter, other_filter, binary_op)
                 new_tally.add_filter(new_filter)
 
         # Generate score "outer products"
@@ -1487,7 +1479,7 @@ class Tally(object):
         if self.nuclides == other.nuclides:
             for self_nuclide in self.nuclides:
                 new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, binary_op)
-                new_tally.add_nuclide(new_nuclide)
+                new_tally.nuclides.append(new_nuclide)
         else:
             all_nuclides = [self.nuclides, other.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
@@ -1612,7 +1604,7 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if self.mean is None:
+        if self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1623,7 +1615,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if other.mean is None:
+            if other.sum is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -1691,7 +1683,7 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if self.mean is None:
+        if self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1702,7 +1694,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if other.mean is None:
+            if other.sum is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -1771,7 +1763,7 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if self.mean is None:
+        if self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1782,7 +1774,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if other.mean is None:
+            if other.sum is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -1853,7 +1845,7 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if self.mean is None:
+        if self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1864,7 +1856,7 @@ class Tally(object):
         if isinstance(other, Tally):
 
             # Check that results have been read
-            if other.mean is None:
+            if other.sum is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
@@ -1935,7 +1927,7 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if self.mean is None:
+        if self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1946,7 +1938,7 @@ class Tally(object):
         if isinstance(power, Tally):
 
             # Check that results have been read
-            if power.mean is None:
+            if power.sum is None:
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
@@ -2081,152 +2073,15 @@ class Tally(object):
         new_tally = self * -1
         return new_tally
 
-    def minimum(self, scores=[], filters=[], filter_bins=[],
-                nuclides=[], value='mean'):
-        """Returns the minimum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the minimum value in the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.min(data)
-
-    def maximum(self, scores=[], filters=[], filter_bins=[],
-                nuclides=[], value='mean'):
-        """Returns the maximum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the maximum value in the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.max(data)
-
-    def summation(self, scores=[], filters=[], filter_bins=[],
-                  nuclides=[], value='mean'):
-        """Returns the sum of a slice of the Tally's data.
-
-        Parameters
-        ----------
-        scores : list
-            A list of one or more score strings
-            (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-
-        filter_bins : list
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond of the
-            filter_types parameter.
-
-        nuclides : list
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-
-        value : str
-            A string for the type of value to return  - 'mean' (default),
-            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-
-        Returns
-        -------
-        float
-            A scalar float of the sum of the Tally data indexed by
-            each filter, nuclide and score as listed in the parameters.
-        """
-
-        data = self.get_values(scores, filters, filter_bins, nuclides, value)
-        return np.sum(data)
-
     def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
         """
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if (self.mean is None) or (self.std_dev is None):
-            msg = 'The Tally ID={0} has no data to slice. Call the ' \
-                  'StatePoint.read_results() method before using ' \
-                  'Tally.slice(...)'.format(self.id)
+        if self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+                  'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
-
-        # Compute batch statistics if not yet computed
-        if not self.with_batch_statistics:
-            self.compute_std_dev()
 
         new_tally = copy.deepcopy(self)
         new_sum = self.get_values(scores, filters, filter_bins,
@@ -2264,10 +2119,8 @@ class Tally(object):
                         # Create a list of the first energy edge
                         bins = [filter_bin[0] for filter_bin in filter_bins]
 
-
-
-        ############################      NUCLIDES      ########################
-        # Determine the score indices from any of the requested scores
+        ############################     NUCLIDES      #########################
+        # Determine the nuclide indices from any of the requested nuclides
         if nuclides:
 
             # Initialize list of indices to Nuclides to exclude from slice
@@ -2288,15 +2141,14 @@ class Tally(object):
             for nuclide_index in nuclide_indices[::-1]:
                 new_tally.remove_nuclide(self.nuclides[nuclide_index])
 
-        #############################      SCORES      #########################
+        ############################      SCORES      ##########################
         # Determine the score indices from any of the requested scores
         if scores:
 
-            # Initialize list of indices to Nuclides to exclude from slice
+            # Initialize list of indices to scores to exclude from slice
             score_indices = []
 
             for score in self.scores:
-
                 if score not in scores:
                     score_index = self.get_score_index(score)
                     score_indices.append(score_index)

@@ -803,8 +803,8 @@ class Tally(object):
                    nuclides=[], value='mean'):
         """Returns a tally score value given a list of filters to satisfy.
 
-        This routine constructs a 3D NumPy array for the requested Tally data
-        indexed by filter bin, nuclide bin, and score index. The routine will
+        This method constructs a 3D NumPy array for the requested Tally data
+        indexed by filter bin, nuclide bin, and score index. The method will
         order the data in the array as specified in the parameter lists
 
         Parameters
@@ -846,8 +846,8 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this routine is called before the Tally is populated with data
-            by the StatePoint.read_results() routine. ValueError is also thrown
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method. ValueError is also thrown
             if the input parameters do not correspond to the Tally's attributes,
             e.g., if the score(s) do not match those in the Tally.
 
@@ -860,7 +860,7 @@ class Tally(object):
            (value == 'sum' and self.sum is None) or \
            (value == 'sum_sq' and self.sum_sq is None):
             msg = 'The Tally ID={0} has no data to return. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
+                  'StatePoint.read_results() method before using ' \
                   'Tally.get_values(...)'.format(self.id)
             raise ValueError(msg)
 
@@ -911,7 +911,7 @@ class Tally(object):
                     filter_indices[i].append(
                         self.get_filter_index(filter.type, bin))
 
-            # Apply cross-product sum between all filter bin indices
+            # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
 
         # If user did not specify any specific Filters, use them all
@@ -940,7 +940,7 @@ class Tally(object):
         else:
             score_indices = np.arange(self.num_scores)
 
-        # Construct cross-product of all three index types with each other
+        # Construct outer product of all three index types with each other
         indices = np.ix_(filter_indices, nuclide_indices, score_indices)
 
         # Return the desired result from Tally
@@ -966,11 +966,11 @@ class Tally(object):
                              scores=True, summary=None):
         """Build a Pandas DataFrame for the Tally data.
 
-        This routine constructs a Pandas DataFrame object for the Tally data
+        This method constructs a Pandas DataFrame object for the Tally data
         with columns annotated by filter, nuclide and score bin information.
         This capability has been tested for Pandas >=v0.13.1. However, if
         possible, it is recommended to use the v0.16 or newer versions of
-        Pandas since this this routine uses the Multi-index Pandas feature.
+        Pandas since this this method uses the Multi-index Pandas feature.
 
         Parameters
         ----------
@@ -1000,22 +1000,22 @@ class Tally(object):
         Raises
         ------
         KeyError
-            When this routine is called before the Tally is populated with data
-            by the StatePoint.read_results() routine.
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
 
         """
 
         # Ensure that StatePoint.read_results() was called first
         if self.mean is None or self.std_dev is None:
             msg = 'The Tally ID={0} has no data to return. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
+                  'StatePoint.read_results() method before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
             raise KeyError(msg)
 
         # If using Summary, ensure StatePoint.link_with_summary(...) was called
         if summary and not self.with_summary:
             msg = 'The Tally ID={0} has not been linked with the Summary. ' \
-                  'Call the StatePoint.link_with_summary(...) routine ' \
+                  'Call the StatePoint.link_with_summary(...) method ' \
                   'before using Tally.get_pandas_dataframe(...) with ' \
                   'Summary info'.format(self.id)
             raise KeyError(msg)
@@ -1308,15 +1308,15 @@ class Tally(object):
         Raises
         ------
         KeyError
-            When this routine is called before the Tally is populated with data
-            by the StatePoint.read_results() routine.
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
 
         """
 
         # Ensure that StatePoint.read_results() was called first
         if self._sum is None or self._sum_sq is None:
             msg = 'The Tally ID={0} has no data to export. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
+                  'StatePoint.read_results() method before using ' \
                   'Tally.export_results(...)'.format(self.id)
             raise KeyError(msg)
 
@@ -1433,60 +1433,91 @@ class Tally(object):
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
 
-    def _outer_product(self, other_tally, new_tally, binary_op):
-        """
+    def _outer_product(self, other, new_tally, binary_op):
+        """Combines filters, scores and nuclides with another tally.
+
+        This is a helper method for the tally arithmetic methods. The ilters,
+        scores and nuclides from both tallies are enumerated into all possible
+        combinations and expressed as _CrossFilter, _CrossScore and
+        _CrossNuclide objects in the new derived tally.
 
         Parameters
         ----------
-        other_tally : Tally
-            The tally on the right hand side of the cross-product
+        other : Tally
+            The tally on the right hand side of the outer product
         new_tally: Tally
-            The new tally to represent the cross-product
+            The new tally to represent the outer product
         op : str
-            The binary operation in the cross product (+,-,*,/,^)
+            The binary operation in the outer product ('+', '-', '*', '/', '^')
+
         """
 
-        if self.estimator == other_tally.estimator:
+        new_tally.name = '({0} {1} {2})'.format(self.name, other.name, binary_op)
+
+        if self.estimator == other.estimator:
             new_tally.estimator = self.estimator
-        if self.with_summary and other_tally.with_summary:
+        if self.with_summary and other.with_summary:
             new_tally.with_summary = self.with_summary
-        if self.num_realizations == other_tally.num_realizations:
+        if self.num_realizations == other.num_realizations:
             new_tally.num_realizations = self.num_realizations
 
-        # Generate nuclide "cross products"
-        if self.nuclides == other_tally.nuclides:
-            for self_nuclide in self.nuclides:
-                new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, binary_op)
-                new_tally.add_nuclide(new_nuclide)
-        else:
-            all_nuclides = [self.nuclides, other_tally.nuclides]
-            for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
-                new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, binary_op)
-                new_tally.add_nuclide(new_nuclide)
-
-        # Generate filter "cross products"
-        if self.filters == other_tally.filters:
+        # Generate filter "outer products"
+        if self.filters == other.filters:
             for self_filter in self.filters:
                 new_filter = _CrossScore(self_filter, self_filter, binary_op)
                 new_tally.add_filter(new_filter)
         else:
-            all_filters = [self.filters, other_tally.filters]
+            all_filters = [self.filters, other.filters]
             for self_filter, other_filter in itertools.product(*all_filters):
                 new_filter = _CrossScore(self_filter, other_filter, binary_op)
                 new_tally.add_filter(new_filter)
 
-        # Generate score "cross products"
-        if self.scores == other_tally.scores:
+        # Generate score "outer products"
+        if self.scores == other.scores:
             for self_score in self.scores:
                 new_score = _CrossScore(self_score, self_score, binary_op)
                 new_tally.add_score(new_score)
         else:
-            all_scores = [self.scores, other_tally.scores]
+            all_scores = [self.scores, other.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = _CrossScore(self_score, other_score, binary_op)
                 new_tally.add_score(new_score)
 
+        # Generate nuclide "outer products"
+        if self.nuclides == other.nuclides:
+            for self_nuclide in self.nuclides:
+                new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, binary_op)
+                new_tally.add_nuclide(new_nuclide)
+        else:
+            all_nuclides = [self.nuclides, other.nuclides]
+            for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
+                new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, binary_op)
+                new_tally.add_nuclide(new_nuclide)
+
     def _align_tally_data(self, other):
+        """Aligns data from two tallies for tally arithmetic.
+
+        This is a helper method to construct a dict of dicts of the "aligned"
+        data arrays from each tally for tally arithmetic. The method analyzes
+        the filters, scores and nuclides in both tally's and determines how to
+        appropriately align the data for vectorized arithmetic. For example,
+        if the two tallies have different filters, this method will use NumPy
+        'tile' and 'repeat' operations to the new data arrays such that all
+        possible combinations of the data in each tally's bins will be made
+        when the arithmetic operation is applied to the arrays.
+
+        Parameters
+        ----------
+        other : Tally
+            The tally to outer product with this tally
+
+        Returns
+        -------
+        dict
+            A dictionary of dictionaries to "aligned" 'mean' and 'std. dev'
+            NumPy arrays for each tally's data.
+
+        """
 
         self_mean = copy.deepcopy(self.mean)
         self_std_dev = copy.deepcopy(self.std_dev)
@@ -1551,6 +1582,34 @@ class Tally(object):
         return data
 
     def __add__(self, other):
+        """Adds this tally to another tally or scalar value.
+
+        This method builds a new tally with data that is the sum of this
+        tally's data and that from the other tally or scalar value. If the
+        filters, scores and nuclides in the two tallies are not the same, then
+        they are combined in all possible ways in the new derived tally.
+
+        Uncertainty propagation is used to compute the standard deviation
+        for the new tally's data. It is important to note that this makes
+        the assumption that the tally data is independently distributed.
+        In most use cases, this is *not* true and may lead to under-prediction
+        of the uncertainty. The uncertainty propagation model is from the
+        following source:
+
+        https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+
+        Parameters
+        ----------
+        other : Tally or Integer or Rational
+            The tally or scalar value to add to this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the sum of this tally and the other
+            tally or scalar value in the addition.
+
+        """
 
         # Check that results have been read
         if self.mean is None:
@@ -1558,7 +1617,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally(name='derived')
+        new_tally = Tally()
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1569,7 +1628,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
@@ -1581,6 +1639,7 @@ class Tally(object):
 
         elif isinstance(other, (Integral, Rational)):
 
+            new_tally.name = self.name
             new_tally._mean = self._mean + other
             new_tally._std_dev = self._std_dev
             new_tally.estimator = self.estimator
@@ -1602,6 +1661,34 @@ class Tally(object):
         return new_tally
 
     def __sub__(self, other):
+        """Subtracts another tally or scalar value from this tally.
+
+        This method builds a new tally with data that is the difference of
+        this tally's data and that from the other tally or scalar value. If the
+        filters, scores and nuclides in the two tallies are not the same, then
+        they are combined in all possible ways in the new derived tally.
+
+        Uncertainty propagation is used to compute the standard deviation
+        for the new tally's data. It is important to note that this makes
+        the assumption that the tally data is independently distributed.
+        In most use cases, this is *not* true and may lead to under-prediction
+        of the uncertainty. The uncertainty propagation model is from the
+        following source:
+
+        https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+
+        Parameters
+        ----------
+        other : Tally or Integer or Rational
+            The tally or scalar value to subtract from this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the difference of this tally and the
+            other tally or scalar value in the subtraction.
+
+        """
 
         # Check that results have been read
         if self.mean is None:
@@ -1609,7 +1696,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally(name='derived')
+        new_tally = Tally()
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1620,7 +1707,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
@@ -1632,6 +1718,7 @@ class Tally(object):
 
         elif isinstance(other, (Integral, Rational)):
 
+            new_tally.name = self.name
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
             new_tally.estimator = self.estimator
@@ -1654,6 +1741,34 @@ class Tally(object):
         return new_tally
 
     def __mul__(self, other):
+        """Multiplies this tally with another tally or scalar value.
+
+        This method builds a new tally with data that is the product of
+        this tally's data and that from the other tally or scalar value. If the
+        filters, scores and nuclides in the two tallies are not the same, then
+        they are combined in all possible ways in the new derived tally.
+
+        Uncertainty propagation is used to compute the standard deviation
+        for the new tally's data. It is important to note that this makes
+        the assumption that the tally data is independently distributed.
+        In most use cases, this is *not* true and may lead to under-prediction
+        of the uncertainty. The uncertainty propagation model is from the
+        following source:
+
+        https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+
+        Parameters
+        ----------
+        other : Tally or Integer or Rational
+            The tally or scalar value to multiply with this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the product of this tally and the
+            other tally or scalar value in the multiplication.
+
+        """
 
         # Check that results have been read
         if self.mean is None:
@@ -1661,7 +1776,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally(name='derived')
+        new_tally = Tally()
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1672,7 +1787,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
@@ -1686,6 +1800,7 @@ class Tally(object):
 
         elif isinstance(other, (Integral, Rational)):
 
+            new_tally.name = self.name
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
             new_tally.estimator = self.estimator
@@ -1708,6 +1823,34 @@ class Tally(object):
         return new_tally
 
     def __div__(self, other):
+        """Divides this tally by another tally or scalar value.
+
+        This method builds a new tally with data that is the dividend of
+        this tally's data and that from the other tally or scalar value. If the
+        filters, scores and nuclides in the two tallies are not the same, then
+        they are combined in all possible ways in the new derived tally.
+
+        Uncertainty propagation is used to compute the standard deviation
+        for the new tally's data. It is important to note that this makes
+        the assumption that the tally data is independently distributed.
+        In most use cases, this is *not* true and may lead to under-prediction
+        of the uncertainty. The uncertainty propagation model is from the
+        following source:
+
+        https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+
+        Parameters
+        ----------
+        other : Tally or Integer or Rational
+            The tally or scalar value to divide this tally by
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the dividend of this tally and the
+            other tally or scalar value in the division.
+
+        """
 
         # Check that results have been read
         if self.mean is None:
@@ -1726,7 +1869,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
@@ -1740,6 +1882,7 @@ class Tally(object):
 
         elif isinstance(other, (Integral, Rational)):
 
+            new_tally.name = self.name
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
             new_tally.estimator = self.estimator
@@ -1762,6 +1905,34 @@ class Tally(object):
         return new_tally
 
     def __pow__(self, power):
+        """Raises this tally to another tally or scalar value power.
+
+        This method builds a new tally with data that is the power of
+        this tally's data to that from the other tally or scalar value. If the
+        filters, scores and nuclides in the two tallies are not the same, then
+        they are combined in all possible ways in the new derived tally.
+
+        Uncertainty propagation is used to compute the standard deviation
+        for the new tally's data. It is important to note that this makes
+        the assumption that the tally data is independently distributed.
+        In most use cases, this is *not* true and may lead to under-prediction
+        of the uncertainty. The uncertainty propagation model is from the
+        following source:
+
+        https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+
+        Parameters
+        ----------
+        other : Tally or Integer or Rational
+            The tally or scalar value exponent
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is this tally raised to the power of the
+            other tally or scalar value in the exponentiation.
+
+        """
 
         # Check that results have been read
         if self.mean is None:
@@ -1780,7 +1951,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_pandas_dataframe - filters
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
@@ -1795,6 +1965,7 @@ class Tally(object):
 
         elif isinstance(power, (Integral, Rational)):
 
+            new_tally.name = self.name
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean
             new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
@@ -1818,18 +1989,90 @@ class Tally(object):
         return new_tally
 
     def __radd__(self, other):
+        """Right addition with a scalar value.
+
+        This reverses the operands and calls the __add__ method.
+
+        Parameters
+        ----------
+        other : Integer or Rational
+            The scalar value to add to this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally of this tally added with the scalar value.
+
+        """
+
         return self + other
 
     def __rsub__(self, other):
+        """Right subtraction from a scalar value.
+
+        This reverses the operands and calls the __sub__ method.
+
+        Parameters
+        ----------
+        other : Integer or Rational
+            The scalar value to subtract this tally from
+
+        Returns
+        -------
+        Tally
+            A new derived tally of this tally subtracted from the scalar value.
+
+        """
+
         return -1. * self + other
 
     def __rmul__(self, other):
+        """Right multiplication with a scalar value.
+
+        This reverses the operands and calls the __mul__ method.
+
+        Parameters
+        ----------
+        other : Integer or Rational
+            The scalar value to multiply with this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally of this tally multiplied by the scalar value.
+
+        """
+
         return self * other
 
     def __rdiv__(self, other):
+        """Right division with a scalar value.
+
+        This reverses the operands and calls the __div__ method.
+
+        Parameters
+        ----------
+        other : Integer or Rational
+            The scalar value to divide by this tally
+
+        Returns
+        -------
+        Tally
+            A new derived tally of the scalar value divided by this tally.
+
+        """
+
         return self * (1. / other)
 
     def __pos__(self):
+        """The absolute value of this tally.
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the absolute value of this tally.
+
+        """
         new_tally = copy.deepcopy(self)
         new_tally._mean = np.abs(new_tally.mean)
         return new_tally
@@ -1977,7 +2220,7 @@ class Tally(object):
         # Ensure that StatePoint.read_results() was called first
         if (self.mean is None) or (self.std_dev is None):
             msg = 'The Tally ID={0} has no data to slice. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
+                  'StatePoint.read_results() method before using ' \
                   'Tally.slice(...)'.format(self.id)
             raise ValueError(msg)
 

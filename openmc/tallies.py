@@ -983,8 +983,8 @@ class Tally(object):
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell intance.  NOTE:
-            This option requires the OpenCG Python package.
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
 
         Returns
         -------
@@ -1428,7 +1428,7 @@ class Tally(object):
     def _outer_product(self, other, new_tally, binary_op):
         """Combines filters, scores and nuclides with another tally.
 
-        This is a helper method for the tally arithmetic methods. The ilters,
+        This is a helper method for the tally arithmetic methods. The filters,
         scores and nuclides from both tallies are enumerated into all possible
         combinations and expressed as _CrossFilter, _CrossScore and
         _CrossNuclide objects in the new derived tally.
@@ -1456,8 +1456,7 @@ class Tally(object):
         # Generate filter "outer products"
         if self.filters == other.filters:
             for self_filter in self.filters:
-                new_filter = _CrossFilter(self_filter, self_filter, binary_op)
-                new_tally.add_filter(new_filter)
+                new_tally.add_filter(self_filter)
         else:
             all_filters = [self.filters, other.filters]
             for self_filter, other_filter in itertools.product(*all_filters):
@@ -1467,8 +1466,7 @@ class Tally(object):
         # Generate score "outer products"
         if self.scores == other.scores:
             for self_score in self.scores:
-                new_score = _CrossScore(self_score, self_score, binary_op)
-                new_tally.add_score(new_score)
+                new_tally.add_score(self_score)
         else:
             all_scores = [self.scores, other.scores]
             for self_score, other_score in itertools.product(*all_scores):
@@ -1478,8 +1476,7 @@ class Tally(object):
         # Generate nuclide "outer products"
         if self.nuclides == other.nuclides:
             for self_nuclide in self.nuclides:
-                new_nuclide = _CrossNuclide(self_nuclide, self_nuclide, binary_op)
-                new_tally.nuclides.append(new_nuclide)
+                new_tally.nuclides.append(self_nuclide)
         else:
             all_nuclides = [self.nuclides, other.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
@@ -1620,7 +1617,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='+')
@@ -1699,7 +1695,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='-')
@@ -1779,7 +1774,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='*')
@@ -1861,7 +1855,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='/')
@@ -1943,7 +1936,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(power, new_tally, binary_op='^')
@@ -2091,41 +2083,36 @@ class Tally(object):
         new_tally.sum = new_sum
         new_tally.sum_sq = new_sum_sq
 
-        ############################      FILTERS      #########################
-        # Determine the score indices from any of the requested scores
+        ############################     FILTERS      ##########################
         if filters:
-
-            # Initialize list of indices to Filters to exclude from slice
             filter_indices = []
 
-            # Loop over all of the Tally's Filters
+            # Determine the filter indices from any of the requested filters
             for i, filter in enumerate(self.filters):
-
-                # FIXME: sum over unused filter bins
-                # FIXME: neglect bins not selected for selected filters
-                # NOTE: We must store filter indices here since they are strings
-
                 if filter.type not in filters:
-                    filter_index = self.get_filter_index(filters[i], filter_bins[i])
+                    filter_index = self.get_filter_index(filters[i], filter_bins[i][0])
                     filter_indices.append(filter_index)
 
-                # Loop over indices in reverse to remove excluded Filters
-                for filter_index in filter_indices[::-1]:
-                    new_tally.remove_filter(self.filters[filter_index])
+                # Remove and/or reorder filter bins to user specifications
+                else:
+                    bin_indices = []
 
-                for i, filter_type in enumerate(filters):
+                    for filter_bin in filter_bins[i]:
+                        bin_index = self.filters[filter_index].get_bin_index(filter_bin)
+                        bin_indices.append(bin_index)
 
-                    if 'energy' in filter_type:
-                        # Create a list of the first energy edge
-                        bins = [filter_bin[0] for filter_bin in filter_bins]
+                    new_bins = self.filters[filter_index].bins[bin_indices]
+                    self.filters[filter_index].bins = new_bins
+
+            # Loop over indices in reverse to remove excluded Filters
+            for filter_index in filter_indices[::-1]:
+                new_tally.remove_filter(self.filters[filter_index])
 
         ############################     NUCLIDES      #########################
-        # Determine the nuclide indices from any of the requested nuclides
         if nuclides:
-
-            # Initialize list of indices to Nuclides to exclude from slice
             nuclide_indices = []
 
+            # Determine the nuclide indices from any of the requested nuclides
             for nuclide in self.nuclides:
 
                 if isinstance(nuclide, Nuclide):
@@ -2142,12 +2129,10 @@ class Tally(object):
                 new_tally.remove_nuclide(self.nuclides[nuclide_index])
 
         ############################      SCORES      ##########################
-        # Determine the score indices from any of the requested scores
         if scores:
-
-            # Initialize list of indices to scores to exclude from slice
             score_indices = []
 
+            # Determine the score indices from any of the requested scores
             for score in self.scores:
                 if score not in scores:
                     score_index = self.get_score_index(score)

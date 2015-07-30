@@ -1031,9 +1031,7 @@ class Tally(object):
 
         # Split CrossFilters into separate filters
         split_filters = []
-
         for filter in self.filters:
-
             if isinstance(filter, _CrossFilter):
                 split_filters.extend(filter.split_filters())
             else:
@@ -1041,6 +1039,7 @@ class Tally(object):
 
         # Build DataFrame columns for filters if user requested them
         if filters:
+
             for filter in split_filters:
 
                 # mesh filters
@@ -1233,7 +1232,7 @@ class Tally(object):
                     # Create strings for
                     template = '{0:.1e} - {1:.1e}'
                     filter_bins = []
-                    for i in range(num_bins-1):
+                    for i in range(num_bins):
                         filter_bins.append(template.format(bins[i], bins[i+1]))
 
                     # Tile the energy bins into a DataFrame column

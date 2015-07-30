@@ -1433,7 +1433,7 @@ class Tally(object):
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
 
-    def _cross_product(self, other_tally, new_tally, binary_op):
+    def _outer_product(self, other_tally, new_tally, binary_op):
         """
 
         Parameters
@@ -1573,7 +1573,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
-            self._cross_product(other, new_tally, binary_op='+')
+            self._outer_product(other, new_tally, binary_op='+')
             data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] + data['other']['mean']
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
@@ -1624,7 +1624,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
-            self._cross_product(other, new_tally, binary_op='-')
+            self._outer_product(other, new_tally, binary_op='-')
             data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] - data['other']['mean']
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
@@ -1676,7 +1676,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
-            self._cross_product(other, new_tally, binary_op='*')
+            self._outer_product(other, new_tally, binary_op='*')
             data = self._align_tally_data(other)
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
@@ -1730,7 +1730,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
-            self._cross_product(other, new_tally, binary_op='/')
+            self._outer_product(other, new_tally, binary_op='/')
             data = self._align_tally_data(other)
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
@@ -1784,7 +1784,7 @@ class Tally(object):
             # FIXME: Need to be able to use StatePoint.get_tally
             # FIXME: Need to be able to use Tally.get_value
 
-            self._cross_product(power, new_tally, binary_op='^')
+            self._outer_product(power, new_tally, binary_op='^')
             data = self._align_tally_data(power)
             mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']

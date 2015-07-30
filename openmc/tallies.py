@@ -2082,6 +2082,8 @@ class Tally(object):
                                      nuclides, 'sum_sq')
         new_tally.sum = new_sum
         new_tally.sum_sq = new_sum_sq
+        new_tally._mean = None
+        new_tally._std_dev = None
 
         ############################     FILTERS      ##########################
         if filters:

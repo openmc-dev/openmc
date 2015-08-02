@@ -1,4 +1,16 @@
 from collections import Iterable
+from numbers import Integral
+
+import numpy as np
+
+def _isinstance(value, expected_type):
+    """A Numpy-aware replacement for isinstance"""
+    np_ints = [np.intc, np.intp, np.int8, np.int16, np.int32, np.int64,
+               np.uint8, np.uint16, np.uint32, np.uint64]
+    if expected_type is Integral:
+        types = np_ints + [Integral]
+        return any(isinstance(value, t) for t in types)
+    return isinstance(value, expected_type)
 
 def check_type(name, value, expected_type, expected_iter_type=None):
     """Ensure that an object is of an expected type. Optionally, if the object is
@@ -18,14 +30,14 @@ def check_type(name, value, expected_type, expected_iter_type=None):
 
     """
 
-    if not isinstance(value, expected_type):
+    if not _isinstance(value, expected_type):
         msg = 'Unable to set {0} to {1} which is not of type {2}'.format(
             name, value, expected_type.__name__)
         raise ValueError(msg)
 
     if expected_iter_type:
         for item in value:
-            if not isinstance(item, expected_iter_type):
+            if not _isinstance(item, expected_iter_type):
                 msg = 'Unable to set {0} to {1} since each item must be ' \
                       'of type {2}'.format(name, value,
                                            expected_iter_type.__name__)
@@ -74,7 +86,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
         # If this item is of the expected type, then we've reached the bottom
         # level of this branch.
-        if isinstance(current_item, expected_type):
+        if _isinstance(current_item, expected_type):
             # Is this deep enough?
             if len(tree) < min_depth:
                 msg = 'Error setting {0}: The item at {1} does not meet the ' \

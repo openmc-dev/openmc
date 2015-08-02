@@ -895,8 +895,8 @@ class Tally(object):
                     # Create list of 2-tuples for energy boundary bins
                     elif filter.type in ['energy', 'energyout']:
                         bins = []
-                        for i in range(filter.num_bins):
-                            bins.append((filter.bins[i], filter.bins[i+1]))
+                        for k in range(filter.num_bins):
+                            bins.append((filter.bins[k], filter.bins[k+1]))
 
                     # Create list of IDs for bins for all other Filter types
                     else:
@@ -956,7 +956,7 @@ class Tally(object):
                   '\rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
 
-        return data.squeeze()
+        return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
                              scores=True, summary=None):
@@ -1516,8 +1516,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of filter bins
             # between the two tallies and repeat arrays along filter axes
-            self_num_filter_bins = self.mean.shape[0]
-            other_num_filter_bins = other.mean.shape[0]
+            self_num_filter_bins = self.num_filter_bins
+            other_num_filter_bins = other.num_filter_bins
             num_filter_bins = self_num_filter_bins * other_num_filter_bins
             self_repeat_factor = num_filter_bins / self_num_filter_bins
             other_tile_factor = num_filter_bins / other_num_filter_bins
@@ -1532,8 +1532,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of nuclides
             # between the two tallies and repeat arrays along nuclide axes
-            self_num_nuclide_bins = self.mean.shape[1]
-            other_num_nuclide_bins = other.mean.shape[1]
+            self_num_nuclide_bins = self.num_nuclides
+            other_num_nuclide_bins = other.num_nuclides
             num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
             self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
             other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
@@ -1548,8 +1548,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of score bins
             # between the two tallies and repeat arrays along score axes
-            self_num_score_bins = self.mean.shape[2]
-            other_num_score_bins = other.mean.shape[2]
+            self_num_score_bins = self.num_score_bins
+            other_num_score_bins = other.num_score_bins
             num_score_bins = self_num_score_bins * other_num_score_bins
             self_repeat_factor = num_score_bins / self_num_score_bins
             other_tile_factor = num_score_bins / other_num_score_bins
@@ -1616,7 +1616,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='+')
@@ -1695,7 +1694,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='-')
@@ -1775,7 +1773,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='*')
@@ -1857,7 +1854,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='/')
@@ -1939,7 +1935,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
 
-            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(power, new_tally, binary_op='^')
@@ -2084,12 +2079,15 @@ class Tally(object):
                                   nuclides, 'sum')
         new_sum_sq = self.get_values(scores, filters, filter_bins,
                                      nuclides, 'sum_sq')
+
         new_tally.sum = new_sum
         new_tally.sum_sq = new_sum_sq
         new_tally._mean = None
         new_tally._std_dev = None
 
-        ############################      SCORES      ##########################
+        # FIXME: Reorder nuclides, scores, filters
+
+        # SCORES
         if scores:
             score_indices = []
 
@@ -2104,7 +2102,7 @@ class Tally(object):
                 new_tally.remove_score(self.scores[score_index])
                 new_tally.num_score_bins -= 1
 
-        ############################     NUCLIDES      #########################
+        # NUCLIDES
         if nuclides:
             nuclide_indices = []
 
@@ -2124,30 +2122,22 @@ class Tally(object):
             for nuclide_index in nuclide_indices[::-1]:
                 new_tally.remove_nuclide(self.nuclides[nuclide_index])
 
-        ############################     FILTERS      ##########################
+        # FILTERS
         if filters:
-            filter_indices = []
 
             # Determine the filter indices from any of the requested filters
-            for i, filter in enumerate(self.filters):
-                if filter.type not in filters:
-                    filter_index = self.get_filter_index(filters[i], filter_bins[i][0])
-                    filter_indices.append(filter_index)
+            for i, filter_type in enumerate(filters):
+                filter = new_tally.find_filter(filter_type)
 
                 # Remove and/or reorder filter bins to user specifications
-                else:
-                    bin_indices = []
+                bin_indices = []
 
-                    for filter_bin in filter_bins[i]:
-                        bin_index = self.filters[filter_index].get_bin_index(filter_bin)
-                        bin_indices.append(bin_index)
+                for filter_bin in filter_bins[i]:
+                    bin_index = filter.get_bin_index(filter_bin)
+                    bin_indices.append(bin_index)
 
-                    new_bins = self.filters[filter_index].bins[bin_indices]
-                    self.filters[filter_index].bins = new_bins
-
-            # Loop over indices in reverse to remove excluded Filters
-            for filter_index in filter_indices[::-1]:
-                new_tally.remove_filter(self.filters[filter_index])
+                new_bins = filter.bins[bin_indices]
+                filter.bins = new_bins
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_score_bins

@@ -322,7 +322,7 @@ class Filter(object):
 
             # Use lower energy bound to find index for energy Filters
             elif self.type in ['energy', 'energyout']:
-                val = self.bins.index(filter_bin[0])
+                val = np.where(self.bins == filter_bin[0])[0][0]
                 filter_index = val
 
             # Filter bins for distribcell are the "IDs" of each unique placement
@@ -332,7 +332,7 @@ class Filter(object):
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
             else:
-                val = self.bins.index(filter_bin)
+                val = np.where(self.bins == filter_bin)[0][0]
                 filter_index = val
 
         except ValueError:

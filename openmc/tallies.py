@@ -1616,6 +1616,7 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
+            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='+')
@@ -1694,6 +1695,7 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
+            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='-')
@@ -1773,6 +1775,7 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
+            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='*')
@@ -1854,6 +1857,7 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
+            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='/')
@@ -1935,6 +1939,7 @@ class Tally(object):
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
 
+            # FIXME: New tally IDs collide with existing IDs
             # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(power, new_tally, binary_op='^')
@@ -2084,6 +2089,41 @@ class Tally(object):
         new_tally._mean = None
         new_tally._std_dev = None
 
+        ############################      SCORES      ##########################
+        if scores:
+            score_indices = []
+
+            # Determine the score indices from any of the requested scores
+            for score in self.scores:
+                if score not in scores:
+                    score_index = self.get_score_index(score)
+                    score_indices.append(score_index)
+
+            # Loop over indices in reverse to remove excluded scores
+            for score_index in score_indices[::-1]:
+                new_tally.remove_score(self.scores[score_index])
+                new_tally.num_score_bins -= 1
+
+        ############################     NUCLIDES      #########################
+        if nuclides:
+            nuclide_indices = []
+
+            # Determine the nuclide indices from any of the requested nuclides
+            for nuclide in self.nuclides:
+
+                if isinstance(nuclide, Nuclide):
+                    if nuclide.name not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+                else:
+                    if nuclide not in nuclides:
+                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_indices.append(nuclide_index)
+
+            # Loop over indices in reverse to remove excluded Nuclides
+            for nuclide_index in nuclide_indices[::-1]:
+                new_tally.remove_nuclide(self.nuclides[nuclide_index])
+
         ############################     FILTERS      ##########################
         if filters:
             filter_indices = []
@@ -2109,40 +2149,11 @@ class Tally(object):
             for filter_index in filter_indices[::-1]:
                 new_tally.remove_filter(self.filters[filter_index])
 
-        ############################     NUCLIDES      #########################
-        if nuclides:
-            nuclide_indices = []
-
-            # Determine the nuclide indices from any of the requested nuclides
-            for nuclide in self.nuclides:
-
-                if isinstance(nuclide, Nuclide):
-                    if nuclide.name not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
-                        nuclide_indices.append(nuclide_index)
-                else:
-                    if nuclide not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
-                        nuclide_indices.append(nuclide_index)
-
-            # Loop over indices in reverse to remove excluded Nuclides
-            for nuclide_index in nuclide_indices[::-1]:
-                new_tally.remove_nuclide(self.nuclides[nuclide_index])
-
-        ############################      SCORES      ##########################
-        if scores:
-            score_indices = []
-
-            # Determine the score indices from any of the requested scores
-            for score in self.scores:
-                if score not in scores:
-                    score_index = self.get_score_index(score)
-                    score_indices.append(score_index)
-
-            # Loop over indices in reverse to remove excluded scores
-            for score_index in score_indices[::-1]:
-                new_tally.remove_score(self.scores[score_index])
-                new_tally.num_score_bins -= 1
+        # Correct each Filter's stride
+        stride = new_tally.num_nuclides * new_tally.num_score_bins
+        for filter in reversed(new_tally.filters):
+            filter.stride = stride
+            stride *= filter.num_bins
 
         return new_tally
 

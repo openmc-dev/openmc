@@ -64,6 +64,9 @@ class CrossScore(object):
     def binary_op(self, binary_op):
         self._binary_op = binary_op
 
+    def __eq__(self, other):
+        return str(other) == str(self)
+
     def __repr__(self):
         string = '({0} {1} {2})'.format(self.left_score,
                                         self.binary_op, self.right_score)
@@ -132,6 +135,9 @@ class CrossNuclide(object):
     @binary_op.setter
     def binary_op(self, binary_op):
         self._binary_op = binary_op
+
+    def __eq__(self, other):
+        return str(other) == str(self)
 
     def __repr__(self):
 
@@ -247,6 +253,9 @@ class CrossFilter(object):
     @binary_op.setter
     def binary_op(self, binary_op):
         self._binary_op = binary_op
+
+    def __eq__(self, other):
+        return str(other) == str(self)
 
     def __repr__(self):
 

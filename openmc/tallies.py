@@ -10,7 +10,7 @@ import sys
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
-from openmc.cross import _CrossScore, _CrossNuclide, _CrossFilter
+from openmc.cross import CrossScore, CrossNuclide, CrossFilter
 from openmc.summary import Summary
 from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
@@ -329,7 +329,7 @@ class Tally(object):
 
         """
 
-        if not isinstance(filter, (Filter, _CrossFilter)):
+        if not isinstance(filter, (Filter, CrossFilter)):
             msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
                   'not a Filter object'.format(filter, self.id)
             raise ValueError(msg)
@@ -358,7 +358,7 @@ class Tally(object):
 
         """
 
-        if not isinstance(score, (basestring, _CrossScore)):
+        if not isinstance(score, (basestring, CrossScore)):
             msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
@@ -1040,7 +1040,7 @@ class Tally(object):
         # Split CrossFilters into separate filters
         split_filters = []
         for filter in self.filters:
-            if isinstance(filter, _CrossFilter):
+            if isinstance(filter, CrossFilter):
                 split_filters.extend(filter.split_filters())
             else:
                 split_filters.append(filter)
@@ -1437,8 +1437,8 @@ class Tally(object):
 
         This is a helper method for the tally arithmetic methods. The filters,
         scores and nuclides from both tallies are enumerated into all possible
-        combinations and expressed as _CrossFilter, _CrossScore and
-        _CrossNuclide objects in the new derived tally.
+        combinations and expressed as CrossFilter, CrossScore and
+        CrossNuclide objects in the new derived tally.
 
         Parameters
         ----------
@@ -1467,7 +1467,7 @@ class Tally(object):
         else:
             all_filters = [self.filters, other.filters]
             for self_filter, other_filter in itertools.product(*all_filters):
-                new_filter = _CrossFilter(self_filter, other_filter, binary_op)
+                new_filter = CrossFilter(self_filter, other_filter, binary_op)
                 new_tally.add_filter(new_filter)
 
         # Generate score "outer products"
@@ -1477,7 +1477,7 @@ class Tally(object):
         else:
             all_scores = [self.scores, other.scores]
             for self_score, other_score in itertools.product(*all_scores):
-                new_score = _CrossScore(self_score, other_score, binary_op)
+                new_score = CrossScore(self_score, other_score, binary_op)
                 new_tally.add_score(new_score)
 
         # Generate nuclide "outer products"
@@ -1487,7 +1487,7 @@ class Tally(object):
         else:
             all_nuclides = [self.nuclides, other.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
-                new_nuclide = _CrossNuclide(self_nuclide, other_nuclide, binary_op)
+                new_nuclide = CrossNuclide(self_nuclide, other_nuclide, binary_op)
                 new_tally.add_nuclide(new_nuclide)
 
     def _align_tally_data(self, other):

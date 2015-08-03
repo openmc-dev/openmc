@@ -2064,16 +2064,70 @@ class Tally(object):
             A new derived tally which is the absolute value of this tally.
 
         """
+
         new_tally = copy.deepcopy(self)
         new_tally._mean = np.abs(new_tally.mean)
         return new_tally
 
     def __neg__(self):
+        """The negated value of this tally.
+
+        Returns
+        -------
+        Tally
+            A new derived tally which is the negated value of this tally.
+
+        """
+
         new_tally = self * -1
         return new_tally
 
-    def slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
-        """
+    def get_slice(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
+        """Build a sliced tally for the specified filters, scores and nuclides.
+
+        This method constructs a new tally to encapsulate a subset of the data
+        represented by this tally. The subset of data to included in the tally
+        slice is determined by the scores, filters and nuclides specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        scores : list
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
+            the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
+
+        nuclides : list
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        Returns
+        -------
+        Tally
+            A new tally which encapsulates the subset of data requested in the
+            order each filter, nuclide and score is listed in the parameters.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Ensure that StatePoint.read_results() was called first
@@ -2116,15 +2170,9 @@ class Tally(object):
 
             # Determine the nuclide indices from any of the requested nuclides
             for nuclide in self.nuclides:
-
-                if isinstance(nuclide, Nuclide):
-                    if nuclide.name not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide.name)
-                        nuclide_indices.append(nuclide_index)
-                else:
-                    if nuclide not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
-                        nuclide_indices.append(nuclide_index)
+                if nuclide.name not in nuclides:
+                    nuclide_index = self.get_nuclide_index(nuclide.name)
+                    nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides
             for nuclide_index in nuclide_indices[::-1]:

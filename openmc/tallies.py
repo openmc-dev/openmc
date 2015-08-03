@@ -2137,8 +2137,6 @@ class Tally(object):
         new_tally._mean = None
         new_tally._std_dev = None
 
-        # FIXME: Reorder nuclides, scores, filters
-
         # SCORES
         if scores:
             score_indices = []

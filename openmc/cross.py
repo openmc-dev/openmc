@@ -1,29 +1,29 @@
 from openmc import Filter, Nuclide
 
 
-class _CrossScore(object):
+class CrossScore(object):
     """A special-purpose tally score used to encapsulate all combinations of two
     tally's scores as a outer product for tally arithmetic.
 
     Parameters
     ----------
-    left_score : str or _CrossScore
+    left_score : str or CrossScore
         The left score in the outer product
-    right_score : str or _CrossScore
+    right_score : str or CrossScore
         The right score in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's scores with this _CrossNuclide
+        combine two tally's scores with this CrossNuclide
 
     Attributes
     ----------
-    left_score : str or _CrossScore
+    left_score : str or CrossScore
         The left score in the outer product
-    right_score : str or _CrossScore
+    right_score : str or CrossScore
         The right score in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's scores with this _CrossNuclide
+        combine two tally's scores with this CrossNuclide
 
     """
 
@@ -70,29 +70,29 @@ class _CrossScore(object):
         return string
 
 
-class _CrossNuclide(object):
+class CrossNuclide(object):
     """A special-purpose nuclide used to encapsulate all combinations of two
     tally's nuclides as a outer product for tally arithmetic.
 
     Parameters
     ----------
-    left_nuclide : Nuclide or _CrossNuclide
+    left_nuclide : Nuclide or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : Nuclide or _CrossNuclide
+    right_nuclide : Nuclide or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's nuclides with this _CrossNuclide
+        combine two tally's nuclides with this CrossNuclide
 
     Attributes
     ----------
-    left_nuclide : Nuclide or _CrossNuclide
+    left_nuclide : Nuclide or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : Nuclide or _CrossNuclide
+    right_nuclide : Nuclide or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's nuclides with this _CrossNuclide
+        combine two tally's nuclides with this CrossNuclide
 
     """
 
@@ -156,29 +156,29 @@ class _CrossNuclide(object):
         return string
 
 
-class _CrossFilter(object):
+class CrossFilter(object):
     """A special-purpose filter used to encapsulate all combinations of two
     tally's filter bins as a outer product for tally arithmetic.
 
     Parameters
     ----------
-    left_filter : Filter or _CrossFilter
+    left_filter : Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or _CrossFilter
+    right_filter : Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's filter bins with this _CrossFilter
+        combine two tally's filter bins with this CrossFilter
 
     Attributes
     ----------
-    left_filter : Filter or _CrossFilter
+    left_filter : Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or _CrossFilter
+    right_filter : Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's filter bins with this _CrossFilter
+        combine two tally's filter bins with this CrossFilter
 
     """
 
@@ -250,7 +250,7 @@ class _CrossFilter(object):
 
     def __repr__(self):
 
-        string = '_CrossFilter\n'
+        string = 'CrossFilter\n'
         filter_type = '({0} {1} {2})'.format(self.left_filter.type,
                                              self.binary_op,
                                              self.right_filter.type)

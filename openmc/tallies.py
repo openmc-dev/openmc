@@ -1624,8 +1624,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_value
-
             self._outer_product(other, new_tally, binary_op='+')
             data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] + data['other']['mean']
@@ -1701,8 +1699,6 @@ class Tally(object):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='-')
             data = self._align_tally_data(other)
@@ -1780,8 +1776,6 @@ class Tally(object):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(other, new_tally, binary_op='*')
             data = self._align_tally_data(other)
@@ -1862,8 +1856,6 @@ class Tally(object):
                       'since it does not contain any results.'.format(other.id)
                 raise ValueError(msg)
 
-            # FIXME: Need to be able to use Tally.get_value
-
             self._outer_product(other, new_tally, binary_op='/')
             data = self._align_tally_data(other)
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
@@ -1942,8 +1934,6 @@ class Tally(object):
                 msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
                       'since it does not contain any results.'.format(power.id)
                 raise ValueError(msg)
-
-            # FIXME: Need to be able to use Tally.get_value
 
             self._outer_product(power, new_tally, binary_op='^')
             data = self._align_tally_data(power)

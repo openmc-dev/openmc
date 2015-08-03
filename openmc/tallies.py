@@ -904,8 +904,16 @@ class Tally(object):
 
                 # Add indices for each bin in this Filter to the list
                 for bin in bins:
-                    filter_indices[i].append(
-                        self.get_filter_index(filter.type, bin))
+                    if user_filter:
+                        filter_indices[i].append(
+                            self.get_filter_index(filter.type, bin))
+                    else:
+                        filter_indices[i].append(
+                            self.get_filter_index(filter.type, bin))
+
+                # Account for stride in each of the previous filters
+                reverse_mult = lambda x: [xi * filter.num_bins for xi in x]
+                filter_indices[:i] = map(reverse_mult, filter_indices[:i])
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
@@ -2111,7 +2119,7 @@ class Tally(object):
 
                 if isinstance(nuclide, Nuclide):
                     if nuclide.name not in nuclides:
-                        nuclide_index = self.get_nuclide_index(nuclide)
+                        nuclide_index = self.get_nuclide_index(nuclide.name)
                         nuclide_indices.append(nuclide_index)
                 else:
                     if nuclide not in nuclides:

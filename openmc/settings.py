@@ -426,28 +426,28 @@ class SettingsFile(object):
     @keff_trigger.setter
     def keff_trigger(self, keff_trigger):
         if not isinstance(keff_trigger, dict):
-            msg = 'Unable to set a trigger on keff from {0} which ' \
+            msg = 'Unable to set a trigger on keff from "{0}" which ' \
                   'is not a Python dictionary'.format(keff_trigger)
             raise ValueError(msg)
 
         elif 'type' not in keff_trigger:
-            msg = 'Unable to set a trigger on keff from {0} which ' \
+            msg = 'Unable to set a trigger on keff from "{0}" which ' \
                   'does not have a "type" key'.format(keff_trigger)
             raise ValueError(msg)
 
         elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
             msg = 'Unable to set a trigger on keff with ' \
-                  'type {0}'.format(keff_trigger['type'])
+                  'type "{0}"'.format(keff_trigger['type'])
             raise ValueError(msg)
 
         elif 'threshold' not in keff_trigger:
-            msg = 'Unable to set a trigger on keff from {0} which ' \
+            msg = 'Unable to set a trigger on keff from "{0}" which ' \
                   'does not have a "threshold" key'.format(keff_trigger)
             raise ValueError(msg)
 
         elif not isinstance(keff_trigger['threshold'], Real):
             msg = 'Unable to set a trigger on keff with ' \
-                  'threshold {0}'.format(keff_trigger['threshold'])
+                  'threshold "{0}"'.format(keff_trigger['threshold'])
             raise ValueError(msg)
 
         self._keff_trigger = keff_trigger
@@ -574,20 +574,20 @@ class SettingsFile(object):
     @output.setter
     def output(self, output):
         if not isinstance(output, dict):
-            msg = 'Unable to set output to {0} which is not a Python ' \
+            msg = 'Unable to set output to "{0}" which is not a Python ' \
                   'dictionary of string keys and boolean values'.format(output)
             raise ValueError(msg)
 
         for element in output:
             keys = ['summary', 'cross_sections', 'tallies', 'distribmats']
             if element not in keys:
-                msg = 'Unable to set output to {0} which is unsupported by ' \
+                msg = 'Unable to set output to "{0}" which is unsupported by ' \
                       'OpenMC'.format(element)
                 raise ValueError(msg)
 
             if not isinstance(output[element], (bool, np.bool)):
-                msg = 'Unable to set output for {0} to a non-boolean ' \
-                      'value {1}'.format(element, output[element])
+                msg = 'Unable to set output for "{0}" to a non-boolean ' \
+                      'value "{1}"'.format(element, output[element])
                 raise ValueError(msg)
 
         self._output = output
@@ -753,7 +753,7 @@ class SettingsFile(object):
     def track(self, track):
         check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
-            msg = 'Unable to set the track to {0} since its length is ' \
+            msg = 'Unable to set the track to "{0}" since its length is ' \
                   'not a multiple of 3'.format(track)
             raise ValueError(msg)
         for t in zip(track[::3], track[1::3], track[2::3]):
@@ -832,7 +832,7 @@ class SettingsFile(object):
             len_nodemap = np.prod(self._dd_mesh_dimension)
 
         if len(nodemap) < len_nodemap or len(nodemap) > len_nodemap:
-            msg = 'Unable to set DD nodemap with length {0} which ' \
+            msg = 'Unable to set DD nodemap with length "{0}" which ' \
                   'does not have the same dimensionality as the domain ' \
                   'mesh'.format(len(nodemap))
             raise ValueError(msg)

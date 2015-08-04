@@ -49,14 +49,14 @@ def ascii_to_binary(ascii_file, binary_file):
         # that XSS will start at the second record
         nxs = list(map(int, ' '.join(lines[idx + 6:idx + 8]).split()))
         jxs = list(map(int, ' '.join(lines[idx + 8:idx + 12]).split()))
-        binary.write(pack('=16i32i{0}x'.format(record_length - 500), *(nxs + jxs)))
+        binary.write(pack('=16i32i"{0}"x'.format(record_length - 500), *(nxs + jxs)))
 
         # Read/write XSS array. Null bytes are added to form a complete record
         # at the end of the file
         n_lines = (nxs[0] + 3)//4
         xss = list(map(float, ' '.join(lines[idx + 12:idx + 12 + n_lines]).split()))
         extra_bytes = record_length - ((len(xss)*8 - 1) % record_length + 1)
-        binary.write(pack('={0}d{1}x'.format(nxs[0], extra_bytes), *xss))
+        binary.write(pack('="{0}"d"{1}"x'.format(nxs[0], extra_bytes), *xss))
 
         # Advance to next table in file
         idx += 12 + n_lines

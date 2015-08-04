@@ -92,7 +92,7 @@ class Trigger(object):
         """
 
         if not isinstance(score, basestring):
-            msg = 'Unable to add score "{0}" to tally trigger since ' \
+            msg = 'Unable to add score ""{0}"" to tally trigger since ' \
                   'it is not a string'.format(score)
             raise ValueError(msg)
 
@@ -104,9 +104,9 @@ class Trigger(object):
 
     def __repr__(self):
         string = 'Trigger\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)
-        string += '{0: <16}{1}{2}\n'.format('\tThreshold', '=\t', self._threshold)
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._trigger_type)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tThreshold', '=\t', self._threshold)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tScores', '=\t', self._scores)
         return string
 
     def get_trigger_xml(self, element):

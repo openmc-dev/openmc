@@ -109,7 +109,7 @@ class Filter(object):
         if type is None:
             self._type = type
         elif type not in FILTER_TYPES.values():
-            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
+            msg = 'Unable to set Filter type to ""{0}"" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
 
@@ -120,7 +120,7 @@ class Filter(object):
         if bins is None:
             self.num_bins = 0
         elif self._type is None:
-            msg = 'Unable to set bins for Filter to "{0}" since ' \
+            msg = 'Unable to set bins for Filter to ""{0}"" since ' \
                   'the Filter type has not yet been set'.format(bins)
             raise ValueError(msg)
 
@@ -136,30 +136,30 @@ class Filter(object):
                           'universe', 'distribcell']:
             for edge in bins:
                 if not isinstance(edge, Integral):
-                    msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
+                    msg = 'Unable to add bin ""{0}"" to a "{1}" Filter since ' \
                           'it is not an integer'.format(edge, self._type)
                     raise ValueError(msg)
                 elif edge < 0:
-                    msg = 'Unable to add bin "{0}" to a {1} Filter since ' \
+                    msg = 'Unable to add bin ""{0}"" to a "{1}" Filter since ' \
                           'it is negative'.format(edge, self._type)
                     raise ValueError(msg)
 
         elif self._type in ['energy', 'energyout']:
             for edge in bins:
                 if not isinstance(edge, Real):
-                    msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
+                    msg = 'Unable to add bin edge ""{0}"" to a "{1}" Filter ' \
                           'since it is a non-integer or floating point ' \
                           'value'.format(edge, self._type)
                     raise ValueError(msg)
                 elif edge < 0.:
-                    msg = 'Unable to add bin edge "{0}" to a {1} Filter ' \
+                    msg = 'Unable to add bin edge ""{0}"" to a "{1}" Filter ' \
                           'since it is a negative value'.format(edge, self._type)
                     raise ValueError(msg)
 
             # Check that bin edges are monotonically increasing
             for index in range(len(bins)):
                 if index > 0 and bins[index] < bins[index-1]:
-                    msg = 'Unable to add bin edges "{0}" to a {1} Filter ' \
+                    msg = 'Unable to add bin edges ""{0}"" to a "{1}" Filter ' \
                           'since they are not monotonically ' \
                           'increasing'.format(bins, self._type)
                     raise ValueError(msg)
@@ -167,15 +167,15 @@ class Filter(object):
         # mesh filters
         elif self._type == 'mesh':
             if not len(bins) == 1:
-                msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
+                msg = 'Unable to add bins ""{0}"" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
             elif not isinstance(bins[0], Integral):
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
+                msg = 'Unable to add bin ""{0}"" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
             elif bins[0] < 0:
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
+                msg = 'Unable to add bin ""{0}"" to mesh Filter since it ' \
                        'is a negative integer'.format(bins[0])
                 raise ValueError(msg)
 
@@ -186,7 +186,7 @@ class Filter(object):
     @num_bins.setter
     def num_bins(self, num_bins):
         if not isinstance(num_bins, Integral) or num_bins < 0:
-            msg = 'Unable to set the number of bins "{0}" for a {1} Filter ' \
+            msg = 'Unable to set the number of bins ""{0}"" for a "{1}" Filter ' \
                   'since it is not a positive ' \
                   'integer'.format(num_bins, self._type)
             raise ValueError(msg)
@@ -210,7 +210,7 @@ class Filter(object):
     def stride(self, stride):
         check_type('filter stride', stride, Integral)
         if stride < 0:
-            msg = 'Unable to set stride "{0}" for a {1} Filter since it is a ' \
+            msg = 'Unable to set stride ""{0}"" for a "{1}" Filter since it is a ' \
                   'negative value'.format(stride, self._type)
             raise ValueError(msg)
 
@@ -269,7 +269,7 @@ class Filter(object):
         """
 
         if not self.can_merge(filter):
-            msg = 'Unable to merge {0} with {1} filters'.format(self._type, filter._type)
+            msg = 'Unable to merge "{0}" with "{1}" filters'.format(self._type, filter._type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter
@@ -336,7 +336,7 @@ class Filter(object):
                 filter_index = val
 
         except ValueError:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+            msg = 'Unable to get the bin index for Filter since ""{0}"" ' \
                       'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
 
@@ -344,7 +344,7 @@ class Filter(object):
 
     def __repr__(self):
         string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self._bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offset)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tBins', '=\t', self._bins)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tOffset', '=\t', self._offset)
         return string

@@ -126,8 +126,8 @@ class Cell(object):
             if fill.strip().lower() == 'void':
                 self._type = 'void'
             else:
-                msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
-                       'Universe fill {1}'.format(self._id, fill)
+                msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
+                       'Universe fill "{1}"'.format(self._id, fill)
                 raise ValueError(msg)
 
         elif isinstance(fill, openmc.Material):
@@ -140,8 +140,8 @@ class Cell(object):
             self._type = 'lattice'
 
         else:
-            msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
-                   'Universe fill {1}'.format(self._id, fill)
+            msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
+                   'Universe fill "{1}"'.format(self._id, fill)
             raise ValueError(msg)
 
         self._fill = fill
@@ -177,13 +177,13 @@ class Cell(object):
         """
 
         if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to add Surface {0} to Cell ID={1} since it is ' \
+            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" since it is ' \
                         'not a Surface object'.format(surface, self._id)
             raise ValueError(msg)
 
         if halfspace not in [-1, +1]:
-            msg = 'Unable to add Surface {0} to Cell ID={1} with halfspace ' \
-                  '{2} since it is not +/-1'.format(surface, self._id, halfspace)
+            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" with halfspace ' \
+                  '"{2}" since it is not +/-1'.format(surface, self._id, halfspace)
             raise ValueError(msg)
 
         # If the Cell does not already contain the Surface, add it
@@ -201,7 +201,7 @@ class Cell(object):
         """
 
         if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to remove Surface {0} from Cell ID={1} since it is ' \
+            msg = 'Unable to remove Surface "{0}" from Cell ID="{1}" since it is ' \
                         'not a Surface object'.format(surface, self._id)
             raise ValueError(msg)
 
@@ -289,31 +289,31 @@ class Cell(object):
 
     def __repr__(self):
         string = 'Cell\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
 
         if isinstance(self._fill, openmc.Material):
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tMaterial', '=\t',
                                                 self._fill._id)
         elif isinstance(self._fill, (Universe, Lattice)):
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tFill', '=\t',
                                                 self._fill._id)
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t', self._fill)
+            string += '{0: <16}"{1}""{2}"\n'.format('\tFill', '=\t', self._fill)
 
-        string += '{0: <16}{1}\n'.format('\tSurfaces', '=\t')
+        string += '{0: <16}"{1}"\n'.format('\tSurfaces', '=\t')
 
         for surface_id in self._surfaces:
             halfspace = self._surfaces[surface_id][1]
-            string += '{0} '.format(halfspace * surface_id)
+            string += '"{0}" '.format(halfspace * surface_id)
 
         string = string.rstrip(' ') + '\n'
 
-        string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tRotation', '=\t',
                                             self._rotation)
-        string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tTranslation', '=\t',
                                             self._translation)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tOffset', '=\t', self._offsets)
 
         return string
 
@@ -343,7 +343,7 @@ class Cell(object):
 
             for surface_id in self._surfaces:
                 # Determine if XML element already includes this Surface
-                path = './surface[@id=\'{0}\']'.format(surface_id)
+                path = './surface[@id=\'"{0}"\']'.format(surface_id)
                 test = xml_element.find(path)
 
                 # If the element does not contain the Surface subelement
@@ -355,7 +355,7 @@ class Cell(object):
 
                 # Append the halfspace and Surface ID
                 halfspace = self._surfaces[surface_id][1]
-                surfaces += '{0} '.format(halfspace * surface_id)
+                surfaces += '"{0}" '.format(halfspace * surface_id)
 
             element.set("surfaces", surfaces.rstrip(' '))
 
@@ -452,7 +452,7 @@ class Universe(object):
         """
 
         if not isinstance(cell, Cell):
-            msg = 'Unable to add a Cell to Universe ID={0} since {1} is not ' \
+            msg = 'Unable to add a Cell to Universe ID="{0}" since "{1}" is not ' \
                   'a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
@@ -472,7 +472,7 @@ class Universe(object):
         """
 
         if not isinstance(cells, Iterable):
-            msg = 'Unable to add Cells to Universe ID={0} since {1} is not ' \
+            msg = 'Unable to add Cells to Universe ID="{0}" since "{1}" is not ' \
                   'iterable'.format(self._id, cells)
             raise ValueError(msg)
 
@@ -490,7 +490,7 @@ class Universe(object):
         """
 
         if not isinstance(cell, Cell):
-            msg = 'Unable to remove a Cell from Universe ID={0} since {1} is ' \
+            msg = 'Unable to remove a Cell from Universe ID="{0}" since "{1}" is ' \
                   'not a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
@@ -582,11 +582,11 @@ class Universe(object):
 
     def __repr__(self):
         string = 'Universe\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tCells', '=\t',
                                             list(self._cells.keys()))
-        string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\t# Regions', '=\t',
                                             self._num_regions)
         return string
 
@@ -870,26 +870,26 @@ class RectLattice(Lattice):
 
     def __repr__(self):
         string = 'RectLattice\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tDimension', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tDimension', '=\t',
                                             self._dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tLower Left', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tLower Left', '=\t',
                                             self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tPitch', '=\t', self._pitch)
 
         if self._outer is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
                                                 self._outer._id)
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
         string += '{0: <16}\n'.format('\tUniverses')
 
         # Lattice nested Universe IDs - column major for Fortran
         for i, universe in enumerate(np.ravel(self._universes)):
-            string += '{0} '.format(universe._id)
+            string += '"{0}" '.format(universe._id)
 
             # Add a newline character every time we reach end of row of cells
             if (i+1) % self._dimension[-1] == 0:
@@ -902,7 +902,7 @@ class RectLattice(Lattice):
 
             # Lattice cell offsets
             for i, offset in enumerate(np.ravel(self._offsets)):
-                string += '{0} '.format(offset)
+                string += '"{0}" '.format(offset)
 
                 # Add a newline character when we reach end of row of cells
                 if (i+1) % self._dimension[-1] == 0:
@@ -914,7 +914,7 @@ class RectLattice(Lattice):
 
     def create_xml_subelement(self, xml_element):
         # Determine if XML element already contains subelement for this Lattice
-        path = './lattice[@id=\'{0}\']'.format(self._id)
+        path = './lattice[@id=\'"{0}"\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
@@ -934,7 +934,7 @@ class RectLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = '{0}'.format(self._outer._id)
+            outer.text = '"{0}"'.format(self._outer._id)
             self._outer.create_xml_subelement(xml_element)
 
         # Export Lattice cell dimensions
@@ -956,7 +956,7 @@ class RectLattice(Lattice):
                         universe = self._universes[x][y][z]
 
                         # Append Universe ID to the Lattice XML subelement
-                        universe_ids += '{0} '.format(universe._id)
+                        universe_ids += '"{0}" '.format(universe._id)
 
                         # Create XML subelement for this Universe
                         universe.create_xml_subelement(xml_element)
@@ -974,7 +974,7 @@ class RectLattice(Lattice):
                     universe = self._universes[x][y]
 
                     # Append Universe ID to Lattice XML subelement
-                    universe_ids += '{0} '.format(universe._id)
+                    universe_ids += '"{0}" '.format(universe._id)
 
                     # Create XML subelement for this Universe
                     universe.create_xml_subelement(xml_element)
@@ -1149,19 +1149,19 @@ class HexLattice(Lattice):
 
     def __repr__(self):
         string = 'HexLattice\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
-        string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
-        string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\t# Rings', '=\t', self._num_rings)
+        string += '{0: <16}"{1}""{2}"\n'.format('\t# Axial', '=\t', self._num_axial)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tCenter', '=\t',
                                             self._center)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tPitch', '=\t', self._pitch)
 
         if self._outer is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
                                                 self._outer._id)
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
         string += '{0: <16}\n'.format('\tUniverses')
@@ -1177,7 +1177,7 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element):
         # Determine if XML element already contains subelement for this Lattice
-        path = './hex_lattice[@id=\'{0}\']'.format(self._id)
+        path = './hex_lattice[@id=\'"{0}"\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
@@ -1197,7 +1197,7 @@ class HexLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = '{0}'.format(self._outer._id)
+            outer.text = '"{0}"'.format(self._outer._id)
             self._outer.create_xml_subelement(xml_element)
 
         lattice_subelement.set("n_rings", str(self._num_rings))

@@ -210,18 +210,18 @@ class Plot(object):
 
         for key in col_spec:
             if key < 0:
-                msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
+                msg = 'Unable to create Plot ID="{0}" with col_spec ID "{1}" ' \
                       'which is less than 0'.format(self._id, key)
                 raise ValueError(msg)
 
             elif not isinstance(col_spec[key], Iterable):
-                msg = 'Unable to create Plot ID={0} with col_spec RGB values' \
-                      ' {1} which is not iterable'.format(self._id, col_spec[key])
+                msg = 'Unable to create Plot ID="{0}" with col_spec RGB values' \
+                      ' "{1}" which is not iterable'.format(self._id, col_spec[key])
                 raise ValueError(msg)
 
             elif len(col_spec[key]) != 3:
-                msg = 'Unable to create Plot ID={0} with col_spec RGB ' \
-                      'values of length {1} since 3 values must be ' \
+                msg = 'Unable to create Plot ID="{0}" with col_spec RGB ' \
+                      'values of length "{1}" since 3 values must be ' \
                       'input'.format(self._id, len(col_spec[key]))
                 raise ValueError(msg)
 
@@ -245,20 +245,20 @@ class Plot(object):
 
     def __repr__(self):
         string = 'Plot\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self._filename)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._basis)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
-        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._origin)
-        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._origin)
-        string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
-        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tFilename', '=\t', self._filename)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tBasis', '=\t', self._basis)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tWidth', '=\t', self._width)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tOrigin', '=\t', self._origin)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tPixels', '=\t', self._origin)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tColor', '=\t', self._color)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tMask', '=\t',
                                             self._mask_components)
-        string += '{0: <16}{1}{2}\n'.format('\tMask',    '=\t',
+        string += '{0: <16}"{1}""{2}"\n'.format('\tMask',    '=\t',
                                             self._mask_background)
-        string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tCol Spec', '=\t', self._col_spec)
         return string
 
     def get_plot_xml(self):
@@ -332,7 +332,7 @@ class PlotsFile(object):
         """
 
         if not isinstance(plot, Plot):
-            msg = 'Unable to add a non-Plot {0} to the PlotsFile'.format(plot)
+            msg = 'Unable to add a non-Plot "{0}" to the PlotsFile'.format(plot)
             raise ValueError(msg)
 
         self._plots.append(plot)

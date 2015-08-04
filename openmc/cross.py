@@ -210,6 +210,28 @@ class CrossFilter(object):
         if binary_op is not None:
             self.binary_op = binary_op
 
+    def __hash__(self):
+        return hash((self.type, self.bins))
+
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        # If this is the first time we have tried to copy this object, create a copy
+        if existing is None:
+            clone = type(self).__new__(type(self))
+            clone._left_filter = self.left_filter
+            clone._right_filter = self.right_filter
+            clone._type = self.type
+            clone._bins = self.bins
+            clone._num_bins = self.num_bins
+            memo[id(self)] = clone
+
+            return clone
+
+        # If this object has been copied before, return the first copy made
+        else:
+            return existing
+
     @property
     def left_filter(self):
         return self._left_filter
@@ -257,20 +279,6 @@ class CrossFilter(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __repr__(self):
-
-        string = 'CrossFilter\n'
-        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
-                                             self.binary_op,
-                                             self.right_filter.type)
-        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
-                                             self.binary_op,
-                                             self.right_filter.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
-        return string
-
-
     def split_filters(self):
 
         split_filters = []
@@ -290,3 +298,43 @@ class CrossFilter(object):
             split_filters.extend(self.right_filter.split_filters())
 
         return split_filters
+
+    def get_bin_index(self, filter_bin):
+        """Returns the index in the CrossFilter for some bin.
+
+        Parameters
+        ----------
+        filter_bin : 2-tuple
+            A 2-tuple where each value corresponds to the bin of interest
+            in the left and right filter, respectively. A bin is the integer
+            ID for 'material', 'surface', 'cell', 'cellborn', and 'universe'
+            Filters. The bin is an integer for the cell instance ID for
+            'distribcell' Filters. The bin is a 2-tuple of floats for 'energy'
+            and 'energyout' filters corresponding to the energy boundaries of
+            the bin of interest.  The bin is a (x,y,z) 3-tuple for 'mesh'
+            filters corresponding to the mesh cell of interest.
+
+        Returns
+        -------
+        filter_index : int
+             The index in the Tally data array for this filter bin.
+
+        """
+
+        left_index = self.left_filter.get_bin_index(filter_bin[0])
+        right_index = self.right_filter.get_bin_index(filter_bin[0])
+        filter_index = left_index * self.right_filter.num_bins + right_index
+        return filter_index
+
+    def __repr__(self):
+
+        string = 'CrossFilter\n'
+        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
+                                             self.binary_op,
+                                             self.right_filter.type)
+        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
+                                             self.binary_op,
+                                             self.right_filter.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
+        return string

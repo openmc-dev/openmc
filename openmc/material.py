@@ -26,7 +26,7 @@ def reset_auto_material_id():
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'at/b-cm', 'at/cm3', 'sum']
+DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum']
 
 # Constant for density when not needed
 NO_DENSITY = 99999.

@@ -75,7 +75,7 @@ class Particle(object):
         self.uvw = self._get_double(3, path='uvw')
 
     def _get_data(self, n, typeCode, size):
-        return list(struct.unpack('="{0}""{1}"'.format(n, typeCode),
+        return list(struct.unpack('={0}{1}'.format(n, typeCode),
                                   self._f.read(n*size)))
 
     def _get_int(self, n=1, path=None):

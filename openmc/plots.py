@@ -245,20 +245,20 @@ class Plot(object):
 
     def __repr__(self):
         string = 'Plot\n'
-        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tFilename', '=\t', self._filename)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tBasis', '=\t', self._basis)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tWidth', '=\t', self._width)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tOrigin', '=\t', self._origin)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tPixels', '=\t', self._origin)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tColor', '=\t', self._color)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tMask', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self._filename)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._basis)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._origin)
+        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._origin)
+        string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
+        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
                                             self._mask_components)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tMask',    '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tMask',    '=\t',
                                             self._mask_background)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tCol Spec', '=\t', self._col_spec)
+        string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
         return string
 
     def get_plot_xml(self):

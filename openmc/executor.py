@@ -92,16 +92,16 @@ class Executor(object):
         pre_args = ''
 
         if isinstance(particles, Integral) and particles > 0:
-            post_args += '-n "{0}" '.format(particles)
+            post_args += '-n {0} '.format(particles)
 
         if isinstance(threads, Integral) and threads > 0:
-            post_args += '-s "{0}" '.format(threads)
+            post_args += '-s {0} '.format(threads)
 
         if geometry_debug:
             post_args += '-g '
 
         if isinstance(restart_file, basestring):
-            post_args += '-r "{0}" '.format(restart_file)
+            post_args += '-r {0} '.format(restart_file)
 
         if tracks:
             post_args += '-t'
@@ -121,7 +121,7 @@ class Executor(object):
                 pre_args += mpi_exec + ' '
             else:
                 pre_args += 'mpirun '
-            pre_args += '-n "{0}" '.format(mpi_procs)
+            pre_args += '-n {0} '.format(mpi_procs)
 
         command = pre_args + openmc_exec + ' ' + post_args
 

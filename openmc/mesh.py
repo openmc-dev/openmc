@@ -185,13 +185,13 @@ class Mesh(object):
 
     def __repr__(self):
         string = 'Mesh\n'
-        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tBasis', '=\t', self._dimension)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tWidth', '=\t', self._lower_left)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tOrigin', '=\t', self._upper_right)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tPixels', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
         return string
 
     def get_mesh_xml(self):

@@ -89,7 +89,7 @@ class Nuclide(object):
 
     def __repr__(self):
         string = 'Nuclide    -    "{0}"\n'.format(self._name)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tXS', '=\t', self._xs)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         if self._zaid is not None:
-            string += '{0: <16}"{1}""{2}"\n'.format('\tZAID', '=\t', self._zaid)
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
         return string

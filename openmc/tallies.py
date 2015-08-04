@@ -298,7 +298,7 @@ class Tally(object):
 
         if not isinstance(trigger, Trigger):
             msg = 'Unable to add a tally trigger for Tally ID="{0}" to ' \
-                  'since ""{1}"" is not a Trigger'.format(self.id, trigger)
+                  'since "{1}" is not a Trigger'.format(self.id, trigger)
             raise ValueError(msg)
 
         self._triggers.append(trigger)
@@ -330,7 +330,7 @@ class Tally(object):
         """
 
         if not isinstance(filter, Filter):
-            msg = 'Unable to add Filter ""{0}"" to Tally ID="{1}" since it is ' \
+            msg = 'Unable to add Filter "{0}" to Tally ID="{1}" since it is ' \
                   'not a Filter object'.format(filter, self.id)
             raise ValueError(msg)
 
@@ -359,7 +359,7 @@ class Tally(object):
         """
 
         if not isinstance(score, basestring):
-            msg = 'Unable to add score ""{0}"" to Tally ID="{1}" since it is ' \
+            msg = 'Unable to add score "{0}" to Tally ID="{1}" since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
 
@@ -405,7 +405,7 @@ class Tally(object):
         """
 
         if score not in self.scores:
-            msg = 'Unable to remove score ""{0}"" from Tally ID="{1}" since the ' \
+            msg = 'Unable to remove score "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this score'.format(score, self.id)
             ValueError(msg)
 
@@ -422,7 +422,7 @@ class Tally(object):
         """
 
         if filter not in self.filters:
-            msg = 'Unable to remove filter ""{0}"" from Tally ID="{1}" since the ' \
+            msg = 'Unable to remove filter "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this filter'.format(filter, self.id)
             ValueError(msg)
 
@@ -439,7 +439,7 @@ class Tally(object):
         """
 
         if nuclide not in self.nuclides:
-            msg = 'Unable to remove nuclide ""{0}"" from Tally ID="{1}" since the ' \
+            msg = 'Unable to remove nuclide "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this nuclide'.format(nuclide, self.id)
             ValueError(msg)
 
@@ -470,27 +470,27 @@ class Tally(object):
 
     def __repr__(self):
         string = 'Tally\n'
-        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self.name)
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
 
         string += '{0: <16}\n'.format('\tFilters')
 
         for filter in self.filters:
-            string += '{0: <16}\t\t"{1}"\t"{2}"\n'.format('', filter.type,
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
                                                           filter.bins)
 
-        string += '{0: <16}"{1}"'.format('\tNuclides', '=\t')
+        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
         for nuclide in self.nuclides:
             if isinstance(nuclide, Nuclide):
-                string += '"{0}" '.format(nuclide.name)
+                string += '{0} '.format(nuclide.name)
             else:
-                string += '"{0}" '.format(nuclide)
+                string += '{0} '.format(nuclide)
 
         string += '\n'
 
-        string += '{0: <16}"{1}""{2}"\n'.format('\tScores', '=\t', self.scores)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tEstimator', '=\t', self.estimator)
+        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
+        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
 
         return string
 
@@ -681,7 +681,7 @@ class Tally(object):
 
         # If we did not find the Filter, throw an Exception
         if filter is None:
-            msg = 'Unable to find filter type ""{0}"" in ' \
+            msg = 'Unable to find filter type "{0}" in ' \
                   'Tally ID="{1}"'.format(filter_type, self.id)
             raise ValueError(msg)
 
@@ -756,7 +756,7 @@ class Tally(object):
                     break
 
         if nuclide_index == -1:
-            msg = 'Unable to get the nuclide index for Tally since ""{0}"" ' \
+            msg = 'Unable to get the nuclide index for Tally since "{0}" ' \
                   'is not one of the nuclides'.format(nuclide)
             raise KeyError(msg)
         else:
@@ -787,7 +787,7 @@ class Tally(object):
             score_index = self.scores.index(score)
 
         except ValueError:
-            msg = 'Unable to get the score index for Tally since ""{0}"" ' \
+            msg = 'Unable to get the score index for Tally since "{0}" ' \
                   'is not one of the scores'.format(score)
             raise ValueError(msg)
 
@@ -945,7 +945,7 @@ class Tally(object):
             data = self.sum_sq[indices]
         else:
             msg = 'Unable to return results from Tally ID="{0}" since the ' \
-                  'the requested value ""{1}"" is not \'mean\', \'std_dev\', ' \
+                  'the requested value "{1}" is not \'mean\', \'std_dev\', ' \
                   '\rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
 
@@ -1299,19 +1299,19 @@ class Tally(object):
 
         if not isinstance(filename, basestring):
             msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'filename=""{1}"" since it is not a ' \
+                  'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
         elif not isinstance(directory, basestring):
             msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'directory=""{1}"" since it is not a ' \
+                  'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)
             raise ValueError(msg)
 
         elif format not in ['hdf5', 'pkl', 'csv']:
             msg = 'Unable to export the results for Tally ID="{0}" to format ' \
-                  '""{1}"" since it is not supported'.format(self.id, format)
+                  '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
         elif not isinstance(append, bool):

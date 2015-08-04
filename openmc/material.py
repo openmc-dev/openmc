@@ -332,18 +332,18 @@ class Material(object):
 
         return nuclides
 
-    def _repr__(self):
+    def __repr__(self):
         string = 'Material\n'
-        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
 
-        string += '{0: <16}"{1}""{2}"'.format('\tDensity', '=\t', self._density)
+        string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' ["{0}"]\n'.format(self._density_units)
 
         string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
-            string += '{0: <16}"{1}"["{2}""{3}"]\n'.format('\tS(a,b)', '=\t',
+            string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
                                                      sab[0], sab[1])
 
         string += '{0: <16}\n'.format('\tNuclides')
@@ -351,16 +351,16 @@ class Material(object):
         for nuclide in self._nuclides:
             percent = self._nuclides[nuclide][1]
             percent_type = self._nuclides[nuclide][2]
-            string += '{0: <16}'.format('\t"{0}"'.format(nuclide))
-            string += '=\t{0: <12} ["{1}"]\n'.format(percent, percent_type)
+            string += '{0: <16}'.format('\t{0}'.format(nuclide))
+            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
         string += '{0: <16}\n'.format('\tElements')
 
         for element in self._elements:
             percent = self._nuclides[element][1]
             percent_type = self._nuclides[element][2]
-            string += '{0: >16}'.format('\t"{0}"'.format(element))
-            string += '=\t{0: <12} ["{1}"]\n'.format(percent, percent_type)
+            string += '{0: >16}'.format('\t{0}'.format(element))
+            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
         return string
 

@@ -18,7 +18,7 @@ class Summary(object):
         openmc.reset_auto_ids()
 
         if not filename.endswith(('.h5', '.hdf5')):
-            msg = 'Unable to open ""{0}"" which is not an HDF5 summary file'
+            msg = 'Unable to open "{0}" which is not an HDF5 summary file'
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
@@ -479,12 +479,12 @@ class Summary(object):
         for tally_key in tally_keys:
 
             tally_id = int(tally_key.strip('tally '))
-            subbase = '"{0}""{1}"'.format(base, tally_id)
+            subbase = '{0}{1}'.format(base, tally_id)
 
             # Read Tally name metadata
-            name_size = self._f['"{0}"/name_size'.format(subbase)][0]
+            name_size = self._f['{0}/name_size'.format(subbase)][0]
             if (name_size > 0):
-                tally_name = self._f['"{0}"/name'.format(subbase)][0]
+                tally_name = self._f['{0}/name'.format(subbase)][0]
                 tally_name = tally_name.lstrip('[\'')
                 tally_name = tally_name.rstrip('\']')
             else:
@@ -494,27 +494,27 @@ class Summary(object):
             tally = openmc.Tally(tally_id, tally_name)
 
             # Read score metadata
-            score_bins = self._f['"{0}"/score_bins'.format(subbase)][...]
+            score_bins = self._f['{0}/score_bins'.format(subbase)][...]
             for score_bin in score_bins:
                 tally.add_score(openmc.SCORE_TYPES[score_bin])
-            num_score_bins = self._f['"{0}"/n_score_bins'.format(subbase)][...]
+            num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
             tally.num_score_bins = num_score_bins
 
             # Read filter metadata
-            num_filters = self._f['"{0}"/n_filters'.format(subbase)][0]
+            num_filters = self._f['{0}/n_filters'.format(subbase)][0]
 
             # Initialize all Filters
             for j in range(1, num_filters+1):
 
-                subsubbase = '"{0}"/filter "{1}"'.format(subbase, j)
+                subsubbase = '{0}/filter {1}'.format(subbase, j)
 
                 # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type_code = self._f['"{0}"/type'.format(subsubbase)][0]
+                filter_type_code = self._f['{0}/type'.format(subsubbase)][0]
                 filter_type = openmc.FILTER_TYPES[filter_type_code]
 
                 # Read the filter bins
-                num_bins = self._f['"{0}"/n_bins'.format(subsubbase)][0]
-                bins = self._f['"{0}"/bins'.format(subsubbase)][...]
+                num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
+                bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
                 filter = openmc.Filter(filter_type, bins)

@@ -73,6 +73,6 @@ class Element(object):
         self._name = name
 
     def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        string = 'Element    -    "{0}"\n'.format(self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tXS', '=\t', self._xs)
         return string

@@ -111,15 +111,15 @@ class Surface(object):
 
     def __repr__(self):
         string = 'Surface\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}"{1}""{2}"\n'.format('\tBoundary', '=\t', self._boundary_type)
 
         coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
 
         for coeff in self._coeffs:
-            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
+            coeffs += '{0: <16}"{1}""{2}"\n'.format(coeff, '=\t', self._coeffs[coeff])
 
         string += coeffs
 

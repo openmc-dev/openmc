@@ -24,7 +24,7 @@ module plot_header
     integer :: color_by              ! quantity to color regions by
     real(8) :: origin(3)             ! xyz center of plot location
     real(8) :: width(3)              ! xyz widths of plot
-    integer :: basis                 ! direction of plot slice 
+    integer :: basis                 ! direction of plot slice
     integer :: pixels(3)             ! pixel width/height of plot slice
     integer :: meshlines_width       ! pixel width of meshlines
     integer :: level                 ! universe depth to plot the cells of
@@ -37,7 +37,7 @@ module plot_header
   ! Plot type
   integer, parameter :: PLOT_TYPE_SLICE = 1
   integer, parameter :: PLOT_TYPE_VOXEL = 2
-  
+
   ! Plot level
   integer, parameter :: PLOT_LEVEL_LOWEST = -1
 

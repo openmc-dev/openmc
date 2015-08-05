@@ -446,7 +446,7 @@ contains
       ! Calculate elastic cross section/factor
       elastic = ZERO
       if (urr % prob(i_energy, URR_ELASTIC, i_low) > ZERO .and. &
-          urr % prob(i_energy + 1, URR_ELASTIC, i_up) > ZERO) then
+           urr % prob(i_energy + 1, URR_ELASTIC, i_up) > ZERO) then
         elastic = exp((ONE - f) * log(urr % prob(i_energy, URR_ELASTIC, &
              i_low)) + f * log(urr % prob(i_energy + 1, URR_ELASTIC, &
              i_up)))
@@ -455,7 +455,7 @@ contains
       ! Calculate fission cross section/factor
       fission = ZERO
       if (urr % prob(i_energy, URR_FISSION, i_low) > ZERO .and. &
-          urr % prob(i_energy + 1, URR_FISSION, i_up) > ZERO) then
+           urr % prob(i_energy + 1, URR_FISSION, i_up) > ZERO) then
         fission = exp((ONE - f) * log(urr % prob(i_energy, URR_FISSION, &
              i_low)) + f * log(urr % prob(i_energy + 1, URR_FISSION, &
              i_up)))
@@ -464,7 +464,7 @@ contains
       ! Calculate capture cross section/factor
       capture = ZERO
       if (urr % prob(i_energy, URR_N_GAMMA, i_low) > ZERO .and. &
-          urr % prob(i_energy + 1, URR_N_GAMMA, i_up) > ZERO) then
+           urr % prob(i_energy + 1, URR_N_GAMMA, i_up) > ZERO) then
         capture = exp((ONE - f) * log(urr % prob(i_energy, URR_N_GAMMA, &
              i_low)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
              i_up)))
@@ -571,11 +571,11 @@ contains
 
     ! calculate interpolation factor
     f = (E - nuc % energy_0K(i_grid)) &
-      & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
+         & / (nuc % energy_0K(i_grid + 1) - nuc % energy_0K(i_grid))
 
     ! Calculate microscopic nuclide elastic cross section
     xs_out = (ONE - f) * nuc % elastic_0K(i_grid) &
-      & + f * nuc % elastic_0K(i_grid + 1)
+         & + f * nuc % elastic_0K(i_grid + 1)
 
   end function elastic_xs_0K
 

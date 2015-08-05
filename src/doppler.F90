@@ -52,62 +52,115 @@ contains
     ! Loop over incoming neutron energies
     ENERGY_NEUTRON: do i = 1, n
 
-       sigma    = ZERO
-       y        = x(i)
-       y_sq     = y*y
-       y_inv    = ONE / y
-       y_inv_sq = y_inv / y
+      sigma    = ZERO
+      y        = x(i)
+      y_sq     = y*y
+      y_inv    = ONE / y
+      y_inv_sq = y_inv / y
 
-       ! =======================================================================
-       ! EVALUATE FIRST TERM FROM x(k) - y = 0 to -4
+      ! =======================================================================
+      ! EVALUATE FIRST TERM FROM x(k) - y = 0 to -4
 
-       k = i
-       a = ZERO
-       call calculate_F(F_a, a)
+      k = i
+      a = ZERO
+      call calculate_F(F_a, a)
 
-       do while (a >= -4.0 .and. k > 1)
-          ! Move to next point
-          F_b = F_a
-          k = k - 1
-          a = x(k) - y
+      do while (a >= -4.0 .and. k > 1)
+        ! Move to next point
+        F_b = F_a
+        k = k - 1
+        a = x(k) - y
 
-          ! Calculate F and H functions
-          call calculate_F(F_a, a)
-          H = F_a - F_b
+        ! Calculate F and H functions
+        call calculate_F(F_a, a)
+        H = F_a - F_b
 
-          ! Calculate A(k), B(k), and slope terms
-          Ak = y_inv_sq*H(2) + 2.0*y_inv*H(1) + H(0)
-          Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) + y_sq*H(0)
-          slope = (xs(k+1) - xs(k)) / (x(k+1)**2 - x(k)**2)
+        ! Calculate A(k), B(k), and slope terms
+        Ak = y_inv_sq*H(2) + 2.0*y_inv*H(1) + H(0)
+        Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) + y_sq*H(0)
+        slope = (xs(k+1) - xs(k)) / (x(k+1)**2 - x(k)**2)
 
-          ! Add contribution to broadened cross section
-          sigma = sigma + Ak*(xs(k) - slope*x(k)**2) + slope*Bk
-       end do
+        ! Add contribution to broadened cross section
+        sigma = sigma + Ak*(xs(k) - slope*x(k)**2) + slope*Bk
+      end do
 
-       ! =======================================================================
-       ! EXTEND CROSS SECTION TO 0 ASSUMING 1/V SHAPE
+      ! =======================================================================
+      ! EXTEND CROSS SECTION TO 0 ASSUMING 1/V SHAPE
 
-       if (k == 1 .and. a >= -4.0) then
-          ! Since x = 0, this implies that a = -y
-          F_b = F_a
-          a = -y
+      if (k == 1 .and. a >= -4.0) then
+        ! Since x = 0, this implies that a = -y
+        F_b = F_a
+        a = -y
 
-          ! Calculate F and H functions
-          call calculate_F(F_a, a)
-          H = F_a - F_b
+        ! Calculate F and H functions
+        call calculate_F(F_a, a)
+        H = F_a - F_b
 
-          ! Add contribution to broadened cross section
-          sigma = sigma + xs(k)*x(k)*(y_inv_sq*H(1) + y_inv*H(0))
-       end if
+        ! Add contribution to broadened cross section
+        sigma = sigma + xs(k)*x(k)*(y_inv_sq*H(1) + y_inv*H(0))
+      end if
 
-       ! =======================================================================
-       ! EVALUATE FIRST TERM FROM x(k) - y = 0 to 4
+      ! =======================================================================
+      ! EVALUATE FIRST TERM FROM x(k) - y = 0 to 4
 
-       k = i
-       b = ZERO
-       call calculate_F(F_b, b)
+      k = i
+      b = ZERO
+      call calculate_F(F_b, b)
 
-       do while (b <= 4.0 .and. k < n)
+      do while (b <= 4.0 .and. k < n)
+        ! Move to next point
+        F_a = F_b
+        k = k + 1
+        b = x(k) - y
+
+        ! Calculate F and H functions
+        call calculate_F(F_b, b)
+        H = F_a - F_b
+
+        ! Calculate A(k), B(k), and slope terms
+        Ak = y_inv_sq*H(2) + 2.0*y_inv*H(1) + H(0)
+        Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) + y_sq*H(0)
+        slope = (xs(k) - xs(k-1)) / (x(k)**2 - x(k-1)**2)
+
+        ! Add contribution to broadened cross section
+        sigma = sigma + Ak*(xs(k) - slope*x(k)**2) + slope*Bk
+      end do
+
+      ! =======================================================================
+      ! EXTEND CROSS SECTION TO INFINITY ASSUMING CONSTANT SHAPE
+
+      if (k == n .and. b <= 4.0) then
+        ! Calculate F function at last energy point
+        a = x(k) - y
+        call calculate_F(F_a, a)
+
+        ! Add contribution to broadened cross section
+        sigma = sigma + xs(k) * (y_inv_sq*F_a(2) + 2.0*y_inv*F_a(1) + F_a(0))
+      end if
+
+      ! =======================================================================
+      ! EVALUATE SECOND TERM FROM x(k) + y = 0 to +4
+
+      if (y <= 4.0) then
+        ! Swap signs on y
+        y = -y
+        y_inv = -y_inv
+        k = 1
+
+        ! Calculate a and b based on 0 and x(1)
+        a = -y
+        b = x(k) - y
+
+        ! Calculate F and H functions
+        call calculate_F(F_a, a)
+        call calculate_F(F_b, b)
+        H = F_a - F_b
+
+        ! Add contribution to broadened cross section
+        sigma = sigma - xs(k) * x(k) * (y_inv_sq*H(1) + y_inv*H(0))
+
+        ! Now progress forward doing the remainder of the second term
+        do while (b <= 4.0)
           ! Move to next point
           F_a = F_b
           k = k + 1
@@ -119,69 +172,17 @@ contains
 
           ! Calculate A(k), B(k), and slope terms
           Ak = y_inv_sq*H(2) + 2.0*y_inv*H(1) + H(0)
-          Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) + y_sq*H(0)
+          Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) &
+               + y_sq*H(0)
           slope = (xs(k) - xs(k-1)) / (x(k)**2 - x(k-1)**2)
 
           ! Add contribution to broadened cross section
-          sigma = sigma + Ak*(xs(k) - slope*x(k)**2) + slope*Bk
-       end do
+          sigma = sigma - Ak*(xs(k) - slope*x(k)**2) - slope*Bk
+        end do
+      end if
 
-       ! =======================================================================
-       ! EXTEND CROSS SECTION TO INFINITY ASSUMING CONSTANT SHAPE
-
-       if (k == n .and. b <= 4.0) then
-          ! Calculate F function at last energy point
-          a = x(k) - y
-          call calculate_F(F_a, a)
-
-          ! Add contribution to broadened cross section
-          sigma = sigma + xs(k) * (y_inv_sq*F_a(2) + 2.0*y_inv*F_a(1) + F_a(0))
-       end if
-
-       ! =======================================================================
-       ! EVALUATE SECOND TERM FROM x(k) + y = 0 to +4
-
-       if (y <= 4.0) then
-          ! Swap signs on y
-          y = -y
-          y_inv = -y_inv
-          k = 1
-
-          ! Calculate a and b based on 0 and x(1)
-          a = -y
-          b = x(k) - y
-
-          ! Calculate F and H functions
-          call calculate_F(F_a, a)
-          call calculate_F(F_b, b)
-          H = F_a - F_b
-
-          ! Add contribution to broadened cross section
-          sigma = sigma - xs(k) * x(k) * (y_inv_sq*H(1) + y_inv*H(0))
-
-          ! Now progress forward doing the remainder of the second term
-          do while (b <= 4.0)
-             ! Move to next point
-             F_a = F_b
-             k = k + 1
-             b = x(k) - y
-
-             ! Calculate F and H functions
-             call calculate_F(F_b, b)
-             H = F_a - F_b
-
-             ! Calculate A(k), B(k), and slope terms
-             Ak = y_inv_sq*H(2) + 2.0*y_inv*H(1) + H(0)
-             Bk = y_inv_sq*H(4) + 4.0*y_inv*H(3) + 6.0*H(2) + 4.0*y*H(1) + y_sq*H(0)
-             slope = (xs(k) - xs(k-1)) / (x(k)**2 - x(k-1)**2)
-
-             ! Add contribution to broadened cross section
-             sigma = sigma - Ak*(xs(k) - slope*x(k)**2) - slope*Bk
-          end do
-       end if
-
-       ! Set broadened cross section
-       sigmaNew(i) = sigma
+      ! Set broadened cross section
+      sigmaNew(i) = sigma
 
     end do ENERGY_NEUTRON
 

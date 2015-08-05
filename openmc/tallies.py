@@ -609,7 +609,7 @@ class Tally(object):
             if filter.bins is not None:
                 bins = ''
                 for bin in filter.bins:
-                    bins += '"{0}" '.format(bin)
+                    bins += '{0} '.format(bin)
 
                 subelement.set("bins", bins.rstrip(' '))
 
@@ -618,9 +618,9 @@ class Tally(object):
             nuclides = ''
             for nuclide in self.nuclides:
                 if isinstance(nuclide, Nuclide):
-                    nuclides += '"{0}" '.format(nuclide.name)
+                    nuclides += '{0} '.format(nuclide.name)
                 else:
-                    nuclides += '"{0}" '.format(nuclide)
+                    nuclides += '{0} '.format(nuclide)
 
             subelement = ET.SubElement(element, "nuclides")
             subelement.text = nuclides.rstrip(' ')
@@ -634,7 +634,7 @@ class Tally(object):
         else:
             scores = ''
             for score in self.scores:
-                scores += '"{0}" '.format(score)
+                scores += '{0} '.format(score)
 
             subelement = ET.SubElement(element,    "scores")
             subelement.text = scores.rstrip(' ')

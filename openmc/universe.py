@@ -343,7 +343,7 @@ class Cell(object):
 
             for surface_id in self._surfaces:
                 # Determine if XML element already includes this Surface
-                path = './surface[@id=\'"{0}"\']'.format(surface_id)
+                path = './surface[@id=\'{0}\']'.format(surface_id)
                 test = xml_element.find(path)
 
                 # If the element does not contain the Surface subelement
@@ -355,7 +355,7 @@ class Cell(object):
 
                 # Append the halfspace and Surface ID
                 halfspace = self._surfaces[surface_id][1]
-                surfaces += '"{0}" '.format(halfspace * surface_id)
+                surfaces += '{0} '.format(halfspace * surface_id)
 
             element.set("surfaces", surfaces.rstrip(' '))
 

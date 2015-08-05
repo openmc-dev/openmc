@@ -372,7 +372,7 @@ class StatePoint(object):
                      path='{0}{1}/n_bins'.format(subbase, j))[0]
 
                 if n_bins <= 0:
-                    msg = 'Unable to create Filter {0} for Tally ID={2} ' \
+                    msg = 'Unable to create Filter "{0}" for Tally ID="{1}" ' \
                           'since no bins were specified'.format(j, tally_key)
                     raise ValueError(msg)
 
@@ -748,7 +748,7 @@ class StatePoint(object):
         """
 
         if not isinstance(summary, openmc.summary.Summary):
-            msg = 'Unable to link statepoint with {0} which ' \
+            msg = 'Unable to link statepoint with "{0}" which ' \
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 

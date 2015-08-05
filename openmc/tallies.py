@@ -297,7 +297,7 @@ class Tally(object):
         """
 
         if not isinstance(trigger, Trigger):
-            msg = 'Unable to add a tally trigger for Tally ID={0} to ' \
+            msg = 'Unable to add a tally trigger for Tally ID="{0}" to ' \
                   'since "{1}" is not a Trigger'.format(self.id, trigger)
             raise ValueError(msg)
 
@@ -330,7 +330,7 @@ class Tally(object):
         """
 
         if not isinstance(filter, Filter):
-            msg = 'Unable to add Filter "{0}" to Tally ID={1} since it is ' \
+            msg = 'Unable to add Filter "{0}" to Tally ID="{1}" since it is ' \
                   'not a Filter object'.format(filter, self.id)
             raise ValueError(msg)
 
@@ -359,7 +359,7 @@ class Tally(object):
         """
 
         if not isinstance(score, basestring):
-            msg = 'Unable to add score "{0}" to Tally ID={1} since it is ' \
+            msg = 'Unable to add score "{0}" to Tally ID="{1}" since it is ' \
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
 
@@ -405,7 +405,7 @@ class Tally(object):
         """
 
         if score not in self.scores:
-            msg = 'Unable to remove score "{0}" from Tally ID={1} since the ' \
+            msg = 'Unable to remove score "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this score'.format(score, self.id)
             ValueError(msg)
 
@@ -422,7 +422,7 @@ class Tally(object):
         """
 
         if filter not in self.filters:
-            msg = 'Unable to remove filter "{0}" from Tally ID={1} since the ' \
+            msg = 'Unable to remove filter "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this filter'.format(filter, self.id)
             ValueError(msg)
 
@@ -439,7 +439,7 @@ class Tally(object):
         """
 
         if nuclide not in self.nuclides:
-            msg = 'Unable to remove nuclide "{0}" from Tally ID={1} since the ' \
+            msg = 'Unable to remove nuclide "{0}" from Tally ID="{1}" since the ' \
                   'Tally does not contain this nuclide'.format(nuclide, self.id)
             ValueError(msg)
 
@@ -555,7 +555,7 @@ class Tally(object):
         """
 
         if not self.can_merge(tally):
-            msg = 'Unable to merge tally ID={0} with {1}'.format(tally.id, self.id)
+            msg = 'Unable to merge tally ID="{0}" with "{1}"'.format(tally.id, self.id)
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
@@ -627,7 +627,7 @@ class Tally(object):
 
         # Scores
         if len(self.scores) == 0:
-            msg = 'Unable to get XML for Tally ID={0} since it does not ' \
+            msg = 'Unable to get XML for Tally ID="{0}" since it does not ' \
                   'contain any scores'.format(self.id)
             raise ValueError(msg)
 
@@ -682,7 +682,7 @@ class Tally(object):
         # If we did not find the Filter, throw an Exception
         if filter is None:
             msg = 'Unable to find filter type "{0}" in ' \
-                  'Tally ID={1}'.format(filter_type, self.id)
+                  'Tally ID="{1}"'.format(filter_type, self.id)
             raise ValueError(msg)
 
         return filter
@@ -849,7 +849,7 @@ class Tally(object):
 
         # Ensure that StatePoint.read_results() was called first
         if self._sum is None or self._sum_sq is None:
-            msg = 'The Tally ID={0} has no data to return. Call the ' \
+            msg = 'The Tally ID="{0}" has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_values(...)'.format(self.id)
             raise ValueError(msg)
@@ -944,7 +944,7 @@ class Tally(object):
         elif value == 'sum_sq':
             data = self.sum_sq[indices]
         else:
-            msg = 'Unable to return results from Tally ID={0} since the ' \
+            msg = 'Unable to return results from Tally ID="{0}" since the ' \
                   'the requested value "{1}" is not \'mean\', \'std_dev\', ' \
                   '\rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
@@ -996,14 +996,14 @@ class Tally(object):
 
         # Ensure that StatePoint.read_results() was called first
         if self._sum is None or self._sum_sq is None:
-            msg = 'The Tally ID={0} has no data to return. Call the ' \
+            msg = 'The Tally ID="{0}" has no data to return. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
             raise KeyError(msg)
 
         # If using Summary, ensure StatePoint.link_with_summary(...) was called
         if summary and not self.with_summary:
-            msg = 'The Tally ID={0} has not been linked with the Summary. ' \
+            msg = 'The Tally ID="{0}" has not been linked with the Summary. ' \
                   'Call the StatePoint.link_with_summary(...) routine ' \
                   'before using Tally.get_pandas_dataframe(...) with ' \
                   'Summary info'.format(self.id)
@@ -1292,30 +1292,30 @@ class Tally(object):
 
         # Ensure that StatePoint.read_results() was called first
         if self._sum is None or self._sum_sq is None:
-            msg = 'The Tally ID={0} has no data to export. Call the ' \
+            msg = 'The Tally ID="{0}" has no data to export. Call the ' \
                   'StatePoint.read_results() routine before using ' \
                   'Tally.export_results(...)'.format(self.id)
             raise KeyError(msg)
 
         if not isinstance(filename, basestring):
-            msg = 'Unable to export the results for Tally ID={0} to ' \
+            msg = 'Unable to export the results for Tally ID="{0}" to ' \
                   'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
         elif not isinstance(directory, basestring):
-            msg = 'Unable to export the results for Tally ID={0} to ' \
+            msg = 'Unable to export the results for Tally ID="{0}" to ' \
                   'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)
             raise ValueError(msg)
 
         elif format not in ['hdf5', 'pkl', 'csv']:
-            msg = 'Unable to export the results for Tally ID={0} to format ' \
+            msg = 'Unable to export the results for Tally ID="{0}" to format ' \
                   '"{1}" since it is not supported'.format(self.id, format)
             raise ValueError(msg)
 
         elif not isinstance(append, bool):
-            msg = 'Unable to export the results for Tally ID={0} since the ' \
+            msg = 'Unable to export the results for Tally ID="{0}" since the ' \
                   'append parameter is not True/False'.format(self.id, append)
             raise ValueError(msg)
 
@@ -1437,7 +1437,7 @@ class TalliesFile(object):
         """
 
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally {0} to the TalliesFile'.format(tally)
+            msg = 'Unable to add a non-Tally "{0}" to the TalliesFile'.format(tally)
             raise ValueError(msg)
 
         if merge:
@@ -1508,7 +1508,7 @@ class TalliesFile(object):
         """
 
         if not isinstance(mesh, Mesh):
-            msg = 'Unable to add a non-Mesh {0} to the TalliesFile'.format(mesh)
+            msg = 'Unable to add a non-Mesh "{0}" to the TalliesFile'.format(mesh)
             raise ValueError(msg)
 
         self._meshes.append(mesh)

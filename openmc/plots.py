@@ -210,18 +210,18 @@ class Plot(object):
 
         for key in col_spec:
             if key < 0:
-                msg = 'Unable to create Plot ID={0} with col_spec ID {1} ' \
+                msg = 'Unable to create Plot ID="{0}" with col_spec ID "{1}" ' \
                       'which is less than 0'.format(self._id, key)
                 raise ValueError(msg)
 
             elif not isinstance(col_spec[key], Iterable):
-                msg = 'Unable to create Plot ID={0} with col_spec RGB values' \
-                      ' {1} which is not iterable'.format(self._id, col_spec[key])
+                msg = 'Unable to create Plot ID="{0}" with col_spec RGB values' \
+                      ' "{1}" which is not iterable'.format(self._id, col_spec[key])
                 raise ValueError(msg)
 
             elif len(col_spec[key]) != 3:
-                msg = 'Unable to create Plot ID={0} with col_spec RGB ' \
-                      'values of length {1} since 3 values must be ' \
+                msg = 'Unable to create Plot ID="{0}" with col_spec RGB ' \
+                      'values of length "{1}" since 3 values must be ' \
                       'input'.format(self._id, len(col_spec[key]))
                 raise ValueError(msg)
 
@@ -332,7 +332,7 @@ class PlotsFile(object):
         """
 
         if not isinstance(plot, Plot):
-            msg = 'Unable to add a non-Plot {0} to the PlotsFile'.format(plot)
+            msg = 'Unable to add a non-Plot "{0}" to the PlotsFile'.format(plot)
             raise ValueError(msg)
 
         self._plots.append(plot)

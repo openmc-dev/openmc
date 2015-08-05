@@ -78,7 +78,7 @@ def get_opencg_material(openmc_material):
     """
 
     if not isinstance(openmc_material, openmc.Material):
-        msg = 'Unable to create an OpenCG Material from {0} ' \
+        msg = 'Unable to create an OpenCG Material from "{0}" ' \
               'which is not an OpenMC Material'.format(openmc_material)
         raise ValueError(msg)
 
@@ -118,7 +118,7 @@ def get_openmc_material(opencg_material):
     """
 
     if not isinstance(opencg_material, opencg.Material):
-        msg = 'Unable to create an OpenMC Material from {0} ' \
+        msg = 'Unable to create an OpenMC Material from "{0}" ' \
               'which is not an OpenCG Material'.format(opencg_material)
         raise ValueError(msg)
 
@@ -165,7 +165,7 @@ def is_opencg_surface_compatible(opencg_surface):
 
     if not isinstance(opencg_surface, opencg.Surface):
         msg = 'Unable to check if OpenCG Surface is compatible' \
-              'since {0} is not a Surface'.format(opencg_surface)
+              'since "{0}" is not a Surface'.format(opencg_surface)
         raise ValueError(msg)
 
     if opencg_surface._type in ['x-squareprism',
@@ -191,7 +191,7 @@ def get_opencg_surface(openmc_surface):
     """
 
     if not isinstance(openmc_surface, openmc.Surface):
-        msg = 'Unable to create an OpenCG Surface from {0} ' \
+        msg = 'Unable to create an OpenCG Surface from "{0}" ' \
               'which is not an OpenMC Surface'.format(openmc_surface)
         raise ValueError(msg)
 
@@ -277,7 +277,7 @@ def get_openmc_surface(opencg_surface):
     """
 
     if not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create an OpenMC Surface from {0} which ' \
+        msg = 'Unable to create an OpenMC Surface from "{0}" which ' \
               'is not an OpenCG Surface'.format(opencg_surface)
         raise ValueError(msg)
 
@@ -335,7 +335,7 @@ def get_openmc_surface(opencg_surface):
 
     else:
         msg = 'Unable to create an OpenMC Surface from an OpenCG ' \
-              'Surface of type {0} since it is not a compatible ' \
+              'Surface of type "{0}" since it is not a compatible ' \
               'Surface type in OpenMC'.format(opencg_surface._type)
         raise ValueError(msg)
 
@@ -368,7 +368,7 @@ def get_compatible_opencg_surfaces(opencg_surface):
     """
 
     if not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create an OpenMC Surface from {0} which ' \
+        msg = 'Unable to create an OpenMC Surface from "{0}" which ' \
               'is not an OpenCG Surface'.format(opencg_surface)
         raise ValueError(msg)
 
@@ -421,7 +421,7 @@ def get_compatible_opencg_surfaces(opencg_surface):
 
     else:
         msg = 'Unable to create a compatible OpenMC Surface an OpenCG ' \
-              'Surface of type {0} since it already a compatible ' \
+              'Surface of type "{0}" since it already a compatible ' \
               'Surface type in OpenMC'.format(opencg_surface._type)
         raise ValueError(msg)
 
@@ -450,7 +450,7 @@ def get_opencg_cell(openmc_cell):
     """
 
     if not isinstance(openmc_cell, openmc.Cell):
-        msg = 'Unable to create an OpenCG Cell from {0} which ' \
+        msg = 'Unable to create an OpenCG Cell from "{0}" which ' \
               'is not an OpenMC Cell'.format(openmc_cell)
         raise ValueError(msg)
 
@@ -518,17 +518,17 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
     """
     if not isinstance(opencg_cell, opencg.Cell):
-        msg = 'Unable to create compatible OpenMC Cell from {0} which ' \
+        msg = 'Unable to create compatible OpenMC Cell from "{0}" which ' \
               'is not an OpenCG Cell'.format(opencg_cell)
         raise ValueError(msg)
 
     elif not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create compatible OpenMC Cell since {0} is ' \
+        msg = 'Unable to create compatible OpenMC Cell since "{0}" is ' \
               'not an OpenCG Surface'.format(opencg_surface)
         raise ValueError(msg)
 
     elif halfspace not in [-1, +1]:
-        msg = 'Unable to create compatible Cell since {0}' \
+        msg = 'Unable to create compatible Cell since "{0}"' \
               'is not a +/-1 halfspace'.format(halfspace)
         raise ValueError(msg)
 
@@ -626,7 +626,7 @@ def make_opencg_cells_compatible(opencg_universe):
     """
 
     if not isinstance(opencg_universe, opencg.Universe):
-        msg = 'Unable to make compatible OpenCG Cells for {0} which ' \
+        msg = 'Unable to make compatible OpenCG Cells for "{0}" which ' \
               'is not an OpenCG Universe'.format(opencg_universe)
         raise ValueError(msg)
 
@@ -685,7 +685,7 @@ def get_openmc_cell(opencg_cell):
     """
 
     if not isinstance(opencg_cell, opencg.Cell):
-        msg = 'Unable to create an OpenMC Cell from {0} which ' \
+        msg = 'Unable to create an OpenMC Cell from "{0}" which ' \
               'is not an OpenCG Cell'.format(opencg_cell)
         raise ValueError(msg)
 
@@ -749,7 +749,7 @@ def get_opencg_universe(openmc_universe):
     """
 
     if not isinstance(openmc_universe, openmc.Universe):
-        msg = 'Unable to create an OpenCG Universe from {0} which ' \
+        msg = 'Unable to create an OpenCG Universe from "{0}" which ' \
               'is not an OpenMC Universe'.format(openmc_universe)
         raise ValueError(msg)
 
@@ -796,7 +796,7 @@ def get_openmc_universe(opencg_universe):
     """
 
     if not isinstance(opencg_universe, opencg.Universe):
-        msg = 'Unable to create an OpenMC Universe from {0} which ' \
+        msg = 'Unable to create an OpenMC Universe from "{0}" which ' \
               'is not an OpenCG Universe'.format(opencg_universe)
         raise ValueError(msg)
 
@@ -846,7 +846,7 @@ def get_opencg_lattice(openmc_lattice):
     """
 
     if not isinstance(openmc_lattice, openmc.Lattice):
-        msg = 'Unable to create an OpenCG Lattice from {0} which ' \
+        msg = 'Unable to create an OpenCG Lattice from "{0}" which ' \
               'is not an OpenMC Lattice'.format(openmc_lattice)
         raise ValueError(msg)
 
@@ -926,7 +926,7 @@ def get_openmc_lattice(opencg_lattice):
     """
 
     if not isinstance(opencg_lattice, opencg.Lattice):
-        msg = 'Unable to create an OpenMC Lattice from {0} which ' \
+        msg = 'Unable to create an OpenMC Lattice from "{0}" which ' \
               'is not an OpenCG Lattice'.format(opencg_lattice)
         raise ValueError(msg)
 
@@ -997,7 +997,7 @@ def get_opencg_geometry(openmc_geometry):
     """
 
     if not isinstance(openmc_geometry, openmc.Geometry):
-        msg = 'Unable to get OpenCG geometry from {0} which is ' \
+        msg = 'Unable to get OpenCG geometry from "{0}" which is ' \
               'not an OpenMC Geometry object'.format(openmc_geometry)
         raise ValueError(msg)
 
@@ -1037,7 +1037,7 @@ def get_openmc_geometry(opencg_geometry):
     """
 
     if not isinstance(opencg_geometry, opencg.Geometry):
-        msg = 'Unable to get OpenMC geometry from {0} which is ' \
+        msg = 'Unable to get OpenMC geometry from "{0}" which is ' \
               'not an OpenCG Geometry object'.format(opencg_geometry)
         raise ValueError(msg)
 

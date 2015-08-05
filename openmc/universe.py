@@ -1149,13 +1149,13 @@ class HexLattice(Lattice):
 
     def __repr__(self):
         string = 'HexLattice\n'
-        string += '{0: <16}{1}{2}"\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}"\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}"\n'.format('\t# Rings', '=\t', self._num_rings)
-        string += '{0: <16}{1}{2}"\n'.format('\t# Axial', '=\t', self._num_axial)
-        string += '{0: <16}{1}{2}"\n'.format('\tCenter', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
+        string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
+        string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
                                             self._center)
-        string += '{0: <16}{1}{2}"\n'.format('\tPitch', '=\t', self._pitch)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
 
         if self._outer is not None:
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',

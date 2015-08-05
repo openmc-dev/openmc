@@ -338,7 +338,7 @@ class Material(object):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
 
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
-        string += ' ["{0}"]\n'.format(self._density_units)
+        string += ' [{0}]\n'.format(self._density_units)
 
         string += '{0: <16}\n'.format('\tS(a,b) Tables')
 

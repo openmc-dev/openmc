@@ -1036,7 +1036,7 @@ class Tally(object):
 
                     # Append Mesh ID as outermost index of mult-index
                     mesh_id = filter.mesh.id
-                    mesh_key = 'mesh "{0}"'.format(mesh_id)
+                    mesh_key = 'mesh {0}'.format(mesh_id)
 
                     # Find mesh dimensions - use 3D indices for simplicity
                     if (len(filter.mesh.dimension) == 3):
@@ -1128,7 +1128,7 @@ class Tally(object):
 
                             # Initialize prefix Multi-index keys
                             counter += 1
-                            level_key = 'level "{0}"'.format(counter)
+                            level_key = 'level {0}'.format(counter)
                             univ_key = (level_key, 'univ', 'id')
                             cell_key = (level_key, 'cell', 'id')
                             lat_id_key = (level_key, 'lat', 'id')
@@ -1335,7 +1335,7 @@ class Tally(object):
                 tally_results = h5py.File(filename, 'w')
 
             # Create an HDF5 group within the file for this particular Tally
-            tally_group = tally_results.create_group('Tally-"{0}"'.format(self.id))
+            tally_group = tally_results.create_group('Tally-{0}'.format(self.id))
 
             # Add basic Tally data to the HDF5 group
             tally_group.create_dataset('id', data=self.id)
@@ -1377,8 +1377,8 @@ class Tally(object):
                 tally_results = {}
 
             # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-"{0}"'.format(self.id)] = {}
-            tally_group = tally_results['Tally-"{0}"'.format(self.id)]
+            tally_results['Tally-{0}'.format(self.id)] = {}
+            tally_group = tally_results['Tally-{0}'.format(self.id)]
 
             # Add basic Tally data to the nested dictionary
             tally_group['id'] = self.id

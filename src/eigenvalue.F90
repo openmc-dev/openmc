@@ -259,7 +259,7 @@ contains
 
     ! Write out source point if it's been specified for this batch
     if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-        source_write) then
+         source_write) then
       call write_source_point()
     end if
 
@@ -880,8 +880,8 @@ contains
 !$omp do ordered schedule(static)
     do i = 1, n_threads
 !$omp ordered
-       master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
-       total = total + n_bank
+      master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+      total = total + n_bank
 !$omp end ordered
     end do
 !$omp end do
@@ -891,10 +891,10 @@ contains
 
     ! Now copy the shared fission bank sites back to the master thread's copy.
     if (thread_id == 0) then
-       n_bank = total
-       fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+      n_bank = total
+      fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
     else
-       n_bank = 0
+      n_bank = 0
     end if
 
 !$omp end parallel

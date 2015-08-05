@@ -121,7 +121,7 @@ contains
 
     ! Allocate cmfd source if not already allocated and allocate buffer
     if (.not. allocated(cmfd % cmfd_src)) &
-       allocate(cmfd % cmfd_src(ng,nx,ny,nz))
+         allocate(cmfd % cmfd_src(ng,nx,ny,nz))
 
     ! Reset cmfd source to 0
     cmfd % cmfd_src = ZERO

@@ -65,7 +65,7 @@ contains
 
     ! Check for physical adjoint
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
-        physical_adjoint = .true.
+         physical_adjoint = .true.
 
     ! Start timer for build
     call time_cmfdbuild % start()
@@ -75,7 +75,7 @@ contains
 
     ! Check for mathematical adjoint calculation
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
-        call compute_adjoint()
+         call compute_adjoint()
 
     ! Stop timer for build
     call time_cmfdbuild % stop()
@@ -286,7 +286,7 @@ contains
     ROWS: do irow = 1, loss % n
       COLS: do icol = loss % get_row(irow), loss % get_row(irow + 1) - 1
         if (loss % get_col(icol) == prod % get_col(jcol) .and. &
-            jcol < prod % get_row(irow + 1)) then
+             jcol < prod % get_row(irow + 1)) then
           loss % val(icol) = loss % val(icol) - ONE/k_s*prod % val(jcol)
           jcol = jcol + 1
         end if

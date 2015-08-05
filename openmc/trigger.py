@@ -92,7 +92,7 @@ class Trigger(object):
         """
 
         if not isinstance(score, basestring):
-            msg = 'Unable to add score ""{0}"" to tally trigger since ' \
+            msg = 'Unable to add score "{0}" to tally trigger since ' \
                   'it is not a string'.format(score)
             raise ValueError(msg)
 

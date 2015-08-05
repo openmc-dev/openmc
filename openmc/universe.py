@@ -1149,19 +1149,19 @@ class HexLattice(Lattice):
 
     def __repr__(self):
         string = 'HexLattice\n'
-        string += '{0: <16}"{1}""{2}"\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}"{1}""{2}"\n'.format('\t# Rings', '=\t', self._num_rings)
-        string += '{0: <16}"{1}""{2}"\n'.format('\t# Axial', '=\t', self._num_axial)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tCenter', '=\t',
+        string += '{0: <16}{1}{2}"\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}"\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}"\n'.format('\t# Rings', '=\t', self._num_rings)
+        string += '{0: <16}{1}{2}"\n'.format('\t# Axial', '=\t', self._num_axial)
+        string += '{0: <16}{1}{2}"\n'.format('\tCenter', '=\t',
                                             self._center)
-        string += '{0: <16}"{1}""{2}"\n'.format('\tPitch', '=\t', self._pitch)
+        string += '{0: <16}{1}{2}"\n'.format('\tPitch', '=\t', self._pitch)
 
         if self._outer is not None:
-            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer._id)
         else:
-            string += '{0: <16}"{1}""{2}"\n'.format('\tOuter', '=\t',
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
         string += '{0: <16}\n'.format('\tUniverses')
@@ -1177,7 +1177,7 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element):
         # Determine if XML element already contains subelement for this Lattice
-        path = './hex_lattice[@id=\'"{0}"\']'.format(self._id)
+        path = './hex_lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
@@ -1197,7 +1197,7 @@ class HexLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = '"{0}"'.format(self._outer._id)
+            outer.text = '{0}'.format(self._outer._id)
             self._outer.create_xml_subelement(xml_element)
 
         lattice_subelement.set("n_rings", str(self._num_rings))

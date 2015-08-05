@@ -109,7 +109,7 @@ class Filter(object):
         if type is None:
             self._type = type
         elif type not in FILTER_TYPES.values():
-            msg = 'Unable to set Filter type to ""{0}" since it is not one ' \
+            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
 

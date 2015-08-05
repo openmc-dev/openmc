@@ -148,14 +148,14 @@ class Mesh(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for mesh ID={0}'.format(self._id), name, basestring)
+        check_type('name for mesh ID="{0}"'.format(self._id), name, basestring)
         self._name = name
 
     @type.setter
     def type(self, meshtype):
-        check_type('type for mesh ID={0}'.format(self._id),
+        check_type('type for mesh ID="{0}"'.format(self._id),
                    meshtype, basestring)
-        check_value('type for mesh ID={0}'.format(self._id),
+        check_value('type for mesh ID="{0}"'.format(self._id),
                     meshtype, ['rectangular', 'hexagonal'])
         self._type = meshtype
 

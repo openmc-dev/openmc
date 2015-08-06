@@ -26,7 +26,7 @@ def reset_auto_material_id():
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'at/b-cm', 'at/cm3', 'sum']
+DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum']
 
 # Constant for density when not needed
 NO_DENSITY = 99999.
@@ -122,7 +122,7 @@ class Material(object):
         else:
             check_type('material ID', material_id, Integral)
             if material_id in MATERIAL_IDS:
-                msg = 'Unable to set Material ID to {0} since a Material with ' \
+                msg = 'Unable to set Material ID to "{0}" since a Material with ' \
                       'this ID was already initialized'.format(material_id)
                 raise ValueError(msg)
             check_greater_than('material ID', material_id, 0)
@@ -132,7 +132,7 @@ class Material(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for Material ID={0}'.format(self._id),
+        check_type('name for Material ID="{0}"'.format(self._id),
                    name, basestring)
         self._name = name
 
@@ -149,12 +149,12 @@ class Material(object):
 
         """
 
-        check_type('the density for Material ID={0}'.format(self._id),
+        check_type('the density for Material ID="{0}"'.format(self._id),
                    density, Real)
         check_value('density units', units, DENSITY_UNITS)
 
         if density == NO_DENSITY and units is not 'sum':
-            msg = 'Unable to set the density Material ID={0} ' \
+            msg = 'Unable to set the density Material ID="{0}" ' \
                   'because a density must be set when not using ' \
                   'sum unit'.format(self._id)
             raise ValueError(msg)
@@ -169,8 +169,8 @@ class Material(object):
                       'version of openmc')
 
         if not isinstance(filename, basestring) and filename is not None:
-            msg = 'Unable to add OTF material file to Material ID={0} with a ' \
-                  'non-string name {1}'.format(self._id, filename)
+            msg = 'Unable to add OTF material file to Material ID="{0}" with a ' \
+                  'non-string name "{1}"'.format(self._id, filename)
             raise ValueError(msg)
 
         self._distrib_otf_file = filename
@@ -198,18 +198,18 @@ class Material(object):
         """
 
         if not isinstance(nuclide, (openmc.Nuclide, str)):
-            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
-                  'non-Nuclide value {1}'.format(self._id, nuclide)
+            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
+                  'non-Nuclide value "{1}"'.format(self._id, nuclide)
             raise ValueError(msg)
 
         elif not isinstance(percent, Real):
-            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
-                  'non-floating point value {1}'.format(self._id, percent)
+            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
+                  'non-floating point value "{1}"'.format(self._id, percent)
             raise ValueError(msg)
 
         elif percent_type not in ['ao', 'wo', 'at/g-cm']:
-            msg = 'Unable to add a Nuclide to Material ID={0} with a ' \
-                  'percent type {1}'.format(self._id, percent_type)
+            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
+                  'percent type "{1}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         if isinstance(nuclide, openmc.Nuclide):
@@ -232,7 +232,7 @@ class Material(object):
         """
 
         if not isinstance(nuclide, openmc.Nuclide):
-            msg = 'Unable to remove a Nuclide {0} in Material ID={1} ' \
+            msg = 'Unable to remove a Nuclide "{0}" in Material ID="{1}" ' \
                   'since it is not a Nuclide'.format(self._id, nuclide)
             raise ValueError(msg)
 
@@ -255,18 +255,18 @@ class Material(object):
         """
 
         if not isinstance(element, openmc.Element):
-            msg = 'Unable to add an Element to Material ID={0} with a ' \
-                  'non-Element value {1}'.format(self._id, element)
+            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
+                  'non-Element value "{1}"'.format(self._id, element)
             raise ValueError(msg)
 
         if not isinstance(percent, Real):
-            msg = 'Unable to add an Element to Material ID={0} with a ' \
-                  'non-floating point value {1}'.format(self._id, percent)
+            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
+                  'non-floating point value "{1}"'.format(self._id, percent)
             raise ValueError(msg)
 
         if percent_type not in ['ao', 'wo']:
-            msg = 'Unable to add an Element to Material ID={0} with a ' \
-                  'percent type {1}'.format(self._id, percent_type)
+            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
+                  'percent type "{1}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         # Copy this Element to separate it from same Element in other Materials
@@ -301,13 +301,13 @@ class Material(object):
         """
 
         if not isinstance(name, basestring):
-            msg = 'Unable to add an S(a,b) table to Material ID={0} with a ' \
-                        'non-string table name {1}'.format(self._id, name)
+            msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
+                        'non-string table name "{1}"'.format(self._id, name)
             raise ValueError(msg)
 
         if not isinstance(xs, basestring):
-            msg = 'Unable to add an S(a,b) table to Material ID={0} with a ' \
-                  'non-string cross-section identifier {1}'.format(self._id, xs)
+            msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
+                  'non-string cross-section identifier "{1}"'.format(self._id, xs)
             raise ValueError(msg)
 
         self._sab.append((name, xs))
@@ -332,7 +332,7 @@ class Material(object):
 
         return nuclides
 
-    def _repr__(self):
+    def __repr__(self):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
@@ -522,7 +522,7 @@ class MaterialsFile(object):
         """
 
         if not isinstance(material, Material):
-            msg = 'Unable to add a non-Material {0} to the ' \
+            msg = 'Unable to add a non-Material "{0}" to the ' \
                   'MaterialsFile'.format(material)
             raise ValueError(msg)
 
@@ -539,7 +539,7 @@ class MaterialsFile(object):
         """
 
         if not isinstance(materials, Iterable):
-            msg = 'Unable to create OpenMC materials.xml file from {0} which ' \
+            msg = 'Unable to create OpenMC materials.xml file from "{0}" which ' \
                   'is not iterable'.format(materials)
             raise ValueError(msg)
 
@@ -557,7 +557,7 @@ class MaterialsFile(object):
         """
 
         if not isinstance(material, Material):
-            msg = 'Unable to remove a non-Material {0} from the ' \
+            msg = 'Unable to remove a non-Material "{0}" from the ' \
                   'MaterialsFile'.format(material)
             raise ValueError(msg)
 

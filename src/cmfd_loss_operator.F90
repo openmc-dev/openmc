@@ -54,7 +54,7 @@ contains
       n_e  = 4*(nx - 2) + 4*(ny - 2) + 4*(nz - 2) ! define # of edges
       n_s  = 2*(nx - 2)*(ny - 2) + 2*(nx - 2)*(nz - 2) &
            + 2*(ny - 2)*(nz - 2) ! define # of sides
-      n_i  = nx*ny*nz - (n_c + n_e + n_s) ! define # of interiors  
+      n_i  = nx*ny*nz - (n_c + n_e + n_s) ! define # of interiors
       nz_c = ng*n_c*(4 + ng - 1) ! define # nonzero corners
       nz_e = ng*n_e*(5 + ng - 1) ! define # nonzero edges
       nz_s = ng*n_s*(6 + ng - 1) ! define # nonzero sides
@@ -131,7 +131,7 @@ contains
         ! Check for global boundary
         if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
 
-          ! Check for coremap 
+          ! Check for coremap
           if (cmfd_coremap) then
 
             ! Check for neighbor that is non-acceleartred
@@ -139,11 +139,11 @@ contains
                  CMFD_NOACCEL) then
 
               ! Get neighbor matrix index
-              call indices_to_matrix(g,neig_idx(1), neig_idx(2), & 
+              call indices_to_matrix(g,neig_idx(1), neig_idx(2), &
                    neig_idx(3), neig_mat_idx, ng, nx, ny)
 
               ! Record nonzero
-              nnz = nnz + 1 
+              nnz = nnz + 1
 
             end if
 
@@ -218,11 +218,11 @@ contains
     real(8) :: jn            ! direction dependent leakage coeff to neig
     real(8) :: jo(6)         ! leakage coeff in front of cell flux
     real(8) :: jnet          ! net leakage from jo
-    real(8) :: val           ! temporary variable before saving to 
+    real(8) :: val           ! temporary variable before saving to
 
     ! Check for adjoint
     adjoint_calc = .false.
-    if (present(adjoint)) adjoint_calc = adjoint 
+    if (present(adjoint)) adjoint_calc = adjoint
 
     ! Get maximum number of cells in each direction
     nx = cmfd%indices(1)
@@ -257,11 +257,11 @@ contains
         dhat = ZERO
       end if
 
-      ! Create boundary vector 
+      ! Create boundary vector
       bound = (/i,i,j,j,k,k/)
 
       ! Begin loop over leakages
-      ! 1=-x, 2=+x, 3=-y, 4=+y, 5=-z, 6=+z 
+      ! 1=-x, 2=+x, 3=-y, 4=+y, 5=-z, 6=+z
       LEAK: do l = 1,6
 
         ! Define (x,y,z) and (-,+) indices
@@ -350,7 +350,7 @@ contains
           scattxshg = cmfd%scattxs(h, g, i, j, k)
         end if
 
-        ! Negate the scattering xs 
+        ! Negate the scattering xs
         val = -scattxshg
 
         ! Record value in matrix
@@ -358,7 +358,7 @@ contains
 
       end do SCATTR
 
-    end do ROWS 
+    end do ROWS
 
     ! CSR requires n+1 row
     call loss_matrix % new_row()

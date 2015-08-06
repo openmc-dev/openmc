@@ -97,7 +97,7 @@ contains
 
       end if
 
-      ! loop around all other groups 
+      ! loop around all other groups
 
       NFISS: do h = 1, ng
 
@@ -122,7 +122,7 @@ contains
 
       end do NFISS
 
-    end do ROWS 
+    end do ROWS
 
     ! CSR requires n+1 row
     call prod_matrix % new_row()

@@ -88,16 +88,16 @@ contains
                 nuclides(i_nuclide) % resonant = .true.
                 nuclides(i_nuclide) % name_0K = nuclides_0K(n) % name_0K
                 nuclides(i_nuclide) % name_0K = trim(nuclides(i_nuclide) % &
-                  & name_0K)
+                     & name_0K)
                 nuclides(i_nuclide) % scheme = nuclides_0K(n) % scheme
                 nuclides(i_nuclide) % scheme = trim(nuclides(i_nuclide) % &
-                  & scheme)
+                     & scheme)
                 nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
                 nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
                 if (.not. already_read % contains(nuclides(i_nuclide) % &
-                  & name_0K)) then
+                     & name_0K)) then
                   i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % &
-                    & name_0K)
+                       & name_0K)
                   call read_ace_table(i_nuclide, i_listing)
                 end if
                 exit
@@ -446,9 +446,10 @@ contains
         if (nuc % elastic_0K(i) < ZERO) nuc % elastic_0K(i) = ZERO
 
         ! build xs cdf
-        xs_cdf_sum = xs_cdf_sum + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
-          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
-          & * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
+        xs_cdf_sum = xs_cdf_sum &
+             + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
+             + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
+             * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
         nuc % xs_cdf(i) = xs_cdf_sum
       end do
 
@@ -752,31 +753,31 @@ contains
         ! Set flag and allocate space for Tab1 to store yield
         rxn % multiplicity_with_E = .true.
         allocate(rxn % multiplicity_E)
-        
+
         XSS_index = JXS(11) + rxn % multiplicity - 101
         NR = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_regions = NR
-        
+
         ! allocate space for ENDF interpolation parameters
         if (NR > 0) then
           allocate(rxn % multiplicity_E % nbt(NR))
           allocate(rxn % multiplicity_E % int(NR))
         end if
-        
+
         ! read ENDF interpolation parameters
         XSS_index = XSS_index + 1
         if (NR > 0) then
           rxn % multiplicity_E % nbt = get_int(NR)
           rxn % multiplicity_E % int = get_int(NR)
         end if
-        
+
         ! allocate space for yield data
         XSS_index = XSS_index + 2*NR
         NE = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_pairs = NE
         allocate(rxn % multiplicity_E % x(NE))
         allocate(rxn % multiplicity_E % y(NE))
-        
+
         ! read yield data
         XSS_index = XSS_index + 1
         rxn % multiplicity_E % x = get_real(NE)
@@ -1480,7 +1481,7 @@ contains
           table % inelastic_data(i) % e_out_pdf(j) = XSS(XSS_index + 2)
           table % inelastic_data(i) % e_out_cdf(j) = XSS(XSS_index + 3)
           table % inelastic_data(i) % mu(:, j) = &
-            XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
+               XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
           XSS_index = XSS_index + 4 + NMU - 1
         end do
       end do

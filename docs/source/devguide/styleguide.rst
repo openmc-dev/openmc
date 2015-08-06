@@ -153,6 +153,8 @@ Avoid extraneous whitespace in the following situations:
     Yes: if (variable == 2) then
     No:  if ( variable==2 ) then
 
+Do not leave trailing whitespace at the end of a line.
+
 ------
 Python
 ------

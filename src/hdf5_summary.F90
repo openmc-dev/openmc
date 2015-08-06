@@ -394,7 +394,7 @@ contains
         ! Write number of lattice cells.
         call su % write_data(lat % n_rings, "n_rings", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % n_rings, "n_axial", &
+        call su % write_data(lat % n_axial, "n_axial", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
         ! Write lattice center, pitch and outer universe.
@@ -407,10 +407,10 @@ contains
         end if
  
         if (lat % is_3d) then
-          call su % write_data(lat % pitch, "pitch", length=3, &
+          call su % write_data(lat % pitch, "pitch", length=2, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         else
-          call su % write_data(lat % pitch, "pitch", length=2, &
+          call su % write_data(lat % pitch, "pitch", length=1, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         end if
 
@@ -447,7 +447,7 @@ contains
           end do
         end do
         call su % write_data(lattice_universes, "universes", &
-             &length=(/lat % n_axial, 2*lat % n_rings-1, 2*lat % n_rings-1/), &
+             &length=(/2*lat % n_rings-1, 2*lat % n_rings-1, lat % n_axial/), &
              &group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         deallocate(lattice_universes)
       end select

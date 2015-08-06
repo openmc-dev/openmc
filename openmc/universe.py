@@ -127,8 +127,8 @@ class Cell(object):
             if fill.strip().lower() == 'void':
                 self._type = 'void'
             else:
-                msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
-                       'Universe fill {1}'.format(self._id, fill)
+                msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
+                       'Universe fill "{1}"'.format(self._id, fill)
                 raise ValueError(msg)
 
         elif isinstance(fill, openmc.Material):
@@ -141,8 +141,8 @@ class Cell(object):
             self._type = 'lattice'
 
         else:
-            msg = 'Unable to set Cell ID={0} to use a non-Material or ' \
-                   'Universe fill {1}'.format(self._id, fill)
+            msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
+                   'Universe fill "{1}"'.format(self._id, fill)
             raise ValueError(msg)
 
         self._fill = fill
@@ -178,13 +178,13 @@ class Cell(object):
         """
 
         if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to add Surface {0} to Cell ID={1} since it is ' \
+            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" since it is ' \
                         'not a Surface object'.format(surface, self._id)
             raise ValueError(msg)
 
         if halfspace not in [-1, +1]:
-            msg = 'Unable to add Surface {0} to Cell ID={1} with halfspace ' \
-                  '{2} since it is not +/-1'.format(surface, self._id, halfspace)
+            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" with halfspace ' \
+                  '"{2}" since it is not +/-1'.format(surface, self._id, halfspace)
             raise ValueError(msg)
 
         # If the Cell does not already contain the Surface, add it
@@ -202,7 +202,7 @@ class Cell(object):
         """
 
         if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to remove Surface {0} from Cell ID={1} since it is ' \
+            msg = 'Unable to remove Surface "{0}" from Cell ID="{1}" since it is ' \
                         'not a Surface object'.format(surface, self._id)
             raise ValueError(msg)
 
@@ -453,7 +453,7 @@ class Universe(object):
         """
 
         if not isinstance(cell, Cell):
-            msg = 'Unable to add a Cell to Universe ID={0} since {1} is not ' \
+            msg = 'Unable to add a Cell to Universe ID="{0}" since "{1}" is not ' \
                   'a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
@@ -473,7 +473,7 @@ class Universe(object):
         """
 
         if not isinstance(cells, Iterable):
-            msg = 'Unable to add Cells to Universe ID={0} since {1} is not ' \
+            msg = 'Unable to add Cells to Universe ID="{0}" since "{1}" is not ' \
                   'iterable'.format(self._id, cells)
             raise ValueError(msg)
 
@@ -491,7 +491,7 @@ class Universe(object):
         """
 
         if not isinstance(cell, Cell):
-            msg = 'Unable to remove a Cell from Universe ID={0} since {1} is ' \
+            msg = 'Unable to remove a Cell from Universe ID="{0}" since "{1}" is ' \
                   'not a Cell'.format(self._id, cell)
             raise ValueError(msg)
 

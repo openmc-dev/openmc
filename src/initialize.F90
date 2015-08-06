@@ -916,9 +916,9 @@ contains
     thread_id = omp_get_thread_num()
 
     if (thread_id == 0) then
-       allocate(fission_bank(3*work))
+      allocate(fission_bank(3*work))
     else
-       allocate(fission_bank(3*work/n_threads))
+      allocate(fission_bank(3*work/n_threads))
     end if
 !$omp end parallel
     allocate(master_fission_bank(3*work), STAT=alloc_err)

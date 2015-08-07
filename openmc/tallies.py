@@ -3,7 +3,7 @@ import copy
 import os
 import pickle
 import itertools
-from numbers import Integral, Rational
+from numbers import Integral, Real
 from xml.etree import ElementTree as ET
 import sys
 
@@ -1582,7 +1582,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to add to this tally
 
         Returns
@@ -1599,7 +1599,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
+        new_tally = Tally(name='derived')
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1613,10 +1613,10 @@ class Tally(object):
             self._outer_product(other, new_tally, binary_op='+')
             data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] + data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
 
-        elif isinstance(other, (Integral, Rational)):
+        elif isinstance(other, Real):
 
             new_tally.name = self.name
             new_tally._mean = self._mean + other
@@ -1658,7 +1658,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to subtract from this tally
 
         Returns
@@ -1675,7 +1675,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
+        new_tally = Tally(name='derived')
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1689,10 +1689,10 @@ class Tally(object):
             self._outer_product(other, new_tally, binary_op='-')
             data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] - data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
 
-        elif isinstance(other, (Integral, Rational)):
+        elif isinstance(other, Real):
 
             new_tally.name = self.name
             new_tally._mean = self._mean - other
@@ -1735,7 +1735,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to multiply with this tally
 
         Returns
@@ -1752,7 +1752,7 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
+        new_tally = Tally(name='derived')
         new_tally.with_batch_statistics = True
 
         if isinstance(other, Tally):
@@ -1771,7 +1771,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
 
-        elif isinstance(other, (Integral, Rational)):
+        elif isinstance(other, Real):
 
             new_tally.name = self.name
             new_tally._mean = self._mean * other
@@ -1814,7 +1814,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to divide this tally by
 
         Returns
@@ -1850,7 +1850,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
 
-        elif isinstance(other, (Integral, Rational)):
+        elif isinstance(other, Real):
 
             new_tally.name = self.name
             new_tally._mean = self._mean / other
@@ -1893,7 +1893,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        power : Tally or Real
             The tally or scalar value exponent
 
         Returns
@@ -1930,7 +1930,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(first_term**2 + second_term**2)
 
-        elif isinstance(power, (Integral, Rational)):
+        elif isinstance(power, Real):
 
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
@@ -1962,7 +1962,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to add to this tally
 
         Returns
@@ -1981,7 +1981,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to subtract this tally from
 
         Returns
@@ -2000,7 +2000,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to multiply with this tally
 
         Returns
@@ -2019,7 +2019,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to divide by this tally
 
         Returns
@@ -2029,7 +2029,7 @@ class Tally(object):
 
         """
 
-        return self * (1. / other)
+        return other * self**-1
 
     def __pos__(self):
         """The absolute value of this tally.

@@ -1441,8 +1441,8 @@ class Tally(object):
             The tally on the right hand side of the outer product
         new_tally: Tally
             The new tally to represent the outer product
-        op : str
-            The binary operation in the outer product ('+', '-', '*', '/', '^')
+        binary_op : {'+', '-', '*', '/', '^'}
+            The binary operation in the outer product
 
         """
 
@@ -1519,11 +1519,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of filter bins
             # between the two tallies and repeat arrays along filter axes
-            self_num_filter_bins = self.num_filter_bins
-            other_num_filter_bins = other.num_filter_bins
-            num_filter_bins = self_num_filter_bins * other_num_filter_bins
-            self_repeat_factor = num_filter_bins / self_num_filter_bins
-            other_tile_factor = num_filter_bins / other_num_filter_bins
+            self_repeat_factor = other.num_filter_bins
+            other_tile_factor = self.num_filter_bins
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
@@ -1535,11 +1532,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of nuclides
             # between the two tallies and repeat arrays along nuclide axes
-            self_num_nuclide_bins = self.num_nuclides
-            other_num_nuclide_bins = other.num_nuclides
-            num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
-            self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
-            other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
+            self_repeat_factor = other.num_nuclides
+            other_tile_factor = self.num_nuclides
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
@@ -1551,11 +1545,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of score bins
             # between the two tallies and repeat arrays along score axes
-            self_num_score_bins = self.num_score_bins
-            other_num_score_bins = other.num_score_bins
-            num_score_bins = self_num_score_bins * other_num_score_bins
-            self_repeat_factor = num_score_bins / self_num_score_bins
-            other_tile_factor = num_score_bins / other_num_score_bins
+            self_repeat_factor = other.num_score_bins
+            other_tile_factor = self.num_score_bins
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)

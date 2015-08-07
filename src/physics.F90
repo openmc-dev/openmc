@@ -1377,28 +1377,17 @@ contains
     type(Material), pointer :: mat => null() ! material pointer
     type(Nuclide), pointer  :: nuc => null() ! nuclide pointer
     type(Reaction), pointer :: rxn => null() ! reaction pointer
-    integer :: i_mat ! material index
-    integer :: i_nuc ! nuclide index
-    integer :: i_rxn ! reaction index
-    integer :: i_MT  ! MT index
-    integer :: i_E   ! energy index
-    integer :: i_mu  ! cosine index
-
-    real(8)        :: xi      ! random number on [0,1)
-    integer        :: interp  ! type of interpolation
-    integer        :: type    ! angular distribution type
-    integer        :: n       ! number of incoming energy bins
-    integer        :: lc      ! location in data array
-    integer        :: NP      ! number of points in cos distribution
-    integer        :: k       ! index on cosine grid
-    real(8)        :: r       ! interpolation factor on incoming energy
-    real(8)        :: frac    ! interpolation fraction on cosine
-    real(8)        :: mu0     ! cosine in bin k
-    real(8)        :: mu1     ! cosine in bin k+1
-    real(8)        :: mu      ! final cosine sampled
-    real(8)        :: c_k     ! cumulative frequency at k
-    real(8)        :: c_k1    ! cumulative frequency at k+1
-    real(8)        :: p0,p1   ! probability distribution
+    integer :: i_mat  ! material index
+    integer :: i_nuc  ! nuclide index
+    integer :: i_rxn  ! reaction index
+    integer :: i_MT   ! MT index
+    integer :: i_E    ! energy index
+    integer :: i_mu   ! cosine index
+    integer :: interp ! type of interpolation
+    integer :: type   ! angular distribution type
+    integer :: n      ! number of incoming energy bins
+    integer :: lc     ! location in data array
+    integer :: NP     ! number of points in cos distribution
 
     ! loop over all materials
     MAT_LOOP: do i_mat = 1, n_materials

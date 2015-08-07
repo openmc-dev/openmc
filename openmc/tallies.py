@@ -2145,7 +2145,7 @@ class Tally(object):
                     score_indices.append(score_index)
 
             # Loop over indices in reverse to remove excluded scores
-            for score_index in score_indices[::-1]:
+            for score_index in reversed(score_indices):
                 new_tally.remove_score(self.scores[score_index])
                 new_tally.num_score_bins -= 1
 
@@ -2160,7 +2160,7 @@ class Tally(object):
                     nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides
-            for nuclide_index in nuclide_indices[::-1]:
+            for nuclide_index in reversed(nuclide_indices):
                 new_tally.remove_nuclide(self.nuclides[nuclide_index])
 
         # FILTERS

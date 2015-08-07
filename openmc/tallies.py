@@ -872,9 +872,6 @@ class Tally(object):
 
             # Loop over all of the Tally's Filters
             for i, filter in enumerate(self.filters):
-                # Initialize empty list of indices for this Filter's bins
-                filter_indices.append([])
-
                 user_filter = False
 
                 # If a user-requested Filter, get the user-requested bins
@@ -902,18 +899,16 @@ class Tally(object):
                     else:
                         bins = filter.bins
 
+                # Initialize a NumPy array for the Filter bin indices
+                filter_indices.append(np.zeros(len(bins), dtype=np.int))
+
                 # Add indices for each bin in this Filter to the list
-                for bin in bins:
-                    if user_filter:
-                        filter_indices[i].append(
-                            self.get_filter_index(filter.type, bin))
-                    else:
-                        filter_indices[i].append(
-                            self.get_filter_index(filter.type, bin))
+                for j, bin in enumerate(bins):
+                    filter_index = self.get_filter_index(filter.type, bin)
+                    filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
-                reverse_mult = lambda x: [xi * filter.num_bins for xi in x]
-                filter_indices[:i] = map(reverse_mult, filter_indices[:i])
+                filter_indices[:i] *= filter.num_bins
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
@@ -1010,7 +1005,7 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if self._sum is None or self._sum_sq is None:
+        if self.mean is None or self.std_dev is None:
             msg = 'The Tally ID={0} has no data to return. Call the ' \
                   'StatePoint.read_results() method before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)

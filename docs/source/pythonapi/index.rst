@@ -4,9 +4,7 @@
 Python API
 ==========
 
---------
-Contents
---------
+**API Documentation:**
 
 .. toctree::
     :maxdepth: 1
@@ -30,3 +28,10 @@ Contents
     tallies
     trigger
     universe
+
+**Examples:**
+
+.. toctree::
+    :maxdepth: 1
+
+    examples/tally-arithmetic

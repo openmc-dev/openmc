@@ -1,15 +1,34 @@
 from collections import Iterable
-from numbers import Integral
+from numbers import Integral, Real
 
 import numpy as np
 
 def _isinstance(value, expected_type):
-    """A Numpy-aware replacement for isinstance"""
-    np_ints = [np.intc, np.intp, np.int8, np.int16, np.int32, np.int64,
-               np.uint8, np.uint16, np.uint32, np.uint64]
-    if expected_type is Integral:
-        types = np_ints + [Integral]
-        return any(isinstance(value, t) for t in types)
+    """A Numpy-aware replacement for isinstance
+
+    This function will be obsolete when Numpy v. >= 1.9 is established.
+    """
+
+    # Declare numpy numeric types.
+    np_ints = (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64,
+               np.uint8, np.uint16, np.uint32, np.uint64)
+    np_floats = (np.float_, np.float16, np.float32, np.float64)
+
+    # Include numpy integers, if necessary.
+    if type(expected_type) is tuple:
+        if Integral in expected_type:
+            expected_type = expected_type + np_ints
+    elif expected_type is Integral:
+        expected_type = (Integral, ) + np_ints
+
+    # Include numpy floats, if necessary.
+    if type(expected_type) is tuple:
+        if Real in expected_type:
+            expected_type = expected_type + np_floats
+    elif expected_type is Real:
+        expected_type = (Real, ) + np_floats
+
+    # Now, make the instance check.
     return isinstance(value, expected_type)
 
 def check_type(name, value, expected_type, expected_iter_type=None):
@@ -60,7 +79,8 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
         The minimum number of layers of nested iterables there should be before
         reaching the ultimately contained items
     max_depth : int
-        The maximum number of layers of nested iterables ...
+        The maximum number of layers of nested iterables there should be before
+        reaching the ultimately contained items
     """
     # Initialize the tree at the very first item.
     tree = [value]
@@ -112,7 +132,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
                     raise ValueError(msg)
 
             else:
-                # This item is completely unexected.
+                # This item is completely unexpected.
                 msg = "Error setting {0}: Items must be of type '{1}', but " \
                       "item at {2} is of type '{3}'"\
                       .format(name, expected_type.__name__, ind_str,

@@ -413,8 +413,8 @@ class Summary(object):
 
                 # Build array of Universe pointers for the Lattice.  Note that
                 # we need to convert between the HDF5's square array of
-                # (x, alpha, z) to the PythonAPI's format of a ragged nested
-                # nested list of (z, ring, theta).
+                # (x, alpha, z) to the Python API's format of a ragged nested
+                # list of (z, ring, theta).
                 universes = []
                 for z in range(lattice.num_axial):
                     # Add a list for this axial level.

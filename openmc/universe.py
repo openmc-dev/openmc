@@ -7,8 +7,7 @@ import sys
 import numpy as np
 
 import openmc
-from openmc.checkvalue import check_type, check_iterable_type, check_length, \
-                              check_greater_than
+import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -112,13 +111,13 @@ class Cell(object):
             self._id = AUTO_CELL_ID
             AUTO_CELL_ID += 1
         else:
-            check_type('cell ID', cell_id, Integral)
-            check_greater_than('cell ID', cell_id, 0)
+            cv.check_type('cell ID', cell_id, Integral)
+            cv.check_greater_than('cell ID', cell_id, 0)
             self._id = cell_id
 
     @name.setter
     def name(self, name):
-        check_type('cell name', name, basestring)
+        cv.check_type('cell name', name, basestring)
         self._name = name
 
     @fill.setter
@@ -149,19 +148,19 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
-        check_type('cell rotation', rotation, Iterable, Real)
-        check_length('cell rotation', rotation, 3)
+        cv.check_type('cell rotation', rotation, Iterable, Real)
+        cv.check_length('cell rotation', rotation, 3)
         self._rotation = rotation
 
     @translation.setter
     def translation(self, translation):
-        check_type('cell translation', translation, Iterable, Real)
-        check_length('cell translation', translation, 3)
+        cv.check_type('cell translation', translation, Iterable, Real)
+        cv.check_length('cell translation', translation, 3)
         self._translation = translation
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('cell offsets', offsets, Iterable)
+        cv.check_type('cell offsets', offsets, Iterable)
         self._offsets = offsets
 
     def add_surface(self, surface, halfspace):
@@ -433,13 +432,13 @@ class Universe(object):
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
         else:
-            check_type('universe ID', universe_id, Integral)
-            check_greater_than('universe ID', universe_id, 0, True)
+            cv.check_type('universe ID', universe_id, Integral)
+            cv.check_greater_than('universe ID', universe_id, 0, True)
             self._id = universe_id
 
     @name.setter
     def name(self, name):
-        check_type('universe name', name, basestring)
+        cv.check_type('universe name', name, basestring)
         self._name = name
 
     def add_cell(self, cell):
@@ -672,27 +671,25 @@ class Lattice(object):
             self._id = AUTO_UNIVERSE_ID
             AUTO_UNIVERSE_ID += 1
         else:
-            check_type('lattice ID', lattice_id, Integral)
-            check_greater_than('lattice ID', lattice_id, 0)
+            cv.check_type('lattice ID', lattice_id, Integral)
+            cv.check_greater_than('lattice ID', lattice_id, 0)
             self._id = lattice_id
 
     @name.setter
     def name(self, name):
-        check_type('lattice name', name, basestring)
+        cv.check_type('lattice name', name, basestring)
         self._name = name
 
     @outer.setter
     def outer(self, outer):
-        check_type('outer universe', outer, Universe)
+        cv.check_type('outer universe', outer, Universe)
         self._outer = outer
 
     @universes.setter
     def universes(self, universes):
-        #check_type('lattice universes', universes, Iterable)
-        check_iterable_type('lattice universes', universes, Universe,
-                            min_depth=2, max_depth=3)
+        cv.check_iterable_type('lattice universes', universes, Universe,
+                               min_depth=2, max_depth=3)
         self._universes = universes
-        #self._universes = np.asarray(universes, dtype=Universe)
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -710,17 +707,14 @@ class Lattice(object):
             for j in range(len(self._universes[k])):
                 if isinstance(self._universes[k][j], Universe):
                     u = self._universes[k][j]
-                    if u._id not in univs:
-                        univs[u._id] = u
+                    univs[u._id] = u
                 else:
                     for i in range(len(self._universes[k][j])):
                         u = self._universes[k][j][i]
                         assert isinstance(u, Universe)
-                        if u._id not in univs:
-                            univs[u._id] = u
+                        univs[u._id] = u
 
-        if self._outer._id not in univs:
-            univs[self._outer._id] = self._outer
+        univs[self._outer._id] = self._outer
 
         return univs
 
@@ -840,29 +834,29 @@ class RectLattice(Lattice):
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('lattice dimension', dimension, Iterable, Integral)
-        check_length('lattice dimension', dimension, 2, 3)
+        cv.check_type('lattice dimension', dimension, Iterable, Integral)
+        cv.check_length('lattice dimension', dimension, 2, 3)
         for dim in dimension:
-            check_greater_than('lattice dimension', dim, 0)
+            cv.check_greater_than('lattice dimension', dim, 0)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('lattice lower left corner', lower_left, Iterable, Real)
-        check_length('lattice lower left corner', lower_left, 2, 3)
+        cv.check_type('lattice lower left corner', lower_left, Iterable, Real)
+        cv.check_length('lattice lower left corner', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @offsets.setter
     def offsets(self, offsets):
-        check_type('lattice offsets', offsets, Iterable)
+        cv.check_type('lattice offsets', offsets, Iterable)
         self._offsets = offsets
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        check_type('lattice pitch', pitch, Iterable, Real)
-        check_length('lattice pitch', pitch, 2, 3)
+        cv.check_type('lattice pitch', pitch, Iterable, Real)
+        cv.check_length('lattice pitch', pitch, 2, 3)
         for dim in pitch:
-            check_greater_than('lattice pitch', dim, 0.0)
+            cv.check_greater_than('lattice pitch', dim, 0.0)
         self._pitch = pitch
 
     def get_offset(self, path, filter_offset):
@@ -1056,28 +1050,28 @@ class HexLattice(Lattice):
 
     @num_rings.setter
     def num_rings(self, num_rings):
-        check_type('number of rings', num_rings, Integral)
-        check_greater_than('number of rings', num_rings, 0)
+        cv.check_type('number of rings', num_rings, Integral)
+        cv.check_greater_than('number of rings', num_rings, 0)
         self._num_rings = num_rings
 
     @num_axial.setter
     def num_axial(self, num_axial):
-        check_type('number of axial', num_axial, Integral)
-        check_greater_than('number of axial', num_axial, 0)
+        cv.check_type('number of axial', num_axial, Integral)
+        cv.check_greater_than('number of axial', num_axial, 0)
         self._num_axial = num_axial
 
     @center.setter
     def center(self, center):
-        check_type('lattice center', center, Iterable, Real)
-        check_length('lattice center', center, 2, 3)
+        cv.check_type('lattice center', center, Iterable, Real)
+        cv.check_length('lattice center', center, 2, 3)
         self._center = center
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        check_type('lattice pitch', pitch, Iterable, Real)
-        check_length('lattice pitch', pitch, 1, 2)
+        cv.check_type('lattice pitch', pitch, Iterable, Real)
+        cv.check_length('lattice pitch', pitch, 1, 2)
         for dim in pitch:
-            check_greater_than('lattice pitch', dim, 0)
+            cv.check_greater_than('lattice pitch', dim, 0)
         self._pitch = pitch
 
     @Lattice.universes.setter

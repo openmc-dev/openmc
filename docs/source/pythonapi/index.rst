@@ -6,7 +6,7 @@ Python API
 
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
-example IPython notebooks provided. The full API documentation serves to provide
+example Jupyter notebooks provided. The full API documentation serves to provide
 more information on a given module or class.
 
 **Handling nuclear data:**
@@ -53,9 +53,10 @@ more information on a given module or class.
     summary
     tallies
 
-**Examples:**
+**Example Jupyter Notebooks:**
 
 .. toctree::
     :maxdepth: 1
 
+    examples/pandas-dataframes
     examples/tally-arithmetic

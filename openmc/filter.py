@@ -43,15 +43,15 @@ class Filter(object):
 
     def __eq__(self, filter2):
         # Check type
-        if self._type != filter2._type:
+        if self.type != filter2.type:
             return False
 
         # Check number of bins
-        elif len(self._bins) != len(filter2._bins):
+        elif len(self.bins) != len(filter2.bins):
             return False
 
         # Check bin edges
-        elif not np.allclose(self._bins, filter2._bins):
+        elif not np.allclose(self.bins, filter2.bins):
             return False
 
         else:
@@ -66,12 +66,12 @@ class Filter(object):
         # If this is the first time we have tried to copy this object, create a copy
         if existing is None:
             clone = type(self).__new__(type(self))
-            clone._type = self._type
-            clone._bins = copy.deepcopy(self._bins, memo)
-            clone._num_bins = self._num_bins
-            clone._mesh = copy.deepcopy(self._mesh, memo)
-            clone._offset = self._offset
-            clone._stride = self._stride
+            clone._type = self.type
+            clone._bins = copy.deepcopy(self.bins, memo)
+            clone._num_bins = self.num_bins
+            clone._mesh = copy.deepcopy(self.mesh, memo)
+            clone._offset = self.offset
+            clone._stride = self.stride
 
             memo[id(self)] = clone
 
@@ -133,7 +133,7 @@ class Filter(object):
         else:
             bins = list(bins)
 
-        if self._type in ['cell', 'cellborn', 'surface', 'material',
+        if self.type in ['cell', 'cellborn', 'surface', 'material',
                           'universe', 'distribcell']:
             check_iterable_type('filter bins', bins, Integral)
             for edge in bins:
@@ -144,11 +144,11 @@ class Filter(object):
                 if not isinstance(edge, Real):
                     msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
                           'since it is a non-integer or floating point ' \
-                          'value'.format(edge, self._type)
+                          'value'.format(edge, self.type)
                     raise ValueError(msg)
                 elif edge < 0.:
                     msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                          'since it is a negative value'.format(edge, self._type)
+                          'since it is a negative value'.format(edge, self.type)
                     raise ValueError(msg)
 
             # Check that bin edges are monotonically increasing
@@ -156,7 +156,7 @@ class Filter(object):
                 if index > 0 and bins[index] < bins[index-1]:
                     msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                           'since they are not monotonically ' \
-                          'increasing'.format(bins, self._type)
+                          'increasing'.format(bins, self.type)
                     raise ValueError(msg)
 
         # mesh filters
@@ -175,7 +175,7 @@ class Filter(object):
                 raise ValueError(msg)
 
         # If all error checks passed, add bin edges
-        self._bins = bins
+        self._bins = np.array(bins)
 
     # FIXME
     @num_bins.setter
@@ -190,7 +190,7 @@ class Filter(object):
 
         self._mesh = mesh
         self.type = 'mesh'
-        self.bins = self._mesh._id
+        self.bins = self.mesh.id
 
     @offset.setter
     def offset(self, offset):
@@ -201,8 +201,8 @@ class Filter(object):
     def stride(self, stride):
         check_type('filter stride', stride, Integral)
         if stride < 0:
-            msg = 'Unable to set stride "{0}" for a "{1}" Filter since it is a ' \
-                  'negative value'.format(stride, self._type)
+            msg = 'Unable to set stride "{0}" for a "{1}" Filter since it ' \
+                  'is a negative value'.format(stride, self.type)
             raise ValueError(msg)
 
         self._stride = stride
@@ -260,14 +260,15 @@ class Filter(object):
         """
 
         if not self.can_merge(filter):
-            msg = 'Unable to merge "{0}" with "{1}" filters'.format(self._type, filter._type)
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(self.type, filter.type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(self._bins + filter._bins))
+        merged_bins = list(set(self.bins + filter.bins))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 
@@ -313,17 +314,17 @@ class Filter(object):
 
             # Use lower energy bound to find index for energy Filters
             elif self.type in ['energy', 'energyout']:
-                val = self.bins.index(filter_bin[0])
+                val = np.where(self.bins == filter_bin[0])[0][0]
                 filter_index = val
 
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
-            elif self._type == 'distribcell':
+            elif self.type == 'distribcell':
                 filter_index = filter_bin
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
             else:
-                val = self.bins.index(filter_bin)
+                val = np.where(self.bins == filter_bin)[0][0]
                 filter_index = val
 
         except ValueError:
@@ -335,7 +336,7 @@ class Filter(object):
 
     def __repr__(self):
         string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self._bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offset)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
         return string

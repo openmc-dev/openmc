@@ -3,7 +3,7 @@ import copy
 import os
 import pickle
 import itertools
-from numbers import Integral, Rational
+from numbers import Integral, Real
 from xml.etree import ElementTree as ET
 import sys
 
@@ -101,6 +101,7 @@ class Tally(object):
         self._mean = None
         self._std_dev = None
         self._with_batch_statistics = False
+        self._derived = False
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -119,6 +120,7 @@ class Tally(object):
             clone._std_dev = copy.deepcopy(self.std_dev, memo)
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
+            clone._derived = self.derived
 
             clone._filters = []
             for filter in self.filters:
@@ -281,6 +283,10 @@ class Tally(object):
     def with_batch_statistics(self):
         return self._with_batch_statistics
 
+    @property
+    def derived(self):
+        return self._derived
+
     @estimator.setter
     def estimator(self, estimator):
         check_value('estimator', estimator, ['analog', 'tracklength'])
@@ -410,8 +416,8 @@ class Tally(object):
         """
 
         if score not in self.scores:
-            msg = 'Unable to remove score "{0}" from Tally ID="{1}" since the ' \
-                  'Tally does not contain this score'.format(score, self.id)
+            msg = 'Unable to remove score "{0}" from Tally ID="{1}" since ' \
+                  'the Tally does not contain this score'.format(score, self.id)
             ValueError(msg)
 
         self._scores.remove(score)
@@ -872,9 +878,6 @@ class Tally(object):
 
             # Loop over all of the Tally's Filters
             for i, filter in enumerate(self.filters):
-                # Initialize empty list of indices for this Filter's bins
-                filter_indices.append([])
-
                 user_filter = False
 
                 # If a user-requested Filter, get the user-requested bins
@@ -902,18 +905,16 @@ class Tally(object):
                     else:
                         bins = filter.bins
 
+                # Initialize a NumPy array for the Filter bin indices
+                filter_indices.append(np.zeros(len(bins), dtype=np.int))
+
                 # Add indices for each bin in this Filter to the list
-                for bin in bins:
-                    if user_filter:
-                        filter_indices[i].append(
-                            self.get_filter_index(filter.type, bin))
-                    else:
-                        filter_indices[i].append(
-                            self.get_filter_index(filter.type, bin))
+                for j, bin in enumerate(bins):
+                    filter_index = self.get_filter_index(filter.type, bin)
+                    filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
-                reverse_mult = lambda x: [xi * filter.num_bins for xi in x]
-                filter_indices[:i] = map(reverse_mult, filter_indices[:i])
+                filter_indices[:i] *= filter.num_bins
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
@@ -1010,8 +1011,8 @@ class Tally(object):
         """
 
         # Ensure that StatePoint.read_results() was called first
-        if self._sum is None or self._sum_sq is None:
-            msg = 'The Tally ID={0} has no data to return. Call the ' \
+        if self.mean is None or self.std_dev is None:
+            msg = 'The Tally ID="{0}" has no data to return. Call the ' \
                   'StatePoint.read_results() method before using ' \
                   'Tally.get_pandas_dataframe(...)'.format(self.id)
             raise KeyError(msg)
@@ -1432,7 +1433,7 @@ class Tally(object):
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
 
-    def _outer_product(self, other, new_tally, binary_op):
+    def _outer_product(self, other, binary_op):
         """Combines filters, scores and nuclides with another tally.
 
         This is a helper method for the tally arithmetic methods. The filters,
@@ -1444,14 +1445,66 @@ class Tally(object):
         ----------
         other : Tally
             The tally on the right hand side of the outer product
-        new_tally: Tally
-            The new tally to represent the outer product
-        op : str
-            The binary operation in the outer product ('+', '-', '*', '/', '^')
+        binary_op : {'+', '-', '*', '/', '^'}
+            The binary operation in the outer product
+
+        Returns
+        -------
+        Tally
+            A new Tally outer that is the outer product with this one.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the other tally is populated 
+            with data by the StatePoint.read_results() method.
 
         """
 
-        new_tally.name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
+        # Check that results have been read
+        if not other.derived and other.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+                  'since it does not contain any results.'.format(other.id)
+            raise ValueError(msg)
+
+        new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
+        new_tally = Tally(name=new_name)
+        new_tally.with_batch_statistics = True
+
+        data = self._align_tally_data(other)
+
+        if binary_op == '+':
+            new_tally._mean = data['self']['mean'] + data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
+                                         data['other']['std. dev.']**2)
+        elif binary_op == '-':
+            data = self._align_tally_data(other)
+            new_tally._mean = data['self']['mean'] - data['other']['mean']
+            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
+                                         data['other']['std. dev.']**2)
+        elif binary_op == '*':
+            data = self._align_tally_data(other)
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] * data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+        elif binary_op == '/':
+            data = self._align_tally_data(other)
+            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
+        elif binary_op == '^':
+            data = self._align_tally_data(power)
+            mean_ratio = data['other']['mean'] / data['self']['mean']
+            first_term = mean_ratio * data['self']['std. dev.']
+            second_term = \
+                np.log(data['self']['mean']) * data['other']['std. dev.']
+            new_tally._mean = data['self']['mean'] ** data['other']['mean']
+            new_tally._std_dev = np.abs(new_tally.mean) * \
+                                 np.sqrt(first_term**2 + second_term**2)
 
         if self.estimator == other.estimator:
             new_tally.estimator = self.estimator
@@ -1490,6 +1543,8 @@ class Tally(object):
                 new_nuclide = CrossNuclide(self_nuclide, other_nuclide, binary_op)
                 new_tally.add_nuclide(new_nuclide)
 
+        return new_tally
+
     def _align_tally_data(self, other):
         """Aligns data from two tallies for tally arithmetic.
 
@@ -1513,6 +1568,7 @@ class Tally(object):
             A dictionary of dictionaries to "aligned" 'mean' and 'std. dev'
             NumPy arrays for each tally's data.
 
+
         """
 
         self_mean = copy.deepcopy(self.mean)
@@ -1524,11 +1580,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of filter bins
             # between the two tallies and repeat arrays along filter axes
-            self_num_filter_bins = self.num_filter_bins
-            other_num_filter_bins = other.num_filter_bins
-            num_filter_bins = self_num_filter_bins * other_num_filter_bins
-            self_repeat_factor = num_filter_bins / self_num_filter_bins
-            other_tile_factor = num_filter_bins / other_num_filter_bins
+            self_repeat_factor = other.num_filter_bins
+            other_tile_factor = self.num_filter_bins
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
@@ -1540,11 +1593,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of nuclides
             # between the two tallies and repeat arrays along nuclide axes
-            self_num_nuclide_bins = self.num_nuclides
-            other_num_nuclide_bins = other.num_nuclides
-            num_nuclide_bins = self_num_nuclide_bins * other_num_nuclide_bins
-            self_repeat_factor = num_nuclide_bins / self_num_nuclide_bins
-            other_tile_factor = num_nuclide_bins / other_num_nuclide_bins
+            self_repeat_factor = other.num_nuclides
+            other_tile_factor = self.num_nuclides
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
@@ -1556,11 +1606,8 @@ class Tally(object):
 
             # Determine the number of paired combinations of score bins
             # between the two tallies and repeat arrays along score axes
-            self_num_score_bins = self.num_score_bins
-            other_num_score_bins = other.num_score_bins
-            num_score_bins = self_num_score_bins * other_num_score_bins
-            self_repeat_factor = num_score_bins / self_num_score_bins
-            other_tile_factor = num_score_bins / other_num_score_bins
+            self_repeat_factor = other.num_score_bins
+            other_tile_factor = self.num_score_bins
 
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
@@ -1596,7 +1643,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to add to this tally
 
         Returns
@@ -1605,33 +1652,26 @@ class Tally(object):
             A new derived tally which is the sum of this tally and the other
             tally or scalar value in the addition.
 
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
-        if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
-        new_tally.with_batch_statistics = True
-
         if isinstance(other, Tally):
+            new_tally = self._outer_product(other, binary_op='+')
 
-            # Check that results have been read
-            if other.sum is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            self._outer_product(other, new_tally, binary_op='+')
-            data = self._align_tally_data(other)
-            new_tally._mean = data['self']['mean'] + data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
-                                         data['other']['std. dev.']**2)
-
-        elif isinstance(other, (Integral, Rational)):
-
+        elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
+            new_tally.with_batch_statistics = True
             new_tally.name = self.name
             new_tally._mean = self._mean + other
             new_tally._std_dev = self._std_dev
@@ -1648,7 +1688,7 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to add {0} to Tally ID={1}'.format(other, self.id)
+            msg = 'Unable to add "{0}" to Tally ID="{1}"'.format(other, self.id)
             raise ValueError(msg)
 
         return new_tally
@@ -1672,7 +1712,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to subtract from this tally
 
         Returns
@@ -1681,33 +1721,24 @@ class Tally(object):
             A new derived tally which is the difference of this tally and the
             other tally or scalar value in the subtraction.
 
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
-        if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
-        new_tally.with_batch_statistics = True
-
         if isinstance(other, Tally):
+            new_tally = self._outer_product(other, binary_op='-')
 
-            # Check that results have been read
-            if other.sum is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            self._outer_product(other, new_tally, binary_op='-')
-            data = self._align_tally_data(other)
-            new_tally._mean = data['self']['mean'] - data['other']['mean']
-            new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 + \
-                                         data['other']['std. dev.']**2)
-
-        elif isinstance(other, (Integral, Rational)):
-
+        elif isinstance(other, Real):
             new_tally.name = self.name
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
@@ -1724,8 +1755,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to subtract {0} from Tally ' \
-                  'ID={1}'.format(other, self.id)
+            msg = 'Unable to subtract "{0}" from Tally ' \
+                  'ID="{1}"'.format(other, self.id)
             raise ValueError(msg)
 
         return new_tally
@@ -1749,7 +1780,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to multiply with this tally
 
         Returns
@@ -1758,35 +1789,24 @@ class Tally(object):
             A new derived tally which is the product of this tally and the
             other tally or scalar value in the multiplication.
 
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
-        if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally()
-        new_tally.with_batch_statistics = True
-
         if isinstance(other, Tally):
+            new_tally = self._outer_product(other, binary_op='*')
 
-            # Check that results have been read
-            if other.sum is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            self._outer_product(other, new_tally, binary_op='*')
-            data = self._align_tally_data(other)
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] * data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-        elif isinstance(other, (Integral, Rational)):
-
+        elif isinstance(other, Real):
             new_tally.name = self.name
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
@@ -1803,8 +1823,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to multiply Tally ID={1} ' \
-                  'by {0}'.format(self.id, other)
+            msg = 'Unable to multiply Tally ID="{0}" ' \
+                  'by "{1}"'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -1828,7 +1848,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        other : Tally or Real
             The tally or scalar value to divide this tally by
 
         Returns
@@ -1837,35 +1857,24 @@ class Tally(object):
             A new derived tally which is the dividend of this tally and the
             other tally or scalar value in the division.
 
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
-        if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
         if isinstance(other, Tally):
+            new_tally = self._outer_product(other, binary_op='/')
 
-            # Check that results have been read
-            if other.sum is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(other.id)
-                raise ValueError(msg)
-
-            self._outer_product(other, new_tally, binary_op='/')
-            data = self._align_tally_data(other)
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] / data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(self_rel_err**2 + other_rel_err**2)
-
-        elif isinstance(other, (Integral, Rational)):
-
+        elif isinstance(other, Real):
             new_tally.name = self.name
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
@@ -1882,8 +1891,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to divide Tally ID={0} ' \
-                  'by {1}'.format(self.id, other)
+            msg = 'Unable to divide Tally ID="{0}" ' \
+                  'by "{1}"'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -1907,7 +1916,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Integer or Rational
+        power : Tally or Real
             The tally or scalar value exponent
 
         Returns
@@ -1916,36 +1925,24 @@ class Tally(object):
             A new derived tally which is this tally raised to the power of the
             other tally or scalar value in the exponentiation.
 
+        Raises
+        ------
+        ValueError
+            When this method is called before the Tally is populated with data
+            by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
-        if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        new_tally = Tally(name='derived')
-        new_tally.with_batch_statistics = True
-
         if isinstance(power, Tally):
+            new_tally = self._outer_product(power, binary_op='^')
 
-            # Check that results have been read
-            if power.sum is None:
-                msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
-                      'since it does not contain any results.'.format(power.id)
-                raise ValueError(msg)
-
-            self._outer_product(power, new_tally, binary_op='^')
-            data = self._align_tally_data(power)
-            mean_ratio = data['other']['mean'] / data['self']['mean']
-            first_term = mean_ratio * data['self']['std. dev.']
-            second_term = np.log(data['self']['mean']) * data['other']['std. dev.']
-            new_tally._mean = data['self']['mean'] ** data['other']['mean']
-            new_tally._std_dev = np.abs(new_tally.mean) * \
-                                 np.sqrt(first_term**2 + second_term**2)
-
-        elif isinstance(power, (Integral, Rational)):
-
+        elif isinstance(power, Real):
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean
@@ -1963,8 +1960,8 @@ class Tally(object):
                 new_tally.add_score(score)
 
         else:
-            msg = 'Unable to raise Tally ID={0} to ' \
-                  'power {1}'.format(self.id, power)
+            msg = 'Unable to raise Tally ID="{0}" to ' \
+                  'power "{1}"'.format(self.id, power)
             raise ValueError(msg)
 
         return new_tally
@@ -1976,7 +1973,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to add to this tally
 
         Returns
@@ -1995,7 +1992,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to subtract this tally from
 
         Returns
@@ -2014,7 +2011,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to multiply with this tally
 
         Returns
@@ -2033,7 +2030,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Rational
+        other : Integer or Real
             The scalar value to divide by this tally
 
         Returns
@@ -2043,7 +2040,7 @@ class Tally(object):
 
         """
 
-        return self * (1. / other)
+        return other * self**-1
 
     def __pos__(self):
         """The absolute value of this tally.
@@ -2122,7 +2119,7 @@ class Tally(object):
 
         # Ensure that StatePoint.read_results() was called first
         if self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID={0} ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2148,7 +2145,7 @@ class Tally(object):
                     score_indices.append(score_index)
 
             # Loop over indices in reverse to remove excluded scores
-            for score_index in score_indices[::-1]:
+            for score_index in reversed(score_indices):
                 new_tally.remove_score(self.scores[score_index])
                 new_tally.num_score_bins -= 1
 
@@ -2163,7 +2160,7 @@ class Tally(object):
                     nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides
-            for nuclide_index in nuclide_indices[::-1]:
+            for nuclide_index in reversed(nuclide_indices):
                 new_tally.remove_nuclide(self.nuclides[nuclide_index])
 
         # FILTERS

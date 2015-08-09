@@ -1,1 +1,1 @@
-__author__ = 'wboyd'
+from groups import EnergyGroups

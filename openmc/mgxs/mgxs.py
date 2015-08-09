@@ -1,5 +1,5 @@
 from collections import Iterable
-from numbers import Integral, Real
+from numbers import Integral
 import os
 import sys
 import copy
@@ -165,7 +165,7 @@ class MultiGroupXS(object):
         cv.check_type('MultiGroupXS name', name, basestring)
         self._name = name
 
-    @domain.setter
+    @domain.setterr
     def domain(self, domain):
         cv.check_type('MultiGroupXS domain', domain, DOMAINS)
         self._domain = domain

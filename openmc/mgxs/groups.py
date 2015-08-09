@@ -1,9 +1,15 @@
-import copy
+from collections import Iterable
 from numbers import Real, Integral
+import copy
+import sys
 
 import numpy as np
 
-from openmc.checkvalue import *
+import openmc.checkvalue as cv
+
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 class EnergyGroups(object):
     """An energy groups structure used for multi-group cross-sections.
@@ -54,8 +60,8 @@ class EnergyGroups(object):
 
     @group_edges.setter
     def group_edges(self, edges):
-        check_type('group edges', edges, list, Integral)
-        check_length('number of group edges', edges, 2)
+        cv.check_type('group edges', edges, Iterable, Integral)
+        cv.check_length('number of group edges', edges, 2)
         self._group_edges = np.array(edges)
         self._num_groups = len(edges)-1
 
@@ -80,19 +86,20 @@ class EnergyGroups(object):
             The spacing between groups ('linear' or 'logarithmic')
 
         """
-        check_type('first edge', start, Real)
-        check_type('last edge', stop, Real)
-        check_type('number of groups', num_groups, Integral)
-        check_type('type', type, str)
-        check_greater_than('first edge', start, 0, equality=True)
-        check_greater_than('first edge', stop, start, equality=False)
-        check_greater_than('number of groups', num_groups, 0)
-        check_value('type', type, ('linear', 'logarithmic'))
+
+        cv.check_type('first edge', start, Real)
+        cv.check_type('last edge', stop, Real)
+        cv.check_type('number of groups', num_groups, Integral)
+        cv.check_type('type', type, basestring)
+        cv.check_greater_than('first edge', start, 0, True)
+        cv.check_greater_than('first edge', stop, start, False)
+        cv.check_greater_than('number of groups', num_groups, 0)
+        cv.check_value('type', type, ('linear', 'logarithmic'))
 
         if type == 'linear':
-            self._group_edges = np.linspace(start, stop, num_groups+1)
+            self.group_edges = np.linspace(start, stop, num_groups+1)
         elif type == 'logarithmic':
-            self._group_edges = \
+            self.group_edges = \
                 np.logspace(np.log10(start), np.log10(stop), num_groups+1)
 
         self._num_groups = num_groups
@@ -117,13 +124,13 @@ class EnergyGroups(object):
 
         """
 
-        if self._group_edges is None:
+        if self.group_edges is None:
             msg = 'Unable to get energy group for energy "{0}" eV since ' \
                   'the group edges have not yet been set'.format(energy)
             raise ValueError(msg)
 
-        index = np.where(self._group_edges > energy)[0]
-        group = self._num_groups - index
+        index = np.where(self.group_edges > energy)[0]
+        group = self.num_groups - index
         return group
 
     def get_group_bounds(self, group):
@@ -146,15 +153,14 @@ class EnergyGroups(object):
 
         """
 
-        if self._group_edges is None:
+        if self.group_edges is None:
             msg = 'Unable to get energy group bounds for group "{0}" since ' \
                   'the group edges have not yet been set'.format(group)
             raise ValueError(msg)
 
-        lower = self._group_edges[self._num_groups-group]
-        upper = self._group_edges[self._num_groups-group+1]
+        lower = self.group_edges[self.num_groups-group]
+        upper = self.group_edges[self.num_groups-group+1]
         return (lower, upper)
-
 
     def get_group_indices(self, groups='all'):
         """Returns the array indices for one or more energy groups.
@@ -178,26 +184,22 @@ class EnergyGroups(object):
 
         """
 
-        if self._group_edges is None:
+        if self.group_edges is None:
             msg = 'Unable to get energy group indices for groups "{0}" since ' \
                   'the group edges have not yet been set'.format(groups)
             raise ValueError(msg)
 
         if groups == 'all':
-            indices = np.arange(self._num_groups)
+            indices = np.arange(self.num_groups)
         else:
             indices = np.zeros(len(groups), dtype=np.int64)
 
         for i, group in enumerate(groups):
-            if group > 0 and group <= self._num_groups:
-                indices[i] = group - 1
-            else:
-                msg = 'Unable to get energy group index for group "{0}" ' \
-                      'since it is outside the group bounds'.format(group)
-                raise ValueError(msg)
+            cv.check_greater_than('group', group, 0)
+            cv.check_less_than('group', group, self.num_groups, True)
+            indices[i] = group - 1
 
         return indices
-
 
     def get_condensed_groups(self, coarse_groups):
         """Return a coarsened version of this EnergyGroups object.
@@ -225,15 +227,15 @@ class EnergyGroups(object):
             If the group edges have not yet been set.
         """
 
-        check_type('group edges', coarse_groups, list)
+        cv.check_type('group edges', coarse_groups, Iterable)
         for group in coarse_groups:
-            check_value('group edges', group, tuple)
-            check_length('group edges', group, 2)
-            check_greater_than('lower group', group[0], 1, True)
-            check_less_than('lower group', group[0], self.num_groups, True)
-            check_greater_than('upper group', group[0], 1, True)
-            check_less_than('upper group', group[0], self.num_groups, True)
-            check_less_than('lower group', group[0], group[1], False)
+            cv.check_value('group edges', group, Iterable)
+            cv.check_length('group edges', group, 2)
+            cv.check_greater_than('lower group', group[0], 1, True)
+            cv.check_less_than('lower group', group[0], self.num_groups, True)
+            cv.check_greater_than('upper group', group[0], 1, True)
+            cv.check_less_than('upper group', group[0], self.num_groups, True)
+            cv.check_less_than('lower group', group[0], group[1], False)
 
         # Compute the group indices into the coarse group
         group_bounds = list()
@@ -243,12 +245,12 @@ class EnergyGroups(object):
 
         # Determine the indices mapping the fine-to-coarse energy groups
         group_bounds = np.asarray(group_bounds)
-        group_indices = np.flipud(self._num_groups - group_bounds)
+        group_indices = np.flipud(self.num_groups - group_bounds)
         group_indices[-1] += 1
 
         # Determine the edges between coarse energy groups and sort
         # in increasing order in case the user passed in unordered groups
-        group_edges = self._group_edges[group_indices]
+        group_edges = self.group_edges[group_indices]
         group_edges = np.sort(group_edges)
 
         # Create a new condensed EnergyGroups object

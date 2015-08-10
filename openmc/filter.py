@@ -6,7 +6,8 @@ import numpy as np
 
 from openmc import Mesh
 from openmc.constants import *
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_iterable_type, \
+                              check_greater_than
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally
@@ -134,15 +135,9 @@ class Filter(object):
 
         if self.type in ['cell', 'cellborn', 'surface', 'material',
                           'universe', 'distribcell']:
+            check_iterable_type('filter bins', bins, Integral)
             for edge in bins:
-                if not isinstance(edge, Integral):
-                    msg = 'Unable to add bin "{0}" to a "{1}" Filter since ' \
-                          'it is not an integer'.format(edge, self._type)
-                    raise ValueError(msg)
-                elif edge < 0:
-                    msg = 'Unable to add bin "{0}" to a "{1}" Filter since ' \
-                          'it is negative'.format(edge, self._type)
-                    raise ValueError(msg)
+                check_greater_than('filter bin', edge, 0, equality=True)
 
         elif self._type in ['energy', 'energyout']:
             for edge in bins:
@@ -185,12 +180,8 @@ class Filter(object):
     # FIXME
     @num_bins.setter
     def num_bins(self, num_bins):
-        if not isinstance(num_bins, Integral) or num_bins < 0:
-            msg = 'Unable to set the number of bins "{0}" for a "{1}" Filter ' \
-                  'since it is not a positive ' \
-                  'integer'.format(num_bins, self.type)
-            raise ValueError(msg)
-
+        check_type('filter num_bins', num_bins, Integral)
+        check_greater_than('filter num_bins', num_bins, 0, equality=True)
         self._num_bins = num_bins
 
     @mesh.setter

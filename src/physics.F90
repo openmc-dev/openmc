@@ -428,7 +428,7 @@ contains
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
       call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
-        & micro_xs(i_nuclide) % elastic)
+           & micro_xs(i_nuclide) % elastic)
     else
       v_t = ZERO
     end if
@@ -582,7 +582,7 @@ contains
       ! accompanying PDF and CDF is utilized)
 
       if ((sab % secondary_mode == SAB_SECONDARY_EQUAL) .or. &
-          (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
+           (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
         if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
           ! All bins equally likely
 
@@ -843,16 +843,16 @@ contains
       ! interpolate xs since we're not exactly at the energy indices
       xs_low = nuc % elastic_0K(i_E_low)
       m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
-        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+           & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
       xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
       xs_up = nuc % elastic_0K(i_E_up)
       m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
-       & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
 
       ! get max 0K xs value over range of practical relative energies
       xs_max = max(xs_low, &
-        & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
+           & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
 
       reject = .true.
 
@@ -898,26 +898,26 @@ contains
       ! cdf value at lower bound attainable energy
       if (i_E_low > 1) then
         m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
-          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
         cdf_low = nuc % xs_cdf(i_E_low - 1) &
-          & + m * (E_low - nuc % energy_0K(i_E_low))
+             & + m * (E_low - nuc % energy_0K(i_E_low))
       else
         m = nuc % xs_cdf(i_E_low) &
-          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
         cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
         if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
       end if
 
       ! cdf value at upper bound attainable energy
       m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
-        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       cdf_up = nuc % xs_cdf(i_E_up - 1) &
-        & + m * (E_up - nuc % energy_0K(i_E_up))
+           & + m * (E_up - nuc % energy_0K(i_E_up))
 
       ! values used to sample the Maxwellian
       E_mode = kT
       p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
-        & * exp(-E_mode / kT)
+           & * exp(-E_mode / kT)
       E_t_max = 16.0_8 * E_mode
 
       reject = .true.
@@ -927,7 +927,7 @@ contains
         ! perform Maxwellian rejection sampling
         E_t = E_t_max * prn()**2
         p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
-          & * exp(-E_t / kT)
+             & * exp(-E_t / kT)
         R_speed = p_t / p_mode
 
         if (prn() < R_speed) then
@@ -935,12 +935,12 @@ contains
           ! sample a relative energy using the xs cdf
           cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
           i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
-            & i_E_up - i_E_low + 2, cdf_rel)
+               & i_E_up - i_E_low + 2, cdf_rel)
           E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
           m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
-            & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
-            & / (nuc % energy_0K(i_E_low + i_E_rel) &
-            & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+               & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+               & / (nuc % energy_0K(i_E_low + i_E_rel) &
+               & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
           E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
 
           ! perform rejection sampling on cosine between
@@ -1026,7 +1026,7 @@ contains
 
       ! Determine rejection probability
       accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-        /(beta_vn + beta_vt)
+           /(beta_vn + beta_vt)
 
       ! Perform rejection sampling on vt and mu
       if (prn() < accept_prob) exit

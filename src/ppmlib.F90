@@ -1,7 +1,7 @@
 module ppmlib
 
   implicit none
- 
+
 !===============================================================================
 ! Image holds RGB information for output PPM image
 !===============================================================================
@@ -12,7 +12,7 @@ module ppmlib
   end type Image
 
 contains
- 
+
 !===============================================================================
 ! INIT_IMAGE initializes the Image derived type
 !===============================================================================
@@ -55,7 +55,7 @@ contains
 !===============================================================================
 ! DEALLOCATE_IMAGE
 !===============================================================================
- 
+
   subroutine deallocate_image(img)
 
     type(Image) :: img
@@ -70,7 +70,7 @@ contains
 ! INSIDE_IMAGE determines whether a point (x,y) is inside the image
 !===============================================================================
 
- 
+
   function inside_image(img, x, y) result(inside)
 
     type(Image), intent(in) :: img
@@ -83,7 +83,7 @@ contains
          (x >= 0) .and. (y >= 0)) inside = .true.
 
   end function inside_image
- 
+
 !===============================================================================
 ! VALID_IMAGE checks whether the image has a width and height and if its color
 ! arrays are allocated
@@ -123,5 +123,5 @@ contains
     end if
 
   end subroutine set_pixel
- 
+
 end module ppmlib

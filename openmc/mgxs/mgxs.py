@@ -57,38 +57,63 @@ GREEK['nu-scatter matrix'] = '$\\nu\\Sigma_{s}$'
 GREEK['fission'] = '$\\Sigma_{f}$'
 GREEK['nu-fission'] = '$\\nu\\Sigma_{f}$'
 GREEK['chi'] = '$\\chi$'
-GREEK['diffusion'] = '$D$'
-
-
-def flip_axis(arr, axis=0):
-    """Flip contents of `axis` in array 'arr'
-    Taken verbatim from:
-    https://github.com/nipy/nibabel/blob/master/nibabel/orientations.py
-    """
-    arr = np.asanyarray(arr)
-    arr = arr.swapaxes(0, axis)
-    arr = np.flipud(arr)
-    return arr.swapaxes(axis, 0)
 
 
 class MultiGroupXS(object):
-    """
+    """A multi-group cross-section for some energy groups structure within
+    some spatial domain.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross-sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    name : str, optional
+        Name of the multi-group cross-section. If not specified, the name is
+        the empty string.
+    domain : Material or Cell or Universe or Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe' or 'mesh'}
+        The domain type for spatial homogenization
+    energy_groups : EnergyGroups
+        The energy group structure for energy condensation
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross-section
+    xs_type : str
+        Cross-section type (e.g., 'total', 'nu-fission', etc.)
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe' or 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : EnergyGroups
+        Energy group structure for energy condensation
+    num_groups : Integral
+        Number of energy groups
+    tallies : dict
+        Tallies needed to compute the multi-group cross-section
+    xs : Tally
+        Derived tally for the multi-group cross-section. This attribute
+        is None unless the multi-group cross-section has been computed.
+    subdomain_offsets : dict
+        Integral subdomain IDs (keys) mapped to integral tally data array
+        offsets (values). When the domain_type is 'distribcell', each subdomain
+        ID corresponds to an instance of the cell domain. For all other domain
+        types, there is only one subdomain for the domain and this dictionary
+        will trivially map zero to zero.
+    offset : Integral
+        The filter offset for the domain filter
 
     """
 
     # This is an abstract class which cannot be instantiated
     metaclass__ = abc.ABCMeta
 
-    def __init__(self, name='', domain=None,
-                 domain_type=None, energy_groups=None):
-        """
-        :param name:
-        :param domain:
-        :param domain_type:
-        :param energy_groups:
-        :return:
-        """
-
+    def __init__(self, domain=None, domain_type=None,
+                 energy_groups=None, name=''):
         self._name = ''
         self._xs_type = None
         self._domain = None
@@ -96,12 +121,13 @@ class MultiGroupXS(object):
         self._energy_groups = None
         self._num_groups = None
         self._tallies = dict()
-        self._xs = None
+        self._xs_tally = None
 
         # A dictionary used to compute indices into the xs array
         # Keys   - Domain ID (ie, Material ID, Region ID for districell, etc)
         # Values - Offset/stride into xs array
-        self._subdomain_offsets = dict()
+        # NOTE: This is primarily used for distribcell domain types
+        self._subdomain_indices = dict()
         self._offset = None
 
         self.name = name
@@ -118,19 +144,19 @@ class MultiGroupXS(object):
         # If this is the first time we have tried to copy this object, create a copy
         if existing is None:
             clone = type(self).__new__(type(self))
-            clone._name = self._name
-            clone._xs_type = self._xs_type
-            clone._domain = self._domain
-            clone._domain_type = self._domain_type
-            clone._energy_groups = copy.deepcopy(self._energy_groups, memo)
-            clone._num_groups = self._num_groups
-            clone._xs = copy.deepcopy(self._xs, memo)
-            clone._subdomain_offsets = copy.deepcopy(self._subdomain_offsets, memo)
-            clone._offset = copy.deepcopy(self._offset, memo)
+            clone._name = self.name
+            clone._xs_type = self.xs_type
+            clone._domain = self.domain
+            clone._domain_type = self.domain_type
+            clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._num_groups = self.num_groups
+            clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
+            clone._subdomain_offsets = copy.deepcopy(self.subdomain_indices, memo)
+            clone._offset = copy.deepcopy(self.offset, memo)
 
             clone._tallies = dict()
-            for tally_type, tally in self._tallies.items():
-                clone._tallies[tally_type] = copy.deepcopy(tally, memo)
+            for tally_type, tally in self.tallies.items():
+                clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
             memo[id(self)] = clone
 
@@ -160,145 +186,248 @@ class MultiGroupXS(object):
     def num_groups(self):
         return self._num_groups
 
+    @property
+    def tallies(self):
+        return self._tallies
+
+    @property
+    def xs_tally(self):
+        return self._xs_tally
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @property
+    def subdomain_indices(self):
+        return self._subdomain_indices
+
     @name.setter
     def name(self, name):
-        cv.check_type('MultiGroupXS name', name, basestring)
+        cv.check_type('name', name, basestring)
         self._name = name
 
-    @domain.setterr
+    @domain.setter
     def domain(self, domain):
-        cv.check_type('MultiGroupXS domain', domain, DOMAINS)
+        cv.check_type('domain', domain, DOMAINS)
         self._domain = domain
         if self._domain_type in ['material', 'cell', 'universe', 'mesh']:
-            self._subdomain_offsets[domain.id] = 0
-
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-        cv.check_type('MultiGroupXS energy groups', energy_groups,
-                      openmc.mgxs.EnergyGroups)
-        self._energy_groups = energy_groups
-        self._num_groups = energy_groups._num_groups
+            self._subdomain_indices[domain.id] = 0
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_type('MultiGroupXS domain type', domain_type, DOMAIN_TYPES)
+        cv.check_type('domain type', domain_type, DOMAIN_TYPES)
         self._domain_type = domain_type
 
-    def find_domain_offset(self):
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+        self._energy_groups = energy_groups
+        self._num_groups = energy_groups._num_groups
+
+    def _find_domain_offset(self):
+        """Finds and stores the offset of the domain tally filter"""
         tally = self.tallies[self.tallies.keys()[0]]
         filter = tally.find_filter(self.domain_type, [self.domain.id])
         self._offset = filter.offset
 
-    def set_subdomain_offset(self, domain_id, offset):
-        """
-        :param domain_id:
-        :param offset:
-        :return:
+    def set_subdomain_index(self, subdomain_id, offset):
+        """Set the filter bin index for a subdomain of the domain.
+
+        This is primary useful when the domain type is 'distribcell', in which
+        case it can be useful to map each subdomain (a cell instance) to its
+        filter bin in the derived multi-group cross-section tally data array.
+
+        Parameters
+        ----------
+        subdomain_id : Integral
+            The ID for the subdomain
+        index : Integral
+            The filter bin index for the subdomain
+
         """
 
-        cv.check_type('subdomain id', domain_id, Integral)
+        cv.check_type('subdomain id', subdomain_id, Integral)
         cv.check_type('subdomain offset', offset, Integral)
-        self._subdomain_offsets[domain_id] = offset
+        cv.check_greater_than('subdomain id', subdomain_id, 0, True)
+        cv.check_greater_than('subdomain offset', subdomain_id, 0, True)
+        self._subdomain_indices[subdomain_id] = offset
 
     @abc.abstractmethod
-    def _create_tallies(self, scores, filters, keys, estimator):
+    def _create_tallies(self, scores, all_filters, keys, estimator):
+        """Instantiates tallies needed to compute the multi-group cross-section
+
+        This is a helper method for MultiGroupXS subclasses to create tallies
+        for input file generation. The tallies are stored in the tallies dict.
+
+        Parameters
+        ----------
+        scores : Iterable of str
+            Scores for each tally
+        filters : Iterable of tuple of Filter
+            Tuples of non-spatial domain filters for each tally
+        keys : Iterable of str
+            Key string used to store each tally in the tallies dictionary
+        estimator : {'analog' or 'tracklength'}
+            Type of estimator to use for each tally
+
         """
 
-        :param scores:
-        :param filters:
-        :param keys:
-        :param estimator:
-        :return:
-        """
-
-        if self.energy_groups is None:
-            raise ValueError('Unable to create Tallies without energy groups')
-        elif self.domain is None:
-             raise ValueError('Unable to create Tallies without a domain')
-        elif self.domain_type is None:
-             raise ValueError('Unable to create Tallies without a domain type')
-
-        cv.check_type('scores', scores, Iterable, basestring)
         cv.check_value('scores', scores, openmc.SCORE_TYPES)
-        cv.check_type('filters', scores, Iterable, openmc.Filter)
+        # FIXME : Use @smharper's recursive iterable checker
+        # cv.check_type('filters', all_filters, openmc.Filter)
         cv.check_type('keys', keys, Iterable, basestring)
-        cv.check_value('# scores', len(scores), len(keys))
-        cv.check_type('estimator', estimator, basestring)
+        cv.check_length('scores', scores, len(keys))
         cv.check_value('estimator', estimator, ['analog', 'tracklength'])
 
         # Create a domain Filter object
         domain_filter = openmc.Filter(self.domain_type, self.domain.id)
 
-        for score, key, filters in zip(scores, keys, filters):
+        for score, key, filters in zip(scores, keys, all_filters):
             self.tallies[key] = openmc.Tally(name=self.name)
             self.tallies[key].add_score(score)
             self.tallies[key].estimator = estimator
             self.tallies[key].add_filter(domain_filter)
 
-            # Add all non-domain specific Filters (ie, energy) to the Tally
+            # Add all non-domain specific Filters (i.e., 'energy') to the Tally
             for filter in filters:
                 self.tallies[key].add_filter(filter)
 
-    def get_subdomain_offsets(self, subdomains='all'):
-        """
+    def get_subdomain_indices(self, subdomains='all'):
+        """Get the indices for one or more subdomains.
 
-        :param subdomains:
-        :return:
+        This method can be used to extract the indices into the multi-group
+        cross-section tally data array for a subdomain (i.e., cell instance).
+
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest
+
+        Returns
+        indices : NumPy ndarray
+            Array of subdomain indices indexed in the order of the subdomains
+
+        Raises
+        ------
+        ValueError
+            When one of the subdomains is not a valid subdomain ID.
+
         """
 
         if subdomains != 'all':
             cv.check_type('subdomains', subdomains, Iterable, Integral)
 
         if subdomains == 'all':
-            offsets = np.arange(self.xs.shape[1])
+            # FIXME: This isn't correct any more!!
+            # indices = np.arange(self.xs.shape[1])
         else:
-            offsets = np.zeros(len(subdomains), dtype=np.int64)
+            indices = np.zeros(len(subdomains), dtype=np.int64)
 
             for i, subdomain in enumerate(subdomains):
-                if subdomain in self._subdomain_offsets:
-                    offsets[i] = self._subdomain_offsets[subdomain]
+                if subdomain in self.subdomain_indices:
+                    indices[i] = self.subdomain_indices[subdomain]
                 else:
                     msg = 'Unable to get index for subdomain "{0}" since it ' \
-                          'is not a subdomain in cross-section'.format(subdomain)
+                          'is not a valid subdomain'.format(subdomain)
                     raise ValueError(msg)
 
-        return offsets
+        return indices
 
-    def get_subdomains(self, offsets='all'):
+    def get_subdomains(self, indices='all'):
+        """Get the subdomain IDs for one or more indices.
 
-        if offsets != 'all':
-            cv.check_type('offsets', offsets, Iterable, Integral)
+        This method can be used to extract the subdomains for the multi-group
+        cross-section from their indices in the tally data array.
 
-        if offsets == 'all':
-            offsets = self.get_subdomain_offsets()
+        See also : get_subdomain_offsets
 
-        subdomains = np.zeros(len(offsets), dtype=np.int64)
-        keys = self._subdomain_offsets.keys()
-        values = self._subdomain_offsets.values()
+        Parameters
+        ----------
+        indices : Iterable of Integral or 'all'
+            Subdomain indices of interest
 
-        for i, offset in enumerate(offsets):
-            if offset in values:
-                subdomains[i] = keys[values.index(offset)]
+        Returns
+        subdomains : NumPy ndarray
+            Array of subdomain IDs indexed in the order of the indices
+
+        Raises
+        ------
+        ValueError
+            When one of the indices is not a valid subdomain index.
+
+        """
+
+        if indices != 'all':
+            cv.check_type('offsets', indices, Iterable, Integral)
+
+        if indices == 'all':
+            indices = self.get_subdomain_indices()
+
+        subdomains = np.zeros(len(indices), dtype=np.int64)
+        keys = self.subdomain_indices.keys()
+        values = self.subdomain_indices.values()
+
+        for i, index in enumerate(indices):
+            if index in values:
+                subdomains[i] = keys[values.index(indices)]
             else:
                 msg = 'Unable to get subdomain for offset "{0}" since it ' \
-                      'is not an offset in the cross-section'.format(offset)
+                      'is not a valid index'.format(index)
                 raise ValueError(msg)
 
         return subdomains
 
-    def get_xs(self, groups='all', subdomains='all', metric='mean'):
+    def get_xs(self, groups='all', subdomains='all', value='mean'):
+        """
 
-        if self.xs is None:
+        Parameters
+        ----------
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest
+        value : str
+            A string for the type of value to return - 'mean' (default),
+            'std_dev' or 'rel_err' are accepted
+
+        Returns
+        -------
+        xs : ndarray
+            A NumPy array of the multi-group cross-section indexed in the order
+            each group and subdomain is listed in the parameters.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-group cross-section is
+            computed from tally data.
+
+        """
+
+        if self.xs_tally is None:
             msg = 'Unable to get cross-section since it has not been computed'
             raise ValueError(msg)
-
-        cv.check_value('metric', metric, ['mean', 'std. dev.', 'rel. err.'])
         if groups != 'all':
             cv.check_value('groups', groups, Iterable, Integral)
         if subdomains != 'all':
             cv.check_value('subdomains', subdomains, Iterable, Integral)
 
-        # FIXME: Make this use Tally.get_values()
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        filters.append(self.domain_type)
+        filter_bins.append(subdomains)
+
+        # Construct a collection of the energy group filter bins
+        filters.append('energy')
+        filter_bins.append(self.energy_groups.get_group_bounds(groups))
+
+        # Query the multi-group cross-section tally for the data
+        xs = self.xs_tally.get_values(filters=filters,
+                                      filter_bins=filter_bins, value=value)
+        return xs
 
     def get_condensed_xs(self, coarse_groups):
         """This routine takes in a collection of 2-tuples of energy groups"""
@@ -307,54 +436,97 @@ class MultiGroupXS(object):
 
         # FIXME: this should use the Tally.slice(...) routine
 
-    def get_domain_vg_xs(self, subdomains='all'):
+    def get_subdomain_avg_xs(self, subdomains='all'):
+        """Construct a subdomain-averaged version of this cross-section.
 
-        if self.domain_type != 'distribcell':
-            msg = 'Unable to compute domain averaged "{0}" xs for "{1}"' \
-                  '"{2}" since it is not a distribcell'.format(self._xs_type,
-                  self._domain_type, self._domain.id)
-            raise ValueError(msg)
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+            The subdomain IDs to average across
+
+        Returns
+        -------
+        MultiGroupXS
+            This MultiGroupXS averaged across subdomains of interest
+
+        """
 
         if subdomains != 'all':
             cv.check_value('subdomains', subdomains, Iterable, Integral)
 
-        # FIXME: This should use tally arithmetic
+        avg_xs = copy.deepcopy(self)
+
+        if self.domain_type == 'distribcell':
+            avg_xs.domain_type = 'cell'
+            avg_xs._subdomain_indices = {}
+            avg_xs._offset = 0
+
+            # Spatially average each tally
+            for key, old_tally in avg_xs.tallies.items():
+                # FIXME: Need to create Tally.mean(...)
+                slice_tally = old_tally.slice(filters=[avg_xs.domain_type],
+                                              filter_bins=subdomains)
+                avg_tally = slice_tally.mean(filters=[avg_xs.domain_type],
+                                             filter_bins=subdomains)
+                avg_xs.tallies[key] = avg_tally
+
+            avg_xs.compute_xs()
+
+        return avg_xs
 
     def print_xs(self, subdomains='all'):
+        """Prints a string representation for the multi-group cross-section.
+
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+            The subdomain IDs of the cross-sections to include in the report
+
+        """
 
         if subdomains != 'all':
             cv.check_value('subdomains', subdomains, Iterable, Integral)
 
         string = 'Multi-Group XS\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.xs_type)
-        string += '{0: <16}{1}{2}\n'.format('\tDomain Type', '=\t', self.domain_type)
-        string += '{0: <16}{1}{2}\n'.format('\tDomain ID', '=\t', self.domain.id)
+        string += '{0: <16}=\t{1}\n'.format('\tType', self.xs_type)
+        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
+        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
-        if subdomains == 'all':
-            subdomains = self._subdomain_offsets.keys()
+        if self.xs_tally is not None:
+            if subdomains == 'all':
+                subdomains = self.get_subdomain_indices()
 
-        # Loop over all subdomains
-        for subdomain in subdomains:
+            # Loop over all subdomains
+            for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
-                string += '{0: <16}{1}{2}\n'.format('\tSubDomain', '=\t', subdomain)
+                if self.domain_type == 'distribcell':
+                    string += '{0: <16}=\t{1}\n'.format('\tSubDomain', subdomain)
 
-            string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
+                string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
 
-            # Loop over energy groups ranges
-            for group in range(1,self.num_groups+1):
-                bounds = self._energy_groups.getGroupBounds(group)
-                string += '{0: <12}Group {1} [{2: <10} - ' \
-                          '{3: <10}MeV]:\t'.format('', group, bounds[0], bounds[1])
-                average = self.get_xs([group], [subdomain], 'mean')
-                rel_err = self.get_xs([group], [subdomain], 'rel. err.')
-                string += '{:.2e}+/-{:1.2e}%'.format(average[0,0,0], rel_err[0,0,0])
+                # Loop over energy groups ranges
+                for group in range(1,self.num_groups+1):
+                    bounds = self.energy_groups.get_group_bounds(group)
+                    string += '{0: <12}Group {1} [{2: <10} - ' \
+                         '{3: <10}MeV]:\t'.format('', group, bounds[0], bounds[1])
+                    average = self.get_xs([group], [subdomain], 'mean')
+                    rel_err = self.get_xs([group], [subdomain], 'rel_err')*100.
+                    string += '{:.2e}+/-{:1.2e}%'.format(average, rel_err)
+                    string += '\n'
                 string += '\n'
-            string += '\n'
 
         print(string)
 
-    def dump_to_file(self, filename='multigroupxs', directory='multigroupxs'):
+    def pickle(self, filename='mgxs', directory='mgxs'):
+        """Store the MultiGroupXS as a pickled binary file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the pickled binary file (default is 'mgxs')
+        directory : str
+            Directory for the pickled binary file (default is 'mgxs')
+        """
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
@@ -368,21 +540,30 @@ class MultiGroupXS(object):
 
         # Store all of this MultiGroupXS' class attributes in the dictionary
         xs_results['name'] = self.name
-        xs_results['xs type'] = self.xs_type
-        xs_results['domain type'] = self.domain_type
+        xs_results['xs_type'] = self.xs_type
+        xs_results['domain_type'] = self.domain_type
         xs_results['domain'] = self.domain
-        xs_results['energy groups'] = self.energy_groups
+        xs_results['energy_groups'] = self.energy_groups
         xs_results['tallies'] = self.tallies
-        xs_results['xs'] = self.xs
+        xs_results['xs_tally'] = self.xs_tally
         xs_results['offset'] = self._offset
-        xs_results['subdomain offsets'] = self._subdomain_offsets
+        xs_results['subdomain_indices'] = self._subdomain_indices
 
-        # Pickle the MultiGroupXS results to a file
+        # Pickle the MultiGroupXS results to a binary file
         filename = directory + '/' + filename + '.pkl'
         filename = filename.replace(' ', '-')
         pickle.dump(xs_results, open(filename, 'wb'))
 
-    def restore_from_file(self, filename='multigroupxs', directory='multigroupxs'):
+    def restore_from_file(self, filename='mgxs', directory='mgxs'):
+        """Restore the MultiGroupXS from a pickled binary file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the pickled binary file (default is 'mgxs')
+        directory : str
+            Directory for the pickled binary file (default is 'mgxs')
+        """
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
@@ -400,17 +581,34 @@ class MultiGroupXS(object):
 
         # Store the MultiGroupXS class attributes
         self.name = xs_results['name']
-        self.xs_type = xs_results['xs type']
-        self.domain_type = xs_results['domain type']
+        self.xs_type = xs_results['xs_type']
+        self.domain_type = xs_results['domain_type']
         self.domain = xs_results['domain']
-        self.energy_groups = xs_results['energy groups']
+        self.energy_groups = xs_results['energy_groups']
         self.tallies = xs_results['tallies']
-        self.xs = xs_results['xs']
+        self.xs_tally = xs_results['xs_tally']
         self._offset = xs_results['offset']
-        self._subdomain_offsets = xs_results['subdomain offsets']
+        self._subdomain_indices = xs_results['subdomain_indices']
 
-    def exportResults(self, subdomains='all', filename='multigroupxs',
-                      directory='multigroupxs', format='hdf5', append=True):
+    def export_xs_data(self, subdomains='all', filename='mgxs',
+                       directory='mgxs', format='hdf5', append=True):
+        """Export the multi-group cross-secttion data to a file.
+
+        This routine leverages the functionality in the Pandas library to
+        export DataFrames to CSV, HDF5, LaTeX and PDF files.
+
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+        filename : str
+            Filename for the exported file (default is 'mgxs')
+        directory : str
+            Directory for the exported file (default is 'mgxs')
+        format : {'csv', 'hdf5', 'latex', 'pdf'}
+            The format for the exported data file
+        append : bool
+            If True (default), appends to an existing file if possible
+        """
 
         if subdomains != 'all':
             cv.check_type('submdomains', subdomains, Iterable, Integral)
@@ -423,35 +621,7 @@ class MultiGroupXS(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        # FIXME: Use tally arithmetic!!!
-
-    def print_pdf(self, subdomains='all', filename='multigroupxs',
-                 directory='multigroupxs'):
-
-        if subdomains != 'all':
-            cv.check_type('submdomains', subdomains, Iterable, Integral)
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
-
-        # Make directory if it does not exist
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        filename = filename.replace(' ', '-')
-
-        # Generate LaTeX file
-        self.exportResults(subdomains, filename, '.', 'latex', False)
-
-        # Compile LaTeX to PDF
-        FNULL = open(os.devnull, 'w')
-        subprocess.check_call('pdflatex {0}.tex'.format(filename),
-                              shell=True, stdout=FNULL)
-
-        # Move PDF to requested directory and cleanup temporary LaTeX files
-        if directory != '.':
-            os.system('mv {0}.pdf {1}'.format(filename, directory))
-        os.system('rm {0}.tex {0}.aux {0}.log'.format(filename))
-
+        # FIXME: Use pandas dataframes!!
 
 class TotalXS(MultiGroupXS):
 
@@ -475,7 +645,7 @@ class TotalXS(MultiGroupXS):
         super(TotalXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['total'] / self.tallies['flux']
+        self.xs_tally = self.tallies['total'] / self.tallies['flux']
 
 
 class TransportXS(MultiGroupXS):
@@ -501,8 +671,8 @@ class TransportXS(MultiGroupXS):
         super(TransportXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['total'] - self.tallies['scatter-1']
-        self.xs /= self.tallies['flux']
+        self.xs_tally = self.tallies['total'] - self.tallies['scatter-1']
+        self.xs_tally /= self.tallies['flux']
 
 
 class AbsorptionXS(MultiGroupXS):
@@ -527,7 +697,7 @@ class AbsorptionXS(MultiGroupXS):
         super(AbsorptionXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['absorption'] / self.tallies['flux']
+        self.xs_tally = self.tallies['absorption'] / self.tallies['flux']
 
 
 class CaptureXS(MultiGroupXS):
@@ -552,8 +722,8 @@ class CaptureXS(MultiGroupXS):
         super(CaptureXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['absorption'] - self.tallies['fission']
-        self.xs /= self.tallies['flux']
+        self.xs_tally = self.tallies['absorption'] - self.tallies['fission']
+        self.xs_tally /= self.tallies['flux']
 
 
 class FissionXS(MultiGroupXS):
@@ -578,7 +748,7 @@ class FissionXS(MultiGroupXS):
         super(FissionXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['fission'] / self.tallies['flux']
+        self.xs_tally = self.tallies['fission'] / self.tallies['flux']
 
 
 class NuFissionXS(MultiGroupXS):
@@ -603,7 +773,7 @@ class NuFissionXS(MultiGroupXS):
         super(NuFissionXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['nu-fission'] / self.tallies['flux']
+        self.xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
 
 
 class ScatterXS(MultiGroupXS):
@@ -628,7 +798,7 @@ class ScatterXS(MultiGroupXS):
         super(ScatterXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['scatter'] / self.tallies['flux']
+        self.xs_tally = self.tallies['scatter'] / self.tallies['flux']
 
 
 class NuScatterXS(MultiGroupXS):
@@ -653,7 +823,7 @@ class NuScatterXS(MultiGroupXS):
         super(NuScatterXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['nu-scatter'] / self.tallies['flux']
+        self.xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
 
 
 class ScatterMatrixXS(MultiGroupXS):
@@ -679,8 +849,8 @@ class ScatterMatrixXS(MultiGroupXS):
         super(ScatterMatrixXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['scatter'] - self.tallies['scatter-1']
-        self.xs /= self.tallies['flux']
+        self.xs_tally = self.tallies['scatter'] - self.tallies['scatter-1']
+        self.xs_tally /= self.tallies['flux']
 
     def get_condensed_xs(self, coarse_groups):
         """This routine takes in a collection of 2-tuples of energy groups"""
@@ -694,13 +864,13 @@ class ScatterMatrixXS(MultiGroupXS):
         num_coarse_groups = new_groups._num_groups
 
     def get_xs(self, in_groups='all', out_groups='all',
-              subdomains='all', metric='mean'):
+              subdomains='all', value='mean'):
 
-        if self.xs is None:
+        if self.xs_tally is None:
             msg = 'Unable to get cross-section since it has not been computed'
             raise ValueError(msg)
 
-        cv.check_value('metric', metric, ['mean', 'std. dev.', 'rel. err.'])
+        cv.check_value('value', value, ['mean', 'std. dev.', 'rel. err.'])
         if in_groups != 'all':
             cv.check_value('in groups', in_groups, Iterable, Integral)
         if out_groups != 'all':
@@ -729,7 +899,7 @@ class ScatterMatrixXS(MultiGroupXS):
                       '{3: <10}MeV]\n'.format('', group, bounds[0], bounds[1])
 
         if subdomains == 'all':
-            subdomains = self._subdomain_offsets.keys()
+            subdomains = self._subdomain_indices.keys()
 
         for subdomain in subdomains:
 
@@ -773,8 +943,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         super(ScatterMatrixXS, self)._create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        self.xs = self.tallies['nu-scatter'] - self.tallies['scatter-1']
-        self.xs /= self.tallies['flux']
+        self.xs_tally = self.tallies['nu-scatter'] - self.tallies['scatter-1']
+        self.xs_tally /= self.tallies['flux']
 
 
 class Chi(MultiGroupXS):
@@ -810,12 +980,12 @@ class Chi(MultiGroupXS):
     nu_fission_in[0, zero_indices['nu-fission-in']] = -1.
 
     # FIXME - uncertainty propagation
-    self._xs = infermc.error_prop.arithmetic.divide_by_scalar(nu_fission_out,
+    self._xs_tally = infermc.error_prop.arithmetic.divide_by_scalar(nu_fission_out,
                                    nu_fission_in.sum(2)[0, :, np.newaxis, ...],
                                    corr, False)
 
     # Compute the total across all groups per subdomain
-    norm = self._xs.sum(2)[0, :, np.newaxis, ...]
+    norm = self._xs_tally.sum(2)[0, :, np.newaxis, ...]
 
     # Set any zero norms (in non-fissionable domains) to -1
     norm_indices = norm == 0.
@@ -823,14 +993,14 @@ class Chi(MultiGroupXS):
 
     # Normalize chi to 1.0
     # FIXME - uncertainty propagation
-    self._xs = infermc.error_prop.arithmetic.divide_by_scalar(self._xs, norm,
+    self._xs_tally = infermc.error_prop.arithmetic.divide_by_scalar(self._xs_tally, norm,
                                                               corr, False)
 
     # For any region without flux or reaction rate, convert xs to zero
-    self._xs[:, norm_indices] = 0.
+    self._xs_tally[:, norm_indices] = 0.
 
     # FIXME - uncertainty propagation - this is just a temporary fix
-    self._xs[1, ...] = 0.
+    self._xs_tally[1, ...] = 0.
 
     # Correct -0.0 to +0.0
-    self._xs += 0.
+    self._xs_tally += 0.

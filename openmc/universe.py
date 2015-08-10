@@ -714,8 +714,8 @@ class Lattice(object):
                         assert isinstance(u, Universe)
                         univs[u._id] = u
 
-        if self._outer is not None:
-            univs[self._outer._id] = self._outer
+        if self.outer is not None:
+            univs[self.outer._id] = self.outer
 
         return univs
 

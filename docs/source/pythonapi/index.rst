@@ -6,8 +6,12 @@ Python API
 
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
-example Jupyter notebooks provided. The full API documentation serves to provide
-more information on a given module or class.
+example Jupyter_ notebooks provided. However, this assumes that you are already
+familiar with Python and common third-party packages such as NumPy_. If you have
+never programmed in Python before, there are many good tutorials available
+online. We recommend going through the modules from Codecademy_ and/or the
+`Scipy lectures`_. The full API documentation serves to provide more information
+on a given module or class.
 
 **Handling nuclear data:**
 
@@ -60,3 +64,8 @@ more information on a given module or class.
 
     examples/pandas-dataframes
     examples/tally-arithmetic
+
+.. _Jupyter: https://jupyter.org/
+.. _NumPy: http://www.numpy.org/
+.. _Codecademy: https://www.codecademy.com/tracks/python
+.. _Scipy lectures: https://scipy-lectures.github.io/

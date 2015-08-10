@@ -52,7 +52,7 @@ contains
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-        & zero_padded(current_batch, count_digits(n_max_batches))
+         & zero_padded(current_batch, count_digits(n_max_batches))
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -256,7 +256,7 @@ contains
                  group="tallies/tally " // trim(to_str(tally % id)) // &
                  "/filter " // to_str(j))
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-                tally % filters(j) % type == FILTER_ENERGYOUT) then
+                 tally % filters(j) % type == FILTER_ENERGYOUT) then
               call sp % write_data(tally % filters(j) % real_bins, "bins", &
                    group="tallies/tally " // trim(to_str(tally % id)) // &
                    "/filter " // to_str(j), &
@@ -309,8 +309,8 @@ contains
               do n_order = 0, tally % moment_order(k)
                 moment_name = 'P' // trim(to_str(n_order))
                 call sp % write_data(moment_name, "order" // trim(to_str(k)), &
-                   group="tallies/tally " // trim(to_str(tally % id)) // &
-                         "/moments")
+                     group="tallies/tally " // trim(to_str(tally % id)) // &
+                     "/moments")
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -318,7 +318,7 @@ contains
               do n_order = 0, tally % moment_order(k)
                 do nm_order = -n_order, n_order
                   moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order))
+                       trim(to_str(nm_order))
                   call sp % write_data(moment_name, "order" // &
                        trim(to_str(k)), &
                        group="tallies/tally " // trim(to_str(tally % id)) // &
@@ -412,7 +412,7 @@ contains
 
         ! Set filename
         filename = trim(path_output) // 'source.' // &
-            & zero_padded(current_batch, count_digits(n_max_batches))
+             & zero_padded(current_batch, count_digits(n_max_batches))
 
 #ifdef HDF5
         filename = trim(filename) // '.h5'
@@ -434,7 +434,7 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-            & zero_padded(current_batch, count_digits(n_max_batches))
+             & zero_padded(current_batch, count_digits(n_max_batches))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -607,12 +607,12 @@ contains
             tally % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if
 
-         ! Put in temporary tally result
-         allocate(tallyresult_temp(m,n))
-         tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
-         tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
+          ! Put in temporary tally result
+          allocate(tallyresult_temp(m,n))
+          tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
+          tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
 
-         ! Write reduced tally results to file
+          ! Write reduced tally results to file
           call sp % write_tally_result(tally % results, "results", &
                group="tallies/tally " // trim(to_str(tally % id)), n1=m, n2=n)
 
@@ -687,7 +687,7 @@ contains
     call sp % read_data(int_array(2), "version_minor")
     call sp % read_data(int_array(3), "version_release")
     if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
-        .or. int_array(3) /= VERSION_RELEASE) then
+         .or. int_array(3) /= VERSION_RELEASE) then
       if (master) call warning("State point file was created with a different &
            &version of OpenMC.")
     end if
@@ -843,7 +843,7 @@ contains
              group="tallies/tally " // trim(to_str(curr_key)) // &
              "/filter " // to_str(j))
         if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-            tally % filters(j) % type == FILTER_ENERGYOUT) then
+             tally % filters(j) % type == FILTER_ENERGYOUT) then
           call sp % read_data(tally % filters(j) % real_bins, "bins", &
                group="tallies/tally " // trim(to_str(curr_key)) // &
                "/filter " // to_str(j), &

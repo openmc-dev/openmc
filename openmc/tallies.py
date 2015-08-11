@@ -914,7 +914,8 @@ class Tally(object):
                     filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
-                filter_indices[:i] *= filter.num_bins
+                for indices in filter_indices[:i]:
+                    indices *= filter.num_bins
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))

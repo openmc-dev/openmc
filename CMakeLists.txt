@@ -287,6 +287,22 @@ foreach(test ${TESTS})
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
 
+    elseif(${test} MATCHES "test_filter_distribcell")
+
+      # Add each case for distribcell tests
+      add_test(NAME ${TEST_NAME}_case-1
+        WORKING_DIRECTORY ${TEST_PATH}/case-1
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
+      add_test(NAME ${TEST_NAME}_case-2
+        WORKING_DIRECTORY ${TEST_PATH}/case-2
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
+      add_test(NAME ${TEST_NAME}_case-3
+        WORKING_DIRECTORY ${TEST_PATH}/case-3
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
+      add_test(NAME ${TEST_NAME}_case-4
+        WORKING_DIRECTORY ${TEST_PATH}/case-4
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
+
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
 

@@ -1471,6 +1471,7 @@ class Tally(object):
         new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
         new_tally = Tally(name=new_name)
         new_tally.with_batch_statistics = True
+        new_tally._derived = True
 
         data = self._align_tally_data(other)
 
@@ -1498,7 +1499,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            data = self._align_tally_data(power)
+            data = self._align_tally_data(other)
             mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
@@ -1513,6 +1514,7 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
         if self.num_realizations == other.num_realizations:
             new_tally.num_realizations = self.num_realizations
+        new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
 
         # Generate filter "outer products"
         if self.filters == other.filters:
@@ -1740,6 +1742,7 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='-')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
             new_tally.name = self.name
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
@@ -1808,6 +1811,7 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='*')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
             new_tally.name = self.name
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
@@ -1876,6 +1880,7 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='/')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
             new_tally.name = self.name
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
@@ -1944,6 +1949,7 @@ class Tally(object):
             new_tally = self._outer_product(power, binary_op='^')
 
         elif isinstance(power, Real):
+            new_tally = Tally(name='derived')
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean

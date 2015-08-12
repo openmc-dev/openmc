@@ -28,7 +28,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.pngmath',
               'sphinxcontrib.tikz',
-              'sphinx_numfig']
+              'sphinx_numfig',
+              'notebook_sphinxext']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

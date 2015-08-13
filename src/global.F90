@@ -200,6 +200,10 @@ module global
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
   real(8) :: k_combined(2)    ! combined best estimate of k-effective
 
+  ! Temorary leakage values
+  real(8) :: leak     ! running mean leakage
+  real(8) :: leak_sem ! 1sigma SEM of the running mean leakage
+
   ! Shannon entropy
   logical :: entropy_on = .false.
   real(8), allocatable :: entropy(:)         ! shannon entropy at each generation

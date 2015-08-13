@@ -6,7 +6,8 @@ module fixed_source
 
   use constants,       only: ZERO, MAX_LINE_LEN
   use global
-  use output,          only: write_message, header
+  use output,          only: write_message, header, print_mean_leak,&
+                             print_columns
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use source,          only: sample_external_source, copy_source_attributes
@@ -26,6 +27,7 @@ contains
     type(Particle) :: p
 
     if (master) call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
+    if (master) call print_columns()
 
     ! Allocate particle and dummy source site
 !$omp parallel
@@ -103,9 +105,6 @@ contains
 
   subroutine initialize_batch()
 
-    call write_message("Simulating batch " // trim(to_str(current_batch)) &
-         &// "...", 1)
-
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
@@ -132,6 +131,12 @@ contains
     call time_tallies % start()
     call synchronize_tallies()
     call time_tallies % stop()
+
+    leak = global_tallies(LEAKAGE) % sum / n_realizations
+    leak_sem = sqrt(ONE / (n_realizations - ONE) &
+         * (global_tallies(LEAKAGE) % sum_sq / n_realizations&
+         - leak * leak))
+    if (master) call print_mean_leak()
 
     ! Check_triggers
     if (master) call check_triggers()

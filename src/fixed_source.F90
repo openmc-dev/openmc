@@ -6,7 +6,7 @@ module fixed_source
 
   use constants,       only: ZERO, MAX_LINE_LEN
   use global
-  use output,          only: write_message, header, print_batch_leakage
+  use output,          only: write_message, header
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use source,          only: sample_external_source, copy_source_attributes
@@ -132,8 +132,6 @@ contains
     call time_tallies % start()
     call synchronize_tallies()
     call time_tallies % stop()
-
-    if (master) call print_batch_leakage()
 
     ! Check_triggers
     if (master) call check_triggers()

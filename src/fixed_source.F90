@@ -6,7 +6,7 @@ module fixed_source
 
   use constants,       only: ZERO, MAX_LINE_LEN
   use global
-  use output,          only: write_message, header
+  use output,          only: write_message, header, print_batch_leakage
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use source,          only: sample_external_source, copy_source_attributes
@@ -117,10 +117,23 @@ contains
 
   subroutine finalize_batch()
 
+! Update global tallies with the omp private accumulation variables
+!$omp parallel
+!$omp critical
+    global_tallies(LEAKAGE) % value = &
+         global_tallies(LEAKAGE) % value + global_tally_leakage
+!$omp end critical
+
+    ! reset private tallies
+    global_tally_leakage = ZERO
+!$omp end parallel
+
     ! Collect and accumulate tallies
     call time_tallies % start()
     call synchronize_tallies()
     call time_tallies % stop()
+
+    if (master) call print_batch_leakage()
 
     ! Check_triggers
     if (master) call check_triggers()

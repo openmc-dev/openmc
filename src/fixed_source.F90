@@ -117,6 +117,17 @@ contains
 
   subroutine finalize_batch()
 
+! Update global tallies with the omp private accumulation variables
+!$omp parallel
+!$omp critical
+    global_tallies(LEAKAGE) % value = &
+         global_tallies(LEAKAGE) % value + global_tally_leakage
+!$omp end critical
+
+    ! reset private tallies
+    global_tally_leakage = ZERO
+!$omp end parallel
+
     ! Collect and accumulate tallies
     call time_tallies % start()
     call synchronize_tallies()

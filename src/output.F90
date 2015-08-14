@@ -7,7 +7,7 @@ module output
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Surface, Lattice, RectLattice, &
-                             &HexLattice, BASE_UNIVERSE
+                             HexLattice, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh

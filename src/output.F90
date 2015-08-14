@@ -1346,44 +1346,35 @@ contains
 
   subroutine print_columns()
 
-    select case(run_mode)
-    case(MODE_EIGENVALUE)
-      write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "Bat./Gen."
-      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "
-      if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Entropy "
-      write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
-      if (cmfd_run) then
-        write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
-        select case(trim(cmfd_display))
-          case('entropy')
-            write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "CMFD Ent"
-          case('balance')
-            write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Bal "
-          case('source')
-            write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Src "
-          case('dominance')
-            write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Dom Rat "
-        end select
-      end if
-      write(UNIT=ou, FMT=*)
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "Bat./Gen."
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Entropy "
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
+    if (cmfd_run) then
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
+      select case(trim(cmfd_display))
+        case('entropy')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "CMFD Ent"
+        case('balance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Bal "
+        case('source')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Src "
+        case('dominance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Dom Rat "
+      end select
+    end if
+    write(UNIT=ou, FMT=*)
 
-      write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
+    if (cmfd_run) then
       write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-      if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-      write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
-      if (cmfd_run) then
-        write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-        if (cmfd_display /= '') &
-             write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
-      end if
-      write(UNIT=ou, FMT=*)
-    case(MODE_FIXEDSOURCE)
-      write(ou, '(A10)', advance='no') 'Batch'
-      write(ou, '(A24)', advance='no') 'Mean Leakage'
-      write(ou, '(A24)') '1sigma SEM'
-    case default
-      continue
-    end select
+      if (cmfd_display /= '') &
+           write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    end if
+    write(UNIT=ou, FMT=*)
 
   end subroutine print_columns
 
@@ -1462,21 +1453,6 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT=*)
 
   end subroutine print_batch_keff
-
-!===============================================================================
-! PRINT_MEAN_LEAK displays the overall mean system leakage and 1sigma SEM at
-! each batch
-!===============================================================================
-
-  subroutine print_mean_leak()
-
-    ! write out information batch and option independent output
-    write(ou, '(A10)', advance='no') trim(to_str(current_batch))
-    write(ou, '(ES24.16)', advance='no') leak
-    if (n_realizations > 1) write(ou, '(ES24.16)', advance='no') leak_sem
-    write(ou, *)
-
-  end subroutine print_mean_leak
 
 !===============================================================================
 ! PRINT_PLOT displays selected options for plotting

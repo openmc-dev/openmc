@@ -1457,7 +1457,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the other tally is populated 
+            When this method is called before the other tally is populated
             with data by the StatePoint.read_results() method.
 
         """
@@ -1674,6 +1674,7 @@ class Tally(object):
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.with_batch_statistics = True
             new_tally.name = self.name
             new_tally._mean = self._mean + other
@@ -1743,6 +1744,7 @@ class Tally(object):
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
@@ -1812,6 +1814,7 @@ class Tally(object):
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
@@ -1881,6 +1884,7 @@ class Tally(object):
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
@@ -1950,6 +1954,7 @@ class Tally(object):
 
         elif isinstance(power, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean

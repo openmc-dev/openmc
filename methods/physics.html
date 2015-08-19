@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Theory and Methodology" href="index.html" />
     <link rel="next" title="6. Tallies" href="tallies.html" />
     <link rel="prev" title="4. Random Number Generation" href="random_numbers.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="random_numbers.html">4. Random Number Generation</a>
@@ -55,30 +53,30 @@
 <div class="section" id="sampling-distance-to-next-collision">
 <h2>5.1. Sampling Distance to Next Collision<a class="headerlink" href="#sampling-distance-to-next-collision" title="Permalink to this headline">¶</a></h2>
 <p>As a particle travels through a homogeneous material, the probability
-distribution function for the distance to its next collision <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/> is</p>
+distribution function for the distance to its next collision <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/> is</p>
 <div class="math" id="equation-distance-pdf">
-<p><span class="eqno">(1)</span><img src="../_images/math/2f36ff5637283efad0c17a3a63f615ca5e6ecfa8.png" alt="p(\ell) d\ell = \Sigma_t e^{-\Sigma_t \ell} d\ell"/></p>
-</div><p>where <img class="math" src="../_images/math/b5e850feb16eb83bd01af5524126befff31f202b.png" alt="\Sigma_t"/> is the total macroscopic cross section of the
+<p><span class="eqno">(1)</span><img src="../_images/math/2bfb29849139ad0b62a1bad525d6a15d7febb860.png" alt="p(\ell) d\ell = \Sigma_t e^{-\Sigma_t \ell} d\ell"/></p>
+</div><p>where <img class="math" src="../_images/math/6e5a1041d6cc18eff2b55b18f087de59f2ed28df.png" alt="\Sigma_t"/> is the total macroscopic cross section of the
 material. Equation <a href="#equation-distance-pdf">(1)</a> tells us that the further the distance is
 to the next collision, the less likely the particle will travel that
 distance. In order to sample the probability distribution function, we first
 need to convert it to a cumulative distribution function</p>
 <div class="math" id="equation-distance-cdf">
-<p><span class="eqno">(2)</span><img src="../_images/math/3bf9017f15e5261188982a68bf9aac7c4870d22b.png" alt="\int_0^{\ell} d\ell' p(\ell') = \int_0^{\ell} d\ell' \Sigma_t e^{-\Sigma_t
+<p><span class="eqno">(2)</span><img src="../_images/math/5735b058bc43602a003600fb0edb3c6da0dedc38.png" alt="\int_0^{\ell} d\ell' p(\ell') = \int_0^{\ell} d\ell' \Sigma_t e^{-\Sigma_t
 \ell'} = 1 - e^{-\Sigma_t \ell}."/></p>
-</div><p>By setting the cumulative distribution function equal to <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/>, a random
-number on the unit interval, and solving for the distance <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>, we
+</div><p>By setting the cumulative distribution function equal to <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/>, a random
+number on the unit interval, and solving for the distance <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>, we
 obtain a formula for sampling the distance to next collision:</p>
 <div class="math" id="equation-sample-distance-1">
-<p><span class="eqno">(3)</span><img src="../_images/math/a8ccdabb54d53172e417848edff364cf77ffed3c.png" alt="\ell = -\frac{\ln (1 - \xi)}{\Sigma_t}."/></p>
-</div><p>Since <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> is uniformly distributed on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>, this implies that
-<img class="math" src="../_images/math/35091c06fbc56124201a93a953fd0bb0349e6943.png" alt="1 - \xi"/> is also uniformly distributed on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/> as well. Thus,
+<p><span class="eqno">(3)</span><img src="../_images/math/bca38b09fc983694f53657d4c262db0387f5e85d.png" alt="\ell = -\frac{\ln (1 - \xi)}{\Sigma_t}."/></p>
+</div><p>Since <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/> is uniformly distributed on <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>, this implies that
+<img class="math" src="../_images/math/ded4754a42095f860312f92d21d7b429a3da81d2.png" alt="1 - \xi"/> is also uniformly distributed on <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/> as well. Thus,
 the formula usually used to calculate the distance to next collision is</p>
 <div class="math" id="equation-sample-distance-2">
-<p><span class="eqno">(4)</span><img src="../_images/math/3a9f818b22cf231e85672d4c829f1e70a9a2b92a.png" alt="\ell = -\frac{\ln \xi}{\Sigma_t}"/></p>
+<p><span class="eqno">(4)</span><img src="../_images/math/d89460ecbcfef851ff9c101f3d5d6130fbb1f130.png" alt="\ell = -\frac{\ln \xi}{\Sigma_t}"/></p>
 </div></div>
 <div class="section" id="and-other-disappearance-reactions">
-<h2>5.2. <img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> and Other Disappearance Reactions<a class="headerlink" href="#and-other-disappearance-reactions" title="Permalink to this headline">¶</a></h2>
+<h2>5.2. <img class="math" src="../_images/math/86a337316c6571ab2d3380e2bc1735c09def19dc.png" alt="(n,\gamma)"/> and Other Disappearance Reactions<a class="headerlink" href="#and-other-disappearance-reactions" title="Permalink to this headline">¶</a></h2>
 <p>All absorption reactions other than fission do not produce any secondary
 neutrons. As a result, these are the easiest type of reactions to handle. When a
 collision occurs, the first step is to sample a nuclide within a material. Once
@@ -86,18 +84,18 @@ the nuclide has been sampled, then a specific reaction for that nuclide is
 sampled. Since the total absorption cross section is pre-calculated at the
 beginning of a simulation, the first step in sampling a reaction is to determine
 whether a &#8220;disappearance&#8221; reaction occurs where no secondary neutrons are
-produced. This is done by sampling a random number <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> on the interval
-<img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/> and checking whether</p>
+produced. This is done by sampling a random number <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/> on the interval
+<img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/> and checking whether</p>
 <div class="math" id="equation-disappearance">
-<p><span class="eqno">(5)</span><img src="../_images/math/5cc6086f308a306664010c4bf51d42e85f299f50.png" alt="\xi \sigma_t (E) &lt; \sigma_a (E) - \sigma_f (E)"/></p>
-</div><p>where <img class="math" src="../_images/math/c7de8622e17cddfc652ab2dc62616c622ba3bcfb.png" alt="\sigma_t"/> is the total cross section, <img class="math" src="../_images/math/df95a258654726885e51e893d5979743a1ad5346.png" alt="\sigma_a"/> is the
-absorption cross section (this includes fission), and <img class="math" src="../_images/math/9341254e820e687f8bb085610f0f89b0ec80a9cf.png" alt="\sigma_f"/> is the
+<p><span class="eqno">(5)</span><img src="../_images/math/249eee605b5712a6cc2cedd18077b62bdc12070e.png" alt="\xi \sigma_t (E) &lt; \sigma_a (E) - \sigma_f (E)"/></p>
+</div><p>where <img class="math" src="../_images/math/8bbf00dc9537da7eabe8fea214e0cd07538446ed.png" alt="\sigma_t"/> is the total cross section, <img class="math" src="../_images/math/ebd11fac03b10ab06ab0af037ac8baac8f2fbf61.png" alt="\sigma_a"/> is the
+absorption cross section (this includes fission), and <img class="math" src="../_images/math/4bf400a8ad185670234bd8f43236a92d3ad420cb.png" alt="\sigma_f"/> is the
 total fission cross section. If this condition is met, then the neutron is
 killed and we proceed to simulate the next neutron from the source bank.</p>
 <p>No secondary particles from disappearance reactions such as photons or
 alpha-particles are produced or tracked. To truly capture the affects of gamma
 heating in a problem, it would be necessary to explicitly track photons
-originating from <img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> and other reactions.</p>
+originating from <img class="math" src="../_images/math/86a337316c6571ab2d3380e2bc1735c09def19dc.png" alt="(n,\gamma)"/> and other reactions.</p>
 </div>
 <div class="section" id="elastic-scattering">
 <h2>5.3. Elastic Scattering<a class="headerlink" href="#elastic-scattering" title="Permalink to this headline">¶</a></h2>
@@ -113,40 +111,40 @@ motion. Above a certain energy threshold (400 kT by default), all scattering is
 assumed to take place with the target at rest. Below this threshold though, we
 must account for the thermal motion of the target nucleus. Methods to sample the
 velocity of the target nucleus are described later in section
-<a class="reference internal" href="#freegas"><em>Effect of Thermal Motion on Cross Sections</em></a>. For the time being, let us assume that we have sampled the
-target velocity <img class="math" src="../_images/math/f3af838d0b24bf7dde42dba97b2fd24f2747e646.png" alt="\mathbf{v}_t"/>. The velocity of the center-of-mass system
+<a class="reference internal" href="#freegas"><span>Effect of Thermal Motion on Cross Sections</span></a>. For the time being, let us assume that we have sampled the
+target velocity <img class="math" src="../_images/math/7a719283c69a156a80517f4d9365b28ba238f687.png" alt="\mathbf{v}_t"/>. The velocity of the center-of-mass system
 is calculated as</p>
 <div class="math" id="equation-velocity-com">
-<p><span class="eqno">(6)</span><img src="../_images/math/e6b6e9f4533e598bc834cb4317b5d3d143b67f88.png" alt="\mathbf{v}_{cm} = \frac{\mathbf{v}_n + A \mathbf{v}_t}{A + 1}"/></p>
-</div><p>where <img class="math" src="../_images/math/e6c46c02a839a81ce8479f11f2da0a4523af2825.png" alt="\mathbf{v}_n"/> is the velocity of the neutron and <img class="math" src="../_images/math/019e9892786e493964e145e7c5cf7b700314e53b.png" alt="A"/> is the
+<p><span class="eqno">(6)</span><img src="../_images/math/03a2555c4f2dd4d508012cee029d4f3789e5e1d2.png" alt="\mathbf{v}_{cm} = \frac{\mathbf{v}_n + A \mathbf{v}_t}{A + 1}"/></p>
+</div><p>where <img class="math" src="../_images/math/5405062f859c542bd66ee9e3a229783e4ca7b8e5.png" alt="\mathbf{v}_n"/> is the velocity of the neutron and <img class="math" src="../_images/math/0acafa529182e79b4f56165ec677554fba7fcf98.png" alt="A"/> is the
 atomic mass of the target nucleus measured in neutron masses (commonly referred
 to as the <em>atomic weight ratio</em>). With the velocity of the center-of-mass
 calculated, we can then determine the neutron&#8217;s velocity in the center-of-mass
 system:</p>
 <div class="math" id="equation-velocity-neutron-com">
-<p><span class="eqno">(7)</span><img src="../_images/math/ae8065b62030273d96fc95357d956e5f151ad85a.png" alt="\mathbf{V}_n = \mathbf{v}_n - \mathbf{v}_{cm}"/></p>
-</div><p>where we have used uppercase <img class="math" src="../_images/math/9d5b9321f67eecfa2013fa6f3891ba1f2e335946.png" alt="\mathbf{V}"/> to denote the center-of-mass
+<p><span class="eqno">(7)</span><img src="../_images/math/6bc2a1f29c71738f8be435b364d5a9d3d0329bf0.png" alt="\mathbf{V}_n = \mathbf{v}_n - \mathbf{v}_{cm}"/></p>
+</div><p>where we have used uppercase <img class="math" src="../_images/math/bddafdba567e077d725c2cafbf24fe43bb1c089a.png" alt="\mathbf{V}"/> to denote the center-of-mass
 system. The direction of the neutron in the center-of-mass system is</p>
 <div class="math" id="equation-angle-neutron-com">
-<p><span class="eqno">(8)</span><img src="../_images/math/c7b0923a067ed9ba14e75a609d00553a6995a734.png" alt="\mathbf{\Omega}_n = \frac{\mathbf{V}_n}{|| \mathbf{V}_n ||}."/></p>
+<p><span class="eqno">(8)</span><img src="../_images/math/ab5a37a266621215b91506e806ca9b2af24db6b7.png" alt="\mathbf{\Omega}_n = \frac{\mathbf{V}_n}{|| \mathbf{V}_n ||}."/></p>
 </div><p>At low energies, elastic scattering will be isotropic in the center-of-mass
 system, but for higher energies, there may be p-wave and higher order scattering
 that leads to anisotropic scattering. Thus, in general, we need to sample a
-cosine of the scattering angle which we will refer to as <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/>. For
+cosine of the scattering angle which we will refer to as <img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/>. For
 elastic scattering, the secondary angle distribution is always given in the
 center-of-mass system and is sampled according to the procedure outlined in
-<a class="reference internal" href="#sample-angle"><em>Sampling Secondary Angle Distributions</em></a>. After the cosine of the angle of scattering has been
+<a class="reference internal" href="#sample-angle"><span>Sampling Secondary Angle Distributions</span></a>. After the cosine of the angle of scattering has been
 sampled, we need to determine the neutron&#8217;s new direction
-<img class="math" src="../_images/math/431184225723219407b7948ebd1ae8acff2ebe39.png" alt="\mathbf{\Omega}'_n"/> in the center-of-mass system. This is done with the
-procedure in <a class="reference internal" href="#transform-coordinates"><em>Transforming a Particle&#8217;s Coordinates</em></a>. The new direction is multiplied by
+<img class="math" src="../_images/math/3d303d99a38ae45e70cae80181370d07294da513.png" alt="\mathbf{\Omega}'_n"/> in the center-of-mass system. This is done with the
+procedure in <a class="reference internal" href="#transform-coordinates"><span>Transforming a Particle&#8217;s Coordinates</span></a>. The new direction is multiplied by
 the speed of the neutron in the center-of-mass system to obtain the new velocity
 vector in the center-of-mass:</p>
 <div class="math" id="equation-velocity-neutron-com-2">
-<p><span class="eqno">(9)</span><img src="../_images/math/3a4f8afd736eb1b37089e136ee70c074045e7165.png" alt="\mathbf{V}'_n = || \mathbf{V}_n || \mathbf{\Omega}'_n."/></p>
+<p><span class="eqno">(9)</span><img src="../_images/math/c855f9085fcb37d678f7b4ab15e39083909e6e84.png" alt="\mathbf{V}'_n = || \mathbf{V}_n || \mathbf{\Omega}'_n."/></p>
 </div><p>Finally, we transform the velocity in the center-of-mass system back to lab
 coordinates:</p>
 <div class="math" id="equation-velocity-neutron-lab">
-<p><span class="eqno">(10)</span><img src="../_images/math/65cebcb990b48a4b1756f390c3a9ecc188975326.png" alt="\mathbf{v}'_n = \mathbf{V}'_n + \mathbf{v}_{cm}"/></p>
+<p><span class="eqno">(10)</span><img src="../_images/math/ec6c2809bb2665fd13a870685fea911da70b815e.png" alt="\mathbf{v}'_n = \mathbf{V}'_n + \mathbf{v}_{cm}"/></p>
 </div><p>In OpenMC, the angle and energy of the neutron are stored rather than the
 velocity vector itself, so the post-collision angle and energy can be inferred
 from the post-collision velocity of the neutron in the lab system.</p>
@@ -154,7 +152,7 @@ from the post-collision velocity of the neutron in the lab system.</p>
 scattering cosine in the lab system. If we know the scattering cosine in the
 center-of-mass, the scattering cosine in the lab system can be calculated as</p>
 <div class="math" id="equation-cosine-lab">
-<p><span class="eqno">(11)</span><img src="../_images/math/d4cbd02ae63aa2a88363ec81e08e51d68e9120a6.png" alt="\mu_{lab} = \frac{1 + A\mu}{\sqrt{A^2 + 2A\mu + 1}}."/></p>
+<p><span class="eqno">(11)</span><img src="../_images/math/523b2159fd900f6a3bcf27e7d8a5f862d484792a.png" alt="\mu_{lab} = \frac{1 + A\mu}{\sqrt{A^2 + 2A\mu + 1}}."/></p>
 </div><p>However, equation <a href="#equation-cosine-lab">(11)</a> is only valid if the target was at rest. When
 the target nucleus does have thermal motion, the cosine of the scattering angle
 can be determined by simply taking the dot product of the neutron&#8217;s initial and
@@ -164,22 +162,22 @@ final direction in the lab system.</p>
 <span id="inelastic-scatter"></span><h2>5.4. Inelastic Scattering<a class="headerlink" href="#inelastic-scattering" title="Permalink to this headline">¶</a></h2>
 <p>The major algorithms for inelastic scattering were described in previous
 sections. First, a scattering cosine is sampled using the algorithms in
-<a class="reference internal" href="#sample-angle"><em>Sampling Secondary Angle Distributions</em></a>. Then an outgoing energy is sampled using the algorithms in
-<a class="reference internal" href="#sample-energy"><em>Sampling Secondary Energy and Correlated Angle/Energy Distributions</em></a>. If the outgoing energy and scattering cosine were given in
+<a class="reference internal" href="#sample-angle"><span>Sampling Secondary Angle Distributions</span></a>. Then an outgoing energy is sampled using the algorithms in
+<a class="reference internal" href="#sample-energy"><span>Sampling Secondary Energy and Correlated Angle/Energy Distributions</span></a>. If the outgoing energy and scattering cosine were given in
 the center-of-mass system, they are transformed to laboratory coordinates using
-the algorithm described in <a class="reference internal" href="#transform-coordinates"><em>Transforming a Particle&#8217;s Coordinates</em></a>. Finally, the direction
+the algorithm described in <a class="reference internal" href="#transform-coordinates"><span>Transforming a Particle&#8217;s Coordinates</span></a>. Finally, the direction
 of the particle is changed also using the procedure in
-<a class="reference internal" href="#transform-coordinates"><em>Transforming a Particle&#8217;s Coordinates</em></a>.</p>
+<a class="reference internal" href="#transform-coordinates"><span>Transforming a Particle&#8217;s Coordinates</span></a>.</p>
 <p>Although inelastic scattering leaves the target nucleus in an excited state, no
 secondary photons from nuclear de-excitation are tracked in OpenMC.</p>
 </div>
 <div class="section" id="reactions">
-<h2>5.5. <img class="math" src="../_images/math/11d9b3efac04551ca81659b5409aec4281b4bed3.png" alt="(n,xn)"/> Reactions<a class="headerlink" href="#reactions" title="Permalink to this headline">¶</a></h2>
+<h2>5.5. <img class="math" src="../_images/math/86812743fd2241a6d3211913c9f5c801e4abde62.png" alt="(n,xn)"/> Reactions<a class="headerlink" href="#reactions" title="Permalink to this headline">¶</a></h2>
 <p>These types of reactions are just treated as inelastic scattering and as such
 are subject to the same procedure as described in
-<a class="reference internal" href="#inelastic-scatter"><em>Inelastic Scattering</em></a>. Rather than tracking multiple secondary neutrons, the
+<a class="reference internal" href="#inelastic-scatter"><span>Inelastic Scattering</span></a>. Rather than tracking multiple secondary neutrons, the
 weight of the outgoing neutron is multiplied by the number of secondary
-neutrons, e.g. for <img class="math" src="../_images/math/fa86b0ef48a28317d10a53f409f74d756ae49fd4.png" alt="(n,2n)"/>, only one outgoing neutron is tracked but its
+neutrons, e.g. for <img class="math" src="../_images/math/b51c1d14d772823c103e00abf9e448770f391c44.png" alt="(n,2n)"/>, only one outgoing neutron is tracked but its
 weight is doubled.</p>
 </div>
 <div class="section" id="fission">
@@ -187,8 +185,8 @@ weight is doubled.</p>
 <p>While fission is normally considered an absorption reaction, as far as it
 concerns a Monte Carlo simulation it actually bears more similarities to
 inelastic scattering since fission results in secondary neutrons in the exit
-channel. Other absorption reactions like <img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> or
-<img class="math" src="../_images/math/33e37bd1a09d48b145890174d49112d5b75f37d8.png" alt="(n,\alpha)"/>, on the contrary, produce no neutrons. There are a few other
+channel. Other absorption reactions like <img class="math" src="../_images/math/86a337316c6571ab2d3380e2bc1735c09def19dc.png" alt="(n,\gamma)"/> or
+<img class="math" src="../_images/math/a9b804bdbe6411f805d1c85414a6f436be43104a.png" alt="(n,\alpha)"/>, on the contrary, produce no neutrons. There are a few other
 idiosyncrasies in treating fission. In an eigenvalue calculation, secondary
 neutrons from fission are only &#8220;banked&#8221; for use in the next generation rather
 than being tracked as secondary neutrons from elastic and inelastic scattering
@@ -203,38 +201,38 @@ number of prompt and delayed neutrons must be determined to decide whether the
 secondary neutrons will be prompt or delayed. This is important because delayed
 neutrons have a markedly different spectrum from prompt neutrons, one that has a
 lower average energy of emission. The total number of neutrons emitted
-<img class="math" src="../_images/math/fc481e8632ac53bd0572e5e95ba925274c27dc66.png" alt="\nu_t"/> is given as a function of incident energy in the ACE format. Two
-representations exist for <img class="math" src="../_images/math/fc481e8632ac53bd0572e5e95ba925274c27dc66.png" alt="\nu_t"/>. The first is a polynomial of order
-<img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> with coefficients <img class="math" src="../_images/math/f55ec799a437cc6b3b9b16101acca9e22cf51049.png" alt="c_0,c_1,\dots,c_N"/>. If <img class="math" src="../_images/math/fc481e8632ac53bd0572e5e95ba925274c27dc66.png" alt="\nu_t"/> has this
-format, we can evaluate it at incoming energy <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> by using the equation</p>
+<img class="math" src="../_images/math/b3d7aca91cb037d9dd2187ba0359d8aa5887fb6d.png" alt="\nu_t"/> is given as a function of incident energy in the ACE format. Two
+representations exist for <img class="math" src="../_images/math/b3d7aca91cb037d9dd2187ba0359d8aa5887fb6d.png" alt="\nu_t"/>. The first is a polynomial of order
+<img class="math" src="../_images/math/75e27f04188974063be3230dca208cd495b77ce1.png" alt="N"/> with coefficients <img class="math" src="../_images/math/c2d4b2b36d48ebfe04a5fafab3d40063c36d3549.png" alt="c_0,c_1,\dots,c_N"/>. If <img class="math" src="../_images/math/b3d7aca91cb037d9dd2187ba0359d8aa5887fb6d.png" alt="\nu_t"/> has this
+format, we can evaluate it at incoming energy <img class="math" src="../_images/math/cfd13a0f26eb7ef0093319a7669da7dd3771dbac.png" alt="E"/> by using the equation</p>
 <div class="math" id="equation-nu-polynomial">
-<p><span class="eqno">(12)</span><img src="../_images/math/7d8f428010f544a68b10a29e9f56a82215d82c09.png" alt="\nu_t (E) = \sum_{i = 0}^N c_i E^i."/></p>
+<p><span class="eqno">(12)</span><img src="../_images/math/bb6efe848c3fe4bab8f7d7cd35c544c38a1f56ff.png" alt="\nu_t (E) = \sum_{i = 0}^N c_i E^i."/></p>
 </div><p>The other representation is just a tabulated function with a specified
 interpolation law. The number of prompt neutrons released per fission event
-<img class="math" src="../_images/math/cb182a99f817f3d85ce03b80f4758c118711e20f.png" alt="\nu_p"/> is also given as a function of incident energy and can be
+<img class="math" src="../_images/math/36eea1d3d0216766a76c948bf502ce767da2d083.png" alt="\nu_p"/> is also given as a function of incident energy and can be
 specified in a polynomial or tabular format. The number of delayed neutrons
-released per fission event <img class="math" src="../_images/math/060c60f6772c41b35ce46c7dcf54e6e19f115804.png" alt="\nu_d"/> can only be specified in a tabular
-format. In practice, we only need to determine <img class="math" src="../_images/math/5dae1d0d47b3d28c6154ee23bc242a9c9d946981.png" alt="nu_t"/> and
-<img class="math" src="../_images/math/73584709a74afc4c13dadcfcc3afff5872bd8a79.png" alt="nu_d"/>. Once these have been determined, we can calculated the delayed
+released per fission event <img class="math" src="../_images/math/4638d7b1180322a5cd4c0f09a4f5fe5f7c0ef07c.png" alt="\nu_d"/> can only be specified in a tabular
+format. In practice, we only need to determine <img class="math" src="../_images/math/11b00cf1e15714c18fed499d1da2a357978ffdc2.png" alt="nu_t"/> and
+<img class="math" src="../_images/math/cffe2c5bd05a58b0c024c8cba9db2928b325b971.png" alt="nu_d"/>. Once these have been determined, we can calculated the delayed
 neutron fraction</p>
 <div class="math" id="equation-beta">
-<p><span class="eqno">(13)</span><img src="../_images/math/959259ea13017b50b3f238a75c59d4dec4ed989e.png" alt="\beta = \frac{\nu_d}{\nu_t}."/></p>
+<p><span class="eqno">(13)</span><img src="../_images/math/6b8c85f8238b5e4678c9962a41d8da1037668558.png" alt="\beta = \frac{\nu_d}{\nu_t}."/></p>
 </div><p>We then need to determine how many total neutrons should be emitted from
 fission. If no survival biasing is being used, then the number of neutrons
 emitted is</p>
 <div class="math" id="equation-fission-neutrons">
-<p><span class="eqno">(14)</span><img src="../_images/math/1bcbd9ac8b65ff93cab5b9145051caccb9df8a7b.png" alt="\nu = \frac{w \nu_t}{k_{eff}}"/></p>
-</div><p>where <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> is the statistical weight and <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> is the effective
+<p><span class="eqno">(14)</span><img src="../_images/math/0b81f7c49ee7322b733cb61a83973dc3b8c77f62.png" alt="\nu = \frac{w \nu_t}{k_{eff}}"/></p>
+</div><p>where <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/> is the statistical weight and <img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> is the effective
 multiplication factor from the previous generation. The number of neutrons
 produced is biased in this manner so that the expected number of fission
 neutrons produced is the number of source particles that we started with in the
-generation. Since <img class="math" src="../_images/math/d6a7ccf879c4a4fe694033606332cb83806db296.png" alt="\nu"/> is not an integer, we use the following procedure
-to obtain an integral number of fission neutrons to produce. If <img class="math" src="../_images/math/0cfc3801d07169213bbcb9075b06818ddbdca2be.png" alt="\xi &gt;
-\nu - \lfloor \nu \rfloor"/>, then we produce <img class="math" src="../_images/math/2549f99cbefe0b972fa1ad038e492a9b5619c226.png" alt="\lfloor \nu \rfloor"/>
-neutrons. Otherwise, we produce <img class="math" src="../_images/math/e5815f46082de919de0c0c9ec73ee2a1670bcab9.png" alt="\lfloor \nu \rfloor + 1"/> neutrons. Then,
+generation. Since <img class="math" src="../_images/math/d67fb61cfffca2cc069e083d76cb6220b4ca14c8.png" alt="\nu"/> is not an integer, we use the following procedure
+to obtain an integral number of fission neutrons to produce. If <img class="math" src="../_images/math/7a757c8fad50b2717c09765286bad6a29183172e.png" alt="\xi &gt;
+\nu - \lfloor \nu \rfloor"/>, then we produce <img class="math" src="../_images/math/0a7a7849088f43c976ec825ba56fc6b7fbcc9c6d.png" alt="\lfloor \nu \rfloor"/>
+neutrons. Otherwise, we produce <img class="math" src="../_images/math/073377a007f6674b5d26ecc47ce99527c4d0372e.png" alt="\lfloor \nu \rfloor + 1"/> neutrons. Then,
 for each fission site produced, we sample the outgoing angle and energy
-according to the algorithms given in <a class="reference internal" href="#sample-angle"><em>Sampling Secondary Angle Distributions</em></a> and
-<a class="reference internal" href="#sample-energy"><em>Sampling Secondary Energy and Correlated Angle/Energy Distributions</em></a> respectively. If the neutron is to be born delayed, then
+according to the algorithms given in <a class="reference internal" href="#sample-angle"><span>Sampling Secondary Angle Distributions</span></a> and
+<a class="reference internal" href="#sample-energy"><span>Sampling Secondary Energy and Correlated Angle/Energy Distributions</span></a> respectively. If the neutron is to be born delayed, then
 there is an extra step of sampling a delayed neutron precursor group since they
 each have an associated secondary energy distribution.</p>
 <p>The sampled outgoing angle and energy of fission neutrons along with the
@@ -246,7 +244,7 @@ source sites.</p>
 <h2>5.7. Secondary Angles and Energy Distributions<a class="headerlink" href="#secondary-angles-and-energy-distributions" title="Permalink to this headline">¶</a></h2>
 <p>For any reactions with secondary neutrons, it is necessary to sample secondary
 angle and energy distributions. This includes elastic and inelastic scattering,
-fission, and <img class="math" src="../_images/math/11d9b3efac04551ca81659b5409aec4281b4bed3.png" alt="(n,xn)"/> reactions. In some cases, the angle and energy
+fission, and <img class="math" src="../_images/math/86812743fd2241a6d3211913c9f5c801e4abde62.png" alt="(n,xn)"/> reactions. In some cases, the angle and energy
 distributions may be specified separately, and in other cases, they may be
 specified as a correlated angle-energy distribution. In the following sections,
 we will outline the methods used to sample secondary distributions as well as
@@ -268,21 +266,21 @@ distribution is represented as either</p>
 <p>In the first case, no data needs to be stored on the ACE table, and the cosine
 of the scattering angle is simply calculated as</p>
 <div class="math" id="equation-isotropic-angle">
-<p><span class="eqno">(15)</span><img src="../_images/math/990c1db1616fc28b5dd37a3db9058e349878ac44.png" alt="\mu = 2\xi - 1"/></p>
-</div><p>where <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> is the cosine of the scattering angle and <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> is a
-random number sampled uniformly on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>.</p>
+<p><span class="eqno">(15)</span><img src="../_images/math/f485d2304e2a761ac6c03ed005a2d81614dfa872.png" alt="\mu = 2\xi - 1"/></p>
+</div><p>where <img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/> is the cosine of the scattering angle and <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/> is a
+random number sampled uniformly on <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>.</p>
 </div>
 <div class="section" id="equiprobable-angle-bin-distribution">
 <h4>5.7.1.2. Equiprobable Angle Bin Distribution<a class="headerlink" href="#equiprobable-angle-bin-distribution" title="Permalink to this headline">¶</a></h4>
-<p>For a 32 equiprobable bin distribution, we select a random number <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> to
-sample a cosine bin <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> such that</p>
+<p>For a 32 equiprobable bin distribution, we select a random number <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/> to
+sample a cosine bin <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> such that</p>
 <div class="math" id="equation-equiprobable-bin">
-<p><span class="eqno">(16)</span><img src="../_images/math/f2f37b880c28c0f79ccc57bc79ae3451936f2079.png" alt="i = 1 + \lfloor 32\xi \rfloor."/></p>
+<p><span class="eqno">(16)</span><img src="../_images/math/903aa78d4b0941093d54bc3f2388489516a83ce1.png" alt="i = 1 + \lfloor 32\xi \rfloor."/></p>
 </div><p>The same random number can then also be used to interpolate between neighboring
-<img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> values to get the final scattering cosine:</p>
+<img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/> values to get the final scattering cosine:</p>
 <div class="math" id="equation-equiprobable-cosine">
-<p><span class="eqno">(17)</span><img src="../_images/math/bcc0cb7915a7562cbd510619ede1c85ec516ccdb.png" alt="\mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)"/></p>
-</div><p>where <img class="math" src="../_images/math/aa44daa8af479b4aeca327e7680b9b48fffd35f3.png" alt="\mu_i"/> is the <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>-th scattering cosine.</p>
+<p><span class="eqno">(17)</span><img src="../_images/math/47d15fab472dd461e78de04ad3108750e989f29e.png" alt="\mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)"/></p>
+</div><p>where <img class="math" src="../_images/math/fe45a709c71e4160e1a09e3b4cc03d2d36d15644.png" alt="\mu_i"/> is the <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>-th scattering cosine.</p>
 </div>
 <div class="section" id="tabular-angular-distribution">
 <span id="angle-tabular"></span><h4>5.7.1.3. Tabular Angular Distribution<a class="headerlink" href="#tabular-angular-distribution" title="Permalink to this headline">¶</a></h4>
@@ -292,72 +290,72 @@ low-probability regions it is not very accurate. Thus, a more accurate method is
 to represent the scattering cosine with a tabular distribution. In this case, we
 have a table of cosines and their corresponding values for a probability
 distribution function and cumulative distribution function. For each incoming
-neutron energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/>, let us call <img class="math" src="../_images/math/ac55c5c35fb4a3d9bf8eb7181068655da6ae0040.png" alt="p_{i,j}"/> the j-th value in the
-probability distribution function and <img class="math" src="../_images/math/6a819f583771af2bbe775fa1cf34ca797d9f0f3c.png" alt="c_{i,j}"/> the j-th value in the
+neutron energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/>, let us call <img class="math" src="../_images/math/86ed38376b34a04724690ff96f4f11a2493266e9.png" alt="p_{i,j}"/> the j-th value in the
+probability distribution function and <img class="math" src="../_images/math/3df8a349e0b4e3274f26d803b1e5e9ee68099098.png" alt="c_{i,j}"/> the j-th value in the
 cumulative distribution function. We first find the interpolation factor on the
 incoming energy grid:</p>
 <div class="math" id="equation-interpolation-factor">
-<p><span class="eqno">(18)</span><img src="../_images/math/aed572ca045db9c1fd114e5286c5144eff3fd1f0.png" alt="f = \frac{E - E_i}{E_{i+1} - E_i}"/></p>
-</div><p>where <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> is the incoming energy of the particle. Then, statistical
+<p><span class="eqno">(18)</span><img src="../_images/math/22b1670ba24cf166ed9ab91087918a030bf4a690.png" alt="f = \frac{E - E_i}{E_{i+1} - E_i}"/></p>
+</div><p>where <img class="math" src="../_images/math/cfd13a0f26eb7ef0093319a7669da7dd3771dbac.png" alt="E"/> is the incoming energy of the particle. Then, statistical
 interpolation is performed to choose between using the cosines and distribution
-functions corresponding to energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> and <img class="math" src="../_images/math/42661f5e25089e2cc0aaed8b3f89e6dfa123b4c8.png" alt="E_{i+1}"/>. Let
-<img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/> be the chosen table where <img class="math" src="../_images/math/1016f310e6fc08d61019d1038dea53a0bb51c3ed.png" alt="\ell = i"/> if <img class="math" src="../_images/math/b724d790860956388dea8bb3c8ceb57123ba8e77.png" alt="\xi_1 &gt; f"/> and
-<img class="math" src="../_images/math/776d4e58588c5064b1347a912f3873dfb6195b72.png" alt="\ell = i + 1"/> otherwise, where <img class="math" src="../_images/math/afb50a86e371bb6a55232fc7188cadd13c3aa0cb.png" alt="\xi_1"/> is a random number. Another
-random number <img class="math" src="../_images/math/ccfd8fb41dea287e605b7582d709bd634d519a98.png" alt="\xi_2"/> is used to sample a scattering cosine bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>
+functions corresponding to energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> and <img class="math" src="../_images/math/71267dc66b3e219cd397c66e5ad169b3587037e6.png" alt="E_{i+1}"/>. Let
+<img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/> be the chosen table where <img class="math" src="../_images/math/8501f60c4ba95375f43218f19e2f1e0785175b8b.png" alt="\ell = i"/> if <img class="math" src="../_images/math/00d948c03f19e3b6afa596d3eeab10bac53624b9.png" alt="\xi_1 &gt; f"/> and
+<img class="math" src="../_images/math/8a0cd1fcea62023de9389c1174680918fe8d27a1.png" alt="\ell = i + 1"/> otherwise, where <img class="math" src="../_images/math/ff9bc79fdab575688ddc9a779355ca07b4963073.png" alt="\xi_1"/> is a random number. Another
+random number <img class="math" src="../_images/math/2365ba8fe8144157e7b26d56f1844513b04a7518.png" alt="\xi_2"/> is used to sample a scattering cosine bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/>
 using the cumulative distribution function:</p>
 <div class="math" id="equation-sample-cdf">
-<p><span class="eqno">(19)</span><img src="../_images/math/e244f963c6a9124b03b5f0a417ba6a825e7daf7e.png" alt="c_{\ell,j} &lt; \xi_2 &lt; c_{\ell,j+1}"/></p>
+<p><span class="eqno">(19)</span><img src="../_images/math/33121426c9ef99b3c090514b13dffd6bf95b321c.png" alt="c_{\ell,j} &lt; \xi_2 &lt; c_{\ell,j+1}"/></p>
 </div><p>The final scattering cosine will depend on whether histogram or linear-linear
 interpolation is used. In general, we can write the cumulative distribution
 function as</p>
 <div class="math" id="equation-cdf">
-<p><span class="eqno">(20)</span><img src="../_images/math/2f0dcf73df17304bbf56e9a0187766e10e7b4268.png" alt="c(\mu) = \int_{-1}^\mu p(\mu') d\mu'"/></p>
-</div><p>where <img class="math" src="../_images/math/644aa8ef75aff456b85fc70cbe9ec5a42ccc3349.png" alt="c(\mu)"/> is the cumulative distribution function and <img class="math" src="../_images/math/ada5910ece0296142a8e8ddc34fd3506a4379300.png" alt="p(\mu)"/>
+<p><span class="eqno">(20)</span><img src="../_images/math/50f62fa5c944a467d0ed2876815381006a2f0631.png" alt="c(\mu) = \int_{-1}^\mu p(\mu') d\mu'"/></p>
+</div><p>where <img class="math" src="../_images/math/e12a8b90b11fd044b27cbb4eca3be68b571463ca.png" alt="c(\mu)"/> is the cumulative distribution function and <img class="math" src="../_images/math/5e57efa4273ca827cffb8be255b766bcbb6f24f2.png" alt="p(\mu)"/>
 is the probability distribution function. Since we know that
-<img class="math" src="../_images/math/6e453b5282f3232df567549d28b1429745d71d6f.png" alt="c(\mu_{\ell,j}) = c_{\ell,j}"/>, this implies that for <img class="math" src="../_images/math/0a539125812be8a1e708ccd0e7ac7c782e57100d.png" alt="\mu &gt;
+<img class="math" src="../_images/math/66475937f97a576931c846accf149118478546f2.png" alt="c(\mu_{\ell,j}) = c_{\ell,j}"/>, this implies that for <img class="math" src="../_images/math/c6fa400970e245daf4caa0ed8c6272d52c24383d.png" alt="\mu &gt;
 \mu_{\ell,j}"/>,</p>
 <div class="math" id="equation-cdf-2">
-<p><span class="eqno">(21)</span><img src="../_images/math/38f8190a6739bed7bca072faa57fe929fc10cca6.png" alt="c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} p(\mu') d\mu'"/></p>
-</div><p>For histogram interpolation, we have that <img class="math" src="../_images/math/51d762657c4c93c7496aba051e3df57ce3d9c73d.png" alt="p(\mu') = p_{\ell,j}"/> for
-<img class="math" src="../_images/math/fbcf6d01088bea405efbc8b1cc72f1d04b1f53f5.png" alt="\mu_{\ell,j} \le \mu' &lt; \mu_{\ell,j+1}"/>. Thus, after integrating
+<p><span class="eqno">(21)</span><img src="../_images/math/6b58534f74db5ec2f662ffdd5c7a89bf518cd4b4.png" alt="c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} p(\mu') d\mu'"/></p>
+</div><p>For histogram interpolation, we have that <img class="math" src="../_images/math/a7af5d614cf23d89d0e69b805eaeac5ce60ab3b4.png" alt="p(\mu') = p_{\ell,j}"/> for
+<img class="math" src="../_images/math/53f8a7e3f1b4b871620b4e6bd92e231d3abb6432.png" alt="\mu_{\ell,j} \le \mu' &lt; \mu_{\ell,j+1}"/>. Thus, after integrating
 <a href="#equation-cdf-2">(21)</a> we have that</p>
 <div class="math" id="equation-cumulative-dist-histogram">
-<p><span class="eqno">(22)</span><img src="../_images/math/0158b57a0a7ff49829bd762992dd29db49f83d6b.png" alt="c(\mu) = c_{\ell,j} + (\mu - \mu_{\ell,j}) p_{\ell,j} = \xi_2"/></p>
+<p><span class="eqno">(22)</span><img src="../_images/math/e748d80eda5ee6750e81a5e5259cba01a2c76e35.png" alt="c(\mu) = c_{\ell,j} + (\mu - \mu_{\ell,j}) p_{\ell,j} = \xi_2"/></p>
 </div><p>Solving for the scattering cosine, we obtain the final form for histogram
 interpolation:</p>
 <div class="math" id="equation-cosine-histogram">
-<p><span class="eqno">(23)</span><img src="../_images/math/23b02ce8fe228ede6ecddbbb62f2ed83a3a40609.png" alt="\mu = \mu_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}."/></p>
-</div><p>For linear-linear interpolation, we represent the function <img class="math" src="../_images/math/ccbff05fd5bd1d83fe8234193b7479319b1a63fb.png" alt="p(\mu')"/> as a
-first-order polynomial in <img class="math" src="../_images/math/d582ae2423a799c48a2f2ab2984df5cf9e105524.png" alt="\mu'"/>. If we interpolate between successive
+<p><span class="eqno">(23)</span><img src="../_images/math/89136793a7416feba72d24a6effe0baec2fb7afe.png" alt="\mu = \mu_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}."/></p>
+</div><p>For linear-linear interpolation, we represent the function <img class="math" src="../_images/math/f0baf397295b367a5ee282fac446b114f926affa.png" alt="p(\mu')"/> as a
+first-order polynomial in <img class="math" src="../_images/math/1775941037caf9d9d43df0ba8def91922556c09b.png" alt="\mu'"/>. If we interpolate between successive
 values on the probability distribution function, we know that</p>
 <div class="math" id="equation-pdf-interpolation">
-<p><span class="eqno">(24)</span><img src="../_images/math/398c52007b5ebe653db7be2b35900ed768636dc3.png" alt="p(\mu') - p_{\ell,j} = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} -
+<p><span class="eqno">(24)</span><img src="../_images/math/db2a3ebc5507d1162eddd3bc3185eaabbc17bb81.png" alt="p(\mu') - p_{\ell,j} = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} -
 \mu_{\ell,j}} (\mu' - \mu_{\ell,j})"/></p>
-</div><p>Solving for <img class="math" src="../_images/math/ccbff05fd5bd1d83fe8234193b7479319b1a63fb.png" alt="p(\mu')"/> in equation <a href="#equation-pdf-interpolation">(24)</a> and inserting it
+</div><p>Solving for <img class="math" src="../_images/math/f0baf397295b367a5ee282fac446b114f926affa.png" alt="p(\mu')"/> in equation <a href="#equation-pdf-interpolation">(24)</a> and inserting it
 into equation <a href="#equation-cdf-2">(21)</a>, we obtain</p>
 <div class="math" id="equation-cdf-linlin">
-<p><span class="eqno">(25)</span><img src="../_images/math/f9f272ef45c654fbb0b1475da1f2d24cb6e8c996.png" alt="c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} \left [ \frac{p_{\ell,j+1} -
+<p><span class="eqno">(25)</span><img src="../_images/math/37cefa66a3f4d378b1718d75213d61e9801ce3a0.png" alt="c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} \left [ \frac{p_{\ell,j+1} -
 p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}} (\mu' - \mu_{\ell,j}) +
 p_{\ell,j} \right ] d\mu'."/></p>
 </div><p>Let us now make a change of variables using</p>
 <div class="math" id="equation-introduce-eta">
-<p><span class="eqno">(26)</span><img src="../_images/math/f006483391e5d25f86b5db41ebd1bc96aeabdb36.png" alt="\eta = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}
+<p><span class="eqno">(26)</span><img src="../_images/math/ec282da8551019ee24786a0fd65a9f0ef74fa596.png" alt="\eta = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}
 (\mu' - \mu_{\ell,j}) + p_{\ell,j}."/></p>
 </div><p>Equation <a href="#equation-cdf-linlin">(25)</a> then becomes</p>
 <div class="math" id="equation-cdf-linlin-eta">
-<p><span class="eqno">(27)</span><img src="../_images/math/7d55ef5a4507f06e38b7527e6cf1b1edf44d981d.png" alt="c(\mu) = c_{\ell,j} + \frac{1}{m} \int_{p_{\ell,j}}^{m(\mu - \mu_{\ell,j}) +
+<p><span class="eqno">(27)</span><img src="../_images/math/ec7b42bd4372708a5467915e95d0ecb498d57e1d.png" alt="c(\mu) = c_{\ell,j} + \frac{1}{m} \int_{p_{\ell,j}}^{m(\mu - \mu_{\ell,j}) +
 p_{\ell,j}} \eta \, d\eta"/></p>
 </div><p>where we have used</p>
 <div class="math" id="equation-slope">
-<p><span class="eqno">(28)</span><img src="../_images/math/22768d7bc95b2e83ea09efa9cfcab024c10fbb39.png" alt="m = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}."/></p>
+<p><span class="eqno">(28)</span><img src="../_images/math/c95449506df5faa754b5369eda815d3854dc2982.png" alt="m = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}."/></p>
 </div><p>Integrating equation <a href="#equation-cdf-linlin-eta">(27)</a>, we have</p>
 <div class="math" id="equation-cdf-linlin-integrated">
-<p><span class="eqno">(29)</span><img src="../_images/math/9e345d88295e077dc82d57cac28ceaee4bd5ed19.png" alt="c(\mu) = c_{\ell,j} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{\ell,j} ) +
+<p><span class="eqno">(29)</span><img src="../_images/math/3379b0bfb17419e7d5385013de923b8803291b07.png" alt="c(\mu) = c_{\ell,j} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{\ell,j} ) +
 p_{\ell,j} \right ]^2 - p_{\ell,j}^2 \right ) = \xi_2"/></p>
-</div><p>Solving for <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/>, we have the final form for the scattering cosine using
+</div><p>Solving for <img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/>, we have the final form for the scattering cosine using
 linear-linear interpolation:</p>
 <div class="math" id="equation-cosine-linlin">
-<p><span class="eqno">(30)</span><img src="../_images/math/d966bbc43aa03b9ee08168af32d8b87ba3477925.png" alt="\mu = \mu_{\ell,j} + \frac{1}{m} \left ( \sqrt{p_{\ell,j}^2 + 2 m (\xi_2 -
+<p><span class="eqno">(30)</span><img src="../_images/math/87a738b845cec38975a01384922f3729f2aea275.png" alt="\mu = \mu_{\ell,j} + \frac{1}{m} \left ( \sqrt{p_{\ell,j}^2 + 2 m (\xi_2 -
 c_{\ell,j} )} - p_{\ell,j} \right )"/></p>
 </div></div>
 </div>
@@ -374,8 +372,8 @@ the formats given in ENDF-6. In this section, we will describe how the outgoing
 energy of secondary particles is determined based on each ACE law.</p>
 <p>One of the subtleties in the ACE format is the fact that a single reaction can
 have multiple secondary energy distributions. This is mainly useful for
-reactions with multiple neutrons in the exit channel such as <img class="math" src="../_images/math/fa86b0ef48a28317d10a53f409f74d756ae49fd4.png" alt="(n,2n)"/> or
-<img class="math" src="../_images/math/11759659edb723e8f540171447461ecbbf77df3a.png" alt="(n,3n)"/>. In these types of reactions, each neutron is emitted
+reactions with multiple neutrons in the exit channel such as <img class="math" src="../_images/math/b51c1d14d772823c103e00abf9e448770f391c44.png" alt="(n,2n)"/> or
+<img class="math" src="../_images/math/293a1ded290b253cffd0a17e4dad7daf48ffd476.png" alt="(n,3n)"/>. In these types of reactions, each neutron is emitted
 corresponding to a different excitation level of the compound nucleus, and thus
 in general the neutrons will originate from different energy distributions. If
 multiple energy distributions are present, they are assigned probabilities that
@@ -395,75 +393,75 @@ kinematics, i.e. the outgoing energy may be outside the range of available
 energy in the reaction.</p>
 <p>To avoid this situation, the accepted practice is to use a process known as
 scaled interpolation <a class="reference internal" href="#doyas" id="id2">[Doyas]</a>. First, we find the tabulated incident energies
-which bound the actual incoming energy of the particle, i.e. find <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> such
-that <img class="math" src="../_images/math/e12f93f087b0231f50449edc28ed12050e5f68da.png" alt="E_i &lt; E &lt; E_{i+1}"/> and calculate the interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>
+which bound the actual incoming energy of the particle, i.e. find <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> such
+that <img class="math" src="../_images/math/11bed1d62b2f553c6bba9255ade361778cb870ea.png" alt="E_i &lt; E &lt; E_{i+1}"/> and calculate the interpolation factor <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/>
 via <a href="#equation-interpolation-factor">(18)</a>. Then, we interpolate between the minimum and
 maximum energies of the outgoing energy distributions corresponding to
-<img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> and <img class="math" src="../_images/math/42661f5e25089e2cc0aaed8b3f89e6dfa123b4c8.png" alt="E_{i+1}"/>:</p>
+<img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> and <img class="math" src="../_images/math/71267dc66b3e219cd397c66e5ad169b3587037e6.png" alt="E_{i+1}"/>:</p>
 <div class="math" id="equation-ace-law-1-minmax">
-<p><span class="eqno">(31)</span><img src="../_images/math/356a8a771ee7021eea380b24c080cb14ba012e09.png" alt="E_{min} = E_{i,1} + f ( E_{i+1,1} - E_i ) \\
+<p><span class="eqno">(31)</span><img src="../_images/math/8cd10269c4faa86efbbb4bba1fe892988c93dced.png" alt="E_{min} = E_{i,1} + f ( E_{i+1,1} - E_i ) \\
 E_{max} = E_{i,M} + f ( E_{i+1,M} - E_M )"/></p>
-</div><p>where <img class="math" src="../_images/math/458929b9b9fffee2f898a9a187056798d43100f9.png" alt="E_{min}"/> and <img class="math" src="../_images/math/3274ee2e13ff12041dc700e702b83463dc5f07ec.png" alt="E_{max}"/> are the minimum and maximum outgoing
-energies of a scaled distribution, <img class="math" src="../_images/math/4eea5332064acfb08980ab21e9b23f3aea41d75f.png" alt="E_{i,j}"/> is the j-th outgoing energy
-corresponding to the incoming energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> is the number of
+</div><p>where <img class="math" src="../_images/math/2cdc8d11e81c71524238a384a2c8d826ce4efbd4.png" alt="E_{min}"/> and <img class="math" src="../_images/math/7fe487f3393ac6c6a2a7d5931365d0b8158ae532.png" alt="E_{max}"/> are the minimum and maximum outgoing
+energies of a scaled distribution, <img class="math" src="../_images/math/2222b995c2353461d6e0ac399df3bf276b9c7304.png" alt="E_{i,j}"/> is the j-th outgoing energy
+corresponding to the incoming energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/>, and <img class="math" src="../_images/math/2de38926392ba23abeac75effc66c37a5f5be5fd.png" alt="M"/> is the number of
 outgoing energy bins. Next, statistical interpolation is performed to choose
 between using the outgoing energy distributions corresponding to energy
-<img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> and <img class="math" src="../_images/math/42661f5e25089e2cc0aaed8b3f89e6dfa123b4c8.png" alt="E_{i+1}"/>. Let <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/> be the chosen table where
-<img class="math" src="../_images/math/1016f310e6fc08d61019d1038dea53a0bb51c3ed.png" alt="\ell = i"/> if <img class="math" src="../_images/math/b724d790860956388dea8bb3c8ceb57123ba8e77.png" alt="\xi_1 &gt; f"/> and <img class="math" src="../_images/math/776d4e58588c5064b1347a912f3873dfb6195b72.png" alt="\ell = i + 1"/> otherwise, and
-<img class="math" src="../_images/math/afb50a86e371bb6a55232fc7188cadd13c3aa0cb.png" alt="\xi_1"/> is a random number. Now, we randomly sample an equiprobable
-outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> and interpolate between successive values on the
+<img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> and <img class="math" src="../_images/math/71267dc66b3e219cd397c66e5ad169b3587037e6.png" alt="E_{i+1}"/>. Let <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/> be the chosen table where
+<img class="math" src="../_images/math/8501f60c4ba95375f43218f19e2f1e0785175b8b.png" alt="\ell = i"/> if <img class="math" src="../_images/math/00d948c03f19e3b6afa596d3eeab10bac53624b9.png" alt="\xi_1 &gt; f"/> and <img class="math" src="../_images/math/8a0cd1fcea62023de9389c1174680918fe8d27a1.png" alt="\ell = i + 1"/> otherwise, and
+<img class="math" src="../_images/math/ff9bc79fdab575688ddc9a779355ca07b4963073.png" alt="\xi_1"/> is a random number. Now, we randomly sample an equiprobable
+outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> and interpolate between successive values on the
 outgoing energy distribution:</p>
 <div class="math" id="equation-ace-law-1-intermediate">
-<p><span class="eqno">(32)</span><img src="../_images/math/6f19355ee7869a0a53f90bc69b2f188a1e7214ce.png" alt="\hat{E} = E_{\ell,j} + \xi_2 (E_{\ell,j+1} - E_{\ell,j})"/></p>
-</div><p>where <img class="math" src="../_images/math/ccfd8fb41dea287e605b7582d709bd634d519a98.png" alt="\xi_2"/> is a random number sampled uniformly on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>. Since
+<p><span class="eqno">(32)</span><img src="../_images/math/2955d9bca85255065e7cbae5d6e778d17e35bcce.png" alt="\hat{E} = E_{\ell,j} + \xi_2 (E_{\ell,j+1} - E_{\ell,j})"/></p>
+</div><p>where <img class="math" src="../_images/math/2365ba8fe8144157e7b26d56f1844513b04a7518.png" alt="\xi_2"/> is a random number sampled uniformly on <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>. Since
 this outgoing energy may violate reaction kinematics, we then scale it to the
 minimum and maximum energies we calculated earlier to get the final outgoing
 energy:</p>
 <div class="math" id="equation-ace-law-1-energy">
-<p><span class="eqno">(33)</span><img src="../_images/math/a68c10ca1d67afa8a834a4d1598b347cc9e2920c.png" alt="E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
+<p><span class="eqno">(33)</span><img src="../_images/math/15af00eb8283d9db763dc22497b2ca77cffdcaa2.png" alt="E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
 (E_{max} - E_{min})"/></p>
 </div></div>
 <div class="section" id="ace-law-3-inelastic-level-scattering">
 <h4>5.7.2.2. ACE Law 3 - Inelastic Level Scattering<a class="headerlink" href="#ace-law-3-inelastic-level-scattering" title="Permalink to this headline">¶</a></h4>
 <p>It can be shown (see <a class="reference external" href="http://hdl.handle.net/1721.1/1716">Foderaro</a>) that in inelastic level scattering, the outgoing
-energy of the neutron <img class="math" src="../_images/math/411ef29ce6c32ab71534dfd3319a6fe72af9c5ee.png" alt="E'"/> can be related to the Q-value of the reaction
+energy of the neutron <img class="math" src="../_images/math/fdbdb6243522f89db716f229b94be1c028a97b8a.png" alt="E'"/> can be related to the Q-value of the reaction
 and the incoming energy:</p>
 <div class="math" id="equation-level-scattering">
-<p><span class="eqno">(34)</span><img src="../_images/math/0bd24d816c2f1a08d00db1804de0feb34e69b57d.png" alt="E' = \left ( \frac{A}{A+1} \right )^2 \left ( E - \frac{A + 1}{A} Q \right )"/></p>
-</div><p>where <img class="math" src="../_images/math/019e9892786e493964e145e7c5cf7b700314e53b.png" alt="A"/> is the mass of the target nucleus measured in neutron masses.</p>
+<p><span class="eqno">(34)</span><img src="../_images/math/d0587e89a40a507b9444255f1b5ca9cb521d8ccc.png" alt="E' = \left ( \frac{A}{A+1} \right )^2 \left ( E - \frac{A + 1}{A} Q \right )"/></p>
+</div><p>where <img class="math" src="../_images/math/0acafa529182e79b4f56165ec677554fba7fcf98.png" alt="A"/> is the mass of the target nucleus measured in neutron masses.</p>
 </div>
 <div class="section" id="ace-law-4-continuous-tabular-distribution">
 <span id="ace-law-4"></span><h4>5.7.2.3. ACE Law 4 - Continuous Tabular Distribution<a class="headerlink" href="#ace-law-4-continuous-tabular-distribution" title="Permalink to this headline">¶</a></h4>
-<p>This representation is very similar to <a class="reference internal" href="#ace-law-1"><em>ACE Law 1 - Tabular Equiprobable Energy Bins</em></a> except that instead of
+<p>This representation is very similar to <a class="reference internal" href="#ace-law-1"><span>ACE Law 1 - Tabular Equiprobable Energy Bins</span></a> except that instead of
 equiprobable outgoing energy bins, the outgoing energy distribution for each
 incoming energy is represented with a probability distribution function. For
-each incoming neutron energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/>, let us call <img class="math" src="../_images/math/ac55c5c35fb4a3d9bf8eb7181068655da6ae0040.png" alt="p_{i,j}"/> the j-th
-value in the probability distribution function, <img class="math" src="../_images/math/6a819f583771af2bbe775fa1cf34ca797d9f0f3c.png" alt="c_{i,j}"/> the j-th value
-in the cumulative distribution function, and <img class="math" src="../_images/math/4eea5332064acfb08980ab21e9b23f3aea41d75f.png" alt="E_{i,j}"/> the j-th outgoing
+each incoming neutron energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/>, let us call <img class="math" src="../_images/math/86ed38376b34a04724690ff96f4f11a2493266e9.png" alt="p_{i,j}"/> the j-th
+value in the probability distribution function, <img class="math" src="../_images/math/3df8a349e0b4e3274f26d803b1e5e9ee68099098.png" alt="c_{i,j}"/> the j-th value
+in the cumulative distribution function, and <img class="math" src="../_images/math/2222b995c2353461d6e0ac399df3bf276b9c7304.png" alt="E_{i,j}"/> the j-th outgoing
 energy.</p>
 <p>We proceed first as we did for ACE Law 1, determining the bounding energies of
-the particle&#8217;s incoming energy such that <img class="math" src="../_images/math/e12f93f087b0231f50449edc28ed12050e5f68da.png" alt="E_i &lt; E &lt; E_{i+1}"/> and
-calculating an interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/> with equation
+the particle&#8217;s incoming energy such that <img class="math" src="../_images/math/11bed1d62b2f553c6bba9255ade361778cb870ea.png" alt="E_i &lt; E &lt; E_{i+1}"/> and
+calculating an interpolation factor <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/> with equation
 <a href="#equation-interpolation-factor">(18)</a>. Next, statistical interpolation is performed to
 choose between using the outgoing energy distributions corresponding to energy
-<img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> and <img class="math" src="../_images/math/42661f5e25089e2cc0aaed8b3f89e6dfa123b4c8.png" alt="E_{i+1}"/>. Let <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/> be the chosen table where
-<img class="math" src="../_images/math/1016f310e6fc08d61019d1038dea53a0bb51c3ed.png" alt="\ell = i"/> if <img class="math" src="../_images/math/b724d790860956388dea8bb3c8ceb57123ba8e77.png" alt="\xi_1 &gt; f"/> and <img class="math" src="../_images/math/776d4e58588c5064b1347a912f3873dfb6195b72.png" alt="\ell = i + 1"/> otherwise, and
-<img class="math" src="../_images/math/afb50a86e371bb6a55232fc7188cadd13c3aa0cb.png" alt="\xi_1"/> is a random number. Then, we sample an outgoing energy bin
-<img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> using the cumulative distribution function:</p>
+<img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> and <img class="math" src="../_images/math/71267dc66b3e219cd397c66e5ad169b3587037e6.png" alt="E_{i+1}"/>. Let <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/> be the chosen table where
+<img class="math" src="../_images/math/8501f60c4ba95375f43218f19e2f1e0785175b8b.png" alt="\ell = i"/> if <img class="math" src="../_images/math/00d948c03f19e3b6afa596d3eeab10bac53624b9.png" alt="\xi_1 &gt; f"/> and <img class="math" src="../_images/math/8a0cd1fcea62023de9389c1174680918fe8d27a1.png" alt="\ell = i + 1"/> otherwise, and
+<img class="math" src="../_images/math/ff9bc79fdab575688ddc9a779355ca07b4963073.png" alt="\xi_1"/> is a random number. Then, we sample an outgoing energy bin
+<img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> using the cumulative distribution function:</p>
 <div class="math" id="equation-ace-law-4-sample-cdf">
-<p><span class="eqno">(35)</span><img src="../_images/math/e244f963c6a9124b03b5f0a417ba6a825e7daf7e.png" alt="c_{\ell,j} &lt; \xi_2 &lt; c_{\ell,j+1}"/></p>
-</div><p>where <img class="math" src="../_images/math/ccfd8fb41dea287e605b7582d709bd634d519a98.png" alt="\xi_2"/> is a random number sampled uniformly on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>. At
+<p><span class="eqno">(35)</span><img src="../_images/math/33121426c9ef99b3c090514b13dffd6bf95b321c.png" alt="c_{\ell,j} &lt; \xi_2 &lt; c_{\ell,j+1}"/></p>
+</div><p>where <img class="math" src="../_images/math/2365ba8fe8144157e7b26d56f1844513b04a7518.png" alt="\xi_2"/> is a random number sampled uniformly on <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>. At
 this point, we need to interpolate between the successive values on the outgoing
 energy distribution using either histogram or linear-linear interpolation. The
 formulas for these can be derived along the same lines as those found in
-<a class="reference internal" href="#angle-tabular"><em>Tabular Angular Distribution</em></a>. For histogram interpolation, the interpolated outgoing
-energy on the <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>-th distribution is</p>
+<a class="reference internal" href="#angle-tabular"><span>Tabular Angular Distribution</span></a>. For histogram interpolation, the interpolated outgoing
+energy on the <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>-th distribution is</p>
 <div class="math" id="equation-energy-histogram">
-<p><span class="eqno">(36)</span><img src="../_images/math/334c44d5859497107d7935ccb7b3ebf945e77036.png" alt="\hat{E} = E_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}."/></p>
+<p><span class="eqno">(36)</span><img src="../_images/math/4922db0ddd9a9d6ac438e7ff7874d2ce5a819992.png" alt="\hat{E} = E_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}."/></p>
 </div><p>If linear-linear interpolation is to be used, the outgoing energy on the
-<img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>-th distribution is</p>
+<img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>-th distribution is</p>
 <div class="math" id="equation-energy-linlin">
-<p><span class="eqno">(37)</span><img src="../_images/math/09be6addfac54bc22fb15534a5ec5cbe763ae7a9.png" alt="\hat{E} = E_{\ell,j} + \frac{E_{\ell,j+1} - E_{\ell,j}}{p_{\ell,j+1} -
+<p><span class="eqno">(37)</span><img src="../_images/math/9267b5537b1e77c768e485fb2ecddceef549feb4.png" alt="\hat{E} = E_{\ell,j} + \frac{E_{\ell,j+1} - E_{\ell,j}}{p_{\ell,j+1} -
 p_{\ell,j}} \left ( \sqrt{p_{\ell,j}^2 + 2 \frac{p_{\ell,j+1} -
 p_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} ( \xi_2 - c_{\ell,j} )} - p_{\ell,j}
 \right )."/></p>
@@ -471,9 +469,9 @@ p_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} ( \xi_2 - c_{\ell,j} )} - p_{\ell,j}
 minimum and maximum energies interpolated between the neighboring outgoing
 energy distributions to get the final outgoing energy:</p>
 <div class="math" id="equation-ace-law-4-energy">
-<p><span class="eqno">(38)</span><img src="../_images/math/a68c10ca1d67afa8a834a4d1598b347cc9e2920c.png" alt="E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
+<p><span class="eqno">(38)</span><img src="../_images/math/15af00eb8283d9db763dc22497b2ca77cffdcaa2.png" alt="E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
 (E_{max} - E_{min})"/></p>
-</div><p>where <img class="math" src="../_images/math/458929b9b9fffee2f898a9a187056798d43100f9.png" alt="E_{min}"/> and <img class="math" src="../_images/math/3274ee2e13ff12041dc700e702b83463dc5f07ec.png" alt="E_{max}"/> are defined the same as in equation
+</div><p>where <img class="math" src="../_images/math/2cdc8d11e81c71524238a384a2c8d826ce4efbd4.png" alt="E_{min}"/> and <img class="math" src="../_images/math/7fe487f3393ac6c6a2a7d5931365d0b8158ae532.png" alt="E_{max}"/> are defined the same as in equation
 <a href="#equation-ace-law-1-minmax">(31)</a>.</p>
 </div>
 <div class="section" id="ace-law-7-maxwell-fission-spectrum">
@@ -482,22 +480,22 @@ energy distributions to get the final outgoing energy:</p>
 so-called Maxwell spectrum. A probability distribution for the Maxwell spectrum
 can be written in the form</p>
 <div class="math" id="equation-maxwell-spectrum">
-<p><span class="eqno">(39)</span><img src="../_images/math/99e02d1000c175a104a3644ceb3bdca1f550b553.png" alt="p(E') dE' = c E'^{1/2} e^{-E'/T(E)} dE'"/></p>
-</div><p>where <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> is the incoming energy of the neutron and <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is the
+<p><span class="eqno">(39)</span><img src="../_images/math/2cc2886c6c6b951eb395a7135dda654fdb3ad021.png" alt="p(E') dE' = c E'^{1/2} e^{-E'/T(E)} dE'"/></p>
+</div><p>where <img class="math" src="../_images/math/cfd13a0f26eb7ef0093319a7669da7dd3771dbac.png" alt="E"/> is the incoming energy of the neutron and <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> is the
 so-called nuclear temperature, which is a function of the incoming energy of the
 neutron. The ACE format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
-energies using a specified interpolation law. Once the temperature <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is
+energies using a specified interpolation law. Once the temperature <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> is
 determined, we then calculate a candidate outgoing energy based on rule C64 in
 the <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>:</p>
 <div class="math" id="equation-maxwell-E-candidate">
-<p><span class="eqno">(40)</span><img src="../_images/math/16489cbb9e0da59d1fc383f1642790d774881e79.png" alt="E' = -T \left [ \log (\xi_1) + \log (\xi_2) \cos^2 \left ( \frac{\pi
+<p><span class="eqno">(40)</span><img src="../_images/math/eb903f5c889949b4884436afdca0991a11c27fa3.png" alt="E' = -T \left [ \log (\xi_1) + \log (\xi_2) \cos^2 \left ( \frac{\pi
 \xi_3}{2} \right ) \right ]"/></p>
-</div><p>where <img class="math" src="../_images/math/82ce305031369ffb53339db4174b989a8c5ba53c.png" alt="\xi_1, \xi_2, \xi_3"/> are random numbers sampled on the unit
+</div><p>where <img class="math" src="../_images/math/267769507fc66797837db56352b36189af0a448d.png" alt="\xi_1, \xi_2, \xi_3"/> are random numbers sampled on the unit
 interval. The outgoing energy is only accepted if</p>
 <div class="math" id="equation-maxwell-restriction">
-<p><span class="eqno">(41)</span><img src="../_images/math/01efda64a6477b840e25e65c0e15bce3ea6a2f91.png" alt="0 \le E' \le E - U"/></p>
-</div><p>where <img class="math" src="../_images/math/e2bbebb3bd73f1ae5c64098ab0244f739abf7ca4.png" alt="U"/> is called the restriction energy and is specified on the ACE
+<p><span class="eqno">(41)</span><img src="../_images/math/50d099a6f3a20bd31d8526c2a086af9c44e7c100.png" alt="0 \le E' \le E - U"/></p>
+</div><p>where <img class="math" src="../_images/math/73f5e249c88b2b3068263480f576b051cb5c4f6e.png" alt="U"/> is called the restriction energy and is specified on the ACE
 table. If the outgoing energy is rejected, it is resampled using equation
 <a href="#equation-maxwell-E-candidate">(40)</a>.</p>
 </div>
@@ -508,18 +506,18 @@ secondary particle can &#8220;evaporate&#8221; from the compound nucleus if it h
 sufficient energy. The probability distribution for an evaporation spectrum can
 be written in the form</p>
 <div class="math" id="equation-evaporation-spectrum">
-<p><span class="eqno">(42)</span><img src="../_images/math/1d42f7beb1c846b91ba9d5e1662a5bbffab60cc8.png" alt="p(E') dE' = c E' e^{-E'/T(E)} dE'"/></p>
-</div><p>where <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> is the incoming energy of the neutron and <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is the
+<p><span class="eqno">(42)</span><img src="../_images/math/e04ea1964d7a8410e22f5bc26d9cc0e332e34290.png" alt="p(E') dE' = c E' e^{-E'/T(E)} dE'"/></p>
+</div><p>where <img class="math" src="../_images/math/cfd13a0f26eb7ef0093319a7669da7dd3771dbac.png" alt="E"/> is the incoming energy of the neutron and <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> is the
 nuclear temperature, which is a function of the incoming energy of the
 neutron. The ACE format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
-energies using a specified interpolation law. Once the temperature <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is
+energies using a specified interpolation law. Once the temperature <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> is
 determined, we then calculate a candidate outgoing energy based on the algorithm
 given in <a class="reference external" href="http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694">LA-UR-14-27694</a>:</p>
 <div class="math" id="equation-evaporation-E">
-<p><span class="eqno">(43)</span><img src="../_images/math/b38f1f9fa9157145a2e53b67fa191af84ddb7b57.png" alt="E' = -T \log ((1 - g\xi_1)(1 - g\xi_2))"/></p>
-</div><p>where <img class="math" src="../_images/math/c99197f823f3014acec90e80cb67b3a233cca887.png" alt="g = 1 - e^{-w}"/>, <img class="math" src="../_images/math/371663bc00dcccec1116ead641faa2d8bee80750.png" alt="w = (E - U)/T"/>, <img class="math" src="../_images/math/e2bbebb3bd73f1ae5c64098ab0244f739abf7ca4.png" alt="U"/> is the
-restriction energy, and <img class="math" src="../_images/math/f33cea5b957cd9633db339d718c6795b3f2361db.png" alt="\xi_1, \xi_2"/> are random numbers sampled on the
+<p><span class="eqno">(43)</span><img src="../_images/math/3220733708a83987e452e76214d0ff0f1c1582fb.png" alt="E' = -T \log ((1 - g\xi_1)(1 - g\xi_2))"/></p>
+</div><p>where <img class="math" src="../_images/math/8f6182aca5a0f32c8e0e7166b4f5288902c85d41.png" alt="g = 1 - e^{-w}"/>, <img class="math" src="../_images/math/d98ecf327f611fdc01c42d44d066ea00604128ad.png" alt="w = (E - U)/T"/>, <img class="math" src="../_images/math/73f5e249c88b2b3068263480f576b051cb5c4f6e.png" alt="U"/> is the
+restriction energy, and <img class="math" src="../_images/math/9564c43dd4cebed68a763bfff513deabed970e44.png" alt="\xi_1, \xi_2"/> are random numbers sampled on the
 unit interval. The outgoing energy is only accepted according to the restriction
 energy as in equation <a href="#equation-maxwell-restriction">(41)</a>. This algorithm has a much
 higher rejection efficiency than the standard technique, i.e. rule C45 in the
@@ -530,19 +528,19 @@ higher rejection efficiency than the standard technique, i.e. rule C45 in the
 <p>The probability distribution for a Watt fission spectrum can be written in the
 form</p>
 <div class="math" id="equation-watt-spectrum">
-<p><span class="eqno">(44)</span><img src="../_images/math/4ffe1408a7aeb4dc09d288f40efd8c89afed5abd.png" alt="p(E') dE' = c e^{-E'/a(E)} \sinh \sqrt{b(E) \, E'} dE'"/></p>
-</div><p>where <img class="math" src="../_images/math/c7d457e388298246adb06c587bccd419ea67f7e8.png" alt="a"/> and <img class="math" src="../_images/math/8136a7ef6a03334a7246df9097e5bcc31ba33fd2.png" alt="b"/> are parameters for the distribution and are given
+<p><span class="eqno">(44)</span><img src="../_images/math/7da7f79468c969bc35bff406b0b9eefadeb64165.png" alt="p(E') dE' = c e^{-E'/a(E)} \sinh \sqrt{b(E) \, E'} dE'"/></p>
+</div><p>where <img class="math" src="../_images/math/7dd2a5ea01fbd72ad2a58dd1f3d6ecbfde6208a1.png" alt="a"/> and <img class="math" src="../_images/math/5e87bf41a96deddf6cb485ff530f153f2590e9cc.png" alt="b"/> are parameters for the distribution and are given
 as tabulated functions of the incoming energy of the neutron. These two
 parameters are interpolated on the incoming energy grid using a specified
 interpolation law. Once the parameters have been determined, we sample a
-Maxwellian spectrum with nuclear temperature <img class="math" src="../_images/math/c7d457e388298246adb06c587bccd419ea67f7e8.png" alt="a"/> using the algorithm
-described in <a class="reference internal" href="#maxwell"><em>ACE Law 7 - Maxwell Fission Spectrum</em></a> to get an energy <img class="math" src="../_images/math/10cb764f88509fb1c8012366993fdbee98f31bc5.png" alt="W"/>. Then, the outgoing
+Maxwellian spectrum with nuclear temperature <img class="math" src="../_images/math/7dd2a5ea01fbd72ad2a58dd1f3d6ecbfde6208a1.png" alt="a"/> using the algorithm
+described in <a class="reference internal" href="#maxwell"><span>ACE Law 7 - Maxwell Fission Spectrum</span></a> to get an energy <img class="math" src="../_images/math/fa34489cf430b7630b30f28b2eb050e2489e3523.png" alt="W"/>. Then, the outgoing
 energy is calculated as</p>
 <div class="math" id="equation-watt-E">
-<p><span class="eqno">(45)</span><img src="../_images/math/583ae3d2ac2b6b0d2b900ae88cb17430a03814eb.png" alt="E' = W + \frac{a^2 b}{4} + (2\xi - 1) \sqrt{a^2 b W}"/></p>
-</div><p>where <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> is a random number sampled on the interval <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>. The
+<p><span class="eqno">(45)</span><img src="../_images/math/d34e2a7acd952b653e60c69d2a11d6f256941963.png" alt="E' = W + \frac{a^2 b}{4} + (2\xi - 1) \sqrt{a^2 b W}"/></p>
+</div><p>where <img class="math" src="../_images/math/26bfd3bc4c5db78139d8897f9cfa5bba511a2f22.png" alt="\xi"/> is a random number sampled on the interval <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>. The
 outgoing energy is only accepted according to a specified restriction energy
-<img class="math" src="../_images/math/e2bbebb3bd73f1ae5c64098ab0244f739abf7ca4.png" alt="U"/> as defined in equation <a href="#equation-maxwell-restriction">(41)</a>.</p>
+<img class="math" src="../_images/math/73f5e249c88b2b3068263480f576b051cb5c4f6e.png" alt="U"/> as defined in equation <a href="#equation-maxwell-restriction">(41)</a>.</p>
 <p>This algorithm can be found in Forrest Brown&#8217;s <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf">lectures</a> on Monte Carlo methods
 and is an unpublished sampling scheme based on the original Watt spectrum
 derivation <a class="reference internal" href="#watt" id="id3">[Watt]</a>.</p>
@@ -551,44 +549,44 @@ derivation <a class="reference internal" href="#watt" id="id3">[Watt]</a>.</p>
 <h4>5.7.2.7. ACE Law 44 - Kalbach-Mann Correlated Scattering<a class="headerlink" href="#ace-law-44-kalbach-mann-correlated-scattering" title="Permalink to this headline">¶</a></h4>
 <p>This law is very similar to ACE Law 4 except now the outgoing angle of the
 neutron is correlated to the outgoing energy and is not sampled from a separate
-distribution. For each incident neutron energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> tabulated, there is
-an array of precompound factors <img class="math" src="../_images/math/96e3592ee349a29900278c1b37e4a144ef295882.png" alt="R_{i,j}"/> and angular distribution slopes
-<img class="math" src="../_images/math/cd222bc82e0cd5871ba6885aaa47327e68136643.png" alt="A_{i,j}"/> corresponding to each outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> in addition
+distribution. For each incident neutron energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> tabulated, there is
+an array of precompound factors <img class="math" src="../_images/math/c27cef85153c864b984a48b64940903b71c40cb9.png" alt="R_{i,j}"/> and angular distribution slopes
+<img class="math" src="../_images/math/bb6c6c97d391e46320213fa3786fd8e8198c0ee5.png" alt="A_{i,j}"/> corresponding to each outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> in addition
 to the outgoing energies and distribution functions as in ACE Law 4.</p>
 <p>The calculation of the outgoing energy of the neutron proceeds exactly the same
-as in the algorithm described in <a class="reference internal" href="#ace-law-4"><em>ACE Law 4 - Continuous Tabular Distribution</em></a>. In that algorithm, we found
-an interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>, statistically sampled an incoming energy bin
-<img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> based on the
+as in the algorithm described in <a class="reference internal" href="#ace-law-4"><span>ACE Law 4 - Continuous Tabular Distribution</span></a>. In that algorithm, we found
+an interpolation factor <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/>, statistically sampled an incoming energy bin
+<img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> based on the
 tabulated cumulative distribution function. Once the outgoing energy has been
 determined with equation <a href="#equation-ace-law-4-energy">(38)</a>, we then need to calculate the
 outgoing angle based on the tabulated Kalbach-Mann parameters. These parameters
 themselves are subject to either histogram or linear-linear interpolation on the
 outgoing energy grid. For histogram interpolation, the parameters are</p>
 <div class="math" id="equation-KM-parameters-histogram">
-<p><span class="eqno">(46)</span><img src="../_images/math/46ddd53cab945638b174fc5a86c2d3375afb285a.png" alt="R = R_{\ell,j} \\
+<p><span class="eqno">(46)</span><img src="../_images/math/12cde44bfcb267b4b75e32cb7a30f786d580d7bd.png" alt="R = R_{\ell,j} \\
 A = A_{\ell,j}."/></p>
 </div><p>If linear-linear interpolation is specified, the parameters are</p>
 <div class="math" id="equation-KM-parameters-linlin">
-<p><span class="eqno">(47)</span><img src="../_images/math/9e46570a52d6442fd4dd58100a5ffcc9a74dd385.png" alt="R = R_{\ell,j} + \frac{\hat{E} - E_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} (
+<p><span class="eqno">(47)</span><img src="../_images/math/1fc535f702d9142f6c3c5a3129b3c87669f79a1c.png" alt="R = R_{\ell,j} + \frac{\hat{E} - E_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} (
 R_{\ell,j+1} - R_{\ell,j} ) \\
 A = A_{\ell,j} + \frac{\hat{E} - E_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} (
 A_{\ell,j+1} - A_{\ell,j} )"/></p>
-</div><p>where <img class="math" src="../_images/math/9d25d0527b1f635705501f5ba8b3e7a7a65e25bd.png" alt="\hat{E}"/> is defined in equation <a href="#equation-energy-linlin">(37)</a>. With the
+</div><p>where <img class="math" src="../_images/math/d60786dfb68719d2c95244772f5c3b12b1e26bbf.png" alt="\hat{E}"/> is defined in equation <a href="#equation-energy-linlin">(37)</a>. With the
 parameters determined, the probability distribution function for the cosine of
 the scattering angle is</p>
 <div class="math" id="equation-KM-pdf-angle">
-<p><span class="eqno">(48)</span><img src="../_images/math/7d6d5c906bb30c00ba2b8a7925aebc1bf8e4d656.png" alt="p(\mu) d\mu = \frac{A}{2 \sinh (A)} \left [ \cosh (A\mu) + R \sinh (A\mu)
+<p><span class="eqno">(48)</span><img src="../_images/math/fe32496da074353a18adf0bbc0768a788019c45c.png" alt="p(\mu) d\mu = \frac{A}{2 \sinh (A)} \left [ \cosh (A\mu) + R \sinh (A\mu)
 \right ] d\mu."/></p>
 </div><p>The rules for sampling this probability distribution function can be derived
 based on rules C39 and C40 in the <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>. First, we sample two
-random numbers <img class="math" src="../_images/math/b620332c5e28b62bddd2a4b7c0f945e380d4f47d.png" alt="\xi_3, \xi_4"/> on the unit interval. If <img class="math" src="../_images/math/e4a6fac94cc25fef1f91b85ea915e676e1022dcb.png" alt="\xi_3 &gt; R"/>
+random numbers <img class="math" src="../_images/math/614475cc8905448a17b73bce384ec9328ebfee1a.png" alt="\xi_3, \xi_4"/> on the unit interval. If <img class="math" src="../_images/math/5a4acbbccbf5114126e4ec10e7c8c4c35a37c515.png" alt="\xi_3 &gt; R"/>
 then the outgoing angle is</p>
 <div class="math" id="equation-KM-angle-1">
-<p><span class="eqno">(49)</span><img src="../_images/math/b73f63825f26190ec9906bc5497a10b69292b4fc.png" alt="\mu = \frac{1}{A} \ln \left ( T + \sqrt{T^2 + 1} \right )"/></p>
-</div><p>where <img class="math" src="../_images/math/60304bcbedb3bacec86eb21075142ce712ae20e6.png" alt="T = (2 \xi_4 - 1) \sinh (A)"/>. If <img class="math" src="../_images/math/5ad2f76673b75bb8bbe7e328e723c7e4368e3d9c.png" alt="\xi_3 \le R"/>, then the
+<p><span class="eqno">(49)</span><img src="../_images/math/4e96ee322d3880b756754bbcc1f3e6cb79294970.png" alt="\mu = \frac{1}{A} \ln \left ( T + \sqrt{T^2 + 1} \right )"/></p>
+</div><p>where <img class="math" src="../_images/math/7e93783753d8cc6027cc5eeb38100db7320249d0.png" alt="T = (2 \xi_4 - 1) \sinh (A)"/>. If <img class="math" src="../_images/math/73df4cc8f91d714ddae4facc6a36cfdda9cf1b7c.png" alt="\xi_3 \le R"/>, then the
 outgoing angle is</p>
 <div class="math" id="equation-KM-angle-2">
-<p><span class="eqno">(50)</span><img src="../_images/math/9375035003057c0d471bcf75f7ebc69ee5d489b0.png" alt="\mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right )."/></p>
+<p><span class="eqno">(50)</span><img src="../_images/math/5227a5802320c72e5b5896b28aecf0d2f1b8fa1b.png" alt="\mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right )."/></p>
 </div></div>
 <div class="section" id="ace-law-61-correlated-energy-and-angle-distribution">
 <span id="ace-law-61"></span><h4>5.7.2.8. ACE Law 61 - Correlated Energy and Angle Distribution<a class="headerlink" href="#ace-law-61-correlated-energy-and-angle-distribution" title="Permalink to this headline">¶</a></h4>
@@ -596,97 +594,97 @@ outgoing angle is</p>
 the neutron is correlated to the outgoing energy and is not sampled from a
 separate distribution. In this case though, rather than being determined from an
 analytical distribution function, the cosine of the scattering angle is
-determined from a tabulated distribution. For each incident energy <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> and
-outgoing energy <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>, there is a tabulated angular distribution.</p>
+determined from a tabulated distribution. For each incident energy <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> and
+outgoing energy <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/>, there is a tabulated angular distribution.</p>
 <p>The calculation of the outgoing energy of the neutron proceeds exactly the same
-as in the algorithm described in <a class="reference internal" href="#ace-law-4"><em>ACE Law 4 - Continuous Tabular Distribution</em></a>. In that algorithm, we found
-an interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>, statistically sampled an incoming energy bin
-<img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> based on the
+as in the algorithm described in <a class="reference internal" href="#ace-law-4"><span>ACE Law 4 - Continuous Tabular Distribution</span></a>. In that algorithm, we found
+an interpolation factor <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/>, statistically sampled an incoming energy bin
+<img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> based on the
 tabulated cumulative distribution function. Once the outgoing energy has been
 determined with equation <a href="#equation-ace-law-4-energy">(38)</a>, we then need to decide which
 angular distribution to use. If histogram interpolation was used on the outgoing
 energy bins, then we use the angular distribution corresponding to incoming
-energy bin <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/> and outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>. If linear-linear
+energy bin <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/> and outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/>. If linear-linear
 interpolation was used on the outgoing energy bins, then we use the whichever
 angular distribution was closer to the sampled value of the cumulative
 distribution function for the outgoing energy. The actual algorithm used to
 sample the chosen tabular angular distribution has been previously described in
-<a class="reference internal" href="#angle-tabular"><em>Tabular Angular Distribution</em></a>.</p>
+<a class="reference internal" href="#angle-tabular"><span>Tabular Angular Distribution</span></a>.</p>
 </div>
 <div class="section" id="ace-law-66-n-body-phase-space-distribution">
 <h4>5.7.2.9. ACE Law 66 - N-Body Phase Space Distribution<a class="headerlink" href="#ace-law-66-n-body-phase-space-distribution" title="Permalink to this headline">¶</a></h4>
 <p>Reactions in which there are more than two products of similar masses are
 sometimes best treated by using what&#8217;s known as an N-body phase
 distribution. This distribution has the following probability density function
-for outgoing energy of the <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>-th particle in the center-of-mass system:</p>
+for outgoing energy of the <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>-th particle in the center-of-mass system:</p>
 <div class="math" id="equation-n-body-pdf">
-<p><span class="eqno">(51)</span><img src="../_images/math/8361f02043d8580921b283a7c3af5fdd9730bc8d.png" alt="p_i(E') dE' = C_n \sqrt{E'} (E_i^{max} - E')^{(3n/2) - 4} dE'"/></p>
-</div><p>where <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> is the number of outgoing particles, <img class="math" src="../_images/math/4e173907ca992482385a50c6f62ede920362b1bf.png" alt="C_n"/> is a
-normalization constant, <img class="math" src="../_images/math/38a43cb2662b8bd6f8ed234c24bf80ab6ad0d1b8.png" alt="E_i^{max}"/> is the maximum center-of-mass energy
-for particle <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>, and <img class="math" src="../_images/math/411ef29ce6c32ab71534dfd3319a6fe72af9c5ee.png" alt="E'"/> is the outgoing energy. The algorithm for
+<p><span class="eqno">(51)</span><img src="../_images/math/b4a74454e6f57541ec9be710e8b2e3ae8010dde9.png" alt="p_i(E') dE' = C_n \sqrt{E'} (E_i^{max} - E')^{(3n/2) - 4} dE'"/></p>
+</div><p>where <img class="math" src="../_images/math/413f8a8e40062a9090d9d50b88bc7b551b314c26.png" alt="n"/> is the number of outgoing particles, <img class="math" src="../_images/math/a10e79ed2d0ac18b3e693ea4817f63ca8d22e4d2.png" alt="C_n"/> is a
+normalization constant, <img class="math" src="../_images/math/f25f666c16fac290b101af5e4e2eeeaefb68cd07.png" alt="E_i^{max}"/> is the maximum center-of-mass energy
+for particle <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>, and <img class="math" src="../_images/math/fdbdb6243522f89db716f229b94be1c028a97b8a.png" alt="E'"/> is the outgoing energy. The algorithm for
 sampling the outgoing energy is based on algorithms R28, C45, and C64 in the
 <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>. First we calculate the maximum energy in the
 center-of-mass using the following equation:</p>
 <div class="math" id="equation-n-body-emax">
-<p><span class="eqno">(52)</span><img src="../_images/math/db29247c6fb57f5e068902962f3e8928919c38cc.png" alt="E_i^{max} = \frac{A_p - 1}{A_p} \left ( \frac{A}{A+1} E + Q \right )"/></p>
-</div><p>where <img class="math" src="../_images/math/8f1ce1f31570f2bf5b2c7b64f0563eacc44af49e.png" alt="A_p"/> is the total mass of the outgoing particles in neutron masses,
-<img class="math" src="../_images/math/019e9892786e493964e145e7c5cf7b700314e53b.png" alt="A"/> is the mass of the original target nucleus in neutron masses, and
-<img class="math" src="../_images/math/9866e3a998d628ba0941eb4fea0666ac391d149a.png" alt="Q"/> is the Q-value of the reaction. Next we sample a value <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> from
+<p><span class="eqno">(52)</span><img src="../_images/math/0cb01ce9758dbb05c6928834d756304fa641735d.png" alt="E_i^{max} = \frac{A_p - 1}{A_p} \left ( \frac{A}{A+1} E + Q \right )"/></p>
+</div><p>where <img class="math" src="../_images/math/e0ea2cbd569da74b387b1d505c58f40ebbd15641.png" alt="A_p"/> is the total mass of the outgoing particles in neutron masses,
+<img class="math" src="../_images/math/0acafa529182e79b4f56165ec677554fba7fcf98.png" alt="A"/> is the mass of the original target nucleus in neutron masses, and
+<img class="math" src="../_images/math/7b1816c51f7d31275cd3ad400208fb7b3ce136a0.png" alt="Q"/> is the Q-value of the reaction. Next we sample a value <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> from
 a Maxwell distribution with a nuclear temperature of one using the algorithm
-outlined in <a class="reference internal" href="#maxwell"><em>ACE Law 7 - Maxwell Fission Spectrum</em></a>. We then need to determine a value <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> that
-will depend on how many outgoing particles there are. For <img class="math" src="../_images/math/8c342b01f0cdef0f23d11a2bc9c5aa67f6d83ccb.png" alt="n = 3"/>, we
+outlined in <a class="reference internal" href="#maxwell"><span>ACE Law 7 - Maxwell Fission Spectrum</span></a>. We then need to determine a value <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/> that
+will depend on how many outgoing particles there are. For <img class="math" src="../_images/math/f00519233785225b64f0e17b1978bb0002198cd5.png" alt="n = 3"/>, we
 simply sample another Maxwell distribution with unity nuclear temperature. For
-<img class="math" src="../_images/math/5218af40079081e694d8b82eeac2d368ef6ea76a.png" alt="n = 4"/>, we use the equation</p>
+<img class="math" src="../_images/math/2e974a688feb514c26fcba1885e36950bf56b477.png" alt="n = 4"/>, we use the equation</p>
 <div class="math" id="equation-n-body-y4">
-<p><span class="eqno">(53)</span><img src="../_images/math/fbe4b9a11593ea831c507e990455d5ad0aed05bb.png" alt="y = -\ln ( \xi_1 \xi_2 \xi_3 )"/></p>
-</div><p>where <img class="math" src="../_images/math/9070bf732e751e191c407181d609d8a2b9f1178f.png" alt="\xi_i"/> are random numbers sampled on the interval
-<img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>. For <img class="math" src="../_images/math/ec37f4048b4f92c2227c9bfe79fcb7d52ab99c9c.png" alt="n = 5"/>, we use the equation</p>
+<p><span class="eqno">(53)</span><img src="../_images/math/c3663875b550da34c8eb2ce1273f29d4471bdac5.png" alt="y = -\ln ( \xi_1 \xi_2 \xi_3 )"/></p>
+</div><p>where <img class="math" src="../_images/math/8e2fad164dd6987a25bd3f9fe9ede7006e5f060d.png" alt="\xi_i"/> are random numbers sampled on the interval
+<img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/>. For <img class="math" src="../_images/math/880ec7dfa132af7dc6566947d691e2778ac9fa79.png" alt="n = 5"/>, we use the equation</p>
 <div class="math" id="equation-n-body-y5">
-<p><span class="eqno">(54)</span><img src="../_images/math/c1d940304e6da1863e8361ccc851fe4beba0ddf9.png" alt="y = -\ln ( \xi_1 \xi_2 \xi_3 \xi_4 ) - \ln ( \xi_5 ) \cos^2 \left (
+<p><span class="eqno">(54)</span><img src="../_images/math/82f3079220440d5925f313127c6b666a9af99f6c.png" alt="y = -\ln ( \xi_1 \xi_2 \xi_3 \xi_4 ) - \ln ( \xi_5 ) \cos^2 \left (
 \frac{\pi}{2} \xi_6 \right )"/></p>
-</div><p>After <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> and <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> have been determined, the outgoing energy is then
+</div><p>After <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> and <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/> have been determined, the outgoing energy is then
 calculated as</p>
 <div class="math" id="equation-n-body-energy">
-<p><span class="eqno">(55)</span><img src="../_images/math/03cae9ff7e0cfd41be2c0dcbc5d43f24ead7018b.png" alt="E' = \frac{x}{x + y} E_i^{max}"/></p>
+<p><span class="eqno">(55)</span><img src="../_images/math/1608ce6805e7f3dcc45c8045e1af000ee4c58278.png" alt="E' = \frac{x}{x + y} E_i^{max}"/></p>
 </div><p>There are two important notes to make regarding the N-body phase space
 distribution. First, the documentation (and code) for MCNP5-1.60 has a mistake
-in the algorithm for <img class="math" src="../_images/math/5218af40079081e694d8b82eeac2d368ef6ea76a.png" alt="n = 4"/>. That being said, there are no existing
+in the algorithm for <img class="math" src="../_images/math/2e974a688feb514c26fcba1885e36950bf56b477.png" alt="n = 4"/>. That being said, there are no existing
 nuclear data evaluations which use an N-body phase space distribution with
-<img class="math" src="../_images/math/5218af40079081e694d8b82eeac2d368ef6ea76a.png" alt="n = 4"/>, so the error would not affect any calculations. In the
+<img class="math" src="../_images/math/2e974a688feb514c26fcba1885e36950bf56b477.png" alt="n = 4"/>, so the error would not affect any calculations. In the
 ENDF/B-VII.0 nuclear data evaluation, only one reaction uses an N-body phase
-space distribution at all, the <img class="math" src="../_images/math/fa86b0ef48a28317d10a53f409f74d756ae49fd4.png" alt="(n,2n)"/> reaction with H-2.</p>
+space distribution at all, the <img class="math" src="../_images/math/b51c1d14d772823c103e00abf9e448770f391c44.png" alt="(n,2n)"/> reaction with H-2.</p>
 </div>
 </div>
 </div>
 <div class="section" id="transforming-a-particle-s-coordinates">
 <span id="transform-coordinates"></span><h2>5.8. Transforming a Particle&#8217;s Coordinates<a class="headerlink" href="#transforming-a-particle-s-coordinates" title="Permalink to this headline">¶</a></h2>
-<p>Once the cosine of the scattering angle <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> has been sampled either from
+<p>Once the cosine of the scattering angle <img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/> has been sampled either from
 a angle distribution or a correlated angle-energy distribution, we are still
 left with the task of transforming the particle&#8217;s coordinates. If the outgoing
 energy and scattering cosine were given in the center-of-mass system, then we
 first need to transform these into the laboratory system. The relationship
 between the outgoing energy in center-of-mass and laboratory is</p>
 <div class="math" id="equation-energy-com-to-lab">
-<p><span class="eqno">(56)</span><img src="../_images/math/291aba8c90b9e372d6ab2814799c45e83ff5bfca.png" alt="E' = E'_{cm} + \frac{E + 2\mu_{cm} (A + 1) \sqrt{EE'_{cm}}}{(A+1)^2}."/></p>
-</div><p>where <img class="math" src="../_images/math/88d85f087ea838305796b908ab5df949115475d6.png" alt="E'_{cm}"/> is the outgoing energy in the center-of-mass system,
-<img class="math" src="../_images/math/59c60c3e0367df9e51e38c92deb8a67e4e58cd80.png" alt="\mu_{cm}"/> is the scattering cosine in the center-of-mass system,
-<img class="math" src="../_images/math/411ef29ce6c32ab71534dfd3319a6fe72af9c5ee.png" alt="E'"/> is the outgoing energy in the laboratory system, and <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> is the
+<p><span class="eqno">(56)</span><img src="../_images/math/14d64b9353114b003d6d88d8d316a661da91252f.png" alt="E' = E'_{cm} + \frac{E + 2\mu_{cm} (A + 1) \sqrt{EE'_{cm}}}{(A+1)^2}."/></p>
+</div><p>where <img class="math" src="../_images/math/d04e930be0a2eded93ab40c074adf8a99907341e.png" alt="E'_{cm}"/> is the outgoing energy in the center-of-mass system,
+<img class="math" src="../_images/math/954a810ddf03700fef5c83aa0de5465404f99949.png" alt="\mu_{cm}"/> is the scattering cosine in the center-of-mass system,
+<img class="math" src="../_images/math/fdbdb6243522f89db716f229b94be1c028a97b8a.png" alt="E'"/> is the outgoing energy in the laboratory system, and <img class="math" src="../_images/math/cfd13a0f26eb7ef0093319a7669da7dd3771dbac.png" alt="E"/> is the
 incident neutron energy. The relationship between the scattering cosine in
 center-of-mass and laboratory is</p>
 <div class="math" id="equation-angle-com-to-lab">
-<p><span class="eqno">(57)</span><img src="../_images/math/3f0c77fec4c184bc5feb14825a638bbe6386b774.png" alt="\mu = \mu_{cm} \sqrt{\frac{E'_{cm}}{E'}} + \frac{1}{A + 1}
+<p><span class="eqno">(57)</span><img src="../_images/math/664227398bc2959506ad69aa350048913e8a6964.png" alt="\mu = \mu_{cm} \sqrt{\frac{E'_{cm}}{E'}} + \frac{1}{A + 1}
 \sqrt{\frac{E}{E'}}"/></p>
-</div><p>where <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> is the scattering cosine in the laboratory system. The
+</div><p>where <img class="math" src="../_images/math/126e84ba38f7dece5f0ad64e929b9588b20f6440.png" alt="\mu"/> is the scattering cosine in the laboratory system. The
 scattering cosine still only tells us the cosine of the angle between the
 original direction of the particle and the new direction of the particle. If we
-express the pre-collision direction of the particle as <img class="math" src="../_images/math/3617dc0a6e8970ccb145834bf02aed345a903dd0.png" alt="\mathbf{\Omega} =
+express the pre-collision direction of the particle as <img class="math" src="../_images/math/050bc00b3743a41015dede959a1723122c89ac8c.png" alt="\mathbf{\Omega} =
 (u,v,w)"/> and the post-collision direction of the particle as
-<img class="math" src="../_images/math/53cc272d915beced5f0c355258e8aeacf4308ff8.png" alt="\mathbf{\Omega}' = (u',v',w')"/>, it is possible to relate the pre- and
+<img class="math" src="../_images/math/852db1511f347a047b3b35ef57025aee0cd15284.png" alt="\mathbf{\Omega}' = (u',v',w')"/>, it is possible to relate the pre- and
 post-collision components. We first need to uniformly sample an azimuthal angle
-<img class="math" src="../_images/math/2c175f60eecef1de7560c3bdea495d69f26f719d.png" alt="\phi"/> in <img class="math" src="../_images/math/5212cf082a56e5bfd4ec65534477c18d650b46a8.png" alt="[0, 2\pi)"/>. After the azimuthal angle has been sampled,
+<img class="math" src="../_images/math/10e009bdb83f96c5f47c58b34d5d4b12ef268d5b.png" alt="\phi"/> in <img class="math" src="../_images/math/9d83c38ed2c34294a2a50325c2a2fed460a8764c.png" alt="[0, 2\pi)"/>. After the azimuthal angle has been sampled,
 the post-collision direction is calculated as</p>
 <div class="math" id="equation-post-collision-angle">
-<p><span class="eqno">(58)</span><img src="../_images/math/062dfa76529a0336c4df38e0620d170e6bfae916.png" alt="u' = \mu u + \frac{\sqrt{1 - \mu^2} ( uw \cos\phi - v \sin\phi )}{\sqrt{1 -
+<p><span class="eqno">(58)</span><img src="../_images/math/bd43efebc8b7ecaa2564f827dd2f624a8a3a7278.png" alt="u' = \mu u + \frac{\sqrt{1 - \mu^2} ( uw \cos\phi - v \sin\phi )}{\sqrt{1 -
 w^2}} \\
 
 v' = \mu v + \frac{\sqrt{1 - \mu^2} ( vw \cos\phi + u \sin\phi )}{\sqrt{1 -
@@ -705,15 +703,15 @@ same as the velocity of the neutron entering the collision.</p>
 <p>The effect of the thermal motion on the interaction probability can be written
 as</p>
 <div class="math" id="equation-doppler-broaden">
-<p><span class="eqno">(59)</span><img src="../_images/math/2b8ef2c54e5b7a2e2f2e67fb37627b2ef5431c6e.png" alt="v_n \bar{\sigma} (v_n, T) = \int d\mathbf{v}_T v_r \sigma(v_r)
+<p><span class="eqno">(59)</span><img src="../_images/math/3dcc6441339d14739e0eb041869b6fd673bd4a2a.png" alt="v_n \bar{\sigma} (v_n, T) = \int d\mathbf{v}_T v_r \sigma(v_r)
 M (\mathbf{v}_T)"/></p>
-</div><p>where <img class="math" src="../_images/math/e967fada3170ecae135227d4b5d2703e0417349e.png" alt="v_n"/> is the magnitude of the velocity of the neutron,
-<img class="math" src="../_images/math/7bf2d869913026061af921cefc72c9d0e29c3a3f.png" alt="\bar{\sigma}"/> is an effective cross section, <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is the temperature
-of the target material, <img class="math" src="../_images/math/31d2508fcb80808436ea2daafa2426433c166cb7.png" alt="\mathbf{v}_T"/> is the velocity of the target
-nucleus, <img class="math" src="../_images/math/d90cbb3ad112ceba201c4f9b6ae1798666aa7e32.png" alt="v_r = || \mathbf{v}_n - \mathbf{v}_T ||"/> is the magnitude of the
-relative velocity, <img class="math" src="../_images/math/fa35d9fc104207e09a712110ac81612c5b279a6c.png" alt="\sigma"/> is the cross section at 0 K, and <img class="math" src="../_images/math/5ed777c276e95c62003fa14e360c2b3683f0abee.png" alt="M
+</div><p>where <img class="math" src="../_images/math/2e5644e20233e1bf2c4c26d2b4b95697973de369.png" alt="v_n"/> is the magnitude of the velocity of the neutron,
+<img class="math" src="../_images/math/8d26dc550ccf042b038ae68e0067fcd7616bbaf9.png" alt="\bar{\sigma}"/> is an effective cross section, <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> is the temperature
+of the target material, <img class="math" src="../_images/math/b914fb0f4393dcf1ecf307ec279e68158d744f5e.png" alt="\mathbf{v}_T"/> is the velocity of the target
+nucleus, <img class="math" src="../_images/math/17b01f449b9d6793c44ec382c983260b25d3da41.png" alt="v_r = || \mathbf{v}_n - \mathbf{v}_T ||"/> is the magnitude of the
+relative velocity, <img class="math" src="../_images/math/2298cf1485084afe72757a9c8483af49a138d81f.png" alt="\sigma"/> is the cross section at 0 K, and <img class="math" src="../_images/math/2423e8a6a69b6ab51355eebe48b639a8a81e4d62.png" alt="M
 (\mathbf{v}_T)"/> is the probability distribution for the target nucleus velocity
-at temperature <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> (a Maxwellian). In a Monte Carlo code, one must account
+at temperature <img class="math" src="../_images/math/6d42c88506b8da39a2a23653aecbfb7c29728063.png" alt="T"/> (a Maxwellian). In a Monte Carlo code, one must account
 for the effect of the thermal motion on both the integrated cross section as
 well as secondary angle and energy distributions. For integrated cross sections,
 it is possible to calculate thermally-averaged cross sections by applying a
@@ -751,21 +749,21 @@ elastic scattering kinematics is outlined in detail by <a class="reference inter
 derivation here largely follows that of Gelbard. Let us first write the reaction
 rate as a function of the velocity of the target nucleus:</p>
 <div class="math" id="equation-reaction-rate">
-<p><span class="eqno">(60)</span><img src="../_images/math/7017856fbc59ca11babd4e8b9d12fd6e071a981f.png" alt="R(\mathbf{v}_T) = || \mathbf{v}_n - \mathbf{v}_T || \sigma ( ||
+<p><span class="eqno">(60)</span><img src="../_images/math/3921c4dc856e939ac706dc9ce6448b2561bd94c1.png" alt="R(\mathbf{v}_T) = || \mathbf{v}_n - \mathbf{v}_T || \sigma ( ||
 \mathbf{v}_n - \mathbf{v}_T || ) M ( \mathbf{v}_T )"/></p>
-</div><p>where <img class="math" src="../_images/math/eff43e84f8a3bcf7b6965f0a3248bc4d3a9d0cd4.png" alt="R"/> is the reaction rate. Note that this is just the right-hand side
+</div><p>where <img class="math" src="../_images/math/9d86170e7de539c0ff999de09621ee0c7b6c8ed0.png" alt="R"/> is the reaction rate. Note that this is just the right-hand side
 of equation <a href="#equation-doppler-broaden">(59)</a>. Based on the discussion above, we want to
 construct a probability distribution function for sampling the target velocity
 to preserve the reaction rate &#8211; this is different from the overall probability
-distribution function for the target velocity, <img class="math" src="../_images/math/3dd3ccdddb16f77f1c5f953604af6b74be5282f0.png" alt="M ( \mathbf{v}_T )"/>. This
+distribution function for the target velocity, <img class="math" src="../_images/math/60dc83a31b841e5c1b60be0d1b4fb3cf8cfd9093.png" alt="M ( \mathbf{v}_T )"/>. This
 probability distribution function can be found by integrating equation
 <a href="#equation-reaction-rate">(60)</a> to obtain a normalization factor:</p>
 <div class="math" id="equation-target-pdf-1">
-<p><span class="eqno">(61)</span><img src="../_images/math/977e02c76f6ed51ef0be17655cd9861db4be28bb.png" alt="p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{R(\mathbf{v}_T) d\mathbf{v}_T}{\int
+<p><span class="eqno">(61)</span><img src="../_images/math/df4310c92f1872eecfc92966cca2a9ce3bfd5dfc.png" alt="p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{R(\mathbf{v}_T) d\mathbf{v}_T}{\int
 d\mathbf{v}_T \, R(\mathbf{v}_T)}"/></p>
 </div><p>Let us call the normalization factor in the denominator of equation
-<a href="#equation-target-pdf-1">(61)</a> <img class="math" src="../_images/math/c3355896da590fc491a10150a50416687626d7cc.png" alt="C"/>.</p>
-<p>It is normally assumed that <img class="math" src="../_images/math/e4bec896f9c0545474c6baebb13ab1f3789ba370.png" alt="\sigma (v_r)"/> is constant over the range of
+<a href="#equation-target-pdf-1">(61)</a> <img class="math" src="../_images/math/2bcc65482aa8e15cd4c9e9f2542451fb4e971a91.png" alt="C"/>.</p>
+<p>It is normally assumed that <img class="math" src="../_images/math/15c26742484427f2a5cca0695fb67068ccc7437d.png" alt="\sigma (v_r)"/> is constant over the range of
 relative velocities of interest. This is a good assumption for almost all cases
 since the elastic scattering cross section varies slowly with velocity for light
 nuclei, and for heavy nuclei where large variations can occur due to resonance
@@ -773,128 +771,128 @@ scattering, the moderating effect is rather small. Nonetheless, this assumption
 may cause incorrect answers in systems with low-lying resonances that can cause
 a significant amount of up-scatter that would be ignored by this assumption
 (e.g. U-238 in commercial light-water reactors). Nevertheless, with this
-assumption, we write <img class="math" src="../_images/math/66192477e53a9f48501a6c403ad413500fae0a6d.png" alt="\sigma (v_r) = \sigma_s"/> which simplifies
+assumption, we write <img class="math" src="../_images/math/10031c0879c1d72e62b6e4be71acdb3bb845af55.png" alt="\sigma (v_r) = \sigma_s"/> which simplifies
 <a href="#equation-target-pdf-1">(61)</a> to</p>
 <div class="math" id="equation-target-pdf-2">
-<p><span class="eqno">(62)</span><img src="../_images/math/a0c0fbe7cd5f56b1c03e2488e748b5ec0664a4a3.png" alt="p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{\sigma_s}{C} || \mathbf{v}_n -
+<p><span class="eqno">(62)</span><img src="../_images/math/e8ed905583e5aaeab5538350d57c711cf040ed91.png" alt="p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{\sigma_s}{C} || \mathbf{v}_n -
 \mathbf{v}_T || M ( \mathbf{v}_T ) d\mathbf{v}_T"/></p>
 </div><p>The Maxwellian distribution in velocity is</p>
 <div class="math" id="equation-maxwellian-velocity">
-<p><span class="eqno">(63)</span><img src="../_images/math/eaa621ad0051ac97e109cb57942121640f0322cd.png" alt="M (\mathbf{v}_T) = \left ( \frac{m}{2\pi kT} \right )^{3/2} \exp \left (
+<p><span class="eqno">(63)</span><img src="../_images/math/6621e9a4f59e8443577deac1e54de246648248dd.png" alt="M (\mathbf{v}_T) = \left ( \frac{m}{2\pi kT} \right )^{3/2} \exp \left (
 \frac{-m || \mathbf{v}_T^2 ||}{2kT} \right )"/></p>
-</div><p>where <img class="math" src="../_images/math/f5047d1e0cbb50ec208923a22cd517c55100fa7b.png" alt="m"/> is the mass of the target nucleus and <img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> is Boltzmann&#8217;s
+</div><p>where <img class="math" src="../_images/math/c4bb40dd65eae6c11b325989b14e0b8d35e4e3ef.png" alt="m"/> is the mass of the target nucleus and <img class="math" src="../_images/math/e9203da50e1059455123460d4e716c9c7f440cc3.png" alt="k"/> is Boltzmann&#8217;s
 constant. Notice here that the term in the exponential is dependent only on the
 speed of the target, not on the actual direction. Thus, we can change the
 Maxwellian into a distribution for speed rather than velocity. The differential
 element of velocity is</p>
 <div class="math" id="equation-differential-velocity">
-<p><span class="eqno">(64)</span><img src="../_images/math/a168a50ab28dc89cc70833293c81d4aaf46b99d4.png" alt="d\mathbf{v}_T = v_T^2 dv_T d\mu d\phi"/></p>
+<p><span class="eqno">(64)</span><img src="../_images/math/e2a8df37dac41dfad0cf109226f47417406ebd27.png" alt="d\mathbf{v}_T = v_T^2 dv_T d\mu d\phi"/></p>
 </div><p>Let us define the Maxwellian distribution in speed as</p>
 <div class="math" id="equation-maxwellian-speed">
-<p><span class="eqno">(65)</span><img src="../_images/math/a9fc70bf11f3bc30f46e03173dec44cbb02f9886.png" alt="M (v_T) dv_T = \int_{-1}^1 d\mu \int_{0}^{2\pi} d\phi \, dv_T \, v_T^2
+<p><span class="eqno">(65)</span><img src="../_images/math/95f112dd8a72c54a1791667c0f7dd7b07293e54c.png" alt="M (v_T) dv_T = \int_{-1}^1 d\mu \int_{0}^{2\pi} d\phi \, dv_T \, v_T^2
 M(\mathbf{v}_T) = \sqrt{ \frac{2}{\pi} \left ( \frac{m}{kT} \right )^3}
 v_T^2 \exp \left ( \frac{-m v_T}{2kT} \right ) dv_T."/></p>
 </div><p>To simplify things a bit, we&#8217;ll define a parameter</p>
 <div class="math" id="equation-maxwellian-beta">
-<p><span class="eqno">(66)</span><img src="../_images/math/274ff010ed5a97ccf9e5e270b37afdbc61478156.png" alt="\beta = \sqrt{\frac{m}{2kT}}."/></p>
+<p><span class="eqno">(66)</span><img src="../_images/math/06c060192ab1231a4e1de928f72ec9817c7c9033.png" alt="\beta = \sqrt{\frac{m}{2kT}}."/></p>
 </div><p>Substituting equation <a href="#equation-maxwellian-beta">(66)</a> into equation
 <a href="#equation-maxwellian-speed">(65)</a>, we obtain</p>
 <div class="math" id="equation-maxwellian-speed2">
-<p><span class="eqno">(67)</span><img src="../_images/math/ad50e80ff25a3c978e7280b826d0d76cb3cda5ac.png" alt="M (v_T) dv_T = \frac{4}{\sqrt{\pi}} \beta^3 v_T^2 \exp \left ( -\beta^2
+<p><span class="eqno">(67)</span><img src="../_images/math/39f8b3e7e0354ebf1ebe3cc59d4e25d32db88b6f.png" alt="M (v_T) dv_T = \frac{4}{\sqrt{\pi}} \beta^3 v_T^2 \exp \left ( -\beta^2
 v_T^2 \right ) dv_T."/></p>
 </div><p>Now, changing variables in equation <a href="#equation-target-pdf-2">(62)</a> by using the result from
 equation <a href="#equation-maxwellian-speed">(65)</a>, our new probability distribution function is</p>
 <div class="math" id="equation-target-pdf-3">
-<p><span class="eqno">(68)</span><img src="../_images/math/0ed24e4eff759c650505d682b9bd60fa7a5280d9.png" alt="p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} || \mathbf{v}_n -
+<p><span class="eqno">(68)</span><img src="../_images/math/d11b82f78cdb4ed9d71b361623c584a3ab116207.png" alt="p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} || \mathbf{v}_n -
 \mathbf{v}_T || \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right ) dv_T d\mu"/></p>
 </div><p>Again, the Maxwellian distribution for the speed of the target nucleus has no
 dependence on the angle between the neutron and target velocity vectors. Thus,
-only the term <img class="math" src="../_images/math/0f26fe31ea24161ceb02b1d7ab5ad00ec85e8518.png" alt="|| \mathbf{v}_n - \mathbf{v}_T ||"/> imposes any constraint
+only the term <img class="math" src="../_images/math/ccfa871e953be1af00251b3da72987d5d324ed3f.png" alt="|| \mathbf{v}_n - \mathbf{v}_T ||"/> imposes any constraint
 on the allowed angle. Our last task is to take that term and write it in terms
 of magnitudes of the velocity vectors and the angle rather than the vectors
 themselves. We can establish this relation based on the law of cosines which
 tells us that</p>
 <div class="math" id="equation-lawcosine">
-<p><span class="eqno">(69)</span><img src="../_images/math/5855faa969d195745d46532d0e26ecff25af71a2.png" alt="2 v_n v_T \mu = v_n^2 + v_T^2 - v_r^2."/></p>
+<p><span class="eqno">(69)</span><img src="../_images/math/b259abeb8af3dad67fd4ba25ac384454f5ac82ad.png" alt="2 v_n v_T \mu = v_n^2 + v_T^2 - v_r^2."/></p>
 </div><p>Thus, we can infer that</p>
 <div class="math" id="equation-change-terms">
-<p><span class="eqno">(70)</span><img src="../_images/math/5aeaebc1064e992b4ec80f9e0a877deba60205c9.png" alt="|| \mathbf{v}_n - \mathbf{v}_T || = || \mathbf{v}_r || = v_r = \sqrt{v_n^2 +
+<p><span class="eqno">(70)</span><img src="../_images/math/8f08e95a938bf2ac85de55b417b2905f8cc2cb95.png" alt="|| \mathbf{v}_n - \mathbf{v}_T || = || \mathbf{v}_r || = v_r = \sqrt{v_n^2 +
    v_T^2 - 2v_n v_T \mu}."/></p>
 </div><p>Inserting equation <a href="#equation-change-terms">(70)</a> into <a href="#equation-target-pdf-3">(68)</a>, we obtain</p>
 <div class="math" id="equation-target-pdf-4">
-<p><span class="eqno">(71)</span><img src="../_images/math/6eb76ad5ca2b655a3481a0ec1187860ec77e55ad.png" alt="p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} \sqrt{v_n^2 +
+<p><span class="eqno">(71)</span><img src="../_images/math/4898b8c52b24347389ac280ac56acc87be372870.png" alt="p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} \sqrt{v_n^2 +
    v_T^2 - 2v_n v_T \mu} \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right )
    dv_T d\mu"/></p>
 </div><p>This expression is still quite formidable and does not lend itself to any
 natural sampling scheme. We can divide this probability distribution into two
 parts as such:</p>
 <div class="math" id="equation-divide-pdf">
-<p><span class="eqno">(72)</span><img src="../_images/math/077433454f772ce180fc7b172abe4a64463c2dba.png" alt="p(v_T, \mu) &amp;= f_1(v_T, \mu) f_2(v_T) \\
+<p><span class="eqno">(72)</span><img src="../_images/math/04fba53ae404092ae07a129fd24943144c1ed7bc.png" alt="p(v_T, \mu) &amp;= f_1(v_T, \mu) f_2(v_T) \\
 
 f_1(v_T, \mu) &amp;= \frac{4\sigma_s}{\sqrt{\pi} C'} \frac{ \sqrt{v_n^2 +
    v_T^2 - 2v_n v_T \mu}}{v_n + v_T} \\
 
 f_2(v_T) &amp;= (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right )."/></p>
-</div><p>In general, any probability distribution function of the form <img class="math" src="../_images/math/18b2137a12545c12040053d62af1f6a009747f7b.png" alt="p(x) =
-f_1(x) f_2(x)"/> with <img class="math" src="../_images/math/81060fd5c50bb0771dc33e40b10a02530402154a.png" alt="f_1(x)"/> bounded can be sampled by sampling
-<img class="math" src="../_images/math/8a606841183a001b6a780a104a40bd9d8d8b4aee.png" alt="x'"/> from the distribution</p>
+</div><p>In general, any probability distribution function of the form <img class="math" src="../_images/math/9fd56641dc13a1182a4de45298cbfef3acce707e.png" alt="p(x) =
+f_1(x) f_2(x)"/> with <img class="math" src="../_images/math/1b27dd2a1658a84249278e51c711dc38ecd27f06.png" alt="f_1(x)"/> bounded can be sampled by sampling
+<img class="math" src="../_images/math/1ba6dff92a6534953b79b494fd0418c4ea6e7be3.png" alt="x'"/> from the distribution</p>
 <div class="math" id="equation-freegas-f2">
-<p><span class="eqno">(73)</span><img src="../_images/math/fa369e6ba066f19728b7b399c486ba4074af4eb0.png" alt="q(x) dx = \frac{f_2(x) dx}{\int f_2(x) dx}"/></p>
+<p><span class="eqno">(73)</span><img src="../_images/math/dfbd3c46cd70af18a3289edb9c4a0d2e6f4a3720.png" alt="q(x) dx = \frac{f_2(x) dx}{\int f_2(x) dx}"/></p>
 </div><p>and accepting it with probability</p>
 <div class="math" id="equation-freegas-accept">
-<p><span class="eqno">(74)</span><img src="../_images/math/1b483168dab97633fa9067574a5a9d2dcc361b1e.png" alt="p_{accept} = \frac{f_1(x')}{\max f_1(x)}"/></p>
-</div><p>The reason for dividing and multiplying the terms by <img class="math" src="../_images/math/9538b05f2194763530b09845b7f682458e493564.png" alt="v_n + v_T"/> is to
-ensure that the first term is bounded. In general, <img class="math" src="../_images/math/ad691e61afb1a005b5955aa954f1702fe59f2f46.png" alt="|| \mathbf{v}_n -
+<p><span class="eqno">(74)</span><img src="../_images/math/f72f6f026ac8e2286424706b0cdff00ff8375384.png" alt="p_{accept} = \frac{f_1(x')}{\max f_1(x)}"/></p>
+</div><p>The reason for dividing and multiplying the terms by <img class="math" src="../_images/math/a2ae34fc9737e2ee9034a38a2c8b88f8f904b55d.png" alt="v_n + v_T"/> is to
+ensure that the first term is bounded. In general, <img class="math" src="../_images/math/dd4c02359bbe7be48a9dda19a2ff4925840db976.png" alt="|| \mathbf{v}_n -
 \mathbf{v}_T ||"/> can take on arbitrarily large values, but if we divide it by
-its maximum value <img class="math" src="../_images/math/9538b05f2194763530b09845b7f682458e493564.png" alt="v_n + v_T"/>, then it ensures that the function will be
+its maximum value <img class="math" src="../_images/math/a2ae34fc9737e2ee9034a38a2c8b88f8f904b55d.png" alt="v_n + v_T"/>, then it ensures that the function will be
 bounded. We now must come up with a sampling scheme for equation
-<a href="#equation-freegas-f2">(73)</a>. To determine <img class="math" src="../_images/math/acca5728ede1d866e58c06bac8ec985fd7160564.png" alt="q(v_T)"/>, we need to integrate <img class="math" src="../_images/math/e31584cdce0b50ee39c63081564f6e2ec5a7dcbf.png" alt="f_2"/>
+<a href="#equation-freegas-f2">(73)</a>. To determine <img class="math" src="../_images/math/095e0578522dd4c8d70ac0908d4a0f5562337ee2.png" alt="q(v_T)"/>, we need to integrate <img class="math" src="../_images/math/ff9078c258266635e46b9767b0c7e248c865e4ab.png" alt="f_2"/>
 in equation <a href="#equation-divide-pdf">(72)</a>. Doing so we find that</p>
 <div class="math" id="equation-integrate-f2">
-<p><span class="eqno">(75)</span><img src="../_images/math/be693703d3c0d2a954fa4dea34a5eb50e611e2a5.png" alt="\int_0^{\infty} dv_T (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2
+<p><span class="eqno">(75)</span><img src="../_images/math/819ddbfa34c2ef12f236f738c720be330bc80291.png" alt="\int_0^{\infty} dv_T (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2
 \right ) = \frac{1}{4\beta} \left ( \sqrt{\pi} \beta v_n + 2 \right )."/></p>
 </div><p>Thus, we need to sample the probability distribution function</p>
 <div class="math" id="equation-freegas-f2-2">
-<p><span class="eqno">(76)</span><img src="../_images/math/c1724bbfb4ca001be9002a1f15a1f58cc3eb3dbe.png" alt="q(v_T) dv_T = \left ( \frac{4\beta^2 v_n v_T^2}{\sqrt{\pi} \beta v_n + 2} +
+<p><span class="eqno">(76)</span><img src="../_images/math/6234fba3d9eba6b77238680515ad9c3ea7c882f5.png" alt="q(v_T) dv_T = \left ( \frac{4\beta^2 v_n v_T^2}{\sqrt{\pi} \beta v_n + 2} +
 \frac{4\beta^4 v_T^3}{\sqrt{\pi} \beta v_n + 2} \right ) exp \left (
 -\beta^2 v_T^2 \right )."/></p>
 </div><p>Now, let us do a change of variables with the following definitions</p>
 <div class="math" id="equation-beta-to-x">
-<p><span class="eqno">(77)</span><img src="../_images/math/f2d74e032b1543ffed8297452aefec47a8add273.png" alt="x = \beta v_T \\
+<p><span class="eqno">(77)</span><img src="../_images/math/18307330d7afbe0d39d87719b9bf1d529ad0840d.png" alt="x = \beta v_T \\
 y = \beta v_n."/></p>
 </div><p>Substituting equation <a href="#equation-beta-to-x">(77)</a> into equation <a href="#equation-freegas-f2-2">(76)</a> along
-with <img class="math" src="../_images/math/a5c225ea183fc086f6379f84f4ab39d20a3d6e12.png" alt="dx = \beta dv_T"/> and doing some crafty rearranging of terms yields</p>
+with <img class="math" src="../_images/math/69d22d2ba590e0a274a16ae266a95b811cdf377c.png" alt="dx = \beta dv_T"/> and doing some crafty rearranging of terms yields</p>
 <div class="math" id="equation-freegas-f2-3">
-<p><span class="eqno">(78)</span><img src="../_images/math/4f3913b278c1449f1820c28dffd2c40941bb4b84.png" alt="q(x) dx = \left [ \left ( \frac{\sqrt{\pi} y}{\sqrt{\pi} y + 2} \right )
+<p><span class="eqno">(78)</span><img src="../_images/math/0d7515a796f7865178d7b756006cfdf8aa435c68.png" alt="q(x) dx = \left [ \left ( \frac{\sqrt{\pi} y}{\sqrt{\pi} y + 2} \right )
 \frac{4}{\sqrt{\pi}} x^2 e^{-x^2} + \left ( \frac{2}{\sqrt{\pi} y + 2}
 \right ) 2x^3 e^{-x^2} \right ] dx."/></p>
 </div><p>It&#8217;s important to make note of the following two facts. First, the terms outside
 the parentheses are properly normalized probability distribution functions that
 can be sampled directly. Secondly, the terms inside the parentheses are always
-less than unity. Thus, the sampling scheme for <img class="math" src="../_images/math/25b5f855b56cd269cd617940805cef31bc41a95c.png" alt="q(x)"/> is as follows. We
-sample a random number <img class="math" src="../_images/math/afb50a86e371bb6a55232fc7188cadd13c3aa0cb.png" alt="\xi_1"/> on the interval <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/> and if</p>
+less than unity. Thus, the sampling scheme for <img class="math" src="../_images/math/c2ae1ad4f2c0b7239ebb03b52f5e4e8406f61c9a.png" alt="q(x)"/> is as follows. We
+sample a random number <img class="math" src="../_images/math/ff9bc79fdab575688ddc9a779355ca07b4963073.png" alt="\xi_1"/> on the interval <img class="math" src="../_images/math/68adca6871086a90d32b8c23c1c5c3aa5c19d282.png" alt="[0,1)"/> and if</p>
 <div class="math" id="equation-freegas-alpha">
-<p><span class="eqno">(79)</span><img src="../_images/math/bcdd05c4d063c0e9e24362e36c232166a69f0ead.png" alt="\xi_1 &lt; \frac{2}{\sqrt{\pi} y + 2}"/></p>
-</div><p>then we sample the probability distribution <img class="math" src="../_images/math/2b04b9f241837205e8f5c8ad9358309a0054a58a.png" alt="2x^3 e^{-x^2}"/> for <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>
+<p><span class="eqno">(79)</span><img src="../_images/math/551889764fc956628131d0a452fcd73d7bdd7f44.png" alt="\xi_1 &lt; \frac{2}{\sqrt{\pi} y + 2}"/></p>
+</div><p>then we sample the probability distribution <img class="math" src="../_images/math/4fa1f677978832918eb20898cbea76e6093b77e8.png" alt="2x^3 e^{-x^2}"/> for <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/>
 using rule C49 in the <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a> which we can then use to determine
-the speed of the target nucleus <img class="math" src="../_images/math/867949f54a7d52f49a568a5bfcffb2b9464f96a7.png" alt="v_T"/> from equation
+the speed of the target nucleus <img class="math" src="../_images/math/576d4929ebf1fbb6d919095c4e9d38a115c5d23a.png" alt="v_T"/> from equation
 <a href="#equation-beta-to-x">(77)</a>. Otherwise, we sample the probability distribution
-<img class="math" src="../_images/math/472f90af45f36c25019ec201834966339fb6b06b.png" alt="\frac{4}{\sqrt{\pi}} x^2 e^{-x^2}"/> for <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> using rule C61 in the
+<img class="math" src="../_images/math/5a399bb11d5c0807bed352b3dca588a253540a6a.png" alt="\frac{4}{\sqrt{\pi}} x^2 e^{-x^2}"/> for <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> using rule C61 in the
 <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf">Monte Carlo Sampler</a>.</p>
 <p>With a target speed sampled, we must then decide whether to accept it based on
 the probability in equation <a href="#equation-freegas-accept">(74)</a>. The cosine can be sampled
-isotropically as <img class="math" src="../_images/math/4808afef1ba14eb9a66ec4c4c08381c13659bbf9.png" alt="\mu = 2\xi_2 - 1"/> where <img class="math" src="../_images/math/ccfd8fb41dea287e605b7582d709bd634d519a98.png" alt="\xi_2"/> is a random number
-on the unit interval. Since the maximum value of <img class="math" src="../_images/math/4f4fb49e51fd6739f1738a60e8f6d0467a86c742.png" alt="f_1(v_T, \mu)"/> is
-<img class="math" src="../_images/math/6706acaae8684a413d58202f8c46c0cbeaae54f3.png" alt="4\sigma_s / \sqrt{\pi} C'"/>, we then sample another random number
-<img class="math" src="../_images/math/78d5363240163b51e764d1532b814095a57d3ec7.png" alt="\xi_3"/> and accept the sampled target speed and cosine if</p>
+isotropically as <img class="math" src="../_images/math/3c920ba6e34c8fd34865b53ca3d239ff0696974f.png" alt="\mu = 2\xi_2 - 1"/> where <img class="math" src="../_images/math/2365ba8fe8144157e7b26d56f1844513b04a7518.png" alt="\xi_2"/> is a random number
+on the unit interval. Since the maximum value of <img class="math" src="../_images/math/a23cf2889c095f570214df13089f66668ef1eaab.png" alt="f_1(v_T, \mu)"/> is
+<img class="math" src="../_images/math/9ff773103190fdd0ab06cb11aad37e7a807fc715.png" alt="4\sigma_s / \sqrt{\pi} C'"/>, we then sample another random number
+<img class="math" src="../_images/math/ebdc4a7b4c082489093b421f2390dcb6efcdd396.png" alt="\xi_3"/> and accept the sampled target speed and cosine if</p>
 <div class="math" id="equation-freegas-accept-2">
-<p><span class="eqno">(80)</span><img src="../_images/math/d6e0193a4c5b00f81c510ae43fcccfb3da27018e.png" alt="\xi_3 &lt; \frac{\sqrt{v_n^2 + v_T^2 - 2 v_n v_T \mu}}{v_n + v_T}."/></p>
+<p><span class="eqno">(80)</span><img src="../_images/math/952bc12f04f5c679a07f289412d601b66e4655dd.png" alt="\xi_3 &lt; \frac{\sqrt{v_n^2 + v_T^2 - 2 v_n v_T \mu}}{v_n + v_T}."/></p>
 </div><p>If is not accepted, then we repeat the process and resample a target speed and
 cosine until a combination is found that satisfies equation
 <a href="#equation-freegas-accept-2">(80)</a>.</p>
 </div>
 <div class="section" id="sab-tables">
-<span id="id6"></span><h2>5.10. S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) Tables<a class="headerlink" href="#sab-tables" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>5.10. S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) Tables<a class="headerlink" href="#sab-tables" title="Permalink to this headline">¶</a></h2>
 <p>For neutrons with thermal energies, generally less than 4 eV, the kinematics of
 scattering can be affected by chemical binding and crystalline effects of the
 target molecule. If these effects are not accounted for in a simulation, the
@@ -905,12 +903,12 @@ give cross sections and secondary angle/energy distributions for thermal
 scattering that account for thermal binding effects. These tables are mainly
 used for moderating materials such as light or heavy water, graphite, hydrogen
 in ZrH, beryllium, etc.</p>
-<p>The theory behind S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) is rooted in quantum mechanics and is quite
+<p>The theory behind S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) is rooted in quantum mechanics and is quite
 complex. Those interested in first principles derivations for formulae relating
-to S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) tables should be referred to the excellent books by <a class="reference internal" href="#williams" id="id7">[Williams]</a> and
+to S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) tables should be referred to the excellent books by <a class="reference internal" href="#williams" id="id7">[Williams]</a> and
 <a class="reference internal" href="#squires" id="id8">[Squires]</a>. For our purposes here, we will focus only on the use of already
 processed data as it appears in the ACE format.</p>
-<p>Each S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) table can contain the following:</p>
+<p>Each S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) table can contain the following:</p>
 <ul class="simple">
 <li>Thermal inelastic scattering cross section;</li>
 <li>Thermal elastic scattering cross section;</li>
@@ -934,17 +932,17 @@ thermal inelastic scattering includes both coherent and incoherent effects and
 is dominant for most other materials including hydrogen in water.</p>
 <div class="section" id="calculating-integrated-cross-sections">
 <h3>5.10.1. Calculating Integrated Cross Sections<a class="headerlink" href="#calculating-integrated-cross-sections" title="Permalink to this headline">¶</a></h3>
-<p>The first aspect of using S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) tables is calculating cross sections to replace
+<p>The first aspect of using S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) tables is calculating cross sections to replace
 the data that would normally appear on the incident neutron data, which do not
 account for thermal binding effects. For incoherent elastic and inelastic
 scattering, the cross sections are stored as linearly interpolable functions on
 a specified energy grid. For coherent elastic data, the cross section can be
 expressed as</p>
 <div class="math" id="equation-coherent-elastic-xs">
-<p><span class="eqno">(81)</span><img src="../_images/math/aa2d4ac30c971be67cf2655355d5d2c3b424c9af.png" alt="\sigma(E) = \frac{\sigma_c}{E} \sum_{E_i &lt; E} f_i e^{-4WE_i}"/></p>
-</div><p>where <img class="math" src="../_images/math/a96b25b6ddab9332c0b16dccbfaf7dfe126801bb.png" alt="\sigma_c"/> is the effective bound coherent scattering cross section,
-<img class="math" src="../_images/math/10cb764f88509fb1c8012366993fdbee98f31bc5.png" alt="W"/> is the effective Debye-Waller coefficient, <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> are the
-energies of the Bragg edges, and <img class="math" src="../_images/math/61c594c97b61f72af93af4e61894b3f16a3bbb30.png" alt="f_i"/> are related to crystallographic
+<p><span class="eqno">(81)</span><img src="../_images/math/69b9fd7e970f8fe8b5426d25c6e19496d623eb9c.png" alt="\sigma(E) = \frac{\sigma_c}{E} \sum_{E_i &lt; E} f_i e^{-4WE_i}"/></p>
+</div><p>where <img class="math" src="../_images/math/58798ce83b38f451070ce0e5345d8913710b83fb.png" alt="\sigma_c"/> is the effective bound coherent scattering cross section,
+<img class="math" src="../_images/math/fa34489cf430b7630b30f28b2eb050e2489e3523.png" alt="W"/> is the effective Debye-Waller coefficient, <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> are the
+energies of the Bragg edges, and <img class="math" src="../_images/math/f3e8f82a52bdd47c816d880bdbe685ecfc88160b.png" alt="f_i"/> are related to crystallographic
 structure factors. Since the functional form of the cross section is just 1/E
 and the proportionality constant changes only at Bragg edges, the
 proportionality constants are stored and then the cross section can be
@@ -952,37 +950,37 @@ calculated analytically based on equation <a href="#equation-coherent-elastic-xs
 </div>
 <div class="section" id="outgoing-angle-for-coherent-elastic-scattering">
 <h3>5.10.2. Outgoing Angle for Coherent Elastic Scattering<a class="headerlink" href="#outgoing-angle-for-coherent-elastic-scattering" title="Permalink to this headline">¶</a></h3>
-<p>Another aspect of using S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) tables is determining the outgoing energy and
+<p>Another aspect of using S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) tables is determining the outgoing energy and
 angle of the neutron after scattering. For incoherent and coherent elastic
 scattering, the energy of the neutron does not actually change, but the angle
 does change. For coherent elastic scattering, the angle will depend on which
-Bragg edge scattered the neutron. The probability that edge <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> will
+Bragg edge scattered the neutron. The probability that edge <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> will
 scatter then neutron is given by</p>
 <div class="math" id="equation-coherent-elastic-probability">
-<p><span class="eqno">(82)</span><img src="../_images/math/58640e60dd88a212e6da856f0313c5a26fd3bbe4.png" alt="\frac{f_i e^{-4WE_i}}{\sum_j f_j e^{-4WE_j}}."/></p>
+<p><span class="eqno">(82)</span><img src="../_images/math/7f5e985e66252bad6ff62ab015cbbc5a15e60018.png" alt="\frac{f_i e^{-4WE_i}}{\sum_j f_j e^{-4WE_j}}."/></p>
 </div><p>After a Bragg edge has been sampled, the cosine of the angle of scattering is
 given analytically by</p>
 <div class="math" id="equation-coherent-elastic-angle">
-<p><span class="eqno">(83)</span><img src="../_images/math/0a2c2c9cf6eb22e7f1445a3a8b2cf62701540b81.png" alt="\mu = 1 - \frac{E_i}{E}"/></p>
-</div><p>where <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> is the energy of the Bragg edge that scattered the neutron.</p>
+<p><span class="eqno">(83)</span><img src="../_images/math/3946360f436553e959b22b8ad46e35c7367f8fa9.png" alt="\mu = 1 - \frac{E_i}{E}"/></p>
+</div><p>where <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> is the energy of the Bragg edge that scattered the neutron.</p>
 </div>
 <div class="section" id="outgoing-angle-for-incoherent-elastic-scattering">
 <h3>5.10.3. Outgoing Angle for Incoherent Elastic Scattering<a class="headerlink" href="#outgoing-angle-for-incoherent-elastic-scattering" title="Permalink to this headline">¶</a></h3>
 <p>For incoherent elastic scattering, the probability distribution for the cosine
 of the angle of scattering is represent as a series of equally-likely discrete
-cosines <img class="math" src="../_images/math/810cb49707624e52abd93b902396e2bafb937bac.png" alt="\mu_{i,j}"/> for each incoming energy <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/> on the thermal
-elastic energy grid. First the outgoing angle bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> is sampled. Then, if
-the incoming energy of the neutron satisfies <img class="math" src="../_images/math/e12f93f087b0231f50449edc28ed12050e5f68da.png" alt="E_i &lt; E &lt; E_{i+1}"/> the final
+cosines <img class="math" src="../_images/math/dfd4ac120ea3bbdd28437706e80886f992b13b83.png" alt="\mu_{i,j}"/> for each incoming energy <img class="math" src="../_images/math/b027139ad09fca3ca4adfe7d1149b9b2a69dbe3a.png" alt="E_i"/> on the thermal
+elastic energy grid. First the outgoing angle bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> is sampled. Then, if
+the incoming energy of the neutron satisfies <img class="math" src="../_images/math/11bed1d62b2f553c6bba9255ade361778cb870ea.png" alt="E_i &lt; E &lt; E_{i+1}"/> the final
 cosine is</p>
 <div class="math" id="equation-incoherent-elastic-angle">
-<p><span class="eqno">(84)</span><img src="../_images/math/8b4a5c2509a4863c148f378838fa6c9b81749921.png" alt="\mu = \mu_{i,j} + f (\mu_{i+1,j} - \mu_{i,j})"/></p>
+<p><span class="eqno">(84)</span><img src="../_images/math/69363585db6d8c715083681d2511f1ffcefadf04.png" alt="\mu = \mu_{i,j} + f (\mu_{i+1,j} - \mu_{i,j})"/></p>
 </div><p>where the interpolation factor is defined as</p>
 <div class="math" id="equation-sab-interpolation-factor">
-<p><span class="eqno">(85)</span><img src="../_images/math/fe55e554344d75d204e638a282e6acca6acebd08.png" alt="f = \frac{E - E_i}{E_{i+1} - E_i}."/></p>
+<p><span class="eqno">(85)</span><img src="../_images/math/3fbc578039b24cebbb2f87a16a6cc65b0d3f50a2.png" alt="f = \frac{E - E_i}{E_{i+1} - E_i}."/></p>
 </div></div>
 <div class="section" id="outgoing-energy-and-angle-for-inelastic-scattering">
 <h3>5.10.4. Outgoing Energy and Angle for Inelastic Scattering<a class="headerlink" href="#outgoing-energy-and-angle-for-inelastic-scattering" title="Permalink to this headline">¶</a></h3>
-<p>Each S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) table provides a correlated angle-energy secondary distribution for
+<p>Each S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) table provides a correlated angle-energy secondary distribution for
 neutron thermal inelastic scattering.  There are three representations used
 in the ACE thermal scattering data: equiprobable discrete outgoing
 energies, non-uniform yet still discrete outgoing energies, and continuous
@@ -992,7 +990,7 @@ represent the angular distribution in a common format, using a series of
 discrete equiprobable outgoing cosines.</p>
 <div class="section" id="equi-probable-outgoing-energies">
 <h4>5.10.4.1. Equi-Probable Outgoing Energies<a class="headerlink" href="#equi-probable-outgoing-energies" title="Permalink to this headline">¶</a></h4>
-<p>If the thermal data was processed with <img class="math" src="../_images/math/0e4dbd41ad8ab7a2650a4194ff59939e6d4f8abf.png" alt="iwt = 1"/> in NJOY, then the
+<p>If the thermal data was processed with <img class="math" src="../_images/math/32bc666a3e4daca37d68095d13fee12f7b63452a.png" alt="iwt = 1"/> in NJOY, then the
 outgoing energy spectra is represented in the ACE data as a set of discrete and
 equiprobable outgoing energies.  The procedure to determine the outgoing energy
 and angle is as such. First, the interpolation factor is determined from
@@ -1000,19 +998,19 @@ equation <a href="#equation-sab-interpolation-factor">(85)</a>.  Then, an outgoi
 sampled from a uniform distribution and then interpolated between values
 corresponding to neighboring incoming energies:</p>
 <div class="math" id="equation-inelastic-energy">
-<p><span class="eqno">(86)</span><img src="../_images/math/3f8f6da4aab67655ddac5d3b3027e44a2c23436f.png" alt="E = E_{i,j} + f (E_{i+1,j} - E_{i,j})"/></p>
-</div><p>where <img class="math" src="../_images/math/4eea5332064acfb08980ab21e9b23f3aea41d75f.png" alt="E_{i,j}"/> is the j-th outgoing energy corresponding to the i-th
+<p><span class="eqno">(86)</span><img src="../_images/math/7321eed5feceac9bc2a006d3372a7504afec4e7f.png" alt="E = E_{i,j} + f (E_{i+1,j} - E_{i,j})"/></p>
+</div><p>where <img class="math" src="../_images/math/2222b995c2353461d6e0ac399df3bf276b9c7304.png" alt="E_{i,j}"/> is the j-th outgoing energy corresponding to the i-th
 incoming energy. For each combination of incoming and outgoing energies, there
 is a series equiprobable outgoing cosines. An outgoing cosine bin is sampled
 uniformly and then the final cosine is interpolated on the incoming energy grid:</p>
 <div class="math" id="equation-inelastic-angle">
-<p><span class="eqno">(87)</span><img src="../_images/math/76f3fc4985d28bccf0b89a0d5773aab1497bf9b6.png" alt="\mu = \mu_{i,j,k} + f (\mu_{i+1,j,k} - \mu_{i,j,k})"/></p>
-</div><p>where <img class="math" src="../_images/math/2d7f45fa99693dbe2948e840fb6aaf916beb0c27.png" alt="\mu_{i,j,k}"/> is the k-th outgoing cosine corresponding to the j-th
+<p><span class="eqno">(87)</span><img src="../_images/math/81c9ecfb768181e525934dce274b01155d16656a.png" alt="\mu = \mu_{i,j,k} + f (\mu_{i+1,j,k} - \mu_{i,j,k})"/></p>
+</div><p>where <img class="math" src="../_images/math/42f768e135c2ac3dc468b2985fbdfc750dc5f0c2.png" alt="\mu_{i,j,k}"/> is the k-th outgoing cosine corresponding to the j-th
 outgoing energy and the i-th incoming energy.</p>
 </div>
 <div class="section" id="skewed-equi-probable-outgoing-energies">
 <h4>5.10.4.2. Skewed Equi-Probable Outgoing Energies<a class="headerlink" href="#skewed-equi-probable-outgoing-energies" title="Permalink to this headline">¶</a></h4>
-<p>If the thermal data was processed with <img class="math" src="../_images/math/965401b23bcb1aa9e04b4500bcae95f290503c2a.png" alt="iwt=0"/> in NJOY, then the
+<p>If the thermal data was processed with <img class="math" src="../_images/math/95883ed419b42c763fa09194af726fbebaf1778d.png" alt="iwt=0"/> in NJOY, then the
 outgoing energy spectra is represented in the ACE data according to the
 following: the first and last outgoing energies have a relative probability of
 1, the second and second-to-last energies have a relative probability of 4, and
@@ -1023,14 +1021,14 @@ accordingly.</p>
 </div>
 <div class="section" id="continuous-outgoing-energies">
 <h4>5.10.4.3. Continuous Outgoing Energies<a class="headerlink" href="#continuous-outgoing-energies" title="Permalink to this headline">¶</a></h4>
-<p>If the thermal data was processed with <img class="math" src="../_images/math/ec4a657166917824fa53265e75eb1beaedf3450b.png" alt="iwt=2"/> in NJOY, then the
+<p>If the thermal data was processed with <img class="math" src="../_images/math/4642e845b88a9a2ba26a4a74a9d5bd780c123efb.png" alt="iwt=2"/> in NJOY, then the
 outgoing energy spectra is represented by a continuous outgoing energy spectra
 in tabular form with linear-linear interpolation.  The sampling of the outgoing
-energy portion of this format is very similar to <a class="reference internal" href="#ace-law-61"><em>ACE Law 61</em></a>,
+energy portion of this format is very similar to <a class="reference internal" href="#ace-law-61"><span>ACE Law 61</span></a>,
 but the sampling of the correlated angle is performed as it was in the other
 two representations discussed in this sub-section.  In the Law 61 algorithm,
-we found an interpolation factor <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/>, statistically sampled an incoming
-energy bin <img class="math" src="../_images/math/63c17c295325f731666c7d74952b563a01e00fcc.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> based on
+we found an interpolation factor <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/>, statistically sampled an incoming
+energy bin <img class="math" src="../_images/math/fcd3c7d79435a73a909916f6ae106d4b640566e5.png" alt="\ell"/>, and sampled an outgoing energy bin <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> based on
 the tabulated cumulative distribution function. Once the outgoing energy has
 been determined with equation <a href="#equation-ace-law-4-energy">(38)</a>, we then need to decide
 which angular distribution data to use.  Like the linear-linear interpolation
@@ -1063,7 +1061,7 @@ number of incoming energies within the unresolved resonance range:</p>
 <li>Total cross section (or factor) in each band;</li>
 <li>Elastic scattering cross section (or factor) in each band;</li>
 <li>Fission cross section (or factor) in each band;</li>
-<li><img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> cross section (or factor) in each band; and</li>
+<li><img class="math" src="../_images/math/86a337316c6571ab2d3380e2bc1735c09def19dc.png" alt="(n,\gamma)"/> cross section (or factor) in each band; and</li>
 <li>Neutron heating number (or factor) in each band.</li>
 </ul>
 <p>It should be noted that unresolved resonance probability tables affect only
@@ -1072,24 +1070,24 @@ angle/energy distributions. Secondary distributions for elastic and inelastic
 scattering would be specified whether or not probability tables were present.</p>
 <p>The procedure for determining cross sections in the unresolved range using
 probability tables is as follows. First, the bounding incoming energies are
-determined, i.e. find <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> such that <img class="math" src="../_images/math/e12f93f087b0231f50449edc28ed12050e5f68da.png" alt="E_i &lt; E &lt; E_{i+1}"/>. We then
-sample a cross section band <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/> using the cumulative probabilities for
-table <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>. This allows us to then calculate the elastic, fission, and
+determined, i.e. find <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> such that <img class="math" src="../_images/math/11bed1d62b2f553c6bba9255ade361778cb870ea.png" alt="E_i &lt; E &lt; E_{i+1}"/>. We then
+sample a cross section band <img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/> using the cumulative probabilities for
+table <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>. This allows us to then calculate the elastic, fission, and
 capture cross sections from the probability tables interpolating between
 neighboring incoming energies. If interpolation is specified, then
 the cross sections are calculated as</p>
 <div class="math" id="equation-ptables-linlin">
-<p><span class="eqno">(88)</span><img src="../_images/math/78f6fab5c8e96409b2f5b86a341a51d416cea8ba.png" alt="\sigma = \sigma_{i,j} + f (\sigma_{i+1,j} - \sigma{i,j})"/></p>
-</div><p>where <img class="math" src="../_images/math/708c2896dec2ac483dc4bcc92baca55b7cb19921.png" alt="\sigma_{i,j}"/> is the j-th band cross section corresponding to the
-i-th incoming neutron energy and <img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/> is the interpolation factor defined
+<p><span class="eqno">(88)</span><img src="../_images/math/ea9369891f1ff8938ae390bdb648678e78c3003a.png" alt="\sigma = \sigma_{i,j} + f (\sigma_{i+1,j} - \sigma{i,j})"/></p>
+</div><p>where <img class="math" src="../_images/math/fbbd7cbe39753a1f3c7fd7d850bb95bd97781a6c.png" alt="\sigma_{i,j}"/> is the j-th band cross section corresponding to the
+i-th incoming neutron energy and <img class="math" src="../_images/math/0001d02b63ede2fe3219e05a7cd09c82ae6298b6.png" alt="f"/> is the interpolation factor defined
 in the same manner as <a href="#equation-sab-interpolation-factor">(85)</a>. If logarithmic
 interpolation is specified, the cross sections are calculated as</p>
 <div class="math" id="equation-ptables-loglog">
-<p><span class="eqno">(89)</span><img src="../_images/math/8b359f9521a5ba3afb4800d705d667c88c41bd33.png" alt="\sigma = \exp \left ( \log \sigma_{i,j} + f \log
+<p><span class="eqno">(89)</span><img src="../_images/math/0af49ad5ceac407e47acc6bc425307523ccb028f.png" alt="\sigma = \exp \left ( \log \sigma_{i,j} + f \log
 \frac{\sigma_{i+1,j}}{\sigma_{i,j}} \right )"/></p>
 </div><p>where the interpolation factor is now defined as</p>
 <div class="math" id="equation-log-interpolation-factor">
-<p><span class="eqno">(90)</span><img src="../_images/math/aca45e27a2286d530c0d9d17fba88c3e35471698.png" alt="f = \frac{\log \frac{E}{E_i}}{\log \frac{E_{i+1}}{E_i}}."/></p>
+<p><span class="eqno">(90)</span><img src="../_images/math/acb86d5cd33acbbd379014727295964c15cef03a.png" alt="f = \frac{\log \frac{E}{E_i}}{\log \frac{E_{i+1}}{E_i}}."/></p>
 </div><p>A flag is also present in the probability table that specifies whether an
 inelastic cross section should be calculated. If so, this is done from a normal
 reaction cross section (either MT=51 or a special MT). Finally, if the
@@ -1112,37 +1110,34 @@ this is a misnomer) is commonly used.</p>
 instead, at every collision, the weight of neutron is reduced by probability of
 absorption occurring, i.e.</p>
 <div class="math" id="equation-survival-biasing-weight">
-<p><span class="eqno">(91)</span><img src="../_images/math/acd6282c9abf3632e40baee0c28c6232ec72c805.png" alt="w' = w \left ( 1 - \frac{\sigma_a (E)}{\sigma_t (E)} \right )"/></p>
-</div><p>where <img class="math" src="../_images/math/11355298328f1cd40da4c649ccf7d3d07d88b84a.png" alt="w'"/> is the weight of the neutron after adjustment and <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> is
+<p><span class="eqno">(91)</span><img src="../_images/math/7309379b4001d8097c2b5bc82a4145d140ca0404.png" alt="w' = w \left ( 1 - \frac{\sigma_a (E)}{\sigma_t (E)} \right )"/></p>
+</div><p>where <img class="math" src="../_images/math/d0f641ddabfc77111d0823470829ca6d9ca59ad1.png" alt="w'"/> is the weight of the neutron after adjustment and <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/> is
 the weight of the neutron before adjustment. A few other things need to be
 handled differently if survival biasing is turned on. Although fission reactions
 never actually occur with survival biasing, we still need to create fission
 sites to serve as source sites for the next generation in the method of
 successive generations. The algorithm for sampling fission sites is the same as
-that described in <a class="reference internal" href="#fission"><em>Fission</em></a>. The only difference is in equation
+that described in <a class="reference internal" href="#fission"><span>Fission</span></a>. The only difference is in equation
 <a href="#equation-fission-neutrons">(14)</a>. We now need to produce</p>
 <div class="math" id="equation-fission-neutrons-survival">
-<p><span class="eqno">(92)</span><img src="../_images/math/42ec6f31d15e2d1e3378bfa79c4cf43526c3bbde.png" alt="\nu = \frac{w}{k} \frac{\nu_t \sigma_f(E)}{\sigma_t (E)}"/></p>
-</div><p>fission sites, where <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> is the weight of the neutron before being
+<p><span class="eqno">(92)</span><img src="../_images/math/23e01bdec04e2cbbc81a53da4451026f6a4c6287.png" alt="\nu = \frac{w}{k} \frac{\nu_t \sigma_f(E)}{\sigma_t (E)}"/></p>
+</div><p>fission sites, where <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/> is the weight of the neutron before being
 adjusted. One should note this is just the expected number of neutrons produced
 <em>per collision</em> rather than the expected number of neutrons produced given that
 fission has already occurred.</p>
 <p>Additionally, since survival biasing can reduce the weight of the neutron to
 very low values, it is always used in conjunction with a weight cutoff and
-Russian rouletting. Two user adjustable parameters <img class="math" src="../_images/math/6e42e05044ac64d8d2d12d79f687747ccd309b46.png" alt="w_c"/> and <img class="math" src="../_images/math/3d5b84e234ba0345c505dbe2899818c36aa9d23f.png" alt="w_s"/>
+Russian rouletting. Two user adjustable parameters <img class="math" src="../_images/math/62464d05981979f1f40f1ef8e007bf08777e4130.png" alt="w_c"/> and <img class="math" src="../_images/math/cd011afd65294ad2312e56d3c43ead7591fc1354.png" alt="w_s"/>
 are given which are the weight below which neutrons should undergo Russian
 roulette and the weight should they survive Russian roulette. The algorithm for
-Russian rouletting is as follows. After a collision if <img class="math" src="../_images/math/6fbea0764be584cff05b60c100d4079392999956.png" alt="w &lt; w_c"/>, then the
-neutron is killed with probability <img class="math" src="../_images/math/d57019227e3dd0038210526c8317911822fcf2b7.png" alt="1 - w/w_s"/>. If it survives, the weight
-is set equal to <img class="math" src="../_images/math/3d5b84e234ba0345c505dbe2899818c36aa9d23f.png" alt="w_s"/>. One can confirm that the average weight following
-Russian roulette is simply <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/>, so the game can be considered &#8220;fair&#8221;. By
-default, the cutoff weight in OpenMC is <img class="math" src="../_images/math/365020d2b6496b7fd18991897ed55e528067bff2.png" alt="w_c = 0.25"/> and the survival
-weight is <img class="math" src="../_images/math/6d8173eac94b7750165d6ed9588ba09cf4734ff9.png" alt="w_s = 1.0"/>. These parameters vary from one Monte Carlo code to
+Russian rouletting is as follows. After a collision if <img class="math" src="../_images/math/59c19f14f36996ad36d83a2454b0ae316a42d617.png" alt="w &lt; w_c"/>, then the
+neutron is killed with probability <img class="math" src="../_images/math/3b681d9a42eb1e7b7aee6ed0c26ce7fefba25098.png" alt="1 - w/w_s"/>. If it survives, the weight
+is set equal to <img class="math" src="../_images/math/cd011afd65294ad2312e56d3c43ead7591fc1354.png" alt="w_s"/>. One can confirm that the average weight following
+Russian roulette is simply <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/>, so the game can be considered &#8220;fair&#8221;. By
+default, the cutoff weight in OpenMC is <img class="math" src="../_images/math/4c33e0e76cbb7c9b5d0a486e31a486f3a145dc35.png" alt="w_c = 0.25"/> and the survival
+weight is <img class="math" src="../_images/math/76d517ee1c28385305946405479f8033e1fe5dbc.png" alt="w_s = 1.0"/>. These parameters vary from one Monte Carlo code to
 another.</p>
-</div>
-</div>
-<div class="section" id="references">
-<h2>5.13. References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<p class="rubric">References</p>
 <table class="docutils citation" frame="void" id="doyas" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
@@ -1197,10 +1192,11 @@ book can be obtained for free from the <a class="reference external" href="http:
 </table>
 </div>
 </div>
+</div>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="random_numbers.html">4. Random Number Generation</a>
@@ -1213,9 +1209,9 @@ book can be obtained for free from the <a class="reference external" href="http:
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

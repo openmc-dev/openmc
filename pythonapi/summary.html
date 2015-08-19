@@ -1,0 +1,219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Summary &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Python API" href="index.html" />
+    <link rel="next" title="Tallies" href="tallies.html" />
+    <link rel="prev" title="Statepoint" href="statepoint.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="statepoint.html">Statepoint</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-openmc.summary">
+<span id="summary"></span><span id="pythonapi-summary"></span><h1>Summary<a class="headerlink" href="#module-openmc.summary" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="openmc.summary.Summary">
+<em class="property">class </em><code class="descclassname">openmc.summary.</code><code class="descname">Summary</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Information summarizing the geometry, materials, and tallies used in a
+simulation.</p>
+<dl class="method">
+<dt id="openmc.summary.Summary.get_cell_by_id">
+<code class="descname">get_cell_by_id</code><span class="sig-paren">(</span><em>cell_id</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_cell_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Cell object given the cell id</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id</strong> (<em>int</em>) &#8211; Unique identifier for the cell</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>cell</strong> &#8211;
+Cell with given id</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="universe.html#openmc.universe.Cell" title="openmc.universe.Cell">openmc.universe.Cell</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.get_lattice_by_id">
+<code class="descname">get_lattice_by_id</code><span class="sig-paren">(</span><em>lattice_id</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_lattice_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Lattice object given the lattice id</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id</strong> (<em>int</em>) &#8211; Unique identifier for the lattice</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>lattice</strong> &#8211;
+Lattice with given id</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="universe.html#openmc.universe.Lattice" title="openmc.universe.Lattice">openmc.universe.Lattice</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.get_material_by_id">
+<code class="descname">get_material_by_id</code><span class="sig-paren">(</span><em>material_id</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_material_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Material object given the material id</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id</strong> (<em>int</em>) &#8211; Unique identifier for the material</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>material</strong> &#8211;
+Material with given id</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="material.html#openmc.material.Material" title="openmc.material.Material">openmc.material.Material</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.get_nuclide_by_zaid">
+<code class="descname">get_nuclide_by_zaid</code><span class="sig-paren">(</span><em>zaid</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_nuclide_by_zaid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Nuclide object given the &#8216;zaid&#8217; identifier for the nuclide.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>zaid</strong> (<em>int</em>) &#8211; 1000*Z + A, where Z is the atomic number of the nuclide and A is the
+mass number. For example, the zaid for U-235 is 92235.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>nuclide</strong> &#8211;
+Nuclide matching the specified zaid, or None if no matching object
+is found.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">openmc.nuclide.Nuclide or None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.get_surface_by_id">
+<code class="descname">get_surface_by_id</code><span class="sig-paren">(</span><em>surface_id</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_surface_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Surface object given the surface id</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id</strong> (<em>int</em>) &#8211; Unique identifier for the surface</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>surface</strong> &#8211;
+Surface with given id</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="surface.html#openmc.surface.Surface" title="openmc.surface.Surface">openmc.surface.Surface</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.get_universe_by_id">
+<code class="descname">get_universe_by_id</code><span class="sig-paren">(</span><em>universe_id</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.get_universe_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Universe object given the universe id</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id</strong> (<em>int</em>) &#8211; Unique identifier for the universe</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>universe</strong> &#8211;
+Universe with given id</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="universe.html#openmc.universe.Universe" title="openmc.universe.Universe">openmc.universe.Universe</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.summary.Summary.make_opencg_geometry">
+<code class="descname">make_opencg_geometry</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#openmc.summary.Summary.make_opencg_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create OpenCG geometry based on the information contained in the summary
+file. The geometry is stored as the &#8216;opencg_geometry&#8217; attribute.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="statepoint.html">Statepoint</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

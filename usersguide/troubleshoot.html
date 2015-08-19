@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
     <link rel="next" title="Developer’s Guide" href="../devguide/index.html" />
     <link rel="prev" title="4. Data Processing and Visualization" href="processing.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="processing.html">4. Data Processing and Visualization</a>
@@ -76,13 +74,13 @@ old. Download and install the latest version of <a class="reference external" hr
 <div class="section" id="make-1-ifort-command-not-found">
 <h3>5.1.4. make[1]: ifort: Command not found<a class="headerlink" href="#make-1-ifort-command-not-found" title="Permalink to this headline">¶</a></h3>
 <p>You tried compiling with the Intel Fortran compiler and it was not found on your
-<span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the Intel compiler installed, make sure the shell
+<span class="target" id="index-0"></span><code class="xref std std-envvar docutils literal"><span class="pre">PATH</span></code>. If you have the Intel compiler installed, make sure the shell
 can locate it (this can be tested with <strong class="program">which ifort</strong>).</p>
 </div>
 <div class="section" id="make-1-pgf90-command-not-found">
 <h3>5.1.5. make[1]: pgf90: Command not found<a class="headerlink" href="#make-1-pgf90-command-not-found" title="Permalink to this headline">¶</a></h3>
 <p>You tried compiling with the PGI Fortran compiler and it was not found on your
-<span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the PGI compiler installed, make sure the shell can
+<span class="target" id="index-1"></span><code class="xref std std-envvar docutils literal"><span class="pre">PATH</span></code>. If you have the PGI compiler installed, make sure the shell can
 locate it (this can be tested with <strong class="program">which pgf90</strong>).</p>
 </div>
 </div>
@@ -93,7 +91,7 @@ locate it (this can be tested with <strong class="program">which pgf90</strong>)
 <p>A segmentation fault occurs when the program tries to access a variable in
 memory that was outside the memory allocated for the program. The best way to
 debug a segmentation fault is to re-compile OpenMC with debug options turned
-on. First go to your <tt class="docutils literal"><span class="pre">openmc/src</span></tt> directory where OpenMC was compiled and type
+on. First go to your <code class="docutils literal"><span class="pre">openmc/src</span></code> directory where OpenMC was compiled and type
 the following commands:</p>
 <div class="highlight-sh"><div class="highlight"><pre>make distclean
 make <span class="nv">DEBUG</span><span class="o">=</span>yes
@@ -108,10 +106,10 @@ failed, send an email to the OpenMC User&#8217;s Group <a class="reference exter
 <p>OpenMC needs to know where to find cross section data for each
 nuclide. Information on what data is available and in what files is summarized
 in a cross_sections.xml file. You need to tell OpenMC where to find the
-cross_sections.xml file either with the <a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in settings.xml or
-with the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable. It is recommended to add
-a line in your <tt class="docutils literal"><span class="pre">.profile</span></tt> or <tt class="docutils literal"><span class="pre">.bash_profile</span></tt> setting the
-<span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable.</p>
+cross_sections.xml file either with the <a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in settings.xml or
+with the <span class="target" id="index-2"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable. It is recommended to add
+a line in your <code class="docutils literal"><span class="pre">.profile</span></code> or <code class="docutils literal"><span class="pre">.bash_profile</span></code> setting the
+<span class="target" id="index-3"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable.</p>
 </div>
 <div class="section" id="geometry-debugging">
 <h3>5.2.3. Geometry Debugging<a class="headerlink" href="#geometry-debugging" title="Permalink to this headline">¶</a></h3>
@@ -126,8 +124,8 @@ not be a sufficient check to ensure correctly defined geometry.  For instance,
 if an overlap is of small aspect ratio, the plotting resolution might not be
 high enough to produce any pixels in the overlapping area.</p>
 <p>To reliably validate a geometry input, it is best to run the problem in
-geometry debugging mode with the <tt class="docutils literal"><span class="pre">-g</span></tt>, <tt class="docutils literal"><span class="pre">-geometry-debug</span></tt>, or
-<tt class="docutils literal"><span class="pre">--geometry-debug</span></tt> command-line options.  This will enable checks for
+geometry debugging mode with the <code class="docutils literal"><span class="pre">-g</span></code>, <code class="docutils literal"><span class="pre">-geometry-debug</span></code>, or
+<code class="docutils literal"><span class="pre">--geometry-debug</span></code> command-line options.  This will enable checks for
 overlapping cells at every move of esch simulated particle.  Depending on the
 complexity of the geometry input file, this could add considerable overhead to
 the run (these runs can still be done in parallel).  As a result, for this run
@@ -150,7 +148,7 @@ and you still receive this error, it means that a surface/cell/lattice in your
 geometry has been specified incorrectly or is missing.</p>
 <p>The best way to debug this error is to turn on a trace for the particle getting
 lost. After the error message, the code will display what batch, generation, and
-particle number caused the error. In your settings.xml, add a <a class="reference internal" href="input.html#trace"><em>&lt;threads&gt; Element</em></a>
+particle number caused the error. In your settings.xml, add a <a class="reference internal" href="input.html#trace"><span>&lt;trace&gt; Element</span></a>
 followed by the batch, generation, and particle number. This will give you
 detailed output every time that particle enters a cell, crosses a boundary, or
 has a collision. For example, if you received this error at cycle 5, generation
@@ -159,7 +157,7 @@ has a collision. For example, if you received this error at cycle 5, generation
 </pre></div>
 </div>
 <p>For large runs it is often advantageous to run only the offending particle by
-using particle restart mode with the <tt class="docutils literal"><span class="pre">-s</span></tt>, <tt class="docutils literal"><span class="pre">-particle</span></tt>, or <tt class="docutils literal"><span class="pre">--particle</span></tt>
+using particle restart mode with the <code class="docutils literal"><span class="pre">-s</span></code>, <code class="docutils literal"><span class="pre">-particle</span></code>, or <code class="docutils literal"><span class="pre">--particle</span></code>
 command-line options in conjunction with the particle restart files that are
 created when particles are lost with this error.</p>
 </div>
@@ -169,7 +167,7 @@ created when particles are lost with this error.</p>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="processing.html">4. Data Processing and Visualization</a>
@@ -182,9 +180,9 @@ created when particles are lost with this error.</p>
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

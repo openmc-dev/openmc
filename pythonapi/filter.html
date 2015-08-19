@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Filter &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Python API" href="index.html" />
+    <link rel="next" title="Geometry" href="geometry.html" />
+    <link rel="prev" title="Element" href="element.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="element.html">Element</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="geometry.html">Geometry</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-openmc.filter">
+<span id="filter"></span><span id="pythonapi-filter"></span><h1>Filter<a class="headerlink" href="#module-openmc.filter" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="openmc.filter.Filter">
+<em class="property">class </em><code class="descclassname">openmc.filter.</code><code class="descname">Filter</code><span class="sig-paren">(</span><em>type=None</em>, <em>bins=None</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.filter.Filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>A filter used to constrain a tally to a specific criterion, e.g. only tally
+events when the particle is in a certain cell and energy range.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>type</strong> (<em>str</em>) &#8211; The type of the tally filter. Acceptable values are &#8220;universe&#8221;,
+&#8220;material&#8221;, &#8220;cell&#8221;, &#8220;cellborn&#8221;, &#8220;surface&#8221;, &#8220;mesh&#8221;, &#8220;energy&#8221;,
+&#8220;energyout&#8221;, and &#8220;distribcell&#8221;.</li>
+<li><strong>bins</strong> (<em>int or Iterable of int or Iterable of float</em>) &#8211; The bins for the filter. This takes on different meaning for different
+filters.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.filter.Filter.type">
+<code class="descname">type</code><a class="headerlink" href="#openmc.filter.Filter.type" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>str</em></p>
+<p>The type of the tally filter.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.filter.Filter.bins">
+<code class="descname">bins</code><a class="headerlink" href="#openmc.filter.Filter.bins" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>int or Iterable of int or Iterable of float</em></p>
+<p>The bins for the filter</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.filter.Filter.can_merge">
+<code class="descname">can_merge</code><span class="sig-paren">(</span><em>filter</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.filter.Filter.can_merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine if filter can be merged with another.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filter</strong> (<a class="reference internal" href="#openmc.filter.Filter" title="openmc.filter.Filter"><em>Filter</em></a>) &#8211; Filter to compare with</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Whether the filter can be merged</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.filter.Filter.get_bin_index">
+<code class="descname">get_bin_index</code><span class="sig-paren">(</span><em>filter_bin</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.filter.Filter.get_bin_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the index in the Filter for some bin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filter_bin</strong> (<em>int or tuple</em>) &#8211; The bin is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
+&#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. The bin is an integer for the
+cell instance ID for &#8216;distribcell&#8217; Filters. The bin is a 2-tuple of
+floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding to the
+energy boundaries of the bin of interest.  The bin is a (x,y,z)
+3-tuple for &#8216;mesh&#8217; filters corresponding to the mesh cell of
+interest.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>filter_index</strong> &#8211;
+The index in the Tally data array for this filter bin.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.filter.Filter.merge">
+<code class="descname">merge</code><span class="sig-paren">(</span><em>filter</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.filter.Filter.merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge this filter with another.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filter</strong> (<a class="reference internal" href="#openmc.filter.Filter" title="openmc.filter.Filter"><em>Filter</em></a>) &#8211; Filter to merge with</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>merged_filter</strong> &#8211;
+Filter resulting from the merge</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#openmc.filter.Filter" title="openmc.filter.Filter">Filter</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="element.html">Element</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="geometry.html">Geometry</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

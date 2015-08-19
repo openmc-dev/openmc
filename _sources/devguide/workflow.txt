@@ -7,7 +7,7 @@ Development Workflow
 Anyone wishing to make contributions to OpenMC should be fully acquianted and
 comfortable working with git_ and GitHub_. We assume here that you have git
 installed on your system, have a GitHub account, and have setup SSH keys to be
-able to create/push to repositories on GitHub. 
+able to create/push to repositories on GitHub.
 
 Overview
 --------
@@ -71,7 +71,7 @@ features and bug fixes. The general steps for contributing are as follows:
        git checkout -b newbranch develop
 
 3. Make your changes on the new branch that you intend to have included in
-   *develop*. If you have made other changes that should not be merged back, 
+   *develop*. If you have made other changes that should not be merged back,
    ensure that those changes are made on a different branch.
 
 4. Issue a pull request from GitHub and select the *develop* branch of
@@ -98,7 +98,7 @@ OpenMC Test Suite
 
 The purpose of this test suite is to ensure that OpenMC compiles using various
 combinations of compiler flags and options, and that all user input options can
-be used successfully without breaking the code. The test suite is comprised of 
+be used successfully without breaking the code. The test suite is comprised of
 regression tests where different types of input files are configured and the
 full OpenMC code is executed. Results from simulations are compared with
 expected results. The test suite is comprised of many build configurations
@@ -114,7 +114,7 @@ download these cross sections please do the following:
 .. code-block:: sh
 
     cd ../data
-    python get_nndc.py
+    python get_nndc_data.py
     export CROSS_SECTIONS=<path_to_data_folder>/nndc/cross_sections.xml
 
 The test suite can be run on an already existing build using:
@@ -143,19 +143,15 @@ variables should be set if the default paths are incorrect:
 
     * **MPI_DIR** - The path to the MPI directory.
 
-        * Default - */opt/mpich/3.1-gnu*
+        * Default - */opt/mpich/3.1.3-gnu*
 
     * **HDF5_DIR** - The path to the HDF5 directory.
 
-        * Default - */opt/hdf5/1.8.12-gnu*
+        * Default - */opt/hdf5/1.8.14-gnu*
 
     * **PHDF5_DIR** - The path to the parallel HDF5 directory.
 
-        * Default - */opt/phdf5/1.8.12-gnu* 
-
-    * **PETSC_DIR** - The path to the PETSc directory.
-
-        * Default - */opt/petsc/3.4.4-gnu*
+        * Default - */opt/phdf5/1.8.14-gnu*
 
 To run the full test suite, the following command can be executed in the
 tests directory:
@@ -192,7 +188,7 @@ Adding tests to test suite
 
 To add a new test to the test suite, create a sub-directory in the tests
 directory that conforms to the regular expression *test_*. To configure
-a test you need to add the following files to your new test directory, 
+a test you need to add the following files to your new test directory,
 *test_name* for example:
 
     * OpenMC input XML files

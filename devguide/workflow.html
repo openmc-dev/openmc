@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Developer’s Guide" href="index.html" />
     <link rel="next" title="4. XML Input Parsing" href="xml-parsing.html" />
     <link rel="prev" title="2. Style Guide for OpenMC" href="styleguide.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="styleguide.html">2. Style Guide for OpenMC</a>
@@ -149,7 +147,7 @@ if available.</p>
 It is configured to run with cross sections from <a class="reference external" href="http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html">NNDC</a>. To
 download these cross sections please do the following:</p>
 <div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd</span> ../data
-python get_nndc.py
+python get_nndc_data.py
 <span class="nb">export </span><span class="nv">CROSS_SECTIONS</span><span class="o">=</span>&lt;path_to_data_folder&gt;/nndc/cross_sections.xml
 </pre></div>
 </div>
@@ -179,28 +177,21 @@ variables should be set if the default paths are incorrect:</p>
 <li><p class="first"><strong>MPI_DIR</strong> - The path to the MPI directory.</p>
 <blockquote>
 <div><ul class="simple">
-<li>Default - <em>/opt/mpich/3.1-gnu</em></li>
+<li>Default - <em>/opt/mpich/3.1.3-gnu</em></li>
 </ul>
 </div></blockquote>
 </li>
 <li><p class="first"><strong>HDF5_DIR</strong> - The path to the HDF5 directory.</p>
 <blockquote>
 <div><ul class="simple">
-<li>Default - <em>/opt/hdf5/1.8.12-gnu</em></li>
+<li>Default - <em>/opt/hdf5/1.8.14-gnu</em></li>
 </ul>
 </div></blockquote>
 </li>
 <li><p class="first"><strong>PHDF5_DIR</strong> - The path to the parallel HDF5 directory.</p>
 <blockquote>
 <div><ul class="simple">
-<li>Default - <em>/opt/phdf5/1.8.12-gnu</em></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p class="first"><strong>PETSC_DIR</strong> - The path to the PETSc directory.</p>
-<blockquote>
-<div><ul class="simple">
-<li>Default - <em>/opt/petsc/3.4.4-gnu</em></li>
+<li>Default - <em>/opt/phdf5/1.8.14-gnu</em></li>
 </ul>
 </div></blockquote>
 </li>
@@ -219,7 +210,7 @@ the script run:</p>
 <p>As an example, say we want to run all tests with debug flags only on tests
 that have cone and plot in their name. Also, we would like to run this on
 4 processors. We can run:</p>
-<div class="highlight-sh"><div class="highlight"><pre>python run_tests.py -j 4 -C debug -R <span class="s2">&quot;cone|plot&quot;</span>
+<div class="highlight-sh"><div class="highlight"><pre>python run_tests.py -j <span class="m">4</span> -C debug -R <span class="s2">&quot;cone|plot&quot;</span>
 </pre></div>
 </div>
 <p>Note that standard regular expression syntax is used for selecting build
@@ -278,7 +269,7 @@ from your private repository into a public fork.</p>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="styleguide.html">2. Style Guide for OpenMC</a>
@@ -291,9 +282,9 @@ from your private repository into a public fork.</p>
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Theory and Methodology" href="index.html" />
     <link rel="next" title="8. Parallelization" href="parallelization.html" />
     <link rel="prev" title="6. Tallies" href="tallies.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="tallies.html">6. Tallies</a>
@@ -68,13 +66,13 @@ calculations in a Monte Carlo code.</p>
 <p>The method used to converge on the fission source distribution in an eigenvalue
 calculation, known as the method of successive generations, was first introduced
 by <a class="reference internal" href="#lieberoth" id="id1">[Lieberoth]</a>. In this method, a finite number of neutron histories,
-<img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>, are tracked through their lifetime iteratively. If fission occurs,
+<img class="math" src="../_images/math/75e27f04188974063be3230dca208cd495b77ce1.png" alt="N"/>, are tracked through their lifetime iteratively. If fission occurs,
 rather than tracking the resulting fission neutrons, the spatial coordinates of
 the fission site, the sampled outgoing energy and direction of the fission
 neutron, and the weight of the neutron are stored for use in the subsequent
 generation. In OpenMC, the array used for storing the fission site information
-is called the <em>fission bank</em>. At the end of each fission generation, <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>
-source sites for the next generation must be randomly sampled from the <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/>
+is called the <em>fission bank</em>. At the end of each fission generation, <img class="math" src="../_images/math/75e27f04188974063be3230dca208cd495b77ce1.png" alt="N"/>
+source sites for the next generation must be randomly sampled from the <img class="math" src="../_images/math/2de38926392ba23abeac75effc66c37a5f5be5fd.png" alt="M"/>
 fission sites that were stored to ensure that the neutron population does not
 grow exponentially. The sampled source sites are stored in an array called the
 <em>source bank</em> and can be retrieved during the subsequent generation.</p>
@@ -89,21 +87,21 @@ source distribution converges, tallies should not be scored to since they will
 otherwise include contributions from an unconverged source distribution.</p>
 <p>The method by which the fission source iterations are parallelized can have a
 large impact on the achievable parallel scaling. This topic is discussed at length
-in <a class="reference internal" href="parallelization.html#fission-bank-algorithms"><em>Fission Bank Algorithms</em></a>.</p>
+in <a class="reference internal" href="parallelization.html#fission-bank-algorithms"><span>Fission Bank Algorithms</span></a>.</p>
 </div>
 <div class="section" id="source-convergence-issues">
 <h2>7.2. Source Convergence Issues<a class="headerlink" href="#source-convergence-issues" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="diagnosing-convergence-with-shannon-entropy">
 <h3>7.2.1. Diagnosing Convergence with Shannon Entropy<a class="headerlink" href="#diagnosing-convergence-with-shannon-entropy" title="Permalink to this headline">¶</a></h3>
-<p>As discussed earlier, it is necessary to converge both <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> and the
+<p>As discussed earlier, it is necessary to converge both <img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> and the
 source distribution before any tallies can begin. Moreover, the convergence rate
 of the source distribution is in general slower than that of
-<img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/>. One should thus examine not only the convergence of
-<img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> but also the convergence of the source distribution in order to
+<img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/>. One should thus examine not only the convergence of
+<img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> but also the convergence of the source distribution in order to
 make decisions on when to start active batches.</p>
 <p>However, the representation of the source distribution makes it a bit more
-difficult to analyze its convergence. Since <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> is a scalar
-quantity, it is easy to simply look at a line plot of <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> versus the
+difficult to analyze its convergence. Since <img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> is a scalar
+quantity, it is easy to simply look at a line plot of <img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> versus the
 number of batches and this should give the user some idea about whether it has
 converged. On the other hand, the source distribution at any given batch is a
 finite set of coordinates in Euclidean space. In order to analyze the
@@ -119,18 +117,18 @@ Euclidean space. This can be done by superimposing a structured mesh over the
 geometry (containing at least all fissionable materials). Then, the fraction of
 source sites that are present in each mesh element is counted:</p>
 <div class="math" id="equation-fraction-source">
-<p><span class="eqno">(1)</span><img src="../_images/math/3e3bda3f18b93acfcfbc4fee5bba064bbae2b0c4.png" alt="S_i = \frac{\text{Source sites in $i$-th mesh element}}{\text{Total number of
+<p><span class="eqno">(1)</span><img src="../_images/math/cc61bb2174397c308b2c8551a3e8ac33cff497ed.png" alt="S_i = \frac{\text{Source sites in $i$-th mesh element}}{\text{Total number of
 source sites}}"/></p>
 </div><p>The Shannon entropy is then computed as</p>
 <div class="math" id="equation-shannon-entropy">
-<p><span class="eqno">(2)</span><img src="../_images/math/7473e93f886ae7e01cd1bd9fd7d21e5d365e4b0e.png" alt="H = - \sum_{i=1}^N S_i \log_2 S_i"/></p>
-</div><p>where <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> is the number of mesh elements. With equation
+<p><span class="eqno">(2)</span><img src="../_images/math/7b8aa1da40b0ca595ce4001be917ed201bb30372.png" alt="H = - \sum_{i=1}^N S_i \log_2 S_i"/></p>
+</div><p>where <img class="math" src="../_images/math/75e27f04188974063be3230dca208cd495b77ce1.png" alt="N"/> is the number of mesh elements. With equation
 <a href="#equation-shannon-entropy">(2)</a>, we now have a scalar metric that we can use to assess the
 convergence of the source distribution by observing line plots of the Shannon
 entropy versus the number of batches.</p>
 <p>In recent years, researchers have started looking at ways of automatically
 assessing source convergence to relieve the burden on the user of having to look
-at plots of <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> and the Shannon entropy. A number of methods have
+at plots of <img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> and the Shannon entropy. A number of methods have
 been proposed (see e.g. <a class="reference internal" href="#romano" id="id2">[Romano]</a>, <a class="reference internal" href="#ueki" id="id3">[Ueki]</a>), but each of these is not without
 problems.</p>
 </div>
@@ -146,17 +144,17 @@ site (UFS) method introduced by <a class="reference internal" href="#sutton" id=
 problem containing fissionable material is subdivided into a number of cells
 (typically using a structured mesh). Rather than producing</p>
 <div class="math">
-<p><img src="../_images/math/825c96dcbeb27ebc9e14257965efa983bc6b99ac.png" alt="m = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t}"/></p>
-</div><p>fission sites at each collision where <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> is the weight of the neutron,
-<img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> is the previous-generation estimate of the neutron multiplication
-factor, <img class="math" src="../_images/math/59fe8adcb949ed284a61f0e73d9ae158f3693592.png" alt="\nu\Sigma_f"/> is the neutron production cross section, and
-<img class="math" src="../_images/math/b5e850feb16eb83bd01af5524126befff31f202b.png" alt="\Sigma_t"/> is the total cross section, in the UFS method we produce</p>
+<p><img src="../_images/math/c3ce87e097e631b2c0939c06f6166aa725a6f1e9.png" alt="m = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t}"/></p>
+</div><p>fission sites at each collision where <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/> is the weight of the neutron,
+<img class="math" src="../_images/math/e9203da50e1059455123460d4e716c9c7f440cc3.png" alt="k"/> is the previous-generation estimate of the neutron multiplication
+factor, <img class="math" src="../_images/math/6b66eedfc21c91dc56f58cf02599f83b26644610.png" alt="\nu\Sigma_f"/> is the neutron production cross section, and
+<img class="math" src="../_images/math/6e5a1041d6cc18eff2b55b18f087de59f2ed28df.png" alt="\Sigma_t"/> is the total cross section, in the UFS method we produce</p>
 <div class="math">
-<p><img src="../_images/math/726296a60ed94af0d0692814ccdacc6339e0ced2.png" alt="m_{UFS} = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t} \frac{v_i}{s_i}"/></p>
-</div><p>fission sites at each collision where <img class="math" src="../_images/math/85ffd98b4eaea58a8db38fd0047e3a1d7c5661a0.png" alt="v_i"/> is the fraction of the total
-volume occupied by cell <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> and <img class="math" src="../_images/math/d3b63c17213f84d730e0de1f8c08597f7a648e37.png" alt="s_i"/> is the fraction of the fission
-source contained in cell <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>. To ensure that no bias is introduced, the
-weight of each fission site stored in the fission bank is <img class="math" src="../_images/math/5aac3b66c0da4612a56b68682465c9ed801b6276.png" alt="s_i/v_i"/> rather
+<p><img src="../_images/math/11552b282807e9e9d1b743c91786f1147fd3ee7f.png" alt="m_{UFS} = \frac{w}{k} \frac{\nu\Sigma_f}{\Sigma_t} \frac{v_i}{s_i}"/></p>
+</div><p>fission sites at each collision where <img class="math" src="../_images/math/91ee790671e6a647c8afc69baa2118effd0dac9d.png" alt="v_i"/> is the fraction of the total
+volume occupied by cell <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/> and <img class="math" src="../_images/math/7a4c1cd57a0f7dc6d01ef365e2ba68a499bb3851.png" alt="s_i"/> is the fraction of the fission
+source contained in cell <img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>. To ensure that no bias is introduced, the
+weight of each fission site stored in the fission bank is <img class="math" src="../_images/math/49c2f5e55a60d817458172a82cb248929448dd03.png" alt="s_i/v_i"/> rather
 than unity. By ensuring that the expected number of fission sites in each mesh
 cell is constant, the collision density across all cells, and hence the variance
 of tallies, is more uniform than it would be otherwise.</p>
@@ -197,7 +195,7 @@ Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (20
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="tallies.html">6. Tallies</a>
@@ -210,9 +208,9 @@ Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (20
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

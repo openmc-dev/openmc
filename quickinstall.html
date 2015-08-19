@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,25 +23,24 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="index.html" />
-    <link rel="next" title="Release Notes" href="releasenotes/index.html" />
+    <link rel="next" title="Release Notes for OpenMC 0.7.0" href="releasenotes.html" />
     <link rel="prev" title="The OpenMC Monte Carlo Code" href="index.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="index.html">
           <img class="logo" src="_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="index.html">The OpenMC Monte Carlo Code</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="releasenotes/index.html">Release Notes</a>&#160;&#160;»
+        <a href="releasenotes.html">Release Notes for OpenMC 0.7.0</a>&#160;&#160;»
         </p>
 
       </div>
@@ -53,7 +51,7 @@
 <span id="quickinstall"></span><h1>Quick Install Guide<a class="headerlink" href="#quick-install-guide" title="Permalink to this headline">¶</a></h1>
 <p>This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
-OpenMC, see <a class="reference internal" href="usersguide/install.html#usersguide-install"><em>Installation and Configuration</em></a> in the User&#8217;s Manual.</p>
+OpenMC, see <a class="reference internal" href="usersguide/install.html#usersguide-install"><span>Installation and Configuration</span></a> in the User&#8217;s Manual.</p>
 <div class="section" id="installing-on-ubuntu-through-ppa">
 <h2>Installing on Ubuntu through PPA<a class="headerlink" href="#installing-on-ubuntu-through-ppa" title="Permalink to this headline">¶</a></h2>
 <p>For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
@@ -64,26 +62,28 @@ sudo apt-get update
 sudo apt-get install openmc
 </pre></div>
 </div>
-<p>Currently, the binary package does not allow for parallel simulations, <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a>, or
-CMFD acceleration through <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a>. Users who need such capabilities should build
-OpenMC from source as is described in <a class="reference internal" href="usersguide/install.html#usersguide-install"><em>Installation and Configuration</em></a>.</p>
+<p>Currently, the binary package does not allow for parallel simulations or use of
+<a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a>. Users who need such capabilities should build OpenMC from source as is
+described in <a class="reference internal" href="usersguide/install.html#usersguide-install"><span>Installation and Configuration</span></a>.</p>
 </div>
 <div class="section" id="installing-from-source-on-linux-or-mac-os-x">
 <h2>Installing from Source on Linux or Mac OS X<a class="headerlink" href="#installing-from-source-on-linux-or-mac-os-x" title="Permalink to this headline">¶</a></h2>
 <p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. If you have <a class="reference external" href="http://git-scm.com">git</a>, the <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>
 compiler, and <a class="reference external" href="http://www.cmake.org">CMake</a> installed, you can download and install OpenMC be entering
 the following commands in a terminal:</p>
-<div class="highlight-sh"><div class="highlight"><pre>git clone git://github.com/mit-crpg/openmc.git
-<span class="nb">cd </span>openmc/src
+<div class="highlight-sh"><div class="highlight"><pre>git clone https://github.com/mit-crpg/openmc.git
+<span class="nb">cd </span>openmc
 git checkout -b master origin/master
+mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd </span>build
+cmake ..
 make
 sudo make install
 </pre></div>
 </div>
-<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt> and install it (by default in
-/usr/local/bin). If you do not have administrator privileges, the last command
-can be replaced with a local install, e.g.</p>
-<div class="highlight-sh"><div class="highlight"><pre>make install -e <span class="nv">prefix</span><span class="o">=</span><span class="nv">$HOME</span>/.local
+<p>This will build an executable named <code class="docutils literal"><span class="pre">openmc</span></code> and install it (by default in
+/usr/local/bin). If you do not have administrator privileges, the cmake command
+should specify an installation directory where you have write access, e.g.</p>
+<div class="highlight-sh"><div class="highlight"><pre>cmake -DCMAKE_INSTALL_PREFIX<span class="o">=</span><span class="nv">$HOME</span>/.local ..
 </pre></div>
 </div>
 </div>
@@ -91,22 +91,22 @@ can be replaced with a local install, e.g.</p>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="index.html">The OpenMC Monte Carlo Code</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="releasenotes/index.html">Release Notes</a>&#160;&#160;»
+        <a href="releasenotes.html">Release Notes for OpenMC 0.7.0</a>&#160;&#160;»
         </p>
 
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

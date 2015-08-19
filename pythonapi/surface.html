@@ -1,0 +1,723 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Surface &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Python API" href="index.html" />
+    <link rel="next" title="Tallies" href="tallies.html" />
+    <link rel="prev" title="Settings" href="settings.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="settings.html">Settings</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="module-openmc.surface">
+<span id="surface"></span><span id="pythonapi-surface"></span><h1>Surface<a class="headerlink" href="#module-openmc.surface" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="openmc.surface.Cone">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">Cone</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R2=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.Cone" title="Permalink to this definition">¶</a></dt>
+<dd><p>A conical surface parallel to the x-, y-, or z-axis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the apex</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the apex</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the apex</li>
+<li><strong>R2</strong> (<em>float</em>) &#8211; Parameter related to the aperature</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cone. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.Cone.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.Cone.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Cone.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.Cone.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Cone.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.Cone.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Cone.R2">
+<code class="descname">R2</code><a class="headerlink" href="#openmc.surface.Cone.R2" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Parameter related to the aperature</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.Cylinder">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">Cylinder</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>R=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.Cylinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>A cylinder whose length is parallel to the x-, y-, or z-axis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>R</strong> (<em>float</em>) &#8211; Radius of the cylinder</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cylinder. If not specified, the name will be the empty
+string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.Cylinder.r">
+<code class="descname">r</code><a class="headerlink" href="#openmc.surface.Cylinder.r" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Radius of the cylinder</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.Plane">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">Plane</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>A=None</em>, <em>B=None</em>, <em>C=None</em>, <em>D=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.Plane" title="Permalink to this definition">¶</a></dt>
+<dd><p>An arbitrary plane of the form <img class="math" src="../_images/math/e8bd2b0146269623a84749648d9fdfcc7739c12c.png" alt="Ax + By + Cz = D"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>A</strong> (<em>float</em>) &#8211; The &#8216;A&#8217; parameter for the plane</li>
+<li><strong>B</strong> (<em>float</em>) &#8211; The &#8216;B&#8217; parameter for the plane</li>
+<li><strong>C</strong> (<em>float</em>) &#8211; The &#8216;C&#8217; parameter for the plane</li>
+<li><strong>D</strong> (<em>float</em>) &#8211; The &#8216;D&#8217; parameter for the plane</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the plane. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.Plane.a">
+<code class="descname">a</code><a class="headerlink" href="#openmc.surface.Plane.a" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>The &#8216;A&#8217; parameter for the plane</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Plane.b">
+<code class="descname">b</code><a class="headerlink" href="#openmc.surface.Plane.b" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>The &#8216;B&#8217; parameter for the plane</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Plane.c">
+<code class="descname">c</code><a class="headerlink" href="#openmc.surface.Plane.c" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>The &#8216;C&#8217; parameter for the plane</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Plane.d">
+<code class="descname">d</code><a class="headerlink" href="#openmc.surface.Plane.d" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>The &#8216;D&#8217; parameter for the plane</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.Sphere">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">Sphere</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.Sphere" title="Permalink to this definition">¶</a></dt>
+<dd><p>A sphere of the form <img class="math" src="../_images/math/507f606cc720a165a1936a127f1b480c9854b9d4.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = R^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the center of the sphere</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the center of the sphere</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the center of the sphere</li>
+<li><strong>R</strong> (<em>float</em>) &#8211; Radius of the sphere</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the sphere. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.Sphere.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.Sphere.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the center of the sphere</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Sphere.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.Sphere.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the center of the sphere</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Sphere.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.Sphere.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the center of the sphere</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Sphere.R">
+<code class="descname">R</code><a class="headerlink" href="#openmc.surface.Sphere.R" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Radius of the sphere</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.Surface">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">Surface</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.Surface" title="Permalink to this definition">¶</a></dt>
+<dd><p>A two-dimensional surface that can be used define regions of space with an
+associated boundary condition.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int, optional</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}, optional</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>name</strong> (<em>str, optional</em>) &#8211; Name of the surface. If not specified, the name will be the empty
+string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.Surface.id">
+<code class="descname">id</code><a class="headerlink" href="#openmc.surface.Surface.id" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>int</em></p>
+<p>Unique identifier for the surface</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Surface.name">
+<code class="descname">name</code><a class="headerlink" href="#openmc.surface.Surface.name" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>str</em></p>
+<p>Name of the surface</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Surface.type">
+<code class="descname">type</code><a class="headerlink" href="#openmc.surface.Surface.type" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>str</em></p>
+<p>Type of the surface, e.g. &#8216;x-plane&#8217;</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Surface.boundary_type">
+<code class="descname">boundary_type</code><a class="headerlink" href="#openmc.surface.Surface.boundary_type" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em></p>
+<p>Boundary condition that defines the behavior for particles hitting the
+surface.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.Surface.coeffs">
+<code class="descname">coeffs</code><a class="headerlink" href="#openmc.surface.Surface.coeffs" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em></p>
+<p>Dictionary of surface coefficients</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.XCone">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">XCone</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R2=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.XCone" title="Permalink to this definition">¶</a></dt>
+<dd><p>A cone parallel to the x-axis of the form <img class="math" src="../_images/math/decd2c2611e51c2150c5f6e1f5e357381d4a7446.png" alt="(y - y_0)^2 + (z - z_0)^2 =
+R^2 (x - x_0)^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the apex</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the apex</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the apex</li>
+<li><strong>R2</strong> (<em>float</em>) &#8211; Parameter related to the aperature</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cone. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.XCone.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.XCone.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.XCone.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.XCone.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.XCone.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.XCone.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.XCone.R2">
+<code class="descname">R2</code><a class="headerlink" href="#openmc.surface.XCone.R2" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Parameter related to the aperature</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.XCylinder">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">XCylinder</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.XCylinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>An infinite cylinder whose length is parallel to the x-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/d2c236590767c2c039cccbf4658e5f5a15eef64d.png" alt="(y - y_0)^2 + (z - z_0)^2 = R^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the center of the cylinder</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the center of the cylinder</li>
+<li><strong>R</strong> (<em>float</em>) &#8211; Radius of the cylinder</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cylinder. If not specified, the name will be the empty
+string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.XCylinder.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.XCylinder.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.XCylinder.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.XCylinder.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.XPlane">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">XPlane</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.XPlane" title="Permalink to this definition">¶</a></dt>
+<dd><p>A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/2da8bdfc0727e7f2270df68b7edebd2d2786aefd.png" alt="x -
+x_0 = 0"/></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; Location of the plane</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the plane. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.XPlane.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.XPlane.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Location of the plane</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.YCone">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">YCone</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R2=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.YCone" title="Permalink to this definition">¶</a></dt>
+<dd><p>A cone parallel to the y-axis of the form <img class="math" src="../_images/math/80d7959bf679e0a57adb57d916c9692d8d556677.png" alt="(x - x_0)^2 + (z - z_0)^2 =
+R^2 (y - y_0)^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the apex</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the apex</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the apex</li>
+<li><strong>R2</strong> (<em>float</em>) &#8211; Parameter related to the aperature</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cone. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.YCone.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.YCone.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.YCone.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.YCone.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.YCone.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.YCone.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.YCone.R2">
+<code class="descname">R2</code><a class="headerlink" href="#openmc.surface.YCone.R2" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Parameter related to the aperature</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.YCylinder">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">YCylinder</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>z0=None</em>, <em>R=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.YCylinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>An infinite cylinder whose length is parallel to the y-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/3747efba6351883638de083d8f6bca42211cfe36.png" alt="(x - x_0)^2 + (z - z_0)^2 = R^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the center of the cylinder</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the center of the cylinder</li>
+<li><strong>R</strong> (<em>float</em>) &#8211; Radius of the cylinder</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cylinder. If not specified, the name will be the empty
+string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.YCylinder.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.YCylinder.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.YCylinder.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.YCylinder.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.YPlane">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">YPlane</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>y0=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.YPlane" title="Permalink to this definition">¶</a></dt>
+<dd><p>A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/c8b0a3f732d28a9a7c37eacd33b620da4aa6b92a.png" alt="y -
+y_0 = 0"/></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; Location of the plane</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the plane. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.YPlane.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.YPlane.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Location of the plane</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.ZCone">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">ZCone</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>z0=None</em>, <em>R2=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.ZCone" title="Permalink to this definition">¶</a></dt>
+<dd><p>A cone parallel to the x-axis of the form <img class="math" src="../_images/math/76a33761ccef4515da31d00bfd374f17f00dc875.png" alt="(x - x_0)^2 + (y - y_0)^2 =
+R^2 (z - z_0)^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the apex</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the apex</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; z-coordinate of the apex</li>
+<li><strong>R2</strong> (<em>float</em>) &#8211; Parameter related to the aperature</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cone. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.ZCone.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.ZCone.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.ZCone.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.ZCone.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.ZCone.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.ZCone.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>z-coordinate of the apex</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.ZCone.R2">
+<code class="descname">R2</code><a class="headerlink" href="#openmc.surface.ZCone.R2" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Parameter related to the aperature</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.ZCylinder">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">ZCylinder</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>x0=None</em>, <em>y0=None</em>, <em>R=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.ZCylinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>An infinite cylinder whose length is parallel to the z-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/9471a7a7c9e3809d4b6a42edda0a108d29fb39c2.png" alt="(x - x_0)^2 + (y - y_0)^2 = R^2"/>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>x0</strong> (<em>float</em>) &#8211; x-coordinate of the center of the cylinder</li>
+<li><strong>y0</strong> (<em>float</em>) &#8211; y-coordinate of the center of the cylinder</li>
+<li><strong>R</strong> (<em>float</em>) &#8211; Radius of the cylinder</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the cylinder. If not specified, the name will be the empty
+string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.ZCylinder.x0">
+<code class="descname">x0</code><a class="headerlink" href="#openmc.surface.ZCylinder.x0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>x-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="openmc.surface.ZCylinder.y0">
+<code class="descname">y0</code><a class="headerlink" href="#openmc.surface.ZCylinder.y0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>y-coordinate of the center of the cylinder</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="openmc.surface.ZPlane">
+<em class="property">class </em><code class="descclassname">openmc.surface.</code><code class="descname">ZPlane</code><span class="sig-paren">(</span><em>surface_id=None</em>, <em>boundary_type='transmission'</em>, <em>z0=None</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.surface.ZPlane" title="Permalink to this definition">¶</a></dt>
+<dd><p>A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/0b2b7782fc91425bc215af2459ff33e7974f1157.png" alt="z -
+z_0 = 0"/></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>surface_id</strong> (<em>int</em>) &#8211; Unique identifier for the surface. If not specified, an identifier will
+automatically be assigned.</li>
+<li><strong>boundary_type</strong> (<em>{&#8216;transmission, &#8216;vacuum&#8217;, &#8216;reflective&#8217;, &#8216;periodic&#8217;}</em>) &#8211; Boundary condition that defines the behavior for particles hitting the
+surface. Defaults to transmissive boundary condition where particles
+freely pass through the surface.</li>
+<li><strong>z0</strong> (<em>float</em>) &#8211; Location of the plane</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the plane. If not specified, the name will be the empty string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="openmc.surface.ZPlane.z0">
+<code class="descname">z0</code><a class="headerlink" href="#openmc.surface.ZPlane.z0" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em></p>
+<p>Location of the plane</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="settings.html">Settings</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

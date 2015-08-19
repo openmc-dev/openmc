@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Developer’s Guide" href="index.html" />
     <link rel="next" title="2. Style Guide for OpenMC" href="styleguide.html" />
     <link rel="prev" title="Developer’s Guide" href="index.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="index.html">Developer&#8217;s Guide</a>
@@ -61,34 +59,34 @@ module to get a feel for what variables you&#8217;ll often come across when look
 OpenMC code.</p>
 <div class="section" id="particle">
 <h2>1.1. Particle<a class="headerlink" href="#particle" title="Permalink to this headline">¶</a></h2>
-<p>Perhaps the variable that you will see most often is simply called <tt class="docutils literal"><span class="pre">p</span></tt> and is
+<p>Perhaps the variable that you will see most often is simply called <code class="docutils literal"><span class="pre">p</span></code> and is
 of type(Particle). This variable stores information about a particle&#8217;s physical
 characteristics (coordinates, direction, energy), what cell and material it&#8217;s
 currently in, how many collisions it has undergone, etc. In practice, only one
 particle is followed at a time so there is no array of type(Particle). The
 Particle type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/particle_header.F90">particle_header module</a>.</p>
 <p>You will notice that the direction and angle of the particle is stored in a
-linked list of type(LocalCoord). In geometries with multiple <a class="reference internal" href="../methods/geometry.html#universes"><em>Universes</em></a>,
+linked list of type(LocalCoord). In geometries with multiple <a class="reference internal" href="../methods/geometry.html#universes"><span>Universes</span></a>,
 the coordinates in each universe are stored in this linked list. If universes or
 lattices are not used in a geometry, only one LocalCoord is present in the
 linked list.</p>
 <p>The LocalCoord type has a component called cell which gives the index in the
-<tt class="docutils literal"><span class="pre">cells</span></tt> array in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>. The <tt class="docutils literal"><span class="pre">cells</span></tt> array is of type(Cell)
+<code class="docutils literal"><span class="pre">cells</span></code> array in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>. The <code class="docutils literal"><span class="pre">cells</span></code> array is of type(Cell)
 and stored information about each region defined by the user.</p>
 </div>
 <div class="section" id="cell">
 <h2>1.2. Cell<a class="headerlink" href="#cell" title="Permalink to this headline">¶</a></h2>
 <p>The Cell type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/geometry_header.F90">geometry_header module</a> along with other
 geometry-related derived types. Each cell in the problem is described in terms
-of its bounding surfaces, which are listed on the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component. The
-absolute value of each item in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component contains the index of
-the corresponding surface in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
-module</a>. The sign on each item in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component indicates whether
+of its bounding surfaces, which are listed on the <code class="docutils literal"><span class="pre">surfaces</span></code> component. The
+absolute value of each item in the <code class="docutils literal"><span class="pre">surfaces</span></code> component contains the index of
+the corresponding surface in the <code class="docutils literal"><span class="pre">surfaces</span></code> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+module</a>. The sign on each item in the <code class="docutils literal"><span class="pre">surfaces</span></code> component indicates whether
 the cell exists on the positive or negative side of the surface (see
-<a class="reference internal" href="../methods/geometry.html#methods-geometry"><em>Geometry</em></a>).</p>
+<a class="reference internal" href="../methods/geometry.html#methods-geometry"><span>Geometry</span></a>).</p>
 <p>Each cell can either be filled with another universe/lattice or with a
-material. If it is filled with a material, the <tt class="docutils literal"><span class="pre">material</span></tt> component gives the
-index of the material in the <tt class="docutils literal"><span class="pre">materials</span></tt> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+material. If it is filled with a material, the <code class="docutils literal"><span class="pre">material</span></code> component gives the
+index of the material in the <code class="docutils literal"><span class="pre">materials</span></code> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
 module</a>.</p>
 </div>
 <div class="section" id="surface">
@@ -96,57 +94,57 @@ module</a>.</p>
 <p>The Surface type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/geometry_header.F90">geometry_header module</a>. A surface is
 defined by a type (sphere, cylinder, etc.) and a list of coefficients for that
 surface type. The simplest example would be a plane perpendicular to the xy, yz,
-or xz plane which needs only one parameter. The <tt class="docutils literal"><span class="pre">type</span></tt> component indicates the
+or xz plane which needs only one parameter. The <code class="docutils literal"><span class="pre">type</span></code> component indicates the
 type through integer parameters such as SURF_SPHERE or SURF_CYL_Y (these are
-defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/constants.F90">constants module</a>). The <tt class="docutils literal"><span class="pre">coeffs</span></tt> component gives the
+defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/constants.F90">constants module</a>). The <code class="docutils literal"><span class="pre">coeffs</span></code> component gives the
 necessary coefficients to parameterize the surface type (see
-<a class="reference internal" href="../usersguide/input.html#surface-element"><em>&lt;surface&gt; Element</em></a>).</p>
+<a class="reference internal" href="../usersguide/input.html#surface-element"><span>&lt;surface&gt; Element</span></a>).</p>
 </div>
 <div class="section" id="material">
 <h2>1.4. Material<a class="headerlink" href="#material" title="Permalink to this headline">¶</a></h2>
 <p>The Material type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/material_header.F90">material_header module</a>. Each material
 contains a number of nuclides at a given atom density. Each item in the
-<tt class="docutils literal"><span class="pre">nuclide</span></tt> component corresponds to the index in the global <tt class="docutils literal"><span class="pre">nuclides</span></tt> array
-(as usual, found in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>). The <tt class="docutils literal"><span class="pre">atom_density</span></tt> component is the
-same length as the <tt class="docutils literal"><span class="pre">nuclides</span></tt> component and lists the corresponding atom
-density in atom/barn-cm for each nuclide in the <tt class="docutils literal"><span class="pre">nuclides</span></tt> component.</p>
+<code class="docutils literal"><span class="pre">nuclide</span></code> component corresponds to the index in the global <code class="docutils literal"><span class="pre">nuclides</span></code> array
+(as usual, found in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>). The <code class="docutils literal"><span class="pre">atom_density</span></code> component is the
+same length as the <code class="docutils literal"><span class="pre">nuclides</span></code> component and lists the corresponding atom
+density in atom/barn-cm for each nuclide in the <code class="docutils literal"><span class="pre">nuclides</span></code> component.</p>
 <p>If the material contains nuclides for which binding effects are important in
-low-energy scattering, a <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> can be associated with that
-material through the <tt class="docutils literal"><span class="pre">sab_table</span></tt> component. Again, this component contains the
-index in the <tt class="docutils literal"><span class="pre">sab_tables</span></tt> array from the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
+low-energy scattering, a <img class="math" src="../_images/math/ae80b12010e94b47829ea5bd0f66ab65510a9044.png" alt="S(\alpha,\beta)"/> can be associated with that
+material through the <code class="docutils literal"><span class="pre">sab_table</span></code> component. Again, this component contains the
+index in the <code class="docutils literal"><span class="pre">sab_tables</span></code> array from the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
 </div>
 <div class="section" id="nuclide">
 <h2>1.5. Nuclide<a class="headerlink" href="#nuclide" title="Permalink to this headline">¶</a></h2>
 <p>The Nuclide derived type stores cross section and interaction data for a nucleus
-and is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. The <tt class="docutils literal"><span class="pre">energy</span></tt> component is an array
+and is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. The <code class="docutils literal"><span class="pre">energy</span></code> component is an array
 that gives the discrete energies at which microscopic cross sections are
 tabulated. The actual microscopic cross sections are stored in a separate
-derived type, Reaction. An arrays of Reactions is present in the <tt class="docutils literal"><span class="pre">reactions</span></tt>
+derived type, Reaction. An arrays of Reactions is present in the <code class="docutils literal"><span class="pre">reactions</span></code>
 component. There are a few summary microscopic cross sections stored in other
-components, such as <tt class="docutils literal"><span class="pre">total</span></tt>, <tt class="docutils literal"><span class="pre">elastic</span></tt>, <tt class="docutils literal"><span class="pre">fission</span></tt>, and <tt class="docutils literal"><span class="pre">nu_fission</span></tt>.</p>
+components, such as <code class="docutils literal"><span class="pre">total</span></code>, <code class="docutils literal"><span class="pre">elastic</span></code>, <code class="docutils literal"><span class="pre">fission</span></code>, and <code class="docutils literal"><span class="pre">nu_fission</span></code>.</p>
 <p>If a Nuclide is fissionable, the prompt and delayed neutron yield and energy
 distributions are also stored on the Nuclide type. Many nuclides also have
 unresolved resonance probability table data. If present, this data is stored in
-the component <tt class="docutils literal"><span class="pre">urr_data</span></tt> of derived type UrrData. A complete description of
-the probability table method is given in <a class="reference internal" href="../methods/physics.html#probability-tables"><em>Unresolved Resonance Region Probability Tables</em></a>.</p>
-<p>The list of nuclides present in a problem is stored in the <tt class="docutils literal"><span class="pre">nuclides</span></tt> array
+the component <code class="docutils literal"><span class="pre">urr_data</span></code> of derived type UrrData. A complete description of
+the probability table method is given in <a class="reference internal" href="../methods/physics.html#probability-tables"><span>Unresolved Resonance Region Probability Tables</span></a>.</p>
+<p>The list of nuclides present in a problem is stored in the <code class="docutils literal"><span class="pre">nuclides</span></code> array
 defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
 </div>
 <div class="section" id="salphabeta">
 <h2>1.6. SAlphaBeta<a class="headerlink" href="#salphabeta" title="Permalink to this headline">¶</a></h2>
-<p>The SAlphaBeta derived type stores <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> data to account for
+<p>The SAlphaBeta derived type stores <img class="math" src="../_images/math/ae80b12010e94b47829ea5bd0f66ab65510a9044.png" alt="S(\alpha,\beta)"/> data to account for
 molecular binding effects when treating thermal scattering. Each SAlphaBeta
-table is associated with a specific nuclide as identified in the <tt class="docutils literal"><span class="pre">zaid</span></tt>
-component. A complete description of the <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> treatment can
-be found in <a class="reference internal" href="../methods/physics.html#sab-tables"><em>S() Tables</em></a>.</p>
+table is associated with a specific nuclide as identified in the <code class="docutils literal"><span class="pre">zaid</span></code>
+component. A complete description of the <img class="math" src="../_images/math/ae80b12010e94b47829ea5bd0f66ab65510a9044.png" alt="S(\alpha,\beta)"/> treatment can
+be found in <a class="reference internal" href="../methods/physics.html#sab-tables"><span>S() Tables</span></a>.</p>
 </div>
 <div class="section" id="xslisting">
 <h2>1.7. XsListing<a class="headerlink" href="#xslisting" title="Permalink to this headline">¶</a></h2>
 <p>The XsListing derived type stores information on the location of an ACE cross
 section table based on the data in cross_sections.xml and is defined in the
-<a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. For each <tt class="docutils literal"><span class="pre">&lt;ace_table&gt;</span></tt> you see in cross_sections.xml,
+<a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. For each <code class="docutils literal"><span class="pre">&lt;ace_table&gt;</span></code> you see in cross_sections.xml,
 there is a XsListing with its information. When the user input is read, the
-array <tt class="docutils literal"><span class="pre">xs_listings</span></tt> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is of derived type XsListing
+array <code class="docutils literal"><span class="pre">xs_listings</span></code> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is of derived type XsListing
 is used to locate the ACE data to parse.</p>
 </div>
 <div class="section" id="nuclidemicroxs">
@@ -154,10 +152,10 @@ is used to locate the ACE data to parse.</p>
 <p>The NuclideMicroXS derived type, defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>, acts as a
 &#8216;cache&#8217; for microscopic cross sections. As a particle is traveling through
 different materials, cross sections can be reused if the energy of the particle
-hasn&#8217;t changed. The components <tt class="docutils literal"><span class="pre">total</span></tt>, <tt class="docutils literal"><span class="pre">elastic</span></tt>, <tt class="docutils literal"><span class="pre">absorption</span></tt>,
-<tt class="docutils literal"><span class="pre">fission</span></tt>, and <tt class="docutils literal"><span class="pre">nu_fission</span></tt> represent those microscopic cross sections at
-the current energy of the particle for a given nuclide. An array <tt class="docutils literal"><span class="pre">micro_xs</span></tt> in
-the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is the same length as the <tt class="docutils literal"><span class="pre">nuclides</span></tt> array stores
+hasn&#8217;t changed. The components <code class="docutils literal"><span class="pre">total</span></code>, <code class="docutils literal"><span class="pre">elastic</span></code>, <code class="docutils literal"><span class="pre">absorption</span></code>,
+<code class="docutils literal"><span class="pre">fission</span></code>, and <code class="docutils literal"><span class="pre">nu_fission</span></code> represent those microscopic cross sections at
+the current energy of the particle for a given nuclide. An array <code class="docutils literal"><span class="pre">micro_xs</span></code> in
+the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is the same length as the <code class="docutils literal"><span class="pre">nuclides</span></code> array stores
 these cached cross sections for each nuclide in the problem.</p>
 </div>
 <div class="section" id="materialmacroxs">
@@ -165,14 +163,14 @@ these cached cross sections for each nuclide in the problem.</p>
 <p>In addition to the NuclideMicroXS type, there is also a MaterialMacroXS derived
 type, defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a> that stored cached <em>macroscopic</em> cross
 sections for the current material. These macroscopic cross sections are used for
-both physics and tallying purposes. The variable <tt class="docutils literal"><span class="pre">material_xs</span></tt> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+both physics and tallying purposes. The variable <code class="docutils literal"><span class="pre">material_xs</span></code> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
 module</a> is of type MaterialMacroXS.</p>
 </div>
 </div>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="index.html">Developer&#8217;s Guide</a>
@@ -185,9 +183,9 @@ module</a> is of type MaterialMacroXS.</p>
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

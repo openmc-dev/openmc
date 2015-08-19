@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Theory and Methodology" href="index.html" />
     <link rel="next" title="User’s Guide" href="../usersguide/index.html" />
     <link rel="prev" title="8. Parallelization" href="parallelization.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="parallelization.html">8. Parallelization</a>
@@ -58,26 +56,26 @@ into the theory, general notation for this section is discussed.</p>
 <div class="section" id="notation">
 <h2>9.1. Notation<a class="headerlink" href="#notation" title="Permalink to this headline">¶</a></h2>
 <p>Before deriving NDA relationships, notation is explained. If a parameter has a
-<img class="math" src="../_images/math/0995f196171a3981c63fa5f1b4a0e9c1223c7df0.png" alt="\overline{\cdot}"/>, it is surface area-averaged and if it has a
-<img class="math" src="../_images/math/98917865b29c6564f632a83c8810bd5d4818a514.png" alt="\overline{\overline\cdot}"/>, it is volume-averaged. When describing a
-specific cell in the geometry, indices <img class="math" src="../_images/math/7f79ece40507754e4ab15b2ee8c574fb1e6ae20b.png" alt="(i,j,k)"/> are used which correspond
-to directions <img class="math" src="../_images/math/c73ed093cc73a8d9a14185fa525e7067e5c3725d.png" alt="(x,y,z)"/>. In most cases, the same operation is performed in
+<img class="math" src="../_images/math/739f0918f34e8c88771b97aaf712aae558494d17.png" alt="\overline{\cdot}"/>, it is surface area-averaged and if it has a
+<img class="math" src="../_images/math/96f83bdc35d93f12aae7015cfa52f21953e64c52.png" alt="\overline{\overline\cdot}"/>, it is volume-averaged. When describing a
+specific cell in the geometry, indices <img class="math" src="../_images/math/cac8180bcf0c7e0b496472f80d50633cb01468be.png" alt="(i,j,k)"/> are used which correspond
+to directions <img class="math" src="../_images/math/b1d4d53e93df09afe1ed2af91622f73e2b6b165c.png" alt="(x,y,z)"/>. In most cases, the same operation is performed in
 all three directions. To compactly write this, an arbitrary direction set
-<img class="math" src="../_images/math/6cae371bfd2071f02ea92c900fa514467e7d9755.png" alt="(u,v,w)"/> that corresponds to cell indices <img class="math" src="../_images/math/cba2eefb349bc25b79b0db42d582c5c6a80bcb49.png" alt="(l,m,n)"/> is used. Note
-that <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> and <img class="math" src="../_images/math/9b25f8e64b484493fda944d25cad453423041fe6.png" alt="l"/> do not have to correspond to <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> and
-<img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>. However, if <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> and <img class="math" src="../_images/math/9b25f8e64b484493fda944d25cad453423041fe6.png" alt="l"/> correspond to <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> and
-<img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>, <img class="math" src="../_images/math/a9f23bf124b6b2b2a993eb313c72e678664ac74a.png" alt="v"/> and <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> correspond to <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> and <img class="math" src="../_images/math/b13f21416d84e13708696f34dea81026cda583c9.png" alt="z"/>
+<img class="math" src="../_images/math/4ea1f4e5e79c266acd957ed36e45d8d435a85394.png" alt="(u,v,w)"/> that corresponds to cell indices <img class="math" src="../_images/math/a143f7c84ce148714d4169ca25e66ff7e5b0217a.png" alt="(l,m,n)"/> is used. Note
+that <img class="math" src="../_images/math/e5fc41b391867da81606413e3389c7efc73abaf0.png" alt="u"/> and <img class="math" src="../_images/math/d99efde75c84ef402a92cd4497530d2366fb112f.png" alt="l"/> do not have to correspond to <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> and
+<img class="math" src="../_images/math/a581f053bbfa5115f42c13094857cdd12a37ec49.png" alt="i"/>. However, if <img class="math" src="../_images/math/e5fc41b391867da81606413e3389c7efc73abaf0.png" alt="u"/> and <img class="math" src="../_images/math/d99efde75c84ef402a92cd4497530d2366fb112f.png" alt="l"/> correspond to <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/> and
+<img class="math" src="../_images/math/d32c78b759903e3f4bd4fd2ce0b86358f7500c5d.png" alt="j"/>, <img class="math" src="../_images/math/0e22076955898e6c9bb38aa079135195c24dc81e.png" alt="v"/> and <img class="math" src="../_images/math/8659700e6646cd91bc02c32affaa5ec046ee9935.png" alt="w"/> correspond to <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> and <img class="math" src="../_images/math/84d7271dd9e78c1e05d6c3c6ecb60309ef7dfc73.png" alt="z"/>
 directions. An example of this is shown in the following expression:</p>
 <div class="math" id="equation-not1">
-<p><span class="eqno">(1)</span><img src="../_images/math/93195fd66774e539b682be7cc92fb91f8a83f84c.png" alt="\sum\limits_{u\in(x,y,z)}\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
+<p><span class="eqno">(1)</span><img src="../_images/math/f68b751156420c49cf9df976da697b417f357d84.png" alt="\sum\limits_{u\in(x,y,z)}\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
 \Delta_m^v\Delta_n^w\right\rangle"/></p>
-</div><p>Here, <img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> takes on each direction one at a time. The parameter <img class="math" src="../_images/math/abb5588023cfa1ac14643e9778699f03eecc57a3.png" alt="J"/>
-is surface area-averaged over the transverse indices <img class="math" src="../_images/math/f5047d1e0cbb50ec208923a22cd517c55100fa7b.png" alt="m"/> and <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/>
-located at <img class="math" src="../_images/math/9ce7c103b3cdf505d662656c401e91f57a3d6d12.png" alt="l+1/2"/>.  Usually, spatial indices are listed as subscripts and
-the direction as a superscript. Energy group indices represented by <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>
-and <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> are also listed as superscripts here. The group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/> is the
-group of interest and, if present, <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> is all groups. Finally, any
-parameter surrounded by <img class="math" src="../_images/math/f8f7e26c16b771c2fcce6676c662337eb3f33028.png" alt="\left\langle\cdot\right\rangle"/> represents a
+</div><p>Here, <img class="math" src="../_images/math/e5fc41b391867da81606413e3389c7efc73abaf0.png" alt="u"/> takes on each direction one at a time. The parameter <img class="math" src="../_images/math/372c2a0702e1e5866656215408b37a2ddb8d2d45.png" alt="J"/>
+is surface area-averaged over the transverse indices <img class="math" src="../_images/math/c4bb40dd65eae6c11b325989b14e0b8d35e4e3ef.png" alt="m"/> and <img class="math" src="../_images/math/413f8a8e40062a9090d9d50b88bc7b551b314c26.png" alt="n"/>
+located at <img class="math" src="../_images/math/621a63854b2afad3f5a9dfc3bcc7d5181377c3f8.png" alt="l+1/2"/>.  Usually, spatial indices are listed as subscripts and
+the direction as a superscript. Energy group indices represented by <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/>
+and <img class="math" src="../_images/math/cbb80ad77aa7a5e227d5a46bc44d235284106cfc.png" alt="h"/> are also listed as superscripts here. The group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/> is the
+group of interest and, if present, <img class="math" src="../_images/math/cbb80ad77aa7a5e227d5a46bc44d235284106cfc.png" alt="h"/> is all groups. Finally, any
+parameter surrounded by <img class="math" src="../_images/math/a7640bcb3178e9077677d5f7688007f89242c628.png" alt="\left\langle\cdot\right\rangle"/> represents a
 tally quantity that can be edited from a Monte Carlo (MC) solution.</p>
 </div>
 <div class="section" id="theory">
@@ -88,9 +86,9 @@ type of NDA that represents second order multigroup diffusion equations on a
 coarse spatial mesh.  Whether a transport model or diffusion model is used to
 represent the distribution of neutrons, these models must satisfy the <em>neutron
 balance equation</em>. This balance is represented by the following formula for a
-specific energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/> in cell <img class="math" src="../_images/math/cba2eefb349bc25b79b0db42d582c5c6a80bcb49.png" alt="(l,m,n)"/>:</p>
+specific energy group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/> in cell <img class="math" src="../_images/math/a143f7c84ce148714d4169ca25e66ff7e5b0217a.png" alt="(l,m,n)"/>:</p>
 <div class="math" id="equation-eq_neut_bal">
-<p><span class="eqno">(2)</span><img src="../_images/math/f0f5a4134ebfd33058961a2d086a23005a578f35.png" alt="\sum\limits_{u\in(x,y,z)}\left(\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
+<p><span class="eqno">(2)</span><img src="../_images/math/d26038b40e8a3a6a3c92bb568fdd8c6a0cc010d5.png" alt="\sum\limits_{u\in(x,y,z)}\left(\left\langle\overline{J}^{u,g}_{l+1/2,m,n}
 \Delta_m^v\Delta_n^w\right\rangle -
 \left\langle\overline{J}^{u,g}_{l-1/2,m,n}
 \Delta_m^v\Delta_n^w\right\rangle\right)
@@ -109,30 +107,30 @@ g}\overline{\overline\phi}_{l,m,n}^h
 \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle."/></p>
 </div><p>In eq. <a href="#equation-eq_neut_bal">(2)</a> the parameters are defined as:</p>
 <ul class="simple">
-<li><img class="math" src="../_images/math/b8a6569ceee03bb33fa264f1e3e491818d43f05a.png" alt="\left\langle\overline{J}^{u,g}_{l\pm
+<li><img class="math" src="../_images/math/45a0f5d083cb49a8fae6d7fb86d6f1052f8c9305.png" alt="\left\langle\overline{J}^{u,g}_{l\pm
 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle"/> &#8212; surface area-integrated net
-current over surface <img class="math" src="../_images/math/b9420869bbf8a2c7bdcb2a8cbd0a9be8e113c26a.png" alt="(l\pm 1/2,m,n)"/> with surface normal in direction
-<img class="math" src="../_images/math/9ad99798ec4c38e165cf517cb9e02b1c9e824103.png" alt="u"/> in energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>. By dividing this quantity by the transverse
-area, <img class="math" src="../_images/math/7980cceb0e1004aad3ade496cabd19b9802c1185.png" alt="\Delta_m^v\Delta_n^w"/>, the surface area-averaged net current can
+current over surface <img class="math" src="../_images/math/2c97c8329c47487d5f6c690d78f621a049d99cb8.png" alt="(l\pm 1/2,m,n)"/> with surface normal in direction
+<img class="math" src="../_images/math/e5fc41b391867da81606413e3389c7efc73abaf0.png" alt="u"/> in energy group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/>. By dividing this quantity by the transverse
+area, <img class="math" src="../_images/math/628e512df2f9a3e3fd4bc9f0e181edb9921b7ba0.png" alt="\Delta_m^v\Delta_n^w"/>, the surface area-averaged net current can
 be computed.</li>
-<li><img class="math" src="../_images/math/f1108b2b528e050a0f7bd6d7f1786a1319daa837.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+<li><img class="math" src="../_images/math/6e19265e240224180b9f8d4d017db7658e33f3a7.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
-&#8212; volume-integrated total reaction rate over energy group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>.</li>
-<li><img class="math" src="../_images/math/63f6487344af02524bb966579b55ec3a142f9e9a.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
+&#8212; volume-integrated total reaction rate over energy group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/>.</li>
+<li><img class="math" src="../_images/math/3a3c16cc0253c37aaca6022ca552044038d00ba9.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
 g}
 \overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
 &#8212; volume-integrated scattering production rate of neutrons that begin with
-energy in group <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> and exit reaction in group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>. This reaction
+energy in group <img class="math" src="../_images/math/cbb80ad77aa7a5e227d5a46bc44d235284106cfc.png" alt="h"/> and exit reaction in group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/>. This reaction
 rate also includes the energy transfer of reactions (except fission) that
-produce multiple neutrons such as (n, 2n); hence, the need for <img class="math" src="../_images/math/9bf4eb62c822f30eb24bcf8e1909ed6376387326.png" alt="\nu_s"/>
+produce multiple neutrons such as (n, 2n); hence, the need for <img class="math" src="../_images/math/048683627faf27f771401321aa2bd858e5187c94.png" alt="\nu_s"/>
 to represent neutron multiplicity.</li>
-<li><img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> &#8212; core multiplication factor.</li>
-<li><img class="math" src="../_images/math/52147427cc94e0ba977519e6d66e13235cc98850.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
+<li><img class="math" src="../_images/math/e45162800d593c2dee55555d800d84157e75ae00.png" alt="k_{eff}"/> &#8212; core multiplication factor.</li>
+<li><img class="math" src="../_images/math/15ce6208083fea5e75caf0e92713beb18ec64067.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
 g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/>
 &#8212; volume-integrated fission production rate of neutrons from fissions in
-group <img class="math" src="../_images/math/8189a5b5a0917b8c93350827be4038af1839139d.png" alt="h"/> that exit in group <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>.</li>
+group <img class="math" src="../_images/math/cbb80ad77aa7a5e227d5a46bc44d235284106cfc.png" alt="h"/> that exit in group <img class="math" src="../_images/math/67f4714f065d485540ad40829e0717bf75e9dd85.png" alt="g"/>.</li>
 </ul>
-<p>Each quantity in <img class="math" src="../_images/math/f8f7e26c16b771c2fcce6676c662337eb3f33028.png" alt="\left\langle\cdot\right\rangle"/> represents a scalar value that
+<p>Each quantity in <img class="math" src="../_images/math/a7640bcb3178e9077677d5f7688007f89242c628.png" alt="\left\langle\cdot\right\rangle"/> represents a scalar value that
 is obtained from an MC tally. A good verification step when using an MC code is
 to make sure that tallies satisfy this balance equation within statistics. No
 NDA acceleration can be performed if the balance equation is not satisfied.</p>
@@ -172,20 +170,20 @@ rates predicted by MC tallies. From Eq. <a href="#equation-eq_neut_bal">(2)</a>,
 production and fission production macroscopic cross sections are needed. They are
 defined from MC tallies as follows:</p>
 <div class="math" id="equation-xs1">
-<p><span class="eqno">(3)</span><img src="../_images/math/f141c3609d318b63f8d755fb6e1eab2c9c3469e0.png" alt="\overline{\overline\Sigma}_{t_{l,m,n}}^g \equiv
+<p><span class="eqno">(3)</span><img src="../_images/math/59ee4be8120378694d96519877a9b2f9bc6cf737.png" alt="\overline{\overline\Sigma}_{t_{l,m,n}}^g \equiv
 \frac{\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
 {\left\langle\overline{\overline\phi}_{l,m,n}^g
 \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle},"/></p>
 </div><div class="math" id="equation-xs2">
-<p><span class="eqno">(4)</span><img src="../_images/math/885539af496b6451b4f30bb69a4fb1786171f31a.png" alt="\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g} \equiv
+<p><span class="eqno">(4)</span><img src="../_images/math/f489e0a4ec9cb2a6cec4591ca2eae306ce1331b4.png" alt="\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g} \equiv
 \frac{\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow
 g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
 {\left\langle\overline{\overline\phi}_{l,m,n}^h
 \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}"/></p>
 </div><p>and</p>
 <div class="math" id="equation-xs3">
-<p><span class="eqno">(5)</span><img src="../_images/math/6e1f8975c076948034a4873fd50029f6fdb20d48.png" alt="\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g} \equiv
+<p><span class="eqno">(5)</span><img src="../_images/math/86a03c71aef123872a35a47df3f2ae2f71af2a36.png" alt="\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g} \equiv
 \frac{\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow
 g}\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}
 {\left\langle\overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}."/></p>
@@ -202,7 +200,7 @@ transport reaction rate. This definition can easily be constructed from
 MC tallies provided that angular moments of scattering reaction rates can
 be obtained. The diffusion coefficient is defined as follows:</p>
 <div class="math" id="equation-eq_transD">
-<p><span class="eqno">(6)</span><img src="../_images/math/a9b29f49a70a0286063bf403d3c3d98bf27e887a.png" alt="\overline{\overline D}_{l,m,n}^g =
+<p><span class="eqno">(6)</span><img src="../_images/math/34d111ad69c6146d428ed6260f852299d537a645.png" alt="\overline{\overline D}_{l,m,n}^g =
  \frac{\left\langle\overline{\overline\phi}_{l,m,n}^g
  \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle}{3
  \left\langle\overline{\overline\Sigma}_{tr_{l,m,n}}^g
@@ -210,7 +208,7 @@ be obtained. The diffusion coefficient is defined as follows:</p>
  \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle},"/></p>
 </div><p>where</p>
 <div class="math" id="equation-xs4">
-<p><span class="eqno">(7)</span><img src="../_images/math/603ff2a8b1fc8cc789eddbc299d7a1e0cb1c4b53.png" alt="\left\langle\overline{\overline\Sigma}_{tr_{l,m,n}}^g
+<p><span class="eqno">(7)</span><img src="../_images/math/a2ed7036e2d88e641432cc87f4bd22638aca54e6.png" alt="\left\langle\overline{\overline\Sigma}_{tr_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle
 =
 \left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
@@ -219,7 +217,7 @@ be obtained. The diffusion coefficient is defined as follows:</p>
 \left\langle\overline{\overline{\nu_s\Sigma}}_{s1_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle."/></p>
 </div><p>Note that the transport reaction rate is calculated from the total reaction rate
-reduced by the <img class="math" src="../_images/math/a5b0256a78d58b6d5f7a53400b19e7747d2983fa.png" alt="P_1"/> scattering production reaction rate. Equation <a href="#equation-eq_transD">(6)</a>
+reduced by the <img class="math" src="../_images/math/26a00c0666e9094d8aac94f0ef300011af9b38a5.png" alt="P_1"/> scattering production reaction rate. Equation <a href="#equation-eq_transD">(6)</a>
 does not represent the best definition of diffusion coefficients from MC;
 however, it is very simple and usually fits into MC tally frameworks
 easily. Different methods to calculate more accurate diffusion coefficients can
@@ -241,7 +239,7 @@ as <a class="reference internal" href="#hebert" id="id2">[Hebert]</a>. These cur
 <li>cell-to-cell coupling</li>
 </ul>
 <div class="math" id="equation-eq_cell_cell">
-<p><span class="eqno">(8)</span><img src="../_images/math/538fb2733d989d8b931c64dc453127d5b0b542c9.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\frac{2\overline{\overline
+<p><span class="eqno">(8)</span><img src="../_images/math/bacb7578fed44296b1be2ab66b735fdbe3d4920b.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\frac{2\overline{\overline
 D}_{l\pm1,m,n}^g\overline{\overline
 D}_{l,m,n}^g}{\overline{\overline D}_{l\pm1,m,n}^g\Delta_l^u +
 \overline{\overline
@@ -252,28 +250,28 @@ D}_{l,m,n}^g\Delta_{l\pm1}^u}
 <li>cell-to-boundary coupling</li>
 </ul>
 <div class="math" id="equation-eq_cell_bound">
-<p><span class="eqno">(9)</span><img src="../_images/math/790a11296a1226f6045b88f5cfb33586c2d7554f.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\frac{2\overline{\overline
+<p><span class="eqno">(9)</span><img src="../_images/math/7b8557054b1b3cb87e6803c05fcd8ee3d255ac6b.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\frac{2\overline{\overline
 D}_{l,m,n}^g\left(1 -
 \beta_{l\pm1/2,m,n}^{u,g}\right)}{4\overline{\overline
 D}_{l,m,n}^g\left(1 + \beta_{l\pm1/2,m,n}^{u,g}\right) + \left(1 -
 \beta_{l\pm1/2,m,n}^{u,g}\right)\Delta_l^u}\overline{\overline{\phi}}_{l,m,n}^{g}."/></p>
-</div><p>In Eqs. <a href="#equation-eq_cell_cell">(8)</a> and <a href="#equation-eq_cell_bound">(9)</a>, the <img class="math" src="../_images/math/91205e81c98c486418902c88d5c396f5355491f1.png" alt="\pm"/> refers to
-left (<img class="math" src="../_images/math/52969fdeeb90f7e24cd2a2f1a6cfe124776fee2a.png" alt="-x"/>) or right (<img class="math" src="../_images/math/09ee9d74659eb6547155a657c853fd5719e97191.png" alt="+x"/>) surface in the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> direction,
-back (<img class="math" src="../_images/math/a55679995cd6abb1efbdd15eff74eb2d3d1d0933.png" alt="-y"/>) or front (<img class="math" src="../_images/math/8ad620c1ffdcae4b31df2947af1e379d99565591.png" alt="+y"/>) surface in the <img class="math" src="../_images/math/092e364e1d9d19ad5fffb0b46ef4cc7f2da02c1c.png" alt="y"/> direction and
-bottom (<img class="math" src="../_images/math/5f131a63bd792d941d6f8fd7da6ffb14f86989bf.png" alt="-z"/>) or top (<img class="math" src="../_images/math/d3c2586b96def1f6353cf935c81163f7dbf369de.png" alt="+z"/>) surface in the <img class="math" src="../_images/math/b13f21416d84e13708696f34dea81026cda583c9.png" alt="z"/> direction. For
-cell-to-boundary coupling, a general albedo, <img class="math" src="../_images/math/966e5d9367b057e12a91377512e826196bd92e05.png" alt="\beta_{l\pm1/2,m,n}^{u,g}"/>,
-is used. The albedo is defined as the ratio of incoming (<img class="math" src="../_images/math/add22d9bda21e86390bc74fa4dde17730a442da7.png" alt="-"/> superscript)
-to outgoing (<img class="math" src="../_images/math/77cf26be132ef93923e082ee4153b2cb0ef44a50.png" alt="+"/> superscript) partial current on any surface represented
+</div><p>In Eqs. <a href="#equation-eq_cell_cell">(8)</a> and <a href="#equation-eq_cell_bound">(9)</a>, the <img class="math" src="../_images/math/79db348018d3038efeba5653af973e3191a5f656.png" alt="\pm"/> refers to
+left (<img class="math" src="../_images/math/b8d74914d7bab2ddcd1862b9b661a0db5b386d83.png" alt="-x"/>) or right (<img class="math" src="../_images/math/d246eafd090a8727e443e9a38c52b920e215bbae.png" alt="+x"/>) surface in the <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/> direction,
+back (<img class="math" src="../_images/math/b758958c2db850d51fa687ecee602ff522f037e6.png" alt="-y"/>) or front (<img class="math" src="../_images/math/be03104fbc0d7a99d659af133bb7c3b9e25cd7c0.png" alt="+y"/>) surface in the <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/> direction and
+bottom (<img class="math" src="../_images/math/e6d44b8f0407431802e1db91e0c10cb5ff5bba05.png" alt="-z"/>) or top (<img class="math" src="../_images/math/3cebfddaf42f50301d8f19a71594839d8f384b4d.png" alt="+z"/>) surface in the <img class="math" src="../_images/math/84d7271dd9e78c1e05d6c3c6ecb60309ef7dfc73.png" alt="z"/> direction. For
+cell-to-boundary coupling, a general albedo, <img class="math" src="../_images/math/bcf59e5339b8b0b80363dd8fe30956776b56dc9a.png" alt="\beta_{l\pm1/2,m,n}^{u,g}"/>,
+is used. The albedo is defined as the ratio of incoming (<img class="math" src="../_images/math/03e927fcb222d9b3da8313fec8a194aabd267f3c.png" alt="-"/> superscript)
+to outgoing (<img class="math" src="../_images/math/3e41c598147b003fe1c720cafa073d83ccdd84bd.png" alt="+"/> superscript) partial current on any surface represented
 as</p>
 <div class="math" id="equation-eq_albedo">
-<p><span class="eqno">(10)</span><img src="../_images/math/356b95424db665a84e39360c3ac8288a09f3db6b.png" alt="\beta_{l\pm1/2,m,n}^{u,g} =
+<p><span class="eqno">(10)</span><img src="../_images/math/801a38221b33be0405b2fae01f3a16e09ca86d06.png" alt="\beta_{l\pm1/2,m,n}^{u,g} =
 \frac{\overline{J}^{u,g-}_{l\pm1/2,m,n}}{\overline{J}^{u,g+}_{l\pm1/2,m,n}}."/></p>
-</div><p>Common boundary conditions are: vacuum (<img class="math" src="../_images/math/632a65c82b0d143ac0630269ba8720846fc4c846.png" alt="\beta=0"/>), reflective
-(<img class="math" src="../_images/math/bd0841c3936bc875fefe9192ca5209033f156466.png" alt="\beta=1"/>) and zero flux (<img class="math" src="../_images/math/576795bf76653a78af6c5543ba26a903c6b89aab.png" alt="\beta=-1"/>). Both eq. <a href="#equation-eq_cell_cell">(8)</a>
+</div><p>Common boundary conditions are: vacuum (<img class="math" src="../_images/math/a5043de164ea6ccbe1e5fd1a0c9c60df9fc72f57.png" alt="\beta=0"/>), reflective
+(<img class="math" src="../_images/math/8febe4f8931a95fd732c8eeec7bbc74e1153b611.png" alt="\beta=1"/>) and zero flux (<img class="math" src="../_images/math/86176df007e8c3c5fe3d2ef07ffe4c24f9d99e5f.png" alt="\beta=-1"/>). Both eq. <a href="#equation-eq_cell_cell">(8)</a>
 and eq. <a href="#equation-eq_cell_bound">(9)</a> can be written in this generic form,</p>
 <div class="math" id="equation-eq_dtilde">
-<p><span class="eqno">(11)</span><img src="../_images/math/3238cebeae589a0330910203d3188c1e673c1c2e.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \widetilde{D}_{l,m,n}^{u,g} \left(\dots\right)."/></p>
-</div><p>The parameter <img class="math" src="../_images/math/62619a8d0bde7a75fd9192d0e1f9153596d9a4df.png" alt="\widetilde{D}_{l,m,n}^{u,g}"/> represents the linear
+<p><span class="eqno">(11)</span><img src="../_images/math/7e61fb1a4df0f3209269dd383e153acb80f725e2.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \widetilde{D}_{l,m,n}^{u,g} \left(\dots\right)."/></p>
+</div><p>The parameter <img class="math" src="../_images/math/f8b53d20645b1140423b925db1350ec682184314.png" alt="\widetilde{D}_{l,m,n}^{u,g}"/> represents the linear
 coupling term between current and flux. These current relationships can be
 sustituted into eq. <a href="#equation-eq_neut_bal">(2)</a> to produce a linear system of multigroup
 diffusion equations for each spatial cell and energy group. However, a solution
@@ -281,17 +279,17 @@ to these equations is not consistent with a higher order transport solution
 unless equivalence factors are present. This is because both the diffusion
 approximation, governed by Fick&#8217;s Law, and spatial trunction error will produce
 differences. Therefore, a nonlinear parameter,
-<img class="math" src="../_images/math/6a71d7c3e288beaeabb84cd84018a473a7386302.png" alt="\widehat{D}_{l,m,n}^{u,g}"/>, is added to eqs. <a href="#equation-eq_cell_cell">(8)</a> and
+<img class="math" src="../_images/math/e0917dd9791ce7043a0a51107c31b4db8f1295a0.png" alt="\widehat{D}_{l,m,n}^{u,g}"/>, is added to eqs. <a href="#equation-eq_cell_cell">(8)</a> and
 <a href="#equation-eq_cell_bound">(9)</a>. These equations are, respectively,</p>
 <div class="math" id="equation-eq_dhat_cell">
-<p><span class="eqno">(12)</span><img src="../_images/math/48c37b4c380d380d5f8f9f052e60be78175f0838.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\widetilde{D}_{l,m,n}^{u,g}
+<p><span class="eqno">(12)</span><img src="../_images/math/fe78253d5d68795f5c530b05714bbcee77632b60.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = -\widetilde{D}_{l,m,n}^{u,g}
 \left(\pm\overline{\overline{\phi}}_{l\pm1,m,n}^g\mp
 \overline{\overline{\phi}}_{l,m,n}^g\right) + \widehat{D}_{l,m,n}^{u,g}
 \left(\overline{\overline{\phi}}_{l\pm1,m,n}^g +
 \overline{\overline{\phi}}_{l,m,n}^g\right)"/></p>
 </div><p>and</p>
 <div class="math" id="equation-eq_dhat_bound">
-<p><span class="eqno">(13)</span><img src="../_images/math/a172b53f60958254dfabfb91aeeac679c162fa84.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\widetilde{D}_{l,m,n}^{u,g}
+<p><span class="eqno">(13)</span><img src="../_images/math/be3d2664dacf1764c5f2c413af810cd86d3886ba.png" alt="\overline{J}^{u,g}_{l\pm1/2,m,n} = \pm\widetilde{D}_{l,m,n}^{u,g}
 \overline{\overline{\phi}}_{l,m,n}^{g} + \widehat{D}_{l,m,n}^{u,g}
 \overline{\overline{\phi}}_{l,m,n}^{g}."/></p>
 </div><p>The only unknown in each of these equations is the equivalence parameter. The
@@ -303,29 +301,29 @@ eq. <a href="#equation-eq_neut_bal">(2)</a> to create a linear system of equatio
 with transport physics.  One example of this equation is written for an
 interior cell,</p>
 <div class="math" id="equation-eq_cmfd_sys">
-<p><span class="eqno">(14)</span><img src="../_images/math/49d4475e4ce6612d284b21992ac713097dce851f.png" alt="\sum_{u\in
+<p><span class="eqno">(14)</span><img src="../_images/math/af0e4926d948cb7f8c7e3385ae222afeb0064da2.png" alt="\sum_{u\in
 x,y,x}\frac{1}{\Delta_l^u}\left[\left(-\tilde{D}_{l-1/2,m,n}^{u,g} -
 \hat{D}_{l-1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l-1,m,n}^g\right.
-+ \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
+\\ + \left(\tilde{D}_{l-1/2,m,n}^{u,g} +
 \tilde{D}_{l+1/2,m,n}^{u,g} - \hat{D}_{l-1/2,m,n}^{u,g} +
 \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l,m,n}^g
 \\ +
 \left. \left(-\tilde{D}_{l+1/2,m,n}^{u,g} +
 \hat{D}_{l+1/2,m,n}^{u,g}\right)\overline{\overline{\phi}}_{l+1,m,n}^g
-\right] +
+\right] \\ +
 \overline{\overline\Sigma}_{t_{l,m,n}}^g\overline{\overline{\phi}}_{l,m,n}^g
 - \sum\limits_{h=1}^G\overline{\overline{\nu_s\Sigma}}^{h\rightarrow
 g}_{s_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h =
 \frac{1}{k}\sum\limits_{h=1}^G\overline{\overline{\nu_f\Sigma}}^{h\rightarrow
 g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h."/></p>
 </div><p>It should be noted that before substitution, eq. <a href="#equation-eq_neut_bal">(2)</a> was divided
-by the volume of the cell, <img class="math" src="../_images/math/9f5917f70923cc7878fc1d928d46132cb144be20.png" alt="\Delta_l^u\Delta_m^v\Delta_n^w"/>. Equation
+by the volume of the cell, <img class="math" src="../_images/math/b700d901b5ba9392162d83dadb3c05adec0a5fde.png" alt="\Delta_l^u\Delta_m^v\Delta_n^w"/>. Equation
 <a href="#equation-eq_cmfd_sys">(14)</a> can be represented in operator form as</p>
 <div class="math" id="equation-eq_CMFDopers">
-<p><span class="eqno">(15)</span><img src="../_images/math/4268c2de62a7c6b630e1d69a049499f1284e3cb4.png" alt="\mathbb{M}\mathbf{\Phi} = \frac{1}{k}\mathbb{F}\mathbf{\Phi},"/></p>
-</div><p>where <img class="math" src="../_images/math/a86bef475b8bcf8376aab847967c0b507650d684.png" alt="\mathbb{M}"/> is the neutron loss matrix operator,
-<img class="math" src="../_images/math/b222f8108c75325f805377c55ef40a6db49cf897.png" alt="\mathbb{F}"/> is the neutron production matrix operator,
-<img class="math" src="../_images/math/215aede5202851d1abedd7f9ffdfe423025d9a44.png" alt="\mathbf{\Phi}"/> is the multigroup flux vector and <img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> is the
+<p><span class="eqno">(15)</span><img src="../_images/math/e4867047ecc76ac8083e8dd8d3433420adc8d89f.png" alt="\mathbb{M}\mathbf{\Phi} = \frac{1}{k}\mathbb{F}\mathbf{\Phi},"/></p>
+</div><p>where <img class="math" src="../_images/math/87e2e21757ed9e44040233895f0e2a845f0f55e0.png" alt="\mathbb{M}"/> is the neutron loss matrix operator,
+<img class="math" src="../_images/math/be3bcf8a19a928999cfb2020a2f51a96c93fbcb0.png" alt="\mathbb{F}"/> is the neutron production matrix operator,
+<img class="math" src="../_images/math/ecacf168506a8191ad496871b8028f42fee1b6c1.png" alt="\mathbf{\Phi}"/> is the multigroup flux vector and <img class="math" src="../_images/math/e9203da50e1059455123460d4e716c9c7f440cc3.png" alt="k"/> is the
 eigenvalue. This generalized eigenvalue problem is solved to obtain fundamental
 mode multigroup fluxes and eigenvalue. In order to produce consistent results
 with transport theory from these equations, the neutron balance equation must
@@ -340,7 +338,7 @@ in this process is to generate a probability mass function that provides
 information about how probable it is for a neutron to be born in a given cell
 and energy group. This is represented as</p>
 <div class="math" id="equation-eq_cmfd_psrc">
-<p><span class="eqno">(16)</span><img src="../_images/math/1fb06606d4c517ccfa6504d75565c186f4ab91c7.png" alt="p_{l,m,n}^g =
+<p><span class="eqno">(16)</span><img src="../_images/math/49bf31528e5bc4f8e518516f64a8201d098e9394.png" alt="p_{l,m,n}^g =
 \frac{\sum_{h=1}^{G}\overline{\overline{\nu_f\Sigma}}^{h\rightarrow
 g}_{f_{l,m,n}}\overline{\overline{\phi}}_{l,m,n}^h\Delta_l^u\Delta_m^v
 \Delta_n^w}{\sum_n\sum_m\sum_l\sum_{h=1}^{G}\overline{
@@ -352,15 +350,15 @@ estimate of the expected number of neutrons to be born in a given cell and
 energy group. This distribution can be compared to the MC source distribution
 to generate weight adjusted factors defined as</p>
 <div class="math" id="equation-eq_waf">
-<p><span class="eqno">(17)</span><img src="../_images/math/02023f437f71130c12bd82bfa5604ec9ca2b0e67.png" alt="f_{l,m,n}^g = \frac{Np_{l,m,n}^g}{\sum\limits_s w_s};\quad s\in
+<p><span class="eqno">(17)</span><img src="../_images/math/b1671d0a5e167e582bc18fe47d3b479772ff7ecf.png" alt="f_{l,m,n}^g = \frac{Np_{l,m,n}^g}{\sum\limits_s w_s};\quad s\in
 \left(g,l,m,n\right)."/></p>
 </div><p>The MC source distribution is represented on the same coarse mesh as
-CMFD by summing all neutrons&#8217; weights, <img class="math" src="../_images/math/3d5b84e234ba0345c505dbe2899818c36aa9d23f.png" alt="w_s"/>, in a given cell and
+CMFD by summing all neutrons&#8217; weights, <img class="math" src="../_images/math/cd011afd65294ad2312e56d3c43ead7591fc1354.png" alt="w_s"/>, in a given cell and
 energy group. MC source weights can then be modified by this weight
 adjustment factor so that it matches the CMFD solution on the coarse
 mesh,</p>
 <div class="math" id="equation-src_mod">
-<p><span class="eqno">(18)</span><img src="../_images/math/ed755c5424f2f40f95f7d99f8fe36edb4e748a92.png" alt="w^\prime_s = w_s\times f_{l,m,n}^g;\quad s\in \left(g,l,m,n\right)."/></p>
+<p><span class="eqno">(18)</span><img src="../_images/math/903700c6ff286ccd7f505e5a1373425bdb742aa7.png" alt="w^\prime_s = w_s\times f_{l,m,n}^g;\quad s\in \left(g,l,m,n\right)."/></p>
 </div><p>It should be noted that heterogeneous information about local coordinates and
 energy remain constant throughout this modification process.</p>
 </div>
@@ -380,7 +378,7 @@ information:</p>
 <p>It should be noted that for more difficult simulations (e.g., light water
 reactors), there are other options available to users such as tally resetting
 parameters, effective down-scatter usage, tally estimator, etc. For more
-information please see <a class="reference internal" href="../usersguide/input.html#usersguide-cmfd"><em>CMFD Specification &#8211; cmfd.xml</em></a>.</p>
+information please see <a class="reference internal" href="../usersguide/input.html#usersguide-cmfd"><span>CMFD Specification &#8211; cmfd.xml</span></a>.</p>
 <p>Of the options described above, the optional acceleration subset region is an
 uncommon feature. Because OpenMC only has a structured Cartesian mesh, mesh
 cells may overlay regions that don&#8217;t contain fissionable material and may be so
@@ -1033,7 +1031,7 @@ in mesh cells far away from the core.</p>
         \end{scope}}
       \end{tikzpicture}" /></p>
 <p class="caption">Diagram of CMFD acceleration mesh</p></div><p>During an MC simulation, CMFD tallies are accumulated. The basic tallies needed
-are listed in Table <a class="reference internal" href="#tab-tally"><em>OpenMC CMFD tally list</em></a>. Each tally is performed on a spatial and
+are listed in Table <a class="reference internal" href="#tab-tally"><span>OpenMC CMFD tally list</span></a>. Each tally is performed on a spatial and
 energy mesh basis. The surface area-integrated net current is tallied on every
 surface of the mesh. OpenMC tally objects are created by the CMFD code
 internally, and cross sections are calculated at each CMFD feedback iteration.
@@ -1045,15 +1043,15 @@ by the user. Once all diffusion parameters are calculated, CMFD matrices are
 formed where energy groups are the inner most iteration index. In OpenMC,
 compressed row storage sparse matrices are used due to the sparsity of CMFD
 operators. An example of this sparsity is shown for the 3-D BEAVRS model in
-figures <a class="reference internal" href="#fig-loss"><em>Sparsity of Neutron Loss Operator</em></a> and <a class="reference internal" href="#fig-prod"><em>Sparsity of Neutron Production Operator</em></a> <a class="reference internal" href="#beavrs" id="id3">[BEAVRS]</a>. These matrices represent
+figures <a href="#fig-loss">1</a> and <a href="#fig-prod">2</a> <a class="reference internal" href="#beavrs" id="id3">[BEAVRS]</a>. These matrices represent
 an assembly radial mesh, 24 cell mesh in the axial direction and two energy
 groups. The loss matrix is 99.92% sparse and the production matrix is 99.99%
 sparse. Although the loss matrix looks like it is tridiagonal, it is really a
 seven banded matrix with a block diagonal matrix for scattering. The production
-matrix is a <img class="math" src="../_images/math/7901356dd65ec4da1b694937cc4ffc663e90d800.png" alt="2\times 2"/> block diagonal; however, zeros are present because
+matrix is a <img class="math" src="../_images/math/986ad48db02dcaf802568dee2460269916229fdf.png" alt="2\times 2"/> block diagonal; however, zeros are present because
 no fission neutrons appear with energies in the thermal group.</p>
-<table border="1" class="docutils" id="tab-tally">
-<caption>OpenMC CMFD tally list</caption>
+<table border="1" class="docutils" id="id11">
+<span id="tab-tally"></span><caption><span class="caption-text">OpenMC CMFD tally list</span><a class="headerlink" href="#id11" title="Permalink to this table">¶</a></caption>
 <colgroup>
 <col width="68%" />
 <col width="12%" />
@@ -1070,44 +1068,44 @@ no fission neutrons appear with energies in the thermal group.</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-odd"><td><img class="math" src="../_images/math/11c2129d6bd786efef4512d3cb9db97e64047bfb.png" alt="\left\langle\overline{\overline\phi}_{l,m,n}^g
+<tr class="row-odd"><td><img class="math" src="../_images/math/a3c5af0306d57cb8b226ab4ac7730ca5861e8643.png" alt="\left\langle\overline{\overline\phi}_{l,m,n}^g
 \Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>flux</td>
 <td>mesh, energy</td>
 </tr>
-<tr class="row-even"><td><img class="math" src="../_images/math/f1108b2b528e050a0f7bd6d7f1786a1319daa837.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
+<tr class="row-even"><td><img class="math" src="../_images/math/6e19265e240224180b9f8d4d017db7658e33f3a7.png" alt="\left\langle\overline{\overline\Sigma}_{t_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>total</td>
 <td>mesh, energy</td>
 </tr>
-<tr class="row-odd"><td><img class="math" src="../_images/math/de81b94d5c74c65b76ea645aaa8e5d6cde4f6c46.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s1_{l,m,n}}^g
+<tr class="row-odd"><td><img class="math" src="../_images/math/4ecbe6c951987c69c494fcd3cbb87a46d688c317.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s1_{l,m,n}}^g
 \overline{\overline\phi}_{l,m,n}^g\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>nu-scatter-1</td>
 <td>mesh, energy</td>
 </tr>
-<tr class="row-even"><td><img class="math" src="../_images/math/6c9a56eafb56eebe6ae9ad1398c493dba4ec5d2c.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g}
+<tr class="row-even"><td><img class="math" src="../_images/math/c37dd7af20c3812bc7bbbf45d0c6cd6d698de7c3.png" alt="\left\langle\overline{\overline{\nu_s\Sigma}}_{s_{l,m,n}}^{h\rightarrow g}
 \overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>nu-scatter</td>
 <td>mesh, energy, energyout</td>
 </tr>
-<tr class="row-odd"><td><img class="math" src="../_images/math/683901796addb5b9861fe945421731622b026859.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g}
+<tr class="row-odd"><td><img class="math" src="../_images/math/96ca5b777a836a138b8c1c17aad4fb6b4b0ff435.png" alt="\left\langle\overline{\overline{\nu_f\Sigma}}_{f_{l,m,n}}^{h\rightarrow g}
 \overline{\overline\phi}_{l,m,n}^h\Delta_l^u\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>nu-fission</td>
 <td>mesh, energy, energyout</td>
 </tr>
-<tr class="row-even"><td><img class="math" src="../_images/math/4c20904f521647bbd23ec6c7ce32b36d119a42ce.png" alt="\left\langle\overline{J}^{u,g}_{l\pm 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle"/></td>
+<tr class="row-even"><td><img class="math" src="../_images/math/643600458a506d91aa1296a389b9c019c8da61e4.png" alt="\left\langle\overline{J}^{u,g}_{l\pm 1/2,m,n}\Delta_m^v\Delta_n^w\right\rangle"/></td>
 <td>current</td>
 <td>mesh, energy</td>
 </tr>
 </tbody>
 </table>
-<div class="figure" id="fig-loss">
-<a class="reference internal image-reference" href="../_images/loss.png"><img alt="../_images/loss.png" src="../_images/loss.png" style="width: 500.0px; height: 500.0px;" /></a>
-<p class="caption">Sparsity of Neutron Loss Operator</p>
+<div class="figure" id="id12">
+<span id="fig-loss"></span><a class="reference internal image-reference" href="../_images/loss.png"><img alt="../_images/loss.png" src="../_images/loss.png" style="width: 500.0px; height: 500.0px;" /></a>
+<p class="caption"><span class="caption-text">Figure 1: Sparsity of Neutron Loss Operator</span></p>
 </div>
-<div class="figure" id="fig-prod">
-<a class="reference internal image-reference" href="../_images/prod.png"><img alt="../_images/prod.png" src="../_images/prod.png" style="width: 500.0px; height: 500.0px;" /></a>
-<p class="caption">Sparsity of Neutron Production Operator</p>
+<div class="figure" id="id13">
+<span id="fig-prod"></span><a class="reference internal image-reference" href="../_images/prod.png"><img alt="../_images/prod.png" src="../_images/prod.png" style="width: 500.0px; height: 500.0px;" /></a>
+<p class="caption"><span class="caption-text">Figure 2: Sparsity of Neutron Production Operator</span></p>
 </div>
 <p>To solve the eigenvalue problem with these matrices, different source iteration
 and linear solvers can be used. The most common source iteration solver used is
@@ -1120,7 +1118,7 @@ incomplete LU preconditioner and a GMRES Krylov solver. After some initial
 studies of parallelization with PETSc, it was observed that because CMFD
 matrices are very sparse, solution times do not scale well. An additional
 Gauss-Seidel linear solver with Chebyshev acceleration was added that is
-similar to the one used for CMFD in CASMO <a class="reference internal" href="#rhodes" id="id6">[Rhodes]</a> and <a class="reference internal" href="#smith" id="id7">[Smith]</a>. This solver
+similar to the one used for CMFD in CASMO <a class="reference internal" href="#rhodes" id="id6">[Rhodes]</a> and <a class="reference internal" href="../pythonapi/cmfd.html#smith" id="id7">[Smith]</a>. This solver
 was implemented with a custom section for two energy groups. Because energy
 group is the inner most index, a block diagonal is formed when using more than
 one group. For two groups, it is easy to invert this diagonal analytically
@@ -1143,10 +1141,8 @@ the current MC source, OpenMC sums the statistical
 weights of neutrons from the source bank on a given spatial and energy mesh.
 Once weight adjustment factors were calculated, each neutron&#8217;s statistical
 weight in the source bank was modified according to its location and energy.
-Examples of CMFD simulations using OpenMC can be found in <a class="reference internal" href="#herman-thesis" id="id10">[Herman_Thesis]</a>.</p>
-</div>
-<div class="section" id="references">
-<h2>9.4. References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+Examples of CMFD simulations using OpenMC can be found in <a class="reference internal" href="#hermanthesis" id="id10">[HermanThesis]</a>.</p>
+<p class="rubric">References</p>
 <table class="docutils citation" frame="void" id="beavrs" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
@@ -1177,10 +1173,10 @@ diffusion coefficients generated from Monte Carlo codes. In <em>Proceedings of M
 2013</em>, Sun Valley, ID, USA, May 5 - 9, 2013.</td></tr>
 </tbody>
 </table>
-<table class="docutils citation" frame="void" id="herman-thesis" rules="none">
+<table class="docutils citation" frame="void" id="hermanthesis" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id10">[Herman_Thesis]</a></td><td>Bryan R. Herman. <em>Monte Carlo and Thermal Hydraulic Coupling using
+<tr><td class="label"><a class="fn-backref" href="#id10">[HermanThesis]</a></td><td>Bryan R. Herman. <em>Monte Carlo and Thermal Hydraulic Coupling using
 Low-Order Nonlinear Diffusion Acceleration</em>. Sc.D. thesis,
 Massachusetts Institute of Technology, 2014.</td></tr>
 </tbody>
@@ -1219,7 +1215,7 @@ CASMO-4E</em>. In Proceedings of PHYSOR 2002, Seoul, Korea, October 7 - 10, 2002
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="parallelization.html">8. Parallelization</a>
@@ -1232,9 +1228,9 @@ CASMO-4E</em>. In Proceedings of PHYSOR 2002, Seoul, Korea, October 7 - 10, 2002
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

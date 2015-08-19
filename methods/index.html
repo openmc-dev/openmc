@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,21 +23,20 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="next" title="1. Introduction" href="introduction.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.4.0" href="../releasenotes/notes_0.4.0.html" /> 
+    <link rel="prev" title="Release Notes for OpenMC 0.7.0" href="../releasenotes.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="../releasenotes.html">Release Notes for OpenMC 0.7.0</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -71,15 +69,20 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="geometry.html#finding-a-cell-given-a-point">2.3. Finding a Cell Given a Point</a></li>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#determining-if-a-coordinate-is-in-a-cell">2.4. Determining if a Coordinate is in a Cell</a></li>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#handling-surface-crossings">2.5. Handling Surface Crossings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#building-neighbor-lists">2.6. Building Neighbor Lists</a></li>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-boundary-conditions">2.7. Reflective Boundary Conditions</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="geometry.html#id2">2.7.1. Plane Perpendicular to an Axis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="geometry.html#id3">2.7.2. Generic Plane</a></li>
-<li class="toctree-l3"><a class="reference internal" href="geometry.html#id4">2.7.3. Cylinder Parallel to an Axis</a></li>
-<li class="toctree-l3"><a class="reference internal" href="geometry.html#id5">2.7.4. Sphere</a></li>
-<li class="toctree-l3"><a class="reference internal" href="geometry.html#cone-parallel-to-an-axis">2.7.5. Cone Parallel to an Axis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#finding-a-lattice-tile">2.4. Finding a Lattice Tile</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#rectilinear-lattice-indexing">2.4.1. Rectilinear Lattice Indexing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#hexagonal-lattice-indexing">2.4.2. Hexagonal Lattice Indexing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#determining-if-a-coordinate-is-in-a-cell">2.5. Determining if a Coordinate is in a Cell</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#handling-surface-crossings">2.6. Handling Surface Crossings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#building-neighbor-lists">2.7. Building Neighbor Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-boundary-conditions">2.8. Reflective Boundary Conditions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id2">2.8.1. Plane Perpendicular to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id3">2.8.2. Generic Plane</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id4">2.8.3. Cylinder Parallel to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id5">2.8.4. Sphere</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#cone-parallel-to-an-axis">2.8.5. Cone Parallel to an Axis</a></li>
 </ul>
 </li>
 </ul>
@@ -90,7 +93,6 @@
 <li class="toctree-l3"><a class="reference internal" href="cross_sections.html#other-methods">3.1.2. Other Methods</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="cross_sections.html#references">3.2. References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="random_numbers.html">4. Random Number Generation</a><ul>
@@ -98,15 +100,14 @@
 <li class="toctree-l3"><a class="reference internal" href="random_numbers.html#skip-ahead-capability">4.1.1. Skip-ahead Capability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="random_numbers.html#references">4.2. References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="physics.html">5. Physics</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#sampling-distance-to-next-collision">5.1. Sampling Distance to Next Collision</a></li>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#and-other-disappearance-reactions">5.2. <img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> and Other Disappearance Reactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#and-other-disappearance-reactions">5.2. <img class="math" src="../_images/math/86a337316c6571ab2d3380e2bc1735c09def19dc.png" alt="(n,\gamma)"/> and Other Disappearance Reactions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#elastic-scattering">5.3. Elastic Scattering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#inelastic-scattering">5.4. Inelastic Scattering</a></li>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#reactions">5.5. <img class="math" src="../_images/math/11d9b3efac04551ca81659b5409aec4281b4bed3.png" alt="(n,xn)"/> Reactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#reactions">5.5. <img class="math" src="../_images/math/86812743fd2241a6d3211913c9f5c801e4abde62.png" alt="(n,xn)"/> Reactions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#fission">5.6. Fission</a></li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#secondary-angles-and-energy-distributions">5.7. Secondary Angles and Energy Distributions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="physics.html#sampling-secondary-angle-distributions">5.7.1. Sampling Secondary Angle Distributions</a></li>
@@ -115,7 +116,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#transforming-a-particle-s-coordinates">5.8. Transforming a Particle&#8217;s Coordinates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="physics.html#effect-of-thermal-motion-on-cross-sections">5.9. Effect of Thermal Motion on Cross Sections</a></li>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#sab-tables">5.10. S(<img class="math" src="../_images/math/de50da7a7a67e43cbe2548fb3e6b03740a27b89a.png" alt="\alpha,\beta,T"/>) Tables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#sab-tables">5.10. S(<img class="math" src="../_images/math/35e1676e6106b7f88449b57d632777294e05c3a6.png" alt="\alpha,\beta,T"/>) Tables</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="physics.html#calculating-integrated-cross-sections">5.10.1. Calculating Integrated Cross Sections</a></li>
 <li class="toctree-l3"><a class="reference internal" href="physics.html#outgoing-angle-for-coherent-elastic-scattering">5.10.2. Outgoing Angle for Coherent Elastic Scattering</a></li>
 <li class="toctree-l3"><a class="reference internal" href="physics.html#outgoing-angle-for-incoherent-elastic-scattering">5.10.3. Outgoing Angle for Incoherent Elastic Scattering</a></li>
@@ -127,7 +128,6 @@
 <li class="toctree-l3"><a class="reference internal" href="physics.html#survival-biasing">5.12.1. Survival Biasing</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#references">5.13. References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tallies.html">6. Tallies</a><ul>
@@ -145,7 +145,6 @@
 <li class="toctree-l3"><a class="reference internal" href="tallies.html#estimating-statistics-of-a-random-variable">6.4.3. Estimating Statistics of a Random Variable</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#references">6.5. References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="eigenvalue.html">7. Eigenvalue Calculations</a><ul>
@@ -165,7 +164,6 @@
 <li class="toctree-l3"><a class="reference internal" href="parallelization.html#cost-of-nearest-neighbor-algorithm">8.1.4. Cost of Nearest Neighbor Algorithm</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="parallelization.html#references">8.2. References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cmfd.html">9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference</a><ul>
@@ -177,7 +175,6 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="cmfd.html#implementation-in-openmc">9.3. Implementation in OpenMC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cmfd.html#references">9.4. References</a></li>
 </ul>
 </li>
 </ul>
@@ -186,10 +183,10 @@
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="../releasenotes.html">Release Notes for OpenMC 0.7.0</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -199,9 +196,9 @@
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

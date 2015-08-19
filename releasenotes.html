@@ -1,0 +1,141 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Release Notes for OpenMC 0.7.0 &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="index.html" />
+    <link rel="next" title="Theory and Methodology" href="methods/index.html" />
+    <link rel="prev" title="Quick Install Guide" href="quickinstall.html" /> 
+  </head>
+  <body role="document">
+      <div class="header" role="banner">
+        <a href="index.html">
+          <img class="logo" src="_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="quickinstall.html">Quick Install Guide</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="methods/index.html">Theory and Methodology</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="release-notes-for-openmc-0-7-0">
+<span id="releasenotes"></span><h1>Release Notes for OpenMC 0.7.0<a class="headerlink" href="#release-notes-for-openmc-0-7-0" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
+<p>There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).</p>
+</div>
+<div class="section" id="new-features">
+<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Complete Python API</li>
+<li>Python 3 compatability for all scripts</li>
+<li>All scripts consistently named openmc-* and installed together</li>
+<li>New &#8216;distribcell&#8217; tally filter for repeated cells</li>
+<li>Ability to specify outer lattice universe</li>
+<li>XML input validation utility (openmc-validate-xml)</li>
+<li>Support for hexagonal lattices</li>
+<li>Material union energy grid method</li>
+<li>Tally triggers</li>
+<li>Remove dependence on PETSc</li>
+<li>Significant OpenMP performance improvements</li>
+<li>Support for Fortran 2008 MPI interface</li>
+<li>Use of Travis CI for continuous integration</li>
+<li>Simplifications and improvements to test suite</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/b5f712">b5f712</a>: Fix bug in spherical harmonics tallies</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/e6675b">e6675b</a>: Ensure all constants are double precision</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/04e2c1">04e2c1</a>: Fix potential bug in sample_nuclide routine</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/6121d9">6121d9</a>: Fix bugs related to particle track files</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/2f0e89">2f0e89</a>: Fixes for nuclide specification in tallies</li>
+</ul>
+</div>
+<div class="section" id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this headline">¶</a></h2>
+<p>This release contains new contributions from the following people:</p>
+<ul class="simple">
+<li><a class="reference external" href="mailto:wbinventor&#37;&#52;&#48;gmail&#46;com">Will Boyd</a></li>
+<li><a class="reference external" href="mailto:mellis13&#37;&#52;&#48;mit&#46;edu">Matt Ellis</a></li>
+<li><a class="reference external" href="mailto:sterlingmharper&#37;&#52;&#48;mit&#46;edu">Sterling Harper</a></li>
+<li><a class="reference external" href="mailto:bherman&#37;&#52;&#48;mit&#46;edu">Bryan Herman</a></li>
+<li><a class="reference external" href="mailto:nicholas&#46;horelik&#37;&#52;&#48;gmail&#46;com">Nicholas Horelik</a></li>
+<li><a class="reference external" href="mailto:cjosey&#37;&#52;&#48;mit&#46;edu">Colin Josey</a></li>
+<li><a class="reference external" href="mailto:PaleNeutron&#37;&#52;&#48;users&#46;noreply&#46;github&#46;com">William Lyu</a></li>
+<li><a class="reference external" href="mailto:nelsonag&#37;&#52;&#48;umich&#46;edu">Adam Nelson</a></li>
+<li><a class="reference external" href="mailto:paul&#46;k&#46;romano&#37;&#52;&#48;gmail&#46;com">Paul Romano</a></li>
+<li><a class="reference external" href="mailto:scopatz&#37;&#52;&#48;gmail&#46;com">Anthony Scopatz</a></li>
+<li><a class="reference external" href="mailto:walshjon&#37;&#52;&#48;mit&#46;edu">Jon Walsh</a></li>
+</ul>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="quickinstall.html">Quick Install Guide</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="methods/index.html">Theory and Methodology</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

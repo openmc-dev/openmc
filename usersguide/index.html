@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,18 +23,17 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="next" title="1. A Beginner’s Guide to OpenMC" href="beginners.html" />
     <link rel="prev" title="9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference" href="../methods/cmfd.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="../methods/cmfd.html">9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference</a>
@@ -88,77 +86,78 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="input.html">3. Writing XML Input Files</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="input.html#overview-of-files">3.1. Overview of Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#settings-specification-settings-xml">3.2. Settings Specification &#8211; settings.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#confidence-intervals-element">3.2.1. <tt class="docutils literal"><span class="pre">&lt;confidence_intervals&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#cross-sections-element">3.2.2. <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#cutoff-element">3.2.3. <tt class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#eigenvalue-element">3.2.4. <tt class="docutils literal"><span class="pre">&lt;eigenvalue&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#energy-grid-element">3.2.5. <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#entropy-element">3.2.6. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#fixed-source-element">3.2.7. <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#log-grid-bins-element">3.2.8. <tt class="docutils literal"><span class="pre">&lt;log_grid_bins&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#natural-elements-element">3.2.9. <tt class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#no-reduce-element">3.2.10. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#output-element">3.2.11. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#output-path-element">3.2.12. <tt class="docutils literal"><span class="pre">&lt;output_path&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#ptables-element">3.2.13. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#resonance-scattering-element">3.2.14. <tt class="docutils literal"><span class="pre">&lt;resonance_scattering&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#run-cmfd-element">3.2.15. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#seed-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#source-point-element">3.2.19. <tt class="docutils literal"><span class="pre">&lt;source_point&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.20. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#threads-element">3.2.21. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.22. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#track-element">3.2.23. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.24. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.25. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#validating-xml-files">3.2. Validating XML Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#settings-specification-settings-xml">3.3. Settings Specification &#8211; settings.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#confidence-intervals-element">3.3.1. <code class="docutils literal"><span class="pre">&lt;confidence_intervals&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#cross-sections-element">3.3.2. <code class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#cutoff-element">3.3.3. <code class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#eigenvalue-element">3.3.4. <code class="docutils literal"><span class="pre">&lt;eigenvalue&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#energy-grid-element">3.3.5. <code class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#entropy-element">3.3.6. <code class="docutils literal"><span class="pre">&lt;entropy&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#fixed-source-element">3.3.7. <code class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#log-grid-bins-element">3.3.8. <code class="docutils literal"><span class="pre">&lt;log_grid_bins&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#natural-elements-element">3.3.9. <code class="docutils literal"><span class="pre">&lt;natural_elements&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#no-reduce-element">3.3.10. <code class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#output-element">3.3.11. <code class="docutils literal"><span class="pre">&lt;output&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#output-path-element">3.3.12. <code class="docutils literal"><span class="pre">&lt;output_path&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#ptables-element">3.3.13. <code class="docutils literal"><span class="pre">&lt;ptables&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#resonance-scattering-element">3.3.14. <code class="docutils literal"><span class="pre">&lt;resonance_scattering&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#run-cmfd-element">3.3.15. <code class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#seed-element">3.3.16. <code class="docutils literal"><span class="pre">&lt;seed&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.3.17. <code class="docutils literal"><span class="pre">&lt;source&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.3.18. <code class="docutils literal"><span class="pre">&lt;state_point&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#source-point-element">3.3.19. <code class="docutils literal"><span class="pre">&lt;source_point&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.3.20. <code class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#threads-element">3.3.21. <code class="docutils literal"><span class="pre">&lt;threads&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.3.22. <code class="docutils literal"><span class="pre">&lt;trace&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#track-element">3.3.23. <code class="docutils literal"><span class="pre">&lt;track&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#trigger-element">3.3.24. <code class="docutils literal"><span class="pre">&lt;trigger&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.3.25. <code class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.3.26. <code class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#geometry-specification-geometry-xml">3.3. Geometry Specification &#8211; geometry.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#surface-element">3.3.1. <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#cell-element">3.3.2. <tt class="docutils literal"><span class="pre">&lt;cell&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#lattice-element">3.3.3. <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#geometry-specification-geometry-xml">3.4. Geometry Specification &#8211; geometry.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#surface-element">3.4.1. <code class="docutils literal"><span class="pre">&lt;surface&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#cell-element">3.4.2. <code class="docutils literal"><span class="pre">&lt;cell&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#lattice-element">3.4.3. <code class="docutils literal"><span class="pre">&lt;lattice&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#hex-lattice-element">3.4.4. <code class="docutils literal"><span class="pre">&lt;hex_lattice&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#materials-specification-materials-xml">3.4. Materials Specification &#8211; materials.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#material-element">3.4.1. <tt class="docutils literal"><span class="pre">&lt;material&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#default-xs-element">3.4.2. <tt class="docutils literal"><span class="pre">&lt;default_xs&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#materials-specification-materials-xml">3.5. Materials Specification &#8211; materials.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#material-element">3.5.1. <code class="docutils literal"><span class="pre">&lt;material&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#default-xs-element">3.5.2. <code class="docutils literal"><span class="pre">&lt;default_xs&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#tallies-specification-tallies-xml">3.5. Tallies Specification &#8211; tallies.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#tally-element">3.5.1. <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#mesh-element">3.5.2. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#assume-separate-element">3.5.3. <tt class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#tallies-specification-tallies-xml">3.6. Tallies Specification &#8211; tallies.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#tally-element">3.6.1. <code class="docutils literal"><span class="pre">&lt;tally&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#mesh-element">3.6.2. <code class="docutils literal"><span class="pre">&lt;mesh&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#assume-separate-element">3.6.3. <code class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#geometry-plotting-specification-plots-xml">3.6. Geometry Plotting Specification &#8211; plots.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#plot-element">3.6.1. <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#geometry-plotting-specification-plots-xml">3.7. Geometry Plotting Specification &#8211; plots.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#plot-element">3.7.1. <code class="docutils literal"><span class="pre">&lt;plot&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#cmfd-specification-cmfd-xml">3.7. CMFD Specification &#8211; cmfd.xml</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="input.html#begin-element">3.7.1. <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#display-element">3.7.2. <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#dhat-reset-element">3.7.3. <tt class="docutils literal"><span class="pre">&lt;dhat_reset&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#downscatter-element">3.7.4. <tt class="docutils literal"><span class="pre">&lt;downscatter&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#feedback-element">3.7.5. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#gauss-seidel-tolerance-element">3.7.6. <tt class="docutils literal"><span class="pre">&lt;gauss_seidel_tolerance&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#ksp-monitor-element">3.7.7. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#ktol-element">3.7.8. <tt class="docutils literal"><span class="pre">&lt;ktol&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#id2">3.7.9. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#norm-element">3.7.10. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#power-monitor-element">3.7.11. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#run-adjoint-element">3.7.12. <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#solver-element">3.7.13. <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#shift-element">3.7.14. <tt class="docutils literal"><span class="pre">&lt;shift&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#spectral-element">3.7.15. <tt class="docutils literal"><span class="pre">&lt;spectral&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#stol-element">3.7.16. <tt class="docutils literal"><span class="pre">&lt;stol&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#tally-reset-element">3.7.17. <tt class="docutils literal"><span class="pre">&lt;tally_reset&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#write-matrices-element">3.7.18. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#cmfd-specification-cmfd-xml">3.8. CMFD Specification &#8211; cmfd.xml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="input.html#begin-element">3.8.1. <code class="docutils literal"><span class="pre">&lt;begin&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#dhat-reset-element">3.8.2. <code class="docutils literal"><span class="pre">&lt;dhat_reset&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#display-element">3.8.3. <code class="docutils literal"><span class="pre">&lt;display&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#downscatter-element">3.8.4. <code class="docutils literal"><span class="pre">&lt;downscatter&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#feedback-element">3.8.5. <code class="docutils literal"><span class="pre">&lt;feedback&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#gauss-seidel-tolerance-element">3.8.6. <code class="docutils literal"><span class="pre">&lt;gauss_seidel_tolerance&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#ktol-element">3.8.7. <code class="docutils literal"><span class="pre">&lt;ktol&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#id2">3.8.8. <code class="docutils literal"><span class="pre">&lt;mesh&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#norm-element">3.8.9. <code class="docutils literal"><span class="pre">&lt;norm&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#power-monitor-element">3.8.10. <code class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#run-adjoint-element">3.8.11. <code class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#shift-element">3.8.12. <code class="docutils literal"><span class="pre">&lt;shift&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#spectral-element">3.8.13. <code class="docutils literal"><span class="pre">&lt;spectral&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#stol-element">3.8.14. <code class="docutils literal"><span class="pre">&lt;stol&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#tally-reset-element">3.8.15. <code class="docutils literal"><span class="pre">&lt;tally_reset&gt;</span></code> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#write-matrices-element">3.8.16. <code class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></code> Element</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="input.html#ersn-openmc-graphical-user-interface">3.8. ERSN-OpenMC Graphical User Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#ersn-openmc-graphical-user-interface">3.9. ERSN-OpenMC Graphical User Interface</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="processing.html">4. Data Processing and Visualization</a><ul>
@@ -201,7 +200,7 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="../methods/cmfd.html">9. Nonlinear Diffusion Acceleration - Coarse Mesh Finite Difference</a>
@@ -214,9 +213,9 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

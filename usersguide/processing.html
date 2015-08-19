@@ -10,12 +10,11 @@
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.6.2',
+        VERSION:     '0.7.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,19 +23,18 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
     <link rel="next" title="5. Troubleshooting" href="troubleshoot.html" />
     <link rel="prev" title="3. Writing XML Input Files" href="input.html" /> 
   </head>
-  <body>
-      <div class="header">
+  <body role="document">
+      <div class="header" role="banner">
         <a href="../index.html">
           <img class="logo" src="../_static/openmc.png" alt="Logo"/>
         </a>
       </div>
-      <div class="topnav">
+      <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
         «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
@@ -90,12 +88,12 @@ are easily installed with distutils.</p>
 <h2>4.1. Geometry Visualization<a class="headerlink" href="#geometry-visualization" title="Permalink to this headline">¶</a></h2>
 <p>Geometry plotting is carried out by creating a plots.xml, specifying plots, and
 running OpenMC with the -plot or -p command-line option (See
-<a class="reference internal" href="input.html#usersguide-plotting"><em>Geometry Plotting Specification &#8211; plots.xml</em></a>).</p>
+<a class="reference internal" href="input.html#usersguide-plotting"><span>Geometry Plotting Specification &#8211; plots.xml</span></a>).</p>
 <div class="section" id="plotting-in-2d">
 <h3>4.1.1. Plotting in 2D<a class="headerlink" href="#plotting-in-2d" title="Permalink to this headline">¶</a></h3>
 <a class="reference internal image-reference" href="../_images/atr.png"><img alt="../_images/atr.png" src="../_images/atr.png" style="height: 200px;" /></a>
 <p>See below for a simple example of a plots xml file that demonstrates the
-capabilities of 2D slice plots. Here we assume that there is a <tt class="docutils literal"><span class="pre">geometry.xml</span></tt>
+capabilities of 2D slice plots. Here we assume that there is a <code class="docutils literal"><span class="pre">geometry.xml</span></code>
 file containing 7 cells.</p>
 <div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="nt">&lt;plots&gt;</span>
@@ -119,33 +117,33 @@ file containing 7 cells.</p>
 <span class="nt">&lt;/plots&gt;</span>
 </pre></div>
 </div>
-<p>In this example, OpenMC will produce a plot named <tt class="docutils literal"><span class="pre">myplot.ppm</span></tt> when run in
+<p>In this example, OpenMC will produce a plot named <code class="docutils literal"><span class="pre">myplot.ppm</span></code> when run in
 plotting mode. The picture will be on the xy-plane, depicting the rectangle
 between points (-5,-5) and (5,5) with 2000 pixels along each dimension. The
 color of each pixel is determined by placing a particle at the center of that
-pixel and using OpenMC&#8217;s internal <tt class="docutils literal"><span class="pre">find_cell</span></tt> routine (the same one used for
+pixel and using OpenMC&#8217;s internal <code class="docutils literal"><span class="pre">find_cell</span></code> routine (the same one used for
 particle tracking during simulation) to determine the cell and material at that
 location. In this example, pixels are 10/2000=0.005 cm wide, so points will be
 at (-4.9975,-4.9975), (-4.9950,-4.9975), (-4.9925,-4.9975), etc. This is pointed
 out to demonstrate that this plot may miss any features smaller than 0.005 cm,
 since they could exist between pixel centers. More pixels can be used to resolve
 finer features, but could result in larger files.</p>
-<p>The <tt class="docutils literal"><span class="pre">background</span></tt>, <tt class="docutils literal"><span class="pre">col_spec</span></tt>, and <tt class="docutils literal"><span class="pre">mask</span></tt> elements define how to set pixel
+<p>The <code class="docutils literal"><span class="pre">background</span></code>, <code class="docutils literal"><span class="pre">col_spec</span></code>, and <code class="docutils literal"><span class="pre">mask</span></code> elements define how to set pixel
 colors based on the cell ids at each pixel center. In this example, RGB colors
 are specified for cells 1,2,3,4, and 7, a random color will be assigned to cells
-5 and 6, and a black background color (<tt class="docutils literal"><span class="pre">rgb=&quot;0</span> <span class="pre">0</span> <span class="pre">0&quot;</span></tt>) will be applied to
-locations where no cell is defined. However, the <tt class="docutils literal"><span class="pre">mask</span></tt> element here says that
+5 and 6, and a black background color (<code class="docutils literal"><span class="pre">rgb=&quot;0</span> <span class="pre">0</span> <span class="pre">0&quot;</span></code>) will be applied to
+locations where no cell is defined. However, the <code class="docutils literal"><span class="pre">mask</span></code> element here says that
 only cells 1,3,4,5, and 6 should be displayed, with other cells taking a white
-color (<tt class="docutils literal"><span class="pre">rgb=&quot;255</span> <span class="pre">255</span> <span class="pre">255&quot;</span></tt>), which overrides the <tt class="docutils literal"><span class="pre">col_spec</span></tt> for cell 2 and
+color (<code class="docutils literal"><span class="pre">rgb=&quot;255</span> <span class="pre">255</span> <span class="pre">255&quot;</span></code>), which overrides the <code class="docutils literal"><span class="pre">col_spec</span></code> for cell 2 and
 the random color assigned to cell 7.</p>
 <p>After running OpenMC to obtain PPM files, images should be saved to another
 format before using them elsewhere. This cuts down the size of the file by
 orders of magnitude.  Most image viewers and editors that can view PPM images
 can also save to other formats (e.g. <a class="reference external" href="http://www.gimp.org/">Gimp</a>, <a class="reference external" href="http://www.irfanview.com/">IrfanView</a>, etc.).  However, more likely the user will want to
 convert to another format on the command line.  This is easily accomplished with
-the <tt class="docutils literal"><span class="pre">convert</span></tt> command available on most Linux distributions as part of the
+the <code class="docutils literal"><span class="pre">convert</span></code> command available on most Linux distributions as part of the
 <a class="reference external" href="http://www.imagemagick.org/script/convert.php">ImageMagick</a> package. (On
-Ubuntu: <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">imagemagick</span></tt>).  Images are then converted like:</p>
+Ubuntu: <code class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">imagemagick</span></code>).  Images are then converted like:</p>
 <div class="highlight-sh"><div class="highlight"><pre>convert myplot.ppm myplot.png
 </pre></div>
 </div>
@@ -173,7 +171,7 @@ or material id of a particle at the center of each voxel. In this example, the
 space covered is the cube between the points (-5,-5,-5) and (5,5,5), with voxel
 centers 10/500 = 0.02 cm apart. The binary VOXEL files that are produced do not
 specify any color - instead containing only material or cell ids (material id
-in this example) - and thus the <tt class="docutils literal"><span class="pre">background</span></tt>, <tt class="docutils literal"><span class="pre">col_spec</span></tt>, and <tt class="docutils literal"><span class="pre">mask</span></tt>
+in this example) - and thus the <code class="docutils literal"><span class="pre">background</span></code>, <code class="docutils literal"><span class="pre">col_spec</span></code>, and <code class="docutils literal"><span class="pre">mask</span></code>
 elements are not used. If no cell is found at a voxel center, an id of -1 is
 stored.</p>
 <p>The binary VOXEL files output by OpenMC can not be viewed directly by any
@@ -195,10 +193,10 @@ accomplishes this for SILO:</p>
 <p>or</p>
 <ul class="simple">
 <li><a class="reference external" href="http://www.vtk.org/">VTK</a> with python bindings - On Ubuntu, these are
-easily obtained with <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></tt></li>
+easily obtained with <code class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></code></li>
 </ul>
 <p>Users can process the binary into any other format if desired by following the
-example of voxel.py.  For the binary file structure, see <a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><em>Voxel Plot Binary File Specifications</em></a>.</p>
+example of voxel.py.  For the binary file structure, see <a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><span>Voxel Plot Binary File Specifications</span></a>.</p>
 <p>Once processed into a standard 3D file format, colors and masks can be defined
 using the stored id numbers to better explore the geometry. The process for
 doing this will depend on the 3D viewer, but should be straightforward.</p>
@@ -227,7 +225,7 @@ the preferred method of data analysis and visualization.</p>
 <div class="section" id="data-extraction">
 <h3>4.2.1. Data Extraction<a class="headerlink" href="#data-extraction" title="Permalink to this headline">¶</a></h3>
 <p>A great deal of information is available in statepoint files (See
-<a class="reference internal" href="../devguide/statepoint.html#devguide-statepoint"><em>State Point Binary File Specifications</em></a>), most of which is easily extracted by the provided
+<a class="reference internal" href="../devguide/statepoint.html#devguide-statepoint"><span>State Point Binary File Specifications</span></a>), most of which is easily extracted by the provided
 utility statepoint.py. This utility provides a Python class to load statepoints
 and extract data - it is used in many of the provided plotting utilities, and
 can be used in user-created scripts to carry out manipulations of the data. To
@@ -359,12 +357,12 @@ for both VTK and SILO. By default statepoint_3d.py processes a statepoint into a
 </div>
 <p>but it also provides several command-line options to selectively process only
 certain data arrays in order to keep file sizes down.</p>
-<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; --tallies 2,4 --scores 4.1,4.3 -o output.silo
-&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; --filters 2.energyin.1 --vtk -o output.vtm
+<div class="highlight-sh"><div class="highlight"><pre>statepoint_3d.py &lt;statepoint_file&gt; --tallies 2,4 --scores 4.1,4.3 -o output.silo
+statepoint_3d.py &lt;statepoint_file&gt; --filters 2.energyin.1 --vtk -o output.vtm
 </pre></div>
 </div>
 <p>All available options for specifying a subset of tallies, scores, and filters
-can be listed with the <tt class="docutils literal"><span class="pre">--list</span></tt> or <tt class="docutils literal"><span class="pre">-l</span></tt> command line options.</p>
+can be listed with the <code class="docutils literal"><span class="pre">--list</span></code> or <code class="docutils literal"><span class="pre">-l</span></code> command line options.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Note that while SILO files can contain multiple meshes in one file,
@@ -439,7 +437,7 @@ the process is straightforward. First extract the data using a custom Python
 script with statepoint.py, put the data into appropriately-shaped numpy arrays,
 and then use the <a class="reference external" href="http://docs.scipy.org/doc/scipy/reference/tutorial/io.html">Scipy MATLAB IO routines</a> to save to a MAT
 file. Note that the data contained in the output from
-<tt class="docutils literal"><span class="pre">StatePoint.extract_result</span></tt> is already in a Numpy array that can be reshaped
+<code class="docutils literal"><span class="pre">StatePoint.extract_result</span></code> is already in a Numpy array that can be reshaped
 and dumped to MATLAB in one step.</p>
 </div>
 </div>
@@ -523,7 +521,7 @@ example of an interactive ipython session using the statepoint.py Python module:
 
 
       </div>
-      <div class="bottomnav">
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
         «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
@@ -536,9 +534,9 @@ example of an interactive ipython session using the statepoint.py Python module:
       </div>
 
 
-    <div class="footer">
-        &copy; Copyright 2011-2014, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
 <script type="text/javascript">
 

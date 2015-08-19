@@ -14,7 +14,7 @@ module source
   use string,           only: to_str
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none
@@ -132,8 +132,8 @@ contains
         site % xyz = p_min + r*(p_max - p_min)
 
         ! Fill p with needed data
-        p % coord0 % xyz = site % xyz
-        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+        p % coord(1) % xyz = site % xyz
+        p % coord(1) % uvw = [ ONE, ZERO, ZERO ]
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)
@@ -161,8 +161,8 @@ contains
         site % xyz = p_min + r*(p_max - p_min)
 
         ! Fill p with needed data
-        p % coord0 % xyz = site % xyz
-        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+        p % coord(1) % xyz = site % xyz
+        p % coord(1) % uvw = [ ONE, ZERO, ZERO ]
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)
@@ -256,8 +256,7 @@ contains
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i
-    type(Bank), pointer, save :: src => null()
-!$omp threadprivate(src)
+    type(Bank), pointer :: src
 
     ! set defaults
     call p % initialize()
@@ -307,8 +306,8 @@ contains
     ! copy attributes from source bank site
     p % wgt         = src % wgt
     p % last_wgt    = src % wgt
-    p % coord % xyz = src % xyz
-    p % coord % uvw = src % uvw
+    p % coord(1) % xyz = src % xyz
+    p % coord(1) % uvw = src % uvw
     p % last_xyz    = src % xyz
     p % last_uvw    = src % uvw
     p % E           = src % E

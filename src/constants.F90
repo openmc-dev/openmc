@@ -7,8 +7,8 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_MINOR   = 7
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_STATEPOINT       = 13
@@ -27,7 +27,7 @@ module constants
   ! adjusted. Modifying constants in other sections may cause the code to fail.
 
   ! Monoatomic ideal-gas scattering treatment threshold
-  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
+  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0_8
 
   ! Significance level for confidence intervals
   real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
@@ -63,15 +63,18 @@ module constants
 
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON = 1.008664916,       & ! mass of a neutron in amu
-       MASS_PROTON  = 1.007276466812,    & ! mass of a proton in amu
-       AMU          = 1.660538921e-27,   & ! 1 amu in kg
-       N_AVOGADRO   = 0.602214129,       & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
+       MASS_NEUTRON = 1.008664916_8,     & ! mass of a neutron in amu
+       MASS_PROTON  = 1.007276466812_8,  & ! mass of a proton in amu
+       AMU          = 1.660538921e-27_8, & ! 1 amu in kg
+       N_AVOGADRO   = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
+       K_BOLTZMANN  = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
        INFINITY     = huge(0.0_8),       & ! positive infinity
        ZERO         = 0.0_8,             &
+       HALF         = 0.5_8,             &
        ONE          = 1.0_8,             &
-       TWO          = 2.0_8
+       TWO          = 2.0_8,             &
+       THREE        = 3.0_8,             &
+       FOUR         = 4.0_8
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -126,6 +129,9 @@ module constants
        SURF_CONE_X =  9, & ! Cone parallel to x-axis
        SURF_CONE_Y = 10, & ! Cone parallel to y-axis
        SURF_CONE_Z = 11    ! Cone parallel to z-axis
+
+  ! Flag to say that the outside of a lattice is not defined
+  integer, parameter :: NO_OUTER_UNIVERSE = -22
 
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10
@@ -294,16 +300,17 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 8
+  integer, parameter :: N_FILTER_TYPES = 9
   integer, parameter :: &
-       FILTER_UNIVERSE  = 1, &
-       FILTER_MATERIAL  = 2, &
-       FILTER_CELL      = 3, &
-       FILTER_CELLBORN  = 4, &
-       FILTER_SURFACE   = 5, &
-       FILTER_MESH      = 6, &
-       FILTER_ENERGYIN  = 7, &
-       FILTER_ENERGYOUT = 8
+       FILTER_UNIVERSE    = 1, &
+       FILTER_MATERIAL    = 2, &
+       FILTER_CELL        = 3, &
+       FILTER_CELLBORN    = 4, &
+       FILTER_SURFACE     = 5, &
+       FILTER_MESH        = 6, &
+       FILTER_ENERGYIN    = 7, &
+       FILTER_ENERGYOUT   = 8, &
+       FILTER_DISTRIBCELL = 9
 
   ! Tally surface current directions
   integer, parameter :: &
@@ -313,6 +320,12 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
+
+  ! Tally trigger types and threshold
+  integer, parameter :: &
+       VARIANCE           = 1, &
+       RELATIVE_ERROR     = 2, &
+       STANDARD_DEVIATION = 3
 
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
@@ -365,8 +378,9 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE   = 1, & ! non-unionized energy grid
-       GRID_LOGARITHM = 2    ! logarithmic mapping
+       GRID_NUCLIDE    = 1, & ! unique energy grid for each nuclide
+       GRID_MAT_UNION  = 2, & ! material union grids with pointers
+       GRID_LOGARITHM  = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

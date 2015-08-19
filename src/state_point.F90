@@ -19,9 +19,11 @@ module state_point
   use string,             only: to_str, zero_padded, count_digits
   use output_interface
   use tally_header,       only: TallyObject
+  use mesh_header,        only: StructuredMesh
+  use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none
@@ -36,15 +38,21 @@ contains
 
   subroutine write_state_point()
 
-    character(MAX_FILE_LEN) :: filename
-    integer                 :: i
-    integer                 :: j
-    integer, allocatable    :: temp_array(:)
-    type(TallyObject), pointer :: t => null()
+    character(MAX_FILE_LEN)       :: filename
+    integer                       :: i, j, k
+    integer, allocatable          :: id_array(:)
+    integer, allocatable          :: key_array(:)
+    type(StructuredMesh), pointer :: mesh
+    type(TallyObject), pointer    :: tally
+    type(ElemKeyValueII), pointer :: current
+    type(ElemKeyValueII), pointer :: next
+    character(8)                  :: moment_name  ! name of moment (e.g, P3)
+    integer                       :: n_order      ! loop index for moment orders
+    integer                       :: nm_order     ! loop index for Ynm moment orders
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
-        & zero_padded(current_batch, count_digits(n_batches))
+         & zero_padded(current_batch, count_digits(n_max_batches))
 
     ! Append appropriate extension
 #ifdef HDF5
@@ -83,9 +91,17 @@ contains
       ! Write run information
       call sp % write_data(run_mode, "run_mode")
       call sp % write_data(n_particles, "n_particles")
+      call sp % write_data(n_batches, "n_batches")
 
       ! Write out current batch number
       call sp % write_data(current_batch, "current_batch")
+
+      ! Indicate whether source bank is stored in statepoint
+      if (source_separate) then
+        call sp % write_data(0, "source_present")
+      else
+        call sp % write_data(1, "source_present")
+      end if
 
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
@@ -93,7 +109,8 @@ contains
         call sp % write_data(gen_per_batch, "gen_per_batch")
         call sp % write_data(k_generation, "k_generation", &
              length=current_batch*gen_per_batch)
-        call sp % write_data(entropy, "entropy", length=current_batch*gen_per_batch)
+        call sp % write_data(entropy, "entropy", &
+             length=current_batch*gen_per_batch)
         call sp % write_data(k_col_abs, "k_col_abs")
         call sp % write_data(k_col_tra, "k_col_tra")
         call sp % write_data(k_abs_tra, "k_abs_tra")
@@ -101,6 +118,10 @@ contains
 
         ! Write out CMFD info
         if (cmfd_on) then
+#ifdef HDF5
+          call sp % open_group("cmfd")
+          call sp % close_group()
+#endif
           call sp % write_data(1, "cmfd_on")
           call sp % write_data(cmfd % indices, "indices", length=4, group="cmfd")
           call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
@@ -110,7 +131,7 @@ contains
                cmfd % indices(2), cmfd % indices(3)/), &
                group="cmfd")
           call sp % write_data(cmfd % entropy, "cmfd_entropy", &
-                          length=current_batch, group="cmfd")
+               length=current_batch, group="cmfd")
           call sp % write_data(cmfd % balance, "cmfd_balance", &
                length=current_batch, group="cmfd")
           call sp % write_data(cmfd % dom, "cmfd_dominance", &
@@ -122,119 +143,202 @@ contains
         end if
       end if
 
-      ! Write number of meshes
-      call sp % write_data(n_meshes, "n_meshes", group="tallies")
+#ifdef HDF5
+      call sp % open_group("tallies")
+      call sp % close_group()
+#endif
 
-      ! Write information for meshes
-      MESH_LOOP: do i = 1, n_meshes
-        call sp % write_data(meshes(i) % id, "id", &
-             group="tallies/mesh" // to_str(i))
-        call sp % write_data(meshes(i) % type, "type", &
-             group="tallies/mesh" // to_str(i))
-        call sp % write_data(meshes(i) % n_dimension, "n_dimension", &
-             group="tallies/mesh" // to_str(i))
-        call sp % write_data(meshes(i) % dimension, "dimension", &
-             group="tallies/mesh" // to_str(i), &
-             length=meshes(i) % n_dimension)
-        call sp % write_data(meshes(i) % lower_left, "lower_left", &
-             group="tallies/mesh" // to_str(i), &
-             length=meshes(i) % n_dimension)
-        call sp % write_data(meshes(i) % upper_right, "upper_right", &
-             group="tallies/mesh" // to_str(i), &
-             length=meshes(i) % n_dimension)
-        call sp % write_data(meshes(i) % width, "width", &
-             group="tallies/mesh" // to_str(i), &
-             length=meshes(i) % n_dimension)
-      end do MESH_LOOP
+      ! Write number of meshes
+      call sp % write_data(n_meshes, "n_meshes", group="tallies/meshes")
+
+      if (n_meshes > 0) then
+
+        ! Print list of mesh IDs
+        current => mesh_dict % keys()
+
+        allocate(id_array(n_meshes))
+        allocate(key_array(n_meshes))
+        i = 1
+
+        do while (associated(current))
+          key_array(i) = current % key
+          id_array(i) = current % value
+
+          ! Move to next mesh
+          next => current % next
+          deallocate(current)
+          current => next
+          i = i + 1
+        end do
+
+        call sp % write_data(id_array, "ids", &
+             group="tallies/meshes", length=n_meshes)
+        call sp % write_data(key_array, "keys", &
+             group="tallies/meshes", length=n_meshes)
+
+        deallocate(key_array)
+
+        ! Write information for meshes
+        MESH_LOOP: do i = 1, n_meshes
+
+          mesh => meshes(id_array(i))
+
+          call sp % write_data(mesh % id, "id", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)))
+          call sp % write_data(mesh % type, "type", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)))
+          call sp % write_data(mesh % n_dimension, "n_dimension", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)))
+          call sp % write_data(mesh % dimension, "dimension", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)), &
+               length=mesh % n_dimension)
+          call sp % write_data(mesh % lower_left, "lower_left", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)), &
+               length=mesh % n_dimension)
+          call sp % write_data(mesh % upper_right, "upper_right", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)), &
+               length=mesh % n_dimension)
+          call sp % write_data(mesh % width, "width", &
+               group="tallies/meshes/mesh " // trim(to_str(mesh % id)), &
+               length=mesh % n_dimension)
+        end do MESH_LOOP
+
+        deallocate(id_array)
+
+      end if
 
       ! Write number of tallies
       call sp % write_data(n_tallies, "n_tallies", group="tallies")
 
-      ! Write all tally information except results
-      TALLY_METADATA: do i = 1, n_tallies
-        !Get pointer to tally
-        t => tallies(i)
+      if (n_tallies > 0) then
 
-        ! Write id
-        call sp % write_data(t % id, "id", group="tallies/tally" // to_str(i))
+        ! Print list of tally IDs
+        allocate(id_array(n_tallies))
+        allocate(key_array(n_tallies))
 
-        ! Write number of realizations
-        call sp % write_data(t % n_realizations, "n_realizations", &
-             group="tallies/tally" // to_str(i))
+        ! Write all tally information except results
+        do i = 1, n_tallies
+          tally => tallies(i)
+          key_array(i) = tally % id
+          id_array(i) = i
+        end do
 
-        ! Write size of each tally
-        call sp % write_data(t % total_score_bins, "total_score_bins", &
-             group="tallies/tally" // to_str(i))
-        call sp % write_data(t % total_filter_bins, "total_filter_bins", &
-             group="tallies/tally" // to_str(i))
+        call sp % write_data(id_array, "ids", &
+             group="tallies", length=n_tallies)
+        call sp % write_data(key_array, "keys", &
+             group="tallies", length=n_tallies)
 
-        ! Write number of filters
-        call sp % write_data(t % n_filters, "n_filters", &
-             group="tallies/tally" // to_str(i))
+        deallocate(key_array)
 
-        ! Write filter information
-        FILTER_LOOP: do j = 1, t % n_filters
+        ! Write all tally information except results
+        TALLY_METADATA: do i = 1, n_tallies
 
-          ! Write type of filter
-          call sp % write_data(t % filters(j) % type, "type", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+          ! Get pointer to tally
+          tally => tallies(i)
 
-          ! Write number of bins for this filter
-          call sp % write_data(t % filters(j) % n_bins, "n_bins", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+          call sp % write_data(tally % estimator, "estimator", &
+               group="tallies/tally " // trim(to_str(tally % id)))
+          call sp % write_data(tally % n_realizations, "n_realizations", &
+               group="tallies/tally " // trim(to_str(tally % id)))
+          call sp % write_data(tally % n_filters, "n_filters", &
+               group="tallies/tally " // trim(to_str(tally % id)))
 
-          ! Write bins
-          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-              t % filters(j) % type == FILTER_ENERGYOUT) then
-            call sp % write_data(t % filters(j) % real_bins, "bins", &
-                 group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-                 length=size(t % filters(j) % real_bins))
-          else
-            call sp % write_data(t % filters(j) % int_bins, "bins", &
-                 group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-                 length=size(t % filters(j) % int_bins))
-          end if
+          ! Write filter information
+          FILTER_LOOP: do j = 1, tally % n_filters
 
-        end do FILTER_LOOP
+            call sp % write_data(tally % filters(j) % type, "type", &
+                 group="tallies/tally " // trim(to_str(tally % id)) // &
+                 "/filter " // to_str(j))
+            call sp % write_data(tally % filters(j) % offset, "offset", &
+                 group="tallies/tally " // trim(to_str(tally % id)) // &
+                 "/filter " // to_str(j))
+            call sp % write_data(tally % filters(j) % n_bins, "n_bins", &
+                 group="tallies/tally " // trim(to_str(tally % id)) // &
+                 "/filter " // to_str(j))
+            if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
+                 tally % filters(j) % type == FILTER_ENERGYOUT) then
+              call sp % write_data(tally % filters(j) % real_bins, "bins", &
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
+                   "/filter " // to_str(j), &
+                   length=size(tally % filters(j) % real_bins))
+            else
+              call sp % write_data(tally % filters(j) % int_bins, "bins", &
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
+                   "/filter " // to_str(j), &
+                   length=size(tally % filters(j) % int_bins))
+            end if
 
-        ! Write number of nuclide bins
-        call sp % write_data(t % n_nuclide_bins, "n_nuclide_bins", &
-             group="tallies/tally" // to_str(i))
+          end do FILTER_LOOP
 
-        ! Set up nuclide bin array and then write
-        allocate(temp_array(t % n_nuclide_bins))
-        NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-          if (t % nuclide_bins(j) > 0) then
-            temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
-          else
-            temp_array(j) = t % nuclide_bins(j)
-          end if
-        end do NUCLIDE_LOOP
-        call sp % write_data(temp_array, "nuclide_bins", &
-             group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
-        deallocate(temp_array)
+          call sp % write_data(tally % n_nuclide_bins, "n_nuclides", &
+               group="tallies/tally " // trim(to_str(tally % id)))
 
-        ! Write number of score bins, score bins, and moment order
-        call sp % write_data(t % n_score_bins, "n_score_bins", &
-             group="tallies/tally" // to_str(i))
-        call sp % write_data(t % score_bins, "score_bins", &
-             group="tallies/tally" // to_str(i), length=t % n_score_bins)
-        call sp % write_data(t % moment_order, "moment_order", &
-             group="tallies/tally" // to_str(i), length=t % n_score_bins)
+          ! Set up nuclide bin array and then write
+          allocate(key_array(tally % n_nuclide_bins))
+          NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
+            if (tally % nuclide_bins(j) > 0) then
+              key_array(j) = nuclides(tally % nuclide_bins(j)) % zaid
+            else
+              key_array(j) = tally % nuclide_bins(j)
+            end if
+          end do NUCLIDE_LOOP
+          call sp % write_data(key_array, "nuclides", &
+               group="tallies/tally " // trim(to_str(tally % id)), &
+               length=tally % n_nuclide_bins)
+          deallocate(key_array)
 
-        ! Write number of user score bins
-        call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
-             group="tallies/tally" // to_str(i))
+          call sp % write_data(tally % n_score_bins, "n_score_bins", &
+               group="tallies/tally " // trim(to_str(tally % id)))
+          call sp % write_data(tally % score_bins, "score_bins", &
+               group="tallies/tally " // trim(to_str(tally % id)), &
+               length=tally % n_score_bins)
+          call sp % write_data(tally % n_user_score_bins, "n_user_score_bins", &
+               group="tallies/tally " // to_str(tally % id))
 
-      end do TALLY_METADATA
+          ! Write explicit moment order strings for each score bin
+          k = 1
+          MOMENT_LOOP: do j = 1, tally % n_user_score_bins
+            select case(tally % score_bins(k))
+            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+              moment_name = 'P' // trim(to_str(tally % moment_order(k)))
+              call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
+                         "/moments")
+              k = k + 1
+            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+              do n_order = 0, tally % moment_order(k)
+                moment_name = 'P' // trim(to_str(n_order))
+                call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                     group="tallies/tally " // trim(to_str(tally % id)) // &
+                     "/moments")
+                k = k + 1
+              end do
+            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+                  SCORE_TOTAL_YN)
+              do n_order = 0, tally % moment_order(k)
+                do nm_order = -n_order, n_order
+                  moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
+                       trim(to_str(nm_order))
+                  call sp % write_data(moment_name, "order" // &
+                       trim(to_str(k)), &
+                       group="tallies/tally " // trim(to_str(tally % id)) // &
+                             "/moments")
+                    k = k + 1
+                end do
+              end do
+            case default
+              moment_name = ''
+              call sp % write_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally " // trim(to_str(tally % id)) // &
+                         "/moments")
+              k = k + 1
+            end select
 
-      ! Indicate where source bank is stored in statepoint
-      if (source_separate) then
-        call sp % write_data(0, "source_present")
-      else
-        call sp % write_data(1, "source_present")
+          end do MOMENT_LOOP
+
+        end do TALLY_METADATA
+
       end if
-
     end if
 
     ! Check for the no-tally-reduction method
@@ -264,12 +368,12 @@ contains
         TALLY_RESULTS: do i = 1, n_tallies
 
           ! Set point to current tally
-          t => tallies(i)
+          tally => tallies(i)
 
           ! Write sum and sum_sq for each bin
-          call sp % write_tally_result(t % results, "results", &
-               group="tallies/tally" // to_str(i), &
-               n1=size(t % results, 1), n2=size(t % results, 2))
+          call sp % write_tally_result(tally % results, "results", &
+               group="tallies/tally " // trim(to_str(tally % id)), &
+               n1=size(tally % results, 1), n2=size(tally % results, 2))
 
         end do TALLY_RESULTS
 
@@ -283,6 +387,10 @@ contains
       ! Close the file for serial writing
       call sp % file_close()
 
+    end if
+
+    if (master .and. n_tallies > 0) then
+      deallocate(id_array)
     end if
 
   end subroutine write_state_point
@@ -304,7 +412,7 @@ contains
 
         ! Set filename
         filename = trim(path_output) // 'source.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+             & zero_padded(current_batch, count_digits(n_max_batches))
 
 #ifdef HDF5
         filename = trim(filename) // '.h5'
@@ -326,7 +434,7 @@ contains
 
         ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+             & zero_padded(current_batch, count_digits(n_max_batches))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else
@@ -391,7 +499,10 @@ contains
 #ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
 #endif
-    type(TallyObject), pointer :: t => null()
+    integer, allocatable       :: id_array(:)
+    type(ElemKeyValueII), pointer :: current
+    type(ElemKeyValueII), pointer :: next
+    type(TallyObject), pointer :: tally
     type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! ==========================================================================
@@ -419,7 +530,7 @@ contains
 #endif
 
       ! Transfer values to value on master
-      if (current_batch == n_batches) then
+      if (current_batch == n_max_batches .or. satisfy_triggers) then
         global_tallies(:) % sum    = global_temp(1,:)
         global_tallies(:) % sum_sq = global_temp(2,:)
       end if
@@ -448,22 +559,38 @@ contains
       ! Indicate that tallies are on
       if (master) then
         call sp % write_data(1, "tallies_present", group="tallies")
+
+        ! Build list of tally IDs
+        current => tally_dict % keys()
+        allocate(id_array(n_tallies))
+        i = 1
+
+        do while (associated(current))
+          id_array(i) = current % value
+          ! Move to next tally
+          next => current % next
+          deallocate(current)
+          current => next
+          i = i + 1
+        end do
+
       end if
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
-        t => tallies(i)
+
+        tally => tallies(i)
 
         ! Determine size of tally results array
-        m = size(t % results, 1)
-        n = size(t % results, 2)
+        m = size(tally % results, 1)
+        n = size(tally % results, 2)
         n_bins = m*n*2
 
         ! Allocate array for storing sums and sums of squares, but
         ! contiguously in memory for each
         allocate(tally_temp(2,m,n))
-        tally_temp(1,:,:) = t % results(:,:) % sum
-        tally_temp(2,:,:) = t % results(:,:) % sum_sq
+        tally_temp(1,:,:) = tally % results(:,:) % sum
+        tally_temp(2,:,:) = tally % results(:,:) % sum_sq
 
         if (master) then
           ! The MPI_IN_PLACE specifier allows the master to copy values into
@@ -472,21 +599,22 @@ contains
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 #endif
+
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
-          if (current_batch == n_batches) then
-            t % results(:,:) % sum = tally_temp(1,:,:)
-            t % results(:,:) % sum_sq = tally_temp(2,:,:)
+          if (current_batch == n_max_batches .or. satisfy_triggers) then
+            tally % results(:,:) % sum = tally_temp(1,:,:)
+            tally % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if
 
-         ! Put in temporary tally result
-         allocate(tallyresult_temp(m,n))
-         tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
-         tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
+          ! Put in temporary tally result
+          allocate(tallyresult_temp(m,n))
+          tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
+          tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
 
-         ! Write reduced tally results to file
-          call sp % write_tally_result(t % results, "results", &
-               group="tallies/tally" // to_str(i), n1=m, n2=n)
+          ! Write reduced tally results to file
+          call sp % write_tally_result(tally % results, "results", &
+               group="tallies/tally " // trim(to_str(tally % id)), n1=m, n2=n)
 
           ! Deallocate temporary tally result
           deallocate(tallyresult_temp)
@@ -501,6 +629,9 @@ contains
         ! Deallocate temporary copy of tally results
         deallocate(tally_temp)
       end do TALLY_RESULTS
+
+      deallocate(id_array)
+
     else
       if (master) then
         ! Indicate that tallies are off
@@ -516,16 +647,22 @@ contains
 
   subroutine load_state_point()
 
-    character(MAX_FILE_LEN) :: path_temp
-    character(19)           :: current_time
-    integer                 :: i
-    integer                 :: j
-    integer                 :: length(4)
-    integer                 :: int_array(3)
-    integer, allocatable    :: temp_array(:)
-    logical                 :: source_present
-    real(8)                 :: real_array(3)
-    type(TallyObject), pointer :: t => null()
+    character(MAX_FILE_LEN)    :: path_temp
+    character(19)              :: current_time
+    integer                    :: i, j, k
+    integer                    :: length(4)
+    integer                    :: int_array(3)
+    integer, allocatable       :: id_array(:)
+    integer, allocatable       :: key_array(:)
+    integer                    :: curr_key
+    integer, allocatable       :: temp_array(:)
+    logical                    :: source_present
+    real(8)                    :: real_array(3)
+    type(StructuredMesh), pointer :: mesh
+    type(TallyObject), pointer :: tally
+    integer                    :: n_order      ! loop index for moment orders
+    integer                    :: nm_order     ! loop index for Ynm moment orders
+    character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
@@ -550,7 +687,7 @@ contains
     call sp % read_data(int_array(2), "version_minor")
     call sp % read_data(int_array(3), "version_release")
     if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
-        .or. int_array(3) /= VERSION_RELEASE) then
+         .or. int_array(3) /= VERSION_RELEASE) then
       if (master) call warning("State point file was created with a different &
            &version of OpenMC.")
     end if
@@ -567,9 +704,21 @@ contains
     ! Read and overwrite run information except number of batches
     call sp % read_data(run_mode, "run_mode")
     call sp % read_data(n_particles, "n_particles")
+    call sp % read_data(int_array(1), "n_batches")
+
+    ! Take maximum of statepoint n_batches and input n_batches
+    n_batches = max(n_batches, int_array(1))
 
     ! Read batch number to restart at
     call sp % read_data(restart_batch, "current_batch")
+
+    ! Check for source in statepoint if needed
+    call sp % read_data(int_array(1), "source_present")
+    if (int_array(1) == 1) then
+      source_present = .true.
+    else
+      source_present = .false.
+    end if
 
     if (restart_batch > n_batches) then
       call fatal_error("The number batches specified in settings.xml is fewer &
@@ -594,7 +743,7 @@ contains
       ! Read in to see if CMFD was on
       call sp % read_data(int_array(1), "cmfd_on")
 
-      ! Write out CMFD info
+      ! Read in CMFD info
       if (int_array(1) == 1) then
         call sp % read_data(cmfd % indices, "indices", length=4, group="cmfd")
         call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
@@ -603,7 +752,7 @@ contains
         call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
              length=length, group="cmfd")
         call sp % read_data(cmfd % entropy, "cmfd_entropy", &
-                       length=restart_batch, group="cmfd")
+             length=restart_batch, group="cmfd")
         call sp % read_data(cmfd % balance, "cmfd_balance", &
              length=restart_batch, group="cmfd")
         call sp % read_data(cmfd % dom, "cmfd_dominance", &
@@ -614,126 +763,161 @@ contains
     end if
 
     ! Read number of meshes
-    call sp % read_data(n_meshes, "n_meshes", group="tallies")
+    call sp % read_data(n_meshes, "n_meshes", group="tallies/meshes")
 
-    ! Read and overwrite mesh information
-    MESH_LOOP: do i = 1, n_meshes
-      call sp % read_data(meshes(i) % id, "id", &
-           group="tallies/mesh" // to_str(i))
-      call sp % read_data(meshes(i) % type, "type", &
-           group="tallies/mesh" // to_str(i))
-      call sp % read_data(meshes(i) % n_dimension, "n_dimension", &
-           group="tallies/mesh" // to_str(i))
-      call sp % read_data(meshes(i) % dimension, "dimension", &
-           group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
-      call sp % read_data(meshes(i) % lower_left, "lower_left", &
-           group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
-      call sp % read_data(meshes(i) % upper_right, "upper_right", &
-           group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
-      call sp % read_data(meshes(i) % width, "width", &
-           group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
-    end do MESH_LOOP
+    if (n_meshes > 0) then
+
+      ! Read list of mesh keys-> IDs
+      allocate(id_array(n_meshes))
+      allocate(key_array(n_meshes))
+
+      call sp % read_data(id_array, "ids", &
+           group="tallies/meshes", length=n_meshes)
+      call sp % read_data(key_array, "keys", &
+           group="tallies/meshes", length=n_meshes)
+
+      ! Read and overwrite mesh information
+      MESH_LOOP: do i = 1, n_meshes
+
+        mesh => meshes(id_array(i))
+        curr_key = key_array(id_array(i))
+
+        call sp % read_data(mesh % id, "id", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)))
+        call sp % read_data(mesh % type, "type", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)))
+        call sp % read_data(mesh % n_dimension, "n_dimension", &
+             group="tallies/meshes/mesh " // trim(to_str(meshes(i) % id)))
+        call sp % read_data(mesh % dimension, "dimension", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)), &
+             length=mesh % n_dimension)
+        call sp % read_data(mesh % lower_left, "lower_left", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)), &
+             length=mesh % n_dimension)
+        call sp % read_data(mesh % upper_right, "upper_right", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)), &
+             length=mesh % n_dimension)
+        call sp % read_data(mesh % width, "width", &
+             group="tallies/meshes/mesh " // trim(to_str(curr_key)), &
+             length=meshes(i) % n_dimension)
+
+      end do MESH_LOOP
+
+      deallocate(id_array)
+      deallocate(key_array)
+
+    end if
 
     ! Read and overwrite number of tallies
     call sp % read_data(n_tallies, "n_tallies", group="tallies")
+
+    ! Read list of tally keys-> IDs
+    allocate(id_array(n_tallies))
+    allocate(key_array(n_tallies))
+
+    call sp % read_data(id_array, "ids", group="tallies", length=n_tallies)
+    call sp % read_data(key_array, "keys", group="tallies", length=n_tallies)
 
     ! Read in tally metadata
     TALLY_METADATA: do i = 1, n_tallies
 
       ! Get pointer to tally
-      t => tallies(i)
+      tally => tallies(i)
+      curr_key = key_array(id_array(i))
 
-      ! Read tally id
-      call sp % read_data(t % id, "id", group="tallies/tally" // to_str(i))
+      call sp % read_data(tally % estimator, "estimator", &
+           group="tallies/tally " // trim(to_str(curr_key)))
+      call sp % read_data(tally % n_realizations, "n_realizations", &
+           group="tallies/tally " // trim(to_str(curr_key)))
+      call sp % read_data(tally % n_filters, "n_filters", &
+           group="tallies/tally " // trim(to_str(curr_key)))
 
-      ! Read number of realizations
-      call sp % read_data(t % n_realizations, "n_realizations", &
-           group="tallies/tally" // to_str(i))
-
-      ! Read size of tally results
-      call sp % read_data(int_array(1), "total_score_bins", &
-           group="tallies/tally" // to_str(i))
-      call sp % read_data(int_array(2), "total_filter_bins", &
-           group="tallies/tally" // to_str(i))
-
-      ! Check size of tally results array
-      if (int_array(1) /= t % total_score_bins .and. &
-          int_array(2) /= t % total_filter_bins) then
-        call fatal_error("Input file tally structure is different from &
-             &restart.")
-      end if
-
-      ! Read number of filters
-      call sp % read_data(t % n_filters, "n_filters", &
-           group="tallies/tally" // to_str(i))
-
-      ! Read filter information
-      FILTER_LOOP: do j = 1, t % n_filters
-
-        ! Read type of filter
-        call sp % read_data(t % filters(j) % type, "type", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
-
-        ! Read number of bins for this filter
-        call sp % read_data(t % filters(j) % n_bins, "n_bins", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
-
-        ! Read bins
-        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-            t % filters(j) % type == FILTER_ENERGYOUT) then
-          call sp % read_data(t % filters(j) % real_bins, "bins", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % real_bins))
+      FILTER_LOOP: do j = 1, tally % n_filters
+        call sp % read_data(tally % filters(j) % type, "type", &
+             group="tallies/tally " // trim(to_str(curr_key)) // &
+             "/filter " // to_str(j))
+        call sp % read_data(tally % filters(j) % offset, "offset", &
+              group="tallies/tally " // trim(to_str(curr_key)) // &
+               "/filter " // to_str(j))
+        call sp % read_data(tally % filters(j) % n_bins, "n_bins", &
+             group="tallies/tally " // trim(to_str(curr_key)) // &
+             "/filter " // to_str(j))
+        if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
+             tally % filters(j) % type == FILTER_ENERGYOUT) then
+          call sp % read_data(tally % filters(j) % real_bins, "bins", &
+               group="tallies/tally " // trim(to_str(curr_key)) // &
+               "/filter " // to_str(j), &
+               length=size(tally % filters(j) % real_bins))
         else
-          call sp % read_data(t % filters(j) % int_bins, "bins", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % int_bins))
+          call sp % read_data(tally % filters(j) % int_bins, "bins", &
+               group="tallies/tally " // trim(to_str(curr_key)) // &
+               "/filter " // to_str(j), &
+               length=size(tally % filters(j) % int_bins))
         end if
 
       end do FILTER_LOOP
 
-      ! Read number of nuclide bins
-      call sp % read_data(t % n_nuclide_bins, "n_nuclide_bins", &
-           group="tallies/tally" // to_str(i))
+      call sp % read_data(tally % n_nuclide_bins, "n_nuclides", &
+           group="tallies/tally " // trim(to_str(curr_key)))
 
-      ! Set up nuclide bin array and then write
-      allocate(temp_array(t % n_nuclide_bins))
-      call sp % read_data(temp_array, "nuclide_bins", &
-           group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
-      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+      ! Set up nuclide bin array and then read
+      allocate(temp_array(tally % n_nuclide_bins))
+      call sp % read_data(temp_array, "nuclides", &
+           group="tallies/tally " // trim(to_str(curr_key)), &
+           length=tally % n_nuclide_bins)
+
+      NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
         if (temp_array(j) > 0) then
-          nuclides(t % nuclide_bins(j)) % zaid = temp_array(j)
+          tally % nuclide_bins(j) = temp_array(j)
         else
-          t % nuclide_bins(j) = temp_array(j)
+          tally % nuclide_bins(j) = temp_array(j)
         end if
       end do NUCLIDE_LOOP
+
       deallocate(temp_array)
 
-      ! Write number of score bins, score bins, and scatt order
-      call sp % read_data(t % n_score_bins, "n_score_bins", &
-           group="tallies/tally" // to_str(i))
-      call sp % read_data(t % score_bins, "score_bins", &
-           group="tallies/tally" // to_str(i), length=t % n_score_bins)
-      call sp % read_data(t % moment_order, "moment_order", &
-           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+      ! Write number of score bins, score bins, user score bins
+      call sp % read_data(tally % n_score_bins, "n_score_bins", &
+           group="tallies/tally " // trim(to_str(curr_key)))
+      call sp % read_data(tally % score_bins, "score_bins", &
+           group="tallies/tally " // trim(to_str(curr_key)), &
+           length=tally % n_score_bins)
+      call sp % read_data(tally % n_user_score_bins, "n_user_score_bins", &
+           group="tallies/tally " // trim(to_str(curr_key)))
 
-      ! Write number of user score bins
-      call sp % read_data(t % n_user_score_bins, "n_user_score_bins", &
-           group="tallies/tally" // to_str(i))
+      ! Read explicit moment order strings for each score bin
+      k = 1
+      MOMENT_LOOP: do j = 1, tally % n_user_score_bins
+        select case(tally % score_bins(k))
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
+          k = k + 1
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+          do n_order = 0, tally % moment_order(k)
+            call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                 group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
+            k = k + 1
+          end do
+        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+              SCORE_TOTAL_YN)
+          do n_order = 0, tally % moment_order(k)
+            do nm_order = -n_order, n_order
+              call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+                   group="tallies/tally " // trim(to_str(curr_key)) // &
+                         "/moments")
+              k = k + 1
+            end do
+          end do
+        case default
+          call sp % read_data(moment_name, "order" // trim(to_str(k)), &
+               group="tallies/tally " // trim(to_str(curr_key)) // "/moments")
+          k = k + 1
+        end select
+
+      end do MOMENT_LOOP
 
     end do TALLY_METADATA
-
-    ! Check for source in statepoint if needed
-    call sp % read_data(int_array(1), "source_present")
-    if (int_array(1) == 1) then
-      source_present = .true.
-    else
-      source_present = .false.
-    end if
 
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then
@@ -759,23 +943,29 @@ contains
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
-      call sp % read_data(int_array(1), "tallies_present", group="tallies", collect=.false.)
+      call sp % read_data(int_array(1), "tallies_present", &
+           group="tallies", collect=.false.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
         TALLY_RESULTS: do i = 1, n_tallies
 
           ! Set pointer to tally
-          t => tallies(i)
+          tally => tallies(i)
+          curr_key = key_array(id_array(i))
 
           ! Read sum and sum_sq for each bin
-          call sp % read_tally_result(t % results, "results", &
-               group="tallies/tally" // to_str(i), &
-               n1=size(t % results, 1), n2=size(t % results, 2))
+          call sp % read_tally_result(tally % results, "results", &
+               group="tallies/tally " // trim(to_str(curr_key)), &
+               n1=size(tally % results, 1), n2=size(tally % results, 2))
 
         end do TALLY_RESULTS
+
       end if
     end if
+
+    deallocate(id_array)
+    deallocate(key_array)
 
     ! Read source if in eigenvalue mode
     if (run_mode == MODE_EIGENVALUE) then

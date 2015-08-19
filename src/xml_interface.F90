@@ -92,7 +92,7 @@ contains
     ! Check if node exists
     if (associated(temp_ptr)) return
 
-    ! Check for a sub-element 
+    ! Check for a sub-element
     elem_list => getChildrenByTagName(ptr, trim(node_name))
 
     ! Get the length of the list
@@ -122,7 +122,7 @@ contains
     ! Set found to false
     found_ = .false.
 
-    ! Check for a sub-element 
+    ! Check for a sub-element
     elem_list => getChildrenByTagName(in_ptr, trim(node_name))
 
     ! Get the length of the list
@@ -147,7 +147,7 @@ contains
     type(Node), pointer, intent(in) :: in_ptr
     type(NodeList), pointer, intent(out) :: out_ptr
 
-    ! Check for a sub-element 
+    ! Check for a sub-element
     out_ptr => getChildrenByTagName(in_ptr, trim(node_name))
 
   end subroutine get_node_list
@@ -176,7 +176,7 @@ contains
     type(NodeList), pointer, intent(in) :: in_ptr
     type(Node), pointer, intent(out) :: out_ptr
 
-    ! Check for a sub-element 
+    ! Check for a sub-element
     out_ptr => item(in_ptr, idx - 1)
 
   end subroutine get_list_item
@@ -199,7 +199,7 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
@@ -210,7 +210,7 @@ contains
     else
       call extractDataContent(temp_ptr, result_int)
     end if
-    
+
   end subroutine get_node_value_integer
 
 !===============================================================================
@@ -231,18 +231,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_long)
     else
       call extractDataContent(temp_ptr, result_long)
     end if
-    
+
   end subroutine get_node_value_long
 
 !===============================================================================
@@ -263,18 +263,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_double)
     else
       call extractDataContent(temp_ptr, result_double)
     end if
-    
+
   end subroutine get_node_value_double
 
 !===============================================================================
@@ -295,18 +295,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_int)
     else
       call extractDataContent(temp_ptr, result_int)
     end if
-    
+
   end subroutine get_node_array_integer
 
 !===============================================================================
@@ -327,18 +327,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_double)
     else
       call extractDataContent(temp_ptr, result_double)
     end if
-    
+
   end subroutine get_node_array_double
 
 !===============================================================================
@@ -359,18 +359,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " &
            &// getNodeName(ptr) // ".")
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_string)
     else
       call extractDataContent(temp_ptr, result_string)
     end if
-    
+
   end subroutine get_node_array_string
 
 !===============================================================================
@@ -391,18 +391,18 @@ contains
     call get_node(ptr, node_name, temp_ptr, node_type, found)
 
     ! Leave if it was not found
-    if (.not. found) then 
+    if (.not. found) then
       call fatal_error("Node " // node_name // " not part of Node " // &
                 getNodeName(ptr) // ".")
     end if
- 
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_str)
     else
       call extractDataContent(temp_ptr, result_str)
     end if
-   
+
   end subroutine get_node_value_string
 
 !===============================================================================
@@ -513,7 +513,7 @@ contains
     ! Check if node exists
     if (associated(out_ptr)) return
 
-    ! Check for a sub-element 
+    ! Check for a sub-element
     elem_list => getChildrenByTagName(in_ptr, trim(node_name))
 
     ! Get the length of the list

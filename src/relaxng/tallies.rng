@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="tallies" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <zeroOrMore>
+      <element name="mesh">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="type">
+              <choice>
+                <value>rectangular</value>
+                <value>hexagonal</value>
+              </choice>
+            </element>
+            <attribute name="type">
+              <choice>
+                <value>rectangular</value>
+                <value>hexagonal</value>
+              </choice>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <choice>
+              <element name="upper_right">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="upper_right">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+            <choice>
+              <element name="width">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="width">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </choice>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
+      <element name="tally">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="estimator">
+                <choice>
+                  <value>analog</value>
+                  <value>tracklength</value>
+                </choice>
+              </element>
+              <attribute name="estimator">
+                <choice>
+                  <value>analog</value>
+                  <value>tracklength</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <zeroOrMore>
+            <element name="filter">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <choice>
+                      <value>cell</value>
+                      <value>cellborn</value>
+                      <value>material</value>
+                      <value>universe</value>
+                      <value>surface</value>
+                      <value>distribcell</value>
+                      <value>mesh</value>
+                      <value>energy</value>
+                      <value>energyout</value>
+                    </choice>
+                  </element>
+                  <attribute name="type">
+                    <choice>
+                      <value>cell</value>
+                      <value>cellborn</value>
+                      <value>material</value>
+                      <value>universe</value>
+                      <value>surface</value>
+                      <value>distribcell</value>
+                      <value>mesh</value>
+                      <value>energy</value>
+                      <value>energyout</value>
+                    </choice>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="bins">
+                    <list>
+                      <oneOrMore>
+                        <data type="double"/>
+                      </oneOrMore>
+                    </list>
+                  </element>
+                  <attribute name="bins">
+                    <list>
+                      <oneOrMore>
+                        <data type="double"/>
+                      </oneOrMore>
+                    </list>
+                  </attribute>
+                </choice>
+              </interleave>
+            </element>
+          </zeroOrMore>
+          <optional>
+            <element name="nuclides">
+              <list>
+                <oneOrMore>
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </oneOrMore>
+              </list>
+            </element>
+          </optional>
+          <element name="scores">
+            <list>
+              <oneOrMore>
+                <data type="string">
+                  <param name="maxLength">20</param>
+                </data>
+              </oneOrMore>
+            </list>
+          </element>
+          <optional>
+            <element name="trigger">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="type">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="threshold">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="threshold">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="scores">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </element>
+                    <attribute name="scores">
+                      <list>
+                        <oneOrMore>
+                          <data type="string">
+                            <param name="maxLength">20</param>
+                          </data>
+                        </oneOrMore>
+                      </list>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <optional>
+      <element name="assume_separate">
+        <data type="boolean"/>
+      </element>
+    </optional>
+  </interleave>
+</element>

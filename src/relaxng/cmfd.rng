@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="cmfd" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <element name="mesh">
+      <interleave>
+        <choice>
+          <element name="dimension">
+            <list>
+              <oneOrMore>
+                <data type="int"/>
+              </oneOrMore>
+            </list>
+          </element>
+          <attribute name="dimension">
+            <list>
+              <oneOrMore>
+                <data type="int"/>
+              </oneOrMore>
+            </list>
+          </attribute>
+        </choice>
+        <choice>
+          <element name="lower_left">
+            <list>
+              <oneOrMore>
+                <data type="double"/>
+              </oneOrMore>
+            </list>
+          </element>
+          <attribute name="lower_left">
+            <list>
+              <oneOrMore>
+                <data type="double"/>
+              </oneOrMore>
+            </list>
+          </attribute>
+        </choice>
+        <choice>
+          <choice>
+            <element name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="width">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="width">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </choice>
+        <choice>
+          <element name="albedo">
+            <list>
+              <oneOrMore>
+                <data type="double"/>
+              </oneOrMore>
+            </list>
+          </element>
+          <attribute name="albedo">
+            <list>
+              <oneOrMore>
+                <data type="double"/>
+              </oneOrMore>
+            </list>
+          </attribute>
+        </choice>
+        <optional>
+          <choice>
+            <element name="map">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="map">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="energy">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="energy">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+      </interleave>
+    </element>
+    <optional>
+      <element name="norm">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="feedback">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="downscatter">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="dhat_reset">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="power_monitor">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="write_matrices">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="run_adjoint">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="write_hdf5">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="begin">
+        <data type="int"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="tally_reset">
+        <list>
+          <oneOrMore>
+            <data type="int"/>
+          </oneOrMore>
+        </list>
+      </element>
+    </optional>
+    <optional>
+      <element name="display">
+        <data type="string"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="spectral">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="shift">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="ktol">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="stol">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="gauss_seidel_tolerance">
+        <list>
+          <oneOrMore>
+            <data type="double"/>
+          </oneOrMore>
+        </list>
+      </element>
+    </optional>
+  </interleave>
+</element>

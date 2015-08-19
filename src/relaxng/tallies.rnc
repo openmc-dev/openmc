@@ -17,26 +17,29 @@ element tallies {
 
   element tally {
     (element id { xsd:int } | attribute id { xsd:int }) &
-    (element label { xsd:string { maxLength="52" } } |
-      attribute label { xsd:string { maxLength="52" } })? &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
     (element estimator { ( "analog" | "tracklength" ) } |
       attribute estimator { ( "analog" | "tracklength" ) })? &
     element filter {
       (element type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "mesh" | "energy" | "energyout" ) } |
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) } |
        attribute type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "mesh" | "energy" | "energyout" ) }) &
-      (element bins { list { xsd:string { maxLength = "20" }+ } } |
-        attribute bins { list { xsd:string { maxLength = "20" }+ } }) &
-      (element groups { xsd:string { maxLength = "20" }+ } | 
-        attribute groups { xsd:string { maxLength = "20" }+ })?
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) }) &
+      (element bins { list { xsd:double+ } } |
+        attribute bins { list { xsd:double+ } })
     }* &
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }
     }? &
     element scores { 
       list { xsd:string { maxLength = "20" }+ }
-    }
+    } &
+    element trigger {
+      (element type { xsd:string } | attribute type { xsd:string }) &
+      (element threshold { xsd:double} | attribute threshold { xsd:double }) &
+      (element scores { list { xsd:string { maxLength = "20" }+ } } | attribute scores { list { xsd:string { maxLength = "20"}+ } } )?
+    }?
   }* &
 
   element assume_separate { xsd:boolean }?

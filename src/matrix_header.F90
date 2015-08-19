@@ -1,9 +1,5 @@
 module matrix_header
 
-#ifdef PETSC
-  use petscmat
-#endif
-
   implicit none
   private
 
@@ -15,32 +11,20 @@ module matrix_header
     integer, allocatable :: row(:) ! csr row vector
     integer, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
-#  ifdef PETSC
-    type(mat) :: petsc_mat
-#  endif
-    logical :: petsc_active
-   contains
-     procedure :: create             => matrix_create
-     procedure :: destroy            => matrix_destroy
-     procedure :: add_value          => matrix_add_value
-     procedure :: new_row            => matrix_new_row
-     procedure :: assemble           => matrix_assemble
-     procedure :: get_row            => matrix_get_row
-     procedure :: get_col            => matrix_get_col
-     procedure :: vector_multiply    => matrix_vector_multiply
-     procedure :: search_indices     => matrix_search_indices
-     procedure :: write              => matrix_write
-     procedure :: copy               => matrix_copy
-#  ifdef PETSC
-     procedure :: setup_petsc        => matrix_setup_petsc
-     procedure :: write_petsc_binary => matrix_write_petsc_binary
-     procedure :: transpose          => matrix_transpose
-#  endif
+  contains
+    procedure :: create             => matrix_create
+    procedure :: destroy            => matrix_destroy
+    procedure :: add_value          => matrix_add_value
+    procedure :: new_row            => matrix_new_row
+    procedure :: assemble           => matrix_assemble
+    procedure :: get_row            => matrix_get_row
+    procedure :: get_col            => matrix_get_col
+    procedure :: vector_multiply    => matrix_vector_multiply
+    procedure :: search_indices     => matrix_search_indices
+    procedure :: write              => matrix_write
+    procedure :: copy               => matrix_copy
+    procedure :: transpose          => matrix_transpose
   end type matrix
-
-#ifdef PETSC
-  integer :: petsc_err
-#endif
 
 contains
 
@@ -67,9 +51,6 @@ contains
     self % n = n
     self % nnz = nnz
 
-    ! Set PETSc active by default to false
-    self % petsc_active = .false.
-
   end subroutine matrix_create
 
 !===============================================================================
@@ -79,10 +60,6 @@ contains
   subroutine matrix_destroy(self)
 
     class(Matrix), intent(inout) :: self ! matrix instance
-
-#ifdef PETSC
-    if (self % petsc_active) call MatDestroy(self % petsc_mat, petsc_err)
-#endif
 
     if (allocated(self % row)) deallocate(self % row)
     if (allocated(self % col)) deallocate(self % col)
@@ -104,10 +81,6 @@ contains
     self % col(self % nz_count) = col
     self % val(self % nz_count) = val
 
-    ! Need to adjust column indices if PETSc is active
-    if (self % petsc_active) self % col(self % nz_count) = &
-                             self % col(self % nz_count) - 1
-
     ! Increment the number of nonzeros currently stored
     self % nz_count = self % nz_count + 1
 
@@ -123,10 +96,6 @@ contains
 
     ! Record the current number of nonzeros
     self % row(self % n_count) = self % nz_count
-
-    ! If PETSc is active, we have to reference indices off 0
-    if (self % petsc_active) self % row(self % n_count) = &
-                             self % row(self % n_count) - 1
 
     ! Increment the current row that we are on
     self % n_count = self % n_count + 1
@@ -239,7 +208,7 @@ contains
   end subroutine split
 
 !===============================================================================
-! MATRIX_GET_ROW is a method to get row and checks for PETSc C indexing use
+! MATRIX_GET_ROW is a method to get row
 !===============================================================================
 
   function matrix_get_row(self, i) result(row)
@@ -250,12 +219,10 @@ contains
 
     row = self % row(i)
 
-    if (self % petsc_active) row = row + 1
-
   end function matrix_get_row
 
 !===============================================================================
-! MATRIX_GET_COL is a method to get column and checks for PETSc C index use
+! MATRIX_GET_COL is a method to get column
 !===============================================================================
 
   function matrix_get_col(self, i) result(col)
@@ -266,67 +233,45 @@ contains
 
     col = self % col(i)
 
-    if (self % petsc_active) col = col + 1
-
   end function matrix_get_col
 
 !===============================================================================
-! MATRIX_SETUP_PETSC configures the row/col vectors and links to a PETSc object
+! MATRIX_TRANSPOSE transposes a sparse matrix
 !===============================================================================
 
-#ifdef PETSC
-  subroutine matrix_setup_petsc(self)
+  function matrix_transpose(self) result(mat)
 
-    class(Matrix), intent(inout) :: self ! matrix instance
+    class(Matrix), intent(in) :: self ! matrix instance
+    type(Matrix)              :: mat  ! transposed matrix
 
-    ! change indices to c notation
-    self % row = self % row - 1
-    self % col = self % col - 1
+    integer :: i, j        ! loop indices for row/column
+    integer :: i_transpose ! loop index for row in transposed matrix
+    integer :: first, last ! indices in col() array
 
-    ! Link to petsc
-    call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
-            self % row, self % col, self % val, self % petsc_mat, petsc_err)
+    call mat % create(self % n, self % nnz)
+    do i_transpose = 1, mat % n
+      ! Set up row in transposed matrix
+      call mat % new_row()
 
-    ! Petsc is now active
-    self % petsc_active = .true.
+      ROW: do i = 1, self % n
+        ! Get range of columns for row i
+        first = self % row(i)
+        last  = self % row(i+1) - 1
 
-  end subroutine matrix_setup_petsc
-#endif
+        COL: do j = first, last
+          if (self % col(j) == i_transpose) then
+            ! If column in original matrix matches row in transposed, add value
+            call mat % add_value(i, self % val(j))
+          elseif (self % col(j) > i_transpose) then
+            exit COL
+          end if
+        end do COL
+      end do ROW
+    end do
 
-!===============================================================================
-! MATRIX_WRITE_PETSC_BINARY writes a PETSc matrix binary file
-!===============================================================================
+    call mat % new_row()
 
-#ifdef PETSC
-  subroutine matrix_write_petsc_binary(self, filename)
-
-    character(*), intent(in)  :: filename ! file name to write to
-    class(Matrix), intent(in) :: self     ! matrix instance
-
-    type(PetscViewer) :: viewer ! a petsc viewer instance
-
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
-         FILE_MODE_WRITE, viewer, petsc_err)
-    call MatView(self % petsc_mat, viewer, petsc_err)
-    call PetscViewerDestroy(viewer, petsc_err)
-
-  end subroutine matrix_write_petsc_binary
-#endif
-
-!===============================================================================
-! MATRIX_TRANSPOSE uses PETSc to transpose a matrix
-!===============================================================================
-
-#ifdef PETSC
-  subroutine matrix_transpose(self)
-
-    class(Matrix), intent(inout) :: self ! matrix instance
-
-    call MatTranspose(self % petsc_mat, MAT_REUSE_MATRIX, self % petsc_mat, &
-         petsc_err)
-
-  end subroutine matrix_transpose
-#endif
+  end function matrix_transpose
 
 !===============================================================================
 ! MATRIX_VECTOR_MULTIPLY allow a vector to multiply the matrix
@@ -363,7 +308,7 @@ contains
   end subroutine matrix_vector_multiply
 
 !===============================================================================
-! MATRIX_SEARCH_INDICES searches for an index in column corresponding to a row 
+! MATRIX_SEARCH_INDICES searches for an index in column corresponding to a row
 !===============================================================================
 
   subroutine matrix_search_indices(self, row, col, idx, found)
@@ -434,9 +379,6 @@ contains
     if (.not.allocated(self % row)) allocate(self % row(self % n + 1))
     if (.not.allocated(self % col)) allocate(self % col(self % nnz))
     if (.not.allocated(self % val)) allocate(self % val(self % nnz))
-
-    ! Set PETSc active to false
-    self % petsc_active = .false.
 
     ! Copy over data
     self % row = mattocopy % row

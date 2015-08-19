@@ -7,7 +7,7 @@ module mesh
   use search,          only: binary_search
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none

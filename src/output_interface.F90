@@ -7,9 +7,10 @@ module output_interface
 
 #ifdef HDF5
   use hdf5_interface
-#endif
+#else
 #ifdef MPI
   use mpiio_interface
+#endif
 #endif
 
   implicit none
@@ -22,10 +23,15 @@ module output_interface
     integer(HID_T) :: hdf5_fh
     integer(HID_T) :: hdf5_grp
 #else
-    integer :: unit_fh
-# endif
+    integer        :: unit_fh
+#ifdef MPIF08
+    type(MPI_File) :: mpi_fh
+#else
+    integer        :: mpi_fh
+#endif
+#endif
     logical :: serial ! Serial I/O when using MPI/PHDF5
-   contains
+  contains
     generic, public :: write_data =>  write_double, &
                                       write_double_1Darray, &
                                       write_double_2Darray, &
@@ -105,7 +111,7 @@ contains
       self % serial = serial
     else
       self % serial = .true.
-     end if
+    end if
 
 #ifdef HDF5
 # ifdef MPI
@@ -122,7 +128,7 @@ contains
       open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
            STATUS='replace', ACCESS='stream')
     else
-      call mpi_create_file(filename, self % unit_fh)
+      call mpi_create_file(filename, self % mpi_fh)
     end if
 #else
     open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
@@ -147,7 +153,7 @@ contains
       self % serial = serial
     else
       self % serial = .true.
-     end if
+    end if
 
 #ifdef HDF5
 # ifdef MPI
@@ -170,7 +176,7 @@ contains
              STATUS='old', ACCESS='stream')
       end if
     else
-      call mpi_open_file(filename, self % unit_fh, mode)
+      call mpi_open_file(filename, self % mpi_fh, mode)
     end if
 #else
     ! Check for read/write mode to open, default is read only
@@ -195,18 +201,18 @@ contains
 
 #ifdef HDF5
 # ifdef MPI
-     call hdf5_file_close(self % hdf5_fh)
+    call hdf5_file_close(self % hdf5_fh)
 # else
-     call hdf5_file_close(self % hdf5_fh)
+    call hdf5_file_close(self % hdf5_fh)
 # endif
 #elif MPI
-     if (self % serial) then
-       close(UNIT=self % unit_fh)
-     else
-       call mpi_close_file(self % unit_fh)
-     end if
+    if (self % serial) then
+      close(UNIT=self % unit_fh)
+    else
+      call mpi_close_file(self % mpi_fh)
+    end if
 #else
-     close(UNIT=self % unit_fh)
+    close(UNIT=self % unit_fh)
 #endif
 
   end subroutine file_close
@@ -293,7 +299,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer
     else
-      call mpi_write_double(self % unit_fh, buffer, collect_)
+      call mpi_write_double(self % mpi_fh, buffer, collect_)
     end if
 #else
     write(self % unit_fh) buffer
@@ -354,7 +360,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer
     else
-      call mpi_read_double(self % unit_fh, buffer, collect_)
+      call mpi_read_double(self % mpi_fh, buffer, collect_)
     end if
 #else
     read(self % unit_fh) buffer
@@ -417,7 +423,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length)
     else
-      call mpi_write_double_1Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_double_1Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length)
@@ -469,7 +475,7 @@ contains
       call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
       call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name_, buffer, &
-         length, collect_)
+           length, collect_)
     end if
 # else
     call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
@@ -480,7 +486,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length)
     else
-      call mpi_read_double_1Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_double_1Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length)
@@ -543,7 +549,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length(1),1:length(2))
     else
-      call mpi_write_double_2Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_double_2Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2))
@@ -606,7 +612,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length(1),1:length(2))
     else
-      call mpi_read_double_2Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_double_2Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2))
@@ -657,8 +663,8 @@ contains
     if (self % serial) then
       call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
-      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, length, &
-         collect_)
+      call hdf5_write_double_3Darray_parallel(self % hdf5_grp, name_, buffer, &
+           length, collect_)
     end if
 # else
     call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
@@ -669,7 +675,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
     else
-      call mpi_write_double_3Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_double_3Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
@@ -732,7 +738,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
     else
-      call mpi_read_double_3Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_double_3Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
@@ -798,7 +804,7 @@ contains
       write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
                          1:length(4))
     else
-      call mpi_write_double_4Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_double_4Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
@@ -864,7 +870,7 @@ contains
       read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
                         1:length(4))
     else
-      call mpi_read_double_4Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_double_4Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
@@ -926,7 +932,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer
     else
-      call mpi_write_integer(self % unit_fh, buffer, collect_)
+      call mpi_write_integer(self % mpi_fh, buffer, collect_)
     end if
 #else
     write(self % unit_fh) buffer
@@ -987,7 +993,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer
     else
-      call mpi_read_integer(self % unit_fh, buffer, collect_)
+      call mpi_read_integer(self % mpi_fh, buffer, collect_)
     end if
 #else
     read(self % unit_fh) buffer
@@ -1050,7 +1056,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length)
     else
-      call mpi_write_integer_1Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_integer_1Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length)
@@ -1114,7 +1120,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length)
     else
-      call mpi_read_integer_1Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_integer_1Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length)
@@ -1177,7 +1183,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length(1),1:length(2))
     else
-      call mpi_write_integer_2Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_integer_2Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2))
@@ -1240,7 +1246,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length(1),1:length(2))
     else
-      call mpi_read_integer_2Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_integer_2Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2))
@@ -1303,7 +1309,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
     else
-      call mpi_write_integer_3Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_integer_3Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
@@ -1366,7 +1372,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
     else
-      call mpi_read_integer_3Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_integer_3Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3))
@@ -1431,7 +1437,7 @@ contains
       write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
                          1:length(4))
     else
-      call mpi_write_integer_4Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_write_integer_4Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
@@ -1497,7 +1503,7 @@ contains
       read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
                         1:length(4))
     else
-      call mpi_read_integer_4Darray(self % unit_fh, buffer, length, collect_)
+      call mpi_read_integer_4Darray(self % mpi_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length(1),1:length(2),1:length(3), &
@@ -1560,7 +1566,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer
     else
-      call mpi_write_long(self % unit_fh, buffer, collect_)
+      call mpi_write_long(self % mpi_fh, buffer, collect_)
     end if
 #else
     write(self % unit_fh) buffer
@@ -1622,7 +1628,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer
     else
-      call mpi_read_long(self % unit_fh, buffer, collect_)
+      call mpi_read_long(self % mpi_fh, buffer, collect_)
     end if
 #else
     read(self % unit_fh) buffer
@@ -1688,7 +1694,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer
     else
-      call mpi_write_string(self % unit_fh, buffer, n, collect_)
+      call mpi_write_string(self % mpi_fh, buffer, n, collect_)
     end if
 #else
     write(self % unit_fh) buffer
@@ -1754,7 +1760,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer
     else
-      call mpi_read_string(self % unit_fh, buffer, n, collect_)
+      call mpi_read_string(self % mpi_fh, buffer, n, collect_)
     end if
 #else
     read(self % unit_fh) buffer
@@ -1914,7 +1920,7 @@ contains
 # elif MPI
 
     ! Write out tally buffer
-    call MPI_FILE_READ(self % unit_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+    call MPI_FILE_READ(self % mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
          MPI_STATUS_IGNORE, mpiio_err)
 
 #else
@@ -1943,7 +1949,11 @@ contains
 # ifndef HDF5
     integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_bank        ! size of bank to write
+#ifdef MPIF08
+    type(MPI_Datatype)       :: datatype
+#else
     integer                  :: datatype
+#endif
 # endif
 # ifdef HDF5
     integer(8)               :: offset(1)        ! source data offset
@@ -1951,7 +1961,7 @@ contains
 #endif
 
 #ifdef HDF5
-# ifdef MPI
+#ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
     dims1(1) = n_particles
@@ -2023,7 +2033,7 @@ contains
 #elif MPI
 
     ! Get current offset for master
-    if (master) call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
+    if (master) call MPI_FILE_GET_POSITION(self % mpi_fh, offset, mpiio_err)
 
     ! Determine offset on master process and broadcast to all processors
     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_INTEGER, MPI_OFFSET_KIND, &
@@ -2035,7 +2045,7 @@ contains
     offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
-    call MPI_FILE_WRITE_AT(self % unit_fh, offset, source_bank(1), int(work), &
+    call MPI_FILE_WRITE_AT(self % mpi_fh, offset, source_bank(1), int(work), &
          MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
 
 #else
@@ -2124,11 +2134,11 @@ contains
 
     ! Go to the end of the file to set file pointer
     offset = 0
-    call MPI_FILE_SEEK(self % unit_fh, offset, MPI_SEEK_END, &
+    call MPI_FILE_SEEK(self % mpi_fh, offset, MPI_SEEK_END, &
          mpiio_err)
 
     ! Get current offset (will be at EOF)
-    call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
+    call MPI_FILE_GET_POSITION(self % mpi_fh, offset, mpiio_err)
 
     ! Get the size of the source bank on all procs
     call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
@@ -2140,7 +2150,7 @@ contains
     offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
-    call MPI_FILE_READ_AT(self % unit_fh, offset, source_bank(1), int(work), &
+    call MPI_FILE_READ_AT(self % mpi_fh, offset, source_bank(1), int(work), &
          MPI_BANK, MPI_STATUS_IGNORE, mpiio_err)
 
 #else

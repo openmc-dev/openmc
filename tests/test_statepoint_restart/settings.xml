@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <state_point batches="7" />
+  <state_point batches="7 10" />
 
   <eigenvalue>
     <batches>10</batches>

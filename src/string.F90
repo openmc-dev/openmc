@@ -7,7 +7,7 @@ module string
   implicit none
 
   interface to_str
-     module procedure int4_to_str, int8_to_str, real_to_str
+    module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
 contains
@@ -50,7 +50,7 @@ contains
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
             if (master) call warning("The word '" // string(i_start:i_end) &
-                &// "' is longer than the space allocated for it.")
+                 &// "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -151,7 +151,7 @@ contains
 ! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
-  elemental function to_lower(word) result(word_lower)
+  function to_lower(word) result(word_lower)
 
     character(*), intent(in) :: word
     character(len=len(word)) :: word_lower
@@ -174,7 +174,7 @@ contains
 ! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
-  elemental function to_upper(word) result(word_upper)
+  function to_upper(word) result(word_upper)
 
     character(*), intent(in) :: word
     character(len=len(word)) :: word_upper

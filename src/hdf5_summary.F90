@@ -5,7 +5,8 @@ module hdf5_summary
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: Cell, Surface, Universe, Lattice
+  use geometry_header, only: Cell, Surface, Universe, Lattice, RectLattice, &
+                             &HexLattice
   use global
   use material_header, only: Material
   use mesh_header,     only: StructuredMesh
@@ -99,13 +100,11 @@ contains
   subroutine hdf5_write_geometry()
 
     integer          :: i, j, k, m
-    integer          :: n_x, n_y, n_z
-    integer          :: length(3)
     integer, allocatable :: lattice_universes(:,:,:)
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
-    type(Lattice),  pointer :: lat => null()
+    class(Lattice), pointer :: lat => null()
 
     ! Use H5LT interface to write number of geometry objects
     call su % write_data(n_cells, "n_cells", group="geometry")
@@ -124,6 +123,14 @@ contains
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
 
+      ! Write internal OpenMC index for this cell
+      call su % write_data(i, "index", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
+
+      ! Write name for this cell
+      call su % write_data(c % name, "name", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
+
       ! Write universe for this cell
       call su % write_data(universes(c % universe) % id, "universe", &
            group="geometry/cells/cell " // trim(to_str(c % id)))
@@ -140,15 +147,45 @@ contains
           call su % write_data(materials(c % material) % id, "material", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
         end if
+
       case (CELL_FILL)
         call su % write_data("universe", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(universes(c % fill) % id, "material", &
+        call su % write_data(universes(c % fill) % id, "fill", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
+
+        call su % write_data(size(c % offset), "maps", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        if (size(c % offset) > 0) then
+          call su % write_data(c % offset, "offset", &
+               length=size(c % offset), &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
+        if (allocated(c % translation)) then
+          call su % write_data(1, "translated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call su % write_data(c % translation, "translation", length=3, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        else
+          call su % write_data(0, "translated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
+        if (allocated(c % rotation)) then
+          call su % write_data(1, "rotated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call su % write_data(c % rotation, "rotation", length=3, &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        else
+          call su % write_data(0, "rotated", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+
       case (CELL_LATTICE)
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(lattices(c % fill) % id, "lattice", &
+        call su % write_data(lattices(c % fill) % obj % id, "lattice", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
       end select
 
@@ -170,6 +207,14 @@ contains
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
       s => surfaces(i)
+
+      ! Write internal OpenMC index for this surface
+      call su % write_data(i, "index", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+
+      ! Write name for this surface
+      call su % write_data(s % name, "name", &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write surface type
       select case (s % type)
@@ -255,6 +300,10 @@ contains
     UNIVERSE_LOOP: do i = 1, n_universes
       u => universes(i)
 
+      ! Write internal OpenMC index for this universe
+      call su % write_data(i, "index", &
+           group="geometry/universes/universe " // trim(to_str(u % id)))
+
       ! Write list of cells in this universe
       if (u % n_cells > 0) then
         call su % write_data(u % cells, "cells", length=u % n_cells, &
@@ -272,52 +321,136 @@ contains
 
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
-      lat => lattices(i)
+      lat => lattices(i) % obj
+
+      ! Write internal OpenMC index for this lattice
+      call su % write_data(i, "index", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+      ! Write name for this lattice
+      call su % write_data(lat % name, "name", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Write lattice type
-      select case(lat % type)
-      case (LATTICE_RECT)
+      select type (lat)
+      type is (RectLattice)
+        ! Write lattice type.
         call su % write_data("rectangular", "type", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      case (LATTICE_HEX)
-        call su % write_data("hexagonal", "type", &
+
+        ! Write lattice dimensions, lower left corner, and pitch
+        call su % write_data(lat % n_cells, "dimension", length=3, &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      end select
 
-      ! Write lattice dimensions, lower left corner, and width of element
-      call su % write_data(lat % dimension, "dimension", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      call su % write_data(lat % lower_left, "lower_left", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      call su % write_data(lat % width, "width", &
-           length=lat % n_dimension, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (lat % is_3d) then
+          call su % write_data(lat % lower_left, "lower_left", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % lower_left, "lower_left", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
-      ! Determine dimensions of lattice
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
-      ! Write lattice universes
-      allocate(lattice_universes(n_x, n_y, n_z))
-      do j = 1, n_x
-        do k = 1, n_y
-          do m = 1, n_z
-            lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+        call su % write_data(lat % outer, "outer", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset), "offset_size", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset,1), "maps", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        if (size(lat % offset) > 0) then
+          call su % write_data(lat % offset, "offsets", &
+               length=shape(lat % offset), &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        ! Write lattice universes.
+        allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
+             &lat % n_cells(3)))
+        do j = 1, lat % n_cells(1)
+          do k = 1, lat % n_cells(2)
+            do m = 1, lat % n_cells(3)
+              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+            end do
           end do
         end do
-      end do
-      length = [n_x, n_y, n_z]
-      call su % write_data(lattice_universes, "universes", length=length, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      deallocate(lattice_universes)
+        call su % write_data(lattice_universes, "universes", &
+             length=lat % n_cells, &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        deallocate(lattice_universes)
 
+      type is (HexLattice)
+        ! Write lattice type.
+        call su % write_data("hexagonal", "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Write number of lattice cells.
+        call su % write_data(lat % n_rings, "n_rings", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(lat % n_axial, "n_axial", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Write lattice center, pitch and outer universe.
+        if (lat % is_3d) then
+          call su % write_data(lat % center, "center", length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % center, "center", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        if (lat % is_3d) then
+          call su % write_data(lat % pitch, "pitch", length=2, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else
+          call su % write_data(lat % pitch, "pitch", length=1, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        call su % write_data(lat % outer, "outer", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset), "offset_size", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call su % write_data(size(lat % offset,1), "maps", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        if (size(lat % offset) > 0) then
+          call su % write_data(lat % offset, "offsets", &
+               length=shape(lat % offset), &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        ! Write lattice universes.
+        allocate(lattice_universes(2*lat % n_rings - 1, 2*lat % n_rings - 1, &
+             &lat % n_axial))
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
+                ! This array position is never used; put a -1 to indicate this
+                lattice_universes(j,k,m) = -1
+                cycle
+              else if (j + k > 3*lat % n_rings - 1) then
+                ! This array position is never used; put a -1 to indicate this
+                lattice_universes(j,k,m) = -1
+                cycle
+              end if
+              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+            end do
+          end do
+        end do
+        call su % write_data(lattice_universes, "universes", &
+             &length=(/2*lat % n_rings-1, 2*lat % n_rings-1, lat % n_axial/), &
+             &group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        deallocate(lattice_universes)
+      end select
     end do LATTICE_LOOP
 
   end subroutine hdf5_write_geometry
@@ -339,6 +472,14 @@ contains
     ! Write information on each material
     do i = 1, n_materials
       m => materials(i)
+
+      ! Write internal OpenMC index for this material
+      call su % write_data(i, "index", &
+           group="materials/material " // trim(to_str(m % id)))
+
+      ! Write name for this material
+      call su % write_data(m % name, "name", &
+           group="materials/material " // trim(to_str(m % id)))
 
       ! Write atom density with units
       call su % write_data(m % density, "atom_density", &
@@ -365,6 +506,9 @@ contains
            group="materials/material " // trim(to_str(m % id)))
 
       ! Write S(a,b) information if present
+      call su % write_data(m % n_sab, "n_sab", &
+           group="materials/material " // trim(to_str(m % id)))
+
       if (m % n_sab > 0) then
         call su % write_data(m % i_sab_nuclides, "i_sab_nuclides", &
              length=m % n_sab, &
@@ -372,6 +516,12 @@ contains
         call su % write_data(m % i_sab_tables, "i_sab_tables", &
              length=m % n_sab, &
              group="materials/material " // trim(to_str(m % id)))
+
+        do j = 1, m % n_sab
+          call su % write_data(m % sab_names(j), to_str(j), &
+               group="materials/material " // &
+               trim(to_str(m % id)) // "/sab_tables")
+        end do
       end if
 
     end do
@@ -425,6 +575,14 @@ contains
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+
+      ! Write the name for this tally
+      call su % write_data(len(t % name), "name_size", &
+           group="tallies/tally " // trim(to_str(t % id)))
+      if (len(t % name) > 0) then
+        call su % write_data(t % name, "name", &
+             group="tallies/tally " // trim(to_str(t % id)))
+      endif
 
       ! Write size of each tally
       call su % write_data(t % total_score_bins, "total_score_bins", &
@@ -489,12 +647,12 @@ contains
                 // "/filter " // trim(to_str(j)))
         case(FILTER_ENERGYIN)
           call su % write_data("energy", "type_name", &
-          group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+               group="tallies/tally " // trim(to_str(t % id)) &
+               // "/filter " // trim(to_str(j)))
         case(FILTER_ENERGYOUT)
           call su % write_data("energyout", "type_name", &
-          group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+               group="tallies/tally " // trim(to_str(t % id)) &
+               // "/filter " // trim(to_str(j)))
         end select
 
       end do FILTER_LOOP
@@ -550,12 +708,18 @@ contains
     NUCLIDE_LOOP: do i = 1, n_nuclides_total
       nuc => nuclides(i)
 
+      ! Write internal OpenMC index for this nuclide
+      call su % write_data(i, "index", &
+           group="nuclides/" // trim(nuc % name))
+
       ! Determine size of cross-sections
       size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
       size_total = size_xs
 
       ! Write some basic attributes
       call su % write_data(nuc % zaid, "zaid", &
+           group="nuclides/" // trim(nuc % name))
+      call su % write_data(xs_listings(nuc % listing) % alias, "alias", &
            group="nuclides/" // trim(nuc % name))
       call su % write_data(nuc % awr, "awr", &
            group="nuclides/" // trim(nuc % name))

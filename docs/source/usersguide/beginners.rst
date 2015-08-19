@@ -146,13 +146,12 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _git: http://git-scm.com/
 .. _git tutorials: http://git-scm.com/documentation
-.. _Reactor Concepts Manual: http://web.mit.edu/romano7/www/reactor_concepts.pdf
-.. _Volume I: http://www.hss.doe.gov/nuclearsafety/techstds/docs/handbook/h1019v1.pdf
-.. _Volume II: http://www.hss.doe.gov/nuclearsafety/techstds/docs/handbook/h1019v2.pdf
+.. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
+.. _Volume I: http://energy.gov/sites/prod/files/2013/06/f2/h1019v1.pdf
+.. _Volume II: http://energy.gov/sites/prod/files/2013/06/f2/h1019v2.pdf
 .. _OpenMC source code: https://github.com/mit-crpg/openmc
 .. _GitHub: https://github.com/
 .. _bug reports: https://github.com/mit-crpg/openmc/issues
 .. _Neutron cross section: http://en.wikipedia.org/wiki/Neutron_cross_section
 .. _Effective multiplication factor: http://en.wikipedia.org/wiki/Effective_multiplication_factor
 .. _Flux: http://en.wikipedia.org/wiki/Neutron_flux
-

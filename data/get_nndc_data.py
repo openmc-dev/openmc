@@ -8,6 +8,12 @@ import sys
 import tarfile
 import glob
 import hashlib
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-b', '--batch', action = 'store_true',
+                    help = 'supresses standard in')
+args = parser.parse_args()
 
 try:
     from urllib.request import urlopen
@@ -15,8 +21,8 @@ except ImportError:
     from urllib2 import urlopen
 
 cwd = os.getcwd()
-sys.path.append(os.path.join(cwd, '..', 'src', 'utils'))
-from convert_binary import ascii_to_binary
+sys.path.insert(0, os.path.join(cwd, '..'))
+from openmc.ace import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
@@ -73,7 +79,7 @@ for f in files:
 
 print('Verifying MD5 checksums...')
 for f, checksum in zip(files, checksums):
-    downloadsum = hashlib.md5(open(f, 'r').read()).hexdigest()
+    downloadsum = hashlib.md5(open(f, 'rb').read()).hexdigest()
     if downloadsum != checksum:
         raise IOError("MD5 checksum for {} does not match. If this is your first "
                       "time receiving this message, please re-run the script. "
@@ -118,10 +124,13 @@ shutil.copyfile('cross_sections_nndc.xml', 'nndc/cross_sections.xml')
 # PROMPT USER TO DELETE .TAR.GZ FILES
 
 # Ask user to delete
-if sys.version_info[0] < 3:
-    response = raw_input('Delete *.tar.gz files? ([y]/n) ')
+if not args.batch:
+    if sys.version_info[0] < 3:
+        response = raw_input('Delete *.tar.gz files? ([y]/n) ')
+    else:
+        response = input('Delete *.tar.gz files? ([y]/n) ')
 else:
-    response = input('Delete *.tar.gz files? ([y]/n) ')
+    response = 'y'
 
 # Delete files if requested
 if not response or response.lower().startswith('y'):
@@ -134,10 +143,13 @@ if not response or response.lower().startswith('y'):
 # PROMPT USER TO CONVERT ASCII TO BINARY
 
 # Ask user to convert
-if sys.version_info[0] < 3:
-    response = raw_input('Convert ACE files to binary? ([y]/n) ')
+if not args.batch:
+    if sys.version_info[0] < 3:
+        response = raw_input('Convert ACE files to binary? ([y]/n) ')
+    else:
+        response = input('Convert ACE files to binary? ([y]/n) ')
 else:
-    response = input('Convert ACE files to binary? ([y]/n) ')
+    response = 'y'
 
 # Convert files if requested
 if not response or response.lower().startswith('y'):

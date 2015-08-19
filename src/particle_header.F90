@@ -26,9 +26,8 @@ module particle_header
 
     ! Is this level rotated?
     logical :: rotated = .false.
-
-    ! Pointer to next (more local) set of coordinates
-    type(LocalCoord), pointer :: next => null()
+  contains
+    procedure :: reset => reset_coord
   end type LocalCoord
 
 !===============================================================================
@@ -42,8 +41,8 @@ module particle_header
     integer    :: type          ! Particle type (n, p, e, etc)
 
     ! Particle coordinates
-    type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
-    type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
+    integer          :: n_coord          ! number of current coordinates
+    type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
     ! Other physical data
     real(8)    :: wgt           ! particle weight
@@ -88,26 +87,6 @@ module particle_header
 contains
 
 !===============================================================================
-! DEALLOCATE_COORD removes all levels of coordinates below a given level. This
-! is used in distance_to_boundary when the particle moves from a lower universe
-! to a higher universe since the data for the lower one is not needed anymore.
-!===============================================================================
-
-  recursive subroutine deallocate_coord(coord)
-
-    type(LocalCoord), pointer :: coord
-
-    if (associated(coord)) then
-      ! recursively deallocate lower coordinates
-      if (associated(coord % next)) call deallocate_coord(coord%next)
-
-      ! deallocate original coordinate
-      deallocate(coord)
-    end if
-
-  end subroutine deallocate_coord
-
-!===============================================================================
 ! INITIALIZE_PARTICLE sets default attributes for a particle from the source
 ! bank
 !===============================================================================
@@ -137,9 +116,8 @@ contains
     this % fission       = .false.
 
     ! Set up base level coordinates
-    allocate(this % coord0)
-    this % coord0 % universe = BASE_UNIVERSE
-    this % coord             => this % coord0
+    this % coord(1) % universe = BASE_UNIVERSE
+    this % n_coord = 1
 
   end subroutine initialize_particle
 
@@ -150,13 +128,30 @@ contains
   subroutine clear_particle(this)
 
     class(Particle) :: this
+    integer :: i
 
     ! remove any coordinate levels
-    call deallocate_coord(this % coord0)
-
-    ! Make sure coord pointer is nullified
-    nullify(this % coord)
+    do i = 1, MAX_COORD
+      call this % coord(i) % reset()
+    end do
 
   end subroutine clear_particle
+
+!===============================================================================
+! RESET_COORD
+!===============================================================================
+
+  elemental subroutine reset_coord(this)
+    class(LocalCoord), intent(inout) :: this
+
+    this % cell = NONE
+    this % universe = NONE
+    this % lattice = NONE
+    this % lattice_x = NONE
+    this % lattice_y = NONE
+    this % lattice_z = NONE
+    this % rotated = .false.
+
+  end subroutine reset_coord
 
 end module particle_header

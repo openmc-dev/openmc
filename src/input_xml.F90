@@ -5,7 +5,7 @@ module input_xml
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice
+  use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
   use global
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: StructuredMesh
@@ -74,6 +74,8 @@ contains
     type(Node), pointer :: node_verb      => null()
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
+    type(Node), pointer :: node_trigger   => null()
+    type(Node), pointer :: node_keff_trigger => null()
     type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
@@ -125,6 +127,43 @@ contains
            path_output = trim(path_output) // "/"
     end if
 
+    ! Check for a trigger node and get trigger information
+    if (check_for_node(doc, "trigger")) then
+      call get_node_ptr(doc, "trigger", node_trigger)
+
+      ! Check if trigger(s) are to be turned on
+      call get_node_value(node_trigger, "active", temp_str)
+      temp_str = trim(to_lower(temp_str))
+
+      if (temp_str == 'true' .or. temp_str == '1') then
+        trigger_on = .true.
+      elseif (temp_str == 'false' .or. temp_str == '0') then
+        trigger_on = .false.
+      else
+        call fatal_error("Unrecognized trigger active: " // temp_str)
+      end if
+
+      if (trigger_on) then
+
+        if (check_for_node(node_trigger, "max_batches") )then
+          call get_node_value(node_trigger, "max_batches", n_max_batches)
+        else
+          call fatal_error("The max_batches must be specified with triggers")
+        end if
+
+        ! Get the batch interval to check triggers
+        if (.not. check_for_node(node_trigger, "batch_interval"))then
+          pred_batches = .true.
+        else
+          call get_node_value(node_trigger, "batch_interval", temp_int)
+          n_batch_interval = temp_int
+          if (n_batch_interval <= 0) then
+            call fatal_error("The batch interval must be greater than zero")
+          end if
+        end if
+      end if
+    end if
+
     ! Make sure that either eigenvalue or fixed source was specified
     if (.not.check_for_node(doc, "eigenvalue") .and. &
          .not.check_for_node(doc, "fixed_source")) then
@@ -151,8 +190,13 @@ contains
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
 
-      ! Copy batch and generation information
+      ! Get number of basic batches
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
+
+      ! Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
       n_active = n_batches - n_inactive
       if (check_for_node(node_mode, "generations_per_batch")) then
@@ -160,9 +204,40 @@ contains
       end if
 
       ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_batches*gen_per_batch))
-      allocate(entropy(n_batches*gen_per_batch))
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
       entropy = ZERO
+
+      ! Get the trigger information for keff
+      if (check_for_node(node_mode, "keff_trigger")) then
+        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
+
+        if (check_for_node(node_keff_trigger, "type")) then
+          call get_node_value(node_keff_trigger, "type", temp_str)
+          temp_str = trim(to_lower(temp_str))
+
+          select case (temp_str)
+          case ('std_dev')
+            keff_trigger % trigger_type = STANDARD_DEVIATION
+          case ('variance')
+            keff_trigger % trigger_type = VARIANCE
+          case ('rel_err')
+            keff_trigger % trigger_type = RELATIVE_ERROR
+          case default
+            call fatal_error("Unrecognized keff trigger type " // temp_str)
+          end select
+
+        else
+          call fatal_error("Specify keff trigger type in settings XML")
+        end if
+
+        if (check_for_node(node_keff_trigger, "threshold")) then
+          call get_node_value(node_keff_trigger, "threshold", &
+               keff_trigger % threshold)
+        else
+          call fatal_error("Specify keff trigger threshold in settings XML")
+        end if
+      end if
     end if
 
     ! Fixed source calculation information
@@ -187,6 +262,9 @@ contains
 
       ! Copy batch information
       call get_node_value(node_mode, "batches", n_batches)
+      if (.not. trigger_on) then
+        n_max_batches = n_batches
+      end if
       n_active = n_batches
       n_inactive    = 0
       gen_per_batch = 1
@@ -213,8 +291,11 @@ contains
     select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
-    case ('union')
-      call fatal_error("Union energy grid is no longer supported.")
+    case ('material-union', 'union')
+      grid_method = GRID_MAT_UNION
+      if (trim(temp_str) == 'union') &
+           call warning('Energy grids will be unionized by material.  Global&
+           & energy grid unionization is no longer an allowed option.')
     case ('logarithm', 'logarithmic', 'log')
       grid_method = GRID_LOGARITHM
     case default
@@ -391,7 +472,7 @@ contains
         ! Check for type of energy distribution
         type = ''
         if (check_for_node(node_dist, "type")) &
-          call get_node_value(node_dist, "type", type)
+             call get_node_value(node_dist, "type", type)
         select case (to_lower(type))
         case ('monoenergetic')
           external_source % type_energy = SRC_ENERGY_MONO
@@ -717,7 +798,7 @@ contains
     if (.not. source_separate) then
       do i = 1, n_source_points
         if (.not. statepoint_batch % contains(sourcepoint_batch % &
-            get_item(i))) then
+             get_item(i))) then
           call fatal_error('Sourcepoint batches are not a subset&
                & of statepoint batches.')
         end if
@@ -730,7 +811,7 @@ contains
       call get_node_value(doc, "no_reduce", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        reduce_tallies = .false.
+           reduce_tallies = .false.
     end if
 
     ! Check if the user has specified to use confidence intervals for
@@ -803,11 +884,11 @@ contains
                  &// trim(to_str(i)) // " in settings.xml file!")
           end if
           call get_node_value(node_scatterer, "nuclide", &
-            nuclides_0K(i) % nuclide)
+               nuclides_0K(i) % nuclide)
 
           if (check_for_node(node_scatterer, "method")) then
             call get_node_value(node_scatterer, "method", &
-              nuclides_0K(i) % scheme)
+                 nuclides_0K(i) % scheme)
           end if
 
           ! check to make sure xs name for which method is applied is given
@@ -817,7 +898,7 @@ contains
                  &// " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label", &
-            nuclides_0K(i) % name)
+               nuclides_0K(i) % name)
 
           ! check to make sure 0K xs name for which method is applied is given
           if (.not. check_for_node(node_scatterer, "xs_label_0K")) then
@@ -825,11 +906,11 @@ contains
                  &// trim(to_str(i)) // " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label_0K", &
-            nuclides_0K(i) % name_0K)
+               nuclides_0K(i) % name_0K)
 
           if (check_for_node(node_scatterer, "E_min")) then
             call get_node_value(node_scatterer, "E_min", &
-              nuclides_0K(i) % E_min)
+                 nuclides_0K(i) % E_min)
           end if
 
           ! check that E_min is non-negative
@@ -840,7 +921,7 @@ contains
 
           if (check_for_node(node_scatterer, "E_max")) then
             call get_node_value(node_scatterer, "E_max", &
-              nuclides_0K(i) % E_max)
+                 nuclides_0K(i) % E_max)
           end if
 
           ! check that E_max is not less than E_min
@@ -898,30 +979,29 @@ contains
 
   subroutine read_geometry_xml()
 
-    integer :: i, j, k, m
+    integer :: i, j, k, m, i_x, i_a, input_index
     integer :: n
-    integer :: n_x, n_y, n_z
+    integer :: n_x, n_y, n_z, n_rings, n_rlats, n_hlats
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
-    integer :: mid
-    integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    type(Cell),    pointer :: c => null()
-    type(Surface), pointer :: s => null()
-    type(Lattice), pointer :: lat => null()
+    type(Cell),     pointer :: c => null()
+    type(Surface),  pointer :: s => null()
+    class(Lattice), pointer :: lat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
     type(Node), pointer :: node_lat => null()
     type(NodeList), pointer :: node_cell_list => null()
     type(NodeList), pointer :: node_surf_list => null()
-    type(NodeList), pointer :: node_lat_list => null()
+    type(NodeList), pointer :: node_rlat_list => null()
+    type(NodeList), pointer :: node_hlat_list => null()
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -963,6 +1043,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
+      ! Initialize the number of cell instances - this is a base case for distribcells
+      c % instances = 0
+
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)
 
@@ -972,6 +1055,12 @@ contains
       else
         call fatal_error("Must specify id of cell in geometry XML file.")
       end if
+
+      ! Copy cell name
+      if (check_for_node(node_cell, "name")) then
+        call get_node_value(node_cell, "name", c % name)
+      end if
+
       if (check_for_node(node_cell, "universe")) then
         call get_node_value(node_cell, "universe", c % universe)
       else
@@ -992,7 +1081,7 @@ contains
       ! Read material
       word = ''
       if (check_for_node(node_cell, "material")) &
-        call get_node_value(node_cell, "material", word)
+           call get_node_value(node_cell, "material", word)
       select case(to_lower(word))
       case ('void')
         c % material = MATERIAL_VOID
@@ -1053,14 +1142,15 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        call get_node_array(node_cell, "rotation", temp_int_array3)
-        phi   = -temp_int_array3(1) * PI/180.0_8
-        theta = -temp_int_array3(2) * PI/180.0_8
-        psi   = -temp_int_array3(3) * PI/180.0_8
+        allocate(c % rotation(3))
+        call get_node_array(node_cell, "rotation", c % rotation)
+        phi   = -c % rotation(1) * PI/180.0_8
+        theta = -c % rotation(2) * PI/180.0_8
+        psi   = -c % rotation(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
-        allocate(c % rotation(3,3))
-        c % rotation = reshape((/ &
+        allocate(c % rotation_matrix(3,3))
+        c % rotation_matrix = reshape((/ &
              cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
              -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
              cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
@@ -1150,10 +1240,15 @@ contains
              &// to_str(s % id))
       end if
 
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s % name)
+      end if
+
       ! Copy and interpret surface type
       word = ''
       if (check_for_node(node_surf, "type")) &
-        call get_node_value(node_surf, "type", word)
+           call get_node_value(node_surf, "type", word)
       select case(to_lower(word))
       case ('x-plane')
         s % type = SURF_PX
@@ -1211,7 +1306,7 @@ contains
       ! Boundary conditions
       word = ''
       if (check_for_node(node_surf, "boundary")) &
-        call get_node_value(node_surf, "boundary", word)
+           call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
         s % bc = BC_TRANSMIT
@@ -1241,17 +1336,23 @@ contains
     ! READ LATTICES FROM GEOMETRY.XML
 
     ! Get pointer to list of XML <lattice>
-    call get_node_list(doc, "lattice", node_lat_list)
+    call get_node_list(doc, "lattice", node_rlat_list)
+    call get_node_list(doc, "hex_lattice", node_hlat_list)
 
     ! Allocate lattices array
-    n_lattices = get_list_size(node_lat_list)
+    n_rlats = get_list_size(node_rlat_list)
+    n_hlats = get_list_size(node_hlat_list)
+    n_lattices = n_rlats + n_hlats
     allocate(lattices(n_lattices))
 
-    do i = 1, n_lattices
-      lat => lattices(i)
+    RECT_LATTICES: do i = 1, n_rlats
+      allocate(RectLattice::lattices(i) % obj)
+      lat => lattices(i) % obj
+      select type(lat)
+      type is (RectLattice)
 
       ! Get pointer to i-th lattice
-      call get_list_item(node_lat_list, i, node_lat)
+      call get_list_item(node_rlat_list, i, node_lat)
 
       ! ID of lattice
       if (check_for_node(node_lat, "id")) then
@@ -1266,32 +1367,26 @@ contains
              &// to_str(lat % id))
       end if
 
-      ! Read lattice type
-      word = ''
-      if (check_for_node(node_lat, "type")) &
-        call get_node_value(node_lat, "type", word)
-      select case (to_lower(word))
-      case ('rect', 'rectangle', 'rectangular')
-        lat % type = LATTICE_RECT
-      case ('hex', 'hexagon', 'hexagonal')
-        lat % type = LATTICE_HEX
-      case default
-        call fatal_error("Invalid lattice type: " // trim(word))
-      end select
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
+      end if
 
       ! Read number of lattice cells in each dimension
       n = get_arraysize_integer(node_lat, "dimension")
-      if (n /= 2 .and. n /= 3) then
-        call fatal_error("Lattice must be two or three dimensions.")
+      if (n == 2) then
+        call get_node_array(node_lat, "dimension", lat % n_cells(1:2))
+        lat % n_cells(3) = 1
+        lat % is_3d = .false.
+      else if (n == 3) then
+        call get_node_array(node_lat, "dimension", lat % n_cells)
+        lat % is_3d = .true.
+      else
+        call fatal_error("Rectangular lattice must be two or three dimensions.")
       end if
 
-      lat % n_dimension = n
-      allocate(lat % dimension(n))
-      call get_node_array(node_lat, "dimension", lat % dimension)
-
       ! Read lattice lower-left location
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "lower_left")) then
+      if (get_arraysize_double(node_lat, "lower_left") /= n) then
         call fatal_error("Number of entries on <lower_left> must be the same &
              &as the number of entries on <dimension>.")
       end if
@@ -1299,24 +1394,42 @@ contains
       allocate(lat % lower_left(n))
       call get_node_array(node_lat, "lower_left", lat % lower_left)
 
-      ! Read lattice widths
-      if (size(lat % dimension) /= &
-          get_arraysize_double(node_lat, "width")) then
-        call fatal_error("Number of entries on <width> must be the same as &
-             &the number of entries on <lower_left>.")
+      ! Read lattice pitches.
+      ! TODO: Remove this deprecation warning in a future release.
+      if (check_for_node(node_lat, "width")) then
+        call warning("The use of 'width' is deprecated and will be disallowed &
+             &in a future release.  Use 'pitch' instead.  The utility openmc/&
+             &src/utils/update_inputs.py can be used to automatically update &
+             &geometry.xml files.")
+        if (get_arraysize_double(node_lat, "width") /= n) then
+          call fatal_error("Number of entries on <pitch> must be the same as &
+               &the number of entries on <dimension>.")
+        end if
+
+      else if (get_arraysize_double(node_lat, "pitch") /= n) then
+        call fatal_error("Number of entries on <pitch> must be the same as &
+             &the number of entries on <dimension>.")
       end if
 
-      allocate(lat % width(n))
-      call get_node_array(node_lat, "width", lat % width)
+      allocate(lat % pitch(n))
+      ! TODO: Remove the 'width' code in a future release.
+      if (check_for_node(node_lat, "width")) then
+        call get_node_array(node_lat, "width", lat % pitch)
+      else
+        call get_node_array(node_lat, "pitch", lat % pitch)
+      end if
+
+      ! TODO: Remove deprecation warning in a future release.
+      if (check_for_node(node_lat, "type")) then
+        call warning("The use of 'type' is no longer needed.  The utility &
+             &openmc/src/utils/update_inputs.py can be used to automatically &
+             &update geometry.xml files.")
+      end if
 
       ! Copy number of dimensions
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
+      n_x = lat % n_cells(1)
+      n_y = lat % n_cells(2)
+      n_z = lat % n_cells(3)
       allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
@@ -1334,27 +1447,210 @@ contains
         do k = 0, n_y - 1
           do j = 1, n_x
             lat % universes(j, n_y - k, m) = &
-               temp_int_array(j + n_x*k + n_x*n_y*(m-1))
+                 &temp_int_array(j + n_x*k + n_x*n_y*(m-1))
           end do
         end do
       end do
       deallocate(temp_int_array)
 
-      ! Read material for area outside lattice
-      lat % outside = MATERIAL_VOID
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
       if (check_for_node(node_lat, "outside")) then
-        call get_node_value(node_lat, "outside", mid)
-        if (mid == 0 .or. mid == MATERIAL_VOID) then
-          lat % outside = MATERIAL_VOID
-        else
-          lat % outside = mid
-        end if
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
       end if
 
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 
-    end do
+      end select
+    end do RECT_LATTICES
+
+    HEX_LATTICES: do i = 1, n_hlats
+      allocate(HexLattice::lattices(n_rlats + i) % obj)
+      lat => lattices(n_rlats + i) % obj
+      select type (lat)
+      type is (HexLattice)
+
+      ! Get pointer to i-th lattice
+      call get_list_item(node_hlat_list, i, node_lat)
+
+      ! ID of lattice
+      if (check_for_node(node_lat, "id")) then
+        call get_node_value(node_lat, "id", lat % id)
+      else
+        call fatal_error("Must specify id of lattice in geometry XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (lattice_dict % has_key(lat % id)) then
+        call fatal_error("Two or more lattices use the same unique ID: " &
+             &// to_str(lat % id))
+      end if
+
+      ! Copy lattice name
+      if (check_for_node(node_lat, "name")) then
+        call get_node_value(node_lat, "name", lat % name)
+      end if
+
+      ! Read number of lattice cells in each dimension
+      call get_node_value(node_lat, "n_rings", lat % n_rings)
+      if (check_for_node(node_lat, "n_axial")) then
+        call get_node_value(node_lat, "n_axial", lat % n_axial)
+        lat % is_3d = .true.
+      else
+        lat % n_axial = 1
+        lat % is_3d = .false.
+      end if
+
+      ! Read lattice lower-left location
+      n = get_arraysize_double(node_lat, "center")
+      if (lat % is_3d .and. n /= 3) then
+        call fatal_error("A hexagonal lattice with <n_axial> must have &
+             &<center> specified by 3 numbers.")
+      else if ((.not. lat % is_3d) .and. n /= 2) then
+        call fatal_error("A hexagonal lattice without <n_axial> must have &
+             &<center> specified by 2 numbers.")
+      end if
+
+      allocate(lat % center(n))
+      call get_node_array(node_lat, "center", lat % center)
+
+      ! Read lattice pitches
+      n = get_arraysize_double(node_lat, "pitch")
+      if (lat % is_3d .and. n /= 2) then
+        call fatal_error("A hexagonal lattice with <n_axial> must have <pitch> &
+              &specified by 2 numbers.")
+      else if ((.not. lat % is_3d) .and. n /= 1) then
+        call fatal_error("A hexagonal lattice without <n_axial> must have &
+             &<pitch> specified by 1 number.")
+      end if
+
+      allocate(lat % pitch(n))
+      call get_node_array(node_lat, "pitch", lat % pitch)
+
+      ! Copy number of dimensions
+      n_rings = lat % n_rings
+      n_z = lat % n_axial
+      allocate(lat % universes(2*n_rings - 1, 2*n_rings - 1, n_z))
+
+      ! Check that number of universes matches size
+      n = get_arraysize_integer(node_lat, "universes")
+      if (n /= (3*n_rings**2 - 3*n_rings + 1)*n_z) then
+        call fatal_error("Number of universes on <universes> does not match &
+             &size of lattice " // trim(to_str(lat % id)) // ".")
+      end if
+
+      allocate(temp_int_array(n))
+      call get_node_array(node_lat, "universes", temp_int_array)
+
+      ! Read universes
+      ! Universes in hexagonal lattices are stored in a manner that represents
+      ! a skewed coordinate system: (x, alpha) rather than (x, y).  There is
+      ! no obvious, direct relationship between the order of universes in the
+      ! input and the order that they will be stored in the skewed array so
+      ! the following code walks a set of index values across the skewed array
+      ! in a manner that matches the input order.  Note that i_x = 0, i_a = 0
+      ! corresponds to the center of the hexagonal lattice.
+
+      input_index = 1
+      do m = 1, n_z
+        ! Initialize lattice indecies.
+        i_x = 1
+        i_a = n_rings - 1
+
+        ! Map upper triangular region of hexagonal lattice.
+        do k = 1, n_rings-1
+          ! Walk index to lower-left neighbor of last row start.
+          i_x = i_x - 1
+          do j = 1, k
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*k
+          i_a = i_a + k
+        end do
+
+        ! Map middle square region of hexagonal lattice.
+        do k = 1, 2*n_rings - 1
+          if (mod(k, 2) == 1) then
+            ! Walk index to lower-left neighbor of last row start.
+            i_x = i_x - 1
+          else
+            ! Walk index to lower-right neighbor of last row start
+            i_x = i_x + 1
+            i_a = i_a - 1
+          end if
+          do j = 1, n_rings - mod(k-1, 2)
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*(n_rings - mod(k-1, 2))
+          i_a = i_a + n_rings - mod(k-1, 2)
+        end do
+
+        ! Map lower triangular region of hexagonal lattice.
+        do k = 1, n_rings-1
+          ! Walk index to lower-right neighbor of last row start.
+          i_x = i_x + 1
+          i_a = i_a - 1
+          do j = 1, n_rings - k
+            ! Place universe in array.
+            lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                 &temp_int_array(input_index)
+            ! Walk index to closest non-adjacent right neighbor.
+            i_x = i_x + 2
+            i_a = i_a - 1
+            ! Increment XML array index.
+            input_index = input_index + 1
+          end do
+          ! Return lattice index to start of current row.
+          i_x = i_x - 2*(n_rings - k)
+          i_a = i_a + n_rings - k
+        end do
+      end do
+      deallocate(temp_int_array)
+
+      ! Read outer universe for area outside lattice.
+      lat % outer = NO_OUTER_UNIVERSE
+      if (check_for_node(node_lat, "outer")) then
+        call get_node_value(node_lat, "outer", lat % outer)
+      end if
+
+      ! Check for 'outside' nodes which are no longer supported.
+      if (check_for_node(node_lat, "outside")) then
+        call fatal_error("The use of 'outside' in lattices is no longer &
+             &supported.  Instead, use 'outer' which defines a universe rather &
+             &than a material.  The utility openmc/src/utils/update_inputs.py &
+             &can be used automatically replace 'outside' with 'outer'.")
+      end if
+
+      ! Add lattice to dictionary
+      call lattice_dict % add_key(lat % id, n_rlats + i)
+
+      end select
+    end do HEX_LATTICES
 
     ! Close geometry XML file
     call close_xmldoc(doc)
@@ -1417,7 +1713,7 @@ contains
 
     ! Copy default cross section if present
     if (check_for_node(doc, "default_xs")) &
-      call get_node_value(doc, "default_xs", default_xs)
+         call get_node_value(doc, "default_xs", default_xs)
 
     ! Get pointer to list of XML <material>
     call get_node_list(doc, "material", node_mat_list)
@@ -1447,6 +1743,11 @@ contains
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
              &// to_str(mat % id))
+      end if
+
+      ! Copy material name
+      if (check_for_node(node_mat, "name")) then
+        call get_node_value(node_mat, "name", mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -1495,11 +1796,11 @@ contains
         case ('g/cc', 'g/cm3')
           mat % density = -val
         case ('kg/m3')
-          mat % density = -0.001 * val
+          mat % density = -0.001_8 * val
         case ('atom/b-cm')
           mat % density = val
         case ('atom/cm3', 'atom/cc')
-          mat % density = 1.0e-24 * val
+          mat % density = 1.0e-24_8 * val
         case default
           call fatal_error("Unkwown units '" // trim(units) &
                &// "' specified on material " // trim(to_str(mat % id)))
@@ -1543,7 +1844,7 @@ contains
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
-          call get_node_value(node_nuc, "xs", name)
+             call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
 
         ! save name and density to list
@@ -1552,7 +1853,7 @@ contains
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
         if (.not.check_for_node(node_nuc, "ao") .and. &
-            .not.check_for_node(node_nuc, "wo")) then
+             .not.check_for_node(node_nuc, "wo")) then
           call fatal_error("No atom or weight percent specified for nuclide " &
                &// trim(name))
         elseif (check_for_node(node_nuc, "ao") .and. &
@@ -1602,7 +1903,7 @@ contains
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
         if (.not.check_for_node(node_ele, "ao") .and. &
-            .not.check_for_node(node_ele, "wo")) then
+             .not.check_for_node(node_ele, "wo")) then
           call fatal_error("No atom or weight percent specified for element " &
                &// trim(name))
         elseif (check_for_node(node_ele, "ao") .and. &
@@ -1709,7 +2010,7 @@ contains
 
           ! Determine name of S(a,b) table
           if (.not.check_for_node(node_sab, "name") .or. &
-              .not.check_for_node(node_sab, "xs")) then
+               .not.check_for_node(node_sab, "xs")) then
             call fatal_error("Need to specify <name> and <xs> for S(a,b) &
                  &table.")
           end if
@@ -1772,9 +2073,13 @@ contains
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Yn/Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
-    integer :: n_bins        ! Total new bins for this score
-    integer :: n_order       ! Moment order requested
-    integer :: n_order_pos   ! Position of Scattering order in score name string
+    integer :: n_bins        ! total new bins for this score
+    integer :: n_user_trig   ! number of user-specified tally triggers
+    integer :: trig_ind      ! index of triggers array for each tally
+    integer :: user_trig_ind ! index of user-specified triggers for each tally
+    real(8) :: threshold     ! trigger convergence threshold
+    integer :: n_order       ! moment order requested
+    integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
     integer :: iarray3(3)    ! temporary integer array
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
@@ -1785,6 +2090,7 @@ contains
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
+    type(DictCharInt) :: trigger_scores
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -1793,9 +2099,13 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
+    type(Node), pointer :: node_trigger=>null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
+    type(NodeList), pointer :: node_trigger_list => null()
+    type(ElemKeyValueCI), pointer :: scores
+    type(ElemKeyValueCI), pointer :: next
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1847,7 +2157,7 @@ contains
       call get_node_value(doc, "assume_separate", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        assume_separate = .true.
+           assume_separate = .true.
     end if
 
     ! ==========================================================================
@@ -1875,7 +2185,7 @@ contains
       ! Read mesh type
       temp_str = ''
       if (check_for_node(node_mesh, "type")) &
-        call get_node_value(node_mesh, "type", temp_str)
+           call get_node_value(node_mesh, "type", temp_str)
       select case (to_lower(temp_str))
       case ('rect', 'rectangle', 'rectangular')
         m % type = LATTICE_RECT
@@ -1917,14 +2227,14 @@ contains
 
       ! Make sure both upper-right or width were specified
       if (check_for_node(node_mesh, "upper_right") .and. &
-          check_for_node(node_mesh, "width")) then
+           check_for_node(node_mesh, "width")) then
         call fatal_error("Cannot specify both <upper_right> and <width> on a &
              &tally mesh.")
       end if
 
       ! Make sure either upper-right or width was specified
       if (.not.check_for_node(node_mesh, "upper_right") .and. &
-          .not.check_for_node(node_mesh, "width")) then
+           .not.check_for_node(node_mesh, "width")) then
         call fatal_error("Must specify either <upper_right> and <width> on a &
              &tally mesh.")
       end if
@@ -1932,7 +2242,7 @@ contains
       if (check_for_node(node_mesh, "width")) then
         ! Check to ensure width has same dimensions
         if (get_arraysize_double(node_mesh, "width") /= &
-            get_arraysize_double(node_mesh, "lower_left")) then
+             get_arraysize_double(node_mesh, "lower_left")) then
           call fatal_error("Number of entries on <width> must be the same as &
                &the number of entries on <lower_left>.")
         end if
@@ -1950,7 +2260,7 @@ contains
       elseif (check_for_node(node_mesh, "upper_right")) then
         ! Check to ensure width has same dimensions
         if (get_arraysize_double(node_mesh, "upper_right") /= &
-            get_arraysize_double(node_mesh, "lower_left")) then
+             get_arraysize_double(node_mesh, "lower_left")) then
           call fatal_error("Number of entries on <upper_right> must be the &
                &same as the number of entries on <lower_left>.")
         end if
@@ -2011,10 +2321,9 @@ contains
              &// to_str(t % id))
       end if
 
-      ! Copy tally label
-      t % label = ''
-      if (check_for_node(node_tal, "label")) &
-        call get_node_value(node_tal, "label", t % label)
+      ! Copy tally name
+      if (check_for_node(node_tal, "name")) &
+           call get_node_value(node_tal, "name", t % name)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
@@ -2036,13 +2345,13 @@ contains
           ! Convert filter type to lower case
           temp_str = ''
           if (check_for_node(node_filt, "type")) &
-            call get_node_value(node_filt, "type", temp_str)
+               call get_node_value(node_filt, "type", temp_str)
           temp_str = to_lower(temp_str)
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
             if (trim(temp_str) == 'energy' .or. &
-                trim(temp_str) == 'energyout') then
+                 trim(temp_str) == 'energyout') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2054,6 +2363,18 @@ contains
 
           ! Determine type of filter
           select case (temp_str)
+
+          case ('distribcell')
+
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DISTRIBCELL
+
+            ! Going to add new filters to this tally if n_words > 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL
@@ -2221,52 +2542,43 @@ contains
           n_words = get_arraysize_string(node_tal, "nuclides")
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
+
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
               t % nuclide_bins(j) = -1
               cycle
             end if
 
-            ! Check if xs specifier was given
-            if (ends_with(sarray(j), 'c')) then
-              word = sarray(j)
-            else
-              if (default_xs == '') then
-                ! No default cross section specified, search through nuclides
-                pair_list => nuclide_dict % keys()
-                do while (associated(pair_list))
-                  if (starts_with(pair_list % key, &
-                       sarray(j))) then
-                    word = pair_list % key(1:150)
-                    exit
-                  end if
+            ! If a specific nuclide was specified
+            word = to_lower(sarray(j))
 
-                  ! Advance to next
-                  pair_list => pair_list % next
-                end do
+            ! Append default_xs specifier to nuclide if needed
+            if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
+              word = trim(word) // "." // default_xs
+            end if
 
-                ! Check if no nuclide was found
-                if (.not. associated(pair_list)) then
-                  call fatal_error("Could not find the nuclide " &
-                       &// trim(sarray(j)) // " specified in tally " &
-                       &// trim(to_str(t % id)) // " in any material.")
-                end if
-                deallocate(pair_list)
-              else
-                ! Set nuclide to default xs
-                word = trim(sarray(j)) // "." // default_xs
+            ! Search through nuclides
+            pair_list => nuclide_dict % keys()
+            do while (associated(pair_list))
+              if (starts_with(pair_list % key, word)) then
+                word = pair_list % key(1:150)
+                exit
               end if
-            end if
 
-            ! Check to make sure nuclide specified is in problem
-            if (.not. nuclide_dict % has_key(to_lower(word))) then
-              call fatal_error("The nuclide " // trim(word) // " from tally " &
-                   &// trim(to_str(t % id)) &
-                   &// " is not present in any material.")
+              ! Advance to next
+              pair_list => pair_list % next
+            end do
+
+            ! Check if no nuclide was found
+            if (.not. associated(pair_list)) then
+              call fatal_error("Could not find the nuclide " &
+                   &// trim(word) // " specified in tally " &
+                   &// trim(to_str(t % id)) // " in any material.")
             end if
+            deallocate(pair_list)
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get_key(to_lower(word))
+            t % nuclide_bins(j) = nuclide_dict % get_key(word)
           end do
 
           ! Set number of nuclide bins
@@ -2306,7 +2618,7 @@ contains
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
               n_order = int(str_to_int( &
-                score_name(n_order_pos:(len_trim(score_name)))),4)
+                   score_name(n_order_pos:(len_trim(score_name)))),4)
               if (n_order > MAX_ANG_ORDER) then
                 ! User requested too many orders; throw a warning and set to the
                 ! maximum order.
@@ -2349,7 +2661,7 @@ contains
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
               n_order = int(str_to_int( &
-                score_name(n_order_pos:(len_trim(score_name)))),4)
+                   score_name(n_order_pos:(len_trim(score_name)))),4)
               if (n_order > MAX_ANG_ORDER) then
                 ! User requested too many orders; throw a warning and set to the
                 ! maximum order.
@@ -2372,7 +2684,7 @@ contains
               if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
                 n_order_pos = scan(score_name,'0123456789')
                 n_order = int(str_to_int( &
-                  score_name(n_order_pos:(len_trim(score_name)))),4)
+                     score_name(n_order_pos:(len_trim(score_name)))),4)
                 if (n_order > MAX_ANG_ORDER) then
                   ! User requested too many orders; throw a warning and set to the
                   ! maximum order.
@@ -2540,9 +2852,8 @@ contains
             ! Check to make sure that current is the only desired response
             ! for this tally
             if (n_words > 1) then
-              call fatal_error("Cannot tally other scoring functions in the &
-                   &same tally as surface currents. Separate other scoring &
-                   &functions into a distinct tally.")
+              call fatal_error("Cannot tally other scores in the &
+                   &same tally as surface currents")
             end if
 
             ! Since the number of bins for the mesh filter was already set
@@ -2612,6 +2923,10 @@ contains
             end if
 
           end select
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
+
         end do
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
@@ -2621,6 +2936,184 @@ contains
       else
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
+      end if
+
+      ! If settings.xml trigger is turned on, create tally triggers
+      if (trigger_on) then
+
+        ! Get list of trigger nodes for this tally
+        call get_node_list(node_tal, "trigger", node_trigger_list)
+
+        ! Initialize the number of triggers
+        n_user_trig = get_list_size(node_trigger_list)
+
+        ! Count the number of triggers needed for all scores including "all"
+        t % n_triggers = 0
+        COUNT_TRIGGERS: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Count the number of scores for this trigger
+          do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              do while (associated(scores))
+                next => scores % next
+                deallocate(scores)
+                scores => next
+                t % n_triggers = t % n_triggers + 1
+              end do
+
+            else
+              t % n_triggers = t % n_triggers + 1
+            end if
+
+          end do
+
+          deallocate(sarray)
+
+        end do COUNT_TRIGGERS
+
+        ! Allocate array of triggers for this tally
+        if (t % n_triggers > 0) then
+          allocate(t % triggers(t % n_triggers))
+        end if
+
+        ! Initialize overall trigger index for this tally to zero
+        trig_ind = 1
+
+        ! Create triggers for all scores specified on each trigger
+        TRIGGER_LOOP: do user_trig_ind = 1, n_user_trig
+
+          ! Get pointer to trigger node
+          call get_list_item(node_trigger_list, user_trig_ind, node_trigger)
+
+          ! Get the trigger type - "variance", "std_dev" or "rel_err"
+          if (check_for_node(node_trigger, "type")) then
+            call get_node_value(node_trigger, "type", temp_str)
+            temp_str = to_lower(temp_str)
+          else
+            call fatal_error("Must specify trigger type for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get the convergence threshold for the trigger
+          if (check_for_node(node_trigger, "threshold")) then
+            call get_node_value(node_trigger, "threshold", threshold)
+          else
+            call fatal_error("Must specify trigger threshold for tally " // &
+                 trim(to_str(t % id)) // " in tally XML file.")
+          end if
+
+          ! Get list scores for this trigger
+          if (check_for_node(node_trigger, "scores")) then
+            n_words = get_arraysize_string(node_trigger, "scores")
+            allocate(sarray(n_words))
+            call get_node_array(node_trigger, "scores", sarray)
+          else
+            n_words = 1
+            allocate(sarray(n_words))
+            sarray(1) = "all"
+          end if
+
+          ! Create a trigger for each score
+          SCORE_LOOP: do j = 1, n_words
+            score_name = trim(to_lower(sarray(j)))
+
+            ! Expand "all" to include TriggerObjects for each score in tally
+            if (score_name == "all") then
+              scores => trigger_scores % keys()
+
+              ! Loop over all tally scores
+              do while (associated(scores))
+                score_name = trim(scores % key)
+
+                ! Store the score name and index in the trigger
+                t % triggers(trig_ind) % score_name = trim(score_name)
+                t % triggers(trig_ind) % score_index = &
+                     trigger_scores % get_key(trim(score_name))
+
+                ! Set the trigger convergence threshold type
+                select case (temp_str)
+                case ('std_dev')
+                  t % triggers(trig_ind) % type = STANDARD_DEVIATION
+                case ('variance')
+                  t % triggers(trig_ind) % type = VARIANCE
+                case ('rel_err')
+                  t % triggers(trig_ind) % type = RELATIVE_ERROR
+                case default
+                  call fatal_error("Unknown trigger type " // &
+                       trim(temp_str) // " in tally " // trim(to_str(t % id)))
+                end select
+
+                ! Store the trigger convergence threshold
+                t % triggers(trig_ind) % threshold = threshold
+
+                ! Move to next score
+                next => scores % next
+                deallocate(scores)
+                scores => next
+
+                ! Increment the overall trigger index
+                trig_ind = trig_ind + 1
+              end do
+
+            ! Scores other than the "all" placeholder
+            else
+
+              ! Store the score name and index
+              t % triggers(trig_ind) % score_name = trim(score_name)
+              t % triggers(trig_ind) % score_index = &
+                   trigger_scores % get_key(trim(score_name))
+
+              ! Check if an invalid score was set for the trigger
+              if (t % triggers(trig_ind) % score_index == 0) then
+                call fatal_error("The trigger score " // trim(score_name) // &
+                     " is not set for tally " // trim(to_str(t % id)))
+              end if
+
+              ! Store the trigger convergence threshold
+              t % triggers(trig_ind) % threshold = threshold
+
+              ! Set the trigger convergence threshold type
+              select case (temp_str)
+              case ('std_dev')
+                t % triggers(trig_ind) % type = STANDARD_DEVIATION
+              case ('variance')
+                t % triggers(trig_ind) % type = VARIANCE
+              case ('rel_err')
+                t % triggers(trig_ind) % type = RELATIVE_ERROR
+              case default
+                call fatal_error("Unknown trigger type " // trim(temp_str) // &
+                     " in tally " // trim(to_str(t % id)))
+              end select
+
+              ! Increment the overall trigger index
+              trig_ind = trig_ind + 1
+            end if
+          end do SCORE_LOOP
+
+          ! Deallocate the list of tally scores used to create triggers
+          deallocate(sarray)
+        end do TRIGGER_LOOP
+
+        ! Deallocate dictionary of scores/indices used to populate triggers
+        call trigger_scores % clear()
       end if
 
       ! =======================================================================
@@ -2730,7 +3223,7 @@ contains
       ! Copy plot type
       temp_str = 'slice'
       if (check_for_node(node_plot, "type")) &
-        call get_node_value(node_plot, "type", temp_str)
+           call get_node_value(node_plot, "type", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("slice")
@@ -2745,7 +3238,7 @@ contains
       ! Set output file path
       filename = trim(to_str(pl % id)) // "_plot"
       if (check_for_node(node_plot, "filename")) &
-        call get_node_value(node_plot, "filename", filename)
+           call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
@@ -2790,7 +3283,7 @@ contains
       if (pl % type == PLOT_TYPE_SLICE) then
         temp_str = 'xy'
         if (check_for_node(node_plot, "basis")) &
-          call get_node_value(node_plot, "basis", temp_str)
+             call get_node_value(node_plot, "basis", temp_str)
         temp_str = to_lower(temp_str)
         select case (trim(temp_str))
         case ("xy")
@@ -2845,7 +3338,7 @@ contains
       ! Copy plot color type and initialize all colors randomly
       temp_str = "cell"
       if (check_for_node(node_plot, "color")) &
-        call get_node_value(node_plot, "color", temp_str)
+           call get_node_value(node_plot, "color", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("cell")
@@ -2959,7 +3452,7 @@ contains
             ! Ensure that there is a linewidth for this meshlines specification
             if (check_for_node(node_meshlines, "linewidth")) then
               call get_node_value(node_meshlines, "linewidth", &
-                  pl % meshlines_width)
+                   pl % meshlines_width)
             else
               call fatal_error("Must specify a linewidth for meshlines &
                    &specification in plot " // trim(to_str(pl % id)))
@@ -2975,7 +3468,7 @@ contains
               end if
 
               call get_node_array(node_meshlines, "color", &
-                  pl % meshlines_color % rgb)
+                   pl % meshlines_color % rgb)
             else
 
               pl % meshlines_color % rgb = (/ 0, 0, 0 /)
@@ -3001,8 +3494,8 @@ contains
               end if
 
               i_mesh = cmfd_tallies(1) % &
-                  filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
-                  int_bins(1)
+                   filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
+                   int_bins(1)
               pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
@@ -3161,9 +3654,9 @@ contains
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-       ! Could not find cross_sections.xml file
-       call fatal_error("Cross sections XML file '" &
-            &// trim(path_cross_sections) // "' does not exist!")
+      ! Could not find cross_sections.xml file
+      call fatal_error("Cross sections XML file '" &
+           &// trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
@@ -3172,28 +3665,28 @@ contains
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "directory")) then
-       ! Copy directory information if present
-       call get_node_value(doc, "directory", directory)
+      ! Copy directory information if present
+      call get_node_value(doc, "directory", directory)
     else
-       ! If no directory is listed in cross_sections.xml, by default select the
-       ! directory in which the cross_sections.xml file resides
-       i = index(path_cross_sections, "/", BACK=.true.)
-       directory = path_cross_sections(1:i)
+      ! If no directory is listed in cross_sections.xml, by default select the
+      ! directory in which the cross_sections.xml file resides
+      i = index(path_cross_sections, "/", BACK=.true.)
+      directory = path_cross_sections(1:i)
     end if
 
     ! determine whether binary/ascii
     temp_str = ''
     if (check_for_node(doc, "filetype")) &
-      call get_node_value(doc, "filetype", temp_str)
+         call get_node_value(doc, "filetype", temp_str)
     if (trim(temp_str) == 'ascii') then
-       filetype = ASCII
+      filetype = ASCII
     elseif (trim(temp_str) == 'binary') then
-       filetype = BINARY
+      filetype = BINARY
     elseif (len_trim(temp_str) == 0) then
-       filetype = ASCII
+      filetype = ASCII
     else
-       call fatal_error("Unknown filetype in cross_sections.xml: " &
-            &// trim(temp_str))
+      call fatal_error("Unknown filetype in cross_sections.xml: " &
+           &// trim(temp_str))
     end if
 
     ! copy default record length and entries for binary files
@@ -3208,83 +3701,83 @@ contains
 
     ! Allocate xs_listings array
     if (n_listings == 0) then
-       call fatal_error("No ACE table listings present in cross_sections.xml &
-            &file!")
+      call fatal_error("No ACE table listings present in cross_sections.xml &
+           &file!")
     else
-       allocate(xs_listings(n_listings))
+      allocate(xs_listings(n_listings))
     end if
 
     do i = 1, n_listings
-       listing => xs_listings(i)
+      listing => xs_listings(i)
 
-       ! Get pointer to ace table XML node
-       call get_list_item(node_ace_list, i, node_ace)
+      ! Get pointer to ace table XML node
+      call get_list_item(node_ace_list, i, node_ace)
 
-       ! copy a number of attributes
-       call get_node_value(node_ace, "name", listing % name)
-       if (check_for_node(node_ace, "alias")) &
-         call get_node_value(node_ace, "alias", listing % alias)
-       call get_node_value(node_ace, "zaid", listing % zaid)
-       call get_node_value(node_ace, "awr", listing % awr)
-       if (check_for_node(node_ace, "temperature")) &
-         call get_node_value(node_ace, "temperature", listing % kT)
-       call get_node_value(node_ace, "location", listing % location)
+      ! copy a number of attributes
+      call get_node_value(node_ace, "name", listing % name)
+      if (check_for_node(node_ace, "alias")) &
+           call get_node_value(node_ace, "alias", listing % alias)
+      call get_node_value(node_ace, "zaid", listing % zaid)
+      call get_node_value(node_ace, "awr", listing % awr)
+      if (check_for_node(node_ace, "temperature")) &
+           call get_node_value(node_ace, "temperature", listing % kT)
+      call get_node_value(node_ace, "location", listing % location)
 
-       ! determine type of cross section
-       if (ends_with(listing % name, 'c')) then
-          listing % type = ACE_NEUTRON
-       elseif (ends_with(listing % name, 't')) then
-          listing % type = ACE_THERMAL
-       end if
+      ! determine type of cross section
+      if (ends_with(listing % name, 'c')) then
+        listing % type = ACE_NEUTRON
+      elseif (ends_with(listing % name, 't')) then
+        listing % type = ACE_THERMAL
+      end if
 
-       ! set filetype, record length, and number of entries
-       if (check_for_node(node_ace, "filetype")) then
-         temp_str = ''
-         call get_node_value(node_ace, "filetype", temp_str)
-         if (temp_str == 'ascii') then
-           listing % filetype = ASCII
-         else if (temp_str == 'binary') then
-           listing % filetype = BINARY
-         end if
-       else
-         listing % filetype = filetype
-       end if
+      ! set filetype, record length, and number of entries
+      if (check_for_node(node_ace, "filetype")) then
+        temp_str = ''
+        call get_node_value(node_ace, "filetype", temp_str)
+        if (temp_str == 'ascii') then
+          listing % filetype = ASCII
+        else if (temp_str == 'binary') then
+          listing % filetype = BINARY
+        end if
+      else
+        listing % filetype = filetype
+      end if
 
-       ! Set record length and entries for binary files
-       if (filetype == BINARY) then
-         listing % recl     = recl
-         listing % entries  = entries
-       end if
+      ! Set record length and entries for binary files
+      if (filetype == BINARY) then
+        listing % recl     = recl
+        listing % entries  = entries
+      end if
 
-       ! determine metastable state
-       if (.not.check_for_node(node_ace, "metastable")) then
-          listing % metastable = .false.
-       else
-          listing % metastable = .true.
-       end if
+      ! determine metastable state
+      if (.not.check_for_node(node_ace, "metastable")) then
+        listing % metastable = .false.
+      else
+        listing % metastable = .true.
+      end if
 
-       ! determine path of cross section table
-       if (check_for_node(node_ace, "path")) then
-         call get_node_value(node_ace, "path", temp_str)
-       else
-         call fatal_error("Path missing for isotope " // listing % name)
-       end if
+      ! determine path of cross section table
+      if (check_for_node(node_ace, "path")) then
+        call get_node_value(node_ace, "path", temp_str)
+      else
+        call fatal_error("Path missing for isotope " // listing % name)
+      end if
 
-       if (starts_with(temp_str, '/')) then
-          listing % path = trim(temp_str)
-       else
-          if (ends_with(directory,'/')) then
-             listing % path = trim(directory) // trim(temp_str)
-          else
-             listing % path = trim(directory) // '/' // trim(temp_str)
-          end if
-       end if
+      if (starts_with(temp_str, '/')) then
+        listing % path = trim(temp_str)
+      else
+        if (ends_with(directory,'/')) then
+          listing % path = trim(directory) // trim(temp_str)
+        else
+          listing % path = trim(directory) // '/' // trim(temp_str)
+        end if
+      end if
 
-       ! create dictionary entry for both name and alias
-       call xs_listing_dict % add_key(to_lower(listing % name), i)
-       if (check_for_node(node_ace, "alias")) then
-         call xs_listing_dict % add_key(to_lower(listing % alias), i)
-       end if
+      ! create dictionary entry for both name and alias
+      call xs_listing_dict % add_key(to_lower(listing % name), i)
+      if (check_for_node(node_ace, "alias")) then
+        call xs_listing_dict % add_key(to_lower(listing % alias), i)
+      end if
     end do
 
     ! Check that 0K nuclides are listed in the cross_sections.xml file

@@ -26,6 +26,7 @@ module xs
             E_tabs,&
             formalism,&
             histories_avg_urr,&
+            INT_T,&
             i_real_user,&
             Isotope,&
             isotopes,&
@@ -69,6 +70,7 @@ module xs
   integer :: E_spacing           ! probability table energy spacing scheme
   integer :: formalism           ! URR resonance formalism
   integer :: histories_avg_urr   ! histories for averaged cross section calc
+  integer :: INT_T               ! temperature interpolation scheme
   integer :: i_real              ! index of URR realization used for calc
   integer :: i_real_user         ! user-specified realization index
   integer :: l_waves(4)          ! number of contributing l-wave
@@ -2966,7 +2968,7 @@ contains
         i_Tlow = binary_search(tope % T_tabs, tope % nT_tabs, T)
       end if
       i_Tup  = i_Tlow + 1
-      fT = interp_factor(T, tope % T_tabs(i_Tlow), tope % T_tabs(i_Tup), tope % INT)
+      fT = interp_factor(T, tope % T_tabs(i_Tlow), tope % T_tabs(i_Tup), INT_T)
     end if
     
     ! if we're dealing with a nuclide that we've previously encountered at
@@ -2998,47 +3000,49 @@ contains
     xsTup = interpolator(fE, &
          tope % prob_tables(i_E, i_Tup) % n(i_low) % xs_mean, &
          tope % prob_tables(i_E + 1, i_Tup) % n(i_up) % xs_mean, tope % INT)
-    xs_n = interpolator(fT, xsTlow, xsTup, tope % INT)
+    xs_n = interpolator(fT, xsTlow, xsTup, INT_T)
 
     ! fission xs from probability bands
-    if (tope % INT == LINEAR_LINEAR .or. &
-         tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean > ZERO) then
+    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean > ZERO .and. &
+         tope % prob_tables(i_E+1, i_Tlow) % f(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
            tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tlow) % f(i_up) % xs_mean, tope % INT)
       xsTup = interpolator(fE, &
            tope % prob_tables(i_E, i_Tup) % f(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tup) % f(i_up) % xs_mean, tope % INT)
-      xs_f = interpolator(fT, xsTlow, xsTup, tope % INT)
+      xs_f = interpolator(fT, xsTlow, xsTup, INT_T)
     else
       xs_f = ZERO
     end if
 
     ! capture xs from probability bands
-    if (tope % INT == LINEAR_LINEAR .or. &
-         tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean > ZERO) then
+    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean > ZERO .and. &
+         tope % prob_tables(i_E+1, i_Tlow) % g(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
            tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tlow) % g(i_up) % xs_mean, tope % INT)
       xsTup = interpolator(fE, &
            tope % prob_tables(i_E, i_Tup) % g(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tup) % g(i_up) % xs_mean, tope % INT)
-      xs_g = interpolator(fT, xsTlow, xsTup, tope % INT)
+      xs_g = interpolator(fT, xsTlow, xsTup, INT_T)
     else
       xs_g = ZERO
     end if
 
     ! competitive xs from probability bands
-    if (tope % INT == LINEAR_LINEAR .or. &
-         (tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean > ZERO&
-         .and. tope % prob_tables(i_E+1, i_Tlow) % x(i_up) % xs_mean > ZERO)) then
+    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean > ZERO .and. &
+         tope % prob_tables(i_E+1, i_Tlow) % x(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
            tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tlow) % x(i_up) % xs_mean, tope % INT)
       xsTup = interpolator(fE, &
            tope % prob_tables(i_E, i_Tup) % x(i_low) % xs_mean, &
            tope % prob_tables(i_E + 1, i_Tup) % x(i_up) % xs_mean, tope % INT)
-      xs_x = interpolator(fT, xsTlow, xsTup, tope % INT)
+      xs_x = interpolator(fT, xsTlow, xsTup, INT_T)
     else
       xs_x = ZERO
     end if

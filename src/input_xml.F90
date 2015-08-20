@@ -23,6 +23,7 @@ module input_xml
                               formalism,&
                               histories_avg_urr,&
                               i_real_user,&
+                              INT_T,&
                               isotopes,&
                               load_urr_tables,&
                               l_waves,&
@@ -3526,6 +3527,23 @@ contains
       else
         call fatal_error('Must specify whether or not to load probability &
              &tables in urr.xml')
+      end if
+
+      ! temperature interpolation scheme
+      if (check_for_node(prob_table_node, 'temperature_interpolation')) then
+        call get_node_value(prob_table_node, 'temperature_interpolation',&
+             temp_str)
+        select case(trim(adjustl(to_lower(temp_str))))
+        case('linlin')
+          INT_T = LINEAR_LINEAR
+        case('loglog')
+          INT_T = LOG_LOG
+        case default
+          call fatal_error('Unrecognized temperature interpolation scheme')
+        end select
+      else
+        call fatal_error('Must specify temperature interpolation scheme in &
+             &urr.xml')
       end if
 
       if (.not. load_urr_tables) then

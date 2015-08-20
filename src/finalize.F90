@@ -4,7 +4,10 @@ module finalize
   use output, only: print_runtime, print_results,&
                     print_overlap_check, write_tallies
   use tally,  only: tally_statistics
-  use xs,     only: isotopes, n_isotopes
+  use xs,     only: isotopes,&
+                    n_isotopes,&
+                    write_avg_urr_xs,&
+                    write_urr_tables
 
 #ifdef MPI
   use mpi
@@ -26,6 +29,8 @@ contains
   subroutine finalize_run()
 
     integer :: i ! isotope index
+
+    if (write_avg_urr_xs .or. write_urr_tables) goto 100
 
     ! Start finalization timer
     call time_finalize % start()
@@ -58,7 +63,7 @@ contains
       call print_results()
       if (check_overlaps) call print_overlap_check()
     end if
-
+100 continue
     ! Deallocate arrays
     call free_memory()
 
@@ -66,6 +71,8 @@ contains
     do i = 1, n_isotopes
       call isotopes(i) % dealloc_isotope()
     end do
+
+    if (write_avg_urr_xs .or. write_urr_tables) goto 200
 
 #ifdef HDF5
     ! Release compound datatypes
@@ -84,6 +91,8 @@ contains
     ! If MPI is in use and enabled, terminate it
     call MPI_FINALIZE(mpi_err)
 #endif
+
+200 continue
 
   end subroutine finalize_run
 

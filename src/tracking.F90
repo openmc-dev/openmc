@@ -15,7 +15,7 @@ module tracking
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
-                             finalize_particle_track
+                             add_particle_track, finalize_particle_track
 
   implicit none
 
@@ -200,6 +200,9 @@ contains
         if (p % n_secondary > 0) then
           call p % initialize_from_source(p % secondary_bank(p % n_secondary))
           p % n_secondary = p % n_secondary - 1
+
+          ! Enter new particle in particle track file
+          if (p % write_track) call add_particle_track()
         else
           exit EVENT_LOOP
         end if

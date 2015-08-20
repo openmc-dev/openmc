@@ -3,7 +3,6 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
-  use endf_reader,      only: path_endf
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -20,11 +19,12 @@ module input_xml
                               competitive,&
                               endf_files,&
                               E_spacing,&
-                              Etables,&
+                              E_tabs,&
                               formalism,&
                               histories_avg_urr,&
                               i_real_user,&
                               isotopes,&
+                              load_urr_tables,&
                               l_waves,&
                               max_batches_avg_urr,&
                               max_dE_point_urr,&
@@ -32,18 +32,21 @@ module input_xml
                               min_batches_avg_urr,&
                               min_dE_point_urr,&
                               n_bands,&
+                              n_energies,&
                               n_isotopes,&
                               n_reals,&
-                              n_tables,&
                               n_temperatures,&
                               path_avg_urr_xs,&
+                              path_endf,&
+                              path_prob_tables,&
                               real_freq,&
                               represent_params,&
                               represent_urr,&
                               run_fasturr,&
-                              temperatures,&
                               tol_avg_urr,&
                               tol_point_urr,&
+                              T_tabs,&
+                              w_eval,&
                               write_avg_urr_xs,&
                               write_urr_tables
 
@@ -3497,165 +3500,176 @@ contains
       represent_urr = PROB_BANDS
       call get_node_ptr(doc, "prob_tables", prob_table_node)
 
-      ! number of bands
-      if (check_for_node(prob_table_node, "n_bands")) then
-        call get_node_value(prob_table_node, "n_bands", n_bands)
-      else
-        call fatal_error('No number of probability table cross section bands&
-             & given in urr.xml')
-      end if
-
-      ! temperatures
-      if (check_for_node(prob_table_node, "temperatures")) then
-        n_temperatures = get_arraysize_double(prob_table_node, "temperatures")
-        allocate(temperatures(n_temperatures))
-        call get_node_array(prob_table_node, "temperatures", temperatures)
-        if (n_temperatures > 1) then
-          do i = 2, n_temperatures
-            if (temperatures(i) <= temperatures(i-1)) call fatal_error('Cross section &
-                 & reconstruction temperatures must be strictly ascending.')
-          end do
+      ! load previously-generated tables?
+      if (check_for_node(prob_table_node, 'load_tables')) then
+        call get_node_value(prob_table_node, 'load_tables', temp_str)
+        if (trim(adjustl(to_lower(temp_str))) == 'true'&
+             .or. trim(adjustl(temp_str)) == '1') then
+          load_urr_tables = .true.
+          if (master)&
+               call write_message('Loading probability tables from files. Any&
+               & probability table generation parameters specified in urr.xml&
+               & are being ignored.')
+          if (check_for_node(prob_table_node, 'path')) then
+            call get_node_value(prob_table_node, 'path', path_prob_tables)
+          else
+            call fatal_error('Must specify path to probability table files &
+                 &in urr.xml')
+          end if
+        else if (trim(adjustl(to_lower(temp_str))) == 'false'&
+             .or. trim(adjustl(temp_str)) == '0') then
+          load_urr_tables = .false.
+        else
+          call fatal_error('Loading probability tables must be true or false&
+               & in urr.xml')
         end if
       else
-        call fatal_error('No probability table temperatures given in urr.xml')
+        call fatal_error('Must specify whether or not to load probability &
+             &tables in urr.xml')
       end if
 
-      ! min number of batches
-      if (check_for_node(prob_table_node, "min_batches")) then
-        call get_node_value(prob_table_node, "min_batches", min_batches_avg_urr)
-      else
-        call fatal_error('No minimum batches for probability table&
-             & calculation given in urr.xml')
-      end if
+      if (.not. load_urr_tables) then
+        ! number of bands
+        if (check_for_node(prob_table_node, "n_bands")) then
+          call get_node_value(prob_table_node, "n_bands", n_bands)
+        else
+          call fatal_error('No number of probability table cross section bands&
+               & given in urr.xml')
+        end if
 
-      ! max number of batches
-      if (check_for_node(prob_table_node, "max_batches")) then
-        call get_node_value(prob_table_node, "max_batches", max_batches_avg_urr)
-      else
-        call fatal_error('No maximum batches for probability table&
-             & calculation given in urr.xml')
-      end if
-
-      ! histories per batch
-      if (check_for_node(prob_table_node, "histories")) then
-        call get_node_value(prob_table_node, "histories", histories_avg_urr)
-        if (mod(histories_avg_urr, n_bands) /= 0) call fatal_error('Histories &
-             &per batch must be evenly divisible by number of probability bands')
-      else
-        call fatal_error('No number of realization histories for probability&
-             & table calculation given in urr.xml')
-      end if
-
-      ! relative uncertainty tolerance (1sigma / mean)
-      if (check_for_node(prob_table_node, "tolerance")) then
-        call get_node_value(prob_table_node, "tolerance", tol_avg_urr)
-      else
-        call fatal_error('No relative uncertainty tolerance for probability&
-             & table calculation given in urr.xml')
-      end if
-
-      ! energy spacing scheme
-      if (check_for_node(prob_table_node, "energy_spacing")) then
-        call get_node_value(prob_table_node, "energy_spacing", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'linear') then
-          E_spacing = LINEAR
-          call fatal_error('Linear probability table energy spacing not yet&
-               & supported in urr.xml')
-        else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
-          E_spacing = LOGARITHMIC
-          if (check_for_node(prob_table_node, "n_energies")) then
-            call get_node_value(prob_table_node, "n_energies", n_tables)
-          else
-            call fatal_error('Must specify number of logarithmic probability&
-                 & table energies')
-          end if
-        else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
-          E_spacing = ENDF6
-        else if (trim(adjustl(to_lower(temp_str))) == 'user') then
-          E_spacing = USER
-          if (check_for_node(prob_table_node, "energy_values")) then
-            n_tables = get_arraysize_double(prob_table_node, "energy_values")
-            allocate(Etables(n_tables))
-            call get_node_array(prob_table_node, "energy_values", Etables)
-          else
-            call fatal_error('No probability table energy grid values&
-                 & given in urr.xml')
+        ! temperatures
+        if (check_for_node(prob_table_node, "temperatures")) then
+          n_temperatures = get_arraysize_double(prob_table_node, "temperatures")
+          allocate(T_tabs(n_temperatures))
+          call get_node_array(prob_table_node, "temperatures", T_tabs)
+          if (n_temperatures > 1) then
+            do i = 2, n_temperatures
+              if (T_tabs(i) <= T_tabs(i-1)) call fatal_error('Cross section &
+                   & reconstruction temperatures must be strictly ascending.')
+            end do
           end if
         else
-          call fatal_error('Unrecognized energy spacing scheme for probability&
+          call fatal_error('No probability table temperatures given in urr.xml')
+        end if
+
+        ! min number of batches
+        if (check_for_node(prob_table_node, "min_batches")) then
+          call get_node_value(prob_table_node, "min_batches", min_batches_avg_urr)
+        else
+          call fatal_error('No minimum batches for probability table&
+               & calculation given in urr.xml')
+        end if
+
+        ! max number of batches
+        if (check_for_node(prob_table_node, "max_batches")) then
+          call get_node_value(prob_table_node, "max_batches", max_batches_avg_urr)
+        else
+          call fatal_error('No maximum batches for probability table&
+               & calculation given in urr.xml')
+        end if
+
+        ! histories per batch
+        if (check_for_node(prob_table_node, "histories")) then
+          call get_node_value(prob_table_node, "histories", histories_avg_urr)
+          if (mod(histories_avg_urr, n_bands) /= 0) call fatal_error('Histories &
+               &per batch must be evenly divisible by number of probability bands')
+        else
+          call fatal_error('No number of realization histories for probability&
                & table calculation given in urr.xml')
         end if
-      else
-        call fatal_error('No energy spacing scheme for probability&
-             & table calculation given in urr.xml')
-      end if
 
-      ! MF3 background cross section component treatment
-      if (check_for_node(prob_table_node, "background")) then
-        call get_node_value(prob_table_node, "background", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false') then
-          background = FALSE
-        else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
-          background = ENDFFILE
+        ! relative uncertainty tolerance (1sigma / mean)
+        if (check_for_node(prob_table_node, "tolerance")) then
+          call get_node_value(prob_table_node, "tolerance", tol_avg_urr)
         else
-          call fatal_error('Unrecognized background cross section source&
-               & in probability table calculation given in urr.xml')
+          call fatal_error('No relative uncertainty tolerance for probability&
+               & table calculation given in urr.xml')
         end if
-      else
-        call fatal_error('No background cross section source for probability&
-             & table calculation given in urr.xml')
-      end if
 
-      ! competitive reaction resonance structure treatment
-      if (check_for_node(doc, "competitive")) then
-        call get_node_value(doc, "competitive", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false' &
-             .or. trim(adjustl(temp_str)) == '0') then
-          competitive = .false.
-        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-             .or. trim(adjustl(temp_str)) == '1') then
-          competitive = .true.
+        ! energy spacing scheme
+        if (check_for_node(prob_table_node, "energy_spacing")) then
+          call get_node_value(prob_table_node, "energy_spacing", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == 'linear') then
+            E_spacing = LINEAR
+            call fatal_error('Linear probability table energy spacing not yet&
+                 & supported in urr.xml')
+          else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
+            E_spacing = LOGARITHMIC
+            if (check_for_node(prob_table_node, "n_energies")) then
+              call get_node_value(prob_table_node, "n_energies", n_energies)
+            else
+              call fatal_error('Must specify number of logarithmic probability&
+                   & table energies')
+            end if
+          else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+            E_spacing = ENDF6
+          else if (trim(adjustl(to_lower(temp_str))) == 'user') then
+            E_spacing = USER
+            if (check_for_node(prob_table_node, "energy_values")) then
+              n_energies = get_arraysize_double(prob_table_node, "energy_values")
+              allocate(E_tabs(n_energies))
+              call get_node_array(prob_table_node, "energy_values", E_tabs)
+            else
+              call fatal_error('No probability table energy grid values&
+                   & given in urr.xml')
+            end if
+          else
+            call fatal_error('Unrecognized energy spacing scheme for probability&
+                 & table calculation given in urr.xml')
+          end if
         else
-          call fatal_error('Modeling of competitive reaction cross section &
-               &resonance structure must be true or false in urr.xml')
+          call fatal_error('No energy spacing scheme for probability&
+               & table calculation given in urr.xml')
         end if
-      else
-        call fatal_error('Must specify whether or not to model resonance &
-             &structure of competitive reaction cross section in urr.xml')
-      end if
 
-      if (check_for_node(prob_table_node, "write_tables")) then
-        call get_node_value(prob_table_node, "write_tables", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false' &
-             .or. trim(adjustl(temp_str)) == '0') then
-          write_urr_tables = .false.
-        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-             .or. trim(adjustl(temp_str)) == '1') then
-          write_urr_tables = .true.
+        ! MF3 background cross section component treatment
+        if (check_for_node(prob_table_node, "background")) then
+          call get_node_value(prob_table_node, "background", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == 'false') then
+            background = FALSE
+          else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+            background = ENDFFILE
+          else
+            call fatal_error('Unrecognized background cross section source&
+                 & in probability table calculation given in urr.xml')
+          end if
         else
-          call fatal_error('write_tables must be true or false in urr.xml')
+          call fatal_error('No background cross section source for probability&
+               & table calculation given in urr.xml')
         end if
-      else
-        call fatal_error('Specify whether or not to write out URR probability&
-             & tables to a file via write_tables in urr.xml')
-      end if
 
-      if (check_for_node(prob_table_node, "write_avg_xs")) then
-        call get_node_value(prob_table_node, "write_avg_xs", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false' &
-             .or. trim(adjustl(temp_str)) == '0') then
-          write_avg_urr_xs = .false.
-        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-             .or. trim(adjustl(temp_str)) == '1') then
-          write_avg_urr_xs = .true.
+        if (check_for_node(prob_table_node, "write_tables")) then
+          call get_node_value(prob_table_node, "write_tables", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == 'false' &
+               .or. trim(adjustl(temp_str)) == '0') then
+            write_urr_tables = .false.
+          else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+               .or. trim(adjustl(temp_str)) == '1') then
+            write_urr_tables = .true.
+          else
+            call fatal_error('write_tables must be true or false in urr.xml')
+          end if
         else
-          call fatal_error('write_avg_xs must be true or false in urr.xml')
+          call fatal_error('Specify whether or not to write out URR probability&
+               & tables to a file via write_tables in urr.xml')
         end if
-      else
-        call fatal_error('Specify whether or not to write out averaged URR&
-             & cross section values to a file via write_avg_xs in urr.xml')
-      end if
 
+        if (check_for_node(prob_table_node, "write_avg_xs")) then
+          call get_node_value(prob_table_node, "write_avg_xs", temp_str)
+          if (trim(adjustl(to_lower(temp_str))) == 'false' &
+               .or. trim(adjustl(temp_str)) == '0') then
+            write_avg_urr_xs = .false.
+          else if (trim(adjustl(to_lower(temp_str))) == 'true' &
+               .or. trim(adjustl(temp_str)) == '1') then
+            write_avg_urr_xs = .true.
+          else
+            call fatal_error('write_avg_xs must be true or false in urr.xml')
+          end if
+        else
+          call fatal_error('Specify whether or not to write out averaged URR&
+               & cross section values to a file via write_avg_xs in urr.xml')
+        end if
+      end if
     end if
 
     ! Close URR XML file

@@ -9,6 +9,7 @@ module initialize
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use faddeeva,         only: tabulate_w
+  use finalize,         only: finalize_run
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
@@ -26,17 +27,20 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use xs,               only: endf_files,&
+  use xs,               only: calc_prob_tables,&
+                              endf_files,&
                               isotopes,&
+                              load_prob_tables,&
+                              load_urr_tables,&
                               n_isotopes,&
                               pointwise_urr,&
-                              prob_tables,&
                               real_freq,&
                               represent_params,&
                               represent_urr,&
                               resonance_ensemble,&
                               run_fasturr,&
-                              write_avg_urr_xs
+                              write_avg_urr_xs,&
+                              write_urr_tables
 
 #ifdef MPI
   use mpi
@@ -146,12 +150,14 @@ contains
                 call isotopes(i) % ace_index_list % append(i_nuc)
               end if
             end do
-            call isotopes(i) % alloc_prob_tables()
-            call prob_tables(i)
+            if (load_urr_tables) then
+              call load_prob_tables(i)
+            else
+              call isotopes(i) % alloc_prob_tables()
+              call calc_prob_tables(i)
+            end if
           end do
-          if (write_avg_urr_xs)&
-               call fatal_error('Average URR cross sections file generated, no&
-               & transport simulation performed')
+          if (write_avg_urr_xs .or. write_urr_tables) return
 
         case (ON_THE_FLY)
           select case (real_freq)

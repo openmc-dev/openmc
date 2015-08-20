@@ -8,16 +8,16 @@ module endf_reader
   use xs,                only: E_spacing,&
                                Isotope,&
                                isotopes,&
+                               path_endf,&
                                represent_urr,&
                                write_avg_urr_xs
 
   implicit none
   private
-  public :: path_endf, read_endf6
+  public :: read_endf6
 
   integer :: in = 11 ! input unit
   character(80) :: filename ! ENDF-6 filename
-  character(MAX_FILE_LEN) :: path_endf ! path to ENDF-6 files
 
 contains
 

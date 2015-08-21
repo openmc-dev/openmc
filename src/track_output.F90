@@ -22,7 +22,8 @@ module track_output
 contains
 
 !===============================================================================
-! INITIALIZE_PARTICLE_TRACK
+! INITIALIZE_PARTICLE_TRACK allocates the array to store particle track
+! information
 !===============================================================================
 
   subroutine initialize_particle_track()

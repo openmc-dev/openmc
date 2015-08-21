@@ -129,7 +129,7 @@ contains
   end subroutine initialize_particle
 
 !===============================================================================
-! CLEAR_PARTICLE
+! CLEAR_PARTICLE resets all coordinate levels for the particle
 !===============================================================================
 
   subroutine clear_particle(this)
@@ -145,7 +145,7 @@ contains
   end subroutine clear_particle
 
 !===============================================================================
-! RESET_COORD
+! RESET_COORD clears data from a single coordinate level
 !===============================================================================
 
   elemental subroutine reset_coord(this)
@@ -162,7 +162,9 @@ contains
   end subroutine reset_coord
 
 !===============================================================================
-! INITIALIZE_FROM_SOURCE
+! INITIALIZE_FROM_SOURCE initializes a particle from data stored in a source
+! site. The source site may have been produced from an external source, from
+! fission, or simply as a secondary particle.
 !===============================================================================
 
   subroutine initialize_from_source(this, src)
@@ -185,7 +187,8 @@ contains
   end subroutine initialize_from_source
 
 !===============================================================================
-! CREATE_SECONDARY
+! CREATE_SECONDARY stores the current phase space attributes of the particle in
+! the secondary bank and increments the number of sites in the secondary bank.
 !===============================================================================
 
   subroutine create_secondary(this, uvw, type)

@@ -583,7 +583,9 @@ contains
 
 #ifdef _OPENMP
 !===============================================================================
-! JOIN_BANK_FROM_THREADS
+! JOIN_BANK_FROM_THREADS joins threadprivate fission banks into a single fission
+! bank that can be sampled. Note that this operation is necessarily sequential
+! to preserve the order of the bank when using varying numbers of threads.
 !===============================================================================
 
   subroutine join_bank_from_threads()

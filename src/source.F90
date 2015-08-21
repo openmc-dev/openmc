@@ -92,7 +92,8 @@ contains
   end subroutine initialize_source
 
 !===============================================================================
-! SAMPLE_EXTERNAL_SOURCE
+! SAMPLE_EXTERNAL_SOURCE samples the user-specified external source and stores
+! the position, angle, and energy in a Bank type.
 !===============================================================================
 
   subroutine sample_external_source(site)

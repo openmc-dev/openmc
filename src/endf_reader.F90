@@ -567,8 +567,9 @@ contains
     integer :: INTERP     ! interpolation scheme for current region
     integer :: MF3_INT ! overall isotope interpolation scheme
 
-    if (INTERP /= MF3_INT) call fatal_error('Different interpolation schemes for&
-      & different File 3 regions in '//trim(filename))
+    if (INTERP /= MF3_INT) call warning('Different interpolation schemes for &
+      &different File 3 regions in '//trim(filename))//'.  Using region &
+      &one interpolation scheme for all regions.'
 
   end subroutine check_interp_scheme
 

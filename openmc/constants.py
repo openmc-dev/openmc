@@ -35,7 +35,8 @@ FILTER_TYPES = {1: 'universe',
                 6: 'mesh',
                 7: 'energy',
                 8: 'energyout',
-                9: 'distribcell'}
+                9: 'distribcell',
+                10:'mu'}
 
 SCORE_TYPES = {-1: 'flux',
                -2: 'total',

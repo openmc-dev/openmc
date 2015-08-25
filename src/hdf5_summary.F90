@@ -607,7 +607,8 @@ contains
 
         ! Write filter bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-             t % filters(j) % type == FILTER_ENERGYOUT) then
+             t % filters(j) % type == FILTER_ENERGYOUT .or. &
+             t % filters(j) % type == FILTER_MU) then
           call su % write_data(t % filters(j) % real_bins, "bins", &
                length=size(t % filters(j) % real_bins), &
                group="tallies/tally " // trim(to_str(t % id)) &
@@ -651,6 +652,10 @@ contains
                // "/filter " // trim(to_str(j)))
         case(FILTER_ENERGYOUT)
           call su % write_data("energyout", "type_name", &
+               group="tallies/tally " // trim(to_str(t % id)) &
+               // "/filter " // trim(to_str(j)))
+        case(FILTER_MU)
+          call su % write_data("mu", "type_name", &
                group="tallies/tally " // trim(to_str(t % id)) &
                // "/filter " // trim(to_str(j)))
         end select

@@ -373,7 +373,7 @@ class Tally(object):
         if score in self.scores:
             return
         else:
-            self._scores.append(score)
+            self._scores.append(score.strip())
 
     @num_score_bins.setter
     def num_score_bins(self, num_score_bins):
@@ -896,7 +896,7 @@ class Tally(object):
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
-                    elif filter.type in ['energy', 'energyout']:
+                    elif filter.type in ['energy', 'energyout', 'mu']:
                         bins = []
                         for k in range(filter.num_bins):
                             bins.append((filter.bins[k], filter.bins[k+1]))
@@ -1250,6 +1250,22 @@ class Tally(object):
                     tile_factor = data_size / len(filter_bins)
                     filter_bins = np.tile(filter_bins, tile_factor)
                     df[filter.type + ' [MeV]'] = filter_bins
+
+                elif 'mu' is filter.type:
+                    bins = filter.bins
+                    num_bins = filter.num_bins
+
+                    # Create strings for
+                    template = '{0:.2f} - {1:.2f}'
+                    filter_bins = []
+                    for i in range(num_bins):
+                        filter_bins.append(template.format(bins[i], bins[i+1]))
+
+                    # Tile the mu bins into a DataFrame column
+                    filter_bins = np.repeat(filter_bins, filter.stride)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    df[filter.type] = filter_bins
 
                 # universe, material, surface, cell, and cellborn filters
                 else:

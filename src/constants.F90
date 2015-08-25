@@ -300,7 +300,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 9
+  integer, parameter :: N_FILTER_TYPES = 10
   integer, parameter :: &
        FILTER_UNIVERSE    = 1, &
        FILTER_MATERIAL    = 2, &
@@ -310,7 +310,8 @@ module constants
        FILTER_MESH        = 6, &
        FILTER_ENERGYIN    = 7, &
        FILTER_ENERGYOUT   = 8, &
-       FILTER_DISTRIBCELL = 9
+       FILTER_DISTRIBCELL = 9, &
+       FILTER_MU          = 10
 
   ! Tally surface current directions
   integer, parameter :: &

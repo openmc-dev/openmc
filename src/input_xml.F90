@@ -2085,6 +2085,9 @@ contains
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     real(8) :: rarray3(3)    ! temporary double prec. array
+    integer :: Nmu           ! Number of angular bins
+    real(8) :: dmu           ! Mu spacing if using automatic allocation
+    integer :: imu           ! Loop counter for building mu filter bins
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
@@ -2350,8 +2353,9 @@ contains
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
-            if (trim(temp_str) == 'energy' .or. &
-                 trim(temp_str) == 'energyout') then
+            if ((trim(temp_str) == 'energy' .or. &
+                 trim(temp_str) == 'energyout') .or. &
+                (trim(temp_str) == 'mu')) then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2483,6 +2487,40 @@ contains
             ! Allocate and store bins
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Set to analog estimator
+            t % estimator = ESTIMATOR_ANALOG
+
+          case ('mu')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_MU
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Easter egg! Allow a user to input a negative number, if it is only one
+            ! and that will mean you subivide [-1,1] evenly with the input
+            ! being the number of bins
+            if (n_words == 1) then
+              Nmu = abs(int(t % filters(j) % real_bins(1)))
+              if (Nmu > 1) then
+                t % filters(j) % n_bins = Nmu - 1
+                dmu = TWO / (real(Nmu,8) - ONE)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nmu))
+                do imu = 1, Nmu
+                  t % filters(j) % real_bins(imu) = -ONE + (imu - 1) * dmu
+                end do
+              else
+                call fatal_error("Must have more than one bin for mu filter &
+                     & on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
@@ -2656,6 +2694,7 @@ contains
           ! scores then strip off the n and store it as an integer to be used
           ! later. Then perform the select case on this modified (number
           ! removed) string
+          n_order = -1
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
@@ -2699,6 +2738,23 @@ contains
                 exit
               end if
             end do
+          end if
+
+          ! Check to see if the mu filter is applied and if that makes sense.
+          if ((.not. starts_with(score_name,'scatter')) .and. &
+              (.not. starts_with(score_name,'nu-scatter'))) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter.")
+            end if
+          ! Also check to see if this is a legendre expansion or not.
+          ! If so, we can accept this score and filter combo for p0, but not
+          ! elsewhere.
+          else if (n_order > 0) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter unless order is 0.")
+            end if
           end if
 
           select case (trim(score_name))

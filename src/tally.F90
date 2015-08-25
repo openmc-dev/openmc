@@ -990,7 +990,6 @@ contains
           matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                k + 1, p % E)
         end if
-
       end select
 
       ! Check if no matching bin was found
@@ -1244,6 +1243,13 @@ contains
           matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                n + 1, p % E)
         end if
+
+      case (FILTER_MU)
+        ! determine mu bin
+        n = t % filters(i) % n_bins
+        ! search to find incoming energy bin
+        matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+             n + 1, p % mu)
 
       end select
 

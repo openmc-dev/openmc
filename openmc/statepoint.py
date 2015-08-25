@@ -377,7 +377,7 @@ class StatePoint(object):
                     raise ValueError(msg)
 
                 # Read the bin values
-                if FILTER_TYPES[filter_type] in ['energy', 'energyout']:
+                if FILTER_TYPES[filter_type] in ['energy', 'energyout', 'mu']:
                     bins = self._get_double(
                          n_bins+1, path='{0}{1}/bins'.format(subbase, j))
 
@@ -417,7 +417,6 @@ class StatePoint(object):
                  path='{0}{1}/n_score_bins'.format(base, tally_key))[0]
 
             tally.num_score_bins = n_score_bins
-
             scores = [SCORE_TYPES[j] for j in self._get_int(
                  n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
             n_user_scores = self._get_int(

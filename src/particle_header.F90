@@ -2,6 +2,7 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY
+  use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -197,6 +198,12 @@ contains
     integer,         intent(in)    :: type
 
     integer :: n
+
+    ! Check to make sure that the hard-limit on secondary particles is not
+    ! exceeded.
+    if (this % n_secondary == MAX_SECONDARY) then
+      call fatal_error("Too many secondary particles created.")
+    end if
 
     n = this % n_secondary + 1
     this % secondary_bank(n) % wgt    = this % wgt

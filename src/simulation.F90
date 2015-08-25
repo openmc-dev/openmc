@@ -32,8 +32,9 @@ module simulation
 contains
 
 !===============================================================================
-! RUN_EIGENVALUE encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories in a k-eigenvalue calculation.
+! RUN_SIMULATION encompasses all the main logic where iterations are performed
+! over the batches, generations, and histories in a fixed source or k-eigenvalue
+! calculation.
 !===============================================================================
 
   subroutine run_simulation()

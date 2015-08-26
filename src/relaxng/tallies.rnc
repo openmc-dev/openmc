@@ -23,16 +23,16 @@ element tallies {
       attribute estimator { ( "analog" | "tracklength" ) })? &
     element filter {
       (element type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) } |
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu") } |
        attribute type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) }) &
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu") }) &
       (element bins { list { xsd:double+ } } |
         attribute bins { list { xsd:double+ } })
     }* &
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }
     }? &
-    element scores { 
+    element scores {
       list { xsd:string { maxLength = "20" }+ }
     } &
     element trigger {

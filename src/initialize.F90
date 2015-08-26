@@ -140,7 +140,7 @@ contains
       ! Determine how much work each processor should do
       call calculate_work()
 
-      ! Allocate source bank, and for eigenvalu simulations also allocate the
+      ! Allocate source bank, and for eigenvalue simulations also allocate the
       ! fission bank
       call allocate_banks()
 

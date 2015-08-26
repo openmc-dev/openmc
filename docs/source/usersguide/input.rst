@@ -1251,6 +1251,21 @@ The ``<tally>`` element accepts the following sub-elements:
           two post-collision energy bins will be created, one with energies
           between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
 
+        :mu:
+          A monotonically increasing list of bounding **post-collision**
+          cosines of the change in a particle's angle (i.e., :math:`\mu`),
+          which represents a portion of the possible values of :math:'\[-1,1\]'.
+          For example, spanning all of :math:'\[-1,1\]' with five equi-width
+          bins can be specified as:
+          ``<filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />``
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:'\[-1,1\]' should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:'\[-1,1\]' can be instead written as:
+          ``<filter type="mu" bins="5" />``.
+
         :mesh:
           The ``id`` of a structured mesh to be tallied over.
 

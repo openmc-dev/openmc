@@ -2508,13 +2508,14 @@ contains
             if (n_words == 1) then
               Nmu = abs(int(t % filters(j) % real_bins(1)))
               if (Nmu > 1) then
-                t % filters(j) % n_bins = Nmu - 1
-                dmu = TWO / (real(Nmu,8) - ONE)
+                t % filters(j) % n_bins = Nmu
+                dmu = TWO / (real(Nmu,8))
                 deallocate(t % filters(j) % real_bins)
-                allocate(t % filters(j) % real_bins(Nmu))
-                do imu = 1, Nmu
+                allocate(t % filters(j) % real_bins(Nmu + 1))
+                do imu = 1, Nmu + 1
                   t % filters(j) % real_bins(imu) = -ONE + (imu - 1) * dmu
                 end do
+                t % filters(j) % real_bins(Nmu + 1) = ONE
               else
                 call fatal_error("Must have more than one bin for mu filter &
                      & on tally " // trim(to_str(t % id)) // ".")

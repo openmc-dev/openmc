@@ -388,6 +388,13 @@ contains
 
     end if
 
+    ! Check p % mu to ensure it falls within the expected range
+    if (p % mu < -ONE) then
+      p % mu = -ONE
+    else if (p % mu > ONE) then
+      p % mu = ONE
+    end if
+
     ! Set event component
     p % event = EVENT_SCATTER
 

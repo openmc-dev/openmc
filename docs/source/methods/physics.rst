@@ -187,11 +187,11 @@ secondary photons from nuclear de-excitation are tracked in OpenMC.
 ------------------------
 
 These types of reactions are just treated as inelastic scattering and as such
-are subject to the same procedure as described in
-:ref:`inelastic-scatter`. Rather than tracking multiple secondary neutrons, the
-weight of the outgoing neutron is multiplied by the number of secondary
-neutrons, e.g. for :math:`(n,2n)`, only one outgoing neutron is tracked but its
-weight is doubled.
+are subject to the same procedure as described in :ref:`inelastic-scatter`. For
+reactions with integral multiplicity, e.g., :math:`(n,2n)`, an appropriate
+number of secondary neutrons are created. For reactions that have a multiplicity
+given as a function of the incoming neutron energy (which occasionally occurs
+for MT=5), the weight of the outgoing neutron is multiplied by the multiplcity.
 
 .. _fission:
 

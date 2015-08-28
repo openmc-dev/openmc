@@ -44,6 +44,9 @@ module constants
   integer, parameter :: MAX_EVENTS = 10000
   integer, parameter :: MAX_SAMPLE = 100000
 
+  ! Maximum number of secondary particles created
+  integer, parameter :: MAX_SECONDARY = 1000
+
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
   integer, parameter :: MAX_WORDS    = 500

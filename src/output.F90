@@ -1558,11 +1558,15 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    write(ou,100) "  Time in inactive batches", time_inactive % elapsed
+    if (run_mode == MODE_EIGENVALUE) then
+      write(ou,100) "  Time in inactive batches", time_inactive % elapsed
+    end if
     write(ou,100) "  Time in active batches", time_active % elapsed
-    write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
-    write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
-    write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+    if (run_mode == MODE_EIGENVALUE) then
+      write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
+      write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
+      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+    end if
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
     if (cmfd_run) write(ou,100) "    Building matrices", &

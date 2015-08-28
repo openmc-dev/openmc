@@ -78,7 +78,7 @@ contains
 
     ! Write out initial source
     if (write_initial_source) then
-      call write_message('Writing out initial source guess...', 1)
+      call write_message('Writing out initial source...', 1)
 #ifdef HDF5
       filename = trim(path_output) // 'initial_source.h5'
 #else
@@ -92,7 +92,8 @@ contains
   end subroutine initialize_source
 
 !===============================================================================
-! SAMPLE_EXTERNAL_SOURCE
+! SAMPLE_EXTERNAL_SOURCE samples the user-specified external source and stores
+! the position, angle, and energy in a Bank type.
 !===============================================================================
 
   subroutine sample_external_source(site)
@@ -244,75 +245,5 @@ contains
     call prn_set_stream(STREAM_TRACKING)
 
   end subroutine sample_external_source
-
-!===============================================================================
-! GET_SOURCE_PARTICLE returns the next source particle
-!===============================================================================
-
-  subroutine get_source_particle(p, index_source)
-
-    type(Particle), intent(inout) :: p
-    integer(8),     intent(in)    :: index_source
-
-    integer(8) :: particle_seed  ! unique index for particle
-    integer :: i
-    type(Bank), pointer :: src
-
-    ! set defaults
-    call p % initialize()
-
-    ! Copy attributes from source to particle
-    src => source_bank(index_source)
-    call copy_source_attributes(p, src)
-
-    ! set identifier for particle
-    p % id = work_index(rank) + index_source
-
-    ! set random number seed
-    particle_seed = (overall_gen - 1)*n_particles + p % id
-    call set_particle_seed(particle_seed)
-
-    ! set particle trace
-    trace = .false.
-    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-         p % id == trace_particle) trace = .true.
-
-    ! Set particle track.
-    p % write_track = .false.
-    if (write_all_tracks) then
-      p % write_track = .true.
-    else if (allocated(track_identifiers)) then
-      do i=1, size(track_identifiers(1,:))
-        if (current_batch == track_identifiers(1,i) .and. &
-             &current_gen == track_identifiers(2,i) .and. &
-             &p % id == track_identifiers(3,i)) then
-          p % write_track = .true.
-          exit
-        end if
-      end do
-    end if
-
-  end subroutine get_source_particle
-
-!===============================================================================
-! COPY_SOURCE_ATTRIBUTES
-!===============================================================================
-
-  subroutine copy_source_attributes(p, src)
-
-    type(Particle), intent(inout) :: p
-    type(Bank),     pointer       :: src
-
-    ! copy attributes from source bank site
-    p % wgt         = src % wgt
-    p % last_wgt    = src % wgt
-    p % coord(1) % xyz = src % xyz
-    p % coord(1) % uvw = src % uvw
-    p % last_xyz    = src % xyz
-    p % last_uvw    = src % uvw
-    p % E           = src % E
-    p % last_E      = src % E
-
-  end subroutine copy_source_attributes
 
 end module source

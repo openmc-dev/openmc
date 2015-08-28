@@ -382,8 +382,7 @@ contains
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord(1) % uvw, &
-           p % mu, p % wgt)
+      call inelastic_scatter(nuc, rxn, p)
       p % event_MT = rxn % MT
 
     end if
@@ -1268,24 +1267,23 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt)
+  subroutine inelastic_scatter(nuc, rxn, p)
+    type(Nuclide),  pointer       :: nuc
+    type(Reaction), pointer       :: rxn
+    type(Particle), intent(inout) :: p
 
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-    real(8), intent(inout)  :: E      ! energy in lab (incoming/outgoing)
-    real(8), intent(inout)  :: uvw(3) ! directional cosines
-    real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
-    real(8), intent(inout)  :: wgt    ! particle weight
-
-    integer :: law         ! secondary energy distribution law
-    real(8) :: A           ! atomic weight ratio of nuclide
-    real(8) :: E_in        ! incoming energy
-    real(8) :: E_cm        ! outgoing energy in center-of-mass
-    real(8) :: Q           ! Q-value of reaction
-    real(8) :: yield       ! neutron yield
+    integer :: i      ! loop index
+    integer :: law    ! secondary energy distribution law
+    real(8) :: E      ! energy in lab (incoming/outgoing)
+    real(8) :: mu     ! cosine of scattering angle in lab
+    real(8) :: A      ! atomic weight ratio of nuclide
+    real(8) :: E_in   ! incoming energy
+    real(8) :: E_cm   ! outgoing energy in center-of-mass
+    real(8) :: Q      ! Q-value of reaction
+    real(8) :: yield  ! neutron yield
 
     ! copy energy of neutron
-    E_in = E
+    E_in = p % E
 
     ! determine A and Q
     A = nuc % awr
@@ -1319,16 +1317,22 @@ contains
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
+    ! Set outgoing energy and scattering angle
+    p % E = E
+    p % mu = mu
+
     ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then
       yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+      p % wgt = yield * p % wgt
     else
-      yield = rxn % multiplicity
+      do i = 1, rxn % multiplicity - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+      end do
     end if
-    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 

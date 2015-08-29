@@ -36,7 +36,9 @@ FILTER_TYPES = {1: 'universe',
                 7: 'energy',
                 8: 'energyout',
                 9: 'distribcell',
-                10:'mu'}
+                10:'mu',
+                11: 'polar',
+                12: 'azimuthal'}
 
 SCORE_TYPES = {-1: 'flux',
                -2: 'total',

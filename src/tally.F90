@@ -1134,6 +1134,7 @@ contains
     integer :: n ! number of bins for single filter
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
+    real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
 
@@ -1248,9 +1249,56 @@ contains
         ! determine mu bin
         n = t % filters(i) % n_bins
 
-        ! search to find incoming energy bin
-        matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-             n + 1, p % mu)
+        ! check if particle is within mu bins
+        if (p % mu < t % filters(i) % real_bins(1) .or. &
+             p % mu > t % filters(i) % real_bins(n + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find mu bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               n + 1, p % mu)
+        end if
+
+      case (FILTER_POLAR)
+        ! make sure the correct direction vector is used
+        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          theta = acos(p % coord(1) % uvw(3))
+        else
+          theta = acos(p % last_uvw(3))
+        end if
+
+        ! determine polar angle bin
+        n = t % filters(i) % n_bins
+
+        ! check if particle is within polar angle bins
+        if (theta < t % filters(i) % real_bins(1) .or. &
+             theta > t % filters(i) % real_bins(n + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find polar angle bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               n + 1, theta)
+        end if
+
+      case (FILTER_AZIMUTHAL)
+      ! make sure the correct direction vector is used
+        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
+        else
+          phi = atan2(p % last_uvw(2), p % last_uvw(1))
+        end if
+        ! determine mu bin
+        n = t % filters(i) % n_bins
+
+        ! check if particle is within azimuthal angle bins
+        if (phi < t % filters(i) % real_bins(1) .or. &
+             phi > t % filters(i) % real_bins(n + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find azimuthal angle bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               n + 1, phi)
+        end if
 
       end select
 

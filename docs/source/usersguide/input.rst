@@ -1266,6 +1266,34 @@ The ``<tally>`` element accepts the following sub-elements:
           :math:'\[-1,1\]' can be instead written as:
           ``<filter type="mu" bins="5" />``.
 
+        :polar:
+          A monotonically increasing list of bounding particle polar angles
+          which represents a portion of the possible values of :math:'\[0,\pi\]'.
+          For example, spanning all of :math:'\[0,\pi\]' with five equi-width
+          bins can be specified as:
+          ``<filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>``
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:'\[0,\pi\]' should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:'\[0,\pi\]' can be instead written as:
+          ``<filter type="polar" bins="5" />``.
+
+        :azimuthal:
+          A monotonically increasing list of bounding particle azimuthal angles
+          which represents a portion of the possible values of :math:'\[-\pi,\pi\]'.
+          For example, spanning all of :math:'\[-\pi,\pi\]' with five equi-width
+          bins can be specified as:
+          ``<filter type="azimuthal" bins="-3.1416 -1.8850 -0.6283 0.6283 1.8850 3.1416" />``
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:'\[-\pi,\pi\]' should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:'\[-\pi,\pi\]' can be instead written as:
+          ``<filter type="azimuthal" bins="5" />``.
+
         :mesh:
           The ``id`` of a structured mesh to be tallied over.
 

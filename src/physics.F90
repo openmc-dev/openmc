@@ -472,6 +472,12 @@ contains
     ! Set energy and direction of particle in LAB frame
     uvw = v_n / vel
 
+    ! Because of floating-point roundoff, it may be possible for mu_lab to be
+    ! outside of the range [-1,1). In these cases, we just set mu_lab to exactly
+    ! -1 or 1
+
+    if (abs(mu_lab) > ONE) mu_lab = sign(ONE,mu_lab)
+
   end subroutine elastic_scatter
 
 !===============================================================================
@@ -717,6 +723,12 @@ contains
              &// trim(sab % name))
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
+
+    ! Because of floating-point roundoff, it may be possible for mu to be
+    ! outside of the range [-1,1). In these cases, we just set mu to exactly
+    ! -1 or 1
+
+    if (abs(mu) > ONE) mu = sign(ONE,mu)
 
     ! change direction of particle
     uvw = rotate_angle(uvw, mu)
@@ -1305,6 +1317,11 @@ contains
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
       call sample_energy(rxn%edist, E_in, E, mu)
+      ! Because of floating-point roundoff, it may be possible for mu to be
+      ! outside of the range [-1,1). In these cases, we just set mu to exactly
+      ! -1 or 1
+
+      if (abs(mu) > ONE) mu = sign(ONE,mu)
     elseif (law == 66) then
       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
     else
@@ -1322,6 +1339,12 @@ contains
 
       ! determine outgoing angle in lab
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+
+      ! Because of floating-point roundoff, it may be possible for mu to be
+      ! outside of the range [-1,1). In these cases, we just set mu to exactly
+      ! -1 or 1
+
+      if (abs(mu) > ONE) mu = sign(ONE,mu)
     end if
 
     ! Set outgoing energy and scattering angle

@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>rectangular</type>
+    <lower_left>-182.07 -182.07</lower_left>
+    <upper_right>182.07 182.07</upper_right>
+    <dimension>17 17</dimension>
+  </mesh>
+
+  <tally id="1">
+    <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416" />
+    <scores>flux</scores>
+  </tally>
+
+  <tally id="2">
+    <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416" />
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+
+
+  <tally id="3">
+    <filter type="polar" bins="5" />
+    <scores>flux</scores>
+  </tally>
+
+  <tally id="4">
+    <filter type="mesh" bins="1" />
+    <filter type="polar" bins="5" />
+    <scores>flux</scores>
+  </tally>
+
+</tallies>

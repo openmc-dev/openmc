@@ -257,7 +257,9 @@ contains
                  "/filter " // to_str(j))
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &
-                 tally % filters(j) % type == FILTER_MU) then
+                 tally % filters(j) % type == FILTER_MU .or. &
+                 tally % filters(j) % type == FILTER_POLAR .or. &
+                 tally % filters(j) % type == FILTER_AZIMUTHAL) then
               call sp % write_data(tally % filters(j) % real_bins, "bins", &
                    group="tallies/tally " // trim(to_str(tally % id)) // &
                    "/filter " // to_str(j), &
@@ -845,7 +847,9 @@ contains
              "/filter " // to_str(j))
         if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
              tally % filters(j) % type == FILTER_ENERGYOUT .or. &
-             tally % filters(j) % type == FILTER_MU) then
+             tally % filters(j) % type == FILTER_MU .or. &
+             tally % filters(j) % type == FILTER_POLAR .or. &
+             tally % filters(j) % type == FILTER_AZIMUTHAL) then
           call sp % read_data(tally % filters(j) % real_bins, "bins", &
                group="tallies/tally " // trim(to_str(curr_key)) // &
                "/filter " // to_str(j), &

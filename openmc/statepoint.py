@@ -377,7 +377,8 @@ class StatePoint(object):
                     raise ValueError(msg)
 
                 # Read the bin values
-                if FILTER_TYPES[filter_type] in ['energy', 'energyout', 'mu']:
+                if FILTER_TYPES[filter_type] in ['energy', 'energyout', 'mu',
+                                                 'polar', 'azimuthal']:
                     bins = self._get_double(
                          n_bins+1, path='{0}{1}/bins'.format(subbase, j))
 

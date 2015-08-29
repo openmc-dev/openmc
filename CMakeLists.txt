@@ -7,6 +7,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
+# Make sure Fortran module directory is included when building
+include_directories(${CMAKE_BINARY_DIR}/include)
+
 #===============================================================================
 # Architecture specific definitions
 #===============================================================================
@@ -23,13 +26,9 @@ option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
-option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 
-if (verbose)
-  set(CMAKE_VERBOSE_MAKEFILE on)
-endif()
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")

@@ -65,7 +65,21 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+# Support for Fortran in FindOpenMP was added in CMake 3.1. To support lower
+# versions, we manually add the flags. However, at some point in time, the
+# manual logic can be removed in favor of the block below
+
+#if(NOT (CMAKE_VERSION VERSION_LESS 3.1))
+#  if(openmp)
+#    find_package(OpenMP)
+#    if(OPENMP_FOUND)
+#      list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
+#      list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
+#    endif()
+#  endif()
+#endif()
+
+if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
@@ -74,88 +88,90 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   endif()
 
   # GNU Fortran compiler options
-  set(f90flags  "-cpp -std=f2008 -fbacktrace")
+  list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   if(debug)
-    set(f90flags  "-g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow ${f90flags}")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
+      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-fopenmp ${f90flags}")
-    set(ldflags   "-fopenmp ${ldflags}")
+    list(APPEND f90flags -fopenmp)
+    list(APPEND ldflags -fopenmp)
   endif()
   if(coverage)
-    set(f90flags "-coverage ${f90flags}")
-    set(ldflags  "-coverage ${ldflags}")
+    list(APPEND f90flags -coverage)
+    list(APPEND ldflags -coverage)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   # Intel Fortran compiler options
-  set(f90flags  "-fpp -std08 -assume byterecl -traceback")
+  list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
   if(debug)
-    set(f90flags "-g -warn -ftrapuv -fp-stack-check -check all -fpe0 ${f90flags}")
-    set(ldflags  "-g")
+    list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+      "-check all" -fpe0)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-openmp ${f90flags}")
-    set(ldflags   "-openmp ${ldflags}")
+    list(APPEND f90flags -openmp)
+    list(APPEND ldflags -openmp)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
   # PGI Fortran compiler options
-  set(f90flags  "-Mpreprocess -Minform=inform -traceback")
+  list(APPEND f90flags -Mpreprocess -Minform=inform -traceback)
   add_definitions(-DNO_F2008)
   if(debug)
-    set(f90flags  "-g -Mbounds -Mchkptr -Mchkstk ${f90flags}")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -Mbounds -Mchkptr -Mchkstk)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-fast -Mipa ${f90flags}")
+    list(APPEND f90flags -fast -Mipa)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
   # IBM XL compiler options
-  set(f90flags  "-O2")
+  list(APPEND f90flags -O2)
   add_definitions(-DNO_F2008)
   if(debug)
-    set(f90flags  "-g -C -qflag=i:i -u")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -C -qflag=i:i -u)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-p ${f90flags}")
-    set(ldflags   "-p ${ldflags}")
+    list(APPEND f90flags -p)
+    list(APPEND ldflags -p)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-qsmp=omp ${f90flags}")
-    set(ldflags   "-qsmp=omp ${ldflags}")
+    list(APPEND f90flags -qsmp=omp)
+    list(APPEND ldflags -qsmp=omp)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
   # Cray Fortran compiler options
-  set(f90flags  "-e Z -m 0")
+  list(APPEND f90flags -e Z -m 0)
   if(debug)
-    set(f90flags  "-g -R abcnsp -O0 ${f90flags}")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -R abcnsp -O0)
+    list(APPEND ldflags -g)
   endif()
 
 endif()
@@ -203,10 +219,21 @@ add_subdirectory(src/xml/fox)
 set(program "openmc")
 file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox_dom)
-set_target_properties(${program} PROPERTIES
-  COMPILE_FLAGS "${f90flags}"
-  LINK_FLAGS "${ldflags}")
+
+# target_compile_options was added in CMake 2.8.12 and is the recommended way to
+# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
+# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
+# deprecated. The former can handle lists whereas the latter cannot.
+if(CMAKE_VERSION VERSION_LESS 4.8.12)
+  string(REPLACE ";" " " f90flags "${f90flags}")
+  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
+else()
+  target_compile_options(${program} PUBLIC ${f90flags})
+endif()
+
+# target_link_libraries treats any arguments starting with - but not -l as
+# linker flags. Thus, we can pass both linker flags and libraries together.
+target_link_libraries(${program} ${ldflags} ${libraries} fox_dom)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

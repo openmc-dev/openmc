@@ -7,6 +7,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
+# Set module path
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
 # Make sure Fortran module directory is included when building
 include_directories(${CMAKE_BINARY_DIR}/include)
 
@@ -35,14 +38,12 @@ set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 add_definitions(-DMAX_COORD=${maxcoord})
 
 #===============================================================================
-# MPI for distributed-memory parallelism / HDF5 for binary output
+# MPI for distributed-memory parallelism
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-if($ENV{FC} MATCHES "h5fc$")
-  message("-- Detected HDF5 wrapper: $ENV{FC}")
-elseif($ENV{FC} MATCHES "h5pfc$")
-  message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
+if($ENV{FC} MATCHES "mpi[^/]*$")
+  message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)
 endif()
@@ -51,6 +52,33 @@ endif()
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
   add_definitions(-DMPIF08)
+endif()
+
+#===============================================================================
+# HDF5 for binary output
+#===============================================================================
+
+# Unfortunately FindHDF5.cmake will always prefer a serial HDF5 installation
+# over a parallel installation if both appear on the user's PATH. To get around
+# this, we check for the environment variable HDF5_ROOT and if it exists, use it
+# to check whether its a parallel version.
+
+if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
+  set(HDF5_PREFER_PARALLEL TRUE)
+else()
+  set(HDF5_PREFER_PARALLEL FALSE)
+endif()
+
+find_package(HDF5 COMPONENTS Fortran_HL)
+if(NOT HDF5_FOUND)
+  message(FATAL_ERROR "Could not find HDF5")
+endif()
+if(HDF5_IS_PARALLEL)
+  if(NOT MPI_ENABLED)
+    message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
+  endif()
+  add_definitions(-DPHDF5)
+  message("-- Using parallel HDF5")
 endif()
 
 #===============================================================================
@@ -212,6 +240,14 @@ set(program "openmc")
 file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
 
+# target_include_directories was added in CMake 2.8.11 and is the recommended
+# way to set include directories. For lesser versions, we revert to set_property
+if(CMAKE_VERSION VERSION_LESS 2.8.11)
+  include_directories(${HDF5_INCLUDE_DIRS})
+else()
+  target_include_directories(${program} PUBLIC ${HDF5_INCLUDE_DIRS})
+endif()
+
 # target_compile_options was added in CMake 2.8.12 and is the recommended way to
 # set compile flags. Note that this sets the COMPILE_OPTIONS property (also
 # available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
@@ -225,7 +261,7 @@ endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${libraries} fox_dom)
+target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

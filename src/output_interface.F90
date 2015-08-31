@@ -96,7 +96,7 @@ contains
       self % serial = .true.
     end if
 
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_file_create(filename, self % hdf5_fh)
     else
@@ -126,7 +126,7 @@ contains
       self % serial = .true.
     end if
 
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_file_open(filename, self % hdf5_fh, mode)
     else
@@ -212,7 +212,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_double(self % hdf5_grp, name_, buffer)
     else
@@ -263,7 +263,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_double(self % hdf5_grp, name_, buffer)
     else
@@ -315,7 +315,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -368,7 +368,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_double_1Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -421,7 +421,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -474,7 +474,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_double_2Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -527,7 +527,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -580,7 +580,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_double_3Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -634,7 +634,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -689,7 +689,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_double_4Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -741,7 +741,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_integer(self % hdf5_grp, name_, buffer)
     else
@@ -792,7 +792,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_integer(self % hdf5_grp, name_, buffer)
     else
@@ -844,7 +844,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -897,7 +897,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_integer_1Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -951,7 +951,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1004,7 +1004,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_integer_2Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1057,7 +1057,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1110,7 +1110,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_integer_3Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1164,7 +1164,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1218,7 +1218,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_integer_4Darray(self % hdf5_grp, name_, buffer, length)
     else
@@ -1270,7 +1270,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
@@ -1322,7 +1322,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_long(self % hdf5_grp, name_, buffer, hdf5_integer8_t)
     else
@@ -1378,7 +1378,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_write_string(self % hdf5_grp, name_, buffer, n)
     else
@@ -1434,7 +1434,7 @@ contains
     else
       self % hdf5_grp = self % hdf5_fh
     endif
-#ifdef MPI
+#ifdef PHDF5
     if (self % serial) then
       call hdf5_read_string(self % hdf5_grp, name_, buffer, n)
     else
@@ -1579,11 +1579,11 @@ contains
 
     class(BinaryOutput) :: self
 
-#ifdef MPI
+#ifdef PHDF5
     integer(8) :: offset(1) ! source data offset
 #endif
 
-#ifdef MPI
+#ifdef PHDF5
 
     ! Set size of total dataspace for all procs and rank
     dims1(1) = n_particles
@@ -1662,11 +1662,11 @@ contains
 
     class(BinaryOutput) :: self
 
-#ifdef MPI
+#ifdef PHDF5
     integer(8) :: offset(1) ! offset of data
 #endif
 
-#ifdef MPI
+#ifdef PHDF5
 
     ! Set size of total dataspace for all procs and rank
     dims1(1) = n_particles

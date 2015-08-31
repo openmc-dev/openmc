@@ -4,7 +4,7 @@ module hdf5_interface
   use h5lt
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef MPI
+#ifdef PHDF5
   use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
 
@@ -36,7 +36,7 @@ module hdf5_interface
     module procedure hdf5_write_integer_4Darray
     module procedure hdf5_write_long
     module procedure hdf5_write_string
-#ifdef MPI
+#ifdef PHDF5
     module procedure hdf5_write_double_parallel
     module procedure hdf5_write_double_1Darray_parallel
     module procedure hdf5_write_double_2Darray_parallel
@@ -66,7 +66,7 @@ module hdf5_interface
     module procedure hdf5_read_integer_4Darray
     module procedure hdf5_read_long
     module procedure hdf5_read_string
-#ifdef MPI
+#ifdef PHDF5
     module procedure hdf5_read_double_parallel
     module procedure hdf5_read_double_1Darray_parallel
     module procedure hdf5_read_double_2Darray_parallel
@@ -134,7 +134,7 @@ contains
 
   end subroutine hdf5_file_close
 
-#ifdef MPI
+#ifdef PHDF5
 
 !===============================================================================
 ! HDF5_FILE_CREATE_PARALLEL creates HDF5 file with parallel I/O
@@ -809,7 +809,7 @@ contains
 
   end subroutine hdf5_write_attribute_string
 
-# ifdef MPI
+#ifdef PHDF5
 
 !===============================================================================
 ! HDF5_WRITE_INTEGER_PARALLEL writes integer scalar data in parallel
@@ -1807,6 +1807,6 @@ contains
 
   end subroutine hdf5_read_string_parallel
 
-# endif
+#endif
 
 end module hdf5_interface

@@ -107,12 +107,13 @@ tests = OrderedDict()
 
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
-                 valgrind=False, coverage=False):
+                 phdf5=False, valgrind=False, coverage=False):
         self.name = name
         self.debug = debug
         self.optimize = optimize
         self.mpi = mpi
         self.openmp = openmp
+        self.phdf5 = phdf5
         self.valgrind = valgrind
         self.coverage = coverage
         self.success = True
@@ -125,9 +126,9 @@ class Test(object):
 
         # Check for MPI
         if self.mpi:
-            self.fc = PHDF5_DIR + '/bin/h5pfc'
+            self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
         else:
-            self.fc = HDF5_DIR + '/bin/h5fc'
+            self.fc = FC
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
@@ -159,6 +160,10 @@ class Test(object):
         os.environ['FC'] = self.fc
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         rc = call(['ctest', '-S', 'ctestscript.run','-V'])
         if rc != 0:
             self.success = False
@@ -169,6 +174,10 @@ class Test(object):
         os.environ['FC'] = self.fc
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         build_opts = self.build_opts.split()
         self.cmake += build_opts
         rc = call(self.cmake)
@@ -258,8 +267,8 @@ class Test(object):
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
-             valgrind=False, coverage=False):
-    tests.update({name: Test(name, debug, optimize, mpi, openmp,
+             phdf5=False, valgrind=False, coverage=False):
+    tests.update({name: Test(name, debug, optimize, mpi, openmp, phdf5,
                              valgrind, coverage)})
 
 # List of all tests that may be run. User can add -C to command line to specify
@@ -270,12 +279,15 @@ add_test('hdf5-optimize', optimize=True)
 add_test('omp-hdf5-normal', openmp=True)
 add_test('omp-hdf5-debug', openmp=True, debug=True)
 add_test('omp-hdf5-optimize', openmp=True, optimize=True)
-add_test('phdf5-normal', mpi=True)
-add_test('phdf5-debug', mpi=True, debug=True)
-add_test('phdf5-optimize', mpi=True, optimize=True)
-add_test('phdf5-omp-normal', mpi=True, openmp=True)
-add_test('phdf5-omp-debug', mpi=True, openmp=True, debug=True)
-add_test('phdf5-omp-optimize', mpi=True, openmp=True, optimize=True)
+add_test('mpi-hdf5-normal', mpi=True)
+add_test('mpi-hdf5-debug', mpi=True, debug=True)
+add_test('mpi-hdf5-optimize', mpi=True, optimize=True)
+add_test('phdf5-normal', mpi=True, phdf5=True)
+add_test('phdf5-debug', mpi=True, phdf5=True, debug=True)
+add_test('phdf5-optimize', mpi=True, phdf5=True, optimize=True)
+add_test('phdf5-omp-normal', mpi=True, phdf5=True, openmp=True)
+add_test('phdf5-omp-debug', mpi=True, phdf5=True, openmp=True, debug=True)
+add_test('phdf5-omp-optimize', mpi=True, phdf5=True, openmp=True, optimize=True)
 add_test('hdf5-debug_valgrind', debug=True, valgrind=True)
 add_test('hdf5-debug_coverage', debug=True, coverage=True)
 

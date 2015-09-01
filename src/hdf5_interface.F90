@@ -246,14 +246,17 @@ contains
 
     integer(HID_T), intent(in) :: group  ! name of group
     character(*),   intent(in) :: name   ! name of data
-    integer,        intent(in) :: buffer ! data to write
+    integer, target, intent(in) :: buffer ! data to write
 
-    ! Set rank and dimensions
-    hdf5_rank = 1
-    dims1(1) = 1
+    ! Create space, dataset, and write
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
 
-    call h5ltmake_dataset_int_f(group, name, hdf5_rank, dims1, &
-         (/ buffer /), hdf5_err)
+    ! Close all
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
 
   end subroutine hdf5_write_integer
 
@@ -265,16 +268,12 @@ contains
 
     integer(HID_T), intent(in)    :: group  ! name of group
     character(*),   intent(in)    :: name   ! name of data
-    integer,        intent(inout) :: buffer ! read data to here
+    integer, target, intent(inout) :: buffer ! read data to here
 
-    integer :: buffer_copy(1) ! need an array for read
-
-    ! Set up dimensions
-    dims1(1) = 1
-
-    ! Read data
-    call h5ltread_dataset_int_f(group, name, buffer_copy, dims1, hdf5_err)
-    buffer = buffer_copy(1)
+    call h5dopen_f(group, name, dset, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5dclose_f(dset, hdf5_err)
 
   end subroutine hdf5_read_integer
 
@@ -450,14 +449,17 @@ contains
 
     integer(HID_T), intent(in) :: group  ! name of group
     character(*),   intent(in) :: name   ! name of data
-    real(8),        intent(in) :: buffer ! data to write
+    real(8), target, intent(in) :: buffer ! data to write
 
-    ! Set rank and dimensions
-    hdf5_rank = 1
-    dims1(1) = 1
+    ! Create space, dataset, and write
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
 
-    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims1, &
-         (/ buffer /), hdf5_err)
+    ! Close all
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
 
   end subroutine hdf5_write_double
 
@@ -469,16 +471,12 @@ contains
 
     integer(HID_T), intent(in)    :: group  ! name of group
     character(*),   intent(in)    :: name   ! name of data
-    real(8),        intent(inout) :: buffer ! read data to here
+    real(8), target, intent(inout) :: buffer ! read data to here
 
-    real(8) :: buffer_copy(1) ! need an array for read
-
-    ! Set up dimensions
-    dims1(1) = 1
-
-    ! Read data
-    call h5ltread_dataset_double_f(group, name, buffer_copy, dims1, hdf5_err)
-    buffer = buffer_copy(1)
+    call h5dopen_f(group, name, dset, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+    call h5dclose_f(dset, hdf5_err)
 
   end subroutine hdf5_read_double
 
@@ -657,15 +655,9 @@ contains
     integer(8), target, intent(in) :: buffer    ! data to write
     integer(HID_T),     intent(in) :: long_type ! HDF5 long type
 
-    ! Set up rank and dimensions
-    hdf5_rank = 1
-    dims1(1) = 1
-
     ! Create dataspace and dataset
-    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
     call h5dcreate_f(group, name, long_type, dspace, dset, hdf5_err)
-
-    ! Write eight-byte integer
     f_ptr = c_loc(buffer)
     call h5dwrite_f(dset, long_type, f_ptr, hdf5_err)
 
@@ -686,16 +678,9 @@ contains
     integer(8), target, intent(out) :: buffer    ! read data to here
     integer(HID_T),     intent(in)  :: long_type ! long integer type
 
-    ! Open dataset
     call h5dopen_f(group, name, dset, hdf5_err)
-
-    ! Get pointer to buffer
     f_ptr = c_loc(buffer)
-
-    ! Read data from dataset
     call h5dread_f(dset, long_type, f_ptr, hdf5_err)
-
-    ! Close dataset
     call h5dclose_f(dset, hdf5_err)
 
   end subroutine hdf5_read_long
@@ -822,10 +807,6 @@ contains
     integer,target, intent(in) :: buffer  ! data to write
     logical,        intent(in) :: collect ! collect I/O
 
-    ! Set rank and dimensions
-    hdf5_rank = 1
-    dims1(1) = 1
-
     ! Create property list for independent or collective read
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
 
@@ -837,7 +818,7 @@ contains
     end if
 
     ! Create dataspace
-    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
 
     ! Create dataset
     call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
@@ -1222,10 +1203,6 @@ contains
     real(8),target, intent(in) :: buffer  ! data to write
     logical,        intent(in) :: collect ! collect I/O
 
-    ! Set rank and dimensions
-    hdf5_rank = 1
-    dims1(1) = 1
-
     ! Create property list for independent or collective read
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
 
@@ -1237,7 +1214,7 @@ contains
     end if
 
     ! Create dataspace
-    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
 
     ! Create dataset
     call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)

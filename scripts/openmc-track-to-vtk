@@ -82,7 +82,7 @@ def main():
 
         else:
             track = h5py.File(fname)
-            n_particles = track['n_particles'].value[0]
+            n_particles = track['n_particles'].value
             n_coords = track['n_coords']
             coords = []
             for i in range(n_particles):

@@ -103,51 +103,38 @@ else()
     endforeach()
 endif()
 
+# Determine whether to search for serial or parallel executable first
 if(HDF5_PREFER_PARALLEL)
-  # try to find the HDF5 wrapper compilers
-  find_program( HDF5_C_COMPILER_EXECUTABLE
-    NAMES h5pcc h5cc
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_C_COMPILER_EXECUTABLE )
-
-  find_program( HDF5_CXX_COMPILER_EXECUTABLE
-    NAMES h5pc++ h5c++
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 C++ Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_CXX_COMPILER_EXECUTABLE )
-
-  find_program( HDF5_Fortran_COMPILER_EXECUTABLE
-    NAMES h5pfc h5fc
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 Fortran Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_Fortran_COMPILER_EXECUTABLE )
+  set(HDF5_C_COMPILER_NAMES h5pcc h5cc)
+  set(HDF5_CXX_COMPILER_NAMES h5pc++ h5c++)
+  set(HDF5_Fortran_COMPILER_NAMES h5pfc h5fc)
 else()
-  # try to find the HDF5 wrapper compilers
-  find_program( HDF5_C_COMPILER_EXECUTABLE
-    NAMES h5cc h5pcc
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_C_COMPILER_EXECUTABLE )
-
-  find_program( HDF5_CXX_COMPILER_EXECUTABLE
-    NAMES h5c++ h5pc++
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 C++ Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_CXX_COMPILER_EXECUTABLE )
-
-  find_program( HDF5_Fortran_COMPILER_EXECUTABLE
-    NAMES h5fc h5pfc
-    HINTS ENV HDF5_ROOT
-    PATH_SUFFIXES bin Bin
-    DOC "HDF5 Fortran Wrapper compiler.  Used only to detect HDF5 compile flags." )
-  mark_as_advanced( HDF5_Fortran_COMPILER_EXECUTABLE )
+  set(HDF5_C_COMPILER_NAMES h5cc h5pcc)
+  set(HDF5_CXX_COMPILER_NAMES h5c++ h5pc++)
+  set(HDF5_Fortran_COMPILER_NAMES h5fc h5pfc)
 endif()
+
+# try to find the HDF5 wrapper compilers
+find_program( HDF5_C_COMPILER_EXECUTABLE
+  NAMES ${HDF5_C_COMPILER_NAMES}
+  HINTS ENV HDF5_ROOT
+  PATH_SUFFIXES bin Bin
+  DOC "HDF5 Wrapper compiler.  Used only to detect HDF5 compile flags." )
+mark_as_advanced( HDF5_C_COMPILER_EXECUTABLE )
+
+find_program( HDF5_CXX_COMPILER_EXECUTABLE
+  NAMES ${HDF5_CXX_COMPILER_NAMES}
+  HINTS ENV HDF5_ROOT
+  PATH_SUFFIXES bin Bin
+  DOC "HDF5 C++ Wrapper compiler.  Used only to detect HDF5 compile flags." )
+mark_as_advanced( HDF5_CXX_COMPILER_EXECUTABLE )
+
+find_program( HDF5_Fortran_COMPILER_EXECUTABLE
+  NAMES ${HDF5_Fortran_COMPILER_NAMES}
+  HINTS ENV HDF5_ROOT
+  PATH_SUFFIXES bin Bin
+  DOC "HDF5 Fortran Wrapper compiler.  Used only to detect HDF5 compile flags." )
+mark_as_advanced( HDF5_Fortran_COMPILER_EXECUTABLE )
 
 find_program( HDF5_DIFF_EXECUTABLE
     NAMES h5diff
@@ -358,9 +345,6 @@ if( NOT HDF5_FOUND )
     endif()
     if( HDF5_LIBRARY_DIRS )
         _remove_duplicates_from_beginning( HDF5_LIBRARY_DIRS )
-    endif()
-    if( HDF5_LIBRARIES )
-      _remove_duplicates_from_beginning( HDF5_LIBRARIES )
     endif()
 
     # If the HDF5 include directory was found, open H5pubconf.h to determine if

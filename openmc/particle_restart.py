@@ -48,38 +48,23 @@ class Particle(object):
 
     def _read_data(self):
         # Read filetype
-        self.filetype = self._get_int(path='filetype')[0]
+        self.filetype = self._f['filetype'].value
 
         # Read statepoint revision
-        self.revision = self._get_int(path='revision')[0]
+        self.revision = self._f['revision'].value
 
         # Read current batch
-        self.current_batch = self._get_int(path='current_batch')[0]
+        self.current_batch = self._f['current_batch'].value
 
         # Read run information
-        self.gen_per_batch = self._get_int(path='gen_per_batch')[0]
-        self.current_gen = self._get_int(path='current_gen')[0]
-        self.n_particles = self._get_long(path='n_particles')[0]
-        self.run_mode = self._get_int(path='run_mode')[0]
+        self.gen_per_batch = self._f['gen_per_batch'].value
+        self.current_gen = self._f['current_gen'].value
+        self.n_particles = self._f['n_particles'].value
+        self.run_mode = self._f['run_mode'].value
 
         # Read particle properties
-        self.id = self._get_long(path='id')[0]
-        self.weight = self._get_double(path='weight')[0]
-        self.energy = self._get_double(path='energy')[0]
-        self.xyz = self._get_double(3, path='xyz')
-        self.uvw = self._get_double(3, path='uvw')
-
-    def _get_int(self, n=1, path=None):
-        return [int(v) for v in self._f[path].value]
-
-    def _get_long(self, n=1, path=None):
-        return [int(v) for v in self._f[path].value]
-
-    def _get_float(self, n=1, path=None):
-        return [float(v) for v in self._f[path].value]
-
-    def _get_double(self, n=1, path=None):
-        return [float(v) for v in self._f[path].value]
-
-    def _get_string(self, n=1, path=None):
-        return str(self._f[path].value)
+        self.id = self._f['id'].value
+        self.weight = self._f['weight'].value
+        self.energy = self._f['energy'].value
+        self.xyz = self._f['xyz'].value
+        self.uvw = self._f['uvw'].value

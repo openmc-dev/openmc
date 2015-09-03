@@ -64,10 +64,9 @@ module hdf5_interface
   public :: file_create
   public :: file_open
   public :: file_close
+  public :: create_group
   public :: open_group
   public :: close_group
-  public :: write_source_bank
-  public :: read_source_bank
   public :: write_attribute_string
 
 contains
@@ -243,7 +242,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -287,9 +288,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -344,7 +346,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -404,9 +408,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -461,7 +466,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -521,9 +528,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -578,7 +586,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -638,9 +648,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -695,7 +706,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -755,9 +768,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -795,7 +809,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -839,9 +855,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -896,7 +913,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -956,9 +975,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1013,7 +1033,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -1073,9 +1095,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1130,7 +1153,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -1190,9 +1215,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1247,7 +1273,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist    ! property list
+#endif
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -1307,9 +1335,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1347,7 +1376,9 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
@@ -1391,9 +1422,10 @@ contains
 
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1432,12 +1464,13 @@ contains
     integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HSIZE_T) :: dims1(1)
     integer(HSIZE_T) :: dims2(2)
-    type(c_ptr) :: f_ptr
     character(len=len_trim(buffer)), dimension(1) :: str_tmp
 
     ! Set up collective vs. independent I/O
@@ -1492,12 +1525,13 @@ contains
     integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
+#ifdef PHDF5
     integer(HID_T) :: plist   ! property list
+#endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HSIZE_T) :: dims1(1)
     integer(HSIZE_T) :: dims2(2)
-    type(c_ptr) :: f_ptr
     character(len=len_trim(buffer)), dimension(1) :: str_tmp
 
     ! Set up collective vs. independent I/O
@@ -1672,164 +1706,6 @@ contains
     call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
     call h5dclose_f(dset, hdf5_err)
   end subroutine read_tally_result_2D_explicit
-
-!===============================================================================
-! WRITE_SOURCE_BANK writes OpenMC source_bank data
-!===============================================================================
-
-  subroutine write_source_bank(group_id)
-    use bank_header, only: Bank
-    use global, only: n_particles, work, source_bank
-
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-    integer(HID_T) :: plist    ! property list
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: dims(1)
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HSIZE_T) :: offset(1) ! source data offset
-#endif
-
-#ifdef PHDF5
-    ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(rank, dims, memspace, hdf5_err)
-
-    ! Get the individual local proc dataspace
-    call h5dget_space_f(dset, dspace, hdf5_err)
-
-    ! Select hyperslab for this dataspace
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up the property list for parallel writing
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Write data to file in parallel
-    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5pclose_f(plist, hdf5_err)
-
-#else
-
-    ! Set size
-    dims(1) = work
-
-    ! Create dataspace
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-
-    ! Create dataset
-    call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
-         dspace, dset, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Write dataset to file
-    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
-
-    ! Close all ids
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-
-#endif
-
-  end subroutine write_source_bank
-
-!===============================================================================
-! READ_SOURCE_BANK reads OpenMC source_bank data
-!===============================================================================
-
-  subroutine read_source_bank(group_id)
-    use bank_header, only: Bank
-    use global, only: work, source_bank
-
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-    integer(HID_T) :: plist    ! property list
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: dims(1)
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HSIZE_T) :: offset(1) ! offset of data
-#endif
-
-#ifdef PHDF5
-
-    ! Open the dataset
-    call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Get the individual local proc dataspace
-    call h5dget_space_f(dset, dspace, hdf5_err)
-
-    ! Select hyperslab for this dataspace
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up the property list for parallel writing
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Read data from file in parallel
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5pclose_f(plist, hdf5_err)
-
-#else
-
-    ! Open dataset
-    call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Read dataset from file
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
-
-    ! Close all ids
-    call h5dclose_f(dset, hdf5_err)
-
-#endif
-
-  end subroutine read_source_bank
 
   function using_mpio_device(obj_id) result(mpio)
     integer(HID_T), intent(in) :: obj_id

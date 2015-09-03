@@ -6,18 +6,26 @@
 module track_output
 
   use global
-  use output_interface,  only: BinaryOutput
+  use hdf5_interface
   use particle_header,   only: Particle
   use string,            only: to_str
 
-  implicit none
+  use hdf5
 
-  type, private :: TrackCoordinates
+  implicit none
+  private
+
+  type TrackCoordinates
     real(8), allocatable :: coords(:,:)
   end type TrackCoordinates
 
-  type(TrackCoordinates), private, allocatable :: tracks(:)
+  type(TrackCoordinates), allocatable :: tracks(:)
 !$omp threadprivate(tracks)
+
+  public :: initialize_particle_track
+  public :: write_particle_track
+  public :: add_particle_track
+  public :: finalize_particle_track
 
 contains
 
@@ -43,19 +51,19 @@ contains
 
     ! Add another column to coords
     i = size(tracks)
-    if (allocated(tracks(i) % coords)) then
-      n_tracks = size(tracks(i) % coords, 2)
+    if (allocated(tracks(i)%coords)) then
+      n_tracks = size(tracks(i)%coords, 2)
       allocate(new_coords(3, n_tracks + 1))
-      new_coords(:, 1:n_tracks) = tracks(i) % coords
-      call move_alloc(FROM=new_coords, TO=tracks(i) % coords)
+      new_coords(:, 1:n_tracks) = tracks(i)%coords
+      call move_alloc(FROM=new_coords, TO=tracks(i)%coords)
     else
       n_tracks = 0
-      allocate(tracks(i) % coords(3, 1))
+      allocate(tracks(i)%coords(3, 1))
     end if
 
     ! Write current coordinates into the newest column.
     n_tracks = n_tracks + 1
-    tracks(i) % coords(:, n_tracks) = p % coord(1) % xyz
+    tracks(i)%coords(:, n_tracks) = p%coord(1)%xyz
   end subroutine write_particle_track
 
 !===============================================================================
@@ -87,35 +95,32 @@ contains
   subroutine finalize_particle_track(p)
     type(Particle), intent(in)  :: p
 
-    integer                  :: length(2)
-    character(MAX_FILE_LEN)  :: fname
-    type(BinaryOutput)       :: binout
-
     integer :: i
-    integer, allocatable :: n_coords(:)
     integer :: n_particle_tracks
+    integer(HID_T) :: file_id
+    character(MAX_FILE_LEN) :: fname
+    integer, allocatable :: n_coords(:)
 
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
+         // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p%id)) &
          // '.h5'
 
     ! Determine total number of particles and number of coordinates for each
     n_particle_tracks = size(tracks)
     allocate(n_coords(n_particle_tracks))
     do i = 1, n_particle_tracks
-      n_coords(i) = size(tracks(i) % coords, 2)
+      n_coords(i) = size(tracks(i)%coords, 2)
     end do
 
 !$omp critical (FinalizeParticleTrack)
-    call binout % file_create(fname)
-    call binout % write_data(n_particle_tracks, 'n_particles')
-    call binout % write_data(n_coords, 'n_coords', length=n_particle_tracks)
+    file_id = file_create(fname)
+    call write_dataset(file_id, 'n_particles', n_particle_tracks)
+    call write_dataset(file_id, 'n_coords', n_coords)
     do i = 1, n_particle_tracks
-      length(:) = [3, n_coords(i)]
-      call binout % write_data(tracks(i) % coords, 'coordinates_' // &
-           trim(to_str(i)), length=length)
+      call write_dataset(file_id, 'coordinates_' // trim(to_str(i)), &
+           tracks(i)%coords)
     end do
-    call binout % file_close()
+    call file_close(file_id)
 !$omp end critical (FinalizeParticleTrack)
     deallocate(tracks)
   end subroutine finalize_particle_track

@@ -133,7 +133,11 @@ class MeshPlotter(tk.Frame):
         self.mesh = selectedTally.filters_by_name['mesh'].mesh
 
         # Get mesh dimensions
-        self.nx, self.ny, self.nz = self.mesh.dimension
+        if len(self.mesh.dimension) == 2:
+            self.nx, self.ny = self.mesh.dimension
+            self.nz = 1
+        else:
+            self.nx, self.ny, self.nz = self.mesh.dimension
 
         # Repopulate comboboxes baesd on current basis selection
         text = self.basisBox.get()

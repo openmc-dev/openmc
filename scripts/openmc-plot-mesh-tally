@@ -230,9 +230,9 @@ class MeshPlotter(tk.Frame):
                     meshtuple = (i + 1, axial_level, j + 1)
                 filters, filter_bins = zip(*spec_list + [
                     (mesh_filter, meshtuple)])
-                mean = selectedTally.get_value(
+                mean = selectedTally.get_values(
                     self.scoreBox.get(), filters, filter_bins)
-                stdev = selectedTally.get_value(
+                stdev = selectedTally.get_values(
                     self.scoreBox.get(), filters, filter_bins,
                     value='std_dev')
                 if mbvalue == 'Mean':

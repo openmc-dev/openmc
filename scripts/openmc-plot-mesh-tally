@@ -210,7 +210,7 @@ class MeshPlotter(tk.Frame):
                 mesh_filter = f
                 continue
             index = self.filterBoxes[f.type].current()
-            spec_list.append((f, index))
+            spec_list.append((f.type, (index,)))
 
         text = self.basisBox.get()
         if text == 'xy':
@@ -229,11 +229,11 @@ class MeshPlotter(tk.Frame):
                 else:
                     meshtuple = (i + 1, axial_level, j + 1)
                 filters, filter_bins = zip(*spec_list + [
-                    (mesh_filter, meshtuple)])
+                    (mesh_filter.type, (meshtuple,))])
                 mean = selectedTally.get_values(
-                    self.scoreBox.get(), filters, filter_bins)
+                    [self.scoreBox.get()], filters, filter_bins)
                 stdev = selectedTally.get_values(
-                    self.scoreBox.get(), filters, filter_bins,
+                    [self.scoreBox.get()], filters, filter_bins,
                     value='std_dev')
                 if mbvalue == 'Mean':
                     matrix[i, j] = mean

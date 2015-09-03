@@ -12,12 +12,14 @@ module initialize
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                               &BASE_UNIVERSE
   use global
+  use hdf5_interface,   only: file_open, read_dataset, file_close, hdf5_bank_t,&
+                              hdf5_tallyresult_t, hdf5_integer8_t
+  use hdf5_summary,     only: hdf5_write_summary
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
   use output,           only: title, header, print_version, write_message,     &
                               print_usage, write_xs_summary, print_plot
-  use output_interface
   use random_lcg,       only: initialize_prng
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
@@ -32,8 +34,7 @@ module initialize
   use omp_lib
 #endif
 
-  use hdf5_interface
-  use hdf5_summary,     only: hdf5_write_summary
+  use hdf5
 
   implicit none
 
@@ -49,8 +50,8 @@ contains
   subroutine initialize_run()
 
     ! Start total and initialization timer
-    call time_total % start()
-    call time_initialize % start()
+    call time_total%start()
+    call time_initialize%start()
 
 #ifdef MPI
     ! Setup MPI
@@ -110,9 +111,9 @@ contains
       call normalize_ao()
 
       ! Read ACE-format cross sections
-      call time_read_xs % start()
+      call time_read_xs%start()
       call read_xs()
-      call time_read_xs % stop()
+      call time_read_xs%stop()
 
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
@@ -122,9 +123,9 @@ contains
       case (GRID_NUCLIDE)
         continue
       case (GRID_MAT_UNION)
-        call time_unionize % start()
+        call time_unionize%start()
         call unionized_grid()
-        call time_unionize % stop()
+        call time_unionize%stop()
       case (GRID_LOGARITHM)
         call logarithmic_grid()
       end select
@@ -167,7 +168,7 @@ contains
     end if
 
     ! Stop initialization timer
-    call time_initialize % stop()
+    call time_initialize%stop()
 
   end subroutine initialize_run
 
@@ -220,10 +221,10 @@ contains
     ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b%wgt, bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b%xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b%uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b%E,   bank_disp(4), mpi_err)
 
     ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
@@ -239,8 +240,8 @@ contains
     ! CREATE MPI_TALLYRESULT TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(tr % value, result_base_disp, mpi_err)
-    call MPI_GET_ADDRESS(tr % sum, result_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(tr%value, result_base_disp, mpi_err)
+    call MPI_GET_ADDRESS(tr%sum, result_disp(1), mpi_err)
 
     ! Adjust displacements
     result_disp = result_disp - result_base_disp
@@ -274,6 +275,7 @@ contains
 
     type(TallyResult), target :: tmp(2)          ! temporary TallyResult
     type(Bank),        target :: tmpb(2)         ! temporary Bank
+    integer                   :: hdf5_err
     integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
     integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
 
@@ -318,8 +320,8 @@ contains
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
     integer :: filetype
+    integer(HID_T) :: file_id
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
-    type(BinaryOutput) :: sp
 
     ! Check number of command line arguments and allocate argv
     argc = COMMAND_ARGUMENT_COUNT()
@@ -356,9 +358,9 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call sp % file_open(argv(i), 'r', serial = .false.)
-          call sp % read_data(filetype, 'filetype')
-          call sp % file_close()
+          file_id = file_open(argv(i), 'r', parallel=.true.)
+          call read_dataset(file_id, 'filetype', filetype)
+          call file_close(file_id)
 
           ! Set path and flag for type of run
           select case (filetype)
@@ -379,13 +381,12 @@ contains
             i = i + 1
 
             ! Check if it has extension we can read
-            if ((ends_with(argv(i), '.binary') .or. &
-                 ends_with(argv(i), '.h5'))) then
+            if (ends_with(argv(i), '.h5')) then
 
               ! Check file type is a source file
-              call sp % file_open(argv(i), 'r', serial = .false.)
-              call sp % read_data(filetype, 'filetype')
-              call sp % file_close()
+              file_id = file_open(argv(i), 'r', parallel=.true.)
+              call read_dataset(file_id, 'filetype', filetype)
+              call file_close(file_id)
               if (filetype /= FILETYPE_SOURCE) then
                 call fatal_error("Second file after restart flag must be a &
                      &source file")
@@ -494,26 +495,26 @@ contains
     ! pairs are the id of the universe and the index in the array. In
     ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
-    pair_list => universe_dict % keys()
+    pair_list => universe_dict%keys()
     current => pair_list
     do while (associated(current))
       ! Find index of universe in universes array
-      i_univ = current % value
+      i_univ = current%value
       univ => universes(i_univ)
-      univ % id = current % key
+      univ%id = current%key
 
       ! Check for lowest level universe
-      if (univ % id == 0) BASE_UNIVERSE = i_univ
+      if (univ%id == 0) BASE_UNIVERSE = i_univ
 
       ! Find cell count for this universe
-      n_cells_in_univ = cells_in_univ_dict % get_key(univ % id)
+      n_cells_in_univ = cells_in_univ_dict%get_key(univ%id)
 
       ! Allocate cell list for universe
-      allocate(univ % cells(n_cells_in_univ))
-      univ % n_cells = n_cells_in_univ
+      allocate(univ%cells(n_cells_in_univ))
+      univ%n_cells = n_cells_in_univ
 
       ! Move to next universe
-      next => current % next
+      next => current%next
       deallocate(current)
       current => next
     end do
@@ -528,17 +529,17 @@ contains
       c => cells(i)
 
       ! Get pointer to corresponding universe
-      i_univ = universe_dict % get_key(c % universe)
+      i_univ = universe_dict%get_key(c%universe)
       univ => universes(i_univ)
 
       ! Increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
-      univ % cells(index_cell_in_univ(i_univ)) = i
+      univ%cells(index_cell_in_univ(i_univ)) = i
     end do
 
     ! Clear dictionary
-    call cells_in_univ_dict % clear()
+    call cells_in_univ_dict%clear()
 
   end subroutine prepare_universes
 
@@ -568,15 +569,15 @@ contains
       ! ADJUST SURFACE LIST FOR EACH CELL
 
       c => cells(i)
-      do j = 1, c % n_surfaces
-        id = c % surfaces(j)
+      do j = 1, c%n_surfaces
+        id = c%surfaces(j)
         if (id < OP_DIFFERENCE) then
-          if (surface_dict % has_key(abs(id))) then
-            i_array = surface_dict % get_key(abs(id))
-            c % surfaces(j) = sign(i_array, id)
+          if (surface_dict%has_key(abs(id))) then
+            i_array = surface_dict%get_key(abs(id))
+            c%surfaces(j) = sign(i_array, id)
           else
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
-                 &// " specified on cell " // trim(to_str(c % id)))
+                 &// " specified on cell " // trim(to_str(c%id)))
           end if
         end if
       end do
@@ -584,40 +585,40 @@ contains
       ! =======================================================================
       ! ADJUST UNIVERSE INDEX FOR EACH CELL
 
-      id = c % universe
-      if (universe_dict % has_key(id)) then
-        c % universe = universe_dict % get_key(id)
+      id = c%universe
+      if (universe_dict%has_key(id)) then
+        c%universe = universe_dict%get_key(id)
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c % id)))
+             &// " specified on cell " // trim(to_str(c%id)))
       end if
 
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-      id = c % material
+      id = c%material
       if (id == MATERIAL_VOID) then
-        c % type = CELL_NORMAL
+        c%type = CELL_NORMAL
       elseif (id /= 0) then
-        if (material_dict % has_key(id)) then
-          c % type = CELL_NORMAL
-          c % material = material_dict % get_key(id)
+        if (material_dict%has_key(id)) then
+          c%type = CELL_NORMAL
+          c%material = material_dict%get_key(id)
         else
           call fatal_error("Could not find material " // trim(to_str(id)) &
-               &// " specified on cell " // trim(to_str(c % id)))
+               &// " specified on cell " // trim(to_str(c%id)))
         end if
       else
-        id = c % fill
-        if (universe_dict % has_key(id)) then
-          c % type = CELL_FILL
-          c % fill = universe_dict % get_key(id)
-        elseif (lattice_dict % has_key(id)) then
-          lid = lattice_dict % get_key(id)
-          c % type = CELL_LATTICE
-          c % fill = lid
+        id = c%fill
+        if (universe_dict%has_key(id)) then
+          c%type = CELL_FILL
+          c%fill = universe_dict%get_key(id)
+        elseif (lattice_dict%has_key(id)) then
+          lid = lattice_dict%get_key(id)
+          c%type = CELL_LATTICE
+          c%fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               &// trim(to_str(c % id)) // " is neither a universe nor a &
+               &// trim(to_str(c%id)) // " is neither a universe nor a &
                &lattice.")
         end if
       end if
@@ -627,41 +628,41 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i) % obj
+      lat => lattices(i)%obj
       select type (lat)
 
       type is (RectLattice)
-        do m = 1, lat % n_cells(3)
-          do k = 1, lat % n_cells(2)
-            do j = 1, lat % n_cells(1)
-              id = lat % universes(j,k,m)
-              if (universe_dict % has_key(id)) then
-                lat % universes(j,k,m) = universe_dict % get_key(id)
+        do m = 1, lat%n_cells(3)
+          do k = 1, lat%n_cells(2)
+            do j = 1, lat%n_cells(1)
+              id = lat%universes(j,k,m)
+              if (universe_dict%has_key(id)) then
+                lat%universes(j,k,m) = universe_dict%get_key(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id)))
+                     &// trim(to_str(lat%id)))
               end if
             end do
           end do
         end do
 
       type is (HexLattice)
-        do m = 1, lat % n_axial
-          do k = 1, 2*lat % n_rings - 1
-            do j = 1, 2*lat % n_rings - 1
-              if (j + k < lat % n_rings + 1) then
+        do m = 1, lat%n_axial
+          do k = 1, 2*lat%n_rings - 1
+            do j = 1, 2*lat%n_rings - 1
+              if (j + k < lat%n_rings + 1) then
                 cycle
-              else if (j + k > 3*lat % n_rings - 1) then
+              else if (j + k > 3*lat%n_rings - 1) then
                 cycle
               end if
-              id = lat % universes(j, k, m)
-              if (universe_dict % has_key(id)) then
-                lat % universes(j, k, m) = universe_dict % get_key(id)
+              id = lat%universes(j, k, m)
+              if (universe_dict%has_key(id)) then
+                lat%universes(j, k, m) = universe_dict%get_key(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id)))
+                     &// trim(to_str(lat%id)))
               end if
             end do
           end do
@@ -669,13 +670,13 @@ contains
 
       end select
 
-      if (lat % outer /= NO_OUTER_UNIVERSE) then
-        if (universe_dict % has_key(lat % outer)) then
-          lat % outer = universe_dict % get_key(lat % outer)
+      if (lat%outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict%has_key(lat%outer)) then
+          lat%outer = universe_dict%get_key(lat%outer)
         else
           call fatal_error("Invalid universe number " &
-               &// trim(to_str(lat % outer)) &
-               &// " specified on lattice " // trim(to_str(lat % id)))
+               &// trim(to_str(lat%outer)) &
+               &// " specified on lattice " // trim(to_str(lat%id)))
         end if
       end if
 
@@ -687,68 +688,68 @@ contains
       ! =======================================================================
       ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      FILTER_LOOP: do j = 1, t % n_filters
+      FILTER_LOOP: do j = 1, t%n_filters
 
-        select case (t % filters(j) % type)
+        select case (t%filters(j)%type)
         case (FILTER_DISTRIBCELL)
-          do k = 1, size(t % filters(j) % int_bins)
-            id = t % filters(j) % int_bins(k)
-            if (cell_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = cell_dict % get_key(id)
+          do k = 1, size(t%filters(j)%int_bins)
+            id = t%filters(j)%int_bins(k)
+            if (cell_dict%has_key(id)) then
+              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
             else
               call fatal_error("Could not find cell " // trim(to_str(id)) // &
-                               " specified on tally " // trim(to_str(t % id)))
+                               " specified on tally " // trim(to_str(t%id)))
             end if
 
           end do
         case (FILTER_CELL, FILTER_CELLBORN)
 
-          do k = 1, t % filters(j) % n_bins
-            id = t % filters(j) % int_bins(k)
-            if (cell_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = cell_dict % get_key(id)
+          do k = 1, t%filters(j)%n_bins
+            id = t%filters(j)%int_bins(k)
+            if (cell_dict%has_key(id)) then
+              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
             else
               call fatal_error("Could not find cell " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t % id)))
+                   &// " specified on tally " // trim(to_str(t%id)))
             end if
           end do
 
         case (FILTER_SURFACE)
 
           ! Check if this is a surface filter only for surface currents
-          if (any(t % score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
+          if (any(t%score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
 
-          do k = 1, t % filters(j) % n_bins
-            id = t % filters(j) % int_bins(k)
-            if (surface_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = surface_dict % get_key(id)
+          do k = 1, t%filters(j)%n_bins
+            id = t%filters(j)%int_bins(k)
+            if (surface_dict%has_key(id)) then
+              t%filters(j)%int_bins(k) = surface_dict%get_key(id)
             else
               call fatal_error("Could not find surface " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t % id)))
+                   &// " specified on tally " // trim(to_str(t%id)))
             end if
           end do
 
         case (FILTER_UNIVERSE)
 
-          do k = 1, t % filters(j) % n_bins
-            id = t % filters(j) % int_bins(k)
-            if (universe_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = universe_dict % get_key(id)
+          do k = 1, t%filters(j)%n_bins
+            id = t%filters(j)%int_bins(k)
+            if (universe_dict%has_key(id)) then
+              t%filters(j)%int_bins(k) = universe_dict%get_key(id)
             else
               call fatal_error("Could not find universe " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t % id)))
+                   &// " specified on tally " // trim(to_str(t%id)))
             end if
           end do
 
         case (FILTER_MATERIAL)
 
-          do k = 1, t % filters(j) % n_bins
-            id = t % filters(j) % int_bins(k)
-            if (material_dict % has_key(id)) then
-              t % filters(j) % int_bins(k) = material_dict % get_key(id)
+          do k = 1, t%filters(j)%n_bins
+            id = t%filters(j)%int_bins(k)
+            if (material_dict%has_key(id)) then
+              t%filters(j)%int_bins(k) = material_dict%get_key(id)
             else
               call fatal_error("Could not find material " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t % id)))
+                   &// " specified on tally " // trim(to_str(t%id)))
             end if
           end do
 
@@ -786,46 +787,46 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
-      percent_in_atom = (mat % atom_density(1) > ZERO)
-      density_in_atom = (mat % density > ZERO)
+      percent_in_atom = (mat%atom_density(1) > ZERO)
+      density_in_atom = (mat%density > ZERO)
 
       sum_percent = ZERO
-      do j = 1, mat % n_nuclides
+      do j = 1, mat%n_nuclides
         ! determine atomic weight ratio
-        index_list = xs_listing_dict % get_key(mat % names(j))
-        awr = xs_listings(index_list) % awr
+        index_list = xs_listing_dict%get_key(mat%names(j))
+        awr = xs_listings(index_list)%awr
 
         ! if given weight percent, convert all values so that they are divided
         ! by awr. thus, when a sum is done over the values, it's actually
         ! sum(w/awr)
         if (.not. percent_in_atom) then
-          mat % atom_density(j) = -mat % atom_density(j) / awr
+          mat%atom_density(j) = -mat%atom_density(j) / awr
         end if
       end do
 
       ! determine normalized atom percents. if given atom percents, this is
       ! straightforward. if given weight percents, the value is w/awr and is
       ! divided by sum(w/awr)
-      sum_percent = sum(mat % atom_density)
-      mat % atom_density = mat % atom_density / sum_percent
+      sum_percent = sum(mat%atom_density)
+      mat%atom_density = mat%atom_density / sum_percent
 
       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
       if (.not. density_in_atom) then
         sum_percent = ZERO
-        do j = 1, mat % n_nuclides
-          index_list = xs_listing_dict % get_key(mat % names(j))
-          awr = xs_listings(index_list) % awr
-          x = mat % atom_density(j)
+        do j = 1, mat%n_nuclides
+          index_list = xs_listing_dict%get_key(mat%names(j))
+          awr = xs_listings(index_list)%awr
+          x = mat%atom_density(j)
           sum_percent = sum_percent + x*awr
         end do
         sum_percent = ONE / sum_percent
-        mat % density = -mat % density * N_AVOGADRO &
+        mat%density = -mat%density * N_AVOGADRO &
              / MASS_NEUTRON * sum_percent
       end if
 
       ! Calculate nuclide atom densities
-      mat % atom_density = mat % density * mat % atom_density
+      mat%atom_density = mat%density * mat%atom_density
     end do
 
   end subroutine normalize_ao
@@ -942,16 +943,16 @@ contains
       ! Get pointer to tally
       tally => tallies(i)
 
-      n_filt = tally % n_filters
+      n_filt = tally%n_filters
 
       ! Loop over the filters to determine how many additional filters
       ! need to be added to this tally
-      do j = 1, tally % n_filters
+      do j = 1, tally%n_filters
 
         ! Determine type of filter
-        if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
+        if (tally%filters(j)%type == FILTER_DISTRIBCELL) then
           count_all = .true.
-          if (size(tally % filters(j) % int_bins) > 1) then
+          if (size(tally%filters(j)%int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
           end if
@@ -975,12 +976,12 @@ contains
         tally => tallies(i)
 
         ! Initialize the filters
-        do j = 1, tally % n_filters
+        do j = 1, tally%n_filters
 
           ! Set the number of bins to the number of instances of the cell
-          if (tally % filters(j) % type == FILTER_DISTRIBCELL) then
-            c => cells(tally % filters(j) % int_bins(1))
-            tally % filters(j) % n_bins = c % instances
+          if (tally%filters(j)%type == FILTER_DISTRIBCELL) then
+            c => cells(tally%filters(j)%int_bins(1))
+            tally%filters(j)%n_bins = c%instances
           end if
 
         end do
@@ -1031,12 +1032,12 @@ contains
     do i = 1, n_tallies
       tally => tallies(i)
 
-      do j = 1, tally % n_filters
-        filter => tally % filters(j)
+      do j = 1, tally%n_filters
+        filter => tally%filters(j)
 
-        if (filter % type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list % contains(filter % int_bins(1))) then
-            call cell_list % add(filter % int_bins(1))
+        if (filter%type == FILTER_DISTRIBCELL) then
+          if (.not. cell_list%contains(filter%int_bins(1))) then
+            call cell_list%add(filter%int_bins(1))
           end if
         end if
 
@@ -1047,8 +1048,8 @@ contains
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
       univ => universes(i)
-      do j = 1, univ % n_cells
-        if (cell_list % contains(univ % cells(j))) then
+      do j = 1, univ%n_cells
+        if (cell_list%contains(univ%cells(j))) then
           n_maps = n_maps + 1
         end if
       end do
@@ -1070,29 +1071,29 @@ contains
     do i = 1, n_universes
       univ => universes(i)
 
-      do j = 1, univ % n_cells
+      do j = 1, univ%n_cells
 
-        if (cell_list % contains(univ % cells(j))) then
+        if (cell_list%contains(univ%cells(j))) then
 
             ! Loop over all tallies
             do l = 1, n_tallies
               tally => tallies(l)
 
-              do m = 1, tally % n_filters
-                filter => tally % filters(m)
+              do m = 1, tally%n_filters
+                filter => tally%filters(m)
 
                 ! Loop over only distribcell filters
                 ! If filter points to cell we just found, set offset index
-                if (filter % type == FILTER_DISTRIBCELL) then
-                  if (filter % int_bins(1) == univ % cells(j)) then
-                    filter % offset = k
+                if (filter%type == FILTER_DISTRIBCELL) then
+                  if (filter%int_bins(1) == univ%cells(j)) then
+                    filter%offset = k
                   end if
                 end if
 
               end do
             end do
 
-          univ_list(k) = univ % id
+          univ_list(k) = univ%id
           k = k + 1
         end if
       end do
@@ -1100,26 +1101,26 @@ contains
 
     ! Allocate the offset tables for lattices
     do i = 1, n_lattices
-      lat => lattices(i) % obj
+      lat => lattices(i)%obj
 
       select type(lat)
 
       type is (RectLattice)
-        allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
-                 lat % n_cells(3)))
+        allocate(lat%offset(n_maps, lat%n_cells(1), lat%n_cells(2), &
+                 lat%n_cells(3)))
       type is (HexLattice)
-        allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
-             2 * lat % n_rings - 1, lat % n_axial))
+        allocate(lat%offset(n_maps, 2 * lat%n_rings - 1, &
+             2 * lat%n_rings - 1, lat%n_axial))
       end select
 
-      lat % offset(:, :, :, :) = 0
+      lat%offset(:, :, :, :) = 0
 
     end do
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i) % material == NONE) then
-        allocate(cells(i) % offset(n_maps))
+      if (cells(i)%material == NONE) then
+        allocate(cells(i)%offset(n_maps))
       end if
     end do
 

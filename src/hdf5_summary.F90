@@ -6,16 +6,16 @@ module hdf5_summary
   use geometry_header, only: Cell, Surface, Universe, Lattice, RectLattice, &
                              &HexLattice
   use global
+  use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: StructuredMesh
-  use output_interface
   use output,          only: time_stamp
   use string,          only: to_str
   use tally_header,    only: TallyObject
 
-  implicit none
+  use hdf5
 
-  type(BinaryOutput) :: su
+  implicit none
 
 contains
 
@@ -25,48 +25,48 @@ contains
 
   subroutine hdf5_write_summary()
 
-    character(MAX_FILE_LEN) :: filename = "summary.h5"
+    integer(HID_T) :: file_id
 
     ! Create a new file using default properties.
-    call su % file_create(filename)
+    file_id = file_create("summary.h5")
 
     ! Write header information
-    call hdf5_write_header()
+    call hdf5_write_header(file_id)
 
     ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
 
       ! Write number of particles
-      call su % write_data(n_particles, "n_particles")
+      call write_dataset(file_id, "n_particles", n_particles)
 
       ! Use H5LT interface to write n_batches, n_inactive, and n_active
-      call su % write_data(n_batches, "n_batches")
-      call su % write_data(n_inactive, "n_inactive")
-      call su % write_data(n_active, "n_active")
-      call su % write_data(gen_per_batch, "gen_per_batch")
+      call write_dataset(file_id, "n_batches", n_batches)
+      call write_dataset(file_id, "n_inactive", n_inactive)
+      call write_dataset(file_id, "n_active", n_active)
+      call write_dataset(file_id, "gen_per_batch", gen_per_batch)
 
       ! Add description of each variable
-      call su % write_attribute_string("n_particles", &
+      call write_attribute_string(file_id, "n_particles", &
            "description", "Number of particles per generation")
-      call su % write_attribute_string("n_batches", &
+      call write_attribute_string(file_id, "n_batches", &
            "description", "Total number of batches")
-      call su % write_attribute_string("n_inactive", &
+      call write_attribute_string(file_id, "n_inactive", &
            "description", "Number of inactive batches")
-      call su % write_attribute_string("n_active", &
+      call write_attribute_string(file_id, "n_active", &
            "description", "Number of active batches")
-      call su % write_attribute_string("gen_per_batch", &
+      call write_attribute_string(file_id, "gen_per_batch", &
            "description", "Number of generations per batch")
     end if
 
-    call hdf5_write_geometry()
-    call hdf5_write_materials()
-    call hdf5_write_nuclides()
+    call hdf5_write_geometry(file_id)
+    call hdf5_write_materials(file_id)
+    call hdf5_write_nuclides(file_id)
     if (n_tallies > 0) then
-      call hdf5_write_tallies()
+      call hdf5_write_tallies(file_id)
     end if
 
     ! Terminate access to the file.
-    call su % file_close()
+    call file_close(file_id)
 
   end subroutine hdf5_write_summary
 
@@ -74,19 +74,20 @@ contains
 ! HDF5_WRITE_HEADER
 !===============================================================================
 
-  subroutine hdf5_write_header()
+  subroutine hdf5_write_header(file_id)
+    integer(HID_T), intent(in) :: file_id
 
     ! Write version information
-    call su % write_data(VERSION_MAJOR, "version_major")
-    call su % write_data(VERSION_MINOR, "version_minor")
-    call su % write_data(VERSION_RELEASE, "version_release")
+    call write_dataset(file_id, "version_major", VERSION_MAJOR)
+    call write_dataset(file_id, "version_minor", VERSION_MINOR)
+    call write_dataset(file_id, "version_release", VERSION_RELEASE)
 
     ! Write current date and time
-    call su % write_data(time_stamp(), "date_and_time")
+    call write_dataset(file_id, "date_and_time", time_stamp())
 
     ! Write MPI information
-    call su % write_data(n_procs, "n_procs")
-    call su % write_attribute_string("n_procs", "description", &
+    call write_dataset(file_id, "n_procs", n_procs)
+    call write_attribute_string(file_id, "n_procs", "description", &
          "Number of MPI processes")
 
   end subroutine hdf5_write_header
@@ -95,361 +96,289 @@ contains
 ! HDF5_WRITE_GEOMETRY
 !===============================================================================
 
-  subroutine hdf5_write_geometry()
+  subroutine hdf5_write_geometry(file_id)
+    integer(HID_T), intent(in) :: file_id
 
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    type(Universe), pointer :: u => null()
-    class(Lattice), pointer :: lat => null()
+    integer(HID_T) :: geom_group
+    integer(HID_T) :: cells_group, cell_group
+    integer(HID_T) :: surfaces_group, surface_group
+    integer(HID_T) :: universes_group, univ_group
+    integer(HID_T) :: lattices_group, lattice_group
+    type(Cell),     pointer :: c
+    type(Surface),  pointer :: s
+    type(Universe), pointer :: u
+    class(Lattice), pointer :: lat
 
     ! Use H5LT interface to write number of geometry objects
-    call su % write_data(n_cells, "n_cells", group="geometry")
-    call su % write_data(n_surfaces, "n_surfaces", group="geometry")
-    call su % write_data(n_universes, "n_universes", group="geometry")
-    call su % write_data(n_lattices, "n_lattices", group="geometry")
+    geom_group = create_group(file_id, "geometry")
+    call write_dataset(geom_group, "n_cells", n_cells)
+    call write_dataset(geom_group, "n_surfaces", n_surfaces)
+    call write_dataset(geom_group, "n_universes", n_universes)
+    call write_dataset(geom_group, "n_lattices", n_lattices)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
 
     ! Create a cell group (nothing directly written in this group) then close
-    call su % open_group("geometry/cells")
-    call su % close_group()
+    cells_group = create_group(geom_group, "cells")
 
     ! Write information on each cell
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
+      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id)))
 
       ! Write internal OpenMC index for this cell
-      call su % write_data(i, "index", &
-           group="geometry/cells/cell " // trim(to_str(c % id)))
+      call write_dataset(cell_group, "index", i)
 
       ! Write name for this cell
-      call su % write_data(c % name, "name", &
-           group="geometry/cells/cell " // trim(to_str(c % id)))
+      call write_dataset(cell_group, "name", c%name)
 
       ! Write universe for this cell
-      call su % write_data(universes(c % universe) % id, "universe", &
-           group="geometry/cells/cell " // trim(to_str(c % id)))
+      call write_dataset(cell_group, "universe", universes(c%universe)%id)
 
       ! Write information on what fills this cell
-      select case (c % type)
+      select case (c%type)
       case (CELL_NORMAL)
-        call su % write_data("normal", "fill_type", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        if (c % material == MATERIAL_VOID) then
-          call su % write_data(-1, "material", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+        call write_dataset(cell_group, "fill_type", "normal")
+        if (c%material == MATERIAL_VOID) then
+          call write_dataset(cell_group, "material", -1)
         else
-          call su % write_data(materials(c % material) % id, "material", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call write_dataset(cell_group, "material", materials(c%material)%id)
         end if
 
       case (CELL_FILL)
-        call su % write_data("universe", "fill_type", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(universes(c % fill) % id, "fill", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-
-        call su % write_data(size(c % offset), "maps", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        if (size(c % offset) > 0) then
-          call su % write_data(c % offset, "offset", &
-               length=size(c % offset), &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+        call write_dataset(cell_group, "fill_type", "universe")
+        call write_dataset(cell_group, "fill", universes(c%fill)%id)
+        call write_dataset(cell_group, "maps", size(c%offset))
+        if (size(c%offset) > 0) then
+          call write_dataset(cell_group, "offset", c%offset)
         end if
 
-        if (allocated(c % translation)) then
-          call su % write_data(1, "translated", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-          call su % write_data(c % translation, "translation", length=3, &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+        if (allocated(c%translation)) then
+          call write_dataset(cell_group, "translated", 1)
+          call write_dataset(cell_group, "translation", c%translation)
         else
-          call su % write_data(0, "translated", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call write_dataset(cell_group, "translated", 0)
         end if
 
-        if (allocated(c % rotation)) then
-          call su % write_data(1, "rotated", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-          call su % write_data(c % rotation, "rotation", length=3, &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+        if (allocated(c%rotation)) then
+          call write_dataset(cell_group, "rotated", 1)
+          call write_dataset(cell_group, "rotation", c%rotation)
         else
-          call su % write_data(0, "rotated", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call write_dataset(cell_group, "rotated", 0)
         end if
 
       case (CELL_LATTICE)
-        call su % write_data("lattice", "fill_type", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        call su % write_data(lattices(c % fill) % obj % id, "lattice", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
+        call write_dataset(cell_group, "fill_type", "lattice")
+        call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id)
       end select
 
       ! Write list of bounding surfaces
-      if (c % n_surfaces > 0) then
-        call su % write_data(c % surfaces, "surfaces", length= c % n_surfaces, &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
+      if (c%n_surfaces > 0) then
+        call write_dataset(cell_group, "surfaces", c%surfaces)
       end if
 
+      call close_group(cell_group)
     end do CELL_LOOP
+
+    call close_group(cells_group)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON SURFACES
 
-    ! Create surfaces group (nothing directly written here) then close
-    call su % open_group("geometry/surfaces")
-    call su % close_group()
+    ! Create surfaces group
+    surfaces_group = create_group(file_id, "surfaces")
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
       s => surfaces(i)
+      surface_group = create_group(surfaces_group, "surface " // &
+           trim(to_str(s%id)))
 
       ! Write internal OpenMC index for this surface
-      call su % write_data(i, "index", &
-           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call write_dataset(surface_group, "index", i)
 
       ! Write name for this surface
-      call su % write_data(s % name, "name", &
-           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call write_dataset(surface_group, "name", s%name)
 
       ! Write surface type
-      select case (s % type)
+      select case (s%type)
       case (SURF_PX)
-        call su % write_data("X Plane", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "X Plane")
       case (SURF_PY)
-        call su % write_data("Y Plane", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Y Plane")
       case (SURF_PZ)
-        call su % write_data("Z Plane", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Z Plane")
       case (SURF_PLANE)
-        call su % write_data("Plane", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Plane")
       case (SURF_CYL_X)
-        call su % write_data("X Cylinder", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "X Cylinder")
       case (SURF_CYL_Y)
-        call su % write_data("Y Cylinder", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Y Cylinder")
       case (SURF_CYL_Z)
-        call su % write_data("Z Cylinder", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Z Cylinder")
       case (SURF_SPHERE)
-        call su % write_data("Sphere", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Sphere")
       case (SURF_CONE_X)
-        call su % write_data("X Cone", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "X Cone")
       case (SURF_CONE_Y)
-        call su % write_data("Y Cone", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Y Cone")
       case (SURF_CONE_Z)
-        call su % write_data("Z Cone", "type", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "type", "Z Cone")
       end select
 
       ! Write coefficients for surface
-      call su % write_data(s % coeffs, "coefficients", length=size(s % coeffs), &
-           group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      call write_dataset(surface_group, "coefficients", s%coeffs)
 
       ! Write positive neighbors
-      if (allocated(s % neighbor_pos)) then
-        call su % write_data(s % neighbor_pos, "neighbors_positive", &
-             length=size(s % neighbor_pos), &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      if (allocated(s%neighbor_pos)) then
+        call write_dataset(surface_group, "neighbors_positive", s%neighbor_pos)
       end if
 
       ! Write negative neighbors
-      if (allocated(s % neighbor_neg)) then
-        call su % write_data(s % neighbor_neg, "neighbors_negative", &
-             length=size(s % neighbor_neg), &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+      if (allocated(s%neighbor_neg)) then
+        call write_dataset(surface_group, "neighbors_negative", s%neighbor_neg)
       end if
 
       ! Write boundary condition
-      select case (s % bc)
+      select case (s%bc)
       case (BC_TRANSMIT)
-        call su % write_data("transmission", "boundary_condition", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "boundary_condition", "transmission")
       case (BC_VACUUM)
-        call su % write_data("vacuum", "boundary_condition", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "boundary_condition", "vacuum")
       case (BC_REFLECT)
-        call su % write_data("reflective", "boundary_condition", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "boundary_condition", "reflective")
       case (BC_PERIODIC)
-        call su % write_data("periodic", "boundary_condition", &
-             group="geometry/surfaces/surface " // trim(to_str(s % id)))
+        call write_dataset(surface_group, "boundary_condition", "periodic")
       end select
 
+      call close_group(surface_group)
     end do SURFACE_LOOP
+
+    call close_group(surfaces_group)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON UNIVERSES
 
     ! Create universes group (nothing directly written here) then close
-    call su % open_group("geometry/universes")
-    call su % close_group()
+    universes_group = create_group(geom_group, "universes")
 
     ! Write information on each universe
     UNIVERSE_LOOP: do i = 1, n_universes
       u => universes(i)
+      univ_group = create_group(universes_group, "universe " // &
+           trim(to_str(u%id)))
 
       ! Write internal OpenMC index for this universe
-      call su % write_data(i, "index", &
-           group="geometry/universes/universe " // trim(to_str(u % id)))
+      call write_dataset(univ_group, "index", i)
 
       ! Write list of cells in this universe
-      if (u % n_cells > 0) then
-        call su % write_data(u % cells, "cells", length=u % n_cells, &
-             group="geometry/universes/universe " // trim(to_str(u % id)))
-      end if
+      if (u%n_cells > 0) call write_dataset(univ_group, "cells", u%cells)
 
+      call close_group(univ_group)
     end do UNIVERSE_LOOP
+
+    call close_group(universes_group)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON LATTICES
 
     ! Create lattices group (nothing directly written here) then close
-    call su % open_group("geometry/lattices")
-    call su % close_group()
+    lattices_group = create_group(geom_group, "lattices")
 
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
-      lat => lattices(i) % obj
+      lat => lattices(i)%obj
+      lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id)))
 
       ! Write internal OpenMC index for this lattice
-      call su % write_data(i, "index", &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      call write_dataset(lattice_group, "index", i)
 
       ! Write name for this lattice
-      call su % write_data(lat % name, "name", &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      call write_dataset(lattice_group, "name", lat%name)
 
       ! Write lattice type
       select type (lat)
       type is (RectLattice)
         ! Write lattice type.
-        call su % write_data("rectangular", "type", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "type", "rectangular")
 
         ! Write lattice dimensions, lower left corner, and pitch
-        call su % write_data(lat % n_cells, "dimension", length=3, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "dimension", lat%n_cells)
+        call write_dataset(lattice_group, "lower_left", lat%lower_left)
+        call write_dataset(lattice_group, "pitch", lat%pitch)
 
-        if (lat % is_3d) then
-          call su % write_data(lat % lower_left, "lower_left", length=3, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        else
-          call su % write_data(lat % lower_left, "lower_left", length=2, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        end if
+        call write_dataset(lattice_group, "outer", lat%outer)
+        call write_dataset(lattice_group, "offset_size", size(lat%offset))
+        call write_dataset(lattice_group, "maps", size(lat%offset,1))
 
-        if (lat % is_3d) then
-          call su % write_data(lat % pitch, "pitch", length=3, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        else
-          call su % write_data(lat % pitch, "pitch", length=2, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        end if
-
-        call su % write_data(lat % outer, "outer", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(size(lat % offset), "offset_size", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(size(lat % offset,1), "maps", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-
-        if (size(lat % offset) > 0) then
-          call su % write_data(lat % offset, "offsets", &
-               length=shape(lat % offset), &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (size(lat%offset) > 0) then
+          call write_dataset(lattice_group, "offsets", lat%offset)
         end if
 
         ! Write lattice universes.
-        allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
-             &lat % n_cells(3)))
-        do j = 1, lat % n_cells(1)
-          do k = 1, lat % n_cells(2)
-            do m = 1, lat % n_cells(3)
-              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+        allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
+             &lat%n_cells(3)))
+        do j = 1, lat%n_cells(1)
+          do k = 1, lat%n_cells(2)
+            do m = 1, lat%n_cells(3)
+              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
             end do
           end do
         end do
-        call su % write_data(lattice_universes, "universes", &
-             length=lat % n_cells, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "universes", lattice_universes)
         deallocate(lattice_universes)
 
       type is (HexLattice)
         ! Write lattice type.
-        call su % write_data("hexagonal", "type", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "type", "hexagonal")
 
         ! Write number of lattice cells.
-        call su % write_data(lat % n_rings, "n_rings", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % n_axial, "n_axial", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "n_rings", lat%n_rings)
+        call write_dataset(lattice_group, "n_axial", lat%n_axial)
 
         ! Write lattice center, pitch and outer universe.
-        if (lat % is_3d) then
-          call su % write_data(lat % center, "center", length=3, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        else
-          call su % write_data(lat % center, "center", length=2, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        end if
+        call write_dataset(lattice_group, "center", lat%center)
+        call write_dataset(lattice_group, "pitch", lat%pitch)
 
-        if (lat % is_3d) then
-          call su % write_data(lat % pitch, "pitch", length=2, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        else
-          call su % write_data(lat % pitch, "pitch", length=1, &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        end if
+        call write_dataset(lattice_group, "outer", lat%outer)
+        call write_dataset(lattice_group, "offset_size", size(lat%offset))
+        call write_dataset(lattice_group, "maps", size(lat%offset,1))
 
-        call su % write_data(lat % outer, "outer", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(size(lat % offset), "offset_size", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(size(lat % offset,1), "maps", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-
-        if (size(lat % offset) > 0) then
-          call su % write_data(lat % offset, "offsets", &
-               length=shape(lat % offset), &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (size(lat%offset) > 0) then
+          call write_dataset(lattice_group, "offsets", lat%offset)
         end if
 
         ! Write lattice universes.
-        allocate(lattice_universes(2*lat % n_rings - 1, 2*lat % n_rings - 1, &
-             &lat % n_axial))
-        do m = 1, lat % n_axial
-          do k = 1, 2*lat % n_rings - 1
-            do j = 1, 2*lat % n_rings - 1
-              if (j + k < lat % n_rings + 1) then
+        allocate(lattice_universes(2*lat%n_rings - 1, 2*lat%n_rings - 1, &
+             &lat%n_axial))
+        do m = 1, lat%n_axial
+          do k = 1, 2*lat%n_rings - 1
+            do j = 1, 2*lat%n_rings - 1
+              if (j + k < lat%n_rings + 1) then
                 ! This array position is never used; put a -1 to indicate this
                 lattice_universes(j,k,m) = -1
                 cycle
-              else if (j + k > 3*lat % n_rings - 1) then
+              else if (j + k > 3*lat%n_rings - 1) then
                 ! This array position is never used; put a -1 to indicate this
                 lattice_universes(j,k,m) = -1
                 cycle
               end if
-              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
             end do
           end do
         end do
-        call su % write_data(lattice_universes, "universes", &
-             &length=(/2*lat % n_rings-1, 2*lat % n_rings-1, lat % n_axial/), &
-             &group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        call write_dataset(lattice_group, "universes", lattice_universes)
         deallocate(lattice_universes)
       end select
+
+      call close_group(lattice_group)
     end do LATTICE_LOOP
+
+    call close_group(lattices_group)
+    call close_group(geom_group)
 
   end subroutine hdf5_write_geometry
 
@@ -457,72 +386,72 @@ contains
 ! HDF5_WRITE_MATERIALS
 !===============================================================================
 
-  subroutine hdf5_write_materials()
+  subroutine hdf5_write_materials(file_id)
+    integer(HID_T), intent(in) :: file_id
 
     integer          :: i
     integer          :: j
     integer, allocatable :: zaids(:)
-    type(Material), pointer :: m => null()
+    integer(HID_T) :: materials_group
+    integer(HID_T) :: material_group
+    integer(HID_T) :: sab_group
+    type(Material), pointer :: m
 
-    ! Use H5LT interface to write number of materials
-    call su % write_data(n_materials, "n_materials", group="materials")
+    materials_group = create_group(file_id, "materials")
+
+    ! write number of materials
+    call write_dataset(file_id, "n_materials", n_materials)
 
     ! Write information on each material
     do i = 1, n_materials
       m => materials(i)
+      material_group = create_group(materials_group, "material " // &
+           trim(to_str(m%id)))
 
       ! Write internal OpenMC index for this material
-      call su % write_data(i, "index", &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "index", i)
 
       ! Write name for this material
-      call su % write_data(m % name, "name", &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "name", m%name)
 
       ! Write atom density with units
-      call su % write_data(m % density, "atom_density", &
-           group="materials/material " // trim(to_str(m % id)))
-      call su % write_attribute_string("atom_density", "units", "atom/b-cm", &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "atom_density", m%density)
+      call write_attribute_string(material_group, "atom_density", "units", &
+           "atom/b-cm")
 
       ! Copy ZAID for each nuclide to temporary array
-      allocate(zaids(m % n_nuclides))
-      do j = 1, m % n_nuclides
-        zaids(j) = nuclides(m % nuclide(j)) % zaid
+      allocate(zaids(m%n_nuclides))
+      do j = 1, m%n_nuclides
+        zaids(j) = nuclides(m%nuclide(j))%zaid
       end do
 
       ! Write temporary array to 'nuclides'
-      call su % write_data(zaids, "nuclides", length=m % n_nuclides, &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "nuclides", zaids)
 
       ! Deallocate temporary array
       deallocate(zaids)
 
       ! Write atom densities
-      call su % write_data(m % atom_density, "nuclide_densities", &
-           length=m % n_nuclides, &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "nuclide_densities", m%atom_density)
 
       ! Write S(a,b) information if present
-      call su % write_data(m % n_sab, "n_sab", &
-           group="materials/material " // trim(to_str(m % id)))
+      call write_dataset(material_group, "n_sab", m%n_sab)
 
-      if (m % n_sab > 0) then
-        call su % write_data(m % i_sab_nuclides, "i_sab_nuclides", &
-             length=m % n_sab, &
-             group="materials/material " // trim(to_str(m % id)))
-        call su % write_data(m % i_sab_tables, "i_sab_tables", &
-             length=m % n_sab, &
-             group="materials/material " // trim(to_str(m % id)))
+      if (m%n_sab > 0) then
+        call write_dataset(material_group, "i_sab_nuclides", m%i_sab_nuclides)
+        call write_dataset(material_group, "i_sab_tables", m%i_sab_tables)
 
-        do j = 1, m % n_sab
-          call su % write_data(m % sab_names(j), to_str(j), &
-               group="materials/material " // &
-               trim(to_str(m % id)) // "/sab_tables")
+        sab_group = create_group(material_group, "sab_tables")
+        do j = 1, m%n_sab
+          call write_dataset(sab_group, to_str(j), m%sab_names(j))
         end do
+        call close_group(sab_group)
       end if
 
+      call close_group(material_group)
     end do
+
+    call close_group(materials_group)
 
   end subroutine hdf5_write_materials
 
@@ -530,157 +459,127 @@ contains
 ! HDF5_WRITE_TALLIES
 !===============================================================================
 
-  subroutine hdf5_write_tallies()
+  subroutine hdf5_write_tallies(file_id)
+    integer(HID_T), intent(in) :: file_id
 
     integer           :: i, j
     integer, allocatable :: temp_array(:) ! nuclide bin array
-    type(StructuredMesh), pointer :: m => null()
-    type(TallyObject), pointer :: t => null()
+    integer(HID_T) :: tallies_group
+    integer(HID_T) :: mesh_group
+    integer(HID_T) :: tally_group
+    integer(HID_T) :: filter_group
+    type(StructuredMesh), pointer :: m
+    type(TallyObject), pointer :: t
+
+    tallies_group = create_group(file_id, "tallies")
 
     ! Write total number of meshes
-    call su % write_data(n_meshes, "n_meshes", group="tallies")
+    call write_dataset(tallies_group, "n_meshes", n_meshes)
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
       m => meshes(i)
+      mesh_group = create_group(tallies_group, "mesh " // trim(to_str(m%id)))
 
       ! Write type and number of dimensions
-      call su % write_data(m % type, "type", &
-           group="tallies/mesh " // trim(to_str(m % id)))
-
-      call su % write_data(m % n_dimension, "n_dimension", &
-           group="tallies/mesh " // trim(to_str(m % id)))
+      call write_dataset(mesh_group, "type", m%type)
+      call write_dataset(mesh_group, "n_dimension", m%n_dimension)
 
       ! Write mesh information
-      call su % write_data(m % dimension, "dimension", &
-           length=m % n_dimension, &
-           group="tallies/mesh " // trim(to_str(m % id)))
-      call su % write_data(m % lower_left, "lower_left", &
-           length=m % n_dimension, &
-           group="tallies/mesh " // trim(to_str(m % id)))
-      call su % write_data(m % upper_right, "upper_right", &
-           length=m % n_dimension, &
-           group="tallies/mesh " // trim(to_str(m % id)))
-      call su % write_data(m % width, "width", &
-           length=m % n_dimension, &
-           group="tallies/mesh " // trim(to_str(m % id)))
+      call write_dataset(mesh_group, "dimension", m%dimension)
+      call write_dataset(mesh_group, "lower_left", m%lower_left)
+      call write_dataset(mesh_group, "upper_right", m%upper_right)
+      call write_dataset(mesh_group, "width", m%width)
 
+      call close_group(mesh_group)
     end do MESH_LOOP
 
     ! Write number of tallies
-    call su % write_data(n_tallies, "n_tallies", group="tallies")
+    call write_dataset(tallies_group, "n_tallies", n_tallies)
 
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+      tally_group = create_group(tallies_group, "tally " // trim(to_str(t%id)))
 
       ! Write the name for this tally
-      call su % write_data(len(t % name), "name_size", &
-           group="tallies/tally " // trim(to_str(t % id)))
-      if (len(t % name) > 0) then
-        call su % write_data(t % name, "name", &
-             group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "name_size", len(t%name))
+      if (len(t%name) > 0) then
+        call write_dataset(tally_group, "name", t%name)
       endif
 
       ! Write size of each tally
-      call su % write_data(t % total_score_bins, "total_score_bins", &
-           group="tallies/tally " // trim(to_str(t % id)))
-      call su % write_data(t % total_filter_bins, "total_filter_bins", &
-           group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "total_score_bins", t%total_score_bins)
+      call write_dataset(tally_group, "total_filter_bins", t%total_filter_bins)
 
       ! Write number of filters
-      call su % write_data(t % n_filters, "n_filters", &
-           group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "n_filters", t%n_filters)
 
-      FILTER_LOOP: do j = 1, t % n_filters
+      FILTER_LOOP: do j = 1, t%n_filters
+        filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
+
         ! Write type of filter
-        call su % write_data(t % filters(j) % type, "type", &
-             group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+        call write_dataset(filter_group, "type", t%filters(j)%type)
 
         ! Write number of bins for this filter
-        call su % write_data(t % filters(j) % n_bins, "n_bins", &
-             group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+        call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
 
         ! Write filter bins
-        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-             t % filters(j) % type == FILTER_ENERGYOUT) then
-          call su % write_data(t % filters(j) % real_bins, "bins", &
-               length=size(t % filters(j) % real_bins), &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+        if (t%filters(j)%type == FILTER_ENERGYIN .or. &
+             t%filters(j)%type == FILTER_ENERGYOUT) then
+          call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
         else
-          call su % write_data(t % filters(j) % int_bins, "bins", &
-               length=size(t % filters(j) % int_bins), &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
         end if
 
         ! Write name of type
-        select case (t % filters(j) % type)
+        select case (t%filters(j)%type)
         case(FILTER_UNIVERSE)
-          call su % write_data("universe", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "universe")
         case(FILTER_MATERIAL)
-          call su % write_data("material", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "material")
         case(FILTER_CELL)
-          call su % write_data("cell", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "cell")
         case(FILTER_CELLBORN)
-          call su % write_data("cellborn", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "cellborn")
         case(FILTER_SURFACE)
-          call su % write_data("surface", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "surface")
         case(FILTER_MESH)
-          call su % write_data("mesh", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "mesh")
         case(FILTER_ENERGYIN)
-          call su % write_data("energy", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-               // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "energy")
         case(FILTER_ENERGYOUT)
-          call su % write_data("energyout", "type_name", &
-               group="tallies/tally " // trim(to_str(t % id)) &
-               // "/filter " // trim(to_str(j)))
+          call write_dataset(filter_group, "type_name", "energyout")
         end select
 
+        call close_group(filter_group)
       end do FILTER_LOOP
 
       ! Write number of nuclide bins
-      call su % write_data(t % n_nuclide_bins, "n_nuclide_bins", &
-           group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "n_nuclide_bins", t%n_nuclide_bins)
 
       ! Create temporary array for nuclide bins
-      allocate(temp_array(t % n_nuclide_bins))
-      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-        if (t % nuclide_bins(j) > 0) then
-          temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
+      allocate(temp_array(t%n_nuclide_bins))
+      NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
+        if (t%nuclide_bins(j) > 0) then
+          temp_array(j) = nuclides(t%nuclide_bins(j))%zaid
         else
-          temp_array(j) = t % nuclide_bins(j)
+          temp_array(j) = t%nuclide_bins(j)
         end if
       end do NUCLIDE_LOOP
 
       ! Write and deallocate nuclide bins
-      call su % write_data(temp_array, "nuclide_bins", length=t % n_nuclide_bins, &
-           group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "nuclide_bins", temp_array)
       deallocate(temp_array)
 
       ! Write number of score bins
-      call su % write_data(t % n_score_bins, "n_score_bins", &
-           group="tallies/tally " // trim(to_str(t % id)))
-      call su % write_data(t % score_bins, "score_bins", length=t % n_score_bins, &
-           group="tallies/tally " // trim(to_str(t % id)))
+      call write_dataset(tally_group, "n_score_bins", t%n_score_bins)
+      call write_dataset(tally_group, "score_bins", t%score_bins)
 
+      call close_group(tally_group)
     end do TALLY_METADATA
+
+    call close_group(tallies_group)
 
   end subroutine hdf5_write_tallies
 
@@ -688,122 +587,108 @@ contains
 ! HDF5_WRITE_NUCLIDES
 !===============================================================================
 
-  subroutine hdf5_write_nuclides()
+  subroutine hdf5_write_nuclides(file_id)
+    integer(HID_T), intent(in) :: file_id
 
     integer        :: i, j
     integer        :: size_total
     integer        :: size_xs
     integer        :: size_angle
     integer        :: size_energy
-    type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
-    type(UrrData),  pointer :: urr => null()
+    integer(HID_T) :: nuclides_group, nuclide_group
+    integer(HID_T) :: reactions_group, rxn_group
+    type(Nuclide),  pointer :: nuc
+    type(Reaction), pointer :: rxn
+    type(UrrData),  pointer :: urr
 
-    ! Use H5LT interface to write number of nuclides
-    call su % write_data(n_nuclides_total, "n_nuclides", group="nuclides")
+    nuclides_group = create_group(file_id, "nuclides")
+
+    ! write number of nuclides
+    call write_dataset(nuclides_group, "n_nuclides", n_nuclides_total)
 
     ! Write information on each nuclide
     NUCLIDE_LOOP: do i = 1, n_nuclides_total
       nuc => nuclides(i)
+      nuclide_group = create_group(nuclides_group, nuc%name)
 
       ! Write internal OpenMC index for this nuclide
-      call su % write_data(i, "index", &
-           group="nuclides/" // trim(nuc % name))
+      call write_dataset(nuclide_group, "index", i)
 
       ! Determine size of cross-sections
-      size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
+      size_xs = (5 + nuc%n_reaction) * nuc%n_grid * 8
       size_total = size_xs
 
       ! Write some basic attributes
-      call su % write_data(nuc % zaid, "zaid", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(xs_listings(nuc % listing) % alias, "alias", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(nuc % awr, "awr", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(nuc % kT, "kT", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(nuc % n_grid, "n_grid", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(nuc % n_reaction, "n_reactions", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(nuc % n_fission, "n_fission", &
-           group="nuclides/" // trim(nuc % name))
-      call su % write_data(size_xs, "size_xs", &
-           group="nuclides/" // trim(nuc % name))
+      call write_dataset(nuclide_group, "zaid", nuc%zaid)
+      call write_dataset(nuclide_group, "alias", xs_listings(nuc%listing)%alias)
+      call write_dataset(nuclide_group, "awr", nuc%awr)
+      call write_dataset(nuclide_group, "kT", nuc%kT)
+      call write_dataset(nuclide_group, "n_grid", nuc%n_grid)
+      call write_dataset(nuclide_group, "n_reactions", nuc%n_reaction)
+      call write_dataset(nuclide_group, "n_fission", nuc%n_fission)
+      call write_dataset(nuclide_group, "size_xs", size_xs)
 
       ! =======================================================================
       ! WRITE INFORMATION ON EACH REACTION
 
       ! Create overall group for reactions and close it
-      call su % open_group("nuclides/" // trim(nuc % name) // "/reactions")
-      call su % close_group()
+      reactions_group = create_group(nuclide_group, "reactions")
 
-      RXN_LOOP: do j = 1, nuc % n_reaction
+      RXN_LOOP: do j = 1, nuc%n_reaction
         ! Information on each reaction
-        rxn => nuc % reactions(j)
+        rxn => nuc%reactions(j)
+        rxn_group = create_group(reactions_group, trim(reaction_name(rxn%MT)))
 
         ! Determine size of angle distribution
-        if (rxn % has_angle_dist) then
-          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+        if (rxn%has_angle_dist) then
+          size_angle = rxn%adist%n_energy * 16 + size(rxn%adist%data) * 8
         else
           size_angle = 0
         end if
 
         ! Determine size of energy distribution
-        if (rxn % has_energy_dist) then
-          size_energy = size(rxn % edist % data) * 8
+        if (rxn%has_energy_dist) then
+          size_energy = size(rxn%edist%data) * 8
         else
           size_energy = 0
         end if
 
         ! Write information on reaction
-        call su % write_data(rxn % Q_value, "Q_value", &
-             group="nuclides/" // trim(nuc % name) // "/reactions/" // &
-             trim(reaction_name(rxn % MT)))
-        call su % write_data(rxn % multiplicity, "multiplicity", &
-             group="nuclides/" // trim(nuc % name) // "/reactions/" // &
-             trim(reaction_name(rxn % MT)))
-        call su % write_data(rxn % threshold, "threshold", &
-             group="nuclides/" // trim(nuc % name) // "/reactions/" // &
-             trim(reaction_name(rxn % MT)))
-        call su % write_data(size_angle, "size_angle", &
-             group="nuclides/" // trim(nuc % name) // "/reactions/" // &
-             trim(reaction_name(rxn % MT)))
-        call su % write_data(size_energy, "size_energy", &
-             group="nuclides/" // trim(nuc % name) // "/reactions/" // &
-             trim(reaction_name(rxn % MT)))
+        call write_dataset(rxn_group, "Q_value", rxn%Q_value)
+        call write_dataset(rxn_group, "multiplicity", rxn%multiplicity)
+        call write_dataset(rxn_group, "threshold", rxn%threshold)
+        call write_dataset(rxn_group, "size_angle", size_angle)
+        call write_dataset(rxn_group, "size_energy", size_energy)
 
         ! Accumulate data size
         size_total = size_total + size_angle + size_energy
+
+        call close_group(rxn_group)
       end do RXN_LOOP
+
+      call close_group(reactions_group)
 
       ! =======================================================================
       ! WRITE INFORMATION ON URR PROBABILITY TABLES
 
-      if (nuc % urr_present) then
-        urr => nuc % urr_data
-        call su % write_data(urr % n_energy, "urr_n_energy", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % n_prob, "urr_n_prob", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % interp, "urr_interp", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % inelastic_flag, "urr_inelastic", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % absorption_flag, "urr_absorption", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % energy(1), "urr_min_E", &
-             group="nuclides/" // trim(nuc % name))
-        call su % write_data(urr % energy(urr % n_energy), "urr_max_E", &
-             group="nuclides/" // trim(nuc % name))
+      if (nuc%urr_present) then
+        urr => nuc%urr_data
+        call write_dataset(nuclide_group, "urr_n_energy", urr%n_energy)
+        call write_dataset(nuclide_group, "urr_n_prob", urr%n_prob)
+        call write_dataset(nuclide_group, "urr_interp", urr%interp)
+        call write_dataset(nuclide_group, "urr_inelastic", urr%inelastic_flag)
+        call write_dataset(nuclide_group, "urr_absorption", urr%absorption_flag)
+        call write_dataset(nuclide_group, "urr_min_E", urr%energy(1))
+        call write_dataset(nuclide_group, "urr_max_E", urr%energy(urr%n_energy))
       end if
 
       ! Write total memory used
-      call su % write_data(size_total, "size_total", &
-           group="nuclides/" // trim(nuc % name))
+      call write_dataset(nuclide_group, "size_total", size_total)
 
+      call close_group(nuclide_group)
     end do NUCLIDE_LOOP
+
+    call close_group(nuclides_group)
 
   end subroutine hdf5_write_nuclides
 
@@ -811,66 +696,59 @@ contains
 ! HDF5_WRITE_TIMING
 !===============================================================================
 
-  subroutine hdf5_write_timing()
+  subroutine hdf5_write_timing(file_id)
+    integer(HID_T), intent(in) :: file_id
 
-    integer(8)       :: total_particles
-    real(8)          :: speed
+    integer(8)     :: total_particles
+    integer(HID_T) :: time_group
+    real(8)        :: speed
+
+    time_group = create_group(file_id, "timing")
 
     ! Write timing data
-    call su % write_data(time_initialize % elapsed, "time_initialize", &
-         group="timing")
-    call su % write_data(time_read_xs % elapsed, "time_read_xs", &
-         group="timing")
-    call su % write_data(time_transport % elapsed, "time_transport", &
-         group="timing")
-    call su % write_data(time_bank % elapsed, "time_bank", &
-         group="timing")
-    call su % write_data(time_bank_sample % elapsed, "time_bank_sample", &
-         group="timing")
-    call su % write_data(time_bank_sendrecv % elapsed, "time_bank_sendrecv", &
-         group="timing")
-    call su % write_data(time_tallies % elapsed, "time_tallies", &
-         group="timing")
-    call su % write_data(time_inactive % elapsed, "time_inactive", &
-         group="timing")
-    call su % write_data(time_active % elapsed, "time_active", &
-         group="timing")
-    call su % write_data(time_finalize % elapsed, "time_finalize", &
-         group="timing")
-    call su % write_data(time_total % elapsed, "time_total", &
-         group="timing")
+    call write_dataset(time_group, "time_initialize", time_initialize%elapsed)
+    call write_dataset(time_group, "time_read_xs", time_read_xs%elapsed)
+    call write_dataset(time_group, "time_transport", time_transport%elapsed)
+    call write_dataset(time_group, "time_bank", time_bank%elapsed)
+    call write_dataset(time_group, "time_bank_sample", time_bank_sample%elapsed)
+    call write_dataset(time_group, "time_bank_sendrecv", time_bank_sendrecv%elapsed)
+    call write_dataset(time_group, "time_tallies", time_tallies%elapsed)
+    call write_dataset(time_group, "time_inactive", time_inactive%elapsed)
+    call write_dataset(time_group, "time_active", time_active%elapsed)
+    call write_dataset(time_group, "time_finalize", time_finalize%elapsed)
+    call write_dataset(time_group, "time_total", time_total%elapsed)
 
     ! Add descriptions to timing data
-    call su % write_attribute_string("time_initialize", "description", &
-         "Total time elapsed for initialization (s)", group="timing")
-    call su % write_attribute_string("time_read_xs", "description", &
-         "Time reading cross-section libraries (s)", group="timing")
-    call su % write_attribute_string("time_transport", "description", &
-         "Time in transport only (s)", group="timing")
-    call su % write_attribute_string("time_bank", "description", &
-         "Total time synchronizing fission bank (s)", group="timing")
-    call su % write_attribute_string("time_bank_sample", "description", &
-         "Time between generations sampling source sites (s)", group="timing")
-    call su % write_attribute_string("time_bank_sendrecv", "description", &
-         "Time between generations SEND/RECVing source sites (s)", &
-         group="timing")
-    call su % write_attribute_string("time_tallies", "description", &
-         "Time between batches accumulating tallies (s)", group="timing")
-    call su % write_attribute_string("time_inactive", "description", &
-         "Total time in inactive batches (s)", group="timing")
-    call su % write_attribute_string("time_active", "description", &
-         "Total time in active batches (s)", group="timing")
-    call su % write_attribute_string("time_finalize", "description", &
-         "Total time for finalization (s)", group="timing")
-    call su % write_attribute_string("time_total", "description", &
-         "Total time elapsed (s)", group="timing")
+    call write_attribute_string(time_group, "time_initialize", "description", &
+         "Total time elapsed for initialization (s)")
+    call write_attribute_string(time_group, "time_read_xs", "description", &
+         "Time reading cross-section libraries (s)")
+    call write_attribute_string(time_group, "time_transport", "description", &
+         "Time in transport only (s)")
+    call write_attribute_string(time_group, "time_bank", "description", &
+         "Total time synchronizing fission bank (s)")
+    call write_attribute_string(time_group, "time_bank_sample", "description", &
+         "Time between generations sampling source sites (s)")
+    call write_attribute_string(time_group, "time_bank_sendrecv", "description", &
+         "Time between generations SEND/RECVing source sites (s)")
+    call write_attribute_string(time_group, "time_tallies", "description", &
+         "Time between batches accumulating tallies (s)")
+    call write_attribute_string(time_group, "time_inactive", "description", &
+         "Total time in inactive batches (s)")
+    call write_attribute_string(time_group, "time_active", "description", &
+         "Total time in active batches (s)")
+    call write_attribute_string(time_group, "time_finalize", "description", &
+         "Total time for finalization (s)")
+    call write_attribute_string(time_group, "time_total", "description", &
+         "Total time elapsed (s)")
 
     ! Write calculation rate
     total_particles = n_particles * n_batches * gen_per_batch
-    speed = real(total_particles) / (time_inactive % elapsed + &
-         time_active % elapsed)
-    call su % write_data(speed, "neutrons_per_second", group="timing")
+    speed = real(total_particles) / (time_inactive%elapsed + &
+         time_active%elapsed)
+    call write_dataset(time_group, "neutrons_per_second", speed)
 
+    call close_group(time_group)
   end subroutine hdf5_write_timing
 
 end module hdf5_summary

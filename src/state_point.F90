@@ -1089,8 +1089,4 @@ contains
 
   end subroutine read_source_bank
 
-  subroutine read_source
-! TODO write this routine
-! TODO what if n_particles does not match source bank
-  end subroutine read_source
 end module state_point

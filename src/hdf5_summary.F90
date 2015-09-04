@@ -33,23 +33,22 @@ contains
     ! Write header information
     call hdf5_write_header(file_id)
 
-    ! Write eigenvalue information
+    ! Write number of particles
+    call write_dataset(file_id, "n_particles", n_particles)
+    call write_dataset(file_id, "n_batches", n_batches)
+    call write_attribute_string(file_id, "n_particles", &
+         "description", "Number of particles per generation")
+    call write_attribute_string(file_id, "n_batches", &
+         "description", "Total number of batches")
+
+      ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
-
-      ! Write number of particles
-      call write_dataset(file_id, "n_particles", n_particles)
-
-      ! Use H5LT interface to write n_batches, n_inactive, and n_active
-      call write_dataset(file_id, "n_batches", n_batches)
+      ! write number of inactive/active batches and generations/batch
       call write_dataset(file_id, "n_inactive", n_inactive)
       call write_dataset(file_id, "n_active", n_active)
       call write_dataset(file_id, "gen_per_batch", gen_per_batch)
 
       ! Add description of each variable
-      call write_attribute_string(file_id, "n_particles", &
-           "description", "Number of particles per generation")
-      call write_attribute_string(file_id, "n_batches", &
-           "description", "Total number of batches")
       call write_attribute_string(file_id, "n_inactive", &
            "description", "Number of inactive batches")
       call write_attribute_string(file_id, "n_active", &

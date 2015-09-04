@@ -28,6 +28,8 @@ module state_point
 
   use hdf5
 
+  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
+
   implicit none
 
 contains

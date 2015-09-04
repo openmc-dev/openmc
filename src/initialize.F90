@@ -36,6 +36,8 @@ module initialize
 
   use hdf5
 
+  use, intrinsic :: ISO_C_BINDING, only: c_loc
+
   implicit none
 
 contains

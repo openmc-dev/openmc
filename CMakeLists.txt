@@ -110,7 +110,10 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # GNU Fortran compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   if(debug)
-    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
+    if(NOT (GCC_VERSION VERSION_LESS 4.7))
+      list(APPEND f90flags -Wall)
+    endif()
+    list(APPEND f90flags -g -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
     list(APPEND ldflags -g)
   endif()

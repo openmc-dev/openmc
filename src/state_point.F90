@@ -351,65 +351,60 @@ contains
 
   subroutine write_source_point()
 
+    logical :: parallel
     integer(HID_T) :: file_id
     character(MAX_FILE_LEN) :: filename
 
+    ! When using parallel HDF5, the file is written to collectively by all
+    ! processes. With MPI-only, the file is opened and written by the master
+    ! (note that the call to write_source_bank is by all processes since slave
+    ! processes need to send source bank data to the master.
+#ifdef PHDF5
+    parallel = .true.
+#else
+    parallel = .false.
+#endif
+
     ! Check to write out source for a specified batch
     if (sourcepoint_batch%contains(current_batch)) then
-
-      ! Create or open up file
       if (source_separate) then
-        ! Set filename
         filename = trim(path_output) // 'source.' // &
              & zero_padded(current_batch, count_digits(n_max_batches))
         filename = trim(filename) // '.h5'
-
-        ! Write message for new file creation
-        call write_message("Creating source file " // trim(filename) // "...", &
-             1)
+        call write_message("Creating source file " // trim(filename) &
+             // "...", 1)
 
         ! Create separate source file
-        file_id = file_create(filename, parallel=.true.)
-
-        ! Write file type
-        call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
+        if (master .or. parallel) then
+          file_id = file_create(filename, parallel=.true.)
+          call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
+        end if
       else
-        ! Set filename for state point
         filename = trim(path_output) // 'statepoint.' // &
              zero_padded(current_batch, count_digits(n_max_batches))
         filename = trim(filename) // '.h5'
 
-        ! Reopen statepoint file in parallel
-        file_id = file_open(filename, 'w', parallel=.true.)
+        if (master .or. parallel) then
+          file_id = file_open(filename, 'w', parallel=.true.)
+        end if
       end if
 
-      ! Write out source
       call write_source_bank(file_id)
-
-      ! Close file
-      call file_close(file_id)
+      if (master .or. parallel) call file_close(file_id)
     end if
 
     ! Also check to write source separately in overwritten file
     if (source_latest) then
-      ! Set filename
       filename = trim(path_output) // 'source' // '.h5'
-
-      ! Write message for new file creation
       call write_message("Creating source file " // trim(filename) // "...", 1)
+      if (master .or. parallel) then
+        file_id = file_create(filename, parallel=.true.)
+        call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
+      end if
 
-      ! Always create this file because it will be overwritten
-      file_id = file_create(filename, parallel=.true.)
-
-      ! Write file type
-      call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
-
-      ! Write out source
       call write_source_bank(file_id)
 
-      ! Close file
-      call file_close(file_id)
-
+      if (master .or. parallel) call file_close(file_id)
     end if
 
   end subroutine write_source_point
@@ -931,13 +926,18 @@ contains
     integer :: hdf5_err
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data or file space handle
+    integer(HID_T) :: memspace ! memory space handle
+    integer(HSIZE_T) :: offset(1) ! source data offset
     integer(HSIZE_T) :: dims(1)
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
     integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: offset(1) ! source data offset
+#else
+    integer :: i
+#ifdef MPI
+    type(Bank), allocatable, target :: temp_source(:)
+#endif
 #endif
 
 #ifdef PHDF5
@@ -945,14 +945,10 @@ contains
     dims(1) = n_particles
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
     call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
 
     ! Create another data space but for each proc individually
     dims(1) = work
     call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Get the individual local proc dataspace
-    call h5dget_space_f(dset, dspace, hdf5_err)
 
     ! Select hyperslab for this dataspace
     offset(1) = work_index(rank)
@@ -978,25 +974,60 @@ contains
 
 #else
 
-    ! Set size
-    dims(1) = work
+    if (master) then
+      ! Create dataset big enough to hold all source sites
+      dims(1) = n_particles
+      call h5screate_simple_f(1, dims, dspace, hdf5_err)
+      call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
+           dspace, dset, hdf5_err)
 
-    ! Create dataspace
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+      ! Save source bank sites since the souce_bank array is overwritten below
+#ifdef MPI
+      allocate(temp_source(work))
+      temp_source(:) = source_bank(:)
+#endif
 
-    ! Create dataset
-    call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
-         dspace, dset, hdf5_err)
+      do i = 0, n_procs - 1
+        ! Create memory space
+        dims(1) = work_index(i+1) - work_index(i)
+        call h5screate_simple_f(1, dims, memspace, hdf5_err)
 
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
+#ifdef MPI
+        ! Receive source sites from other processes
+        if (i > 0) then
+          call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
+               MPI_COMM_WORLD, MPI_STATUS_IGNORE, mpi_err)
+        end if
+#endif
 
-    ! Write dataset to file
-    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
+        ! Select hyperslab for this dataspace
+        call h5dget_space_f(dset, dspace, hdf5_err)
+        offset(1) = work_index(i)
+        call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
 
-    ! Close all ids
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+        ! Set up pointer to data and write data to hyperslab
+        f_ptr = c_loc(source_bank)
+        call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
+             file_space_id=dspace, mem_space_id=memspace)
+
+        call h5sclose_f(memspace, hdf5_err)
+        call h5sclose_f(dspace, hdf5_err)
+      end do
+
+      ! Close all ids
+      call h5dclose_f(dset, hdf5_err)
+
+      ! Restore state of source bank
+#ifdef MPI
+      source_bank(:) = temp_source(:)
+      deallocate(temp_source)
+#endif
+    else
+#ifdef MPI
+      call MPI_SEND(source_bank, int(work), MPI_BANK, 0, rank, &
+           MPI_COMM_WORLD, mpi_err)
+#endif
+    end if
 
 #endif
 
@@ -1013,17 +1044,15 @@ contains
 
     integer :: hdf5_err
     integer(HID_T) :: dset     ! data set handle
+    integer(HID_T) :: dspace   ! data space handle
+    integer(HID_T) :: memspace ! memory space handle
+    integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: offset(1) ! offset of data
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
     integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
-    integer(HID_T) :: dspace   ! data space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: offset(1) ! offset of data
-    integer(HSIZE_T) :: dims(1)
 #endif
-
-#ifdef PHDF5
 
     ! Open the dataset
     call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
@@ -1032,46 +1061,31 @@ contains
     dims(1) = work
     call h5screate_simple_f(1, dims, memspace, hdf5_err)
 
-    ! Get the individual local proc dataspace
+    ! Select hyperslab for each process
     call h5dget_space_f(dset, dspace, hdf5_err)
-
-    ! Select hyperslab for this dataspace
     offset(1) = work_index(rank)
     call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up the property list for parallel writing
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
 
     ! Set up pointer to data
     f_ptr = c_loc(source_bank)
 
-    ! Read data from file in parallel
+#ifdef PHDF5
+    ! Read data in parallel
+    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
     call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
          file_space_id=dspace, mem_space_id=memspace, &
          xfer_prp=plist)
+    call h5pclose_f(plist, hdf5_err)
+#else
+    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
+         file_space_id=dspace, mem_space_id=memspace)
+#endif
 
     ! Close all ids
     call h5sclose_f(dspace, hdf5_err)
     call h5sclose_f(memspace, hdf5_err)
     call h5dclose_f(dset, hdf5_err)
-    call h5pclose_f(plist, hdf5_err)
-
-#else
-
-    ! Open dataset
-    call h5dopen_f(group_id, "source_bank", dset, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Read dataset from file
-    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
-
-    ! Close all ids
-    call h5dclose_f(dset, hdf5_err)
-
-#endif
 
   end subroutine read_source_bank
 

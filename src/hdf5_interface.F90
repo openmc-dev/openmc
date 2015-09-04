@@ -85,11 +85,10 @@ contains
     logical :: parallel_
 
     ! Check for serial option
-    if (present(parallel)) then
-      parallel_ = parallel
-    else
-      parallel_ = .false.
-    end if
+    parallel_ = .false.
+#ifdef PHDF5
+    if (present(parallel)) parallel_ = parallel
+#endif
 
     if (parallel_) then
       ! Setup file access property list with parallel I/O access
@@ -132,11 +131,10 @@ contains
     integer        :: open_mode ! HDF5 open mode
 
     ! Check for serial option
-    if (present(parallel)) then
-      parallel_ = parallel
-    else
-      parallel_ = .false.
-    end if
+    parallel_ = .false.
+#ifdef PHDF5
+    if (present(parallel)) parallel_ = parallel
+#endif
 
     ! Determine access type
     open_mode = H5F_ACC_RDONLY_F

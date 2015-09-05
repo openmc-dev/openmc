@@ -287,6 +287,22 @@ foreach(test ${TESTS})
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
 
+    elseif(${test} MATCHES "test_filter_distribcell")
+
+      # Add each case for distribcell tests
+      add_test(NAME ${TEST_NAME}_case-1
+        WORKING_DIRECTORY ${TEST_PATH}/case-1
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
+      add_test(NAME ${TEST_NAME}_case-2
+        WORKING_DIRECTORY ${TEST_PATH}/case-2
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
+      add_test(NAME ${TEST_NAME}_case-3
+        WORKING_DIRECTORY ${TEST_PATH}/case-3
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
+      add_test(NAME ${TEST_NAME}_case-4
+        WORKING_DIRECTORY ${TEST_PATH}/case-4
+        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
+
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
 
@@ -299,9 +315,9 @@ foreach(test ${TESTS})
         elseif(${test} MATCHES "test_sourcepoint_restart")
           set(RESTART_FILE statepoint.07.h5 source.07.h5)
         elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_12_616.h5)
+          set(RESTART_FILE particle_9_555.h5)
         elseif(${test} MATCHES "test_particle_restart_fixed")
-          set(RESTART_FILE particle_7_6144.h5)
+          set(RESTART_FILE particle_7_928.h5)
         else(${test} MATCHES "test_statepoint_restart")
           message(FATAL_ERROR "Restart test ${test} not recognized")
         endif(${test} MATCHES "test_statepoint_restart")
@@ -314,7 +330,7 @@ foreach(test ${TESTS})
         elseif(${test} MATCHES "test_sourcepoint_restart")
           set(RESTART_FILE statepoint.07.binary source.07.binary)
         elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_12_616.binary)
+          set(RESTART_FILE particle_9_555.binary)
         elseif(${test} MATCHES "test_particle_restart_fixed")
           set(RESTART_FILE particle_7_6144.binary)
         else(${test} MATCHES "test_statepoint_restart")

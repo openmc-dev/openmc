@@ -387,8 +387,7 @@ contains
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord(1) % uvw, &
-           p % mu, p % wgt, materials(p % material) % p0(i_nuc_mat))
+      call inelastic_scatter(nuc, rxn, p, materials(p % material) % p0(i_nuc_mat))
       p % event_MT = rxn % MT
 
     end if
@@ -439,7 +438,7 @@ contains
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
       call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
-        & micro_xs(i_nuclide) % elastic)
+           & micro_xs(i_nuclide) % elastic)
     else
       v_t = ZERO
     end if
@@ -605,7 +604,7 @@ contains
       ! accompanying PDF and CDF is utilized)
 
       if ((sab % secondary_mode == SAB_SECONDARY_EQUAL) .or. &
-          (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
+           (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
         if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
           ! All bins equally likely
 
@@ -877,16 +876,16 @@ contains
       ! interpolate xs since we're not exactly at the energy indices
       xs_low = nuc % elastic_0K(i_E_low)
       m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
-        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+           & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
       xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
       xs_up = nuc % elastic_0K(i_E_up)
       m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
-       & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
 
       ! get max 0K xs value over range of practical relative energies
       xs_max = max(xs_low, &
-        & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
+           & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
 
       reject = .true.
 
@@ -932,26 +931,26 @@ contains
       ! cdf value at lower bound attainable energy
       if (i_E_low > 1) then
         m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
-          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
         cdf_low = nuc % xs_cdf(i_E_low - 1) &
-          & + m * (E_low - nuc % energy_0K(i_E_low))
+             & + m * (E_low - nuc % energy_0K(i_E_low))
       else
         m = nuc % xs_cdf(i_E_low) &
-          & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
         cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
         if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
       end if
 
       ! cdf value at upper bound attainable energy
       m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
-        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
       cdf_up = nuc % xs_cdf(i_E_up - 1) &
-        & + m * (E_up - nuc % energy_0K(i_E_up))
+           & + m * (E_up - nuc % energy_0K(i_E_up))
 
       ! values used to sample the Maxwellian
       E_mode = kT
       p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
-        & * exp(-E_mode / kT)
+           & * exp(-E_mode / kT)
       E_t_max = 16.0_8 * E_mode
 
       reject = .true.
@@ -961,7 +960,7 @@ contains
         ! perform Maxwellian rejection sampling
         E_t = E_t_max * prn()**2
         p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
-          & * exp(-E_t / kT)
+             & * exp(-E_t / kT)
         R_speed = p_t / p_mode
 
         if (prn() < R_speed) then
@@ -969,12 +968,12 @@ contains
           ! sample a relative energy using the xs cdf
           cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
           i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
-            & i_E_up - i_E_low + 2, cdf_rel)
+               & i_E_up - i_E_low + 2, cdf_rel)
           E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
           m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
-            & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
-            & / (nuc % energy_0K(i_E_low + i_E_rel) &
-            & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+               & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+               & / (nuc % energy_0K(i_E_low + i_E_rel) &
+               & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
           E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
 
           ! perform rejection sampling on cosine between
@@ -1060,7 +1059,7 @@ contains
 
       ! Determine rejection probability
       accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-        /(beta_vn + beta_vt)
+           /(beta_vn + beta_vt)
 
       ! Perform rejection sampling on vt and mu
       if (prn() < accept_prob) exit
@@ -1302,18 +1301,18 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt, iso_lab)
+  subroutine inelastic_scatter(nuc, rxn, p, iso_lab)
 
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
-    real(8), intent(inout)  :: E      ! energy in lab (incoming/outgoing)
-    real(8), intent(inout)  :: uvw(3) ! directional cosines
-    real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
-    real(8), intent(inout)  :: wgt    ! particle weight
+    type(Particle), intent(inout) :: p
     logical, intent(in)     :: iso_lab
 
+    integer :: i      ! loop index
     integer :: law         ! secondary energy distribution law
+    real(8) :: mu     ! cosine of scattering angle in lab
     real(8) :: A           ! atomic weight ratio of nuclide
+    real(8) :: E      ! energy in lab (incoming/outgoing)
     real(8) :: E_in        ! incoming energy
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: Q           ! Q-value of reaction
@@ -1322,8 +1321,8 @@ contains
     real(8) :: phi         ! azimuthal angle
 
     ! copy energy, direction of neutron
-    E_in = E
-    uvw_in(:) = uvw(:)
+    E_in = p % E
+    uvw_in(:) = p % coord(1) % uvw(:)
 
     ! determine A and Q
     A = nuc % awr
@@ -1360,22 +1359,29 @@ contains
     ! compute cosine of scattering angle in LAB frame by taking dot product of
     ! neutron's pre- and post-collision unit vectors
     if (iso_lab) then
-      uvw(1) = TWO * prn() - ONE
+      p % coord(1) % uvw(1) = TWO * prn() - ONE
       phi = TWO * PI * prn()
-      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
-      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
-      mu = dot_product(uvw_in, uvw)
+      p % coord(1) % uvw(2) = cos(phi) * sqrt(ONE - uvw_in(1) * uvw_in(1))
+      p % coord(1) % uvw(3) = sin(phi) * sqrt(ONE - uvw_in(1) * uvw_in(1))
+      mu = dot_product(uvw_in, p % coord(1) % uvw)
     else
-      uvw = rotate_angle(uvw_in, mu)      
+      ! Set outgoing energy and scattering angle
+      p % E = E
+      p % mu = mu
+
+      ! change direction of particle
+      p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
     end if
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then
       yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+      p % wgt = yield * p % wgt
     else
-      yield = rxn % multiplicity
+      do i = 1, rxn % multiplicity - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+      end do
     end if
-    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 

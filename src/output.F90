@@ -7,7 +7,7 @@ module output
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Surface, Lattice, RectLattice, &
-                             &HexLattice, BASE_UNIVERSE
+                             HexLattice, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh
@@ -1372,7 +1372,7 @@ contains
     if (cmfd_run) then
       write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
       if (cmfd_display /= '') &
-        write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+           write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     end if
     write(UNIT=ou, FMT=*)
 
@@ -1432,20 +1432,20 @@ contains
     ! write out cmfd keff if it is active and other display info
     if (cmfd_on) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         cmfd % k_cmfd(current_batch)
+           cmfd % k_cmfd(current_batch)
       select case(trim(cmfd_display))
         case('entropy')
           write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-            cmfd % entropy(current_batch)
+               cmfd % entropy(current_batch)
         case('balance')
           write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-            cmfd % balance(current_batch)
+               cmfd % balance(current_batch)
         case('source')
           write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-            cmfd % src_cmp(current_batch)
+               cmfd % src_cmp(current_batch)
         case('dominance')
           write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-            cmfd % dom(current_batch)
+               cmfd % dom(current_batch)
       end select
     end if
 
@@ -1547,11 +1547,15 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    write(ou,100) "  Time in inactive batches", time_inactive % elapsed
+    if (run_mode == MODE_EIGENVALUE) then
+      write(ou,100) "  Time in inactive batches", time_inactive % elapsed
+    end if
     write(ou,100) "  Time in active batches", time_active % elapsed
-    write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
-    write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
-    write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+    if (run_mode == MODE_EIGENVALUE) then
+      write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
+      write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
+      write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+    end if
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
     if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
     if (cmfd_run) write(ou,100) "    Building matrices", &
@@ -1567,7 +1571,7 @@ contains
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &
              gen_per_batch) / time_inactive % elapsed
         speed_active = real(n_particles * n_active * gen_per_batch) / &
-           time_active % elapsed
+             time_active % elapsed
       else
         speed_inactive = ZERO
         speed_active = real(n_particles * (n_batches - restart_batch) * &
@@ -1884,21 +1888,22 @@ contains
             select case(t % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
               score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
-                score_names(abs(t % score_bins(k)))
+                   score_names(abs(t % score_bins(k)))
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                   repeat(" ", indent), score_name, &
+                   to_str(t % results(score_index,filter_index) % sum), &
+                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               score_index = score_index - 1
               do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) //  " " //&
-                  score_names(abs(t % score_bins(k)))
+                     score_names(abs(t % score_bins(k)))
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                  repeat(" ", indent), score_name, &
-                  to_str(t % results(score_index,filter_index) % sum), &
-                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                     repeat(" ", indent), score_name, &
+                     to_str(t % results(score_index,filter_index) % sum), &
+                     trim(to_str(t % results(score_index,filter_index) &
+                     % sum_sq))
               end do
               k = k + t % moment_order(k)
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -1908,11 +1913,13 @@ contains
                 do nm_order = -n_order, n_order
                   score_index = score_index + 1
                   score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                    trim(to_str(nm_order)) // " " // score_names(abs(t % score_bins(k)))
+                       trim(to_str(nm_order)) // " " &
+                       // score_names(abs(t % score_bins(k)))
                   write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                    repeat(" ", indent), score_name, &
-                    to_str(t % results(score_index,filter_index) % sum), &
-                    trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                       repeat(" ", indent), score_name, &
+                       to_str(t % results(score_index,filter_index) % sum), &
+                       trim(to_str(t % results(score_index,filter_index)&
+                       % sum_sq))
                 end do
               end do
               k = k + (t % moment_order(k) + 1)**2 - 1
@@ -1923,9 +1930,9 @@ contains
                 score_name = score_names(abs(t % score_bins(k)))
               end if
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                repeat(" ", indent), score_name, &
-                to_str(t % results(score_index,filter_index) % sum), &
-                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                   repeat(" ", indent), score_name, &
+                   to_str(t % results(score_index,filter_index) % sum), &
+                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
             end select
           end do
           indent = indent - 2
@@ -2334,8 +2341,8 @@ contains
 
             ! Loop over lattice coordinates
             do k = 1, n_x
-             do l = 1, n_y
-               do m = 1, n_z
+              do l = 1, n_y
+                do m = 1, n_z
 
                   if (final >= lat % offset(map, k, l, m) + offset) then
                     if (k == n_x .and. l == n_y .and. m == n_z) then

@@ -283,10 +283,6 @@ module global
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
-  ! Fixed source particle bank
-  type(Bank), pointer :: source_site => null()
-!$omp threadprivate(source_site)
-
   ! Restart run
   logical :: restart_run = .false.
   integer :: restart_batch
@@ -529,9 +525,9 @@ contains
     ! Deallocate entropy mesh
     if (associated(entropy_mesh)) then
       if (allocated(entropy_mesh % lower_left)) &
-          deallocate(entropy_mesh % lower_left)
+           deallocate(entropy_mesh % lower_left)
       if (allocated(entropy_mesh % upper_right)) &
-          deallocate(entropy_mesh % upper_right)
+           deallocate(entropy_mesh % upper_right)
       if (allocated(entropy_mesh % width)) deallocate(entropy_mesh % width)
       deallocate(entropy_mesh)
     end if
@@ -541,7 +537,7 @@ contains
     if (associated(ufs_mesh)) then
         if (allocated(ufs_mesh % lower_left)) deallocate(ufs_mesh % lower_left)
         if (allocated(ufs_mesh % upper_right)) &
-            deallocate(ufs_mesh % upper_right)
+             deallocate(ufs_mesh % upper_right)
         if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
         deallocate(ufs_mesh)
     end if

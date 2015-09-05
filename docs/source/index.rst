@@ -28,7 +28,7 @@ free to send a message to the User's Group `mailing list`_.
     :maxdepth: 1
 
     quickinstall
-    releasenotes/index
+    releasenotes
     methods/index
     usersguide/index
     devguide/index

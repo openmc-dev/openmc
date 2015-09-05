@@ -3,6 +3,7 @@
 set -ev
 
 # Run all debug tests
+./check_source.py
 if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
   ./run_tests.py -C "^basic-debug$|^hdf5-debug$|^mpi-omp-debug$|^phdf5-omp-debug$" -j 2 -s
 else

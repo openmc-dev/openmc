@@ -7,8 +7,8 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_MINOR   = 7
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_STATEPOINT       = 13
@@ -43,6 +43,9 @@ module constants
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000
   integer, parameter :: MAX_SAMPLE = 100000
+
+  ! Maximum number of secondary particles created
+  integer, parameter :: MAX_SECONDARY = 1000
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word

@@ -9,12 +9,12 @@ module vector_header
     integer :: n        ! number of rows/cols in matrix
     real(8), allocatable :: data(:) ! where vector data is stored
     real(8), pointer :: val(:) ! pointer to vector data
-   contains
-     procedure :: create       => vector_create
-     procedure :: destroy      => vector_destroy
-     procedure :: add_value    => vector_add_value
-     procedure :: copy         => vector_copy
-     ! TODO: procedure :: write       => vector_write
+  contains
+    procedure :: create       => vector_create
+    procedure :: destroy      => vector_destroy
+    procedure :: add_value    => vector_add_value
+    procedure :: copy         => vector_copy
+    ! TODO: procedure :: write       => vector_write
   end type Vector
 
 contains

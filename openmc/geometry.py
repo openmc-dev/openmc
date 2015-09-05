@@ -34,8 +34,8 @@ class Geometry(object):
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
         if root_universe._id != 0:
-            msg = 'Unable to add root Universe {0} to Geometry since ' \
-                  'it has ID={1} instead of ' \
+            msg = 'Unable to add root Universe "{0}" to Geometry since ' \
+                  'it has ID="{1}" instead of ' \
                   'ID=0'.format(root_universe, root_universe._id)
             raise ValueError(msg)
 

@@ -50,7 +50,7 @@ class Executor(object):
         check_type("Executor's working directory", working_directory,
                    basestring)
         if not os.path.isdir(working_directory):
-            msg = 'Unable to set Executor\'s working directory to {0} ' \
+            msg = 'Unable to set Executor\'s working directory to "{0}" ' \
                   'which does not exist'.format(working_directory)
             raise ValueError(msg)
 

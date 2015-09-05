@@ -219,7 +219,7 @@ def main(file_, o):
           for y in range(1,ny+1):
             for z in range(1,nz+1):
               filterspec[0][1] = (x,y,z)
-              val = sp.get_value(tally.id-1, filterspec, sid)[o.valerr]
+              val = sp.get_values(tally.id-1, filterspec, sid)[o.valerr]
               if o.vtk:
                 # vtk cells go z, y, x, so we store it now and enter it later
                 i = (z-1)*nx*ny + (y-1)*nx + x-1

@@ -411,16 +411,70 @@ class Summary(object):
                 if outer != -22:
                     lattice.outer = self.universes[outer]
 
-                # Build array of Universe pointers for the Lattice
-                universes = \
-                    np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
+                # Build array of Universe pointers for the Lattice.  Note that
+                # we need to convert between the HDF5's square array of
+                # (x, alpha, z) to the Python API's format of a ragged nested
+                # list of (z, ring, theta).
+                universes = []
+                for z in range(lattice.num_axial):
+                    # Add a list for this axial level.
+                    universes.append([])
+                    x = lattice.num_rings - 1
+                    a = 2*lattice.num_rings - 2
+                    for r in range(lattice.num_rings - 1, 0, -1):
+                        # Add a list for this ring.
+                        universes[-1].append([])
 
-                for i in range(universe_ids.shape[0]):
-                    for j in range(universe_ids.shape[1]):
-                        for k in range(universe_ids.shape[2]):
-                            if universe_ids[i, j, k] != -1:
-                                universes[i, j, k] = self.get_universe_by_id(
-                                    universe_ids[i, j, k])
+                        # Climb down the top-right.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            x += 1
+                            a -= 1
+
+                        # Climb down the right.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            a -= 1
+
+                        # Climb down the bottom-right.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            x -= 1
+
+                        # Climb up the bottom-left.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            x -= 1
+                            a += 1
+
+                        # Climb up the left.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            a += 1
+
+                        # Climb up the top-left.
+                        for i in range(r):
+                            universes[-1][-1].append(universe_ids[z, a, x])
+                            x += 1
+
+                        # Move down to the next ring.
+                        a -= 1
+
+                        # Convert the ids into Universe objects.
+                        universes[-1][-1] = [self.get_universe_by_id(u_id)
+                                             for u_id in universes[-1][-1]]
+
+                    # Handle the degenerate center ring separately.
+                    u_id = universe_ids[z, a, x]
+                    universes[-1].append([self.get_universe_by_id(u_id)])
+
+                # Add the universes to the lattice.
+                if len(pitch) == 2:
+                    # Lattice is 3D
+                    lattice.universes = universes
+                else:
+                    # Lattice is 2D; extract the only axial level
+                    lattice.universes = universes[0]
 
                 if offset_size > 0:
                     lattice.offsets = offsets

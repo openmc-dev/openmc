@@ -120,7 +120,7 @@ contains
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
       if (get_arraysize_integer(node_mesh, "map") /= &
-          product(cmfd % indices(1:3))) then
+           product(cmfd % indices(1:3))) then
         call fatal_error('CMFD coremap not to correct dimensions')
       end if
       allocate(iarray(get_arraysize_integer(node_mesh, "map")))
@@ -156,7 +156,7 @@ contains
       call get_node_value(doc, "dhat_reset", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        dhat_reset = .true.
+           dhat_reset = .true.
     end if
 
     ! Set monitoring
@@ -180,7 +180,7 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_run_adjoint = .true.
+           cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
@@ -289,7 +289,7 @@ contains
     ! Determine number of dimensions for mesh
     n = get_arraysize_integer(node_mesh, "dimension")
     if (n /= 2 .and. n /= 3) then
-       call fatal_error("Mesh must be two or three dimensions.")
+      call fatal_error("Mesh must be two or three dimensions.")
     end if
     m % n_dimension = n
 
@@ -318,14 +318,14 @@ contains
 
     ! Make sure both upper-right or width were specified
     if (check_for_node(node_mesh, "upper_right") .and. &
-        check_for_node(node_mesh, "width")) then
+         check_for_node(node_mesh, "width")) then
       call fatal_error("Cannot specify both <upper_right> and <width> on a &
            &tally mesh.")
     end if
 
     ! Make sure either upper-right or width was specified
     if (.not.check_for_node(node_mesh, "upper_right") .and. &
-        .not.check_for_node(node_mesh, "width")) then
+         .not.check_for_node(node_mesh, "width")) then
       call fatal_error("Must specify either <upper_right> and <width> on a &
            &tally mesh.")
     end if
@@ -333,7 +333,7 @@ contains
     if (check_for_node(node_mesh, "width")) then
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "width") /= &
-          get_arraysize_double(node_mesh, "lower_left")) then
+           get_arraysize_double(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <width> must be the same as the &
              &number of entries on <lower_left>.")
       end if
@@ -351,7 +351,7 @@ contains
     elseif (check_for_node(node_mesh, "upper_right")) then
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "upper_right") /= &
-          get_arraysize_double(node_mesh, "lower_left")) then
+           get_arraysize_double(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <upper_right> must be the same &
              &as the number of entries on <lower_left>.")
       end if
@@ -548,7 +548,7 @@ contains
       ! Deallocate filter bins
       deallocate(filters(1) % int_bins)
       if (check_for_node(node_mesh, "energy")) &
-        deallocate(filters(2) % real_bins)
+           deallocate(filters(2) % real_bins)
 
     end do
 

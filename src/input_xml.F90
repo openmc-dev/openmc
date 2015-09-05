@@ -472,7 +472,7 @@ contains
         ! Check for type of energy distribution
         type = ''
         if (check_for_node(node_dist, "type")) &
-          call get_node_value(node_dist, "type", type)
+             call get_node_value(node_dist, "type", type)
         select case (to_lower(type))
         case ('monoenergetic')
           external_source % type_energy = SRC_ENERGY_MONO
@@ -798,7 +798,7 @@ contains
     if (.not. source_separate) then
       do i = 1, n_source_points
         if (.not. statepoint_batch % contains(sourcepoint_batch % &
-            get_item(i))) then
+             get_item(i))) then
           call fatal_error('Sourcepoint batches are not a subset&
                & of statepoint batches.')
         end if
@@ -811,7 +811,7 @@ contains
       call get_node_value(doc, "no_reduce", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        reduce_tallies = .false.
+           reduce_tallies = .false.
     end if
 
     ! Check if the user has specified to use confidence intervals for
@@ -884,11 +884,11 @@ contains
                  &// trim(to_str(i)) // " in settings.xml file!")
           end if
           call get_node_value(node_scatterer, "nuclide", &
-            nuclides_0K(i) % nuclide)
+               nuclides_0K(i) % nuclide)
 
           if (check_for_node(node_scatterer, "method")) then
             call get_node_value(node_scatterer, "method", &
-              nuclides_0K(i) % scheme)
+                 nuclides_0K(i) % scheme)
           end if
 
           ! check to make sure xs name for which method is applied is given
@@ -898,7 +898,7 @@ contains
                  &// " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label", &
-            nuclides_0K(i) % name)
+               nuclides_0K(i) % name)
 
           ! check to make sure 0K xs name for which method is applied is given
           if (.not. check_for_node(node_scatterer, "xs_label_0K")) then
@@ -906,11 +906,11 @@ contains
                  &// trim(to_str(i)) // " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label_0K", &
-            nuclides_0K(i) % name_0K)
+               nuclides_0K(i) % name_0K)
 
           if (check_for_node(node_scatterer, "E_min")) then
             call get_node_value(node_scatterer, "E_min", &
-              nuclides_0K(i) % E_min)
+                 nuclides_0K(i) % E_min)
           end if
 
           ! check that E_min is non-negative
@@ -921,7 +921,7 @@ contains
 
           if (check_for_node(node_scatterer, "E_max")) then
             call get_node_value(node_scatterer, "E_max", &
-              nuclides_0K(i) % E_max)
+                 nuclides_0K(i) % E_max)
           end if
 
           ! check that E_max is not less than E_min
@@ -1081,7 +1081,7 @@ contains
       ! Read material
       word = ''
       if (check_for_node(node_cell, "material")) &
-        call get_node_value(node_cell, "material", word)
+           call get_node_value(node_cell, "material", word)
       select case(to_lower(word))
       case ('void')
         c % material = MATERIAL_VOID
@@ -1248,7 +1248,7 @@ contains
       ! Copy and interpret surface type
       word = ''
       if (check_for_node(node_surf, "type")) &
-        call get_node_value(node_surf, "type", word)
+           call get_node_value(node_surf, "type", word)
       select case(to_lower(word))
       case ('x-plane')
         s % type = SURF_PX
@@ -1306,7 +1306,7 @@ contains
       ! Boundary conditions
       word = ''
       if (check_for_node(node_surf, "boundary")) &
-        call get_node_value(node_surf, "boundary", word)
+           call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
         s % bc = BC_TRANSMIT
@@ -1447,7 +1447,7 @@ contains
         do k = 0, n_y - 1
           do j = 1, n_x
             lat % universes(j, n_y - k, m) = &
-                &temp_int_array(j + n_x*k + n_x*n_y*(m-1))
+                 &temp_int_array(j + n_x*k + n_x*n_y*(m-1))
           end do
         end do
       end do
@@ -1714,7 +1714,7 @@ contains
 
     ! Copy default cross section if present
     if (check_for_node(doc, "default_xs")) &
-      call get_node_value(doc, "default_xs", default_xs)
+         call get_node_value(doc, "default_xs", default_xs)
 
     ! Get pointer to list of XML <material>
     call get_node_list(doc, "material", node_mat_list)
@@ -1860,7 +1860,7 @@ contains
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
-          call get_node_value(node_nuc, "xs", name)
+             call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
 
         ! save name and density to list
@@ -1869,7 +1869,7 @@ contains
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
         if (.not.check_for_node(node_nuc, "ao") .and. &
-            .not.check_for_node(node_nuc, "wo")) then
+             .not.check_for_node(node_nuc, "wo")) then
           call fatal_error("No atom or weight percent specified for nuclide " &
                &// trim(name))
         elseif (check_for_node(node_nuc, "ao") .and. &
@@ -1919,7 +1919,7 @@ contains
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
         if (.not.check_for_node(node_ele, "ao") .and. &
-            .not.check_for_node(node_ele, "wo")) then
+             .not.check_for_node(node_ele, "wo")) then
           call fatal_error("No atom or weight percent specified for element " &
                &// trim(name))
         elseif (check_for_node(node_ele, "ao") .and. &
@@ -2036,7 +2036,7 @@ contains
 
           ! Determine name of S(a,b) table
           if (.not.check_for_node(node_sab, "name") .or. &
-              .not.check_for_node(node_sab, "xs")) then
+               .not.check_for_node(node_sab, "xs")) then
             call fatal_error("Need to specify <name> and <xs> for S(a,b) &
                  &table.")
           end if
@@ -2183,7 +2183,7 @@ contains
       call get_node_value(doc, "assume_separate", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        assume_separate = .true.
+           assume_separate = .true.
     end if
 
     ! ==========================================================================
@@ -2211,7 +2211,7 @@ contains
       ! Read mesh type
       temp_str = ''
       if (check_for_node(node_mesh, "type")) &
-        call get_node_value(node_mesh, "type", temp_str)
+           call get_node_value(node_mesh, "type", temp_str)
       select case (to_lower(temp_str))
       case ('rect', 'rectangle', 'rectangular')
         m % type = LATTICE_RECT
@@ -2253,14 +2253,14 @@ contains
 
       ! Make sure both upper-right or width were specified
       if (check_for_node(node_mesh, "upper_right") .and. &
-          check_for_node(node_mesh, "width")) then
+           check_for_node(node_mesh, "width")) then
         call fatal_error("Cannot specify both <upper_right> and <width> on a &
              &tally mesh.")
       end if
 
       ! Make sure either upper-right or width was specified
       if (.not.check_for_node(node_mesh, "upper_right") .and. &
-          .not.check_for_node(node_mesh, "width")) then
+           .not.check_for_node(node_mesh, "width")) then
         call fatal_error("Must specify either <upper_right> and <width> on a &
              &tally mesh.")
       end if
@@ -2268,7 +2268,7 @@ contains
       if (check_for_node(node_mesh, "width")) then
         ! Check to ensure width has same dimensions
         if (get_arraysize_double(node_mesh, "width") /= &
-            get_arraysize_double(node_mesh, "lower_left")) then
+             get_arraysize_double(node_mesh, "lower_left")) then
           call fatal_error("Number of entries on <width> must be the same as &
                &the number of entries on <lower_left>.")
         end if
@@ -2286,7 +2286,7 @@ contains
       elseif (check_for_node(node_mesh, "upper_right")) then
         ! Check to ensure width has same dimensions
         if (get_arraysize_double(node_mesh, "upper_right") /= &
-            get_arraysize_double(node_mesh, "lower_left")) then
+             get_arraysize_double(node_mesh, "lower_left")) then
           call fatal_error("Number of entries on <upper_right> must be the &
                &same as the number of entries on <lower_left>.")
         end if
@@ -2349,7 +2349,7 @@ contains
 
       ! Copy tally name
       if (check_for_node(node_tal, "name")) &
-        call get_node_value(node_tal, "name", t % name)
+           call get_node_value(node_tal, "name", t % name)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
@@ -2371,13 +2371,13 @@ contains
           ! Convert filter type to lower case
           temp_str = ''
           if (check_for_node(node_filt, "type")) &
-            call get_node_value(node_filt, "type", temp_str)
+               call get_node_value(node_filt, "type", temp_str)
           temp_str = to_lower(temp_str)
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
             if (trim(temp_str) == 'energy' .or. &
-                trim(temp_str) == 'energyout') then
+                 trim(temp_str) == 'energyout') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2644,7 +2644,7 @@ contains
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
               n_order = int(str_to_int( &
-                score_name(n_order_pos:(len_trim(score_name)))),4)
+                   score_name(n_order_pos:(len_trim(score_name)))),4)
               if (n_order > MAX_ANG_ORDER) then
                 ! User requested too many orders; throw a warning and set to the
                 ! maximum order.
@@ -2687,7 +2687,7 @@ contains
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
               n_order = int(str_to_int( &
-                score_name(n_order_pos:(len_trim(score_name)))),4)
+                   score_name(n_order_pos:(len_trim(score_name)))),4)
               if (n_order > MAX_ANG_ORDER) then
                 ! User requested too many orders; throw a warning and set to the
                 ! maximum order.
@@ -2710,7 +2710,7 @@ contains
               if (starts_with(score_name,trim(MOMENT_N_STRS(imomstr)))) then
                 n_order_pos = scan(score_name,'0123456789')
                 n_order = int(str_to_int( &
-                  score_name(n_order_pos:(len_trim(score_name)))),4)
+                     score_name(n_order_pos:(len_trim(score_name)))),4)
                 if (n_order > MAX_ANG_ORDER) then
                   ! User requested too many orders; throw a warning and set to the
                   ! maximum order.
@@ -3032,7 +3032,7 @@ contains
           ! Get the trigger type - "variance", "std_dev" or "rel_err"
           if (check_for_node(node_trigger, "type")) then
             call get_node_value(node_trigger, "type", temp_str)
-                 temp_str = to_lower(temp_str)
+            temp_str = to_lower(temp_str)
           else
             call fatal_error("Must specify trigger type for tally " // &
                  trim(to_str(t % id)) // " in tally XML file.")
@@ -3131,7 +3131,7 @@ contains
 
               ! Increment the overall trigger index
               trig_ind = trig_ind + 1
-           end if
+            end if
           end do SCORE_LOOP
 
           ! Deallocate the list of tally scores used to create triggers
@@ -3249,7 +3249,7 @@ contains
       ! Copy plot type
       temp_str = 'slice'
       if (check_for_node(node_plot, "type")) &
-        call get_node_value(node_plot, "type", temp_str)
+           call get_node_value(node_plot, "type", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("slice")
@@ -3264,7 +3264,7 @@ contains
       ! Set output file path
       filename = trim(to_str(pl % id)) // "_plot"
       if (check_for_node(node_plot, "filename")) &
-        call get_node_value(node_plot, "filename", filename)
+           call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
@@ -3309,7 +3309,7 @@ contains
       if (pl % type == PLOT_TYPE_SLICE) then
         temp_str = 'xy'
         if (check_for_node(node_plot, "basis")) &
-          call get_node_value(node_plot, "basis", temp_str)
+             call get_node_value(node_plot, "basis", temp_str)
         temp_str = to_lower(temp_str)
         select case (trim(temp_str))
         case ("xy")
@@ -3364,7 +3364,7 @@ contains
       ! Copy plot color type and initialize all colors randomly
       temp_str = "cell"
       if (check_for_node(node_plot, "color")) &
-        call get_node_value(node_plot, "color", temp_str)
+           call get_node_value(node_plot, "color", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("cell")
@@ -3478,7 +3478,7 @@ contains
             ! Ensure that there is a linewidth for this meshlines specification
             if (check_for_node(node_meshlines, "linewidth")) then
               call get_node_value(node_meshlines, "linewidth", &
-                  pl % meshlines_width)
+                   pl % meshlines_width)
             else
               call fatal_error("Must specify a linewidth for meshlines &
                    &specification in plot " // trim(to_str(pl % id)))
@@ -3494,7 +3494,7 @@ contains
               end if
 
               call get_node_array(node_meshlines, "color", &
-                  pl % meshlines_color % rgb)
+                   pl % meshlines_color % rgb)
             else
 
               pl % meshlines_color % rgb = (/ 0, 0, 0 /)
@@ -3520,8 +3520,8 @@ contains
               end if
 
               i_mesh = cmfd_tallies(1) % &
-                  filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
-                  int_bins(1)
+                   filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % &
+                   int_bins(1)
               pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
@@ -3680,9 +3680,9 @@ contains
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-       ! Could not find cross_sections.xml file
-       call fatal_error("Cross sections XML file '" &
-            &// trim(path_cross_sections) // "' does not exist!")
+      ! Could not find cross_sections.xml file
+      call fatal_error("Cross sections XML file '" &
+           &// trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
@@ -3691,28 +3691,28 @@ contains
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "directory")) then
-       ! Copy directory information if present
-       call get_node_value(doc, "directory", directory)
+      ! Copy directory information if present
+      call get_node_value(doc, "directory", directory)
     else
-       ! If no directory is listed in cross_sections.xml, by default select the
-       ! directory in which the cross_sections.xml file resides
-       i = index(path_cross_sections, "/", BACK=.true.)
-       directory = path_cross_sections(1:i)
+      ! If no directory is listed in cross_sections.xml, by default select the
+      ! directory in which the cross_sections.xml file resides
+      i = index(path_cross_sections, "/", BACK=.true.)
+      directory = path_cross_sections(1:i)
     end if
 
     ! determine whether binary/ascii
     temp_str = ''
     if (check_for_node(doc, "filetype")) &
-      call get_node_value(doc, "filetype", temp_str)
+         call get_node_value(doc, "filetype", temp_str)
     if (trim(temp_str) == 'ascii') then
-       filetype = ASCII
+      filetype = ASCII
     elseif (trim(temp_str) == 'binary') then
-       filetype = BINARY
+      filetype = BINARY
     elseif (len_trim(temp_str) == 0) then
-       filetype = ASCII
+      filetype = ASCII
     else
-       call fatal_error("Unknown filetype in cross_sections.xml: " &
-            &// trim(temp_str))
+      call fatal_error("Unknown filetype in cross_sections.xml: " &
+           &// trim(temp_str))
     end if
 
     ! copy default record length and entries for binary files
@@ -3727,83 +3727,83 @@ contains
 
     ! Allocate xs_listings array
     if (n_listings == 0) then
-       call fatal_error("No ACE table listings present in cross_sections.xml &
-            &file!")
+      call fatal_error("No ACE table listings present in cross_sections.xml &
+           &file!")
     else
-       allocate(xs_listings(n_listings))
+      allocate(xs_listings(n_listings))
     end if
 
     do i = 1, n_listings
-       listing => xs_listings(i)
+      listing => xs_listings(i)
 
-       ! Get pointer to ace table XML node
-       call get_list_item(node_ace_list, i, node_ace)
+      ! Get pointer to ace table XML node
+      call get_list_item(node_ace_list, i, node_ace)
 
-       ! copy a number of attributes
-       call get_node_value(node_ace, "name", listing % name)
-       if (check_for_node(node_ace, "alias")) &
-         call get_node_value(node_ace, "alias", listing % alias)
-       call get_node_value(node_ace, "zaid", listing % zaid)
-       call get_node_value(node_ace, "awr", listing % awr)
-       if (check_for_node(node_ace, "temperature")) &
-         call get_node_value(node_ace, "temperature", listing % kT)
-       call get_node_value(node_ace, "location", listing % location)
+      ! copy a number of attributes
+      call get_node_value(node_ace, "name", listing % name)
+      if (check_for_node(node_ace, "alias")) &
+           call get_node_value(node_ace, "alias", listing % alias)
+      call get_node_value(node_ace, "zaid", listing % zaid)
+      call get_node_value(node_ace, "awr", listing % awr)
+      if (check_for_node(node_ace, "temperature")) &
+           call get_node_value(node_ace, "temperature", listing % kT)
+      call get_node_value(node_ace, "location", listing % location)
 
-       ! determine type of cross section
-       if (ends_with(listing % name, 'c')) then
-          listing % type = ACE_NEUTRON
-       elseif (ends_with(listing % name, 't')) then
-          listing % type = ACE_THERMAL
-       end if
+      ! determine type of cross section
+      if (ends_with(listing % name, 'c')) then
+        listing % type = ACE_NEUTRON
+      elseif (ends_with(listing % name, 't')) then
+        listing % type = ACE_THERMAL
+      end if
 
-       ! set filetype, record length, and number of entries
-       if (check_for_node(node_ace, "filetype")) then
-         temp_str = ''
-         call get_node_value(node_ace, "filetype", temp_str)
-         if (temp_str == 'ascii') then
-           listing % filetype = ASCII
-         else if (temp_str == 'binary') then
-           listing % filetype = BINARY
-         end if
-       else
-         listing % filetype = filetype
-       end if
+      ! set filetype, record length, and number of entries
+      if (check_for_node(node_ace, "filetype")) then
+        temp_str = ''
+        call get_node_value(node_ace, "filetype", temp_str)
+        if (temp_str == 'ascii') then
+          listing % filetype = ASCII
+        else if (temp_str == 'binary') then
+          listing % filetype = BINARY
+        end if
+      else
+        listing % filetype = filetype
+      end if
 
-       ! Set record length and entries for binary files
-       if (filetype == BINARY) then
-         listing % recl     = recl
-         listing % entries  = entries
-       end if
+      ! Set record length and entries for binary files
+      if (filetype == BINARY) then
+        listing % recl     = recl
+        listing % entries  = entries
+      end if
 
-       ! determine metastable state
-       if (.not.check_for_node(node_ace, "metastable")) then
-          listing % metastable = .false.
-       else
-          listing % metastable = .true.
-       end if
+      ! determine metastable state
+      if (.not.check_for_node(node_ace, "metastable")) then
+        listing % metastable = .false.
+      else
+        listing % metastable = .true.
+      end if
 
-       ! determine path of cross section table
-       if (check_for_node(node_ace, "path")) then
-         call get_node_value(node_ace, "path", temp_str)
-       else
-         call fatal_error("Path missing for isotope " // listing % name)
-       end if
+      ! determine path of cross section table
+      if (check_for_node(node_ace, "path")) then
+        call get_node_value(node_ace, "path", temp_str)
+      else
+        call fatal_error("Path missing for isotope " // listing % name)
+      end if
 
-       if (starts_with(temp_str, '/')) then
-          listing % path = trim(temp_str)
-       else
-          if (ends_with(directory,'/')) then
-             listing % path = trim(directory) // trim(temp_str)
-          else
-             listing % path = trim(directory) // '/' // trim(temp_str)
-          end if
-       end if
+      if (starts_with(temp_str, '/')) then
+        listing % path = trim(temp_str)
+      else
+        if (ends_with(directory,'/')) then
+          listing % path = trim(directory) // trim(temp_str)
+        else
+          listing % path = trim(directory) // '/' // trim(temp_str)
+        end if
+      end if
 
-       ! create dictionary entry for both name and alias
-       call xs_listing_dict % add_key(to_lower(listing % name), i)
-       if (check_for_node(node_ace, "alias")) then
-         call xs_listing_dict % add_key(to_lower(listing % alias), i)
-       end if
+      ! create dictionary entry for both name and alias
+      call xs_listing_dict % add_key(to_lower(listing % name), i)
+      if (check_for_node(node_ace, "alias")) then
+        call xs_listing_dict % add_key(to_lower(listing % alias), i)
+      end if
     end do
 
     ! Check that 0K nuclides are listed in the cross_sections.xml file

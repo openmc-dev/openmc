@@ -186,7 +186,7 @@ contains
         call su % write_data("lattice", "fill_type", &
              group="geometry/cells/cell " // trim(to_str(c % id)))
         call su % write_data(lattices(c % fill) % obj % id, "lattice", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
+             group="geometry/cells/cell " // trim(to_str(c % id)))
       end select
 
       ! Write list of bounding surfaces
@@ -373,7 +373,7 @@ contains
 
         ! Write lattice universes.
         allocate(lattice_universes(lat % n_cells(1), lat % n_cells(2), &
-            &lat % n_cells(3)))
+             &lat % n_cells(3)))
         do j = 1, lat % n_cells(1)
           do k = 1, lat % n_cells(2)
             do m = 1, lat % n_cells(3)
@@ -394,23 +394,23 @@ contains
         ! Write number of lattice cells.
         call su % write_data(lat % n_rings, "n_rings", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call su % write_data(lat % n_rings, "n_axial", &
+        call su % write_data(lat % n_axial, "n_axial", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
         ! Write lattice center, pitch and outer universe.
         if (lat % is_3d) then
-          call su % write_data(lat % center, "center", length=3, & 
+          call su % write_data(lat % center, "center", length=3, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         else
-          call su % write_data(lat % center, "center", length=2, & 
+          call su % write_data(lat % center, "center", length=2, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         end if
- 
+
         if (lat % is_3d) then
-          call su % write_data(lat % pitch, "pitch", length=3, &
+          call su % write_data(lat % pitch, "pitch", length=2, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         else
-          call su % write_data(lat % pitch, "pitch", length=2, &
+          call su % write_data(lat % pitch, "pitch", length=1, &
                group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         end if
 
@@ -429,7 +429,7 @@ contains
 
         ! Write lattice universes.
         allocate(lattice_universes(2*lat % n_rings - 1, 2*lat % n_rings - 1, &
-            &lat % n_axial))
+             &lat % n_axial))
         do m = 1, lat % n_axial
           do k = 1, 2*lat % n_rings - 1
             do j = 1, 2*lat % n_rings - 1
@@ -447,7 +447,7 @@ contains
           end do
         end do
         call su % write_data(lattice_universes, "universes", &
-             &length=(/lat % n_axial, 2*lat % n_rings-1, 2*lat % n_rings-1/), &
+             &length=(/2*lat % n_rings-1, 2*lat % n_rings-1, lat % n_axial/), &
              &group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         deallocate(lattice_universes)
       end select
@@ -647,12 +647,12 @@ contains
                 // "/filter " // trim(to_str(j)))
         case(FILTER_ENERGYIN)
           call su % write_data("energy", "type_name", &
-          group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+               group="tallies/tally " // trim(to_str(t % id)) &
+               // "/filter " // trim(to_str(j)))
         case(FILTER_ENERGYOUT)
           call su % write_data("energyout", "type_name", &
-          group="tallies/tally " // trim(to_str(t % id)) &
-                // "/filter " // trim(to_str(j)))
+               group="tallies/tally " // trim(to_str(t % id)) &
+               // "/filter " // trim(to_str(j)))
         end select
 
       end do FILTER_LOOP

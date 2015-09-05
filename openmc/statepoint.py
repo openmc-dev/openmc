@@ -199,7 +199,7 @@ class StatePoint(object):
 
             self._n_inactive = self._f['n_inactive'].value
             self._gen_per_batch = self._f['gen_per_batch'].value
-            self._k_batch = self._f['k_generation'].value
+            self._k_generation = self._f['k_generation'].value
             self._entropy = self._f['entropy'].value
 
             self._k_col_abs = self._f['k_col_abs'].value
@@ -358,7 +358,7 @@ class StatePoint(object):
                 filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
-                    key = self._mesh_keys[list(self._mesh_ids).index(bins)]
+                    key = self._mesh_keys[self._mesh_ids == bins][0]
                     filter.mesh = self._meshes[key]
 
                 # Add Filter to the Tally
@@ -378,8 +378,9 @@ class StatePoint(object):
 
             tally.num_score_bins = n_score_bins
 
-            scores = [SCORE_TYPES[j] for j in self._f[
-                '{0}{1}/score_bins'.format(base, tally_key)].value]
+            score_bins = self._f['{0}{1}/score_bins'.format(
+                base, tally_key)].value
+            scores = [SCORE_TYPES[score] for score in score_bins]
             n_user_scores = self._f['{0}{1}/n_user_score_bins'
                                     .format(base, tally_key)].value
 

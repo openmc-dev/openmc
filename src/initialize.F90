@@ -14,7 +14,6 @@ module initialize
   use global
   use hdf5_interface,   only: file_open, read_dataset, file_close, hdf5_bank_t,&
                               hdf5_tallyresult_t, hdf5_integer8_t
-  use hdf5_summary,     only: hdf5_write_summary
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
@@ -23,6 +22,7 @@ module initialize
   use random_lcg,       only: initialize_prng
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
+  use summary,          only: write_summary
   use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies
 
@@ -153,7 +153,7 @@ contains
         call print_plot()
       else
         ! Write summary information
-        if (output_summary) call hdf5_write_summary()
+        if (output_summary) call write_summary()
 
         ! Write cross section information
         if (output_xs) call write_xs_summary()

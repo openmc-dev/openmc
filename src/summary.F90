@@ -1,4 +1,4 @@
-module hdf5_summary
+module summary
 
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
@@ -16,14 +16,17 @@ module hdf5_summary
   use hdf5
 
   implicit none
+  private
+
+  public :: write_summary
 
 contains
 
 !===============================================================================
-! HDF5_WRITE_SUMMARY
+! WRITE_SUMMARY
 !===============================================================================
 
-  subroutine hdf5_write_summary()
+  subroutine write_summary()
 
     integer(HID_T) :: file_id
 
@@ -31,7 +34,7 @@ contains
     file_id = file_create("summary.h5")
 
     ! Write header information
-    call hdf5_write_header(file_id)
+    call write_header(file_id)
 
     ! Write number of particles
     call write_dataset(file_id, "n_particles", n_particles)
@@ -57,23 +60,23 @@ contains
            "description", "Number of generations per batch")
     end if
 
-    call hdf5_write_geometry(file_id)
-    call hdf5_write_materials(file_id)
-    call hdf5_write_nuclides(file_id)
+    call write_geometry(file_id)
+    call write_materials(file_id)
+    call write_nuclides(file_id)
     if (n_tallies > 0) then
-      call hdf5_write_tallies(file_id)
+      call write_tallies(file_id)
     end if
 
     ! Terminate access to the file.
     call file_close(file_id)
 
-  end subroutine hdf5_write_summary
+  end subroutine write_summary
 
 !===============================================================================
-! HDF5_WRITE_HEADER
+! WRITE_HEADER
 !===============================================================================
 
-  subroutine hdf5_write_header(file_id)
+  subroutine write_header(file_id)
     integer(HID_T), intent(in) :: file_id
 
     ! Write version information
@@ -89,13 +92,13 @@ contains
     call write_attribute_string(file_id, "n_procs", "description", &
          "Number of MPI processes")
 
-  end subroutine hdf5_write_header
+  end subroutine write_header
 
 !===============================================================================
-! HDF5_WRITE_GEOMETRY
+! WRITE_GEOMETRY
 !===============================================================================
 
-  subroutine hdf5_write_geometry(file_id)
+  subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
     integer          :: i, j, k, m
@@ -379,13 +382,13 @@ contains
     call close_group(lattices_group)
     call close_group(geom_group)
 
-  end subroutine hdf5_write_geometry
+  end subroutine write_geometry
 
 !===============================================================================
-! HDF5_WRITE_MATERIALS
+! WRITE_MATERIALS
 !===============================================================================
 
-  subroutine hdf5_write_materials(file_id)
+  subroutine write_materials(file_id)
     integer(HID_T), intent(in) :: file_id
 
     integer          :: i
@@ -452,13 +455,13 @@ contains
 
     call close_group(materials_group)
 
-  end subroutine hdf5_write_materials
+  end subroutine write_materials
 
 !===============================================================================
-! HDF5_WRITE_TALLIES
+! WRITE_TALLIES
 !===============================================================================
 
-  subroutine hdf5_write_tallies(file_id)
+  subroutine write_tallies(file_id)
     integer(HID_T), intent(in) :: file_id
 
     integer           :: i, j
@@ -580,13 +583,13 @@ contains
 
     call close_group(tallies_group)
 
-  end subroutine hdf5_write_tallies
+  end subroutine write_tallies
 
 !===============================================================================
-! HDF5_WRITE_NUCLIDES
+! WRITE_NUCLIDES
 !===============================================================================
 
-  subroutine hdf5_write_nuclides(file_id)
+  subroutine write_nuclides(file_id)
     integer(HID_T), intent(in) :: file_id
 
     integer        :: i, j
@@ -689,13 +692,13 @@ contains
 
     call close_group(nuclides_group)
 
-  end subroutine hdf5_write_nuclides
+  end subroutine write_nuclides
 
 !===============================================================================
-! HDF5_WRITE_TIMING
+! WRITE_TIMING
 !===============================================================================
 
-  subroutine hdf5_write_timing(file_id)
+  subroutine write_timing(file_id)
     integer(HID_T), intent(in) :: file_id
 
     integer(8)     :: total_particles
@@ -748,6 +751,6 @@ contains
     call write_dataset(time_group, "neutrons_per_second", speed)
 
     call close_group(time_group)
-  end subroutine hdf5_write_timing
+  end subroutine write_timing
 
-end module hdf5_summary
+end module summary

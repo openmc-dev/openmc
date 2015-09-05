@@ -40,11 +40,6 @@ def main():
     # Parse commandline arguments.
     args = _parse_args()
 
-    # Check input file extensions.
-    for fname in args.input:
-        if not fname.endswith('.h5'):
-            raise ValueError("Input file names must an HDF5 file.")
-
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = 'tracks.pvtp'

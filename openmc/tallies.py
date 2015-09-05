@@ -823,10 +823,10 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
 
-        filter_bins : list
+        filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
             cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
@@ -914,7 +914,8 @@ class Tally(object):
                     filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
-                filter_indices[:i] *= filter.num_bins
+                for indices in filter_indices[:i]:
+                    indices *= filter.num_bins
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
@@ -1456,7 +1457,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the other tally is populated 
+            When this method is called before the other tally is populated
             with data by the StatePoint.read_results() method.
 
         """
@@ -1470,6 +1471,7 @@ class Tally(object):
         new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
         new_tally = Tally(name=new_name)
         new_tally.with_batch_statistics = True
+        new_tally._derived = True
 
         data = self._align_tally_data(other)
 
@@ -1497,7 +1499,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            data = self._align_tally_data(power)
+            data = self._align_tally_data(other)
             mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
@@ -1512,6 +1514,7 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
         if self.num_realizations == other.num_realizations:
             new_tally.num_realizations = self.num_realizations
+        new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
 
         # Generate filter "outer products"
         if self.filters == other.filters:
@@ -1671,6 +1674,7 @@ class Tally(object):
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.with_batch_statistics = True
             new_tally.name = self.name
             new_tally._mean = self._mean + other
@@ -1739,6 +1743,8 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='-')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean - other
             new_tally._std_dev = self._std_dev
@@ -1807,6 +1813,8 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='*')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean * other
             new_tally._std_dev = self._std_dev * np.abs(other)
@@ -1875,6 +1883,8 @@ class Tally(object):
             new_tally = self._outer_product(other, binary_op='/')
 
         elif isinstance(other, Real):
+            new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean / other
             new_tally._std_dev = self._std_dev * np.abs(1. / other)
@@ -1943,6 +1953,8 @@ class Tally(object):
             new_tally = self._outer_product(power, binary_op='^')
 
         elif isinstance(power, Real):
+            new_tally = Tally(name='derived')
+            new_tally._derived = True
             new_tally.name = self.name
             new_tally._mean = self._mean ** power
             self_rel_err = self.std_dev / self.mean
@@ -2087,10 +2099,10 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
 
-        filter_bins : list
+        filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
             cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the

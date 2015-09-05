@@ -60,3 +60,6 @@ data/nndc
 # PyCharm project configuration files
 .idea
 .idea/*
+
+# IPython notebook checkpoints
+.ipynb_checkpoints

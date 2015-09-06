@@ -3,6 +3,8 @@ import copy
 import os
 import pickle
 import itertools
+import functools
+from operator import mul
 from numbers import Integral, Real
 from xml.etree import ElementTree as ET
 import sys
@@ -1677,8 +1679,8 @@ class Tally(object):
             new_tally._derived = True
             new_tally.with_batch_statistics = True
             new_tally.name = self.name
-            new_tally._mean = self._mean + other
-            new_tally._std_dev = self._std_dev
+            new_tally._mean = self.mean + other
+            new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -1746,8 +1748,8 @@ class Tally(object):
             new_tally = Tally(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
-            new_tally._mean = self._mean - other
-            new_tally._std_dev = self._std_dev
+            new_tally._mean = self.mean - other
+            new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -1816,8 +1818,8 @@ class Tally(object):
             new_tally = Tally(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
-            new_tally._mean = self._mean * other
-            new_tally._std_dev = self._std_dev * np.abs(other)
+            new_tally._mean = self.mean * other
+            new_tally._std_dev = self.std_dev * np.abs(other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -1886,8 +1888,8 @@ class Tally(object):
             new_tally = Tally(name='derived')
             new_tally._derived = True
             new_tally.name = self.name
-            new_tally._mean = self._mean / other
-            new_tally._std_dev = self._std_dev * np.abs(1. / other)
+            new_tally._mean = self.mean / other
+            new_tally._std_dev = self.std_dev * np.abs(1. / other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
@@ -2085,7 +2087,7 @@ class Tally(object):
         """Build a sliced tally for the specified filters, scores and nuclides.
 
         This method constructs a new tally to encapsulate a subset of the data
-        represented by this tally. The subset of data to included in the tally
+        represented by this tally. The subset of data to include in the tally
         slice is determined by the scores, filters and nuclides specified in
         the input parameters.
 
@@ -2199,6 +2201,89 @@ class Tally(object):
             stride *= filter.num_bins
 
         return new_tally
+
+    def summation(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
+        """Build a sliced tally for the specified filters, scores and nuclides.
+
+        This method constructs a new tally to encapsulate a subset of the data
+        represented by this tally. The subset of data to include in the tally
+        slice is determined by the scores, filters and nuclides specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        scores : list
+            A list of one or more score strings to sum across
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        filters : list
+            A list of filter type strings to sum across
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list of Iterables
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond of the
+            filter_types parameter.
+
+        nuclides : list
+            A list of nuclide name strings to sum across
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        Returns
+        -------
+        Tally
+            A new tally which encapsulates the sum of data requested.
+
+        """
+
+        # If user did not specify any scores, do not sum across scores
+        if len(scores) == 0:
+            scores = [[]]
+        # Sum across any scores specified by the user
+        else:
+            scores = [[score] for score in scores]
+
+        # If user did not specify any nuclides, do not sum across nuclides
+        if len(nuclides) == 0:
+            nuclides = [[]]
+        # Sum across any nuclides specified by the user
+        else:
+            nuclides = [[nuclide] for nuclide in nuclides]
+
+        # If user did not specify any filter bins, do not sum across filter bins
+        if len(filters) == 0:
+            filter_bins = [[]]
+            filters = [[]]
+        # Sum across any filter bins specified by the user
+        else:
+            filter_bins = list(itertools.product(*filter_bins))
+            filter_bins = [list(filter_bin) for filter_bin in filter_bins]
+            filters = [filters]
+
+        # Initialize Tally sum
+        tally_sum = 0
+
+        # Iterate over all Tally slice operands in summation
+        prod = [scores, filters, filter_bins, nuclides]
+        for scores, filters, filter_bins, nuclides in itertools.product(*prod):
+            tally_slice = self.get_slice(scores, filters, filter_bins, nuclides)
+
+            # Remove filters summed across to avoid bulky CrossFilters
+            for filter in reversed(tally_slice.filters):
+                if filter.type in filters:
+                    tally_slice.remove_filter(filter)
+
+            # Accumulate this Tally slice into the Tally sum
+            tally_sum += tally_slice
+
+        return tally_sum
 
 
 class TalliesFile(object):

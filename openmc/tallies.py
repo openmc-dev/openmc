@@ -1516,7 +1516,6 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
         if self.num_realizations == other.num_realizations:
             new_tally.num_realizations = self.num_realizations
-        new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
 
         # Generate filter "outer products"
         if self.filters == other.filters:
@@ -1530,9 +1529,11 @@ class Tally(object):
 
         # Generate score "outer products"
         if self.scores == other.scores:
+            new_tally.num_score_bins = self.num_score_bins
             for self_score in self.scores:
                 new_tally.add_score(self_score)
         else:
+            new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
             all_scores = [self.scores, other.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
@@ -2189,10 +2190,15 @@ class Tally(object):
 
                 for filter_bin in filter_bins[i]:
                     bin_index = filter.get_bin_index(filter_bin)
-                    bin_indices.append(bin_index)
+                    if filter_type in ['energy', 'energyout']:
+                        bin_indices.append(bin_index)
+                        bin_indices.append(bin_index+1)
+                    else:
+                        bin_indices.append(bin_index)
 
                 new_bins = filter.bins[bin_indices]
                 filter.bins = new_bins
+                filter.num_bins = len(filter_bins[i])
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_score_bins
@@ -2276,12 +2282,18 @@ class Tally(object):
             tally_slice = self.get_slice(scores, filters, filter_bins, nuclides)
 
             # Remove filters summed across to avoid bulky CrossFilters
+            removed_filters = []
             for filter in reversed(tally_slice.filters):
                 if filter.type in filters:
                     tally_slice.remove_filter(filter)
+                    removed_filters.append(filter)
 
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
+
+        # FIXME: test if this works for filter
+        for filter in removed_filters:
+            tally_sum.add_filter(filter)
 
         return tally_sum
 

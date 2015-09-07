@@ -279,26 +279,6 @@ class CrossFilter(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def split_filters(self):
-
-        split_filters = []
-
-        # If left Filter is not a CrossFilter, simply append to list
-        if isinstance(self.left_filter, Filter):
-            split_filters.append(self.left_filter)
-        # Recursively descend CrossFilter tree to collect all Filters
-        else:
-            split_filters.extend(self.left_filter.split_filters())
-
-        # If right Filter is not a CrossFilter, simply append to list
-        if isinstance(self.right_filter, Filter):
-            split_filters.append(self.right_filter)
-        # Recursively descend CrossFilter tree to collect all Filters
-        else:
-            split_filters.extend(self.right_filter.split_filters())
-
-        return split_filters
-
     def get_bin_index(self, filter_bin):
         """Returns the index in the CrossFilter for some bin.
 
@@ -325,6 +305,58 @@ class CrossFilter(object):
         right_index = self.right_filter.get_bin_index(filter_bin[0])
         filter_index = left_index * self.right_filter.num_bins + right_index
         return filter_index
+
+    def get_pandas_dataframe(self, datasize, summary=None):
+        """Builds a Pandas DataFrame for the CrossFilter's bins.
+
+        This method constructs a Pandas DataFrame object for the CrossFilter
+        with columns annotated by filter bin information. This is a helper
+        method for the Tally.get_pandas_dataframe(...) routine. This method
+        recursively builds and concatenates the Pandas DataFrames for left
+        and right filters and crossfilters.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses the Multi-index Pandas feature.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        summary : None or Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). The geometric
+            information in the Summary object is embedded into a Multi-index
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with columns of strings that characterize the
+            crossfilter's bins. Each entry in the DataFrame will include the one
+            or more binary operations used to construct the crossfilter's bins.
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin
+            appropriately tiled to map to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), Filter.get_pandas_dataframe()
+
+        """
+
+        # If left and right filters are identical, do not combine bins
+        if self.left_filter == self.right_filter:
+            df = self.left_filter.get_pandas_dataframe(datasize, summary)
+        # If left and right filters are different, combine their bins
+        else:
+            df = '(' + self.left_filter.get_pandas_dataframe(datasize, summary)
+            df += ' ' + self.binary_op + ' '
+            df += self.right_filter.get_pandas_dataframe(datasize, summary) + ')'
+
+        return df
 
     def __repr__(self):
 

@@ -1,10 +1,8 @@
-from collections import Iterable
+from collections import Iterable, defaultdict
 import copy
 import os
 import pickle
 import itertools
-import functools
-from operator import mul
 from numbers import Integral, Real
 from xml.etree import ElementTree as ET
 import sys
@@ -976,9 +974,10 @@ class Tally(object):
 
         This method constructs a Pandas DataFrame object for the Tally data
         with columns annotated by filter, nuclide and score bin information.
-        This capability has been tested for Pandas >=v0.13.1. However, if
-        possible, it is recommended to use the v0.16 or newer versions of
-        Pandas since this this method uses the Multi-index Pandas feature.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses the Multi-index Pandas feature.
 
         Parameters
         ----------
@@ -1010,6 +1009,8 @@ class Tally(object):
         KeyError
             When this method is called before the Tally is populated with data
             by the StatePoint.read_results() method.
+        ImportError
+            When Pandas can not be found on the caller's system
 
         """
 
@@ -1041,224 +1042,14 @@ class Tally(object):
         # Find the total length of the tally data array
         data_size = self.mean.size
 
-        # Split CrossFilters into separate filters
-        split_filters = []
-        for filter in self.filters:
-            if isinstance(filter, CrossFilter):
-                split_filters.extend(filter.split_filters())
-            else:
-                split_filters.append(filter)
-
         # Build DataFrame columns for filters if user requested them
         if filters:
 
-            for filter in split_filters:
+            # Append each Filter's DataFRame to the overall DataFrame
+            for filter in self.filters:
+                filter_df = filter.get_pandas_dataframe(data_size, summary)
 
-                # mesh filters
-                if filter.type == 'mesh':
-
-                    # Initialize dictionary to build Pandas Multi-index column
-                    filter_dict = {}
-
-                    # Append Mesh ID as outermost index of mult-index
-                    mesh_id = filter.mesh.id
-                    mesh_key = 'mesh {0}'.format(mesh_id)
-
-                    # Find mesh dimensions - use 3D indices for simplicity
-                    if (len(filter.mesh.dimension) == 3):
-                        nx, ny, nz = filter.mesh.dimension
-                    else:
-                        nx, ny = filter.mesh.dimension
-                        nz = 1
-
-                    # Generate multi-index sub-column for x-axis
-                    filter_bins = np.arange(1, nx+1)
-                    repeat_factor = ny * nz * filter.stride
-                    filter_bins = np.repeat(filter_bins, repeat_factor)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    filter_dict[(mesh_key, 'x')] = filter_bins
-
-                    # Generate multi-index sub-column for y-axis
-                    filter_bins = np.arange(1, ny+1)
-                    repeat_factor = nz * filter.stride
-                    filter_bins = np.repeat(filter_bins, repeat_factor)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    filter_dict[(mesh_key, 'y')] = filter_bins
-
-                    # Generate multi-index sub-column for z-axis
-                    filter_bins = np.arange(1, nz+1)
-                    repeat_factor = filter.stride
-                    filter_bins = np.repeat(filter_bins, repeat_factor)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    filter_dict[(mesh_key, 'z')] = filter_bins
-
-                    # Append the multi-index column to the DataFrame
-                    df = pd.concat([df, pd.DataFrame(filter_dict)], axis=1)
-
-                # distribcell filters
-                elif filter.type == 'distribcell':
-                    if isinstance(summary, Summary):
-                        # Attempt to import the OpenCG package
-                        try:
-                            import opencg
-                        except ImportError:
-                            msg = 'The OpenCG package must be installed ' \
-                                  'to use a Summary for distribcell dataframes'
-                            raise ImportError(msg)
-
-                        # Create and extract the OpenCG geometry the Summary
-                        summary.make_opencg_geometry()
-                        opencg_geometry = summary.opencg_geometry
-                        openmc_geometry = summary.openmc_geometry
-
-                        # Use OpenCG to compute the number of regions
-                        opencg_geometry.initializeCellOffsets()
-                        num_regions = opencg_geometry._num_regions
-
-                        # Initialize a dictionary mapping OpenMC distribcell
-                        # offsets to OpenCG LocalCoords linked lists
-                        offsets_to_coords = {}
-
-                        # Use OpenCG to compute LocalCoords linked list for
-                        # each region and store in dictionary
-                        for region in range(num_regions):
-                            coords = opencg_geometry.findRegion(region)
-                            path = opencg.get_path(coords)
-                            cell_id = path[-1]
-
-                            # If this region is in Cell corresponding to the
-                            # distribcell filter bin, store it in dictionary
-                            if cell_id == filter.bins[0]:
-                                offset = openmc_geometry.get_offset(path,
-                                     filter.offset)
-                                offsets_to_coords[offset] = coords
-
-                        # Each distribcell offset is a DataFrame bin
-                        # Unravel the paths into DataFrame columns
-                        num_offsets = len(offsets_to_coords)
-
-                        # Initialize termination condition for while loop
-                        levels_remain = True
-                        counter = 0
-
-                        # Iterate over each level in the CSG tree hierarchy
-                        while levels_remain:
-                            levels_remain = False
-
-                            # Initialize dictionary to build Pandas Multi-index
-                            # column for this level in the CSG tree hierarchy
-                            level_dict = {}
-
-                            # Initialize prefix Multi-index keys
-                            counter += 1
-                            level_key = 'level {0}'.format(counter)
-                            univ_key = (level_key, 'univ', 'id')
-                            cell_key = (level_key, 'cell', 'id')
-                            lat_id_key = (level_key, 'lat', 'id')
-                            lat_x_key = (level_key, 'lat', 'x')
-                            lat_y_key = (level_key, 'lat', 'y')
-                            lat_z_key = (level_key, 'lat', 'z')
-
-                            # Allocate NumPy arrays for each CSG level and
-                            # each Multi-index column in the DataFrame
-                            level_dict[univ_key] = np.empty(num_offsets)
-                            level_dict[cell_key] = np.empty(num_offsets)
-                            level_dict[lat_id_key] = np.empty(num_offsets)
-                            level_dict[lat_x_key] = np.empty(num_offsets)
-                            level_dict[lat_y_key] = np.empty(num_offsets)
-                            level_dict[lat_z_key] = np.empty(num_offsets)
-
-                            # Initialize Multi-index columns to NaN - this is
-                            # necessary since some distribcell instances may
-                            # have very different LocalCoords linked lists
-                            level_dict[univ_key][:] = np.nan
-                            level_dict[cell_key][:] = np.nan
-                            level_dict[lat_id_key][:] = np.nan
-                            level_dict[lat_x_key][:] = np.nan
-                            level_dict[lat_y_key][:] = np.nan
-                            level_dict[lat_z_key][:] = np.nan
-
-                            # Iterate over all regions (distribcell instances)
-                            for offset in range(num_offsets):
-                                coords = offsets_to_coords[offset]
-
-                                # If entire LocalCoords has been unraveled into
-                                # Multi-index columns already, continue
-                                if coords is None:
-                                    continue
-
-                                # Assign entry to Universe Multi-index column
-                                if coords._type == 'universe':
-                                    univ_id = coords._universe._id
-                                    cell_id = coords._cell._id
-                                    level_dict[univ_key][offset] = univ_id
-                                    level_dict[cell_key][offset] = cell_id
-
-                                # Assign entry to Lattice Multi-index column
-                                else:
-                                    lat_id = coords._lattice._id
-                                    lat_x = coords._lat_x
-                                    lat_y = coords._lat_y
-                                    lat_z = coords._lat_z
-                                    level_dict[lat_id_key][offset] = lat_id
-                                    level_dict[lat_x_key][offset] = lat_x
-                                    level_dict[lat_y_key][offset] = lat_y
-                                    level_dict[lat_z_key][offset] = lat_z
-
-                                # Move to next node in LocalCoords linked list
-                                if coords._next is None:
-                                    offsets_to_coords[offset] = None
-                                else:
-                                    offsets_to_coords[offset] = coords._next
-                                    levels_remain = True
-
-                            # Tile the Multi-index columns
-                            for level_key, level_bins in level_dict.items():
-                                level_bins = \
-                                     np.repeat(level_bins, filter.stride)
-                                tile_factor = data_size / len(level_bins)
-                                level_bins = np.tile(level_bins, tile_factor)
-                                level_dict[level_key] = level_bins
-
-                            # Append the multi-index column to the DataFrame
-                            df = pd.concat([df, pd.DataFrame(level_dict)],
-                                           axis=1)
-
-                    # Create DataFrame column for distribcell instances IDs
-                    # NOTE: This is performed regardless of whether the user
-                    # requests Summary geomeric information
-                    filter_bins = np.arange(filter.num_bins)
-                    filter_bins = np.repeat(filter_bins, filter.stride)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    df[filter.type] = filter_bins
-
-                # energy, energyout filters
-                elif 'energy' in filter.type:
-                    bins = filter.bins
-                    num_bins = filter.num_bins
-
-                    # Create strings for
-                    template = '{0:.1e} - {1:.1e}'
-                    filter_bins = []
-                    for i in range(num_bins):
-                        filter_bins.append(template.format(bins[i], bins[i+1]))
-
-                    # Tile the energy bins into a DataFrame column
-                    filter_bins = np.repeat(filter_bins, filter.stride)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    df[filter.type + ' [MeV]'] = filter_bins
-
-                # universe, material, surface, cell, and cellborn filters
-                else:
-                    filter_bins = np.repeat(filter.bins, filter.stride)
-                    tile_factor = data_size / len(filter_bins)
-                    filter_bins = np.tile(filter_bins, tile_factor)
-                    df[filter.type] = filter_bins
+                df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
         if nuclides:
@@ -2278,22 +2069,28 @@ class Tally(object):
 
         # Iterate over all Tally slice operands in summation
         prod = [scores, filters, filter_bins, nuclides]
+        summed_filters = defaultdict(list)
         for scores, filters, filter_bins, nuclides in itertools.product(*prod):
             tally_slice = self.get_slice(scores, filters, filter_bins, nuclides)
 
             # Remove filters summed across to avoid bulky CrossFilters
-            removed_filters = []
             for filter in reversed(tally_slice.filters):
                 if filter.type in filters:
                     tally_slice.remove_filter(filter)
-                    removed_filters.append(filter)
+                    summed_filters[filter.type].append(filter)
 
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
 
         # FIXME: test if this works for filter
-        for filter in removed_filters:
-            tally_sum.add_filter(filter)
+        for filter_type in summed_filters:
+            filters = summed_filters[filter_type]
+            for i in range(1, len(filters)):
+                filters[i] = CrossFilter(filters[i-1], filters[i], '+')
+            tally_sum.add_filter(filters[-1])
+
+#        for filter in removed_filters:
+#            tally_sum.add_filter(filter)
 
         return tally_sum
 

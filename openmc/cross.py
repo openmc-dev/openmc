@@ -352,9 +352,11 @@ class CrossFilter(object):
             df = self.left_filter.get_pandas_dataframe(datasize, summary)
         # If left and right filters are different, combine their bins
         else:
-            df = '(' + self.left_filter.get_pandas_dataframe(datasize, summary)
-            df += ' ' + self.binary_op + ' '
-            df += self.right_filter.get_pandas_dataframe(datasize, summary) + ')'
+            left_df = self.left_filter.get_pandas_dataframe(datasize, summary)
+            right_df = self.right_filter.get_pandas_dataframe(datasize, summary)
+            left_df = left_df.astype(str)
+            right_df = right_df.astype(str)
+            df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
 
         return df
 

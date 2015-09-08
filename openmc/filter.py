@@ -566,11 +566,11 @@ class Filter(object):
                         level_bins = np.tile(level_bins, tile_factor)
                         level_dict[level_key] = level_bins
 
-                # Initialize a Pandas DataFrame from the level dictionary
-                if level_df is None:
-                    level_df = pd.DataFrame(level_dict)
-                else:
-                    level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
+                    # Initialize a Pandas DataFrame from the level dictionary
+                    if level_df is None:
+                        level_df = pd.DataFrame(level_dict)
+                    else:
+                        level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
 
             # Create DataFrame column for distribcell instances IDs
             # NOTE: This is performed regardless of whether the user
@@ -613,7 +613,6 @@ class Filter(object):
             filter_bins = filter_bins
             df = pd.concat([df, pd.DataFrame({self.type :filter_bins})])
 
-        df = df.astype(np.str)
         return df
 
     def __repr__(self):

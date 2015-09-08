@@ -1076,8 +1076,29 @@ class Tally(object):
         df['mean'] = self.mean.ravel()
         df['std. dev.'] = self.std_dev.ravel()
 
-        df.index.name = 'bin'
         df = df.dropna(axis=1)
+
+        # Expand the columns into Pandas MultiIndices for readability
+        if pd.__version__ >= '0.16':
+            columns = copy.deepcopy(df.columns.values)
+
+            # Convert all elements in columns list to tuples
+            for i, column in enumerate(columns):
+                if not isinstance(column, tuple):
+                    columns[i] = (column,)
+
+            # Make each tuple the same length
+            max_len_column = len(max(columns, key=len))
+            for i, column in enumerate(columns):
+                delta_len = max_len_column - len(column)
+                if delta_len > 0:
+                    new_column = list(column)
+                    new_column.extend(['']*delta_len)
+                    columns[i] = tuple(new_column)
+
+            # Create and set a MultiIndex for the DataFrame's columns
+            df.columns = pd.MultiIndex.from_tuples(columns)
+
         return df
 
     def export_results(self, filename='tally-results', directory='.',

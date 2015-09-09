@@ -114,10 +114,10 @@ class Tally(object):
             clone.estimator = self.estimator
             clone.num_score_bins = self.num_score_bins
             clone.num_realizations = self.num_realizations
-            clone._sum = copy.deepcopy(self.sum, memo)
-            clone._sum_sq = copy.deepcopy(self.sum_sq, memo)
-            clone._mean = copy.deepcopy(self.mean, memo)
-            clone._std_dev = copy.deepcopy(self.std_dev, memo)
+            clone._sum = copy.deepcopy(self._sum, memo)
+            clone._sum_sq = copy.deepcopy(self._sum_sq, memo)
+            clone._mean = copy.deepcopy(self._mean, memo)
+            clone._std_dev = copy.deepcopy(self._std_dev, memo)
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
             clone._derived = self.derived
@@ -828,7 +828,7 @@ class Tally(object):
             parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
             in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest.  The bin is a (x,y,z)
             3-tuple for 'mesh' filters corresponding to the mesh cell of
@@ -2127,6 +2127,14 @@ class TalliesFile(object):
         self._tallies = []
         self._meshes = []
         self._tallies_file = ET.Element("tallies")
+
+    @property
+    def tallies(self):
+        return self._tallies
+
+    @property
+    def meshes(self):
+        return self._meshes
 
     def add_tally(self, tally, merge=False):
         """Add a tally to the file

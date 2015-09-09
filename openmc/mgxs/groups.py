@@ -11,6 +11,7 @@ import openmc.checkvalue as cv
 if sys.version_info[0] >= 3:
     basestring = str
 
+
 class EnergyGroups(object):
     """An energy groups structure used for multi-group cross-sections.
 
@@ -37,10 +38,10 @@ class EnergyGroups(object):
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 
-        # If this is the first time we have tried to copy this object, create a copy
+        # If this is the first time we have tried to copy object, create copy
         if existing is None:
             clone = type(self).__new__(type(self))
-            clone.group_edges = copy.deepcopy(self._group_edges, memo)
+            clone.group_edges = copy.deepcopy(self.group_edges, memo)
 
             memo[id(self)] = clone
 
@@ -60,18 +61,18 @@ class EnergyGroups(object):
 
     @group_edges.setter
     def group_edges(self, edges):
-        cv.check_type('group edges', edges, Iterable, Integral)
-        cv.check_length('number of group edges', edges, 2)
+        cv.check_type('group edges', edges, Iterable, Real)
+        cv.check_greater_than('number of group edges', len(edges), 1)
         self._group_edges = np.array(edges)
         self._num_groups = len(edges)-1
 
     def __eq__(self, other):
         if not isinstance(other, EnergyGroups):
             return False
-        elif self._group_edges != other._group_edges:
+        elif self.group_edges != other.group_edges:
             return False
 
-    def generate_bin_edges(self, start, stop, num_groups, type='linear'):
+    def generate_bin_edges(self, start, stop, num_groups, spacing='linear'):
         """Generate equally or logarithmically-spaced energy group boundaries.
 
         Parameters
@@ -82,7 +83,7 @@ class EnergyGroups(object):
             The highest energy in MeV
         num_groups : Integral
             The number of energy groups
-        type : str
+        spacing : str
             The spacing between groups ('linear' or 'logarithmic')
 
         """
@@ -90,15 +91,15 @@ class EnergyGroups(object):
         cv.check_type('first edge', start, Real)
         cv.check_type('last edge', stop, Real)
         cv.check_type('number of groups', num_groups, Integral)
-        cv.check_type('type', type, basestring)
+        cv.check_type('spacing', spacing, basestring)
         cv.check_greater_than('first edge', start, 0, True)
         cv.check_greater_than('first edge', stop, start, False)
         cv.check_greater_than('number of groups', num_groups, 0)
-        cv.check_value('type', type, ('linear', 'logarithmic'))
+        cv.check_value('spacing', spacing, ('linear', 'logarithmic'))
 
-        if type == 'linear':
+        if spacing == 'linear':
             self.group_edges = np.linspace(start, stop, num_groups+1)
-        elif type == 'logarithmic':
+        elif spacing == 'logarithmic':
             self.group_edges = \
                 np.logspace(np.log10(start), np.log10(stop), num_groups+1)
 
@@ -160,7 +161,7 @@ class EnergyGroups(object):
 
         lower = self.group_edges[self.num_groups-group]
         upper = self.group_edges[self.num_groups-group+1]
-        return (lower, upper)
+        return lower, upper
 
     def get_group_indices(self, groups='all'):
         """Returns the array indices for one or more energy groups.

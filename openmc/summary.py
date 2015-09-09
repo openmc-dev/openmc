@@ -264,7 +264,7 @@ class Summary(object):
 
                 if maps > 0:
                     offset = self._f['geometry/cells'][key]['offset'][...]
-                    cell.set_offset(offset)
+                    cell.offsets = offset
 
                 translated = self._f['geometry/cells'][key]['translated'][0]
                 if translated:

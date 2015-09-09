@@ -663,6 +663,8 @@ class StatePoint(object):
         # Iterate over all tallies to find the appropriate one
         for tally_id, test_tally in self.tallies.items():
 
+            print(test_tally)
+
             # Determine if Tally has queried name
             if name and name != test_tally.name:
                 continue
@@ -673,6 +675,7 @@ class StatePoint(object):
 
             # Determine if Tally has queried estimator
             if estimator and not estimator == test_tally.estimator:
+                print('estimator')
                 continue
 
             # Determine if Tally has the queried score(s)
@@ -686,6 +689,7 @@ class StatePoint(object):
                         break
 
                 if not contains_scores:
+                    print('scores')
                     continue
 
             # Determine if Tally has the queried Filter(s)
@@ -699,6 +703,7 @@ class StatePoint(object):
                         break
 
                 if not contains_filters:
+                    print('filters')
                     continue
 
             # Determine if Tally has the queried Nuclide(s)
@@ -712,6 +717,7 @@ class StatePoint(object):
                         break
 
                 if not contains_nuclides:
+                    print('nuclides')
                     continue
 
             # If the current Tally met user's request, break loop and return it

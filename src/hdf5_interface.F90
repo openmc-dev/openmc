@@ -1,13 +1,16 @@
 module hdf5_interface
 
-  ! This module provides the high-level procedures which greatly simplify
-  ! writing/reading different types of data to HDF5 files. In order to get it to
-  ! work with gfotran 4.6, all the write_<type>_ND subroutines had to be split
-  ! into two procedures, one accepting an assumed-shape array and another one
-  ! with an explicit-shape array since in gfortran 4.6 C_LOC does not work with
-  ! an assumed-shape array. When we move to gfortran 4.9+, these procedures can
-  ! be combined into one simply accepting an assumed-shape array.
+!==============================================================================
+! HDF5_INTERFACE -- This module provides the high-level procedures which greatly
+! simplify writing/reading different types of data to HDF5 files. In order to
+! get it to work with gfotran 4.6, all the write_<type>_ND subroutines had to be
+! split into two procedures, one accepting an assumed-shape array and another
+! one with an explicit-shape array since in gfortran 4.6 C_LOC does not work
+! with an assumed-shape array. When we move to gfortran 4.9+, these procedures
+! can be combined into one simply accepting an assumed-shape array.
+!==============================================================================
 
+  use error, only: fatal_error
   use tally_header, only: TallyResult
 
   use hdf5
@@ -138,7 +141,7 @@ contains
 
     ! Determine access type
     open_mode = H5F_ACC_RDONLY_F
-    if (trim(mode) == 'w') open_mode = H5F_ACC_RDWR_F
+    if (mode == 'w') open_mode = H5F_ACC_RDWR_F
 
     if (parallel_) then
       ! Setup file access property list with parallel I/O access
@@ -192,8 +195,12 @@ contains
     ! Check if group exists
     call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
 
-    ! Either create or open group
-    if (exists) call h5gopen_f(group_id, trim(name), newgroup_id, hdf5_err)
+    ! open group if it exists
+    if (exists) then
+      call h5gopen_f(group_id, trim(name), newgroup_id, hdf5_err)
+    else
+      call fatal_error("The group '" // trim(name) // "' does not exist.")
+    end if
   end function open_group
 
 !===============================================================================
@@ -212,8 +219,11 @@ contains
     call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
 
     ! create group
-    if (.not. exists) &
-         call h5gcreate_f(group_id, trim(name), newgroup_id, hdf5_err)
+    if (exists) then
+      call fatal_error("The group '" // trim(name) // "' already exists.")
+    else
+      call h5gcreate_f(group_id, trim(name), newgroup_id, hdf5_err)
+    end if
   end function create_group
 
 !===============================================================================

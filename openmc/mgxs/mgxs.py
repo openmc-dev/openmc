@@ -656,8 +656,6 @@ class MultiGroupXS(object):
 
         # Find and store Tallies in StatePoint
         for tally_type, tally in self.tallies.items():
-            print('getting tally type {}'.format(tally_type))
-            print(tally)
             sp_tally = statepoint.get_tally(tally.scores, tally.filters,
                                          tally.nuclides,
                                          estimator=tally.estimator)
@@ -795,6 +793,8 @@ class TotalXS(MultiGroupXS):
         tally arithmetic"""
 
         self._xs_tally = self.tallies['total'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class TransportXS(MultiGroupXS):
@@ -831,6 +831,8 @@ class TransportXS(MultiGroupXS):
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class AbsorptionXS(MultiGroupXS):
@@ -860,6 +862,8 @@ class AbsorptionXS(MultiGroupXS):
         tally arithmetic"""
 
         self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class CaptureXS(MultiGroupXS):
@@ -890,6 +894,8 @@ class CaptureXS(MultiGroupXS):
 
         self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
         self._xs_tally /= self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class FissionXS(MultiGroupXS):
@@ -919,6 +925,8 @@ class FissionXS(MultiGroupXS):
         tally arithmetic"""
 
         self._xs_tally = self.tallies['fission'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class NuFissionXS(MultiGroupXS):
@@ -948,6 +956,8 @@ class NuFissionXS(MultiGroupXS):
         tally arithmetic"""
 
         self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class ScatterXS(MultiGroupXS):
@@ -977,6 +987,8 @@ class ScatterXS(MultiGroupXS):
         OpenMC tally arithmetic"""
 
         self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class NuScatterXS(MultiGroupXS):
@@ -1006,6 +1018,8 @@ class NuScatterXS(MultiGroupXS):
         tally arithmetic"""
 
         self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 
 class ScatterMatrixXS(MultiGroupXS):
@@ -1014,34 +1028,45 @@ class ScatterMatrixXS(MultiGroupXS):
         super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, name)
         self._xs_type = 'scatter matrix'
 
-    def create_tallies(self):
+    def create_tallies(self, correct=False):
         """Construct the OpenMC tallies needed to compute this cross-section."""
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'scatter', 'scatter-P1']
-        estimator = 'analog'
-        keys = scores
-
-        # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
-        filters = [[energy], [energy, energyout], [energyout]]
+
+        # Create a list of scores for each Tally to be created
+        if correct:
+            scores = ['flux', 'scatter', 'scatter-P1']
+            filters = [[energy], [energy, energyout], [energyout]]
+        else:
+            scores = ['flux', 'scatter']
+            filters = [[energy], [energy, energyout]]
+
+        estimator = 'analog'
+        keys = scores
 
         # Initialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def load_from_statepoint(self, statepoint):
-        super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
-        scatter_p1 = self.tallies['scatter-P1']
-        self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
-
-    def compute_xs(self):
+    def compute_xs(self, correct=False):
         """Computes the multi-group scattering matrix using OpenMC
         tally arithmetic"""
 
-        self._xs_tally = self.tallies['scatter'] - self.tallies['scatter-P1']
-        self._xs_tally /= self.tallies['flux']
+        # FIXME: This should only subtract P1 from the diagonal!!!
+        if correct:
+            scatter_p1 = self.tallies['scatter-P1']
+            scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
+            energy_filter = openmc.Filter(type='energy')
+            energy_filter.bins = self.energy_groups.group_edges
+            scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+            rxn_tally = self.tallies['scatter'] - scatter_p1
+        else:
+            rxn_tally = self.tallies['scatter']
+
+        self._xs_tally = rxn_tally / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', value='mean'):
@@ -1195,13 +1220,25 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         # Intialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self):
+    def compute_xs(self, correct=False):
         """Computes the multi-group nu-scattering matrix using OpenMC
         tally arithmetic"""
 
-        self._xs_tally = self.tallies['nu-scatter'] - self.tallies['scatter-P1']
-        self._xs_tally /= self.tallies['flux']
+        # FIXME: This should only subtract P1 from the diagonal!!!
+        if correct:
+            scatter_p1 = self.tallies['scatter-P1']
+            scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
+            energy_filter = openmc.Filter(type='energy')
+            energy_filter.bins = self.energy_groups.group_edges
+            energy_filter.num_bins = self.num_groups
+            scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+            rxn_tally = self.tallies['nu-scatter'] - scatter_p1
+        else:
+            rxn_tally = self.tallies['nu-scatter']
 
+        self._xs_tally = rxn_tally / self.tallies['flux']
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
 class Chi(MultiGroupXS):
 
@@ -1236,12 +1273,12 @@ class Chi(MultiGroupXS):
 
         # Construct energy group filter bins to sum across
         filter_bins = []
-        for group in range(self.num_groups):
+        for group in range(1, self.num_groups+1):
             group_bounds = self.energy_groups.get_group_bounds(group)
             filter_bins.append((group_bounds,))
         energy_bins = [filter_bins]
 
-        sum_nu_fission_in = nu_fission_in.summation(filters=['energyout'],
+        sum_nu_fission_in = nu_fission_in.summation(filters=['energy'],
                                                     filter_bins=energy_bins)
         self._xs_tally = nu_fission_out / sum_nu_fission_in
 
@@ -1256,5 +1293,7 @@ class Chi(MultiGroupXS):
         norm = self._xs_tally.summation(filters=[self.domain_type],
                                        filter_bins=filter_bins)
         self._xs_tally /= norm
+        self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self._xs_tally.std_dev)
 
         # FIXME: Does this need to reset NaNs to zero?

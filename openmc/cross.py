@@ -192,12 +192,13 @@ class CrossFilter(object):
 
         left_type = left_filter.type
         right_type = right_filter.type
-        self.type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
+        self._type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
 
         self._bins = {}
         self._bins['left'] = left_filter.bins
         self._bins['right'] = right_filter.bins
         self._num_bins = left_filter.num_bins * right_filter.num_bins
+        self._stride = None
 
         self._left_filter = None
         self._right_filter = None
@@ -211,7 +212,7 @@ class CrossFilter(object):
             self.binary_op = binary_op
 
     def __hash__(self):
-        return hash((self.type, self.bins))
+        return hash((self.left_filter, self.right_filter))
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -224,6 +225,8 @@ class CrossFilter(object):
             clone._type = self.type
             clone._bins = self.bins
             clone._num_bins = self.num_bins
+            clone._stride = self.stride
+
             memo[id(self)] = clone
 
             return clone
@@ -258,7 +261,8 @@ class CrossFilter(object):
 
     @property
     def stride(self):
-        return self.left_filter.stride * self.right_filter.stride
+        return self._stride
+#        return self.left_filter.stride * self.right_filter.stride
 
     @type.setter
     def type(self, filter_type):
@@ -276,8 +280,15 @@ class CrossFilter(object):
     def binary_op(self, binary_op):
         self._binary_op = binary_op
 
+    @stride.setter
+    def stride(self, stride):
+        self._stride = stride
+
     def __eq__(self, other):
         return str(other) == str(self)
+
+    def __ne__(self, other):
+        return not self == other
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the CrossFilter for some bin.

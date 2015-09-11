@@ -321,8 +321,7 @@ class Filter(object):
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
             elif self.type == 'distribcell':
-                val = np.where(self.bins == filter_bin)[0][0]
-                filter_index = val
+                filter_index = filter_bin
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
             else:
@@ -363,6 +362,8 @@ class Filter(object):
 
         elif self.type in ['energy', 'energyout']:
             bin = (self.bins[bin_index], self.bins[bin_index+1])
+        elif self.type == 'distribcell':
+            bin = (self.bins[0],)
         else:
             bin = (self.bins[bin_index],)
 

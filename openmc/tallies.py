@@ -852,6 +852,9 @@ class Tally(object):
                         for k in range(filter.num_bins):
                             bins.append((filter.bins[k], filter.bins[k+1]))
 
+                    elif filter.type == 'distribcell':
+                        bins = np.arange(filter.num_bins)
+
                     # Create list of IDs for bins for all other Filter types
                     else:
                         bins = filter.bins
@@ -1529,12 +1532,19 @@ class Tally(object):
             stride *= filter.num_bins
 
         filters = [filter1.type, filter2.type]
-        filter1_bins = np.arange(filter.num_bins)
-        filter2_bins = np.arange(filter2.num_bins)
+        if filter1.type == 'distribcell':
+            filter1_bins = np.arange(filter.num_bins)
+        else:
+            filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
+
+        if filter1.type == 'distribcell':
+            filter2_bins = np.arange(filter2.num_bins)
+        else:
+            filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
         if self.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(filter1.get_bin(bin1),), (filter2.get_bin(bin2),)]
+                filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,
                                        filter_bins=filter_bins, value='sum')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
@@ -1542,7 +1552,7 @@ class Tally(object):
 
         if self.sum_sq is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(filter1.get_bin(bin1),), (filter2.get_bin(bin2),)]
+                filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,
                                        filter_bins=filter_bins, value='sum_sq')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
@@ -1550,7 +1560,7 @@ class Tally(object):
 
         if self.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(filter1.get_bin(bin1),), (filter2.get_bin(bin2),)]
+                filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,
                                        filter_bins=filter_bins, value='mean')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
@@ -1558,7 +1568,7 @@ class Tally(object):
 
         if self.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(filter1.get_bin(bin1),), (filter2.get_bin(bin2),)]
+                filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,
                                        filter_bins=filter_bins, value='std_dev')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)

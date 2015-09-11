@@ -1280,14 +1280,19 @@ class Chi(MultiGroupXS):
 
         sum_nu_fission_in = nu_fission_in.summation(filters=['energy'],
                                                     filter_bins=energy_bins)
+
+        # FIXME: CrossFilter for energy + energy messes up tally arithmetic
+        sum_nu_fission_in.remove_filter(sum_nu_fission_in.filters[-1])
+
         self._xs_tally = nu_fission_out / sum_nu_fission_in
 
         # Compute the total across all groups per subdomain
         if self.domain_type == 'distribcell':
-            subdomain_indices = self.get_subdomain_indices()
-            filter_bins = [(i,) for i in subdomain_indices]
+            domain_filter = self.tallies['nu-fission-in'].filters[0]
+            num_subdomains = domain_filter.num_bins
+            filter_bins = [((i,),) for i in range(num_subdomains)]
         else:
-            filter_bins = [(self.domain,)]
+            filter_bins = [((self.domain,),)]
 
         # Normalize chi to 1.0
         norm = self._xs_tally.summation(filters=[self.domain_type],

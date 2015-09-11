@@ -42,24 +42,23 @@ class Filter(object):
         self._offset = -1
         self._stride = None
 
-    def __eq__(self, filter2):
-        # Check type
-        if self.type != filter2.type:
+    def __eq__(self, other):
+        if not isinstance(other, Filter):
             return False
-
-        # Check number of bins
-        elif len(self.bins) != len(filter2.bins):
+        elif self.type != other.type:
             return False
-
-        # Check bin edges
-        elif not np.allclose(self.bins, filter2.bins):
+        elif len(self.bins) != len(other.bins):
             return False
-
+        elif not np.allclose(self.bins, other.bins):
+            return False
         else:
             return True
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
-        return hash((self._type, self._bins))
+        return hash((self._type, tuple(self._bins)))
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -121,6 +120,7 @@ class Filter(object):
     def bins(self, bins):
         if bins is None:
             self.num_bins = 0
+            return
         elif self._type is None:
             msg = 'Unable to set bins for Filter to "{0}" since ' \
                   'the Filter type has not yet been set'.format(bins)
@@ -321,7 +321,8 @@ class Filter(object):
             # Filter bins for distribcell are the "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
             elif self.type == 'distribcell':
-                filter_index = filter_bin
+                val = np.where(self.bins == filter_bin)[0][0]
+                filter_index = val
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
             else:
@@ -334,6 +335,38 @@ class Filter(object):
             raise ValueError(msg)
 
         return filter_index
+
+    def get_bin(self, bin_index):
+        """
+
+        :param bin_index:
+        :return:
+        """
+
+        cv.check_type('bin_index', bin_index, Integral)
+        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
+        cv.check_less_than('bin_index', bin_index, self.num_bins)
+
+        if self.type == 'mesh':
+
+            if (len(self.mesh.dimension) == 3):
+                nx, ny, nz = self.mesh.dimension
+                x = bin_index / (ny * nz)
+                y = (bin_index - (x * ny * nz)) / nz
+                z = bin_index - (x * ny * nz) - (y * nz)
+                bin = (x, y, z)
+            else:
+                nx, ny = self.mesh.dimension
+                x = bin_index / ny
+                y = bin_index - (x * ny)
+                bin = (x, y)
+
+        elif self.type in ['energy', 'energyout']:
+            bin = (self.bins[bin_index], self.bins[bin_index+1])
+        else:
+            bin = (self.bins[bin_index],)
+
+        return bin
 
     def get_pandas_dataframe(self, data_size, summary=None):
         """Builds a Pandas DataFrame for the Filter's bins.

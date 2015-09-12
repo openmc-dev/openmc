@@ -1059,6 +1059,7 @@ class ScatterMatrixXS(MultiGroupXS):
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
+            energy_filter.num_bins = self.num_groups
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['scatter'] - scatter_p1
         else:
@@ -1281,6 +1282,9 @@ class Chi(MultiGroupXS):
         sum_nu_fission_in = nu_fission_in.summation(filters=['energy'],
                                                     filter_bins=energy_bins)
 
+        # FIXME: Need ability to override energy groups with group numbers
+        # FIXME: Reverse from fast to thermal with energy groups
+
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic
         sum_nu_fission_in.remove_filter(sum_nu_fission_in.filters[-1])
 
@@ -1291,7 +1295,12 @@ class Chi(MultiGroupXS):
                                        filter_bins=energy_bins)
 
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic
-        norm.remove_filter(sum_nu_fission_in.filters[-1])
+        norm.remove_filter(norm.filters[-1])
+
+        energy_filter = openmc.Filter(type='energyout')
+        energy_filter.bins = self.energy_groups.group_edges
+        energy_filter.num_bins = self.num_groups
+        norm = norm.tile_filter(energy_filter)
 
         self._xs_tally /= norm
         self._xs_tally._mean = np.nan_to_num(self._xs_tally.mean)

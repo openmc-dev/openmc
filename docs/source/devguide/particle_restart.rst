@@ -1,0 +1,59 @@
+.. _devguide_particle_restart:
+
+============================
+Particle Restart File Format
+============================
+
+The current revision of the particle restart file format is 1.
+
+**/filetype** (*int*)
+
+    Flags what type of file this is. A value of -1 indicates a statepoint file,
+    a value of -2 indicates a particle restart file, and a value of -3 indicates
+    a source file.
+
+**/revision** (*int*)
+
+    Revision of the binary state point file. Any time a change is made in the
+    format of the state-point file, this integer is incremented.
+
+**/current_batch** (*int*)
+
+    The number of batches already simulated.
+
+**/gen_per_batch** (*int*)
+
+    Number of generations per batch.
+
+**/current_gen** (*int*)
+
+    The number of generations already simulated.
+
+**/n_particles** (*int8_t*)
+
+    Number of particles used per generation.
+
+**/run_mode** (*int*)
+
+    Run mode used. A value of 1 indicates a fixed-source run and a value of 2
+    indicates an eigenvalue run.
+
+**/id** (*int8_t*)
+
+    Unique identifier of the particle.
+
+**/weight** (*double*)
+
+    Weight of the particle.
+
+**/energy** (*double*)
+
+    Energy of the particle in MeV.
+
+**/xyz** (*double[3]*)
+
+    Position of the particle.
+
+**/uvw** (*double[3]*)
+
+    Direction of the particle.

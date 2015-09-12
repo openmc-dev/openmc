@@ -1,10 +1,10 @@
 .. _devguide_statepoint:
 
-======================================
-State Point Binary File Specifications
-======================================
+=======================
+State Point File Format
+=======================
 
-The current revision of the statepoint binary file is 13.
+The current revision of the statepoint file format is 13.
 
 **/filetype** (*int*)
 
@@ -64,7 +64,7 @@ if (run_mode == MODE_EIGENVALUE)
 
         Number of inactive batches.
 
-    **gen_per_batch** (*int*)
+    **/gen_per_batch** (*int*)
 
         Number of generations per batch.
 

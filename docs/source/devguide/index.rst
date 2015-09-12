@@ -17,5 +17,6 @@ as debugging.
     workflow
     xml-parsing
     statepoint
+    particle_restart
     voxel
     docbuild

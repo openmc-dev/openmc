@@ -657,8 +657,9 @@ class MultiGroupXS(object):
         # Find and store Tallies in StatePoint
         for tally_type, tally in self.tallies.items():
             sp_tally = statepoint.get_tally(tally.scores, tally.filters,
-                                         tally.nuclides,
-                                         estimator=tally.estimator)
+                                            tally.nuclides,
+                                            estimator=tally.estimator)
+            sp_tally = sp_tally.get_slice(scores=tally.scores, nuclides=tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
     def build_hdf5_store(self, filename='mgxs', directory='mgxs',

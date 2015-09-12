@@ -6,286 +6,271 @@ State Point Binary File Specifications
 
 The current revision of the statepoint binary file is 13.
 
-**integer(4) FILETYPE_STATEPOINT**
+**/filetype** (*int*)
 
-    Flags whether this file is a statepoint file or a particle restart file.
+    Flags what type of file this is. A value of -1 indicates a statepoint file,
+    a value of -2 indicates a particle restart file, and a value of -3 indicates
+    a source file.
 
-**integer(4) REVISION_STATEPOINT**
+**/revision** (*int*)
 
     Revision of the binary state point file. Any time a change is made in the
     format of the state-point file, this integer is incremented.
 
-**integer(4) VERSION_MAJOR**
+**/version_major** (*int*)
 
     Major version number for OpenMC
 
-**integer(4) VERSION_MINOR**
+**/version_minor** (*int*)
 
     Minor version number for OpenMC
 
-**integer(4) VERSION_RELEASE**
+**/version_release** (*int*)
 
     Release version number for OpenMC
 
-**character(19) time_stamp**
+**/time_stamp** (*char[19]*)
 
     Date and time the state point was written.
 
-**character(255) path**
+**/path** (*char[255]*)
 
     Absolute path to directory containing input files.
 
-**integer(8) seed**
+**/seed** (*int8_t*)
 
     Pseudo-random number generator seed.
 
-**integer(4) run_mode**
+**/run_mode** (*int*)
 
-    run mode used. The modes are described in constants.F90.
+    Run mode used. A value of 1 indicates a fixed-source run and a value of 2
+    indicates an eigenvalue run.
 
-**integer(8) n_particles**
+**/n_particles** (*int8_t*)
 
     Number of particles used per generation.
 
-**integer(4) current_batch**
+**/n_batches** (*int*)
+
+    Number of batches to simulate.
+
+**/current_batch** (*int*)
 
     The number of batches already simulated.
 
 if (run_mode == MODE_EIGENVALUE)
 
-    **integer(4) n_inactive**
+    **/n_inactive** (*int*)
 
-        Number of inactive batches
+        Number of inactive batches.
 
-    **integer(4) gen_per_batch**
+    **gen_per_batch** (*int*)
 
-        Number of generations per batch for criticality calculations
+        Number of generations per batch.
 
-    *do i = 1, current_batch \* gen_per_batch*
+    **/k_generation** (*double[]*)
 
-        **real(8) k_generation(i)**
+        k-effective for each generation simulated.
 
-             k-effective for the i-th total generation
+    **/entropy** (*double[]*)
 
-    *do i = 1, current_batch \* gen_per_batch*
+        Shannon entropy for each generation simulated
 
-        **real(8) entropy(i)**
-
-            Shannon entropy for the i-th total generation
-
-    **real(8) k_col_abs**
+    **/k_col_abs** (*double*)
 
         Sum of product of collision/absorption estimates of k-effective
 
-    **real(8) k_col_tra**
+    **/k_col_tra** (*double*)
 
         Sum of product of collision/track-length estimates of k-effective
 
-    **real(8) k_abs_tra**
+    **/k_abs_tra** (*double*)
 
         Sum of product of absorption/track-length estimates of k-effective
 
-    **real(8) k_combined(2)**
+    **/k_combined** (*double[2]*)
 
         Mean and standard deviation of a combined estimate of k-effective
 
-    **integer(4) cmfd_on**
+    **/cmfd_on** (*int*)
 
-        Flag that cmfd is on
+        Flag indicating whether CMFD is on (1) or off (0).
 
     if (cmfd_on)
 
-        **integer(4) cmfd % indices**
+        **/cmfd/indices** (*int[4]*)
 
             Indices for cmfd mesh (i,j,k,g)
 
-        **real(8) cmfd % k_cmfd(1:current_batch)**
+        **/cmfd/k_cmfd** (*double[]*)
 
             CMFD eigenvalues
 
-        **real(8) cmfd % src(1:G,1:I,1:J,1:K)**
+        **/cmfd/cmfd_src** (*double[][][][]*)
 
             CMFD fission source
 
-        **real(8) cmfd % entropy(1:current_batch)**
+        **/cmfd/cmfd_entropy** (*double[]*)
 
             CMFD estimate of Shannon entropy
 
-        **real(8) cmfd % balance(1:current_batch)**
+        **/cmfd/cmfd_balance** (*double[]*)
 
             RMS of the residual neutron balance equation on CMFD mesh
 
-        **real(8) cmfd % dom(1:current_batch)**
+        **/cmfd/cmfd_dominance** (*double[]*)
 
             CMFD estimate of dominance ratio
 
-        **real(8) cmfd % scr_cmp(1:current_batch)**
+        **/cmfd/cmfd_srccmp** (*double[]*)
 
             RMS comparison of difference between OpenMC and CMFD fission source
 
-**integer(4) n_meshes**
+**/tallies/n_meshes** (*int*)
 
     Number of meshes in tallies.xml file
 
+**/tally/meshes/ids** (*int[]*)
+
+    Internal unique ID of each mesh.
+
+**/tally/meshes/keys** (*int[]*)
+
+    User-identified unique ID of each mesh
+
 *do i = 1, n_meshes*
 
-    **integer(4) meshes(i) % id**
+    **/tallies/meshes/mesh i/id** (*int*)
 
-        Unique ID of mesh.
+        Unique identifier of the mesh.
 
-    **integer(4) meshes(i) % type**
+    **/tallies/meshes/mesh i/type** (*int*)
 
         Type of mesh.
 
-    **integer(4) meshes(i) % n_dimension**
+    **/tallies/meshes/mesh i/n_dimension** (*int*)
 
         Number of dimensions for mesh (2 or 3).
 
-    **integer(4) meshes(i) % dimension(:)**
+    **/tallies/meshes/mesh i/dimension** (*int*)
 
         Number of mesh cells in each dimension.
 
-    **real(8) meshes(i) % lower_left(:)**
+    **/tallies/meshes/mesh i/lower_left** (*double[]*)
 
         Coordinates of lower-left corner of mesh.
 
-    **real(8) meshes(i) % upper_right(:)**
+    **/tallies/meshes/mesh i/upper_right** (*double[]*)
 
         Coordinates of upper-right corner of mesh.
 
-    **real(8) meshes(i) % width(:)**
+    **/tallies/meshes/mesh i/width** (*double[]*)
 
         Width of each mesh cell in each dimension.
 
-**integer(4) n_tallies**
+**/tallies/n_tallies** (*int*)
+
+    Number of user-defined tallies.
+
+**/tallies/ids** (*int[]*)
+
+    Internal unique ID of each tally.
+
+**/tallies/keys** (*int[]*)
+
+    User-identified unique ID of each tally.
 
 *do i = 1, n_tallies*
 
-    **integer(4) tallies(i) % id**
+    **/tallies/tally i/estimator** (*int*)
 
-        Unique ID of tally.
+        Type of tally estimator: analog (1) or tracklength (2).
 
-    **integer(4) tallies(i) % n_realizations**
+    **/tallies/tally i/n_realizations** (*int*)
 
-        Number of realizations for the i-th tally.
+        Number of realizations.
 
-    **integer(4) size(tallies(i) % scores, 1)**
+    **/tallies/tally i/n_filters** (*int*)
 
-        Total number of score bins for the i-th tally
-
-    **integer(4) size(tallies(i) % scores, 2)**
-
-        Total number of filter bins for the i-th tally
-
-    **integer(4) tallies(i) % n_filters**
+        Number of filters used.
 
     *do j = 1, tallies(i) % n_filters*
 
-        **integer(4) tallies(i) % filter(j) % type**
+        **/tallies/tally i/filter j/type** (*int*)
 
             Type of tally filter.
 
-        **integer(4) tallies(i) % filter(j) % n_bins**
+        **/tallies/tally i/filter j/offset** (*int*)
+
+            Filter offset (used for distribcell).
+
+        **/tallies/tally i/filter j/n_bins** (*int*)
 
             Number of bins for filter.
 
-        **integer(4)/real(8) tallies(i) % filter(j) % bins(:)**
+        **/tallies/tally i/filter j/bins** (*int[]* or *double[]*)
 
             Value for each filter bin of this type.
 
-    **integer(4) tallies(i) % n_nuclide_bins**
+    **/tallies/tally i/n_nuclides** (*int*)
 
         Number of nuclide bins. If none are specified, this is just one.
 
-    *do j = 1, tallies(i) % n_nuclide_bins*
+    **/tallies/tally i/nuclides** (*int[]*)
 
-        **integer(4) tallies(i) % nuclide_bins(j)**
+        Values of specified nuclide bins (ZAID identifiers)
 
-            Values of specified nuclide bins
-
-    **integer(4) tallies(i) % n_score_bins**
+    **/tallies/tally i/n_score_bins** (*int*)
 
         Number of scoring bins.
 
-    *do j = 1, tallies(i) % n_score_bins*
+    **/tallies/tally i/score_bins** (*int*)
 
-        **integer(4) tallies(i) % score_bins(j)**
+        Values of specified scoring bins (e.g. SCORE_FLUX).
 
-            Values of specified scoring bins (e.g. SCORE_FLUX).
-
-    **integer(4) tallies(i) % n_score_bins**
+    **/tallies/tally i/n_user_score_bins**
 
         Number of scoring bins without accounting for those added by
-        the scatter-pn command.
+        expansions, e.g. scatter-PN.
 
-    *do j = 1, tallies(i) % n_user_score_bins*
+    *do J = 1, total number of moments*
 
-        **character(8) tallies(i) % moment_order(j)**
+        **/tallies/tally i/moments/orderJ** (*char[8]*)
 
             Tallying moment order for Legendre and spherical
             harmonic tally expansions (*e.g.*, 'P2', 'Y1,2', etc.).
 
-**integer(4) source_present**
+**/source_present** (*int*)
 
     Flag indicated if source bank is present in the file
 
-**integer(4) n_realizations**
+**/n_realizations** (*int*)
 
     Number of realizations for global tallies.
 
-**integer(4) N_GLOBAL_TALLIES**
+**/n_global_tallies** (*int*)
 
-    Number of global tally scores
+    Number of global tally scores.
 
-*do i = 1, N_GLOBAL_TALLIES*
+**/global_tallies** (Compound type)
 
-    **real(8) global_tallies(i) % sum**
+    Accumulated sum and sum-of-squares for each global tally. The compound type
+    has fields named ``sum`` and ``sum_sq``.
 
-        Accumulated sum for the i-th global tally
-
-    **real(8) global_tallies(i) % sum_sq**
-
-        Accumulated sum of squares for the i-th global tally
-
-**integer(4) tallies_on**
+**tallies_present** (*int*)
 
     Flag indicated if tallies are present in the file.
 
-if (tallies_on > 0)
+*do i = 1, n_tallies*
 
-    *do i = 1, n_tallies*
+**/tallies/tally i/results** (Compound type)
 
-        *do k = 1, size(tallies(i) % scores, 2)*
-
-            *do j = 1, size(tallies(i) % scores, 1)*
-
-                **real(8) tallies(i) % scores(j,k) % sum**
-            
-                    Accumulated sum for the j-th score and k-th filter of the
-                    i-th tally
-
-                **real(8) tallies(i) % scores(j,k) % sum_sq**
-
-                    Accumulated sum of squares for the j-th score and k-th
-                    filter of the i-th tally
+    Accumulated sum and sum-of-squares for each bin of the tally i-th tally
 
 if (run_mode == MODE_EIGENVALUE and source_present)
 
-    *do i = 1, n_particles*
+    **/source_bank** (Compound type)
 
-        **real(8) source_bank(i) % wgt**
-
-            Weight of the i-th source particle
-
-        **real(8) source_bank(i) % xyz(1:3)**
-
-            Coordinates of the i-th source particle.
-
-        **real(8) source_bank(i) % uvw(1:3)**
-
-            Direction of the i-th source particle
-
-        **real(8) source_bank(i) % E**
-
-            Energy of the i-th source particle.
-
+        Source bank information for each particle. The compound type has fields
+        ``wgt``, ``xyz``, ``uvw``, and ``E`` which represent the weight,
+        position, direction, and energy of the source particle, respectively.

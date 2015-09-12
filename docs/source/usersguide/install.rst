@@ -59,6 +59,31 @@ Prerequisites
 
           sudo apt-get install cmake
 
+    * HDF5_ Library for portable binary output format
+
+      OpenMC uses HDF5 for binary output files. As such, you will need to have
+      HDF5 installed on your computer. The installed version will need to have
+      been compiled with the same compiler you intend to compile OpenMC with. If
+      you are using HDF5 in conjunction with MPI, we recommend that your HDF5
+      installation be built with parallel I/O features. An example of
+      configuring HDF5_ is listed below::
+
+           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
+                       --enable-fortran2003 --enable-parallel
+
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
+
+      On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
+      the APT package manager:
+
+      .. code-block:: sh
+
+          sudo apt-get install libhdf5-8 libhdf5-dev hdf5-helpers
+
+      Note that the exact package names may vary depending on your particular
+      distribution and version.
+
 .. admonition:: Optional
 
     * An MPI implementation for distributed-memory parallel runs
@@ -71,20 +96,6 @@ Prerequisites
 
           sudo apt-get install mpich libmpich-dev
           sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
-
-    * HDF5_ Library for portable binary output format
-
-      To compile with support for HDF5_ output (highly recommended), you will
-      need to have HDF5 installed on your computer. The installed version will
-      need to have been compiled with the same compiler you intend to compile
-      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
-      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
-
-           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
-                       --enable-fortran2003 --enable-parallel
-
-      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
     * git_ version control software for obtaining source code
 
@@ -194,27 +205,26 @@ command, i.e.
 
     FC=mpif90 cmake /path/to/openmc
 
-Compiling with HDF5
-+++++++++++++++++++
+Selecting HDF5 Installation
++++++++++++++++++++++++++++
 
-To compile with MPI, set the :envvar:`FC` environment variable to the path to
-the HDF5 Fortran wrapper. For example, in a bash shell:
-
+CMakeLists.txt searches for the ``h5fc`` or ``h5pfc`` HDF5 Fortran wrapper on
+your PATH environment variable and subsequently uses it to determine library
+locations and compile flags. If you have multiple installations of HDF5 or one
+that does not appear on your PATH, you can set the HDF5_ROOT environment
+variable to the root directory of the HDF5 installation, e.g.
 .. code-block:: sh
 
-    export FC=h5fc
+    export HDF5_ROOT=/opt/hdf5/1.8.15
     cmake /path/to/openmc
 
-As noted above, an environment variable can typically be set for a single
-command, i.e.
+This will cause CMake to search first in /opt/hdf5/1.8.15/bin for ``h5fc`` /
+``h5pfc`` before it searches elsewhere. As noted above, an environment variable
+can typically be set for a single command, i.e.
 
 .. code-block:: sh
 
-    FC=h5fc cmake /path/to/openmc
-
-To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
-``h5pfc`` instead. Note that this requires that your HDF5 installation be
-compiled with ``--enable-parallel``.
+    HDF5_ROOT=/opt/hdf5/1.8.15 cmake /path/to/openmc
 
 Compiling on Linux and Mac OS X
 -------------------------------

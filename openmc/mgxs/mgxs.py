@@ -556,26 +556,18 @@ class MultiGroupXS(object):
         subdomains : Iterable of Integral or 'all'
             The subdomain IDs of the cross-sections to include in the report
 
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross-section is
-            computed from tally data.
-
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to print cross-section since it has not been computed'
-            raise ValueError(msg)
 
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
 
+        # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
         string += '{0: <16}=\t{1}\n'.format('\tType', self.xs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Append cross-section data if it has been computed
         if self.xs_tally is not None:
             if subdomains == 'all':
                 subdomains = self.get_subdomain_indices()
@@ -597,7 +589,7 @@ class MultiGroupXS(object):
                     rel_err = self.get_xs([group], [subdomain], 'rel_err')*100.
                     average = np.nan_to_num(average.flatten())[0]
                     rel_err = np.nan_to_num(rel_err.flatten())[0]
-                    string += '{0:.2e} +/- {1:1.2e}%'.format(average, rel_err)
+                    string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
                     string += '\n'
                 string += '\n'
 
@@ -674,11 +666,11 @@ class MultiGroupXS(object):
 
         # Store the MultiGroupXS class attributes
         self.name = xs_results['name']
-        self.xs_type = xs_results['xs_type']
+        self._xs_type = xs_results['xs_type']
         self.domain_type = xs_results['domain_type']
         self.domain = xs_results['domain']
         self.energy_groups = xs_results['energy_groups']
-        self.tallies = xs_results['tallies']
+        self._tallies = xs_results['tallies']
         self._xs_tally = xs_results['xs_tally']
         self._offset = xs_results['offset']
         self._subdomain_indices = xs_results['subdomain_indices']
@@ -1159,60 +1151,53 @@ class ScatterMatrixXS(MultiGroupXS):
         subdomains : Iterable of Integral or 'all'
             The subdomain IDs of the cross-sections to include in the report
 
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross-section is
-            computed from tally data.
-
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to print cross-section since it has not been computed'
-            raise ValueError(msg)
 
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
 
+        # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.xs_type)
-        string += '{0: <16}{1}{2}\n'.format('\tDomain Type', '=\t', self.domain_type)
-        string += '{0: <16}{1}{2}\n'.format('\tDomain ID', '=\t', self.domain.id)
+        string += '{0: <16}=\t{1}\n'.format('\tType', self.xs_type)
+        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
+        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
-        string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
+        # Append cross-section data if it has been computed
+        if self.xs_tally is not None:
+            string += '{0: <16}\n'.format('\tEnergy Groups:')
+            template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
 
-        # Loop over energy groups ranges
-        for group in range(1, self.num_groups+1):
-            bounds = self.energy_groups.get_group_bounds(group)
-            string += template.format('', group, bounds[0], bounds[1])
+            # Loop over energy groups ranges
+            for group in range(1, self.num_groups+1):
+                bounds = self.energy_groups.get_group_bounds(group)
+                string += template.format('', group, bounds[0], bounds[1])
 
-        if subdomains == 'all':
-            subdomains = self.get_subdomain_indices()
+            if subdomains == 'all':
+                subdomains = self.get_subdomain_indices()
 
-        # Loop over all subdomains
-        for subdomain in subdomains:
+            # Loop over all subdomains
+            for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
-                string += \
-                    '{0: <16}{1}{2}\n'.format('\tSubdomain', '=\t', subdomain)
+                if self.domain_type == 'distribcell':
+                    string += \
+                        '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
-            string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
-            template = '{0: <12}Group {1} -> Group {2}:\t\t'
+                string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
+                template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-            # Loop over incoming/outgoing energy groups ranges
-            for in_group in range(1, self.num_groups+1):
-                for out_group in range(1, self.num_groups+1):
-                    string += template.format('', in_group, out_group)
-                    average = self.get_xs([in_group], [out_group],
-                                          [subdomain], 'mean')
-                    rel_err = self.get_xs([in_group], [out_group],
-                                          [subdomain], 'rel_err')*100.
-                    average = np.nan_to_num(average.flatten())[0]
-                    rel_err = np.nan_to_num(rel_err.flatten())[0]
-                    string += '{0:1.2e} +/- {1:1.2e}%'.format(average, rel_err)
+                # Loop over incoming/outgoing energy groups ranges
+                for in_group in range(1, self.num_groups+1):
+                    for out_group in range(1, self.num_groups+1):
+                        string += template.format('', in_group, out_group)
+                        average = self.get_xs([in_group], [out_group],
+                                              [subdomain], 'mean')
+                        rel_err = self.get_xs([in_group], [out_group],
+                                              [subdomain], 'rel_err') * 100.
+                        average = np.nan_to_num(average.flatten())[0]
+                        rel_err = np.nan_to_num(rel_err.flatten())[0]
+                        string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
+                        string += '\n'
                     string += '\n'
-                string += '\n'
 
         print(string)
 

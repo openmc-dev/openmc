@@ -885,7 +885,6 @@ class TotalXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -918,8 +917,6 @@ class TransportXS(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
-        energy_filter.num_bins = self.num_groups
-        energyout_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter], [energyout_filter]]
 
         # Initialize the Tallies
@@ -957,7 +954,6 @@ class AbsorptionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -989,7 +985,6 @@ class CaptureXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1022,7 +1017,6 @@ class FissionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1054,7 +1048,6 @@ class NuFissionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1086,7 +1079,6 @@ class ScatterXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Intialize the Tallies
@@ -1118,7 +1110,6 @@ class NuScatterXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
-        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1145,8 +1136,6 @@ class ScatterMatrixXS(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
-        energy.num_bins = self.num_groups
-        energyout.num_bins = self.num_groups
 
         # Create a list of scores for each Tally to be created
         if correct:
@@ -1172,7 +1161,6 @@ class ScatterMatrixXS(MultiGroupXS):
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
-            energy_filter.num_bins = self.num_groups
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['scatter'] - scatter_p1
         else:
@@ -1330,8 +1318,6 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
-        energy.num_bins = self.num_groups
-        energyout.num_bins = self.num_groups
         filters = [[energy], [energy, energyout], [energyout]]
 
         # Intialize the Tallies
@@ -1347,7 +1333,6 @@ class NuScatterMatrixXS(ScatterMatrixXS):
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
-            energy_filter.num_bins = self.num_groups
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['nu-scatter'] - scatter_p1
         else:
@@ -1375,8 +1360,6 @@ class Chi(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
-        energy_filter.num_bins = self.num_groups
-        energyout_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energyout_filter]]
 
         # Intialize the Tallies
@@ -1423,7 +1406,6 @@ class Chi(MultiGroupXS):
 
         energy_filter = openmc.Filter(type='energyout')
         energy_filter.bins = self.energy_groups.group_edges
-        energy_filter.num_bins = self.num_groups
         norm = norm.tile_filter(energy_filter)
 
         self._xs_tally /= norm

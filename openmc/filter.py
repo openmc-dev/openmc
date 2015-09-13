@@ -35,6 +35,8 @@ class Filter(object):
         The type of the tally filter.
     bins : Integral or Iterable of Integral or Iterable of float
         The bins for the filter
+    num_bins : Integral
+        The number of filter bins
     mesh : Mesh or None
         A Mesh object for 'mesh' type filters.
     offset : Integral
@@ -110,7 +112,14 @@ class Filter(object):
 
     @property
     def num_bins(self):
-        return self._num_bins
+        if self.bins is None:
+            return 0
+        elif self.type in ['energy', 'energyout']:
+            return len(self.bins)-1
+        elif self.type in ['cell', 'cellborn', 'surface', 'universe', 'material']:
+            return len(self.bins)
+        else:
+            return self._num_bins
 
     @property
     def mesh(self):

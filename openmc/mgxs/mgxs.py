@@ -70,13 +70,11 @@ class MultiGroupXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross-section. This attribute
         is None unless the multi-group cross-section has been computed.
-    offset : Integral
-        The filter offset for the domain filter
 
     """
 
     # This is an abstract class which cannot be instantiated
-    metaclass__ = abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, name=''):
@@ -89,7 +87,6 @@ class MultiGroupXS(object):
         self._num_groups = None
         self._tallies = dict()
         self._xs_tally = None
-        self._offset = None
 
         self.name = name
         if domain_type is not None:
@@ -112,7 +109,6 @@ class MultiGroupXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_groups = self.num_groups
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
-            clone._offset = copy.deepcopy(self.offset, memo)
 
             clone._tallies = dict()
             for tally_type, tally in self.tallies.items():
@@ -159,10 +155,6 @@ class MultiGroupXS(object):
         return self._xs_tally
 
     @property
-    def offset(self):
-        return self._offset
-
-    @property
     def num_subdomains(self):
         tally = self.tallies.values()[0]
         domain_filter = tally.find_filter(self.domain_type)
@@ -188,13 +180,6 @@ class MultiGroupXS(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
         self._num_groups = energy_groups.num_groups
-
-    def _find_domain_offset(self):
-        """Finds and stores the offset of the domain tally filter"""
-
-        tally = self.tallies.values()[0]
-        domain_filter = tally.find_filter(self.domain_type)
-        self._offset = domain_filter.offset
 
     @abc.abstractmethod
     def create_tallies(self, scores, all_filters, keys, estimator):
@@ -238,6 +223,12 @@ class MultiGroupXS(object):
             # Add all non-domain specific Filters (i.e., 'energy') to the Tally
             for filter in filters:
                 self.tallies[key].add_filter(filter)
+
+    @abc.abstractmethod
+    def compute_xs(self):
+        """Computes multi-group cross-sections using OpenMC tally arithmetic."""
+
+        return
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -814,7 +805,7 @@ class TotalXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group total cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -851,7 +842,7 @@ class TransportXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group transport cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
@@ -883,7 +874,7 @@ class AbsorptionXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group absorption cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -914,7 +905,7 @@ class CaptureXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group capture cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
         self._xs_tally /= self.tallies['flux']
@@ -946,7 +937,7 @@ class FissionXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group fission cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['fission'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -977,7 +968,7 @@ class NuFissionXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the multi-group nu-fission cross-sections using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -1008,7 +999,7 @@ class ScatterXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the scattering multi-group cross-sections using
-        OpenMC tally arithmetic"""
+        OpenMC tally arithmetic."""
 
         self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -1039,7 +1030,7 @@ class NuScatterXS(MultiGroupXS):
 
     def compute_xs(self):
         """Computes the nu-scattering multi-group cross-section using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -1075,7 +1066,7 @@ class ScatterMatrixXS(MultiGroupXS):
 
     def compute_xs(self, correction='None'):
         """Computes the multi-group scattering matrix using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':
@@ -1251,7 +1242,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     def compute_xs(self, correction='None'):
         """Computes the multi-group nu-scattering matrix using OpenMC
-        tally arithmetic"""
+        tally arithmetic."""
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':
@@ -1292,7 +1283,7 @@ class Chi(MultiGroupXS):
         super(Chi, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes chi fission spectrum using OpenMC tally arithmetic"""
+        """Computes chi fission spectrum using OpenMC tally arithmetic."""
 
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']

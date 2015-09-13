@@ -274,10 +274,10 @@ class CrossFilter(object):
 
         if left_filter is not None:
             self.left_filter = left_filter
-            self.bins['left'] = left_filter.bins
+            self._bins['left'] = left_filter.bins
         if right_filter is not None:
             self.right_filter = right_filter
-            self.bins['right'] = right_filter.bins
+            self._bins['right'] = right_filter.bins
         if binary_op is not None:
             self.binary_op = binary_op
 
@@ -333,7 +333,7 @@ class CrossFilter(object):
 
     @property
     def bins(self):
-        return (self._bins['left'], self._bins['right'])
+        return self._bins['left'], self._bins['right']
 
     @property
     def num_bins(self):

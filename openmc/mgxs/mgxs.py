@@ -217,7 +217,7 @@ class MultiGroupXS(object):
         """Finds and stores the offset of the domain tally filter"""
 
         tally = self.tallies.values()[0]
-        domain_filter = tally.find_filter(self.domain_type, [self.domain.id])
+        domain_filter = tally.find_filter(self.domain_type)
         self._offset = domain_filter.offset
 
     def set_subdomain_index(self, subdomain_id, index):
@@ -280,7 +280,9 @@ class MultiGroupXS(object):
             cv.check_type('subdomains', subdomains, Iterable, Integral)
 
         if subdomains == 'all':
-            num_subdomains = len(self.subdomain_indices)
+            tally = self.tallies.values()[0]
+            domain_filter = tally.find_filter(self.domain_type)
+            num_subdomains = domain_filter.num_bins
             indices = np.arange(num_subdomains)
         else:
             indices = np.zeros(len(subdomains), dtype=np.int64)
@@ -329,19 +331,22 @@ class MultiGroupXS(object):
             cv.check_type('offsets', indices, Iterable, Integral)
 
         if indices == 'all':
-            indices = self.get_subdomain_indices()
+            tally = self.tallies.values()[0]
+            domain_filter = tally.find_filter(self.domain_type)
+            num_subdomains = domain_filter.num_bins
+            subdomains = np.arange(num_subdomains)
+        else:
+            subdomains = np.zeros(len(indices), dtype=np.int64)
+            keys = self.subdomain_indices.keys()
+            values = self.subdomain_indices.values()
 
-        subdomains = np.zeros(len(indices), dtype=np.int64)
-        keys = self.subdomain_indices.keys()
-        values = self.subdomain_indices.values()
-
-        for i, index in enumerate(indices):
-            if index in values:
-                subdomains[i] = keys[values.index(index)]
-            else:
-                msg = 'Unable to get subdomain for index "{0}" since it ' \
-                      'is not a valid index'.format(index)
-                raise ValueError(msg)
+            for i, index in enumerate(indices):
+                if index in values:
+                    subdomains[i] = keys[values.index(index)]
+                else:
+                    msg = 'Unable to get subdomain for index "{0}" since it ' \
+                          'is not a valid index'.format(index)
+                    raise ValueError(msg)
 
         return subdomains
 
@@ -520,11 +525,11 @@ class MultiGroupXS(object):
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
         subdomain_indices = self.get_subdomain_indices(subdomains)
-        subdomain_indices = [(index,) for index in subdomain_indices]
+#        subdomain_indices = [(index,) for index in subdomain_indices]
 
         # Clone this MultiGroupXS to initialize the condensed version
         avg_xs = copy.deepcopy(self)
-        avg_xs.domain_type = 'avg. ' + avg_xs.domain_type
+        avg_xs._domain_type = 'avg. ' + avg_xs.domain_type
 
         # Reset subdomain indices and offsets for distribcell domains
         if self.domain_type == 'distribcell':
@@ -534,7 +539,7 @@ class MultiGroupXS(object):
         # Overwrite tallies with new subdomain-averaged versions
         avg_xs._tallies = {}
         for tally_type, tally in self.tallies.items():
-            tally_sum = tally.summation(filters=[self.domain_type],
+            tally_sum = tally.summation(filter=self.domain_type,
                                         filter_bins=subdomain_indices)
             tally_sum /= len(subdomains)
             avg_xs.tallies[tally_type] = tally_sum
@@ -1281,13 +1286,19 @@ class Chi(MultiGroupXS):
         # FIXME: Make filter bins simpler in Tally.summation(...)
 
         # Construct energy group filter bins to sum across
+        '''
         filter_bins = []
         for group in range(1, self.num_groups+1):
             group_bounds = self.energy_groups.get_group_bounds(group)
             filter_bins.append((group_bounds,))
         energy_bins = [filter_bins]
+        '''
 
-        sum_nu_fission_in = nu_fission_in.summation(filters=['energy'],
+        energy_bins = []
+        for group in range(1, self.num_groups+1):
+            energy_bins.append(self.energy_groups.get_group_bounds(group))
+
+        sum_nu_fission_in = nu_fission_in.summation(filter='energy',
                                                     filter_bins=energy_bins)
 
         # FIXME: Need ability to override energy groups with group numbers
@@ -1299,7 +1310,7 @@ class Chi(MultiGroupXS):
         self._xs_tally = nu_fission_out / sum_nu_fission_in
 
         # Normalize chi to 1.0
-        norm = self.xs_tally.summation(filters=['energyout'],
+        norm = self.xs_tally.summation(filter='energyout',
                                        filter_bins=energy_bins)
 
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic

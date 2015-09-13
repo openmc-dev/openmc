@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide
+from openmc import Mesh, Filter, Trigger, Nuclide, FILTER_TYPES
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
 from openmc.summary import Summary
 import openmc.checkvalue as cv
@@ -78,8 +78,8 @@ class Tally(object):
     mean : ndarray
         An array containing the sample mean for each bin
     std_dev : ndarray
-
         An array containing the sample standard deviation for each bin
+
     """
 
     def __init__(self, tally_id=None, name=''):
@@ -713,7 +713,7 @@ class Tally(object):
         filter_type : str
             The type of Filter (e.g., 'cell', 'energy', etc.)
 
-        filter_bin : int, list
+        filter_bin : int, tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -2277,6 +2277,8 @@ class Tally(object):
                     if filter_type in ['energy', 'energyout']:
                         bin_indices.append(bin_index)
                         bin_indices.append(bin_index+1)
+                    elif filter_type == 'distribcell':
+                        bin_indices.append(0)
                     else:
                         bin_indices.append(bin_index)
 
@@ -2292,13 +2294,13 @@ class Tally(object):
 
         return new_tally
 
-    def summation(self, scores=[], filters=[], filter_bins=[], nuclides=[]):
-        """Build a sliced tally for the specified filters, scores and nuclides.
+    def summation(self, scores=[], filter=None, filter_bins=[], nuclides=[]):
+        """Build a sliced tally for the specified filter bins, nuclides, scores.
 
         This method constructs a new tally to encapsulate a subset of the data
         represented by this tally. The subset of data to include in the tally
-        slice is determined by the scores, filters and nuclides specified in
-        the input parameters.
+        slice is determined by the scores, filter bins and nuclides specified
+        in the input parameters.
 
         Parameters
         ----------
@@ -2306,21 +2308,19 @@ class Tally(object):
             A list of one or more score strings to sum across
             (e.g., ['absorption', 'nu-fission']; default is [])
 
-        filters : list
-            A list of filter type strings to sum across
-            (e.g., ['mesh', 'energy']; default is [])
+        filter : str
+            A filter type string (e.g., 'cell', 'energy') corresponding to the
+            filter bins to sum across
 
-        filter_bins : list of Iterables
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
-            in the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond to the
-            filter_types parameter.
+        filter_bins : Iterable of Integral or tuple
+            A list of the filter bins corresponding to the filters parameter
+            Each bin in the list is the integer ID for 'material', 'surface',
+            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
+            for the cell instance ID for 'distribcell Filters. Each bin is a
+            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            to the energy boundaries of the bin of interest. Each bin is an
+            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest.
 
         nuclides : list
             A list of nuclide name strings to sum across
@@ -2347,15 +2347,20 @@ class Tally(object):
         else:
             nuclides = [[nuclide] for nuclide in nuclides]
 
-        # If user did not specify any filter bins, do not sum across filter bins
-        if len(filters) == 0:
+        # Sum across any filter bins specified by the user
+        if filter in FILTER_TYPES.values():
+            filter_bins = [[(filter_bin,)] for filter_bin in filter_bins]
+            filters = [[filter]]
+        # If user did not specify a filter type, do not sum across filter bins
+        else:
             filter_bins = [[]]
             filters = [[]]
-        # Sum across any filter bins specified by the user
+        '''
         else:
-            filter_bins = list(itertools.product(*filter_bins))
-            filter_bins = [list(filter_bin) for filter_bin in filter_bins]
-            filters = [filters]
+#            filter_bins = list(itertools.product(*filter_bins))
+            filter_bins = [[filter_bin] for filter_bin in filter_bins]
+            filters = [[filter]]
+        '''
 
         # Initialize Tally sum
         tally_sum = 0

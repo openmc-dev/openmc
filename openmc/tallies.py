@@ -1009,7 +1009,7 @@ class Tally(object):
         else:
             msg = 'Unable to return results from Tally ID="{0}" since the ' \
                   'the requested value "{1}" is not \'mean\', \'std_dev\', ' \
-                  '\rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
+                  '\'rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
 
         return data

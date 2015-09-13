@@ -1043,7 +1043,7 @@ class ScatterMatrixXS(MultiGroupXS):
         super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, name)
         self._xs_type = 'scatter matrix'
 
-    def create_tallies(self, correct=False):
+    def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross-section."""
 
         group_edges = self.energy_groups.group_edges
@@ -1051,12 +1051,8 @@ class ScatterMatrixXS(MultiGroupXS):
         energyout = openmc.Filter('energyout', group_edges)
 
         # Create a list of scores for each Tally to be created
-        if correct:
-            scores = ['flux', 'scatter', 'scatter-P1']
-            filters = [[energy], [energy, energyout], [energyout]]
-        else:
-            scores = ['flux', 'scatter']
-            filters = [[energy], [energy, energyout]]
+        scores = ['flux', 'scatter', 'scatter-P1']
+        filters = [[energy], [energy, energyout], [energyout]]
 
         estimator = 'analog'
         keys = scores
@@ -1066,7 +1062,15 @@ class ScatterMatrixXS(MultiGroupXS):
 
     def compute_xs(self, correction='None'):
         """Computes the multi-group scattering matrix using OpenMC
-        tally arithmetic."""
+        tally arithmetic.
+
+        Parameters
+        ----------
+        correction : {'P0' or None}
+            If 'P0', applies the P0 transport correction to the diagonal of the
+            scattering matrix.
+
+        """
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':
@@ -1242,7 +1246,15 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     def compute_xs(self, correction='None'):
         """Computes the multi-group nu-scattering matrix using OpenMC
-        tally arithmetic."""
+        tally arithmetic.
+
+        Parameters
+        ----------
+        correction : {'P0' or None}
+            If 'P0', applies the P0 transport correction to the diagonal of the
+            scattering matrix
+
+        """
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':

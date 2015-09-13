@@ -78,8 +78,8 @@ class Tally(object):
     mean : ndarray
         An array containing the sample mean for each bin
     std_dev : ndarray
-        An array containing the sample standard deviation for each bin
 
+        An array containing the sample standard deviation for each bin
     """
 
     def __init__(self, tally_id=None, name=''):

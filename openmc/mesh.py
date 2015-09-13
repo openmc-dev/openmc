@@ -8,6 +8,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 
+
 if sys.version_info[0] >= 3:
     basestring = str
 

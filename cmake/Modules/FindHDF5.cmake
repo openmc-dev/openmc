@@ -136,6 +136,10 @@ find_program( HDF5_Fortran_COMPILER_EXECUTABLE
   DOC "HDF5 Fortran Wrapper compiler.  Used only to detect HDF5 compile flags." )
 mark_as_advanced( HDF5_Fortran_COMPILER_EXECUTABLE )
 
+unset(HDF5_C_COMPILER_NAMES)
+unset(HDF5_CXX_COMPILER_NAMES)
+unset(HDF5_Fortran_COMPILER_NAMES)
+
 find_program( HDF5_DIFF_EXECUTABLE
     NAMES h5diff
     HINTS ENV HDF5_ROOT

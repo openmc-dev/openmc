@@ -231,6 +231,7 @@ class MultiGroupXS(object):
         ----------
         subdomain_id : Integral
             The ID for the subdomain
+
         index : Integral
             The filter bin index for the subdomain
 
@@ -361,10 +362,13 @@ class MultiGroupXS(object):
         ----------
         scores : Iterable of str
             Scores for each tally
+
         filters : Iterable of tuple of Filter
             Tuples of non-spatial domain filters for each tally
+
         keys : Iterable of str
             Key string used to store each tally in the tallies dictionary
+
         estimator : {'analog' or 'tracklength'}
             Type of estimator to use for each tally
 
@@ -431,8 +435,10 @@ class MultiGroupXS(object):
         ----------
         groups : Iterable of Integral or 'all'
             Energy groups of interest
+
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest
+
         value : str
             A string for the type of value to return - 'mean' (default),
             'std_dev' or 'rel_err' are accepted
@@ -602,6 +608,7 @@ class MultiGroupXS(object):
         ----------
         filename : str
             Filename for the pickled binary file (default is 'mgxs')
+
         directory : str
             Directory for the pickled binary file (default is 'mgxs')
 
@@ -640,6 +647,7 @@ class MultiGroupXS(object):
         ----------
         filename : str
             Filename for the pickled binary file (default is 'mgxs')
+
         directory : str
             Directory for the pickled binary file (default is 'mgxs')
 
@@ -701,8 +709,10 @@ class MultiGroupXS(object):
         ----------
         filename : str
             Filename for the exported file (default is 'mgxs')
+
         directory : str
             Directory for the exported file (default is 'mgxs')
+
         format : {'csv', 'excel', 'pickle', 'latex'}
             The format for the exported data file
 
@@ -720,7 +730,7 @@ class MultiGroupXS(object):
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
-        cv.check_values('format', format, ['csv', 'excel', 'pickle', 'latex'])
+        cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -730,24 +740,41 @@ class MultiGroupXS(object):
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
+        # FIXME: Column niceties need to be implemented here
         df = self.get_pandas_dataframe()
 
         # Export the data using Pandas IO API
         if format == 'csv':
             df.to_csv(filename + '.csv')
         elif format == 'excel':
-            df.to_excel(filename + '.xslx')
+            # FIXME: Overwrite column CrossScores with scores
+            df.to_excel(filename + '.xls')
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
             # FIXME: Insert greek letters
+            # FIXME: Need to put document header around string
             df.to_latex(filename + '.tex')
 
-    def get_pandas_dataframe(self):
+    def get_pandas_dataframe(self, groups='indices', summary=None):
         """Build a Pandas DataFrame for the MultiGroupXS data.
 
         This routine leverages the Tally.get_pandas_dataframe(...) routine, but
         renames the columns with terminology appropriate for cross-section data.
+
+        Parameters
+        ----------
+        groups : {'indices' or 'bounds'}
+            When set to 'indices', integer group indices are inserted in the
+            energy column(s) of the DataFrame. When set to 'bounds', the lower
+            and upper energy bounds are used.
+
+        summary : None or Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). The geometric
+            information in the Summary object is embedded into a Multi-index
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
 
         Returns
         -------
@@ -767,8 +794,40 @@ class MultiGroupXS(object):
                   'cross-section has not been computed'
             raise ValueError(msg)
 
-        # TODO: Reset column labels as cross-sections if needed
-        df = self.xs_tally.get_pandas_dataframe()
+        # Get a Pandas DataFrame from the derived xs tally
+        df = self.xs_tally.get_pandas_dataframe(summary=summary)
+
+        # Remove the score column since it is homogeneous and redundant
+        if summary:
+            df = df.drop('score', level=0, axis=1)
+        else:
+            df = df.drop('score', axis=1)
+
+        # Use group indices in place of energy bounds ("1" for fastest group)
+        if groups == 'indices':
+
+            # Rename the column label for energy in the dataframe
+            columns = []
+            if 'energy [MeV]' in df:
+                df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
+                columns.append('group in')
+            if 'energyout [MeV]' in df:
+                df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+                columns.append('group out')
+
+            # Loop over all energy groups and override the bounds with indices
+            template = '({0:.1e} - {1:.1e})'
+            bins = self.energy_groups.group_edges
+            for column in columns:
+                for i in range(self.num_groups):
+                    group = template.format(bins[i], bins[i+1])
+                    row_indices = df[column] == group
+                    df.loc[row_indices, column] = self.num_groups - i
+
+            # Sort the dataframe by domain type id (e.g., distribcell id) and
+            # energy groups such that data is from fast to thermal
+            df.sort([self.domain_type] + columns, inplace=True)
+
         return df
 
 
@@ -1086,10 +1145,13 @@ class ScatterMatrixXS(MultiGroupXS):
         ----------
         in_groups : Iterable of Integral or 'all'
             Incoming energy groups of interest
+
         out_groups : Iterable of Integral or 'all'
             Outgoing energy groups of interest
+
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest
+
         value : str
             A string for the type of value to return - 'mean' (default),
             'std_dev' or 'rel_err' are accepted

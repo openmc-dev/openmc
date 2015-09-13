@@ -114,6 +114,8 @@ contains
 
 !$omp critical (FinalizeParticleTrack)
     file_id = file_create(fname)
+    call write_dataset(file_id, 'filetype', FILETYPE_TRACK)
+    call write_dataset(file_id, 'revision', REVISION_TRACK)
     call write_dataset(file_id, 'n_particles', n_particle_tracks)
     call write_dataset(file_id, 'n_coords', n_coords)
     do i = 1, n_particle_tracks

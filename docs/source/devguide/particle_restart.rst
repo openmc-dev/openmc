@@ -9,13 +9,13 @@ The current revision of the particle restart file format is 1.
 **/filetype** (*int*)
 
     Flags what type of file this is. A value of -1 indicates a statepoint file,
-    a value of -2 indicates a particle restart file, and a value of -3 indicates
-    a source file.
+    a value of -2 indicates a particle restart file, a value of -3 indicates a
+    source file, and a value of -4 indicates a track file.
 
 **/revision** (*int*)
 
-    Revision of the binary state point file. Any time a change is made in the
-    format of the state-point file, this integer is incremented.
+    Revision of the particle restart file format. Any time a change is made in
+    the format, this integer is incremented.
 
 **/current_batch** (*int*)
 

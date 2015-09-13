@@ -17,6 +17,7 @@ as debugging.
     workflow
     xml-parsing
     statepoint
+    source
     particle_restart
     track
     voxel

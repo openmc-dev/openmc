@@ -17,7 +17,7 @@ class EnergyGroups(object):
 
     Parameters
     ----------
-    group_edges : NumPy array
+    group_edges : ndarray
         The energy group boundaries [MeV]
     num_groups : Integral
         The number of energy groups
@@ -31,9 +31,14 @@ class EnergyGroups(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, group_edges=None, num_groups=None):
         self._group_edges = None
         self._num_groups = None
+
+        if group_edges is not None:
+            self.group_edges = group_edges
+        if num_groups is not None:
+            self.num_groups = num_groups
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -41,7 +46,8 @@ class EnergyGroups(object):
         # If this is the first time we have tried to copy object, create copy
         if existing is None:
             clone = type(self).__new__(type(self))
-            clone.group_edges = copy.deepcopy(self.group_edges, memo)
+            clone._group_edges = copy.deepcopy(self.group_edges, memo)
+            clone._num_groups = self.num_groups
 
             memo[id(self)] = clone
 
@@ -71,6 +77,14 @@ class EnergyGroups(object):
             return False
         elif self.group_edges != other.group_edges:
             return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(tuple(self.group_edges))
 
     def generate_bin_edges(self, start, stop, num_groups, spacing='linear'):
         """Generate equally or logarithmically-spaced energy group boundaries.
@@ -126,7 +140,7 @@ class EnergyGroups(object):
         """
 
         if self.group_edges is None:
-            msg = 'Unable to get energy group for energy "{0}" eV since ' \
+            msg = 'Unable to get energy group for energy "{0}" MeV since ' \
                   'the group edges have not yet been set'.format(energy)
             raise ValueError(msg)
 
@@ -174,7 +188,7 @@ class EnergyGroups(object):
 
         Returns
         -------
-        NumPy.ndarray
+        ndarray
             The NumPy array indices for each energy group of interest
 
         Raises
@@ -193,11 +207,11 @@ class EnergyGroups(object):
         if groups == 'all':
             indices = np.arange(self.num_groups)
         else:
-            indices = np.zeros(len(groups), dtype=np.int64)
+            indices = np.zeros(len(groups), dtype=np.int)
 
         for i, group in enumerate(groups):
             cv.check_greater_than('group', group, 0)
-            cv.check_less_than('group', group, self.num_groups, True)
+            cv.check_less_than('group', group, self.num_groups, equality=True)
             indices[i] = group - 1
 
         return indices
@@ -211,11 +225,13 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        coarse_groups : list
+        coarse_groups : Iterable of 2-tuple
             The energy groups of interest - a list of 2-tuples, each directly
              corresponding to one of the new coarse groups. The values in the
              2-tuples are upper/lower energy groups used to construct a new
-             coarse group.
+             coarse group. For example, if [(1,2), (2,4)] was used as the coarse
+             groups, fine groups 1 and 2 would be merged into coarse group 1
+             while fine groups 3 and 4 would be merged into coarse group 2.
 
         Returns
         -------
@@ -230,7 +246,7 @@ class EnergyGroups(object):
 
         cv.check_type('group edges', coarse_groups, Iterable)
         for group in coarse_groups:
-            cv.check_value('group edges', group, Iterable)
+            cv.check_type('group edges', group, Iterable)
             cv.check_length('group edges', group, 2)
             cv.check_greater_than('lower group', group[0], 1, True)
             cv.check_less_than('lower group', group[0], self.num_groups, True)
@@ -257,4 +273,5 @@ class EnergyGroups(object):
         # Create a new condensed EnergyGroups object
         condensed_groups = EnergyGroups()
         condensed_groups.group_edges = group_edges
+
         return condensed_groups

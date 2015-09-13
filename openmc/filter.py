@@ -282,11 +282,38 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(self.bins + filter.bins))
+        merged_bins = list(set(list(self.bins) + list(filter.bins)))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 
         return merged_filter
+
+    def is_subset(self, other):
+        """Determine if another filter is a subset of this filter.
+
+        If all of the bins in the other filter are included as bins in this
+        filter, then it is a subset of this filter.
+
+        Parameters
+        ----------
+        other : Filter
+            The filter to query as a subset of this filter
+
+        Returns
+        -------
+        boolean
+            Whether or not the other filter is a subset of this filter
+        """
+        if not isinstance(other, Filter):
+            return False
+        elif self.type != other.type:
+            return False
+
+        for bin in other.bins:
+            if bin not in self.bins:
+                return False
+
+        return True
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the Filter for some bin.

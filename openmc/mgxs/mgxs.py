@@ -159,6 +159,10 @@ class MultiGroupXS(object):
         return self._name
 
     @property
+    def xs_type(self):
+        return self._xs_type
+
+    @property
     def domain(self):
         return self._domain
 
@@ -280,7 +284,9 @@ class MultiGroupXS(object):
         if subdomains != 'all':
             cv.check_type('subdomains', subdomains, Iterable, Integral)
 
-        if subdomains == 'all':
+        if subdomains == 'all' and self.domain_type != 'distribcell':
+            indices = [0]
+        elif subdomains == 'all' and self.domain_type == 'distribcell':
             tally = self.tallies.values()[0]
             domain_filter = tally.find_filter(self.domain_type)
             num_subdomains = domain_filter.num_bins
@@ -331,7 +337,9 @@ class MultiGroupXS(object):
         if indices != 'all':
             cv.check_type('offsets', indices, Iterable, Integral)
 
-        if indices == 'all':
+        if indices == 'all' and self.domain_type != 'distribcell':
+            subdomains = [self.domain.id]
+        elif indices == 'all' and self.domain_type == 'distribcell':
             tally = self.tallies.values()[0]
             domain_filter = tally.find_filter(self.domain_type)
             num_subdomains = domain_filter.num_bins
@@ -382,6 +390,7 @@ class MultiGroupXS(object):
 
         # Create a domain Filter object
         domain_filter = openmc.Filter(self.domain_type, self.domain.id)
+        domain_filter.num_bins = 1
 
         for score, key, filters in zip(scores, keys, all_filters):
             self.tallies[key] = openmc.Tally(name=self.name)
@@ -413,8 +422,14 @@ class MultiGroupXS(object):
         statepoint.read_results()
 
         # Create Tallies to search for in StatePoint
-        if self.tallies is None:
-            self.create_tallies()
+        self.create_tallies()
+
+        if self.domain_type == 'distribcell':
+            filters = []
+            filter_bins = []
+        else:
+            filters = [self.domain_type]
+            filter_bins = [(self.domain.id,)]
 
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
@@ -422,7 +437,8 @@ class MultiGroupXS(object):
             sp_tally = statepoint.get_tally(tally.scores, tally.filters,
                                             tally.nuclides,
                                             estimator=tally.estimator)
-            sp_tally = sp_tally.get_slice(scores=tally.scores, nuclides=tally.nuclides)
+            sp_tally = sp_tally.get_slice(tally.scores, filters,
+                                          filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
     def get_xs(self, groups='all', subdomains='all', value='mean'):
@@ -575,7 +591,7 @@ class MultiGroupXS(object):
         # Append cross-section data if it has been computed
         if self.xs_tally is not None:
             if subdomains == 'all':
-                subdomains = self.get_subdomain_indices()
+                subdomains = self.get_subdomains()
 
             # Loop over all subdomains
             for subdomain in subdomains:
@@ -697,8 +713,7 @@ class MultiGroupXS(object):
         import h5py
         raise NotImplementedError('HDF5 storage is not yet implemented')
 
-    def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv',
-                       groups='indices', summary=None):
+    def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv'):
         """Export the multi-group cross-section data to a file.
 
         This routine leverages the functionality in the Pandas library to
@@ -742,20 +757,41 @@ class MultiGroupXS(object):
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
-        df = self.get_pandas_dataframe(groups, summary)
+        df = self.get_pandas_dataframe()
+
+        # Capitalize column label strings
+        df.columns = map(str.title, df.columns)
 
         # Export the data using Pandas IO API
         if format == 'csv':
-            df.to_csv(filename + '.csv')
+            df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
-            # FIXME: Overwrite column CrossScores with scores
-            df.to_excel(filename + '.xls')
+            df.to_excel(filename + '.xls', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
+            if self.domain_type == 'distribcell':
+                msg = 'Unable to export distribcell multi-group cross-section' \
+                      'data to a LaTeX table'
+                raise NotImplementedError(msg)
+
             # FIXME: Insert greek letters
-            # FIXME: Need to put document header around string
-            df.to_latex(filename + '.tex')
+
+            df.to_latex(filename + '.tex', bold_rows=True,
+                        longtable=True, index=False)
+
+            # Surround LaTeX table with code needed to run pdflatex
+            with open(filename + '.tex','r') as original:
+                data = original.read()
+            with open(filename + '.tex','w') as modified:
+                modified.write(
+                    '\\documentclass[preview, 12pt, border=1mm]{standalone}\n')
+                modified.write('\\usepackage{caption}\n')
+                modified.write('\\usepackage{longtable}\n')
+                modified.write('\\usepackage{booktabs}\n')
+                modified.write('\\begin{document}\n\n')
+                modified.write(data)
+                modified.write('\n\\end{document}')
 
     def get_pandas_dataframe(self, groups='indices', summary=None):
         """Build a Pandas DataFrame for the MultiGroupXS data.
@@ -799,7 +835,7 @@ class MultiGroupXS(object):
         df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
         # Remove the score column since it is homogeneous and redundant
-        if summary:
+        if summary and self.domain_type == 'distribcell':
             df = df.drop('score', level=0, axis=1)
         else:
             df = df.drop('score', axis=1)
@@ -836,7 +872,7 @@ class TotalXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(TotalXS, self).__init__(domain, domain_type, groups, name)
-        self.xs_type = 'total'
+        self._xs_type = 'total'
 
     def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross-section."""
@@ -849,6 +885,7 @@ class TotalXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -867,7 +904,7 @@ class TransportXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(TransportXS, self).__init__(domain, domain_type, groups, name)
-        self.xs_type = 'transport'
+        self._xs_type = 'transport'
 
     def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross-section."""
@@ -881,6 +918,8 @@ class TransportXS(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
+        energy_filter.num_bins = self.num_groups
+        energyout_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter], [energyout_filter]]
 
         # Initialize the Tallies
@@ -905,7 +944,7 @@ class AbsorptionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(AbsorptionXS, self).__init__(domain, domain_type, groups, name)
-        self.xs_type = 'absorption'
+        self._xs_type = 'absorption'
 
     def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross-section."""
@@ -918,6 +957,7 @@ class AbsorptionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -949,6 +989,7 @@ class CaptureXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -981,6 +1022,7 @@ class FissionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1012,6 +1054,7 @@ class NuFissionXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1043,6 +1086,7 @@ class ScatterXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Intialize the Tallies
@@ -1074,6 +1118,7 @@ class NuScatterXS(MultiGroupXS):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energy_filter]]
 
         # Initialize the Tallies
@@ -1100,6 +1145,8 @@ class ScatterMatrixXS(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
+        energy.num_bins = self.num_groups
+        energyout.num_bins = self.num_groups
 
         # Create a list of scores for each Tally to be created
         if correct:
@@ -1236,7 +1283,7 @@ class ScatterMatrixXS(MultiGroupXS):
                 string += template.format('', group, bounds[0], bounds[1])
 
             if subdomains == 'all':
-                subdomains = self.get_subdomain_indices()
+                subdomains = self.get_subdomains()
 
             # Loop over all subdomains
             for subdomain in subdomains:
@@ -1269,7 +1316,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,  name=''):
         super(NuScatterMatrixXS, self).__init__(domain, domain_type, groups, name)
-        self.xs_type = 'nu-scatter matrix'
+        self._xs_type = 'nu-scatter matrix'
 
     def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross-section."""
@@ -1283,6 +1330,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
+        energy.num_bins = self.num_groups
+        energyout.num_bins = self.num_groups
         filters = [[energy], [energy, energyout], [energyout]]
 
         # Intialize the Tallies
@@ -1326,6 +1375,8 @@ class Chi(MultiGroupXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
+        energy_filter.num_bins = self.num_groups
+        energyout_filter.num_bins = self.num_groups
         filters = [[energy_filter], [energyout_filter]]
 
         # Intialize the Tallies

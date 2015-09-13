@@ -30,20 +30,6 @@ DOMAINS = [openmc.Cell,
            openmc.Material,
            openmc.Mesh]
 
-# LaTeX Greek symbols for each cross-section type
-GREEK = dict()
-GREEK['total'] = '$\\Sigma_{t}$'
-GREEK['transport'] = '$\\Sigma_{tr}$'
-GREEK['absorption'] = '$\\Sigma_{a}$'
-GREEK['capture'] = '$\\Sigma_{c}$'
-GREEK['scatter'] = '$\\Sigma_{s}$'
-GREEK['nu-scatter'] = '$\\nu\\Sigma_{s}$'
-GREEK['scatter matrix'] = '$\\Sigma_{s}$'
-GREEK['nu-scatter matrix'] = '$\\nu\\Sigma_{s}$'
-GREEK['fission'] = '$\\Sigma_{f}$'
-GREEK['nu-fission'] = '$\\nu\\Sigma_{f}$'
-GREEK['chi'] = '$\\chi$'
-
 
 class MultiGroupXS(object):
     """A multi-group cross-section for some energy group structure within
@@ -775,8 +761,6 @@ class MultiGroupXS(object):
                       'data to a LaTeX table'
                 raise NotImplementedError(msg)
 
-            # FIXME: Insert greek letters
-
             df.to_latex(filename + '.tex', bold_rows=True,
                         longtable=True, index=False)
 
@@ -792,6 +776,7 @@ class MultiGroupXS(object):
                 modified.write('\\begin{document}\n\n')
                 modified.write(data)
                 modified.write('\n\\end{document}')
+
 
     def get_pandas_dataframe(self, groups='indices', summary=None):
         """Build a Pandas DataFrame for the MultiGroupXS data.

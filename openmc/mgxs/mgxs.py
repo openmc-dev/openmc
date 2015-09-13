@@ -70,12 +70,6 @@ class MultiGroupXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross-section. This attribute
         is None unless the multi-group cross-section has been computed.
-    subdomain_indices : dict
-        Integer subdomain IDs (keys) mapped to integer tally data array
-        indices (values) for 'distribcell' domain types. Each subdomain ID
-        corresponds to an instance of the cell domain. For all other domain
-        types, the domain has only one subdomain and this dictionary will
-        trivially map zero to zero.
     offset : Integral
         The filter offset for the domain filter
 
@@ -95,12 +89,6 @@ class MultiGroupXS(object):
         self._num_groups = None
         self._tallies = dict()
         self._xs_tally = None
-
-        # A dictionary used to compute indices into the xs array
-        # Keys   - Domain ID (ie, maaterial ID, distribcell instance ID, etc)
-        # Values - Offset/stride into xs array
-        # NOTE: This is primarily used for distribcell domain types
-        self._subdomain_indices = dict()
         self._offset = None
 
         self.name = name
@@ -124,8 +112,6 @@ class MultiGroupXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_groups = self.num_groups
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
-            clone._subdomain_indices = \
-                copy.deepcopy(self.subdomain_indices, memo)
             clone._offset = copy.deepcopy(self.offset, memo)
 
             clone._tallies = dict()
@@ -177,8 +163,10 @@ class MultiGroupXS(object):
         return self._offset
 
     @property
-    def subdomain_indices(self):
-        return self._subdomain_indices
+    def num_subdomains(self):
+        tally = self.tallies.values()[0]
+        domain_filter = tally.find_filter(self.domain_type)
+        return domain_filter.num_bins
 
     @name.setter
     def name(self, name):
@@ -189,8 +177,6 @@ class MultiGroupXS(object):
     def domain(self, domain):
         cv.check_type('domain', domain, tuple(DOMAINS))
         self._domain = domain
-        if self._domain_type in ['material', 'cell', 'universe', 'mesh']:
-            self._subdomain_indices[domain.id] = 0
 
     @domain_type.setter
     def domain_type(self, domain_type):
@@ -209,141 +195,6 @@ class MultiGroupXS(object):
         tally = self.tallies.values()[0]
         domain_filter = tally.find_filter(self.domain_type)
         self._offset = domain_filter.offset
-
-    def set_subdomain_index(self, subdomain_id, index):
-        """Set the filter bin index for a subdomain of the domain.
-
-        This is useful when the domain type is 'distribcell', in which case one
-        may wish to map each subdomain (a cell instance) to its filter bin in
-        the derived multi-group cross-section tally data array.
-
-        Parameters
-        ----------
-        subdomain_id : Integral
-            The ID for the subdomain
-
-        index : Integral
-            The filter bin index for the subdomain
-
-        See also
-        --------
-        MultiGroupXS.get_subdomains(), MultiGroupXS.get_subdomain_indices()
-
-        """
-
-        cv.check_type('subdomain id', subdomain_id, Integral)
-        cv.check_type('subdomain index', index, Integral)
-        cv.check_greater_than('subdomain id', subdomain_id, 0, equality=True)
-        cv.check_greater_than('subdomain index', index, 0, equality=True)
-        self._subdomain_indices[subdomain_id] = index
-
-    def get_subdomain_indices(self, subdomains='all'):
-        """Get the indices for one or more subdomains.
-
-        This method can be used to extract the indices into the multi-group
-        cross-section tally data array for a subdomain. This is useful when the
-        domain type is 'distribcell', in which case one may wish to map each
-        subdomain (a cell instance) to its filter bin index in the derived
-        multi-group cross-section tally data array.
-
-        Parameters
-        ----------
-        subdomains : Iterable of Integral or 'all'
-            Subdomain IDs (distribcell instance IDs) of interest
-
-        Returns
-        ----------
-        indices : ndarray
-            The subdomain indices indexed in the order of the subdomains
-
-        Raises
-        ------
-        ValueError
-            When one of the subdomains is not a valid subdomain ID.
-
-        See also
-        --------
-        MultiGroupXS.get_subdomains(), MultiGroupXS.set_subdomain_index()
-
-        """
-
-        if subdomains != 'all':
-            cv.check_type('subdomains', subdomains, Iterable, Integral)
-
-        if subdomains == 'all' and self.domain_type != 'distribcell':
-            indices = [0]
-        elif subdomains == 'all' and self.domain_type == 'distribcell':
-            tally = self.tallies.values()[0]
-            domain_filter = tally.find_filter(self.domain_type)
-            num_subdomains = domain_filter.num_bins
-            indices = np.arange(num_subdomains)
-        else:
-            indices = np.zeros(len(subdomains), dtype=np.int64)
-
-            for i, subdomain in enumerate(subdomains):
-                if subdomain in self.subdomain_indices:
-                    indices[i] = self.subdomain_indices[subdomain]
-                else:
-                    msg = 'Unable to get index for subdomain "{0}" since it ' \
-                          'is not a valid subdomain'.format(subdomain)
-                    raise ValueError(msg)
-
-        return indices
-
-    def get_subdomains(self, indices='all'):
-        """Get the subdomain IDs for one or more indices.
-
-        This method can be used to extract the subdomains for the multi-group
-        cross-section from their indices in the tally data array. This is useful
-        when the domain type is 'distribcell', in which case one may wish to map
-        each subdomain (a cell instance) to its filter bin index in the derived
-        multi-group cross-section tally data array.
-
-        Parameters
-        ----------
-        indices : Iterable of Integral or 'all'
-            Subdomain indices of interest
-
-        Returns
-        ----------
-        subdomains : ndarray
-            Array of subdomain IDs indexed in the order of the indices
-
-        Raises
-        ------
-        ValueError
-            When one of the indices is not a valid subdomain index.
-
-        See also
-        --------
-        MultiGroupXS.get_subdomain_indices(), MultiGroupXS.set_subdomain_index()
-
-        """
-
-        if indices != 'all':
-            cv.check_type('offsets', indices, Iterable, Integral)
-
-        if indices == 'all' and self.domain_type != 'distribcell':
-            subdomains = [self.domain.id]
-        elif indices == 'all' and self.domain_type == 'distribcell':
-            tally = self.tallies.values()[0]
-            domain_filter = tally.find_filter(self.domain_type)
-            num_subdomains = domain_filter.num_bins
-            subdomains = np.arange(num_subdomains)
-        else:
-            subdomains = np.zeros(len(indices), dtype=np.int64)
-            keys = self.subdomain_indices.keys()
-            values = self.subdomain_indices.values()
-
-            for i, index in enumerate(indices):
-                if index in values:
-                    subdomains[i] = keys[values.index(index)]
-                else:
-                    msg = 'Unable to get subdomain for index "{0}" since it ' \
-                          'is not a valid index'.format(index)
-                    raise ValueError(msg)
-
-        return subdomains
 
     @abc.abstractmethod
     def create_tallies(self, scores, all_filters, keys, estimator):
@@ -532,21 +383,26 @@ class MultiGroupXS(object):
             raise ValueError(msg)
 
         # Construct a collection of the subdomain filter bins to average across
-        subdomain_indices = self.get_subdomain_indices(subdomains)
+        if subdomains == 'all':
+            if self.domain_type == 'distribcell':
+                subdomains = np.arange(self.num_subdomains)
+            else:
+                subdomains = [self.domain.id]
+        else:
+            cv.check_iterable_type('subdomains', subdomains, Integral)
 
         # Clone this MultiGroupXS to initialize the condensed version
         avg_xs = copy.deepcopy(self)
 
         # Reset subdomain indices and offsets for distribcell domains
         if self.domain_type == 'distribcell':
-            avg_xs._subdomain_indices = {}
             avg_xs._offset = 0
 
         # Overwrite tallies with new subdomain-averaged versions
         avg_xs._tallies = {}
         for tally_type, tally in self.tallies.items():
             tally_sum = tally.summation(filter=self.domain_type,
-                                        filter_bins=subdomain_indices)
+                                        filter_bins=subdomains)
             tally_sum /= len(subdomains)
             avg_xs.tallies[tally_type] = tally_sum
 
@@ -577,7 +433,10 @@ class MultiGroupXS(object):
         # Append cross-section data if it has been computed
         if self.xs_tally is not None:
             if subdomains == 'all':
-                subdomains = self.get_subdomains()
+                if self.domain_type == 'distribcell':
+                    subdomains = np.arange(self.num_subdomains, dtype=np.int)
+                else:
+                    subdomains = [self.domain.id]
 
             # Loop over all subdomains
             for subdomain in subdomains:
@@ -682,7 +541,6 @@ class MultiGroupXS(object):
         self._tallies = xs_results['tallies']
         self._xs_tally = xs_results['xs_tally']
         self._offset = xs_results['offset']
-        self._subdomain_indices = xs_results['subdomain_indices']
 
     def build_hdf5_store(self, filename='mgxs', directory='mgxs',
                          append=True, key=None):
@@ -1256,7 +1114,10 @@ class ScatterMatrixXS(MultiGroupXS):
                 string += template.format('', group, bounds[0], bounds[1])
 
             if subdomains == 'all':
-                subdomains = self.get_subdomains()
+                if self.domain_type == 'distribcell':
+                    subdomains = np.arange(self.num_subdomains, dtype=np.int)
+                else:
+                    subdomains = [self.domain.id]
 
             # Loop over all subdomains
             for subdomain in subdomains:
